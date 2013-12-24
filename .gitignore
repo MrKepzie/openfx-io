@@ -178,7 +178,6 @@ $RECYCLE.BIN/
 
 *.o
 
-Makefile
 *.app
 
 *.pro.user.*
