@@ -41,99 +41,99 @@
 #define Io_GenericReader_h
 
 #include <ofxsImageEffect.h>
-#include <ofxsMultiThread.h>
-#include "../include/ofxsProcessing.H"
 
-
-
-
-
-
+/**
+ * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
+ * This class propose to handle the common stuff among readers: 
+ * - common params
+ * - a tiny cache to speed-up the successive getRegionOfDefinition() calls
+ * - a way to inform the host about the colour-space of the data.
+ **/
 class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
     GenericReaderPlugin(OfxImageEffectHandle handle);
     
-    /* Override the render */
-    void render(const OFX::RenderArguments &/*args*/){}
+    /**
+     * @brief Don't override this function, the GenericReaderPlugin class already does the rendering. The "decoding" of the frame
+     * must be done by the pure virtual function decode(...) instead.
+     **/
+    void render(const OFX::RenderArguments &args);
     
-    /* override the time domain action, only for the general context */
+    /**
+     * @brief Don't override this. Basically this function will call getTimeDomainForVideoStream(...),
+     * which your reader should implement to read from a video-stream the time range. 
+     * If the file is not a video stream, the function getTimeDomainForVideoStream() should return false, indicating that
+     * we're reading a sequence of images and that the host should get the time domain for us.
+     **/
     bool getTimeDomain(OfxRangeD &range);
     
+    /**
+     * @brief Don't override this. If the pure virtual function areHeaderAndDataTied() returns true, this
+     * function will call decode() to read the region of definition of the image and cache away the decoded image
+     * into the _dstImg member.
+     * If areHeaderAndDataTied() returns false instead, this function will call the virtual function
+     * getFrameRegionOfDefinition() which should read the header of the image to only extract the region of
+     * definition of the image.
+     **/
     bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
     
+    
+    /**
+     * @brief You can override this to take actions in response to a param change. 
+     * Make sure you call the base-class version of this function at the end: i.e:
+     * 
+     * void MyReader::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+     *      if (.....) {
+     *      
+     *      } else if(.....) {
+     *
+     *      } else {
+     *          GenericReaderPlugin::changedParam(args,paramName);
+     *      }
+     * }
+     **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
-    /* Override to decode the image*/
-    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg,const OfxRectI* renderWindow = NULL) = 0;
     
 protected:
     
-    /* Override to indicate whether the file targeted by the filename is a video file*/
-    virtual bool isVideoStream(const std::string& filename) const = 0;
+    /**
+     * @brief Override this function to actually decode the image contained in the file pointed to by filename.
+     * If the file is a video-stream then you should decode the frame at the time given in parameters.
+     * You must write the decoded image into dstImg. This function should convert the read pixels into the
+     * bitdepth of the dstImg. You can inform the host of the bitdepth you support in the describe() function.
+     **/
+    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) = 0;
     
-    /* Override to indicate the time domain of a video stream */
-    virtual bool getTimeDomainForVideoStream(OfxRangeD &/*range*/){return false;}
+    /**
+     * @brief Override to indicate the time domain of a video stream. Return false if you know that the
+     * file isn't a video-stream, true when you can find-out the frame range.
+     **/
+    virtual bool getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &/*range*/){ return false; }
     
-    /* Override to indicate whether a frame needs to be decoded entirely to extract only its
-     meta-data (i.e: bitdepth & image bounds) */
-    virtual bool areHeaderAndDataTied() const = 0;
+    /**
+     * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its
+     * meta-data (i.e: bitdepth & image bounds)
+     **/
+    virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const = 0;
     
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxRectD& rod){}
+    /**
+     * @brief Overload this function to exctract the region of definition out of the header
+     * of the image targeted by the filename. 
+     **/
+    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod){}
     
     
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
-    OFX::IntParam *_timeOffsetParam;//< the time offset to apply
-    OFX::Int2DParam* _frameRangeParam; //< the frame range to restrain this param too
     
 private:
     
-    /**
-     * @brief A map of pointers to images read.
-     * This is used when a single call to getRegionOfDefinition() would need to
-     * decode entirely a frame to avoid decoding the frame multiple times.
-     * If areHeaderAndDataTied() returns true the the first call to
-     * getRegionOfDefinition() will set the pointer, and the last call to
-     * render() will flush it.
-     **/
-    typedef std::map<OfxTime,OFX::Image*> FrameCache;
-    FrameCache _frameCache;
+    OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
+                         //has already been decoded
 
-};
-
-//class ReaderProcessorBase : public OFX::ImageProcessor {
-//public:
-//    
-//    ReaderProcessor(GenericReaderPlugin& instance,const std::string& filename,OfxTime time)
-//    : OFX::ImageProcessor(instance)
-//    
-//}
-
-template <class PIX, int nComponents>
-class ReaderProcessor : public OFX::ImageProcessor {
-    
-    GenericReaderPlugin& _instance;
-    std::string _filename;
-    OfxTime _time;
-    
-public :
-    /** @brief no arg ctor */
-    ReaderProcessor(GenericReaderPlugin& instance,const std::string& filename,OfxTime time)
-    : OFX::ImageProcessor(instance)
-    , _instance(instance)
-    , _filename(filename)
-    , _time(time)
-    {
-    }
-    
-    virtual void multiThreadProcessImages(OfxRectI window){
-        ///call the plugin's decoding function
-        _instance.decode(_filename,_time, _dstImg, &window);
-    }
-    
-    
 };
 
 
@@ -141,8 +141,17 @@ namespace OFX
 {
     namespace Plugin
     {
-        /* Call this in all describeInContext() functions of the readers */
+        /**
+         * @brief Call this in the describeInContext(...) function of the overloaded reader's factory to
+         * add the common params to all readers.
+         **/
         void defineGenericReaderParamsInContext(OFX::ImageEffectDescriptor& desc,OFX::ContextEnum context);
+        
+        /**
+         * @brief Call this in the describe(...) function of the overloaded reader's factory to
+         * add the common properties to all readers.
+         **/
+        void describeGenericReader(OFX::ImageEffectDescriptor& desc);
     };
 };
 

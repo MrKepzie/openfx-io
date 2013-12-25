@@ -39,21 +39,16 @@
 #include "GenericReader.h"
 
 static const std::string kReaderFileParamName = "file";
-static const std::string kReaderTimeOffsetParamName = "timeOffset";
-static const std::string kReaderFrameRangeParamName = "frameRange";
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _outputClip(0)
 , _fileParam(0)
-, _timeOffsetParam(0)
-, _frameRangeParam(0)
+, _dstImg(0)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
     _fileParam = fetchStringParam(kReaderFileParamName);
-    _timeOffsetParam = fetchIntParam(kReaderTimeOffsetParamName);
-    _frameRangeParam = fetchInt2DParam(kReaderFrameRangeParamName);
 }
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
@@ -62,51 +57,63 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     _fileParam->getValue(filename);
     
     ///if the file is a video stream, let the plugin determine the frame range
-    if(isVideoStream(filename)){
-        return getTimeDomainForVideoStream(range);
-    }
+    ///let the host handle the time domain for the image sequence if getTimeDomainForVideoStream returns false.
+    return getTimeDomainForVideoStream(filename,range);
     
-    ///let the host handle the time domain for the image sequence.
-    return false;
     
 }
 
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
-    ///we want to cache away the rod and the image read from file
-    if(areHeaderAndDataTied()){
-        
-        FrameCache::iterator foundImg = _frameCache.find(args.time);
-        OfxRectI imgRoI;
-        
-        if(foundImg != _frameCache.end()){
-            
-            imgRoI = foundImg->second->getRegionOfDefinition();
-            
-        }else{
-            
-            OFX::Image* img = _outputClip->fetchImage(args.time);
-            std::string filename;
-            _fileParam->getValueAtTime(args.time, filename);
-            decode(filename, args.time, img);
-            std::pair<FrameCache::iterator,bool> insertRet = _frameCache.insert(std::make_pair(args.time, img));
-            assert(insertRet.second);
-            imgRoI = img->getRegionOfDefinition();
-        }
-        
+    OfxRectI imgRoI;
+    if(_dstImg){
+        imgRoI = _dstImg->getRegionOfDefinition();
         rod.x1 = imgRoI.x1;
         rod.x2 = imgRoI.x2;
         rod.y1 = imgRoI.y1;
         rod.y2 = imgRoI.y2;
-
+        return true;
+    }
+    
+    std::string filename;
+    _fileParam->getValueAtTime(args.time, filename);
+    
+    ///we want to cache away the rod and the image read from file
+    if(areHeaderAndDataTied(filename,args.time)){
+        
+        _dstImg = _outputClip->fetchImage(args.time);
+        decode(filename, args.time, _dstImg);
+        imgRoI = _dstImg->getRegionOfDefinition();
+        rod.x1 = imgRoI.x1;
+        rod.x2 = imgRoI.x2;
+        rod.y1 = imgRoI.y1;
+        rod.y2 = imgRoI.y2;
+        
     }else{
-        std::string filename;
-        _fileParam->getValueAtTime(args.time, filename);
-        getFrameRegionOfDefinition(filename,rod);
+        
+        getFrameRegionOfDefinition(filename,args.time,rod);
+        
     }
     return true;
 }
 
+void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
+    
+    if (_dstImg) {
+        return;
+    }
+    
+    _dstImg = _outputClip->fetchImage(args.time);
+    
+
+    std::string filename;
+    _fileParam->getValueAtTime(args.time, filename);
+    decode(filename, args.time, _dstImg);
+    
+    /// flush the cached image
+    delete _dstImg;
+    _dstImg = 0;
+}
 
 namespace OFX {
     namespace Plugin {
@@ -117,16 +124,25 @@ namespace OFX {
             fileParam->setStringType(OFX::eStringTypeFilePath);
             fileParam->setAnimates(false);
             desc.addClipPreferencesSlaveParam(*fileParam);
+        }
+        
+        void describeGenericReader(OFX::ImageEffectDescriptor& desc) {
+            desc.setPluginGrouping("Io");
+
+            desc.addSupportedContext(OFX::eContextGenerator);
+            desc.addSupportedContext(OFX::eContextGeneral);
             
-            OFX::IntParamDescriptor* timeOffset = desc.defineIntParam(kReaderTimeOffsetParamName);
-            timeOffset->setLabels("Time offset", "Time offset", "Time offset");
-            timeOffset->setAnimates(false);
-            timeOffset->setDefault(0);
             
-            OFX::Int2DParamDescriptor* frameRange = desc.defineInt2DParam(kReaderFrameRangeParamName);
-            frameRange->setAnimates(false);
-            frameRange->setLabels("Frame range", "Frame range", "Frame range");
-            
+            // set a few flags
+            desc.setSingleInstance(false);
+            desc.setHostFrameThreading(false);
+            desc.setSupportsMultiResolution(true);
+            desc.setSupportsTiles(true);
+            desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
+            desc.setRenderTwiceAlways(false);
+            desc.setSupportsMultipleClipPARs(false);
+            desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+
         }
     }
 }
