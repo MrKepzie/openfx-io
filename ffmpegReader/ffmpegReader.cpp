@@ -76,4 +76,92 @@
 #include "GenericReader.h"
 
 
+class FfmpegReaderPlugin : public GenericReaderPlugin {
+    
+public:
+    
+    FfmpegReaderPlugin(OfxImageEffectHandle handle)
+    : GenericReaderPlugin(handle)
+    {
+        
+    }
+    
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    
+private:
+    
+    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
+    
+    virtual void initializeLut();
+    
+    virtual bool getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range);
+    
+    virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const;
+    
+    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
+};
+
+
+void FfmpegReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+    
+}
+
+void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
+    
+}
+
+void FfmpegReaderPlugin::initializeLut() {
+    
+}
+
+bool FfmpegReaderPlugin::getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range) {
+    return false;
+}
+
+bool FfmpegReaderPlugin::areHeaderAndDataTied(const std::string& filename,OfxTime time) const {
+    return false;
+}
+
+void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod) {
+
+}
+
+using namespace OFX;
+mDeclarePluginFactory(FfmpegReaderPluginFactory, {}, {});
+
+namespace OFX
+{
+    namespace Plugin
+    {
+        void getPluginIDs(OFX::PluginFactoryArray &ids)
+        {
+            static FfmpegReaderPluginFactory p("net.sf.openfx:ffmpegReader", 1, 0);
+            ids.push_back(&p);
+        }
+    };
+};
+
+/** @brief The basic describe function, passed a plugin descriptor */
+void FfmpegReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+{
+    // basic labels
+    desc.setLabels("FfmpegReaderOFX", "FfmpegReaderOFX", "FfmpegReaderOFX");
+    desc.setPluginDescription("Reads image or video file using the libav");
+    
+    OFX::Plugin::describeGenericReader(desc);
+    
+}
+
+/** @brief The describe in context function, passed a plugin descriptor and a context */
+void FfmpegReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+{
+    
+    
+}
+
+/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+ImageEffect* FfmpegReaderPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+{
+    return new FfmpegReaderPlugin(handle);
+}
 

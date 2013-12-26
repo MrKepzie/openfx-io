@@ -125,13 +125,13 @@ protected:
      * @brief This function must initialize the _lut member. This lut can be used to do all
      * conversions from the image's file format's color-space to linear.
      **/
-    virtual void initializeLut() const = 0;
+    virtual void initializeLut()  = 0;
     
     /**
      * @brief Override to indicate the time domain of a video stream. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &/*range*/){ return false; }
+    virtual bool getTimeDomainForVideoStream(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
     
     /**
      * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its

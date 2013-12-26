@@ -143,14 +143,24 @@ namespace OFX {
             fileParam->setStringType(OFX::eStringTypeFilePath);
             fileParam->setAnimates(false);
             desc.addClipPreferencesSlaveParam(*fileParam);
+            
+            // create the mandated output clip
+            ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
+            dstClip->addSupportedComponent(ePixelComponentRGBA);
+            dstClip->setSupportsTiles(true);
         }
         
         void describeGenericReader(OFX::ImageEffectDescriptor& desc) {
-            desc.setPluginGrouping("Io");
+            desc.setPluginGrouping("IO/OpenFXReaders");
 
             desc.addSupportedContext(OFX::eContextGenerator);
             desc.addSupportedContext(OFX::eContextGeneral);
             
+            ///Say we support only reading to float images.
+            ///One would need to extend the ofxsColorSpace suite functions
+            ///in order to support other bitdepths. I have no time for it
+            ///at the moment and float is generally widely used among hosts.
+            desc.addSupportedBitDepth(eBitDepthFloat);
             
             // set a few flags
             desc.setSingleInstance(false);
