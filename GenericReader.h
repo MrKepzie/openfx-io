@@ -42,6 +42,12 @@
 
 #include <ofxsImageEffect.h>
 
+namespace OFX {
+    namespace Color {
+        class Lut;
+    }
+}
+
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 
@@ -54,6 +60,8 @@ class GenericReaderPlugin : public OFX::ImageEffect {
 public:
     
     GenericReaderPlugin(OfxImageEffectHandle handle);
+    
+    virtual ~GenericReaderPlugin();
     
     /**
      * @brief Don't override this function, the GenericReaderPlugin class already does the rendering. The "decoding" of the frame
@@ -104,8 +112,20 @@ protected:
      * If the file is a video-stream then you should decode the frame at the time given in parameters.
      * You must write the decoded image into dstImg. This function should convert the read pixels into the
      * bitdepth of the dstImg. You can inform the host of the bitdepth you support in the describe() function.
+     * Note that many hosts work with linear colors and we intend that this function transfer from the
+     * image file's color-space to linear. To help you do this you can use the color-space conversion
+     * suite written for this purpose.
+     * You can always skip the color-space conversion, but for all linear hosts it would produce either
+     * false colors or sub-par performances in the case the end-user has to append a color-space conversion
+     * effect her/himself.
      **/
     virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) = 0;
+    
+    /**
+     * @brief This function must initialize the _lut member. This lut can be used to do all
+     * conversions from the image's file format's color-space to linear.
+     **/
+    virtual void initializeLut() const = 0;
     
     /**
      * @brief Override to indicate the time domain of a video stream. Return false if you know that the
@@ -129,6 +149,7 @@ protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
     
+    OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
 private:
     
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image

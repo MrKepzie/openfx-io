@@ -44,11 +44,16 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _outputClip(0)
 , _fileParam(0)
+, _lut(0)
 , _dstImg(0)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
     _fileParam = fetchStringParam(kReaderFileParamName);
+}
+
+GenericReaderPlugin::~GenericReaderPlugin(){
+    delete _lut;
 }
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
@@ -82,6 +87,12 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     if(areHeaderAndDataTied(filename,args.time)){
         
         _dstImg = _outputClip->fetchImage(args.time);
+        
+        ///initialize the color-space if it wasn't
+        if(!_lut){
+            initializeLut();
+        }
+        
         decode(filename, args.time, _dstImg);
         imgRoI = _dstImg->getRegionOfDefinition();
         rod.x1 = imgRoI.x1;
@@ -105,6 +116,10 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     
     _dstImg = _outputClip->fetchImage(args.time);
     
+    ///initialize the color-space if it wasn't
+    if(!_lut){
+        initializeLut();
+    }
 
     std::string filename;
     _fileParam->getValueAtTime(args.time, filename);
