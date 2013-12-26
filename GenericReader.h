@@ -1,6 +1,6 @@
 /*
  OFX GenericReader plugin.
- Reads a video input file using the libav library.
+ A base class for all OpenFX-based decoders.
  
  Copyright (C) 2013 INRIA
  Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
@@ -149,7 +149,7 @@ namespace OFX
         
         /**
          * @brief Call this in the describe(...) function of the overloaded reader's factory to
-         * add the common properties to all readers.
+         * add the common properties to all readers. See definition for more explanation.
          **/
         void describeGenericReader(OFX::ImageEffectDescriptor& desc);
     };

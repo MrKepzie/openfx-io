@@ -1,6 +1,6 @@
 /*
  OFX GenericReader plugin.
- Reads a video input file using the libav library.
+ A base class for all OpenFX-based decoders.
  
  Copyright (C) 2013 INRIA
  Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
@@ -37,7 +37,7 @@
  
  */
 #include "GenericReader.h"
-
+#include <ofxsColorSpace.h>
 static const std::string kReaderFileParamName = "file";
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
@@ -113,6 +113,10 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     /// flush the cached image
     delete _dstImg;
     _dstImg = 0;
+}
+
+void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/, const std::string &/*paramName*/) {
+    
 }
 
 namespace OFX {
