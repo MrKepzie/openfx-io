@@ -45,8 +45,12 @@
 namespace OFX {
     namespace Color {
         class Lut;
+        struct OfxColorSpaceConversionSuite;
     }
 }
+
+#define kReaderFileParamName "file"
+
 
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
@@ -104,8 +108,15 @@ public:
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+    bool hasColorSpaceSuite() const { return _colorSpaceSuite != NULL; }
     
 protected:
+    
+    /**
+     * @brief Should append in formats the list of the format this plug-in can decode.
+     * For example "png" , "jpg" , etc...
+     **/
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
@@ -150,10 +161,12 @@ protected:
     OFX::StringParam  *_fileParam; //< The input file
     
     OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
+    
 private:
     
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded
+    OFX::Color::OfxColorSpaceConversionSuite* _colorSpaceSuite;
 
 };
 
