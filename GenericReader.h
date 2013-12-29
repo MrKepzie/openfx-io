@@ -45,7 +45,6 @@
 namespace OFX {
     namespace Color {
         class Lut;
-        struct OfxColorSpaceConversionSuite;
     }
 }
 
@@ -108,7 +107,6 @@ public:
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
-    bool hasColorSpaceSuite() const { return _colorSpaceSuite != NULL; }
     
 protected:
     
@@ -160,13 +158,12 @@ protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
     
-    OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
+    const OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
     
 private:
     
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded
-    OFX::Color::OfxColorSpaceConversionSuite* _colorSpaceSuite;
 
 };
 

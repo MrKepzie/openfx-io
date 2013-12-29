@@ -37,11 +37,10 @@
  
  */
 #include "GenericReader.h"
-#include <ofxsColorSpace.h>
+#include "Lut.h"
 #ifdef OFX_EXTENSIONS_NATRON
-
+#include "IOExtensions.h"
 #endif
-static bool missingColorSpaceSuiteWarningDisplayedOnce = false;
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -49,26 +48,18 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _fileParam(0)
 , _lut(0)
 , _dstImg(0)
-, _colorSpaceSuite(0)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
     _fileParam = fetchStringParam(kReaderFileParamName);
     
-    _colorSpaceSuite = (OFX::Color::OfxColorSpaceConversionSuite*)OFX::fetchSuite(kOfxColorSpaceSuite, 1, true);
-    if (!_colorSpaceSuite && !missingColorSpaceSuiteWarningDisplayedOnce) {
-        setPersistentMessage(OFX::Message::eMessageWarning, "", "This software doesn't have an approriate color-space"
-                             " conversion suite, please adjust the colors with another plug-in.");
-        missingColorSpaceSuiteWarningDisplayedOnce = true;
+#ifdef OFX_EXTENSIONS_NATRON
+    std::vector<std::string> fileFormats;
+    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+        getPropertySet().propSetString(kOfxImageEffectPropFormatsDecoded, fileFormats[i], i,true);
+        
     }
-    
-    if(_colorSpaceSuite) {
-        std::vector<std::string> fileFormats;
-        for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-            getPropertySet().propSetString(kOfxImageEffectPropFormatsDecoded, fileFormats[i], i,true);
-
-        }
-    }
+#endif
     
 }
 

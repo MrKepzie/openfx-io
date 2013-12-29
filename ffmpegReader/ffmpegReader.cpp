@@ -76,7 +76,7 @@
 #include "GenericReader.h"
 
 #include "FfmpegHandler.h"
-#include <ofxsColorSpace.h>
+#include "Lut.h"
 
 class FfmpegReaderPlugin : public GenericReaderPlugin {
     
@@ -205,19 +205,12 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
     }
     
     ///do pixel transfer to the ofx image and color-space conversion if the host hopefully implements the color-space conversion suite.
-    _lut->from_byte_packed((float*)dstImg->getPixelAddress(0, 0), _buffer, imgBounds, imgBounds, imgBounds, OFX::Color::Lut::PACKING_RGB, OFX::Color::Lut::PACKING_RGBA, true, false);
+    _lut->from_byte_packed((float*)dstImg->getPixelAddress(0, 0), _buffer, imgBounds, imgBounds, imgBounds, OFX::Color::PACKING_RGB, OFX::Color::PACKING_RGBA, true, false);
     
 }
 
 void FfmpegReaderPlugin::initializeLut() {
-    
-    ///we must check if the host has the color-space suite, otherwise we just use the handy
-    ///functions from the OFX::Color::Linear class to do the pixels transfer
-    if(hasColorSpaceSuite()){
-        _lut = new OFX::Color::sRGBLut();
-    }else{
-        _lut = new OFX::Color::Linear();
-    }
+    _lut = OFX::Color::LutManager::sRGBLut();
 }
 
 bool FfmpegReaderPlugin::getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range) {

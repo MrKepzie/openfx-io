@@ -34,8 +34,7 @@
  
  */
 
-#include "ofxsSupportPrivate.h"
-
+#include "Lut.h"
 
 namespace OFX {
     namespace Color {
@@ -103,13 +102,25 @@ namespace OFX {
             return tmp.f;
         }
 
+    
+        ///initialize the singleton
+        LutManager LutManager::m_instance = LutManager();
+        
+        LutManager::LutManager()
+        {
+        }
+    
         
         const Lut *LutManager::getLut(const std::string& name,OfxFromColorSpaceFunctionV1 fromFunc,OfxToColorSpaceFunctionV1 toFunc) {
-            std::map<std::string, const Lut *>::const_iterator found = luts.find(name);
-            if (found != luts.end()) {
+            
+            OFX::MultiThread::AutoMutex g(LutManager::m_instance._lock);
+            
+            std::map<std::string, const Lut *>::const_iterator found = LutManager::m_instance.luts.find(name);
+            if (found != LutManager::m_instance.luts.end()) {
                 return found->second;
             }else{
-                std::pair<std::map<std::string, const Lut *>::iterator,bool> ret = luts.insert(std::make_pair(name,new Lut(fromFunc,toFunc)));
+                std::pair<std::map<std::string, const Lut *>::iterator,bool> ret =
+                LutManager::m_instance.luts.insert(std::make_pair(name,new Lut(name,fromFunc,toFunc)));
                 assert(ret.second);
                 return ret.first->second;
             }
@@ -150,6 +161,43 @@ namespace OFX {
             ( what.y1 < other.y2 && what.y2 >= other.y2);
         }
         
+        void getOffsetsForPacking(PixelPacking format, int *r, int *g, int *b, int *a)
+        {
+            if (format == PACKING_BGRA) {
+                *b = 0;
+                *g = 1;
+                *r = 2;
+                *a = 3;
+            }else if(format == PACKING_RGBA){
+                *r = 0;
+                *g = 1;
+                *b = 2;
+                *a = 3;
+            }else if(format == PACKING_RGB){
+                *r = 0;
+                *g = 1;
+                *b = 2;
+                *a = -1;
+            }else if(format == PACKING_BGR){
+                *r = 0;
+                *g = 1;
+                *b = 2;
+                *a = -1;
+            }else if(format == PACKING_PLANAR){
+                *r = 0;
+                *g = 1;
+                *b = 2;
+                *a = -1;
+            }else{
+                *r = -1;
+                *g = -1;
+                *b = -1;
+                *a = -1;
+                throw std::runtime_error("Unsupported pixel packing format");
+            }
+        }
+        
+        
         float Lut::fromFloatFast(float v) const
         {
             return from_byte_table[(int)(v * 255)];
@@ -189,7 +237,7 @@ namespace OFX {
             
         }
         
-        void Lut::to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha,int delta){
+        void Lut::to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha,int delta) const {
             validate();
             unsigned char *end = to + W * delta;
             int start = rand() % W;
@@ -236,12 +284,12 @@ namespace OFX {
 
         }
         
-        void Lut::to_short_planar(unsigned short* to, const float* from,int W,const float* alpha ,int delta){
+        void Lut::to_short_planar(unsigned short* to, const float* from,int W,const float* alpha ,int delta) const {
             
             throw std::runtime_error("Lut::to_short_planar not implemented yet.");
         }
         
-        void Lut::to_float_planar(float* to, const float* from,int W,const float* alpha ,int delta){
+        void Lut::to_float_planar(float* to, const float* from,int W,const float* alpha ,int delta) const {
             
             validate();
             if(!alpha){
@@ -257,15 +305,25 @@ namespace OFX {
         
         void Lut::to_byte_packed(unsigned char* to, const float* from,const OfxRectI& conversionRect,
                                  const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                 PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult){
+                                 PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
-            bool inputHasAlpha = inputFormat == Lut::PIXELS_PACKING_BGRA || inputFormat == Lut::PIXELS_PACKING_RGBA;
-            bool outputHasAlpha = outputFormat == Lut::PIXELS_PACKING_BGRA || outputFormat == Lut::PIXELS_PACKING_RGBA;
+            ///if the conversion rectangle is out of the src rod and the dst rod, just return
+            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                return;
+            }
+            
+            ///clip the conversion rect to srcRoD and dstRoD
+            OfxRectI rect = conversionRect;
+            clip(&rect,srcRoD);
+            clip(&rect,dstRoD);
+            
+            bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+            bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
             
             int inROffset, inGOffset, inBOffset, inAOffset;
             int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputFormat, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputFormat, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
             
             int inPackingSize,outPackingSize;
             inPackingSize = inputHasAlpha ? 4 : 3;
@@ -279,25 +337,17 @@ namespace OFX {
                 error_r = error_g = error_b = 0x80;
                 int srcY = y;
                 if (!invertY) {
-                    srcY = srcRod.y2 - y - 1;
+                    srcY = srcRoD.y2 - y - 1;
                 }
                 
-                /// if not in the srcRoD, continue to next line
-                if(srcY < srcRod.y1 || srcY >= srcRod.y2){
-                    continue;
-                }
                 
-                int dstY = dstRod.y2 - y - 1;
+                int dstY = dstRoD.y2 - y - 1;
                 
-                const float *src_pixels = from + (srcY * (srcRod.x2 - srcRod.x1) * inPackingSize);
-                unsigned char *dst_pixels = to + (dstY * (dstRod.x2 - dstRod.x1) * outPackingSize);
+                const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                unsigned char *dst_pixels = to + (dstY * (dstRoD.x2 - srcRoD.x1) * outPackingSize);
                 /* go fowards from starting point to end of line: */
                 for (int x = start; x < rect.x2; ++x) {
-                    /// if not in the srcRoD, continue to next line
-                    if(x < srcRod.x1 || x >= srcRod.x2){
-                        continue;
-                    }
-                    
+                   
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
                     
@@ -315,10 +365,7 @@ namespace OFX {
                 /* go backwards from starting point to start of line: */
                 error_r = error_g = error_b = 0x80;
                 for (int x = start - 1; x >= rect.x1; --x) {
-                    /// if not in the srcRoD, continue to next line
-                    if(x < srcRod.x1 || x >= srcRod.x2){
-                        continue;
-                    }
+                  
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
                     
@@ -340,7 +387,7 @@ namespace OFX {
         
         void Lut::to_short_packed(unsigned short* to, const float* from,const OfxRectI& conversionRect,
                                   const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                  PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult){
+                                  PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
             throw std::runtime_error("Lut::to_short_packed not implemented yet.");
 
@@ -348,15 +395,25 @@ namespace OFX {
         
         void Lut::to_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
                                   const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                  PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult){
+                                  PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
-            bool inputHasAlpha = inputFormat == Lut::PIXELS_PACKING_BGRA || inputFormat == Lut::PIXELS_PACKING_RGBA;
-            bool outputHasAlpha = outputFormat == Lut::PIXELS_PACKING_BGRA || outputFormat == Lut::PIXELS_PACKING_RGBA;
+            ///if the conversion rectangle is out of the src rod and the dst rod, just return
+            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                return;
+            }
+            
+            ///clip the conversion rect to srcRoD and dstRoD
+            OfxRectI rect = conversionRect;
+            clip(&rect,srcRoD);
+            clip(&rect,dstRoD);
+            
+            bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+            bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
             
             int inROffset, inGOffset, inBOffset, inAOffset;
             int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputFormat, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputFormat, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
             
             int inPackingSize,outPackingSize;
             inPackingSize = inputHasAlpha ? 4 : 3;
@@ -367,21 +424,14 @@ namespace OFX {
             for (int y = rect.y1; y < rect.y2; ++y) {
                 int srcY = y;
                 if (invertY) {
-                    srcY = srcRod.y2 - y - 1;
+                    srcY = srcRoD.y2 - y - 1;
                 }
-                /// if not in the srcRoD, continue to next line
-                if(srcY < srcRod.y1 || srcY >= srcRod.y2){
-                    continue;
-                }
-                int dstY = dstRod.y2 - y - 1;
-                const float *src_pixels = from + (srcY * (srcRod.x2 - srcRod.x1) * inPackingSize);
-                float *dst_pixels = to + (dstY * (dstRod.x2 - dstRod.x1) * outPackingSize);
+
+                int dstY = dstRoD.y2 - y - 1;
+                const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                float *dst_pixels = to + (dstY * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
                 /* go fowards from starting point to end of line: */
                 for (int x = rect.x1; x < rect.x2; ++x) {
-                    /// if not in the srcRoD, continue to next line
-                    if(x < srcRod.x1 || x >= srcRod.x2){
-                        continue;
-                    }
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
                     float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;;
@@ -398,7 +448,7 @@ namespace OFX {
         
       
         
-        void Lut::from_byte_planar(float* to,const unsigned char* from,int W,const unsigned char* alpha ,int delta){
+        void Lut::from_byte_planar(float* to,const unsigned char* from,int W,const unsigned char* alpha ,int delta) const {
             
             validate();
             if(!alpha){
@@ -413,12 +463,12 @@ namespace OFX {
             
         }
         
-        void Lut::from_short_planar(float* to,const unsigned short* from,int W,const unsigned short* alpha ,int delta){
+        void Lut::from_short_planar(float* to,const unsigned short* from,int W,const unsigned short* alpha ,int delta) const {
             
             throw std::runtime_error("Lut::from_short_planar not implemented yet.");
         }
         
-        void Lut::from_float_planar(float* to,const float* from,int W,const float* alpha ,int delta){
+        void Lut::from_float_planar(float* to,const float* from,int W,const float* alpha ,int delta) const {
             
             validate();
             if(!alpha){
@@ -435,19 +485,29 @@ namespace OFX {
         
         void Lut::from_byte_packed(float* to, const unsigned char* from,const OfxRectI& conversionRect,
                                    const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                   PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult){
+                                   PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
-            if(inputFormat == Lut::PIXELS_PACKING_PLANAR || outputFormat == Lut::PIXELS_PACKING_PLANAR){
+            if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
                 throw std::runtime_error("Invalid pixel format.");
             }
             
-            bool inputHasAlpha = inputFormat == Lut::PIXELS_PACKING_BGRA || inputFormat == Lut::PIXELS_PACKING_RGBA;
-            bool outputHasAlpha = outputFormat == Lut::PIXELS_PACKING_BGRA || outputFormat == Lut::PIXELS_PACKING_RGBA;
+            ///if the conversion rectangle is out of the src rod and the dst rod, just return
+            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                return;
+            }
+            
+            ///clip the conversion rect to srcRoD and dstRoD
+            OfxRectI rect = conversionRect;
+            clip(&rect,srcRoD);
+            clip(&rect,dstRoD);
+            
+            bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+            bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
             
             int inROffset, inGOffset, inBOffset, inAOffset;
             int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputFormat, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputFormat, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
             
             int inPackingSize,outPackingSize;
             inPackingSize = inputHasAlpha ? 4 : 3;
@@ -457,10 +517,11 @@ namespace OFX {
             for (int y = rect.y1; y < rect.y2; ++y) {
                 int srcY = y;
                 if (invertY) {
-                    srcY = rod.y2 - y - 1;
+                    srcY = srcRoD.y2 - y - 1;
                 }
-                const unsigned char *src_pixels = from + (srcY * (rod.x2 - rod.x1) * inPackingSize);
-                float *dst_pixels = to + (y * (rod.x2 - rod.x1) * outPackingSize);
+                
+                const unsigned char *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                float *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
                 for (int x = rect.x1; x < rect.x2; ++x) {
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
@@ -478,22 +539,36 @@ namespace OFX {
         
         void Lut::from_short_packed(float* to, const unsigned short* from,const OfxRectI& conversionRect,
                                     const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                    PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult){
+                                    PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
            throw std::runtime_error("Lut::from_short_packed not implemented yet.");
         }
         
         void Lut::from_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
                                     const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                    PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult){
+                                    PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
-            bool inputHasAlpha = inputFormat == Lut::PIXELS_PACKING_BGRA || inputFormat == Lut::PIXELS_PACKING_RGBA;
-            bool outputHasAlpha = outputFormat == Lut::PIXELS_PACKING_BGRA || outputFormat == Lut::PIXELS_PACKING_RGBA;
+            if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
+                throw std::runtime_error("Invalid pixel format.");
+            }
+            
+            ///if the conversion rectangle is out of the src rod and the dst rod, just return
+            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                return;
+            }
+            
+            ///clip the conversion rect to srcRoD and dstRoD
+            OfxRectI rect = conversionRect;
+            clip(&rect,srcRoD);
+            clip(&rect,dstRoD);
+            
+            bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+            bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
             
             int inROffset, inGOffset, inBOffset, inAOffset;
             int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputFormat, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputFormat, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
             
             int inPackingSize,outPackingSize;
             inPackingSize = inputHasAlpha ? 4 : 3;
@@ -504,10 +579,10 @@ namespace OFX {
             for (int y = rect.y1; y < rect.y2; ++y) {
                 int srcY = y;
                 if (invertY) {
-                    srcY = rod.y2 - y - 1;
+                    srcY = srcRoD.y2 - y - 1;
                 }
-                const float *src_pixels = from + (srcY * (rod.x2 - rod.x1) * inPackingSize);
-                float *dst_pixels = to + (y * (rod.x2 - rod.x1) * outPackingSize);
+                const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                float *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
                 for (int x = rect.x1; x < rect.x2; ++x) {
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
@@ -523,465 +598,434 @@ namespace OFX {
             }
         }
         
-        
+        ///////////////////////
         /////////////////////////////////////////// LINEAR //////////////////////////////////////////////
+        ///////////////////////
         
-        
-        
-        void Linear::from_byte_planar(float *to, const unsigned char *from, int W,const unsigned char* /*alpha*/, int delta)
-        {
-            ///disregard premultiplication flag as we are just copying data
-            from += (W - 1) * delta;
-            to += W;
-            for (; --W >= 0; from -= delta) {
-                *--to = Linear::toFloat(*from);
-            }
-        }
-        
-        void Linear::from_short_planar(float *to, const unsigned short *from, int W, const unsigned short* /*alpha*/, int delta)
-        {
-            ///disregard premultiplication flag as we are just copying data
-            for (int i = 0; i < W; i += delta) {
-                to[i] = Linear::toFloat(from[i]);
+        namespace Linear {
+            
+            void from_byte_planar(float *to, const unsigned char *from, int W, int delta)
+            {
+                from += (W - 1) * delta;
+                to += W;
+                for (; --W >= 0; from -= delta) {
+                    *--to = Linear::toFloat(*from);
+                }
             }
             
-        }
-        
-        void Linear::from_float_planar(float *to, const float *from, int W, const float* /*alpha*/,int delta)
-        {
-            ///disregard premultiplication flag as we are just copying data
-            if(delta == 1){
-                memcpy(to, from, W*sizeof(float));
-            }else{
+            void from_short_planar(float *to, const unsigned short *from, int W,  int delta)
+            {
                 for (int i = 0; i < W; i += delta) {
-                    to[i] = from[i];
-                }
-            }
-        }
-        
-        void getOffsetsForPacking(Lut::PixelPacking format, int *r, int *g, int *b, int *a)
-        {
-            if (format == Lut::PACKING_BGRA) {
-                *b = 0;
-                *g = 1;
-                *r = 2;
-                *a = 3;
-            }else if(format == Lut::PACKING_RGBA){
-                *r = 0;
-                *g = 1;
-                *b = 2;
-                *a = 3;
-            }else if(format == Lut::PACKING_RGB){
-                *r = 0;
-                *g = 1;
-                *b = 2;
-                *a = -1;
-            }else if(format == Lut::PACKING_BGR){
-                *r = 0;
-                *g = 1;
-                *b = 2;
-                *a = -1;
-            }else if(format == Lut::PACKING_PLANAR){
-                *r = 0;
-                *g = 1;
-                *b = 2;
-                *a = -1;
-            }else{
-                *r = -1;
-                *g = -1;
-                *b = -1;
-                *a = -1;
-                throw std::runtime_error("Unsupported pixel packing format");
-            }
-        }
-        
-        void Linear::from_byte_packed(float *to, const unsigned char *from,
-                                      const OfxRectI &rect,const OfxRectI &srcRod, const OfxRectI &rod,
-                                      Lut::PixelPacking inputPacking,Lut::PixelPacking outputPacking,
-                                      bool invertY ,bool /*premult*/)
-        
-        {
-            
-            if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
-                throw std::runtime_error("This function is not meant for planar buffers.");
-            }
-                
-            if(srcRod.x1 != rod.x1 ||
-               srcRod.x2 != rod.x2 ||
-               srcRod.y1 != rod.y1 ||
-               srcRod.y2 != rod.y2){
-                throw std::runtime_error("Different input and output RoD is unsupported.");
-            }
-            
-            bool inputHasAlpha = inputPacking == Lut::PACKING_BGRA || inputPacking == Lut::PACKING_RGBA;
-            bool outputHasAlpha = outputPacking == Lut::PACKING_BGRA || outputPacking == Lut::PACKING_RGBA;
-            
-            int inROffset, inGOffset, inBOffset, inAOffset;
-            int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
-
-            int inPackingSize,outPackingSize;
-            inPackingSize = inputHasAlpha ? 4 : 3;
-            outPackingSize = outputHasAlpha ? 4 : 3;
-            
-            
-            
-            for (int y = rect.y1; y < rect.y2; ++y) {
-                int srcY = y;
-                if (invertY) {
-                    srcY = rod.y2 - y - 1;
-                }
-                const unsigned char *src_pixels = from + (srcY * (rod.x2 - rod.x1) * inPackingSize);
-                float *dst_pixels = to + (y * (rod.x2 - rod.x1) * outPackingSize);
-                for (int x = rect.x1; x < rect.x2; ++x) {
-                    int inCol = x * inPackingSize;
-                    int outCol = x * outPackingSize;
-                    unsigned char a = inputHasAlpha ? src_pixels[inCol + inAOffset] : 255;
-                    dst_pixels[outCol + outROffset] = src_pixels[inCol + inROffset] / 255.f;
-                    dst_pixels[outCol + outGOffset] = src_pixels[inCol + inGOffset] / 255.f;
-                    dst_pixels[outCol + outBOffset] = src_pixels[inCol + inBOffset] / 255.f;
-                    if(outputHasAlpha) {
-                        dst_pixels[outCol + outAOffset] = a / 255.f;
-                    }
-                }
-            }
-            
-        }
-        
-        void Linear::from_short_packed(float *to, const unsigned short *from,
-                                       const OfxRectI &rect,const OfxRectI &/*srcRod*/, const OfxRectI &rod,
-                                       Lut::PixelPacking inputFormat,Lut::PixelPacking format,
-                                       bool invertY ,bool premult)
-        {
-            throw std::runtime_error("Linear::from_short_packed not yet implemented.");
-            
-        }
-        
-        void Linear::from_float_packed(float *to, const float *from,
-                                       const OfxRectI &rect,const OfxRectI &srcRod, const OfxRectI &rod,
-                                       Lut::PixelPacking inputPacking,Lut::PixelPacking outputPacking,
-                                       bool invertY ,bool /*premult*/)
-        {
-            if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
-                throw std::runtime_error("This function is not meant for planar buffers.");
-            }
-
-            
-            if(srcRod.x1 != rod.x1 ||
-               srcRod.x2 != rod.x2 ||
-               srcRod.y1 != rod.y1 ||
-               srcRod.y2 != rod.y2){
-                throw std::runtime_error("Different input and output RoD is unsupported.");
-            }
-            
-            bool inputHasAlpha = inputPacking == Lut::PACKING_BGRA || inputPacking == Lut::PACKING_RGBA;
-            bool outputHasAlpha = outputPacking == Lut::PACKING_BGRA || outputPacking == Lut::PACKING_RGBA;
-            
-            int inROffset, inGOffset, inBOffset, inAOffset;
-            int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
-
-            int inPackingSize,outPackingSize;
-            inPackingSize = inputHasAlpha ? 4 : 3;
-            outPackingSize = outputHasAlpha ? 4 : 3;
-            
-            for (int y = rect.y1; y < rect.y2; ++y) {
-                int srcY = y;
-                if (invertY) {
-                    srcY = rod.y2 - y - 1;
-                }
-                const float *src_pixels = from + (srcY * (rod.x2 - rod.x1) * inPackingSize);
-                float *dst_pixels = to + (y * (rod.x2 - rod.x1) * outPackingSize);
-                if (inputPacking == outputPacking) {
-                    memcpy(dst_pixels, src_pixels, (rod.x2 - rod.x1)*sizeof(float));
-                } else {
-                    for (int x = rect.x1; x < rect.x2; ++x) {
-                        int inCol = x * inPackingSize;
-                        int outCol = x * outPackingSize;
-                        float a = inputHasAlpha ? src_pixels[inCol + inAOffset] : 1.f;
-                        dst_pixels[outCol + outROffset] = src_pixels[inCol + inROffset];
-                        dst_pixels[outCol + outGOffset] = src_pixels[inCol + inGOffset];
-                        dst_pixels[outCol + outBOffset] = src_pixels[inCol + inBOffset];
-                        if(outputHasAlpha) {
-                            dst_pixels[outCol + outAOffset] = a;
-                        }
-                    }
-                }
-            }
-        }
-        
-        void Linear::to_byte_planar(unsigned char *to, const float *from, int W,const float* alpha, int delta)
-        {
-            if(!alpha){
-                unsigned char *end = to + W * delta;
-                int start = rand() % W;
-                const float *q;
-                unsigned char *p;
-                /* go fowards from starting point to end of line: */
-                float error = .5;
-                for (p = to + start * delta, q = from + start; p < end; p += delta) {
-                    float G = error + *q++ * 255.0f;
-                    if (G <= 0) {
-                        *p = 0;
-                    } else if (G < 255) {
-                        int i = (int)G;
-                        *p = (unsigned char)i;
-                        error = G - i;
-                    } else {
-                        *p = 255;
-                    }
-                }
-                /* go backwards from starting point to start of line: */
-                error = .5;
-                for (p = to + (start - 1) * delta, q = from + start; p >= to; p -= delta) {
-                    float G = error + *--q * 255.0f;
-                    if (G <= 0) {
-                        *p = 0;
-                    } else if (G < 255) {
-                        int i = (int)G;
-                        *p = (unsigned char)i;
-                        error = G - i;
-                    } else {
-                        *p = 255;
-                    }
-                }
-            }else{
-                unsigned char *end = to + W * delta;
-                int start = rand() % W;
-                const float *q;
-                const float *a = alpha;
-                unsigned char *p;
-                /* go fowards from starting point to end of line: */
-                float error = .5;
-                for (p = to + start * delta, q = from + start, a += start; p < end; p += delta) {
-                    float v = *q * *a;
-                    float G = error + v * 255.0f;
-                    ++q;
-                    ++a;
-                    if (G <= 0) {
-                        *p = 0;
-                    } else if (G < 255) {
-                        int i = (int)G;
-                        *p = (unsigned char)i;
-                        error = G - i;
-                    } else {
-                        *p = 255;
-                    }
-                }
-                /* go backwards from starting point to start of line: */
-                error = .5;
-                for (p = to + (start - 1) * delta, q = from + start, a = alpha + start; p >= to; p -= delta) {
-                    const float v = *q * *a;
-                    float G = error + v * 255.0f;
-                    --q;
-                    --a;
-                    if (G <= 0) {
-                        *p = 0;
-                    } else if (G < 255) {
-                        int i = (int)G;
-                        *p = (unsigned char)i;
-                        error = G - i;
-                    } else {
-                        *p = 255;
-                    }
+                    to[i] = Linear::toFloat(from[i]);
                 }
                 
             }
-        }
-        
-        
-        
-        void Linear::to_short_planar(unsigned short *to, const float *from, int W, const float* alpha ,int delta)
-        {
-            (void)to;
-            (void)from;
-            (void)W;
-            (void)alpha;
-            (void)delta;
-            throw std::runtime_error("Linear::to_short_planar not yet implemented.");
-        }
-        
-        
-        void Linear::to_float_planar(float *to, const float *from, int W,const float* alpha ,int delta)
-        {
-            if(!alpha){
-                (void)delta;
-                if (delta == 1) {
-                    memcpy(to, from, W * sizeof(float));
-                } else {
+            
+            void from_float_planar(float *to, const float *from, int W, int delta)
+            {
+                if(delta == 1){
+                    memcpy(to, from, W*sizeof(float));
+                }else{
                     for (int i = 0; i < W; i += delta) {
                         to[i] = from[i];
                     }
                 }
-            }else{
-                for (int i = 0; i < W; i += delta) {
-                    to[i] = from[i] * alpha[i];
-                }
-            }
-        }
-        
-        void Linear::to_byte_packed(unsigned char* to, const float* from,const OfxRectI& conversionRect,
-                                    const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                    PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)
-        {
-            
-            if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
-                throw std::runtime_error("This function is not meant for planar buffers.");
             }
             
-            bool inputHasAlpha = inputPacking == Lut::PACKING_BGRA || inputPacking == Lut::PACKING_RGBA;
-            bool outputHasAlpha = outputPacking == Lut::PACKING_BGRA || outputPacking == Lut::PACKING_RGBA;
             
-            int inROffset, inGOffset, inBOffset, inAOffset;
-            int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
-
-            int inPackingSize,outPackingSize;
-            inPackingSize = inputHasAlpha ? 4 : 3;
-            outPackingSize = outputHasAlpha ? 4 : 3;
+            void from_byte_packed(float *to, const unsigned char *from,
+                                          const OfxRectI &conversionRect,const OfxRectI &srcRoD, const OfxRectI &dstRoD,
+                                          PixelPacking inputPacking,PixelPacking outputPacking,
+                                          bool invertY )
             
-            for (int y = conversionRect.y1; y < conversionRect.y2; ++y) {
-                int start = rand() % (conversionRect.x2 - conversionRect.x1) + conversionRect.x1;
-                unsigned error_r, error_g, error_b;
-                error_r = error_g = error_b = 0x80;
-                int srcY = y;
-                if (invertY) {
-                    srcY = srcRoD.y2 - y - 1;
+            {
+                
+                if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
+                    throw std::runtime_error("Invalid pixel format.");
                 }
                 
-                /// if not in the srcRoD, continue to next line
-                if(srcY < srcRoD.y1 || srcY >= srcRoD.y2){
-                    continue;
+                ///if the conversion rectangle is out of the src rod and the dst rod, just return
+                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                    return;
                 }
                 
-                const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
-                unsigned char *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
-                /* go fowards from starting point to end of line: */
-                for (int x = start; x < conversionRect.x2; ++x) {
-                    
-                    /// if not in the srcRoD, continue to next line
-                    if(x < srcRoD.x1 || x >= srcRoD.x2){
-                        continue;
-                    }
-                    
-                    int inCol = x * inPackingSize;
-                    int outCol = x * outPackingSize;
-                    
-                    float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;
-                    
-                    error_r = (error_r & 0xff) + src_pixels[inCol + inROffset] * a * 255.f;
-                    error_g = (error_g & 0xff) + src_pixels[inCol + inGOffset] * a * 255.f;
-                    error_b = (error_b & 0xff) + src_pixels[inCol + inBOffset] * a * 255.f;
-                    dst_pixels[outCol + outROffset] = (unsigned char)(error_r >> 8);
-                    dst_pixels[outCol + outGOffset] = (unsigned char)(error_g >> 8);
-                    dst_pixels[outCol + outBOffset] = (unsigned char)(error_b >> 8);
-                    if(outputHasAlpha) {
-                        dst_pixels[outCol + outAOffset] = (unsigned char)(std::min(a * 256.f, 255.f));
-                    }
-
-                }
-                /* go backwards from starting point to start of line: */
-                error_r = error_g = error_b = 0x80;
-                for (int x = start - 1; x >= conversionRect.x1; --x) {
-                    
-                    /// if not in the srcRoD, continue to next line
-                    if(x < srcRoD.x1 || x >= srcRoD.x2){
-                        continue;
-                    }
-                    
-                    int inCol = x * inPackingSize;
-                    int outCol = x * outPackingSize;
-                    
-                    float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;
-                    
-                    error_r = (error_r & 0xff) + src_pixels[inCol + inROffset] * a * 255.f;
-                    error_g = (error_g & 0xff) + src_pixels[inCol + inGOffset] * a * 255.f;
-                    error_b = (error_b & 0xff) + src_pixels[inCol + inBOffset] * a * 255.f;
-                    dst_pixels[outCol + outROffset] = (unsigned char)(error_r >> 8);
-                    dst_pixels[outCol + outGOffset] = (unsigned char)(error_g >> 8);
-                    dst_pixels[outCol + outBOffset] = (unsigned char)(error_b >> 8);
-                    if(outputHasAlpha) {
-                        dst_pixels[outCol + outAOffset] = (unsigned char)(std::min(a * 256.f, 255.f));
-                    }
-                }
-            }
-        }
-        
-        
-        
-        void Linear::to_short_packed(unsigned short* to, const float* from,const OfxRectI& conversionRect,
-                                     const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                     PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)
-        {
-            (void)to;
-            (void)from;
-            (void)conversionRect;
-            (void)srcRoD;
-            (void)dstRoD;
-            (void)invertY;
-            (void)premult;
-            (void)inputPacking;
-            (void)outputPacking;
-            throw std::runtime_error("Linear::to_short_packed not yet implemented.");
-        }
-        
-        void Linear::to_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
-                                     const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                     PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)
-        {
-            
-            if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
-                throw std::runtime_error("This function is not meant for planar buffers.");
-            }
-            
-            bool inputHasAlpha = inputPacking == Lut::PACKING_BGRA || inputPacking == Lut::PACKING_RGBA;
-            bool outputHasAlpha = outputPacking == Lut::PACKING_BGRA || outputPacking == Lut::PACKING_RGBA;
-            
-            int inROffset, inGOffset, inBOffset, inAOffset;
-            int outROffset, outGOffset, outBOffset, outAOffset;
-            getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
-            getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
-            
-            
-            int inPackingSize,outPackingSize;
-            inPackingSize = inputHasAlpha ? 4 : 3;
-            outPackingSize = outputHasAlpha ? 4 : 3;
-            
-            for (int y = conversionRect.y1; y < conversionRect.y2; ++y) {
-                int srcY = y;
-                if (invertY) {
-                    srcY = srcRoD.y2 - y - 1;
-                }
-                /// if not in the srcRoD, continue to next line
-                if(srcY < srcRoD.y1 || srcY >= srcRoD.y2){
-                    continue;
-                }
+                ///clip the conversion rect to srcRoD and dstRoD
+                OfxRectI rect = conversionRect;
+                clip(&rect,srcRoD);
+                clip(&rect,dstRoD);
                 
-                const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
-                float *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
-                if (inputPacking == outputPacking && !premult) {
-                    memcpy(dst_pixels, src_pixels, (conversionRect.x2 - conversionRect.x1) *sizeof(float));
-                } else {
-                    for (int x = conversionRect.x1; x < conversionRect.x2; ++x) {
-                        
-                        /// if not in the srcRoD, continue to next line
-                        if(x < srcRoD.x1 || x >= srcRoD.x2){
-                            continue;
+                bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+                bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
+                
+                int inROffset, inGOffset, inBOffset, inAOffset;
+                int outROffset, outGOffset, outBOffset, outAOffset;
+                getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+                getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+                
+                
+                int inPackingSize,outPackingSize;
+                inPackingSize = inputHasAlpha ? 4 : 3;
+                outPackingSize = outputHasAlpha ? 4 : 3;
+                
+                
+                
+                for (int y = rect.y1; y < rect.y2; ++y) {
+                    int srcY = y;
+                    if (invertY) {
+                        srcY = srcRoD.y2 - y - 1;
+                    }
+                    const unsigned char *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                    float *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
+                    for (int x = rect.x1; x < rect.x2; ++x) {
+                        int inCol = x * inPackingSize;
+                        int outCol = x * outPackingSize;
+                        unsigned char a = inputHasAlpha ? src_pixels[inCol + inAOffset] : 255;
+                        dst_pixels[outCol + outROffset] = src_pixels[inCol + inROffset] / 255.f;
+                        dst_pixels[outCol + outGOffset] = src_pixels[inCol + inGOffset] / 255.f;
+                        dst_pixels[outCol + outBOffset] = src_pixels[inCol + inBOffset] / 255.f;
+                        if(outputHasAlpha) {
+                            dst_pixels[outCol + outAOffset] = a / 255.f;
                         }
+                    }
+                }
+                
+            }
+            
+            void from_short_packed(float *to, const unsigned short *from,
+                                           const OfxRectI &rect,const OfxRectI &/*srcRod*/, const OfxRectI &rod,
+                                           PixelPacking inputFormat,PixelPacking format,
+                                           bool invertY)
+            {
+                throw std::runtime_error("Linear::from_short_packed not yet implemented.");
+                
+            }
+            
+            void from_float_packed(float *to, const float *from,
+                                           const OfxRectI &conversionRect,const OfxRectI &srcRoD, const OfxRectI &dstRoD,
+                                           PixelPacking inputPacking,PixelPacking outputPacking,
+                                           bool invertY)
+            {
+                if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
+                    throw std::runtime_error("This function is not meant for planar buffers.");
+                }
+                
+                
+                ///if the conversion rectangle is out of the src rod and the dst rod, just return
+                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                    return;
+                }
+                
+                ///clip the conversion rect to srcRoD and dstRoD
+                OfxRectI rect = conversionRect;
+                clip(&rect,srcRoD);
+                clip(&rect,dstRoD);
+                
+                if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
+                    throw std::runtime_error("Invalid pixel format.");
+                }
+                
+                bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+                bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
+                
+                int inROffset, inGOffset, inBOffset, inAOffset;
+                int outROffset, outGOffset, outBOffset, outAOffset;
+                getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+                getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+                
+                int inPackingSize,outPackingSize;
+                inPackingSize = inputHasAlpha ? 4 : 3;
+                outPackingSize = outputHasAlpha ? 4 : 3;
+                
+                for (int y = rect.y1; y < rect.y2; ++y) {
+                    int srcY = y;
+                    if (invertY) {
+                        srcY = srcRoD.y2 - y - 1;
+                    }
+                    const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                    float *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
+                    if (inputPacking == outputPacking) {
+                        memcpy(dst_pixels, src_pixels,(rect.x2 - rect.x1) * sizeof(float));
+                    } else {
+                        for (int x = rect.x1; x < rect.x2; ++x) {
+                            int inCol = x * inPackingSize;
+                            int outCol = x * outPackingSize;
+                            float a = inputHasAlpha ? src_pixels[inCol + inAOffset] : 1.f;
+                            dst_pixels[outCol + outROffset] = src_pixels[inCol + inROffset];
+                            dst_pixels[outCol + outGOffset] = src_pixels[inCol + inGOffset];
+                            dst_pixels[outCol + outBOffset] = src_pixels[inCol + inBOffset];
+                            if(outputHasAlpha) {
+                                dst_pixels[outCol + outAOffset] = a;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            void to_byte_planar(unsigned char *to, const float *from, int W,const float* alpha, int delta)
+            {
+                if(!alpha){
+                    unsigned char *end = to + W * delta;
+                    int start = rand() % W;
+                    const float *q;
+                    unsigned char *p;
+                    /* go fowards from starting point to end of line: */
+                    float error = .5;
+                    for (p = to + start * delta, q = from + start; p < end; p += delta) {
+                        float G = error + *q++ * 255.0f;
+                        if (G <= 0) {
+                            *p = 0;
+                        } else if (G < 255) {
+                            int i = (int)G;
+                            *p = (unsigned char)i;
+                            error = G - i;
+                        } else {
+                            *p = 255;
+                        }
+                    }
+                    /* go backwards from starting point to start of line: */
+                    error = .5;
+                    for (p = to + (start - 1) * delta, q = from + start; p >= to; p -= delta) {
+                        float G = error + *--q * 255.0f;
+                        if (G <= 0) {
+                            *p = 0;
+                        } else if (G < 255) {
+                            int i = (int)G;
+                            *p = (unsigned char)i;
+                            error = G - i;
+                        } else {
+                            *p = 255;
+                        }
+                    }
+                }else{
+                    unsigned char *end = to + W * delta;
+                    int start = rand() % W;
+                    const float *q;
+                    const float *a = alpha;
+                    unsigned char *p;
+                    /* go fowards from starting point to end of line: */
+                    float error = .5;
+                    for (p = to + start * delta, q = from + start, a += start; p < end; p += delta) {
+                        float v = *q * *a;
+                        float G = error + v * 255.0f;
+                        ++q;
+                        ++a;
+                        if (G <= 0) {
+                            *p = 0;
+                        } else if (G < 255) {
+                            int i = (int)G;
+                            *p = (unsigned char)i;
+                            error = G - i;
+                        } else {
+                            *p = 255;
+                        }
+                    }
+                    /* go backwards from starting point to start of line: */
+                    error = .5;
+                    for (p = to + (start - 1) * delta, q = from + start, a = alpha + start; p >= to; p -= delta) {
+                        const float v = *q * *a;
+                        float G = error + v * 255.0f;
+                        --q;
+                        --a;
+                        if (G <= 0) {
+                            *p = 0;
+                        } else if (G < 255) {
+                            int i = (int)G;
+                            *p = (unsigned char)i;
+                            error = G - i;
+                        } else {
+                            *p = 255;
+                        }
+                    }
+                    
+                }
+            }
+            
+            
+            
+            void to_short_planar(unsigned short *to, const float *from, int W, const float* alpha ,int delta)
+            {
+                (void)to;
+                (void)from;
+                (void)W;
+                (void)alpha;
+                (void)delta;
+                throw std::runtime_error("Linear::to_short_planar not yet implemented.");
+            }
+            
+            
+            void to_float_planar(float *to, const float *from, int W,const float* alpha ,int delta)
+            {
+                if(!alpha){
+                    (void)delta;
+                    if (delta == 1) {
+                        memcpy(to, from, W * sizeof(float));
+                    } else {
+                        for (int i = 0; i < W; i += delta) {
+                            to[i] = from[i];
+                        }
+                    }
+                }else{
+                    for (int i = 0; i < W; i += delta) {
+                        to[i] = from[i] * alpha[i];
+                    }
+                }
+            }
+            
+            void to_byte_packed(unsigned char* to, const float* from,const OfxRectI& conversionRect,
+                                        const OfxRectI& srcRoD,const OfxRectI& dstRoD,
+                                        PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)
+            {
+                
+                if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
+                    throw std::runtime_error("This function is not meant for planar buffers.");
+                }
+                
+                ///if the conversion rectangle is out of the src rod and the dst rod, just return
+                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                    return;
+                }
+                
+                ///clip the conversion rect to srcRoD and dstRoD
+                OfxRectI rect = conversionRect;
+                clip(&rect,srcRoD);
+                
+                bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+                bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
+                
+                int inROffset, inGOffset, inBOffset, inAOffset;
+                int outROffset, outGOffset, outBOffset, outAOffset;
+                getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+                getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+                
+                int inPackingSize,outPackingSize;
+                inPackingSize = inputHasAlpha ? 4 : 3;
+                outPackingSize = outputHasAlpha ? 4 : 3;
+                
+                for (int y = rect.y1; y < rect.y2; ++y) {
+                    int start = rand() % (rect.x2 - rect.x1) + rect.x1;
+                    unsigned error_r, error_g, error_b;
+                    error_r = error_g = error_b = 0x80;
+                    int srcY = y;
+                    if (invertY) {
+                        srcY = srcRoD.y2 - y - 1;
+                    }
+                    
+                    const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                    unsigned char *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
+                    /* go fowards from starting point to end of line: */
+                    for (int x = start; x < rect.x2; ++x) {
                         
                         int inCol = x * inPackingSize;
                         int outCol = x * outPackingSize;
-
+                        
                         float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;
-
-                        dst_pixels[outCol + outROffset] = src_pixels[inCol + inROffset] * a;
-                        dst_pixels[outCol + outGOffset] = src_pixels[inCol + inGOffset] * a;
-                        dst_pixels[outCol + outBOffset] = src_pixels[inCol + inBOffset] * a;
-                        if(outputHasAlpha){
-                            dst_pixels[outCol + outAOffset] = a;
+                        
+                        error_r = (error_r & 0xff) + src_pixels[inCol + inROffset] * a * 255.f;
+                        error_g = (error_g & 0xff) + src_pixels[inCol + inGOffset] * a * 255.f;
+                        error_b = (error_b & 0xff) + src_pixels[inCol + inBOffset] * a * 255.f;
+                        dst_pixels[outCol + outROffset] = (unsigned char)(error_r >> 8);
+                        dst_pixels[outCol + outGOffset] = (unsigned char)(error_g >> 8);
+                        dst_pixels[outCol + outBOffset] = (unsigned char)(error_b >> 8);
+                        if(outputHasAlpha) {
+                            dst_pixels[outCol + outAOffset] = (unsigned char)(std::min(a * 256.f, 255.f));
+                        }
+                        
+                    }
+                    /* go backwards from starting point to start of line: */
+                    error_r = error_g = error_b = 0x80;
+                    for (int x = start - 1; x >= rect.x1; --x) {
+                        
+                        
+                        int inCol = x * inPackingSize;
+                        int outCol = x * outPackingSize;
+                        
+                        float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;
+                        
+                        error_r = (error_r & 0xff) + src_pixels[inCol + inROffset] * a * 255.f;
+                        error_g = (error_g & 0xff) + src_pixels[inCol + inGOffset] * a * 255.f;
+                        error_b = (error_b & 0xff) + src_pixels[inCol + inBOffset] * a * 255.f;
+                        dst_pixels[outCol + outROffset] = (unsigned char)(error_r >> 8);
+                        dst_pixels[outCol + outGOffset] = (unsigned char)(error_g >> 8);
+                        dst_pixels[outCol + outBOffset] = (unsigned char)(error_b >> 8);
+                        if(outputHasAlpha) {
+                            dst_pixels[outCol + outAOffset] = (unsigned char)(std::min(a * 256.f, 255.f));
+                        }
+                    }
+                }
+            }
+            
+            
+            
+            void to_short_packed(unsigned short* to, const float* from,const OfxRectI& conversionRect,
+                                         const OfxRectI& srcRoD,const OfxRectI& dstRoD,
+                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)
+            {
+                (void)to;
+                (void)from;
+                (void)conversionRect;
+                (void)srcRoD;
+                (void)dstRoD;
+                (void)invertY;
+                (void)premult;
+                (void)inputPacking;
+                (void)outputPacking;
+                throw std::runtime_error("Linear::to_short_packed not yet implemented.");
+            }
+            
+            void to_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
+                                         const OfxRectI& srcRoD,const OfxRectI& dstRoD,
+                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)
+            {
+                if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
+                    throw std::runtime_error("Invalid pixel format.");
+                }
+                
+                ///if the conversion rectangle is out of the src rod and the dst rod, just return
+                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+                    return;
+                }
+                
+                ///clip the conversion rect to srcRoD and dstRoD
+                OfxRectI rect = conversionRect;
+                clip(&rect,srcRoD);
+                
+                bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
+                bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
+                
+                int inROffset, inGOffset, inBOffset, inAOffset;
+                int outROffset, outGOffset, outBOffset, outAOffset;
+                getOffsetsForPacking(inputPacking, &inROffset, &inGOffset, &inBOffset, &inAOffset);
+                getOffsetsForPacking(outputPacking, &outROffset, &outGOffset, &outBOffset, &outAOffset);
+                
+                
+                int inPackingSize,outPackingSize;
+                inPackingSize = inputHasAlpha ? 4 : 3;
+                outPackingSize = outputHasAlpha ? 4 : 3;
+                
+                for (int y = rect.y1; y < rect.y2; ++y) {
+                    int srcY = y;
+                    if (invertY) {
+                        srcY = srcRoD.y2 - y - 1;
+                    }
+                    
+                    const float *src_pixels = from + (srcY * (srcRoD.x2 - srcRoD.x1) * inPackingSize);
+                    float *dst_pixels = to + (y * (dstRoD.x2 - dstRoD.x1) * outPackingSize);
+                    if (inputPacking == outputPacking && !premult) {
+                        memcpy(dst_pixels, src_pixels, (rect.x2 - rect.x1) *sizeof(float));
+                    } else {
+                        for (int x = rect.x1; x < conversionRect.x2; ++x) {
+                            
+                            int inCol = x * inPackingSize;
+                            int outCol = x * outPackingSize;
+                            
+                            float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;
+                            
+                            dst_pixels[outCol + outROffset] = src_pixels[inCol + inROffset] * a;
+                            dst_pixels[outCol + outGOffset] = src_pixels[inCol + inGOffset] * a;
+                            dst_pixels[outCol + outBOffset] = src_pixels[inCol + inBOffset] * a;
+                            if(outputHasAlpha){
+                                dst_pixels[outCol + outAOffset] = a;
+                            }
                         }
                     }
                 }
@@ -1003,7 +1047,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::sRGBLut(){
-            return getLut("sRGB",from_func_srgb,to_func_srgb);
+            return LutManager::m_instance.getLut("sRGB",from_func_srgb,to_func_srgb);
         }
         
         float from_func_Rec709(float v){
@@ -1021,7 +1065,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::Rec709Lut(){
-            return getLut("Rec709",from_func_Rec709,to_func_Rec709);
+            return LutManager::m_instance.getLut("Rec709",from_func_Rec709,to_func_Rec709);
         }
         
         
@@ -1045,7 +1089,7 @@ namespace OFX {
         }
 
         const Lut* LutManager::CineonLut(){
-            return getLut("Cineon",from_func_Cineon,to_func_Cineon);
+            return LutManager::m_instance.getLut("Cineon",from_func_Cineon,to_func_Cineon);
         }
         
         float from_func_Gamma1_8(float v){
@@ -1057,7 +1101,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::Gamma1_8Lut(){
-            return getLut("Gamma1_8",from_func_Gamma1_8,to_func_Gamma1_8);
+            return LutManager::m_instance.getLut("Gamma1_8",from_func_Gamma1_8,to_func_Gamma1_8);
         }
         
         float from_func_Gamma2_2(float v){
@@ -1069,7 +1113,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::Gamma2_2Lut(){
-            return getLut("Gamma2_2",from_func_Gamma2_2,to_func_Gamma2_2);
+            return LutManager::m_instance.getLut("Gamma2_2",from_func_Gamma2_2,to_func_Gamma2_2);
         }
         
         float from_func_Panalog(float v){
@@ -1081,7 +1125,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::PanaLogLut(){
-            return getLut("PanaLog",from_func_Panalog,to_func_Panalog);
+            return LutManager::m_instance.getLut("PanaLog",from_func_Panalog,to_func_Panalog);
         }
         
         float from_func_ViperLog(float v){
@@ -1093,7 +1137,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::ViperLogLut(){
-            return getLut("ViperLog",from_func_ViperLog,to_func_ViperLog);
+            return LutManager::m_instance.getLut("ViperLog",from_func_ViperLog,to_func_ViperLog);
         }
         
         float from_func_RedLog(float v){
@@ -1105,7 +1149,7 @@ namespace OFX {
         }
         
         const Lut* LutManager::RedLogLut(){
-            return getLut("RedLog",from_func_RedLog,to_func_RedLog);
+            return LutManager::m_instance.getLut("RedLog",from_func_RedLog,to_func_RedLog);
         }
         
         float from_func_AlexaV3LogC(float v){
@@ -1119,8 +1163,8 @@ namespace OFX {
         }
         
         const Lut* LutManager::AlexaV3LogCLut(){
-            return getLut("AlexaV3LogC",from_func_AlexaV3LogC,to_func_AlexaV3LogC);
+            return LutManager::m_instance.getLut("AlexaV3LogC",from_func_AlexaV3LogC,to_func_AlexaV3LogC);
         }
         
-
+    }
 }

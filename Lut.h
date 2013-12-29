@@ -38,7 +38,8 @@
 #define Support_ofxsColorSpace_h
 
 #include <cmath>
-#include "ofxsImageEffect.h"
+#include <ofxsImageEffect.h>
+#include <ofxsMultiThread.h>
 
 
 /*
@@ -90,9 +91,6 @@ namespace OFX {
         
         // a Singleton that holds precomputed LUTs for the whole application.
         // The m_instance member is static and is thus built before the first call to Instance().
-        // After creation, is is always accessed read-only (no new LUTs should be added),
-        // thus it does not need to be protected by a mutex.
-        // To enforce this, the only public function (getLut()) is marked as const
         class Lut;
         class LutManager
         {
@@ -100,27 +98,27 @@ namespace OFX {
             static LutManager &Instance() {
                 return m_instance;
             };
-        
-            const Lut *getLut(const std::string& name,OfxFromColorSpaceFunctionV1 fromFunc,OfxToColorSpaceFunctionV1 toFunc);
+            
+            static const Lut *getLut(const std::string& name,OfxFromColorSpaceFunctionV1 fromFunc,OfxToColorSpaceFunctionV1 toFunc);
             
             ///buit-ins color-spaces
-            const Lut* sRGBLut();
+            static const Lut* sRGBLut();
 
-            const Lut* Rec709Lut();
+            static const Lut* Rec709Lut();
             
-            const Lut* CineonLut();
+            static const Lut* CineonLut();
             
-            const Lut* Gamma1_8Lut();
+            static const Lut* Gamma1_8Lut();
             
-            const Lut* Gamma2_2Lut();
+            static const Lut* Gamma2_2Lut();
             
-            const Lut* PanaLogLut();
+            static const Lut* PanaLogLut();
             
-            const Lut* ViperLogLut();
+            static const Lut* ViperLogLut();
             
-            const Lut* RedLogLut();
+            static const Lut* RedLogLut();
             
-            const Lut* AlexaV3LogCLut();
+            static const Lut* AlexaV3LogCLut();
             
         private:
             LutManager &operator= (const LutManager &) {
@@ -133,19 +131,11 @@ namespace OFX {
             ~LutManager();
             
             std::map<std::string, const Lut *> luts;
+            OFX::MultiThread::Mutex _lock; //< to protect luts
         };
-        
-        LutManager::LutManager()
-        {
-            
-        }
     
-        
-        ///initialize the singleton
-        LutManager LutManager::m_instance = LutManager();
 
-
-
+    
         /**
          * @brief A Lut (look-up table) used to speed-up color-spaces conversions.
          * If you plan on doing linear conversion, you should just use the Linear class instead.
@@ -230,15 +220,16 @@ namespace OFX {
              * \a alpha is a pointer to an extra alpha planar buffer if you want to premultiply by alpha the from channel.
              * The input and output buffers must not overlap in memory.
              **/
-            void to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha = NULL,int delta = -1);
-            void to_short_planar(unsigned short* to, const float* from,int W,const float* alpha = NULL,int delta = -1);
-            void to_float_planar(float* to, const float* from,int W,const float* alpha = NULL,int delta = -1);
+            void to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha = NULL,int delta = -1) const;
+            void to_short_planar(unsigned short* to, const float* from,int W,const float* alpha = NULL,int delta = -1) const;
+            void to_float_planar(float* to, const float* from,int W,const float* alpha = NULL,int delta = -1) const;
             
             
             /**
              * @brief These functions work exactly like the to_X_planar functions but expect 2 buffers
              * pointing at (0,0) in an image and convert a rectangle of the image. It also supports
              * several pixel packing commonly used by openfx images.
+             * Note that the conversionRect will be clipped to srcRoD and dstRoD to prevent bad memory access
              
              \arg 	- from - A pointer to the input buffer, pointing at (0,0) in the image.
              \arg 	- srcRoD - The region of definition of the input buffer.
@@ -261,13 +252,13 @@ namespace OFX {
              **/
             void to_byte_packed(unsigned char* to, const float* from,const OfxRectI& conversionRect,
                                         const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                        PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                        PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const;
             void to_short_packed(unsigned short* to, const float* from,const OfxRectI& conversionRect,
                                          const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const;
             void to_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
                                          const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const;
             
             
             
@@ -285,17 +276,18 @@ namespace OFX {
              * The input and output buffers must not overlap in memory.
              **/
             void from_byte_planar(float* to,const unsigned char* from,
-                                          int W,const unsigned char* alpha = NULL,int delta = -1);
+                                          int W,const unsigned char* alpha = NULL,int delta = -1) const;
             void from_short_planar(float* to,const unsigned short* from,
-                                           int W,const unsigned short* alpha = NULL,int delta = -1);
+                                           int W,const unsigned short* alpha = NULL,int delta = -1) const;
             void from_float_planar(float* to,const float* from,
-                                           int W,const float* alpha = NULL,int delta = -1);
+                                           int W,const float* alpha = NULL,int delta = -1) const;
             
             
             /**
              * @brief These functions work exactly like the to_X_planar functions but expect 2 buffers
              * pointing at (0,0) in an image and convert a rectangle of the image. It also supports
              * several pixel packing commonly used by openfx images.
+             * Note that the conversionRect will be clipped to srcRoD and dstRoD to prevent bad memory access
              
              \arg 	- from - A pointer to the input buffer, pointing at (0,0) in the image.
              \arg 	- srcRoD - The region of definition of the input buffer.
@@ -308,8 +300,8 @@ namespace OFX {
              \arg 	- dstRoD - The region of definition of the output buffer.
              \arg 	- outputPacking - The pixel packing of the output buffer.
              
-             \arg premult - If true, it indicates we want to premultiply by the alpha channel
-             the R,G and B channels if they exist.
+             \arg premult - If true, it indicates we want to unpremultiply the R,G,B channels (if they exist) by the alpha channel
+             before doing the color-space conversion, and multiply back by alpha.
              
              \arg invertY - If true then the output scan-line y of the output buffer
              should be converted with the scan-line (srcRoD.y2 - y - 1) of the
@@ -318,35 +310,30 @@ namespace OFX {
              **/
             void from_byte_packed(float* to, const unsigned char* from,const OfxRectI& conversionRect,
                                           const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                          PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                          PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const;
             
             void from_short_packed(float* to, const unsigned short* from,const OfxRectI& conversionRect,
                                            const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const;
             
             void from_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
                                            const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const;
             
             
         };
         
         
-        class Linear {
-            
-        public:
-            
-            Linear();
-            
-            
+        namespace Linear {
+        
             ///utility functions
-            static float toFloat(unsigned char v) { return (float)v / 255.f; }
-            static float toFloat(unsigned short v) { return (float)v / 65535.f; }
-            static float toFloat(float v) { return v; }
+            inline float toFloat(unsigned char v) { return (float)v / 255.f; }
+            inline float toFloat(unsigned short v) { return (float)v / 65535.f; }
+            inline float toFloat(float v) { return v; }
             
-            static unsigned char fromFloatB(float v) { return (unsigned char)(v * 255.f); }
-            static unsigned short fromFloatS(float v) { return (unsigned short)(v * 65535.f); }
-            static float fromFloatF(float v) { return v; }
+            inline unsigned char fromFloatB(float v) { return (unsigned char)(v * 255.f); }
+            inline unsigned short fromFloatS(float v) { return (unsigned short)(v * 65535.f); }
+            inline float fromFloatF(float v) { return v; }
             
             /////the following functions expects a float input buffer, one could extend it to cover all bitdepths.
             
@@ -370,6 +357,24 @@ namespace OFX {
              * @brief These functions work exactly like the to_X_planar functions but expect 2 buffers
              * pointing at (0,0) in the image and convert a rectangle of the image. It also supports
              * several pixel packing commonly used by openfx images.
+             * Note that the conversionRect will be clipped to srcRoD and dstRoD to prevent bad memory access
+             \arg 	- from - A pointer to the input buffer, pointing at (0,0) in the image.
+             \arg 	- srcRoD - The region of definition of the input buffer.
+             \arg 	- inputPacking - The pixel packing of the input buffer.
+             
+             \arg 	- conversionRect - The region we want to convert. This will be clipped
+             agains srcRoD and dstRoD.
+             
+             \arg 	- to - A pointer to the output buffer, pointing at (0,0) in the image.
+             \arg 	- dstRoD - The region of definition of the output buffer.
+             \arg 	- outputPacking - The pixel packing of the output buffer.
+             
+             \arg premult - If true, it indicates we want to premultiply by the alpha channel
+             the R,G and B channels if they exist.
+             
+             \arg invertY - If true then the output scan-line y of the output buffer
+             should be converted with the scan-line (srcRoD.y2 - y - 1) of the
+             input buffer.
              **/
             void to_byte_packed(unsigned char* to, const float* from,const OfxRectI& conversionRect,
                                         const OfxRectI& srcRoD,const OfxRectI& dstRoD,
@@ -402,23 +407,39 @@ namespace OFX {
              * @brief These functions work exactly like the from_X_planar functions but expect 2 buffers
              * pointing at (0,0) in the image and convert a rectangle of the image. It also supports
              * several pixel packing commonly used by openfx images.
+             * Note that the conversionRect will be clipped to srcRoD and dstRoD to prevent bad memory access
+                
+             \arg 	- from - A pointer to the input buffer, pointing at (0,0) in the image.
+             \arg 	- srcRoD - The region of definition of the input buffer.
+             \arg 	- inputPacking - The pixel packing of the input buffer.
+             
+             \arg 	- conversionRect - The region we want to convert. This will be clipped
+             agains srcRoD and dstRoD.
+             
+             \arg 	- to - A pointer to the output buffer, pointing at (0,0) in the image.
+             \arg 	- dstRoD - The region of definition of the output buffer.
+             \arg 	- outputPacking - The pixel packing of the output buffer.
+
+             \arg invertY - If true then the output scan-line y of the output buffer
+             should be converted with the scan-line (srcRoD.y2 - y - 1) of the
+             input buffer.
              **/
             void from_byte_packed(float* to, const unsigned char* from,const OfxRectI& conversionRect,
                                           const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                          PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                          PixelPacking inputPacking,PixelPacking outputPacking,bool invertY);
             
             void from_short_packed(float* to, const unsigned short* from,const OfxRectI& conversionRect,
                                            const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY);
             
             void from_float_packed(float* to, const float* from,const OfxRectI& conversionRect,
                                            const OfxRectI& srcRoD,const OfxRectI& dstRoD,
-                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult);
+                                           PixelPacking inputPacking,PixelPacking outputPacking,bool invertY);
             
-        };
+        }//namespace Linear
         
-    }
-}
+    } //namespace Color
+} //namespace OFX
 
 
 
