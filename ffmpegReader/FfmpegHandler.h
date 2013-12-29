@@ -224,7 +224,7 @@ namespace FFmpeg {
         }
         
         // decode a single frame into the buffer thread safe
-        bool decode(unsigned char* buffer, unsigned frame, unsigned streamIdx = 0);
+        bool decode(unsigned char* buffer, int frame, unsigned streamIdx = 0);
         
         // get stream information
         bool info( int& width,

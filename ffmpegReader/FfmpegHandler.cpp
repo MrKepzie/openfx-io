@@ -346,7 +346,7 @@ namespace FFmpeg {
     
     
     // decode a single frame into the buffer thread safe
-    bool File::decode(unsigned char* buffer, unsigned frame, unsigned streamIdx)
+    bool File::decode(unsigned char* buffer, int frame, unsigned streamIdx)
     {
         OFX::MultiThread::AutoMutex guard(_lock);
         
@@ -356,11 +356,8 @@ namespace FFmpeg {
         // get the stream
         Stream* stream = _streams[streamIdx];
         
-        // Translate from the 1-based frames expected by Nuke to 0-based frame offsets for use in the rest of this code.
-        int desiredFrame = frame - 1;
-        
         // Early-out if out-of-range frame requested.
-        if (desiredFrame < 0 || desiredFrame >= stream->_frames)
+        if (frame < 0 || frame >= stream->_frames)
             return false;
         
         // Number of read retries remaining when decode stall is detected before we give up (in the case of post-seek stalls,
@@ -397,16 +394,16 @@ namespace FFmpeg {
         int lastSeekedFrame = -1; // 0-based index of the last frame to which we seeked when seek in progress / negative when no
                                   // seek in progress,
         
-        if (desiredFrame != stream->_decodeNextFrameOut) {
+        if (frame != stream->_decodeNextFrameOut) {
             
-            lastSeekedFrame = desiredFrame;
+            lastSeekedFrame = frame;
             stream->_decodeNextFrameIn  = -1;
             stream->_decodeNextFrameOut = -1;
             stream->_accumDecodeLatency = 0;
             awaitingFirstDecodeAfterSeek = true;
             
             avcodec_flush_buffers(stream->_codecContext);
-            int error = av_seek_frame(_context, stream->_idx, stream->frameToPts(desiredFrame), AVSEEK_FLAG_BACKWARD);
+            int error = av_seek_frame(_context, stream->_idx, stream->frameToPts(frame), AVSEEK_FLAG_BACKWARD);
             if (error < 0) {
                 // Seek error. Abort attempt to read and decode frames.
                 setInternalError(error, "FFmpeg Reader failed to seek frame: ");
@@ -461,7 +458,7 @@ namespace FFmpeg {
                                 // frame from this stream, switch to using DTSs and retry the read from the initial desired frame.
                                 if (stream->_timestampField == &AVPacket::pts && !stream->_ptsSeen) {
                                     stream->_timestampField = &AVPacket::dts;
-                                    lastSeekedFrame = desiredFrame;
+                                    lastSeekedFrame = frame;
                                     
                                 }
                                 // Otherwise, failure to find a landing point isn't caused by an absence of PTSs from the file or isn't
@@ -534,7 +531,7 @@ namespace FFmpeg {
                 
                 // If the frame just output from decode is the desired one, get the decoded picture from it and set that we
                 // have a picture.
-                if (stream->_decodeNextFrameOut == desiredFrame) {
+                if (stream->_decodeNextFrameOut == frame) {
                     
                     AVPicture output;
                     avpicture_fill(&output, buffer, PIX_FMT_RGB24, stream->_width, stream->_height);
@@ -569,7 +566,7 @@ namespace FFmpeg {
                         // starting from the desired frame.
                         else if (retriesRemaining > 0) {
                             --retriesRemaining;
-                            seekTargetFrame = desiredFrame;
+                            seekTargetFrame = frame;
                         }
                         // Otherwise, all we can do is to fail the read so that this method exits safely.
                         else {
@@ -582,7 +579,7 @@ namespace FFmpeg {
                         // If we have any retries remaining, use one to attempt the read again, starting from the desired frame.
                         if (retriesRemaining > 0) {
                             --retriesRemaining;
-                            seekTargetFrame = desiredFrame;
+                            seekTargetFrame = frame;
                         }
                         // Otherwise, all we can do is to fail the read so that this method exits safely.
                         else {

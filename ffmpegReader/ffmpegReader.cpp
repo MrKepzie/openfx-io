@@ -34,7 +34,7 @@
  Domaine de Voluceau
  Rocquencourt - B.P. 105
  78153 Le Chesnay Cedex - France
-
+ 
  */
 #include <cmath>
 
@@ -55,7 +55,9 @@ FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
 }
 
 FfmpegReaderPlugin::~FfmpegReaderPlugin() {
-    FFmpeg::FileManager::s_readerManager.release(_ffmpegFile->filename());
+    if(_ffmpegFile){
+        FFmpeg::FileManager::s_readerManager.release(_ffmpegFile->filename());
+    }
     
     FFmpeg::FileManager::s_readerManager.onReaderDeleted(this);
     
@@ -146,7 +148,7 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
         _bufferHeight = height;
         _bufferWidth = width;
     }
-
+    
     
     if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5))) { //< round the time to an int to get a frame number ? Not sure about this
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
@@ -200,7 +202,7 @@ void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
         return;
     }
-
+    
     
     int width,height,frames;
     double ap;
