@@ -107,35 +107,49 @@ namespace OFX {
         LutManager LutManager::m_instance = LutManager();
         
         LutManager::LutManager()
+        : luts()
         {
         }
     
         
         const Lut *LutManager::getLut(const std::string& name,OfxFromColorSpaceFunctionV1 fromFunc,OfxToColorSpaceFunctionV1 toFunc) {
             
-            OFX::MultiThread::AutoMutex g(LutManager::m_instance._lock);
-            
-            std::map<std::string, const Lut *>::const_iterator found = LutManager::m_instance.luts.find(name);
+            LutsMap::iterator found = LutManager::m_instance.luts.find(name);
             if (found != LutManager::m_instance.luts.end()) {
-                return found->second;
+                ++found->second.second; //< increase the ref count
+                return found->second.first;
             }else{
-                std::pair<std::map<std::string, const Lut *>::iterator,bool> ret =
-                LutManager::m_instance.luts.insert(std::make_pair(name,new Lut(name,fromFunc,toFunc)));
+                std::pair<LutsMap::iterator,bool> ret =
+                LutManager::m_instance.luts.insert(std::make_pair(name,std::make_pair(new Lut(name,fromFunc,toFunc),0)));
                 assert(ret.second);
-                return ret.first->second;
+                return ret.first->second.first;
             }
             return NULL;
         }
         
-        LutManager::~LutManager()
-        {
-            for (std::map<std::string, const Lut *>::iterator it = luts.begin(); it != luts.end(); ++it) {
-                if (it->second) {
-                    delete it->second;
-                    it->second = 0;
+        void LutManager::release(const std::string& name) {
+            LutsMap::iterator found = LutManager::m_instance.luts.find(name);
+            if (found != LutManager::m_instance.luts.end()) {
+                
+                //decrease ref count
+                --found->second.second;
+                
+                //delete if ref count reaches 0
+                if(found->second.second == 0) {
+                    delete found->second.first;
+                    LutManager::m_instance.luts.erase(found);
                 }
             }
-            luts.clear();
+        }
+        
+        LutManager::~LutManager()
+        {
+            
+            ////the luts must all have been released before!
+            ////This is because the Lut holds a OFX::MultiThread::Mutex and it can't be deleted
+            //// by this singleton because it makes their destruction time uncertain regarding to
+            ///the host multi-thread suite.
+            assert(luts.empty());
         }
 
    

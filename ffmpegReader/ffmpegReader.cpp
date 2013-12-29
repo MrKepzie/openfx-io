@@ -34,121 +34,56 @@
  Domaine de Voluceau
  Rocquencourt - B.P. 105
  78153 Le Chesnay Cedex - France
- 
- 
- The skeleton for this source file is from:
- OFX Basic Example plugin, a plugin that illustrates the use of the OFX Support library.
- 
- Copyright (C) 2004-2005 The Open Effects Association Ltd
- Author Bruno Nicoletti bruno@thefoundry.co.uk
- 
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
- 
- * Redistributions of source code must retain the above copyright notice,
- this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice,
- this list of conditions and the following disclaimer in the documentation
- and/or other materials provided with the distribution.
- * Neither the name The Open Effects Association Ltd, nor the names of its
- contributors may be used to endorse or promote products derived from this
- software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- The Open Effects Association Ltd
- 1 Wardour St
- London W1D 6PA
- England
- 
+
  */
 #include <cmath>
 
-#include "GenericReader.h"
+#include "ffmpegReader.h"
 
 #include "FfmpegHandler.h"
 #include "Lut.h"
 
-class FfmpegReaderPlugin : public GenericReaderPlugin {
+FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
+: GenericReaderPlugin(handle)
+, _ffmpegFile(0)
+, _buffer(0)
+, _bufferWidth(0)
+, _bufferHeight(0)
+{
+    ///initialize the manager if it isn't
+    FFmpeg::FileManager::s_readerManager.initialize();
+}
+
+FfmpegReaderPlugin::~FfmpegReaderPlugin() {
+    FFmpeg::FileManager::s_readerManager.release(_ffmpegFile->filename());
     
-    FfmpegFile* _ffmpegFile; //< a ptr to the ffmpeg file, don't delete it the FfmpegFileManager handles their allocation/deallocation
+    FFmpeg::FileManager::s_readerManager.onReaderDeleted(this);
     
-    unsigned char* _buffer;
-    int _bufferWidth;
-    int _bufferHeight;
-    
-public:
-    
-    FfmpegReaderPlugin(OfxImageEffectHandle handle)
-    : GenericReaderPlugin(handle)
-    , _ffmpegFile(0)
-    , _buffer(0)
-    , _bufferWidth(0)
-    , _bufferHeight(0)
-    {
-        ///initialize the manager if it isn't
-        FFmpegFileManager::s_readerManager.initialize();
+    if(_buffer){
+        delete [] _buffer;
     }
+}
+
+void FfmpegReaderPlugin::onFFmpegFileReleased(FFmpeg::File* file) {
     
-    virtual ~FfmpegReaderPlugin() {
-        FFmpegFileManager::s_readerManager.release(_ffmpegFile->filename());
-        
-        if(_buffer){
-            delete [] _buffer;
-        }
+    if(_ffmpegFile == file) {
+        _ffmpegFile = 0;
     }
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
-    
-private:
-    
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const {
-        formats->push_back("avi");
-        formats->push_back("flv");
-        formats->push_back("mov");
-        formats->push_back("mp4");
-        formats->push_back("mkv");
-        formats->push_back("r3d");
-        formats->push_back("bmp");
-        formats->push_back("pix");
-        formats->push_back("dpx");
-        formats->push_back("exr");
-        formats->push_back("jpeg");
-        formats->push_back("jpg");
-        formats->push_back("png");
-        formats->push_back("ppm");
-        formats->push_back("ptx");
-        formats->push_back("tiff");
-        formats->push_back("tga");
-    }
-    
-    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
-    
-    virtual void initializeLut();
-    
-    virtual bool getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range);
-    
-    virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const;
-    
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
-};
+}
 
 
 void FfmpegReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     
     if(paramName == kReaderFileParamName) {
+        
+        if (_ffmpegFile) {
+            ///release the previously used file to free some memory...
+            FFmpeg::FileManager::s_readerManager.release(_ffmpegFile->filename());
+        }
+        
         std::string filename;
         _fileParam->getValue(filename);
-        _ffmpegFile = FFmpegFileManager::s_readerManager.get(filename);
+        _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
         
         if(_ffmpegFile->invalid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
@@ -157,9 +92,29 @@ void FfmpegReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
     }
 }
 
+void FfmpegReaderPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
+    formats->push_back("avi");
+    formats->push_back("flv");
+    formats->push_back("mov");
+    formats->push_back("mp4");
+    formats->push_back("mkv");
+    formats->push_back("r3d");
+    formats->push_back("bmp");
+    formats->push_back("pix");
+    formats->push_back("dpx");
+    formats->push_back("exr");
+    formats->push_back("jpeg");
+    formats->push_back("jpg");
+    formats->push_back("png");
+    formats->push_back("ppm");
+    formats->push_back("ptx");
+    formats->push_back("tiff");
+    formats->push_back("tga");
+}
+
 void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
     
-    _ffmpegFile = FFmpegFileManager::s_readerManager.get(filename);
+    _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
     
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
@@ -210,11 +165,13 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
 }
 
 void FfmpegReaderPlugin::initializeLut() {
+    ///we don't have to call OFX::Color::LutManager::release somewhere because the base-class
+    ///already does it for us.
     _lut = OFX::Color::LutManager::sRGBLut();
 }
 
 bool FfmpegReaderPlugin::getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range) {
-    _ffmpegFile = FFmpegFileManager::s_readerManager.get(filename);
+    _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
     
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
@@ -237,7 +194,7 @@ bool FfmpegReaderPlugin::areHeaderAndDataTied(const std::string& filename,OfxTim
 
 void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
     
-    _ffmpegFile = FFmpegFileManager::s_readerManager.get(filename);
+    _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
     
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());

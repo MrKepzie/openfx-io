@@ -91,6 +91,8 @@ namespace OFX {
         
         // a Singleton that holds precomputed LUTs for the whole application.
         // The m_instance member is static and is thus built before the first call to Instance().
+        // WARNING : This class is not thread-safe and calling getLut must not be done in a function called
+        // by multiple thread at once!
         class Lut;
         class LutManager
         {
@@ -99,7 +101,22 @@ namespace OFX {
                 return m_instance;
             };
             
+            /**
+             * @brief Returns a pointer to a lut with the given name and the given from and to functions.
+             * If a lut with the same name didn't already exist, then it will create one.
+             * WARNING : NOT THREAD-SAFE
+             **/
             static const Lut *getLut(const std::string& name,OfxFromColorSpaceFunctionV1 fromFunc,OfxToColorSpaceFunctionV1 toFunc);
+            
+            /**
+             * @brief Decrement the reference count of the lut of the given name if it was found.
+             * When the ref count of a lut reaches 0 it will delete it.
+             * WARNING : NOT THREAD-SAFE
+             * WARNING: For any call to getLut() their must be a matching call to release() otherwise
+             * the program will crash in the LutManager detructor.
+             * @see ~LutManager()
+             **/
+            static void release(const std::string& name);
             
             ///buit-ins color-spaces
             static const Lut* sRGBLut();
@@ -128,10 +145,16 @@ namespace OFX {
             
             static LutManager m_instance;
             LutManager();
+            
+            ////the luts must all have been released before!
+            ////This is because the Lut holds a OFX::MultiThread::Mutex and it can't be deleted
+            //// by this singleton because it makes their destruction time uncertain regarding to
+            ///the host multi-thread suite.
             ~LutManager();
             
-            std::map<std::string, const Lut *> luts;
-            OFX::MultiThread::Mutex _lock; //< to protect luts
+            //each lut with a ref count mapped against their name
+            typedef std::map<std::string, std::pair< const Lut *, int > > LutsMap;
+            LutsMap luts;
         };
     
 
@@ -195,6 +218,7 @@ namespace OFX {
             
         public:
             
+            const std::string& getName() const { return _name; }
             
             /* @brief Converts a float ranging in [0 - 1.f] in linear color-space using the look-up tables.
              * @return A float in [0 - 1.f] in the destination color-space.

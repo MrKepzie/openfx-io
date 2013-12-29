@@ -64,7 +64,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 }
 
 GenericReaderPlugin::~GenericReaderPlugin(){
-    delete _lut;
+    if(_lut) {
+        OFX::Color::LutManager::release(_lut->getName());
+    }
 }
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
