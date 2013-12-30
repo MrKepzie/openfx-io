@@ -45,7 +45,7 @@
 
 #define kReaderFileParamName "file"
 #define kReaderMissingFrameParamName "onMissingFrame"
-
+#define kReaderTimeOffsetParamName "timeOffset"
 
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
@@ -53,6 +53,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _outputClip(0)
 , _fileParam(0)
 , _missingFrameParam(0)
+, _timeOffset(0)
 , _lut(0)
 , _dstImg(0)
 {
@@ -60,6 +61,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     
     _fileParam = fetchStringParam(kReaderFileParamName);
     _missingFrameParam = fetchChoiceParam(kReaderMissingFrameParamName);
+    _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
     
 #ifdef OFX_EXTENSIONS_NATRON
     std::vector<std::string> fileFormats;
@@ -80,10 +82,15 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     std::string filename;
     _fileParam->getValue(filename);
     
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+    
     ///if the file is a video stream, let the plugin determine the frame range
     ///let the host handle the time domain for the image sequence if getTimeDomain returns false.
-    return getTimeDomain(filename,range);
-    
+    bool ret = getTimeDomain(filename,range);
+    range.min += timeOffset;
+    range.max += timeOffset;
+    return ret;
     
 }
 
@@ -99,11 +106,14 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         return true;
     }
     
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+    
     std::string filename;
-    _fileParam->getValueAtTime(args.time, filename);
+    _fileParam->getValueAtTime(args.time - timeOffset, filename);
     
     ///we want to cache away the rod and the image read from file
-    if(areHeaderAndDataTied(filename,args.time)){
+    if(areHeaderAndDataTied(filename,args.time - timeOffset)){
         
         _dstImg = _outputClip->fetchImage(args.time);
         
@@ -121,7 +131,7 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         
     }else{
         
-        getFrameRegionOfDefinition(filename,args.time,rod);
+        getFrameRegionOfDefinition(filename,args.time - timeOffset,rod);
         
     }
     return true;
@@ -140,9 +150,11 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         initializeLut();
     }
 
-    std::string filename;
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
     
-    _fileParam->getValueAtTime(args.time, filename);
+    std::string filename;
+    _fileParam->getValueAtTime(args.time - timeOffset, filename);
     
     if(filename.empty()){
         int choice;
@@ -153,7 +165,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         return;
     }
     
-    decode(filename, args.time, _dstImg);
+    decode(filename, args.time - timeOffset, _dstImg);
     
     /// flush the cached image
     delete _dstImg;
@@ -175,6 +187,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         refreshMissingFrameParamValue(filename);
     }
 #endif
+    
 }
 
 void GenericReaderPlugin::refreshMissingFrameParamValue(const std::string& currentFile){
@@ -218,6 +231,12 @@ namespace OFX {
             missingFrameParam->setAnimates(false);
             missingFrameParam->setDefault(0); //< default to nearest frame.
             
+            ///////////Time offset
+            OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
+            timeOffsetParam->setLabels("Time Offset", "Time Offset", "Time Offset");
+            timeOffsetParam->setHint("Offset in frames (frame f of the input will be at f + offset).");
+            timeOffsetParam->setDefault(0);
+            timeOffsetParam->setAnimates(false);
             
             
             // create the mandated output clip

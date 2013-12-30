@@ -168,6 +168,7 @@ protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
+    OFX::IntParam* _timeOffset; //< a time offset to apply to sequences/streams
     
     const OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
     
