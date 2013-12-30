@@ -44,6 +44,55 @@
 
 namespace FFmpeg {
     
+    void supportedFileFormats(std::vector<std::string>* formats){
+        formats->push_back("avi");
+        formats->push_back("flv");
+        formats->push_back("mov");
+        formats->push_back("mp4");
+        formats->push_back("mkv");
+        formats->push_back("r3d");
+        formats->push_back("bmp");
+        formats->push_back("pix");
+        formats->push_back("dpx");
+        formats->push_back("exr");
+        formats->push_back("jpeg");
+        formats->push_back("jpg");
+        formats->push_back("png");
+        formats->push_back("ppm");
+        formats->push_back("ptx");
+        formats->push_back("tiff");
+        formats->push_back("tga");
+    }
+    
+    static bool extensionCorrespondToImageFile(const std::string& ext){
+        return ext == "bmp" ||
+            ext == "pix" ||
+            ext == "dpx" ||
+            ext == "exr" ||
+            ext == "jpeg"||
+            ext == "jpg" ||
+            ext == "png" ||
+            ext == "ppm" ||
+            ext == "ptx" ||
+            ext == "tiff" ||
+            ext == "tga";
+    }
+    
+    bool isImageFile(const std::string& filename){
+        ///find the last index of the '.' character
+        size_t lastDot = filename.find_last_of('.');
+        if(lastDot == std::string::npos){ //we reached the start of the file, return false because we can't determine from the extension
+            return false;
+        }
+        std::string ext;
+        while(lastDot < filename.size()){
+            ext.append(1,std::tolower(filename.at(lastDot)));
+            ++lastDot;
+        }
+        return extensionCorrespondToImageFile(ext);
+        
+    }
+    
     File::Stream::Stream()
     : _idx(0)
     , _avstream(NULL)
@@ -346,7 +395,7 @@ namespace FFmpeg {
     
     
     // decode a single frame into the buffer thread safe
-    bool File::decode(unsigned char* buffer, int frame, unsigned streamIdx)
+    bool File::decode(unsigned char* buffer, int frame, bool loadNearest,unsigned streamIdx)
     {
         OFX::MultiThread::AutoMutex guard(_lock);
         
@@ -357,8 +406,23 @@ namespace FFmpeg {
         Stream* stream = _streams[streamIdx];
         
         // Early-out if out-of-range frame requested.
-        if (frame < 0 || frame >= stream->_frames)
-            return false;
+        
+        if (frame < 0){
+            if(loadNearest){
+                frame = 0;
+            }else{
+                throw std::runtime_error("Missing frame");
+                return false;
+            }
+        }
+        if (frame >= stream->_frames){
+            if(loadNearest){
+                frame = (int)stream->_frames - 1;
+            }else{
+                throw std::runtime_error("Missing frame");
+                return false;
+            }
+        }
         
         // Number of read retries remaining when decode stall is detected before we give up (in the case of post-seek stalls,
         // such retries are applied only after we've searched all the way back to the start of the file and failed to find a
@@ -655,22 +719,10 @@ namespace FFmpeg {
     
     FileManager::~FileManager() {
         for (FilesMap::iterator it = _files.begin(); it!= _files.end(); ++it) {
-            ///notify all active readers that a file was removed
-            for (unsigned int i = 0; i < _activeReaders.size(); ++i) {
-                _activeReaders[i]->onFFmpegFileReleased(it->second);
-            }
             delete it->second;
         }
     }
-    
-    void FileManager::onReaderDeleted(FfmpegReaderPlugin* reader) {
-        for (unsigned int i = 0; i < _activeReaders.size(); ++i) {
-            if(_activeReaders[i] == reader){
-                _activeReaders.erase(_activeReaders.begin()+i);
-                return;
-            }
-        }
-    }
+
     
     int FileManager::FFmpegLockManager(void** mutex, enum AVLockOp op)
     {
@@ -729,15 +781,11 @@ namespace FFmpeg {
     }
     
     // get a specific reader
-    File* FileManager::get(const std::string& filename,FfmpegReaderPlugin* reader)
+    File* FileManager::get(const std::string& filename)
     {
         
         assert(_isLoaded);
         OFX::MultiThread::AutoMutex g(*_lock);
-     
-        ///register this reader has having called the get function
-        _activeReaders.push_back(reader);
-        
         FilesMap::iterator it = _files.find(filename);
         if (it == _files.end()) {
             std::pair<FilesMap::iterator,bool> ret = _files.insert(std::make_pair(std::string(filename), new File(filename)));
@@ -748,26 +796,6 @@ namespace FFmpeg {
             return it->second;
         }
     }
-    
-    // release a specific reader
-    void FileManager::release(const std::string& filename)
-    {
-        assert(_isLoaded);
-        OFX::MultiThread::AutoMutex g(*_lock);
-        FilesMap::iterator it = _files.find(filename);
-        
-        if (it != _files.end()) {
-            
-            ///notify all active readers that a file was removed
-            for (unsigned int i = 0; i < _activeReaders.size(); ++i) {
-                _activeReaders[i]->onFFmpegFileReleased(it->second);
-            }
-
-            delete it->second;
-            _files.erase(it);
-        }
-        
-        }
     
     
 } //namespace FFmpeg

@@ -116,31 +116,16 @@ namespace OFX {
             
             LutsMap::iterator found = LutManager::m_instance.luts.find(name);
             if (found != LutManager::m_instance.luts.end()) {
-                ++found->second.second; //< increase the ref count
-                return found->second.first;
+                return found->second;
             }else{
                 std::pair<LutsMap::iterator,bool> ret =
-                LutManager::m_instance.luts.insert(std::make_pair(name,std::make_pair(new Lut(name,fromFunc,toFunc),0)));
+                LutManager::m_instance.luts.insert(std::make_pair(name,new Lut(name,fromFunc,toFunc)));
                 assert(ret.second);
-                return ret.first->second.first;
+                return ret.first->second;
             }
             return NULL;
         }
         
-        void LutManager::release(const std::string& name) {
-            LutsMap::iterator found = LutManager::m_instance.luts.find(name);
-            if (found != LutManager::m_instance.luts.end()) {
-                
-                //decrease ref count
-                --found->second.second;
-                
-                //delete if ref count reaches 0
-                if(found->second.second == 0) {
-                    delete found->second.first;
-                    LutManager::m_instance.luts.erase(found);
-                }
-            }
-        }
         
         LutManager::~LutManager()
         {
@@ -149,8 +134,11 @@ namespace OFX {
             ////This is because the Lut holds a OFX::MultiThread::Mutex and it can't be deleted
             //// by this singleton because it makes their destruction time uncertain regarding to
             ///the host multi-thread suite.
-            assert(luts.empty());
+            for (LutsMap::iterator it = luts.begin(); it!=luts.end(); ++it) {
+                delete it->second;
+            }
         }
+        
 
    
         void clip(OfxRectI* what,const OfxRectI& to){
@@ -222,13 +210,13 @@ namespace OFX {
         float Lut::toColorSpaceFloatFromLinearFloatFast(float v) const
         {
             validate();
-            return (float)to_byte_table[hipart(v)] / 255.f;
+            return (float)to_byte_table[hipart(v)] / 65535.f;
         }
         
         unsigned char Lut::toColorSpaceByteFromLinearFloatFast(float v) const
         {
             validate();
-            return to_byte_table[hipart(v)];
+            return to_byte_table[hipart(v)] / 255;
         }
         
         

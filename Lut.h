@@ -179,7 +179,7 @@ namespace OFX {
             ~LutManager();
             
             //each lut with a ref count mapped against their name
-            typedef std::map<std::string, std::pair< const Lut *, int > > LutsMap;
+            typedef std::map<std::string,const Lut *> LutsMap;
             LutsMap luts;
         };
     

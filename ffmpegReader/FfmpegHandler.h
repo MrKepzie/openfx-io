@@ -65,9 +65,12 @@ return;\
 }\
 }\
 
-class FfmpegReaderPlugin;
 
 namespace FFmpeg {
+    
+    void supportedFileFormats(std::vector<std::string>* formats);
+    
+    bool isImageFile(const std::string& filename);
     
     
     class File;
@@ -76,9 +79,6 @@ namespace FFmpeg {
     {
         typedef std::map<std::string, File*> FilesMap;
         FilesMap _files;
-        
-        std::vector<FfmpegReaderPlugin*> _activeReaders; //< ptr to all readers that called get() once
-        
         
         // internal lock
         OFX::MultiThread::Mutex *_lock;
@@ -102,12 +102,9 @@ namespace FFmpeg {
         void initialize();
         
         // get a specific reader
-        File* get(const std::string& filename,FfmpegReaderPlugin* reader);
+        File* get(const std::string& filename);
         
-        // release a specific reader
-        void release(const std::string& filename);
         
-        void onReaderDeleted(FfmpegReaderPlugin* reader);
     };
 
     
@@ -224,7 +221,7 @@ namespace FFmpeg {
         }
         
         // decode a single frame into the buffer thread safe
-        bool decode(unsigned char* buffer, int frame, unsigned streamIdx = 0);
+        bool decode(unsigned char* buffer, int frame,bool loadNearest, unsigned streamIdx = 0);
         
         // get stream information
         bool info( int& width,

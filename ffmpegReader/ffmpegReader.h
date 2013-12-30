@@ -61,10 +61,15 @@ public:
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
-    ///called by the factory when it releases a file to prevent double free corruption.
-    void onFFmpegFileReleased(FFmpeg::File* file);
+    bool loadNearestFrame() const;
     
 private:
+    
+    FFmpeg::File* getFile(const std::string& filename) const;
+    
+    virtual bool isVideoStream(const std::string& filename);
+    
+    virtual void onInputFileChanged(const std::string& filename);
     
     virtual void supportedFileFormats(std::vector<std::string>* formats) const;
     
@@ -72,7 +77,7 @@ private:
     
     virtual void initializeLut();
     
-    virtual bool getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range);
+    virtual bool getTimeDomain(const std::string& filename,OfxRangeD &range);
     
     virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const;
     

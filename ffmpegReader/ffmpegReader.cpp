@@ -55,68 +55,49 @@ FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
 }
 
 FfmpegReaderPlugin::~FfmpegReaderPlugin() {
-    if(_ffmpegFile){
-        FFmpeg::FileManager::s_readerManager.release(_ffmpegFile->filename());
-    }
-    
-    FFmpeg::FileManager::s_readerManager.onReaderDeleted(this);
     
     if(_buffer){
         delete [] _buffer;
     }
 }
 
-void FfmpegReaderPlugin::onFFmpegFileReleased(FFmpeg::File* file) {
-    
-    if(_ffmpegFile == file) {
-        _ffmpegFile = 0;
+bool FfmpegReaderPlugin::loadNearestFrame() const {
+    int v;
+    _missingFrameParam->getValue(v);
+    return v == 0;
+}
+
+FFmpeg::File* FfmpegReaderPlugin::getFile(const std::string& filename) const {
+    if(_ffmpegFile && _ffmpegFile->filename() == filename){
+        return _ffmpegFile;
     }
+    return FFmpeg::FileManager::s_readerManager.get(filename);
 }
 
 
 void FfmpegReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    
-    if(paramName == kReaderFileParamName) {
-        
-        if (_ffmpegFile) {
-            ///release the previously used file to free some memory...
-            FFmpeg::FileManager::s_readerManager.release(_ffmpegFile->filename());
-        }
-        
-        std::string filename;
-        _fileParam->getValue(filename);
-        _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
-        
-        if(_ffmpegFile->invalid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
-            return;
-        }
+    GenericReaderPlugin::changedParam(args, paramName);
+}
+
+void FfmpegReaderPlugin::onInputFileChanged(const std::string& filename) {
+    _ffmpegFile = getFile(filename);
+    if(_ffmpegFile->invalid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+        return;
     }
 }
 
+bool FfmpegReaderPlugin::isVideoStream(const std::string& filename){
+    return !FFmpeg::isImageFile(filename);
+}
+
 void FfmpegReaderPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
-    formats->push_back("avi");
-    formats->push_back("flv");
-    formats->push_back("mov");
-    formats->push_back("mp4");
-    formats->push_back("mkv");
-    formats->push_back("r3d");
-    formats->push_back("bmp");
-    formats->push_back("pix");
-    formats->push_back("dpx");
-    formats->push_back("exr");
-    formats->push_back("jpeg");
-    formats->push_back("jpg");
-    formats->push_back("png");
-    formats->push_back("ppm");
-    formats->push_back("ptx");
-    formats->push_back("tiff");
-    formats->push_back("tga");
+    FFmpeg::supportedFileFormats(formats);
 }
 
 void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
     
-    _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
+    _ffmpegFile = getFile(filename);
     
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
@@ -149,9 +130,18 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
         _bufferWidth = width;
     }
     
-    
-    if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5))) { //< round the time to an int to get a frame number ? Not sure about this
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+    //< round the time to an int to get a frame number ? Not sure about this
+    try{
+        if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5),loadNearestFrame())) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+        }
+    }catch(const std::exception& e){
+        int choice;
+        _missingFrameParam->getValue(choice);
+        if(choice == 1){ //error
+            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        }
+        return;
     }
     
     ///we (aka the GenericReader) only support float bit depth
@@ -172,20 +162,25 @@ void FfmpegReaderPlugin::initializeLut() {
     _lut = OFX::Color::LutManager::sRGBLut();
 }
 
-bool FfmpegReaderPlugin::getTimeDomainForVideoStream(const std::string& filename,OfxRangeD &range) {
-    _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
+bool FfmpegReaderPlugin::getTimeDomain(const std::string& filename,OfxRangeD &range) {
     
-    if(_ffmpegFile->invalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+    if(!FFmpeg::isImageFile(filename)){
+        _ffmpegFile = getFile(filename);
+        
+        if(_ffmpegFile->invalid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+            return false;
+        }
+        
+        int width,height,frames;
+        double ap;
+        _ffmpegFile->info(width, height, ap, frames);
+        range.min = 0;
+        range.max = frames - 1;
+        return true;
+    }else{
         return false;
     }
-    
-    int width,height,frames;
-    double ap;
-    _ffmpegFile->info(width, height, ap, frames);
-    range.min = 0;
-    range.max = frames - 1;
-    return true;
     
 }
 
@@ -196,7 +191,7 @@ bool FfmpegReaderPlugin::areHeaderAndDataTied(const std::string& filename,OfxTim
 
 void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
     
-    _ffmpegFile = FFmpeg::FileManager::s_readerManager.get(filename,this);
+    _ffmpegFile = getFile(filename);
     
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());

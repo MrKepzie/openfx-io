@@ -48,9 +48,6 @@ namespace OFX {
     }
 }
 
-#define kReaderFileParamName "file"
-
-
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 
@@ -111,6 +108,13 @@ public:
 protected:
     
     /**
+     * @brief Override if you want to do something when the input image/video file changed.
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     **/
+    virtual void onInputFileChanged(const std::string& /*newFile*/) {}
+    
+    /**
      * @brief Should append in formats the list of the format this plug-in can decode.
      * For example "png" , "jpg" , etc...
      **/
@@ -137,10 +141,10 @@ protected:
     virtual void initializeLut()  = 0;
     
     /**
-     * @brief Override to indicate the time domain of a video stream. Return false if you know that the
+     * @brief Override to indicate the time domain. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getTimeDomainForVideoStream(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
+    virtual bool getTimeDomain(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
     
     /**
      * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its
@@ -148,6 +152,12 @@ protected:
      **/
     virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const = 0;
     
+    /**
+     * @brief Should return true if the file indicated by filename is a video-stream and not 
+     * a single image file.
+     **/
+    virtual bool isVideoStream(const std::string& filename) = 0;
+        
     /**
      * @brief Overload this function to exctract the region of definition out of the header
      * of the image targeted by the filename. 
@@ -157,6 +167,7 @@ protected:
     
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
+    OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
     
     const OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
     
@@ -165,6 +176,7 @@ private:
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded
 
+    void refreshMissingFrameParamValue(const std::string& currentFile);
 };
 
 
