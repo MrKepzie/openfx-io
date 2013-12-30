@@ -169,11 +169,12 @@ namespace OFX {
         }
         
         bool intersects(const OfxRectI& what,const OfxRectI& other){
-            return (what.x2 >= other.x1 && what.x1 < other.x1 ) ||
-            ( what.x1 < other.x2 && what.x2 >= other.x2) ||
-            ( what.y2 >= other.y1 && what.y1 < other.y1) ||
-            ( what.y1 < other.y2 && what.y2 >= other.y2);
+            return (what.x2 >= other.x1 && what.x2 <= other.x2 ) ||
+            ( what.x1 < other.x2 && what.x1 >= other.x1) ||
+            ( what.y2 >= other.y1 && what.y2 <= other.y2) ||
+            ( what.y1 < other.y2 && what.y1 >= other.y1);
         }
+
         
         void getOffsetsForPacking(PixelPacking format, int *r, int *g, int *b, int *a)
         {
@@ -212,16 +213,23 @@ namespace OFX {
         }
         
         
-        float Lut::fromFloatFast(float v) const
+        float Lut::fromColorSpaceFloatToLinearFloatFast(float v) const
         {
+            validate();
             return from_byte_table[(int)(v * 255)];
         }
         
-        float Lut::toFloatFast(float v) const
+        float Lut::toColorSpaceFloatFromLinearFloatFast(float v) const
         {
+            validate();
             return (float)to_byte_table[hipart(v)] / 255.f;
         }
         
+        unsigned char Lut::toColorSpaceByteFromLinearFloatFast(float v) const
+        {
+            validate();
+            return to_byte_table[hipart(v)];
+        }
         
         
         
@@ -251,9 +259,9 @@ namespace OFX {
             
         }
         
-        void Lut::to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha,int delta) const {
+        void Lut::to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha,int inDelta, int outDelta) const {
             validate();
-            unsigned char *end = to + W * delta;
+            unsigned char *end = to + W * outDelta;
             int start = rand() % W;
             const float *q;
             unsigned char *p;
@@ -261,15 +269,14 @@ namespace OFX {
             if(!alpha){
                 /* go fowards from starting point to end of line: */
                 error = 0x80;
-                for (p = to + start * delta, q = from + start; p < end; p += delta) {
+                for (p = to + start * outDelta, q = from + start * inDelta; p < end; p += outDelta , q += inDelta) {
                     error = (error & 0xff) + to_byte_table[hipart(*q)];
-                    ++q;
                     *p = (unsigned char)(error >> 8);
                 }
                 /* go backwards from starting point to start of line: */
                 error = 0x80;
-                for (p = to + (start - 1) * delta, q = from + start; p >= to; p -= delta) {
-                    --q;
+                for (p = to + (start - 1) * outDelta, q = from + start * inDelta; p >= to; p -= outDelta) {
+                    q -= inDelta;
                     error = (error & 0xff) + to_byte_table[hipart(*q)];
                     *p = (unsigned char)(error >> 8);
                 }
@@ -277,42 +284,41 @@ namespace OFX {
                 const float *a = alpha;
                 /* go fowards from starting point to end of line: */
                 error = 0x80;
-                for (p = to + start * delta, q = from + start, a += start; p < end; p += delta) {
+                for (p = to + start * outDelta, q = from + start * inDelta, a += start * inDelta; p < end; p += outDelta, q += inDelta, a+= inDelta) {
                     const float v = *q * *a;
                     error = (error & 0xff) + to_byte_table[hipart(v)];
-                    ++q;
                     ++a;
                     *p = (unsigned char)(error >> 8);
                 }
                 /* go backwards from starting point to start of line: */
                 error = 0x80;
-                for (p = to + (start - 1) * delta, q = from + start , a = alpha + start; p >= to; p -= delta) {
+                for (p = to + (start - 1) * outDelta, q = from + start * inDelta , a = alpha + start * inDelta; p >= to; p -= outDelta) {
                     const float v = *q * *a;
-                    --q;
-                    --a;
+                    q -= inDelta;
+                    q -= inDelta;
                     error = (error & 0xff) + to_byte_table[hipart(v)];
                     *p = (unsigned char)(error >> 8);
                 }
-
+                
             }
 
         }
         
-        void Lut::to_short_planar(unsigned short* to, const float* from,int W,const float* alpha ,int delta) const {
+        void Lut::to_short_planar(unsigned short* to, const float* from,int W,const float* alpha ,int inDelta,int outDelta) const {
             
             throw std::runtime_error("Lut::to_short_planar not implemented yet.");
         }
         
-        void Lut::to_float_planar(float* to, const float* from,int W,const float* alpha ,int delta) const {
+        void Lut::to_float_planar(float* to, const float* from,int W,const float* alpha ,int inDelta,int outDelta) const {
             
             validate();
             if(!alpha){
-                for (int i = 0; i < W; i += delta) {
-                    to[i] = toFloatFast(from[i]);
+                for (int f = 0,t = 0; f < W; f += inDelta, t+= outDelta) {
+                    to[t] = toColorSpaceFloatFromLinearFloatFast(from[f]);
                 }
             }else{
-                for (int i = 0; i < W; i += delta) {
-                    to[i] = toFloatFast(from[i] * alpha[i]);
+                for (int f = 0,t = 0; f < W; f += inDelta, t+= outDelta) {
+                    to[t] = toColorSpaceFloatFromLinearFloatFast(from[f] * alpha[f]);
                 }
             }
         }
@@ -449,9 +455,9 @@ namespace OFX {
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
                     float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;;
-                    dst_pixels[outCol + outROffset] = toFloatFast(src_pixels[inCol + inROffset] * a);
-                    dst_pixels[outCol + outGOffset] = toFloatFast(src_pixels[inCol + inGOffset] * a);
-                    dst_pixels[outCol + outBOffset] = toFloatFast(src_pixels[inCol + inBOffset] * a);
+                    dst_pixels[outCol + outROffset] = toColorSpaceFloatFromLinearFloatFast(src_pixels[inCol + inROffset] * a);
+                    dst_pixels[outCol + outGOffset] = toColorSpaceFloatFromLinearFloatFast(src_pixels[inCol + inGOffset] * a);
+                    dst_pixels[outCol + outBOffset] = toColorSpaceFloatFromLinearFloatFast(src_pixels[inCol + inBOffset] * a);
                     if(outputHasAlpha) {
                         dst_pixels[outCol + outAOffset] = a;
                     }
@@ -462,37 +468,37 @@ namespace OFX {
         
       
         
-        void Lut::from_byte_planar(float* to,const unsigned char* from,int W,const unsigned char* alpha ,int delta) const {
+        void Lut::from_byte_planar(float* to,const unsigned char* from,int W,const unsigned char* alpha ,int inDelta,int outDelta) const {
             
             validate();
             if(!alpha){
-                for (int i = 0 ; i < W ; i += delta) {
-                    to[i] = from_byte_table[(int)from[i]];
+                for (int f = 0,t = 0 ; f < W ; f += inDelta, t += outDelta) {
+                    to[f] = from_byte_table[(int)from[f]];
                 }
             }else{
-                for (int i = 0 ; i < W ; i += delta) {
-                    to[i] = from_byte_table[(from[i]*255 + 128) / alpha[i]] * alpha[i] / 255.;
+                for (int f = 0,t = 0 ; f < W ; f += inDelta, t += outDelta) {
+                    to[t] = from_byte_table[(from[f]*255 + 128) / alpha[f]] * alpha[f] / 255.;
                 }
             }
             
         }
         
-        void Lut::from_short_planar(float* to,const unsigned short* from,int W,const unsigned short* alpha ,int delta) const {
+        void Lut::from_short_planar(float* to,const unsigned short* from,int W,const unsigned short* alpha ,int inDelta,int outDelta) const {
             
             throw std::runtime_error("Lut::from_short_planar not implemented yet.");
         }
         
-        void Lut::from_float_planar(float* to,const float* from,int W,const float* alpha ,int delta) const {
+        void Lut::from_float_planar(float* to,const float* from,int W,const float* alpha ,int inDelta,int outDelta) const {
             
             validate();
             if(!alpha){
-                for (int i = 0; i < W; i += delta) {
-                    to[i] = fromFloatFast(from[i]);
+                for (int f = 0,t = 0 ; f < W ; f += inDelta, t += outDelta) {
+                    to[t] = fromColorSpaceFloatToLinearFloatFast(from[f]);
                 }
             }else{
-                for (int i = 0; i < W; i += delta) {
-                    float a = alpha[i];
-                    to[i] = fromFloatFast(from[i] / a) * a;
+                for (int f = 0,t = 0 ; f < W ; f += inDelta, t += outDelta) {
+                    float a = alpha[f];
+                    to[t] = fromColorSpaceFloatToLinearFloatFast(from[f] / a) * a;
                 }
             }
         }
@@ -601,9 +607,9 @@ namespace OFX {
                     int inCol = x * inPackingSize;
                     int outCol = x * outPackingSize;
                     float a = (inputHasAlpha && premult) ? src_pixels[inCol + inAOffset] : 1.f;;
-                    dst_pixels[outCol + outROffset] = fromFloatFast((src_pixels[inCol + inROffset] / a) * 255.f) * a;
-                    dst_pixels[outCol + outGOffset] = fromFloatFast((src_pixels[inCol + inGOffset] / a) * 255.f) * a;
-                    dst_pixels[outCol + outBOffset] = fromFloatFast((src_pixels[inCol + inBOffset] /a) * 255.f) * a;
+                    dst_pixels[outCol + outROffset] = fromColorSpaceFloatToLinearFloatFast((src_pixels[inCol + inROffset] / a) * 255.f) * a;
+                    dst_pixels[outCol + outGOffset] = fromColorSpaceFloatToLinearFloatFast((src_pixels[inCol + inGOffset] / a) * 255.f) * a;
+                    dst_pixels[outCol + outBOffset] = fromColorSpaceFloatToLinearFloatFast((src_pixels[inCol + inBOffset] /a) * 255.f) * a;
                     if(outputHasAlpha) {
                         dst_pixels[outCol + outAOffset] = a;
                     }
@@ -618,30 +624,32 @@ namespace OFX {
         
         namespace Linear {
             
-            void from_byte_planar(float *to, const unsigned char *from, int W, int delta)
+            void from_byte_planar(float *to, const unsigned char *from, int W, int inDelta,int outDelta)
             {
-                from += (W - 1) * delta;
-                to += W;
-                for (; --W >= 0; from -= delta) {
-                    *--to = Linear::toFloat(*from);
+                from += (W - 1) * inDelta;
+                to += W * outDelta;
+                for (; --W >= 0; from -= inDelta) {
+                    to -= outDelta;
+                    *to = Linear::toFloat(*from);
                 }
             }
             
-            void from_short_planar(float *to, const unsigned short *from, int W,  int delta)
+            void from_short_planar(float *to, const unsigned short *from, int W,  int inDelta,int outDelta)
             {
-                for (int i = 0; i < W; i += delta) {
-                    to[i] = Linear::toFloat(from[i]);
+                for (int f = 0,t = 0 ; f < W ; f += inDelta, t += outDelta) {
+                    to[t] = Linear::toFloat(from[f]);
                 }
+                
                 
             }
             
-            void from_float_planar(float *to, const float *from, int W, int delta)
+            void from_float_planar(float *to, const float *from, int W, int inDelta,int outDelta)
             {
-                if(delta == 1){
+                if(inDelta == 1 && outDelta == 1){
                     memcpy(to, from, W*sizeof(float));
                 }else{
-                    for (int i = 0; i < W; i += delta) {
-                        to[i] = from[i];
+                    for (int f = 0,t = 0 ; f < W ; f += inDelta, t += outDelta) {
+                        to[t] = from[f];
                     }
                 }
             }
@@ -775,17 +783,17 @@ namespace OFX {
                 }
             }
             
-            void to_byte_planar(unsigned char *to, const float *from, int W,const float* alpha, int delta)
+            void to_byte_planar(unsigned char *to, const float *from, int W,const float* alpha, int inDelta,int outDelta)
             {
                 if(!alpha){
-                    unsigned char *end = to + W * delta;
+                    unsigned char *end = to + W * outDelta;
                     int start = rand() % W;
                     const float *q;
                     unsigned char *p;
                     /* go fowards from starting point to end of line: */
                     float error = .5;
-                    for (p = to + start * delta, q = from + start; p < end; p += delta) {
-                        float G = error + *q++ * 255.0f;
+                    for (p = to + start * outDelta, q = from + start * inDelta; p < end; p += outDelta , q += inDelta) {
+                        float G = error + *q * 255.0f;
                         if (G <= 0) {
                             *p = 0;
                         } else if (G < 255) {
@@ -798,8 +806,9 @@ namespace OFX {
                     }
                     /* go backwards from starting point to start of line: */
                     error = .5;
-                    for (p = to + (start - 1) * delta, q = from + start; p >= to; p -= delta) {
-                        float G = error + *--q * 255.0f;
+                    for (p = to + (start - 1) * outDelta, q = from + start * inDelta; p >= to; p -= outDelta) {
+                        q -= inDelta;
+                        float G = error + *q * 255.0f;
                         if (G <= 0) {
                             *p = 0;
                         } else if (G < 255) {
@@ -811,18 +820,17 @@ namespace OFX {
                         }
                     }
                 }else{
-                    unsigned char *end = to + W * delta;
+                    unsigned char *end = to + W * outDelta;
                     int start = rand() % W;
                     const float *q;
                     const float *a = alpha;
                     unsigned char *p;
                     /* go fowards from starting point to end of line: */
                     float error = .5;
-                    for (p = to + start * delta, q = from + start, a += start; p < end; p += delta) {
+                    for (p = to + start * outDelta, q = from + start * inDelta, a += start * inDelta; p < end;
+                         p += outDelta, q += inDelta, a += inDelta) {
                         float v = *q * *a;
                         float G = error + v * 255.0f;
-                        ++q;
-                        ++a;
                         if (G <= 0) {
                             *p = 0;
                         } else if (G < 255) {
@@ -835,11 +843,11 @@ namespace OFX {
                     }
                     /* go backwards from starting point to start of line: */
                     error = .5;
-                    for (p = to + (start - 1) * delta, q = from + start, a = alpha + start; p >= to; p -= delta) {
+                    for (p = to + (start - 1) * outDelta, q = from + start * inDelta, a = alpha + start * inDelta; p >= to; p -= outDelta) {
+                        q -= inDelta;
+                        a -= inDelta;
                         const float v = *q * *a;
                         float G = error + v * 255.0f;
-                        --q;
-                        --a;
                         if (G <= 0) {
                             *p = 0;
                         } else if (G < 255) {
@@ -856,35 +864,34 @@ namespace OFX {
             
             
             
-            void to_short_planar(unsigned short *to, const float *from, int W, const float* alpha ,int delta)
+            void to_short_planar(unsigned short *to, const float *from, int W, const float* alpha ,int inDelta,int outDelta)
             {
                 (void)to;
                 (void)from;
                 (void)W;
                 (void)alpha;
-                (void)delta;
+                (void)inDelta;
+                (void)outDelta;
                 throw std::runtime_error("Linear::to_short_planar not yet implemented.");
             }
             
             
-            void to_float_planar(float *to, const float *from, int W,const float* alpha ,int delta)
+            void to_float_planar(float *to, const float *from, int W,const float* alpha ,int inDelta,int outDelta)
             {
                 if(!alpha){
-                    (void)delta;
-                    if (delta == 1) {
+                    if (inDelta == 1 && outDelta == 1) {
                         memcpy(to, from, W * sizeof(float));
                     } else {
-                        for (int i = 0; i < W; i += delta) {
-                            to[i] = from[i];
+                        for (int f = 0,t = 0; f < W; f += inDelta, t += outDelta) {
+                            to[t] = from[f];
                         }
                     }
                 }else{
-                    for (int i = 0; i < W; i += delta) {
-                        to[i] = from[i] * alpha[i];
+                    for (int f = 0,t = 0; f < W; f += inDelta, t += outDelta) {
+                        to[t] = from[f] * alpha[f];
                     }
                 }
             }
-            
             void to_byte_packed(unsigned char* to, const float* from,const OfxRectI& conversionRect,
                                         const OfxRectI& srcRoD,const OfxRectI& dstRoD,
                                         PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult)

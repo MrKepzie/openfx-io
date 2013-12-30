@@ -34,6 +34,32 @@
  
  */
 
+
+/*
+ *
+ * High-speed conversion between 8 bit and floating point image data.
+ *
+ * Copyright 2002 Bill Spitzak and Digital Domain, Inc.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+ * USA.
+ *
+ * For use in closed-source software please contact Digital Domain,
+ * 300 Rose Avenue, Venice, CA 90291 310-314-2800
+ *
+ */
 #ifndef Support_ofxsColorSpace_h
 #define Support_ofxsColorSpace_h
 
@@ -223,12 +249,17 @@ namespace OFX {
             /* @brief Converts a float ranging in [0 - 1.f] in linear color-space using the look-up tables.
              * @return A float in [0 - 1.f] in the destination color-space.
              */
-            float toFloatFast(float v) const;
+            float toColorSpaceFloatFromLinearFloatFast(float v) const;
+            
+            /* @brief Converts a float ranging in [0 - 1.f] in linear color-space using the look-up tables.
+             * @return A byte in [0 - 255] in the destination color-space.
+             */
+            unsigned char toColorSpaceByteFromLinearFloatFast(float v) const;
             
             /* @brief Converts a float ranging in [0 - 1.f] in the destination color-space using the look-up tables.
              * @return A float in [0 - 1.f] in linear color-space.
              */
-            float fromFloatFast(float v) const;
+            float fromColorSpaceFloatToLinearFloatFast(float v) const;
         
             
             /////@TODO the following functions expects a float input buffer, one could extend it to cover all bitdepths.
@@ -239,14 +270,18 @@ namespace OFX {
              * artifacts.
              *
              * \a W is the number of pixels to convert.
-             * \a delta is the distance between the output bytes
-             * (useful for interlacing them into a packed-pixels buffer).
+             * \a inDelta is the distance between the input elements
+             * \a outDelta is the distance between the output elements
+             * The delta parameters are useful for:
+              - interlacing a planar input buffer into a packed buffer.
+              - deinterlacing a packed input buffer into a planar buffer.
+             
              * \a alpha is a pointer to an extra alpha planar buffer if you want to premultiply by alpha the from channel.
              * The input and output buffers must not overlap in memory.
              **/
-            void to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha = NULL,int delta = -1) const;
-            void to_short_planar(unsigned short* to, const float* from,int W,const float* alpha = NULL,int delta = -1) const;
-            void to_float_planar(float* to, const float* from,int W,const float* alpha = NULL,int delta = -1) const;
+            void to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1) const;
+            void to_short_planar(unsigned short* to, const float* from,int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1) const;
+            void to_float_planar(float* to, const float* from,int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1) const;
             
             
             /**
@@ -292,19 +327,23 @@ namespace OFX {
              * @brief Convert from a buffer in the input color-space to the output color-space.
              *
              * \a W is the number of pixels to convert.
-             * \a delta is the distance between the output bytes
-             * (useful for interlacing them).
+             * \a inDelta is the distance between the input elements
+             * \a outDelta is the distance between the output elements
+             * The delta parameters are useful for:
+             - interlacing a planar input buffer into a packed buffer.
+             - deinterlacing a packed input buffer into a planar buffer.
+             
              * \a alpha is a pointer to an extra planar buffer being the alpha channel of the image.
              * If the image was stored with premultiplication on, it will then unpremultiply by alpha
              * before doing the color-space conversion, and the multiply back by alpha.
              * The input and output buffers must not overlap in memory.
              **/
             void from_byte_planar(float* to,const unsigned char* from,
-                                          int W,const unsigned char* alpha = NULL,int delta = -1) const;
+                                          int W,const unsigned char* alpha = NULL,int inDelta = 1, int outDelta = 1) const;
             void from_short_planar(float* to,const unsigned short* from,
-                                           int W,const unsigned short* alpha = NULL,int delta = -1) const;
+                                           int W,const unsigned short* alpha = NULL,int inDelta = 1, int outDelta = 1) const;
             void from_float_planar(float* to,const float* from,
-                                           int W,const float* alpha = NULL,int delta = -1) const;
+                                           int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1) const;
             
             
             /**
@@ -367,14 +406,18 @@ namespace OFX {
              * artifacts.
              *
              * \a W is the number of pixels to convert.
-             * \a delta is the distance between the output bytes
-             * (useful for interlacing them).
+             * \a inDelta is the distance between the input elements
+             * \a outDelta is the distance between the output elements
+             * The delta parameters are useful for:
+             - interlacing a planar input buffer into a packed buffer.
+             - deinterlacing a packed input buffer into a planar buffer.
+             
              * \a alpha is a pointer to an extra alpha planar buffer if you want to premultiply by alpha the from channel.
              * The input and output buffers must not overlap in memory.
              **/
-            void to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha = NULL,int delta = -1);
-            void to_short_planar(unsigned short* to, const float* from,int W,const float* alpha = NULL,int delta = -1);
-            void to_float_planar(float* to, const float* from,int W,const float* alpha = NULL,int delta = -1);
+            void to_byte_planar(unsigned char* to, const float* from,int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1);
+            void to_short_planar(unsigned short* to, const float* from,int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1);
+            void to_float_planar(float* to, const float* from,int W,const float* alpha = NULL,int inDelta = 1, int outDelta = 1);
             
             
             /**
@@ -417,14 +460,22 @@ namespace OFX {
             /**
              * @brief Convert from a buffer in the input color-space to the output color-space.
              *
-             * \a W is the number of pixels to convert.  \a delta is the distance
-             * between the output bytes (useful for interlacing them).
+             * \a W is the number of pixels to convert.
+             * \a inDelta is the distance between the input elements
+             * \a outDelta is the distance between the output elements
+             * The delta parameters are useful for:
+             - interlacing a planar input buffer into a packed buffer.
+             - deinterlacing a packed input buffer into a planar buffer.
+             
+             * \a alpha is a pointer to an extra planar buffer being the alpha channel of the image.
+             * If the image was stored with premultiplication on, it will then unpremultiply by alpha
+             * before doing the color-space conversion, and the multiply back by alpha.
              * The input and output buffers must not overlap in memory.
              **/
             
-            void from_byte_planar(float* to,const unsigned char* from, int W,int delta = -1);
-            void from_short_planar(float* to,const unsigned short* from,int W,int delta = -1);
-            void from_float_planar(float* to,const float* from,int W,int delta = -1);
+            void from_byte_planar(float* to,const unsigned char* from, int W,int inDelta = 1, int outDelta = 1);
+            void from_short_planar(float* to,const unsigned short* from,int W,int inDelta = 1, int outDelta = 1);
+            void from_float_planar(float* to,const float* from,int W,int inDelta = 1, int outDelta = 1);
             
             
             /**
