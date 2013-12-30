@@ -56,9 +56,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 #ifdef OFX_EXTENSIONS_NATRON
     std::vector<std::string> fileFormats;
     for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        getPropertySet().propSetString(kOfxImageEffectPropFormatsDecoded, fileFormats[i], i,true);
-        
+        getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
     }
+    getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
 #endif
     
 }
