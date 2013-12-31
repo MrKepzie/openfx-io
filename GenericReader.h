@@ -104,6 +104,13 @@ public:
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+    /**
+     * @brief Should append in formats the list of the format this plug-in can decode.
+     * For example "png" , "jpg" , etc...
+     * You must call this function in the createInstance() function of the plugin's factory.
+     * See the implementation in ffmpegReader.cpp for an example on how to do this.
+     **/
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
 protected:
     
@@ -114,11 +121,6 @@ protected:
      **/
     virtual void onInputFileChanged(const std::string& /*newFile*/) {}
     
-    /**
-     * @brief Should append in formats the list of the format this plug-in can decode.
-     * For example "png" , "jpg" , etc...
-     **/
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
@@ -127,7 +129,7 @@ protected:
      * bitdepth of the dstImg. You can inform the host of the bitdepth you support in the describe() function.
      * Note that many hosts work with linear colors and we intend that this function transfer from the
      * image file's color-space to linear. To help you do this you can use the color-space conversion
-     * suite written for this purpose.
+     * class (Lut) written for this purpose.
      * You can always skip the color-space conversion, but for all linear hosts it would produce either
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.
@@ -196,7 +198,7 @@ namespace OFX
          * add the common properties to all readers. See definition for more explanation.
          **/
         void describeGenericReader(OFX::ImageEffectDescriptor& desc);
-    };
-};
+    }
+}
 
 #endif

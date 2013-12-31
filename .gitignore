@@ -25,7 +25,6 @@ TODO.txt
 config.pri
 *.xcodeproj
 *.vcxproj
-*Info.plist
 *Win32
 *qrc_Resources.cpp
 *GeneratedFiles

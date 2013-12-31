@@ -58,10 +58,14 @@ namespace FFmpeg {
         formats->push_back("jpeg");
         formats->push_back("jpg");
         formats->push_back("png");
+        formats->push_back("pgm");
         formats->push_back("ppm");
         formats->push_back("ptx");
+        formats->push_back("rgba");
+        formats->push_back("rgb");
         formats->push_back("tiff");
         formats->push_back("tga");
+        formats->push_back("gif");
     }
     
     static bool extensionCorrespondToImageFile(const std::string& ext){
@@ -75,7 +79,9 @@ namespace FFmpeg {
             ext == "ppm" ||
             ext == "ptx" ||
             ext == "tiff" ||
-            ext == "tga";
+            ext == "tga" ||
+            ext == "rgba" ||
+            ext == "rgb";
     }
     
     bool isImageFile(const std::string& filename){
@@ -84,6 +90,7 @@ namespace FFmpeg {
         if(lastDot == std::string::npos){ //we reached the start of the file, return false because we can't determine from the extension
             return false;
         }
+        ++lastDot;//< bypass the '.' character
         std::string ext;
         while(lastDot < filename.size()){
             ext.append(1,std::tolower(filename.at(lastDot)));

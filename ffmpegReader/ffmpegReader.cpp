@@ -43,6 +43,10 @@
 #include "FfmpegHandler.h"
 #include "Lut.h"
 
+#ifdef OFX_EXTENSIONS_NATRON
+#include "IOExtensions.h"
+#endif
+
 FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
 , _ffmpegFile(0)
@@ -218,7 +222,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static FfmpegReaderPluginFactory p("net.sf.openfx:ffmpegReader", 1, 0);
+            static FfmpegReaderPluginFactory p("fr.inria.openfx:ffmpegReader", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -244,6 +248,16 @@ void FfmpegReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* FfmpegReaderPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new FfmpegReaderPlugin(handle);
+    FfmpegReaderPlugin* ret = new FfmpegReaderPlugin(handle);
+#ifdef OFX_EXTENSIONS_NATRON
+    std::vector<std::string> fileFormats;
+    ret->supportedFileFormats(&fileFormats);
+    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+        ret->getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
+    }
+    ret->getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+#endif
+    return ret;
+
 }
 

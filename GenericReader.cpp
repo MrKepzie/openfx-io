@@ -63,13 +63,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _missingFrameParam = fetchChoiceParam(kReaderMissingFrameParamName);
     _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
     
-#ifdef OFX_EXTENSIONS_NATRON
-    std::vector<std::string> fileFormats;
-    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
-    }
-    getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
-#endif
     
 }
 
@@ -217,7 +210,7 @@ namespace OFX {
             desc.addClipPreferencesSlaveParam(*fileParam);
             
 #ifdef OFX_EXTENSIONS_NATRON
-            fileParam->setFilePathIsImage(true);
+            fileParam->setFilePathIsImage(true,false);
 #endif
             
             

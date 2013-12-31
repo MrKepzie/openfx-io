@@ -1,0 +1,589 @@
+/*
+ OFX ffmpegWriter plugin.
+ Writes a video output file using the libav library.
+ 
+ Copyright (C) 2013 INRIA
+ Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
+ 
+ Redistribution and use in source and binary forms, with or without modification,
+ are permitted provided that the following conditions are met:
+ 
+ Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+ 
+ Redistributions in binary form must reproduce the above copyright notice, this
+ list of conditions and the following disclaimer in the documentation and/or
+ other materials provided with the distribution.
+ 
+ Neither the name of the {organization} nor the names of its
+ contributors may be used to endorse or promote products derived from
+ this software without specific prior written permission.
+ 
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+ INRIA
+ Domaine de Voluceau
+ Rocquencourt - B.P. 105
+ 78153 Le Chesnay Cedex - France
+ 
+ */
+
+#include "ffmpegWriter.h"
+#ifdef OFX_EXTENSIONS_NATRON
+#include "IOExtensions.h"
+#endif
+
+#include "Lut.h"
+
+extern "C" {
+#include <errno.h>
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include "libavutil/imgutils.h"
+#include "libavformat/avio.h"
+#include <libavutil/opt.h>
+#include <libswscale/swscale.h>
+#include <libavutil/avutil.h>
+#include <libavutil/error.h>
+}
+
+#define kFfmpegWriterFormatParamName "format"
+#define kFfmpegWriterFPSParamName "fps"
+#define kFfmpegWriterAdvancedGroupParamName "advanced"
+#define kFfmpegWriterCodecParamName "codec"
+#define kFfmpegWriterBitRateParamName "bitRate"
+#define kFfmpegWriterBitRateToleranceParamName "bitRateTolerance"
+#define kFfmpegWriterGopParamName "gop"
+#define kFfmpegWriterBFramesParamName "bframes"
+#define kFfmpegWriterMBDecisionParamName "mbDecision"
+
+
+
+class FFmpegSingleton {
+    
+public:
+    
+    static FFmpegSingleton &Instance() {
+        return m_instance;
+    };
+    
+    
+    const std::vector<std::string>& getFormatsShortNames() const { return _formatsShortNames; }
+    
+    const std::vector<std::string>& getFormatsLongNames() const { return _formatsLongNames; }
+    
+    const std::vector<std::string>& getCodecsShortNames() const { return _codecsShortNames; }
+    
+    const std::vector<std::string>& getCodecsLongNames() const { return _codecsLongNames; }
+    
+private:
+    
+    FFmpegSingleton &operator= (const FFmpegSingleton &) {
+        return *this;
+    }
+    FFmpegSingleton(const FFmpegSingleton &) {}
+    
+    static FFmpegSingleton m_instance;
+    
+    FFmpegSingleton();
+    
+    ~FFmpegSingleton();
+    
+    
+    std::vector<std::string> _formatsLongNames;
+    std::vector<std::string> _formatsShortNames;
+    std::vector<std::string> _codecsLongNames;
+    std::vector<std::string> _codecsShortNames;
+};
+
+FFmpegSingleton FFmpegSingleton::m_instance = FFmpegSingleton();
+
+FFmpegSingleton::FFmpegSingleton(){
+    av_log_set_level(AV_LOG_WARNING);
+    av_register_all();
+    
+    AVOutputFormat* fmt = av_oformat_next(NULL);
+    while (fmt) {
+        
+        if (fmt->video_codec != AV_CODEC_ID_NONE) {
+            if (fmt->long_name) {
+                _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
+                _formatsShortNames.push_back(fmt->name);
+            }
+        }
+        fmt = av_oformat_next(fmt);
+    }
+    
+    AVCodec* c = av_codec_next(NULL);
+    while (c) {
+        if (c->type == AVMEDIA_TYPE_VIDEO && c->encode2) {
+            if (c->long_name) {
+                _codecsLongNames.push_back(c->long_name);
+                _codecsShortNames.push_back(c->name);
+            }
+        }
+        c = av_codec_next(c);
+    }
+}
+
+FFmpegSingleton::~FFmpegSingleton(){
+    
+}
+
+FfmpegWriterPlugin::FfmpegWriterPlugin(OfxImageEffectHandle handle)
+: GenericWriterPlugin(handle)
+, _codecContext(0)
+, _formatContext(0)
+, _stream(0)
+, _format(0)
+, _fps(0)
+, _codec(0)
+, _bitRate(0)
+, _bitRateTolerance(0)
+, _gopSize(0)
+,_bFrames(0)
+, _macroBlockDecision(0)
+{
+    _format = fetchChoiceParam(kFfmpegWriterFormatParamName);
+    _fps = fetchDoubleParam(kFfmpegWriterFPSParamName);
+    _codec = fetchChoiceParam(kFfmpegWriterCodecParamName);
+    _bitRate = fetchIntParam(kFfmpegWriterBitRateParamName);
+    _bitRateTolerance = fetchIntParam(kFfmpegWriterBitRateToleranceParamName);
+    _gopSize = fetchIntParam(kFfmpegWriterGopParamName);
+    _bFrames = fetchIntParam(kFfmpegWriterBFramesParamName);
+    _macroBlockDecision = fetchChoiceParam(kFfmpegWriterMBDecisionParamName);
+}
+
+FfmpegWriterPlugin::~FfmpegWriterPlugin(){
+    
+}
+
+void FfmpegWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
+    formats->push_back("avi");
+    formats->push_back("flv");
+    formats->push_back("mov");
+    formats->push_back("mp4");
+    formats->push_back("mkv");
+    formats->push_back("bmp");
+    formats->push_back("pix");
+    formats->push_back("dpx");
+    formats->push_back("jpeg");
+    formats->push_back("jpg");
+    formats->push_back("png");
+    formats->push_back("pgm");
+    formats->push_back("ppm");
+    formats->push_back("rgba");
+    formats->push_back("rgb");
+    formats->push_back("tiff");
+    formats->push_back("tga");
+    formats->push_back("gif");
+}
+
+void FfmpegWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
+    
+}
+
+void FfmpegWriterPlugin::initializeLut(){
+    _lut = OFX::Color::LutManager::sRGBLut();
+}
+
+bool FfmpegWriterPlugin::isImageFile(const std::string& ext) const{
+    return ext == "bmp" ||
+    ext == "pix" ||
+    ext == "dpx" ||
+    ext == "exr" ||
+    ext == "jpeg"||
+    ext == "jpg" ||
+    ext == "png" ||
+    ext == "ppm" ||
+    ext == "ptx" ||
+    ext == "tiff" ||
+    ext == "tga" ||
+    ext == "rgba" ||
+    ext == "rgb";
+}
+
+void FfmpegWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
+    
+    AVOutputFormat* fmt = 0;
+    int formatValue;
+    _format->getValue(formatValue);
+    
+    if (formatValue == 0) {
+        fmt = av_guess_format(NULL, filename.c_str(), NULL);
+        if (!fmt) {
+            setPersistentMessage(OFX::Message::eMessageError, "","Invalid file extension");
+            return;
+        }
+    }
+    else {
+        const std::vector<std::string>& formatsShortNames = FFmpegSingleton::Instance().getFormatsShortNames();
+        assert(formatValue < (int)formatsShortNames.size());
+
+        fmt = av_guess_format(formatsShortNames[formatValue].c_str(), NULL, NULL);
+        if (!fmt) {
+            setPersistentMessage(OFX::Message::eMessageError, "","Invalid file extension");
+            return;
+        }
+    }
+    
+    if (!_formatContext)
+        avformat_alloc_output_context2(&_formatContext, fmt, NULL, filename.c_str());
+    
+    snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
+    
+    AVCodecID codecId = fmt->video_codec;
+    int codecValue;
+    _codec->getValue(codecValue);
+    if (codecValue != 0) {
+        const std::vector<std::string>& codecShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
+        assert(codecValue < (int)codecShortNames.size());
+        AVCodec* userCodec = avcodec_find_encoder_by_name(codecShortNames[codecValue].c_str());
+        if (userCodec) {
+            codecId = userCodec->id;
+        }
+    }
+    
+    AVCodec* videoCodec = avcodec_find_encoder(codecId);
+    if (!videoCodec) {
+        setPersistentMessage(OFX::Message::eMessageError, "","Unable to find codec");
+        freeFormat();
+        return;
+    }
+    
+    PixelFormat pixFMT = PIX_FMT_YUV420P;
+    
+    if (videoCodec->pix_fmts != NULL) {
+        pixFMT = *videoCodec->pix_fmts;
+    }
+    else {
+        if (strcmp(fmt->name, "gif") == 0) {
+            pixFMT = PIX_FMT_RGB24;
+        }
+    }
+    
+    bool isCodecSupportedInContainer = (avformat_query_codec(fmt, codecId, FF_COMPLIANCE_NORMAL) == 1);
+    // mov seems to be able to cope with anything, which the above function doesn't seem to think is the case (even with FF_COMPLIANCE_EXPERIMENTAL)
+    // and it doesn't return -1 for this case, so we'll special-case this situation to allow this
+    isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0);
+    
+    if (!isCodecSupportedInContainer) {
+        setPersistentMessage(OFX::Message::eMessageError, "","The selected codec is not supported in this container.");
+        freeFormat();
+        return;
+    }
+    
+    OfxRectI rod = srcImg->getRegionOfDefinition();
+    int w = (rod.x2 - rod.x1);
+    int h = (rod.y2 - rod.y1);
+    
+    if (!_stream) {
+        _stream = avformat_new_stream(_formatContext, NULL);
+        if (!_stream) {
+            setPersistentMessage(OFX::Message::eMessageError,"" ,"Out of memory");
+            return;
+        }
+        
+        _codecContext = _stream->codec;
+        
+        // this seems to be needed for certain codecs, as otherwise they don't have relevant options set
+        avcodec_get_context_defaults3(_codecContext, videoCodec);
+        
+        _codecContext->pix_fmt = pixFMT;   // this is set to the first element of FMT a choice could be added
+        
+        int bitRateValue;
+        _bitRate->getValue(bitRateValue);
+        _codecContext->bit_rate = bitRateValue;
+        
+        int bitRateTol;
+        _bitRateTolerance->getValue(bitRateTol);
+        _codecContext->bit_rate_tolerance = bitRateTol;
+        
+       
+        _codecContext->width = w;
+        _codecContext->height = h;
+        
+        // Bug 23953
+        // ffmpeg does a horrible job of converting floats to AVRationals
+        // It adds 0.5 randomly and does some other stuff
+        // To work around that, we just multiply the fps by what I think is a reasonable number to make it an int
+        // and use the reasonable number as the numerator for the timebase.
+        // Timebase is not the frame rate; it's the inverse of the framerate
+        // So instead of doing 1/fps, we just set the numerator and denominator of the timebase directly.
+        // The upshot is that this allows ffmpeg to properly do framerates of 23.78 (or 23.796, which is what the user really wants when they put that in).
+        //
+        // The code was this:
+        //stream_->codec->time_base = av_d2q(1.0 / fps_, 100);
+        const float CONVERSION_FACTOR = 1000.0f;
+        _codecContext->time_base.num = (int) CONVERSION_FACTOR;
+        
+        double fps;
+        _fps->getValue(fps);
+        _codecContext->time_base.den = (int) (fps * CONVERSION_FACTOR);
+        
+        int gopSize;
+        _gopSize->getValue(gopSize);
+        _codecContext->gop_size = gopSize;
+        
+        int bFrames;
+        _bFrames->getValue(bFrames);
+        if (bFrames != 0) {
+            _codecContext->max_b_frames = bFrames;
+            _codecContext->b_frame_strategy = 0;
+            _codecContext->b_quant_factor = 2.0f;
+        }
+        
+        int mbDecision;
+        _macroBlockDecision->getValue(mbDecision);
+        _codecContext->mb_decision = mbDecision;
+        
+        if (!strcmp(_formatContext->oformat->name, "mp4") || !strcmp(_formatContext->oformat->name, "mov") || !strcmp(_formatContext->oformat->name, "3gp"))
+            _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+        
+        if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
+            _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+        
+        if (avcodec_open2(_codecContext, videoCodec, NULL) < 0) {
+            setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open codec");
+            freeFormat();
+            return;
+        }
+        
+        if (!(fmt->flags & AVFMT_NOFILE)) {
+            if (avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
+                setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open file");
+                freeFormat();
+                return;
+            }
+        }
+        
+        avformat_write_header(_formatContext, NULL);
+    }
+    
+    AVPicture picture;
+    int picSize = avpicture_get_size(PIX_FMT_RGB24, w, h);
+    // allocate a buffer for the picture's image...
+    uint8_t* buffer = (uint8_t*)av_malloc(picSize);
+    // blank the values - this initialises stuff and seems to be needed
+    avpicture_fill(&picture, buffer, PIX_FMT_RGB24, w, h);
+
+    
+    _lut->to_byte_packed(picture.data[0], //output buf
+                         (const float*)srcImg->getPixelAddress(0, 0), //input buf
+                         rod, //conversion rect
+                         rod, // src RoD
+                         rod, // dst RoD
+                         OFX::Color::PACKING_RGBA, OFX::Color::PACKING_RGB, //input & output packing
+                         true, // invertY ?
+                         false); // premult by alpha?
+    
+    // now allocate an image frame for the image in the output codec's format...
+    AVFrame* output = avcodec_alloc_frame();
+    picSize = avpicture_get_size(pixFMT,w, h);
+    uint8_t* outBuffer = (uint8_t*)av_malloc(picSize);
+    
+    av_image_alloc(output->data, output->linesize, w, h, pixFMT, 1);
+    
+    SwsContext* convertCtx = sws_getContext(w, h, PIX_FMT_RGB24,w, h,
+                                            pixFMT, SWS_BICUBIC, NULL, NULL, NULL);
+    
+    int sliceHeight = sws_scale(convertCtx, picture.data, picture.linesize, 0, h, output->data, output->linesize);
+    assert(sliceHeight > 0);
+    
+    int ret = 0;
+    if ((_formatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
+        AVPacket pkt;
+        av_init_packet(&pkt);
+        pkt.flags |= AV_PKT_FLAG_KEY;
+        pkt.stream_index = _stream->index;
+        pkt.data = (uint8_t*)output;
+        pkt.size = sizeof(AVPicture);
+        ret = av_interleaved_write_frame(_formatContext, &pkt);
+    }
+    else {
+        uint8_t* outbuf = (uint8_t*)av_malloc(picSize);
+        assert(outbuf != NULL);
+        ret = avcodec_encode_video(_codecContext, outbuf, picSize, output);
+        if (ret > 0) {
+            AVPacket pkt;
+            av_init_packet(&pkt);
+            if (_codecContext->coded_frame && static_cast<unsigned long>(_codecContext->coded_frame->pts) != AV_NOPTS_VALUE)
+                pkt.pts = av_rescale_q(_codecContext->coded_frame->pts, _codecContext->time_base, _stream->time_base);
+            if (_codecContext->coded_frame && _codecContext->coded_frame->key_frame)
+                pkt.flags |= AV_PKT_FLAG_KEY;
+            
+            pkt.stream_index = _stream->index;
+            pkt.data = outbuf;
+            pkt.size = ret;
+            
+            ret = av_interleaved_write_frame(_formatContext, &pkt);
+        }
+        else {
+            // we've got an error
+            char szError[1024];
+            av_strerror(ret, szError, 1024);
+            setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
+        }
+        
+        av_free(outbuf);
+    }
+    
+    av_free(outBuffer);
+    av_free(buffer);
+    av_free(output);
+    
+    if (ret) {
+        setPersistentMessage(OFX::Message::eMessageError,"" ,"Error writing frame to file");
+        return;
+    }
+    
+}
+
+void FfmpegWriterPlugin::freeFormat(){
+    for (int i = 0; i < static_cast<int>(_formatContext->nb_streams); ++i){
+        av_freep(&_formatContext->streams[i]);
+    }
+    av_free(_formatContext);
+    _formatContext = NULL;
+    _stream = NULL;
+}
+
+
+using namespace OFX;
+mDeclarePluginFactory(FfmpegWriterPluginFactory, {}, {});
+
+namespace OFX
+{
+    namespace Plugin
+    {
+        void getPluginIDs(OFX::PluginFactoryArray &ids)
+        {
+            static FfmpegWriterPluginFactory p("fr.inria.openfx:ffmpegWriter", 1, 0);
+            ids.push_back(&p);
+        }
+    };
+};
+
+
+/** @brief The basic describe function, passed a plugin descriptor */
+void FfmpegWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+{
+    // basic labels
+    desc.setLabels("FfmpegWriterOFX", "FfmpegWriterOFX", "FfmpegWriterOFX");
+    desc.setPluginDescription("Writes image or video file using the libav");
+    
+    OFX::Plugin::describeGenericWriter(desc);
+    
+}
+
+/** @brief The describe in context function, passed a plugin descriptor and a context */
+void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+{
+    ///////////Output format
+    const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
+    OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kFfmpegWriterFormatParamName);
+    formatParam->setLabels("Format", "Format", "Format");
+    formatParam->setHint("The outputformat");
+    for (unsigned int i = 0; i < formatsV.size(); ++i) {
+        formatParam->appendOption(formatsV[i],"");
+
+    }
+    formatParam->setAnimates(false);
+    formatParam->setDefault(0);
+    
+    ///////////FPS
+    OFX::DoubleParamDescriptor* fpsParam = desc.defineDoubleParam(kFfmpegWriterFPSParamName);
+    fpsParam->setLabels("fps", "fps", "fps");
+    fpsParam->setRange(0.f, 100.f);
+    fpsParam->setDefault(24.f);
+    fpsParam->setAnimates(false);
+
+    /////////// Advanced group
+    OFX::GroupParamDescriptor* groupParam = desc.defineGroupParam(kFfmpegWriterAdvancedGroupParamName);
+    groupParam->setLabels("Advanced", "Advanced", "Advanced");
+    groupParam->setOpen(false);
+    
+    ///////////Codec
+    OFX::ChoiceParamDescriptor* codecParam = desc.defineChoiceParam(kFfmpegWriterCodecParamName);
+    codecParam->setLabels("Codec","Codec","Codec");
+    const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
+    for (unsigned int i = 0; i < codecsV.size(); ++i) {
+        codecParam->appendOption(codecsV[i],"");
+    }
+    codecParam->setAnimates(false);
+    codecParam->setParent(*groupParam);
+    codecParam->setDefault(0);
+    
+    ///////////bit-rate
+    OFX::IntParamDescriptor* bitRateParam = desc.defineIntParam(kFfmpegWriterBitRateParamName);
+    bitRateParam->setLabels("Bitrate", "Bitrate", "Bitrate");
+    bitRateParam->setRange(0, 400000);
+    bitRateParam->setDefault(400000);
+    bitRateParam->setParent(*groupParam);
+    bitRateParam->setAnimates(false);
+    
+    ///////////bit-rate tolerance
+    OFX::IntParamDescriptor* bitRateTolParam = desc.defineIntParam(kFfmpegWriterBitRateToleranceParamName);
+    bitRateTolParam->setLabels("Bitrate tolerance", "Bitrate tolerance", "Bitrate tolerance");
+    bitRateTolParam->setRange(0, 4000 * 10000);
+    bitRateTolParam->setDefault(4000 * 10000);
+    bitRateTolParam->setParent(*groupParam);
+    bitRateTolParam->setAnimates(false);
+    
+    ///////////Gop size
+    OFX::IntParamDescriptor* gopSizeParam = desc.defineIntParam(kFfmpegWriterGopParamName);
+    gopSizeParam->setLabels("GOP Size", "GOP Size", "GOP Size");
+    gopSizeParam->setRange(0, 30);
+    gopSizeParam->setDefault(12);
+    gopSizeParam->setParent(*groupParam);
+    gopSizeParam->setAnimates(false);
+    
+    
+    ////////////B Frames
+    OFX::IntParamDescriptor* bFramesParam = desc.defineIntParam(kFfmpegWriterBFramesParamName);
+    bFramesParam->setLabels("B Frames", "B Frames", "B Frames");
+    bFramesParam->setRange(0, 30);
+    bFramesParam->setDefault(0);
+    bFramesParam->setParent(*groupParam);
+    bFramesParam->setAnimates(false);
+    
+    ////////////Macro block decision
+    OFX::ChoiceParamDescriptor* mbDecisionParam = desc.defineChoiceParam(kFfmpegWriterMBDecisionParamName);
+    mbDecisionParam->setLabels("Macro block decision mode", "Macro block decision mode", "Macro block decision mode");
+    mbDecisionParam->appendOption("FF_MB_DECISION_SIMPLE");
+    mbDecisionParam->appendOption("FF_MB_DECISION_BITS");
+    mbDecisionParam->appendOption("FF_MB_DECISION_RD");
+    mbDecisionParam->setDefault(FF_MB_DECISION_SIMPLE);
+    mbDecisionParam->setParent(*groupParam);
+    mbDecisionParam->setAnimates(false);
+    
+    ////base class params
+    OFX::Plugin::defineGenericWriterParamsInContext(desc, context);
+    
+    
+}
+
+/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+ImageEffect* FfmpegWriterPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+{
+    FfmpegWriterPlugin* ret = new FfmpegWriterPlugin(handle);
+#ifdef OFX_EXTENSIONS_NATRON
+    std::vector<std::string> fileFormats;
+    ret->supportedFileFormats(&fileFormats);
+    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+        ret->getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
+    }
+    ret->getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+#endif
+    return ret;
+
+}
