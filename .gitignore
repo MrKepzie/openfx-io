@@ -7,7 +7,6 @@ build*
 *html*
 *latex*
 DerivedData/*
-*.xcodeproj
 *.sln
 *.xcworkspace
 *xcuserdata
