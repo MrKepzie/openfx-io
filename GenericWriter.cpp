@@ -418,5 +418,5 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
-    dstClip->setSupportsTiles(true);
+    dstClip->setSupportsTiles(false);//< we don't support tiles in output!
 }
