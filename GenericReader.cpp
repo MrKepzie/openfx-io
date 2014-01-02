@@ -225,9 +225,9 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     std::vector<std::string> fileFormats;
     supportedFileFormats(&fileFormats);
     for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        desc.getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
+        desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
     }
-    desc.getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+    desc.getPropertySet().propSetInt(kNatronImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
 #endif
 }
 
