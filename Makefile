@@ -1,4 +1,4 @@
-SUBDIRS = ffmpegReader
+SUBDIRS = ffmpegWriter
 
 default : 
 	@ echo making sub projects... $(SUBDIRS)

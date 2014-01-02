@@ -94,8 +94,9 @@ public:
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
     /**
-     * @brief Should append in formats the list of the format this plug-in can decode.
+     * @brief Should append in formats the list of the format this plug-in can encode.
      * For example "png" , "jpg" , etc...
+     * This function should return the same as the named-alike function in the factory.
      **/
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
@@ -145,24 +146,64 @@ private:
     void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
 };
 
-namespace OFX
+class GenericWriterPluginFactory : public OFX::PluginFactoryHelper<GenericWriterPluginFactory>
 {
-    namespace Plugin
-    {
-        /**
-         * @brief Call this in the describeInContext(...) function of the overloaded reader's factory to
-         * add the common params to all readers.
-         **/
-        void defineGenericWriterParamsInContext(OFX::ImageEffectDescriptor& desc,OFX::ContextEnum context);
-        
-        /**
-         * @brief Call this in the describe(...) function of the overloaded reader's factory to
-         * add the common properties to all readers. See definition for more explanation.
-         **/
-        void describeGenericWriter(OFX::ImageEffectDescriptor& desc);
-    }
-}
+public:
+    
+    GenericWriterPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
+    :OFX::PluginFactoryHelper<GenericWriterPluginFactory>(id, verMaj, verMin)
+    {}
+    
+    /**
+     * @brief Override to do something when your plugin is loaded (kOfxActionLoad).
+     * Base-class doesn't do anything.
+     **/
+    virtual void load(){}
+    
+    /**
+     * @brief Override to do something when your plugin is unloaded (kOfxActionUnload).
+     * Base-class doesn't do anything.
+     **/
+    virtual void unload(){}
+    
+    /**
+     * @brief Override this to describe the writer.
+     * You should call the base-class version at the end like this:
+     * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
+     **/
+    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    
+    /**
+     * @brief Override this to describe in context the writer.
+     * You should call the base-class version at the end like this:
+     * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
+     **/
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+    
+    /**
+     * @brief Override to create the instance of your writer.
+     **/
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context){ return NULL; }
+    
+    /**
+     * @brief Should append in formats the list of the format this plug-in can encode.
+     * For example "png" , "jpg" , etc...
+     **/
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
+};
 
+#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF) \
+class CLASS : public GenericWriterPluginFactory \
+{ \
+public: \
+CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
+virtual void load() LOADFUNCDEF ;\
+virtual void unload() UNLOADFUNCDEF ;\
+virtual void describe(OFX::ImageEffectDescriptor &desc); \
+virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
+virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+};
 
 
 #endif

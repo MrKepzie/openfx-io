@@ -195,71 +195,77 @@ void GenericReaderPlugin::refreshMissingFrameParamValue(const std::string& curre
 #endif
 }
 
-namespace OFX {
-    namespace Plugin {
-        
-        void defineGenericReaderParamsInContext(OFX::ImageEffectDescriptor& desc,OFX::ContextEnum context) {
-            
-            
-            //////////Input file
-            OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
-            fileParam->setLabels("File", "File", "File");
-            fileParam->setStringType(OFX::eStringTypeFilePath);
-            fileParam->setHint("The input image sequence/video stream file(s).");
-            fileParam->setAnimates(false);
-            desc.addClipPreferencesSlaveParam(*fileParam);
-            
+using namespace OFX;
+
+void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
+    desc.setPluginGrouping("IO/OpenFXReaders");
+    
+    desc.addSupportedContext(OFX::eContextGenerator);
+    desc.addSupportedContext(OFX::eContextGeneral);
+    
+    ///Say we support only reading to float images.
+    ///One would need to extend the ofxsColorSpace suite functions
+    ///in order to support other bitdepths. I have no time for it
+    ///at the moment and float is generally widely used among hosts.
+    desc.addSupportedBitDepth(eBitDepthFloat);
+    
+    // set a few flags
+    desc.setSingleInstance(false);
+    desc.setHostFrameThreading(false);
+    desc.setSupportsMultiResolution(true);
+    desc.setSupportsTiles(true);
+    desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
+    desc.setRenderTwiceAlways(false);
+    desc.setSupportsMultipleClipPARs(false);
+    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    
+    
+    
 #ifdef OFX_EXTENSIONS_NATRON
-            fileParam->setFilePathIsImage(true,false);
-#endif
-            
-            
-            ///////////Missing frame choice
-            OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
-            missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
-            missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream");
-            missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
-            missingFrameParam->appendOption("Error","An error is reported.");
-            missingFrameParam->appendOption("Black image","A black image is rendered.");
-            missingFrameParam->setAnimates(false);
-            missingFrameParam->setDefault(0); //< default to nearest frame.
-            
-            ///////////Time offset
-            OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
-            timeOffsetParam->setLabels("Time Offset", "Time Offset", "Time Offset");
-            timeOffsetParam->setHint("Offset in frames (frame f of the input will be at f + offset).");
-            timeOffsetParam->setDefault(0);
-            timeOffsetParam->setAnimates(false);
-            
-            
-            // create the mandated output clip
-            ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-            dstClip->addSupportedComponent(ePixelComponentRGBA);
-            dstClip->setSupportsTiles(true);
-        }
-        
-        void describeGenericReader(OFX::ImageEffectDescriptor& desc) {
-            desc.setPluginGrouping("IO/OpenFXReaders");
-
-            desc.addSupportedContext(OFX::eContextGenerator);
-            desc.addSupportedContext(OFX::eContextGeneral);
-            
-            ///Say we support only reading to float images.
-            ///One would need to extend the ofxsColorSpace suite functions
-            ///in order to support other bitdepths. I have no time for it
-            ///at the moment and float is generally widely used among hosts.
-            desc.addSupportedBitDepth(eBitDepthFloat);
-            
-            // set a few flags
-            desc.setSingleInstance(false);
-            desc.setHostFrameThreading(false);
-            desc.setSupportsMultiResolution(true);
-            desc.setSupportsTiles(true);
-            desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
-            desc.setRenderTwiceAlways(false);
-            desc.setSupportsMultipleClipPARs(false);
-            desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-
-        }
+    std::vector<std::string> fileFormats;
+    supportedFileFormats(&fileFormats);
+    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+        desc.getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
     }
+    desc.getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+#endif
 }
+
+void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context){
+    //////////Input file
+    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
+    fileParam->setLabels("File", "File", "File");
+    fileParam->setStringType(OFX::eStringTypeFilePath);
+    fileParam->setHint("The input image sequence/video stream file(s).");
+    fileParam->setAnimates(false);
+    desc.addClipPreferencesSlaveParam(*fileParam);
+    
+#ifdef OFX_EXTENSIONS_NATRON
+    fileParam->setFilePathIsImage(true,false);
+#endif
+    
+    
+    ///////////Missing frame choice
+    OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
+    missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
+    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream");
+    missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
+    missingFrameParam->appendOption("Error","An error is reported.");
+    missingFrameParam->appendOption("Black image","A black image is rendered.");
+    missingFrameParam->setAnimates(false);
+    missingFrameParam->setDefault(0); //< default to nearest frame.
+    
+    ///////////Time offset
+    OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
+    timeOffsetParam->setLabels("Time Offset", "Time Offset", "Time Offset");
+    timeOffsetParam->setHint("Offset in frames (frame f of the input will be at f + offset).");
+    timeOffsetParam->setDefault(0);
+    timeOffsetParam->setAnimates(false);
+    
+    
+    // create the mandated output clip
+    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
+    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    dstClip->setSupportsTiles(true);
+}
+

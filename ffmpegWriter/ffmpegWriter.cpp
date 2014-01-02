@@ -167,7 +167,7 @@ FfmpegWriterPlugin::~FfmpegWriterPlugin(){
     
 }
 
-void FfmpegWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
+static void static_supportedFileFormats(std::vector<std::string>* formats){
     formats->push_back("avi");
     formats->push_back("flv");
     formats->push_back("mov");
@@ -186,6 +186,10 @@ void FfmpegWriterPlugin::supportedFileFormats(std::vector<std::string>* formats)
     formats->push_back("tiff");
     formats->push_back("tga");
     formats->push_back("gif");
+}
+
+void FfmpegWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
+    static_supportedFileFormats(formats);
 }
 
 void FfmpegWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
@@ -459,7 +463,12 @@ void FfmpegWriterPlugin::freeFormat(){
 
 
 using namespace OFX;
-mDeclarePluginFactory(FfmpegWriterPluginFactory, {}, {});
+mDeclareWriterPluginFactory(FfmpegWriterPluginFactory, {}, {});
+
+
+void FfmpegWriterPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+    static_supportedFileFormats(formats);
+}
 
 namespace OFX
 {
@@ -480,8 +489,10 @@ void FfmpegWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // basic labels
     desc.setLabels("FfmpegWriterOFX", "FfmpegWriterOFX", "FfmpegWriterOFX");
     desc.setPluginDescription("Writes image or video file using the libav");
+
+
     
-    OFX::Plugin::describeGenericWriter(desc);
+    GenericWriterPluginFactory::describe(desc);
     
 }
 
@@ -567,7 +578,7 @@ void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
     mbDecisionParam->setAnimates(false);
     
     ////base class params
-    OFX::Plugin::defineGenericWriterParamsInContext(desc, context);
+    GenericWriterPluginFactory::describeInContext(desc, context);
     
     
 }
@@ -575,15 +586,5 @@ void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* FfmpegWriterPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    FfmpegWriterPlugin* ret = new FfmpegWriterPlugin(handle);
-#ifdef OFX_EXTENSIONS_NATRON
-    std::vector<std::string> fileFormats;
-    ret->supportedFileFormats(&fileFormats);
-    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        ret->getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
-    }
-    ret->getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
-#endif
-    return ret;
-
+    return new FfmpegWriterPlugin(handle);
 }

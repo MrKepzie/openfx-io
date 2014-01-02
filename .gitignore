@@ -23,8 +23,6 @@ TestWrite
 TODO.txt
 .pro.user
 config.pri
-*.xcodeproj
-*.vcxproj
 *Win32
 *qrc_Resources.cpp
 *GeneratedFiles

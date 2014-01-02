@@ -180,6 +180,8 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
         ++i;
     }
 
+    
+    
     bool found = false;
     std::vector<std::string> supportedExtensions;
     supportedFileFormats(&supportedExtensions);
@@ -333,77 +335,87 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     
 }
 
-
-namespace OFX
-{
-    namespace Plugin
-    {
+using namespace OFX;
+/**
+ * @brief Override this to describe the writer.
+ * You should call the base-class version at the end like this:
+ * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
+ **/
+void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
+    desc.setPluginGrouping("IO/OpenFXWriters");
     
-        void defineGenericWriterParamsInContext(OFX::ImageEffectDescriptor& desc,OFX::ContextEnum context){
-            //////////Output file
-            OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
-            fileParam->setLabels("File", "File", "File");
-            fileParam->setStringType(OFX::eStringTypeFilePath);
-            fileParam->setHint("The output image sequence/video stream file(s)."
-                               "The string must match the following format: "
-                               "path/sequenceName###.ext where the number of"
-                               " # characters will define the number of digits to append to each"
-                               " file. For example path/mySequence###.jpg will be translated to"
-                                " path/mySequence000.jpg, path/mySequence001.jpg, etc..."
-                               " By default the plugin will append digits on demand (i.e: if you have 11 frames"
-                               " there will be 2 digits). You don't even need to provide the # character.");
-            fileParam->setAnimates(false);
-            desc.addClipPreferencesSlaveParam(*fileParam);
-            
+    desc.addSupportedContext(OFX::eContextFilter);
+    desc.addSupportedContext(OFX::eContextGeneral);
+    
+    ///Say we support only reading to float images.
+    ///One would need to extend the ofxsColorSpace suite functions
+    ///in order to support other bitdepths. I have no time for it
+    ///at the moment and float is generally widely used among hosts.
+    desc.addSupportedBitDepth(eBitDepthFloat);
+    
+    // set a few flags
+    desc.setSingleInstance(false);
+    desc.setHostFrameThreading(false);
+    desc.setSupportsMultiResolution(true);
+    desc.setSupportsTiles(true);
+    desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
+    desc.setRenderTwiceAlways(false);
+    desc.setSupportsMultipleClipPARs(false);
+    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    
+    
 #ifdef OFX_EXTENSIONS_NATRON
-            fileParam->setFilePathIsImage(true,true);
-#endif
-            
-            
-            ///////////Render button
-            OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kReaderRenderParamName);
-            renderParam->setLabels("Render","Render","Render");
-            renderParam->setHint("Starts rendering all the frame range.");
-#ifdef OFX_EXTENSIONS_NATRON
-            renderParam->setAsRenderButton();
-#endif
-            
-            // create the mandated source clip
-            ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
-            srcClip->addSupportedComponent(ePixelComponentRGBA);
-            srcClip->setSupportsTiles(true);
-
-            
-            // create the mandated output clip
-            ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-            dstClip->addSupportedComponent(ePixelComponentRGBA);
-            dstClip->setSupportsTiles(true);
-            
-            
-        }
-
-        void describeGenericWriter(OFX::ImageEffectDescriptor& desc){
-            desc.setPluginGrouping("IO/OpenFXWriters");
-            
-            desc.addSupportedContext(OFX::eContextFilter);
-            desc.addSupportedContext(OFX::eContextGeneral);
-            
-            ///Say we support only reading to float images.
-            ///One would need to extend the ofxsColorSpace suite functions
-            ///in order to support other bitdepths. I have no time for it
-            ///at the moment and float is generally widely used among hosts.
-            desc.addSupportedBitDepth(eBitDepthFloat);
-            
-            // set a few flags
-            desc.setSingleInstance(false);
-            desc.setHostFrameThreading(false);
-            desc.setSupportsMultiResolution(true);
-            desc.setSupportsTiles(true);
-            desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
-            desc.setRenderTwiceAlways(false);
-            desc.setSupportsMultipleClipPARs(false);
-            desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-
-        }
+    std::vector<std::string> fileFormats;
+    supportedFileFormats(&fileFormats);
+    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+        desc.getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
     }
+    desc.getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+#endif
+}
+
+/**
+ * @brief Override this to describe in context the writer.
+ * You should call the base-class version at the end like this:
+ * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
+ **/
+void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context){
+    //////////Output file
+    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
+    fileParam->setLabels("File", "File", "File");
+    fileParam->setStringType(OFX::eStringTypeFilePath);
+    fileParam->setHint("The output image sequence/video stream file(s)."
+                       "The string must match the following format: "
+                       "path/sequenceName###.ext where the number of"
+                       " # characters will define the number of digits to append to each"
+                       " file. For example path/mySequence###.jpg will be translated to"
+                       " path/mySequence000.jpg, path/mySequence001.jpg, etc..."
+                       " By default the plugin will append digits on demand (i.e: if you have 11 frames"
+                       " there will be 2 digits). You don't even need to provide the # character.");
+    fileParam->setAnimates(false);
+    desc.addClipPreferencesSlaveParam(*fileParam);
+    
+#ifdef OFX_EXTENSIONS_NATRON
+    fileParam->setFilePathIsImage(true,true);
+#endif
+    
+    
+    ///////////Render button
+    OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kReaderRenderParamName);
+    renderParam->setLabels("Render","Render","Render");
+    renderParam->setHint("Starts rendering all the frame range.");
+#ifdef OFX_EXTENSIONS_NATRON
+    renderParam->setAsRenderButton();
+#endif
+    
+    // create the mandated source clip
+    ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
+    srcClip->addSupportedComponent(ePixelComponentRGBA);
+    srcClip->setSupportsTiles(true);
+    
+    
+    // create the mandated output clip
+    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
+    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    dstClip->setSupportsTiles(true);
 }

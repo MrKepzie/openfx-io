@@ -214,7 +214,11 @@ void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,
 }
 
 using namespace OFX;
-mDeclarePluginFactory(FfmpegReaderPluginFactory, {}, {});
+mDeclareReaderPluginFactory(FfmpegReaderPluginFactory, {}, {});
+
+void FfmpegReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+    FFmpeg::supportedFileFormats(formats);
+}
 
 namespace OFX
 {
@@ -235,29 +239,19 @@ void FfmpegReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setLabels("FfmpegReaderOFX", "FfmpegReaderOFX", "FfmpegReaderOFX");
     desc.setPluginDescription("Reads image or video file using the libav");
     
-    OFX::Plugin::describeGenericReader(desc);
+    GenericReaderPluginFactory::describe(desc);
     
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void FfmpegReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    OFX::Plugin::defineGenericReaderParamsInContext(desc, context);
+    GenericReaderPluginFactory::describeInContext(desc, context);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* FfmpegReaderPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    FfmpegReaderPlugin* ret = new FfmpegReaderPlugin(handle);
-#ifdef OFX_EXTENSIONS_NATRON
-    std::vector<std::string> fileFormats;
-    ret->supportedFileFormats(&fileFormats);
-    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        ret->getPropertySet().propSetString(kOfxImageEffectPropFormats, fileFormats[i], i,true);
-    }
-    ret->getPropertySet().propSetInt(kOfxImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
-#endif
-    return ret;
-
+    return new FfmpegReaderPlugin(handle);
 }
 

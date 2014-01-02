@@ -104,13 +104,6 @@ public:
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
-    /**
-     * @brief Should append in formats the list of the format this plug-in can decode.
-     * For example "png" , "jpg" , etc...
-     * You must call this function in the createInstance() function of the plugin's factory.
-     * See the implementation in ffmpegReader.cpp for an example on how to do this.
-     **/
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
 protected:
     
@@ -183,22 +176,64 @@ private:
 };
 
 
-namespace OFX
+
+class GenericReaderPluginFactory : public OFX::PluginFactoryHelper<GenericReaderPluginFactory>
 {
-    namespace Plugin
-    {
-        /**
-         * @brief Call this in the describeInContext(...) function of the overloaded reader's factory to
-         * add the common params to all readers.
-         **/
-        void defineGenericReaderParamsInContext(OFX::ImageEffectDescriptor& desc,OFX::ContextEnum context);
-        
-        /**
-         * @brief Call this in the describe(...) function of the overloaded reader's factory to
-         * add the common properties to all readers. See definition for more explanation.
-         **/
-        void describeGenericReader(OFX::ImageEffectDescriptor& desc);
-    }
-}
+public:
+    
+    GenericReaderPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
+    :OFX::PluginFactoryHelper<GenericReaderPluginFactory>(id, verMaj, verMin)
+    {}
+    
+    /**
+     * @brief Override to do something when your plugin is loaded (kOfxActionLoad).
+     * Base-class doesn't do anything.
+     **/
+    virtual void load(){}
+    
+    /**
+     * @brief Override to do something when your plugin is unloaded (kOfxActionUnload).
+     * Base-class doesn't do anything.
+     **/
+    virtual void unload(){}
+    
+    /**
+     * @brief Override this to describe the reader.
+     * You should call the base-class version at the end like this:
+     * GenericReaderPluginFactory<YOUR_FACTORY>::describe(desc);
+     **/
+    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    
+    /**
+     * @brief Override this to describe in context the reader.
+     * You should call the base-class version at the end like this:
+     * GenericReaderPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
+     **/
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+    
+    /**
+     * @brief Override to create the instance of your reader.
+     **/
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context) {return NULL;}
+    
+    /**
+     * @brief Should append in formats the list of the format this plug-in can decode.
+     * For example "png" , "jpg" , etc...
+     **/
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
+};
+
+#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF) \
+class CLASS : public GenericReaderPluginFactory \
+{ \
+public: \
+CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericReaderPluginFactory(id, verMaj, verMin){} \
+virtual void load() LOADFUNCDEF ;\
+virtual void unload() UNLOADFUNCDEF ;\
+virtual void describe(OFX::ImageEffectDescriptor &desc); \
+virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
+virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+};
 
 #endif
