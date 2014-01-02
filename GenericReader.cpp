@@ -241,7 +241,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     desc.addClipPreferencesSlaveParam(*fileParam);
     
 #ifdef OFX_EXTENSIONS_NATRON
-    fileParam->setFilePathIsImage(true,false);
+    fileParam->setFilePathIsImage(true);
 #endif
     
     

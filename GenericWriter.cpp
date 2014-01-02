@@ -396,7 +396,8 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     desc.addClipPreferencesSlaveParam(*fileParam);
     
 #ifdef OFX_EXTENSIONS_NATRON
-    fileParam->setFilePathIsImage(true,true);
+    fileParam->setFilePathIsImage(true);
+    fileParam->setFilePathIsOutput(true);
 #endif
     
     

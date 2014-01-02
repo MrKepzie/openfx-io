@@ -1,0 +1,3 @@
+[submodule "openfx"]
+	path = openfx
+	url = git@github.com:devernay/openfx.git
