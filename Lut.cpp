@@ -141,26 +141,29 @@ namespace OFX {
         
 
    
-        void clip(OfxRectI* what,const OfxRectI& to){
-            if(what->x1 < to.x1){
-                what->x1 = to.x1;
+        bool clip(OfxRectI* what,const OfxRectI& other){
+            
+            if(what->x2 < what->x1 || other.x2 < other.x1 || what->y2 < what->y1 || other.y2 < other.y1){
+                return false;
             }
-            if(what->x2 > to.x2){
-                what->x2 = to.x2;
-            }
-            if(what->y1 < to.y1){
-                what->y1 = to.y1;
-            }
-            if(what->y2 > to.y2){
-                what->y2 = to.y2;
-            }
+            if (what->x1 > other.x2 || other.x1 > what->x2 || what->y1 > other.y2 || what->y1 > other.y2)
+                return false;
+            
+            what->x1 = std::max(what->x1,other.x1);
+            what->x2 = std::min(what->x2,other.x2);
+            what->y1 = std::max(what->y1,other.y1);
+            what->y2 = std::min(what->y2,other.y2);
+            return true;
         }
         
         bool intersects(const OfxRectI& what,const OfxRectI& other){
-            return (what.x2 >= other.x1 && what.x2 <= other.x2 ) ||
-            ( what.x1 < other.x2 && what.x1 >= other.x1) ||
-            ( what.y2 >= other.y1 && what.y2 <= other.y2) ||
-            ( what.y1 < other.y2 && what.y1 >= other.y1);
+            
+            if(what.x2 < what.x1 || other.x2 < other.x1 || what.y2 < what.y1 || other.y2 < other.y1){
+                return false;
+            }
+            if (what.x1 > other.x2 || other.x1 > what.x2 || what.y1 > other.y2 || what.y1 > other.y2)
+                return false;
+            return true;
         }
 
         
@@ -315,15 +318,12 @@ namespace OFX {
                                  const OfxRectI& srcRoD,const OfxRectI& dstRoD,
                                  PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
-            ///if the conversion rectangle is out of the src rod and the dst rod, just return
-            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
+            ///clip the conversion rect to srcRoD and dstRoD
+            OfxRectI rect = conversionRect;
+            if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
                 return;
             }
             
-            ///clip the conversion rect to srcRoD and dstRoD
-            OfxRectI rect = conversionRect;
-            clip(&rect,srcRoD);
-            clip(&rect,dstRoD);
             
             bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
             bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
@@ -405,15 +405,11 @@ namespace OFX {
                                   const OfxRectI& srcRoD,const OfxRectI& dstRoD,
                                   PixelPacking inputPacking,PixelPacking outputPacking,bool invertY,bool premult) const {
             
-            ///if the conversion rectangle is out of the src rod and the dst rod, just return
-            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                return;
-            }
-            
             ///clip the conversion rect to srcRoD and dstRoD
             OfxRectI rect = conversionRect;
-            clip(&rect,srcRoD);
-            clip(&rect,dstRoD);
+            if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                return;
+            }
             
             bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
             bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
@@ -499,15 +495,11 @@ namespace OFX {
                 throw std::runtime_error("Invalid pixel format.");
             }
             
-            ///if the conversion rectangle is out of the src rod and the dst rod, just return
-            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                return;
-            }
-            
             ///clip the conversion rect to srcRoD and dstRoD
             OfxRectI rect = conversionRect;
-            clip(&rect,srcRoD);
-            clip(&rect,dstRoD);
+            if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                return;
+            }
             
             bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
             bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
@@ -560,15 +552,13 @@ namespace OFX {
                 throw std::runtime_error("Invalid pixel format.");
             }
             
-            ///if the conversion rectangle is out of the src rod and the dst rod, just return
-            if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                return;
-            }
+
             
             ///clip the conversion rect to srcRoD and dstRoD
             OfxRectI rect = conversionRect;
-            clip(&rect,srcRoD);
-            clip(&rect,dstRoD);
+            if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                return;
+            }
             
             bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
             bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
@@ -654,15 +644,11 @@ namespace OFX {
                     throw std::runtime_error("Invalid pixel format.");
                 }
                 
-                ///if the conversion rectangle is out of the src rod and the dst rod, just return
-                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                    return;
-                }
-                
                 ///clip the conversion rect to srcRoD and dstRoD
                 OfxRectI rect = conversionRect;
-                clip(&rect,srcRoD);
-                clip(&rect,dstRoD);
+                if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                    return;
+                }
                 
                 bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
                 bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
@@ -720,15 +706,11 @@ namespace OFX {
                 }
                 
                 
-                ///if the conversion rectangle is out of the src rod and the dst rod, just return
-                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                    return;
-                }
-                
                 ///clip the conversion rect to srcRoD and dstRoD
                 OfxRectI rect = conversionRect;
-                clip(&rect,srcRoD);
-                clip(&rect,dstRoD);
+                if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                    return;
+                }
                 
                 if(inputPacking == PACKING_PLANAR || outputPacking == PACKING_PLANAR){
                     throw std::runtime_error("Invalid pixel format.");
@@ -889,14 +871,11 @@ namespace OFX {
                     throw std::runtime_error("This function is not meant for planar buffers.");
                 }
                 
-                ///if the conversion rectangle is out of the src rod and the dst rod, just return
-                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                    return;
-                }
-                
                 ///clip the conversion rect to srcRoD and dstRoD
                 OfxRectI rect = conversionRect;
-                clip(&rect,srcRoD);
+                if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                    return;
+                }
                 
                 bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
                 bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
@@ -989,14 +968,11 @@ namespace OFX {
                     throw std::runtime_error("Invalid pixel format.");
                 }
                 
-                ///if the conversion rectangle is out of the src rod and the dst rod, just return
-                if(!intersects(conversionRect, srcRoD) || !intersects(conversionRect, dstRoD)){
-                    return;
-                }
-                
                 ///clip the conversion rect to srcRoD and dstRoD
                 OfxRectI rect = conversionRect;
-                clip(&rect,srcRoD);
+                if(!clip(&rect,srcRoD) || !clip(&rect,dstRoD)){
+                    return;
+                }
                 
                 bool inputHasAlpha = inputPacking == PACKING_BGRA || inputPacking == PACKING_RGBA;
                 bool outputHasAlpha = outputPacking == PACKING_BGRA || outputPacking == PACKING_RGBA;
