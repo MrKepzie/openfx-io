@@ -207,7 +207,7 @@ void FfmpegWriterPlugin::supportedFileFormats(std::vector<std::string>* formats)
 }
 
 void FfmpegWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    
+    GenericWriterPlugin::changedParam(args, paramName);
 }
 
 void FfmpegWriterPlugin::initializeLut(){

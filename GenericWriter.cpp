@@ -86,6 +86,9 @@
 
 #define kReaderFileParamName "file"
 #define kReaderRenderParamName "render"
+#define kReaderFrameRangeChoiceParamName "frameRange"
+#define kReaderFirstFrameParamName "firstFrame"
+#define kReaderLastFrameParamName "lastFrame"
 
 
 // Base class for the RGBA and the Alpha processor
@@ -150,12 +153,18 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _inputClip(0)
 , _outputClip(0)
 , _fileParam(0)
+, _frameRange(0)
+, _firstFrame(0)
+, _lastFrame(0)
 , _lut(0)
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
     _fileParam = fetchStringParam(kReaderFileParamName);
+    _frameRange = fetchChoiceParam(kReaderFrameRangeChoiceParamName);
+    _firstFrame = fetchIntParam(kReaderFirstFrameParamName);
+    _lastFrame = fetchIntParam(kReaderLastFrameParamName);
 }
 
 GenericWriterPlugin::~GenericWriterPlugin(){
@@ -335,8 +344,44 @@ bool GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     return true;
 }
 
+
+bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
+    int choice;
+    _frameRange->getValue(choice);
+    if(choice == 0){
+        ///let the default be applied
+        return false;
+    }else if(choice == 1){
+        timeLineGetBounds(range.min, range.max);
+        return true;
+    }else{
+        int first;
+        _firstFrame->getValue(first);
+        range.min = first;
+        
+        int last;
+        _lastFrame->getValue(last);
+        range.max = last;
+        return true;
+    }
+}
+
 void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    
+    if(paramName == kReaderFrameRangeChoiceParamName){
+        int choice;
+        double first,last;
+        timeLineGetBounds(first,last);
+        _frameRange->getValue(choice);
+        if(choice == 2){
+            _firstFrame->setIsSecret(false);
+            _firstFrame->setValue(first);
+            _lastFrame->setIsSecret(false);
+            _lastFrame->setValue(last);
+        }else{
+            _firstFrame->setIsSecret(true);
+            _lastFrame->setIsSecret(true);
+        }
+    }
 }
 
 using namespace OFX;
@@ -404,6 +449,25 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     fileParam->setFilePathIsOutput(true);
 #endif
     
+    ///////////Frame range choosal
+    OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kReaderFrameRangeChoiceParamName);
+    frameRangeChoiceParam->setLabels("Frame range", "Frame range", "Frame range");
+    frameRangeChoiceParam->appendOption("Inputs union","The union of all inputs frame ranges will be rendered.");
+    frameRangeChoiceParam->appendOption("Timeline bounds","The frame range delimited by the timeline bounds will be rendered.");
+    frameRangeChoiceParam->appendOption("Manual","The frame range will be the one defined by the first frame and last frame parameters.");
+    frameRangeChoiceParam->setAnimates(false);
+    frameRangeChoiceParam->setHint("What frame range should be rendered.");
+    frameRangeChoiceParam->setDefault(0);
+    
+    /////////////First frame
+    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
+    firstFrameParam->setLabels("First frame", "First frame", "First frame");
+    firstFrameParam->setIsSecret(true);
+    
+    ////////////Last frame
+    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kReaderLastFrameParamName);
+    lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
+    lastFrameParam->setIsSecret(true);
     
     ///////////Render button
     OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kReaderRenderParamName);
