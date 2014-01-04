@@ -76,6 +76,10 @@ public:
      **/
     bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
     
+    /**
+     * @brief Don't override this. It returns the frame range to render.
+     **/
+    bool getTimeDomain(OfxRangeD &range);
     
     /**
      * @brief You can override this to take actions in response to a param change.
@@ -137,6 +141,9 @@ protected:
     OFX::Clip* _inputClip; //< Mantated input clip
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The output file
+    OFX::ChoiceParam *_frameRange; //<The frame range type
+    OFX::IntParam* _firstFrame; //< the first frame if the frame range type is "Manual"
+    OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
 
     const OFX::Color::Lut* _lut;//< the lut used to convert to the image's file format's color-space from linear.
     
