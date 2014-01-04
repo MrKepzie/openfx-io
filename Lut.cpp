@@ -37,7 +37,6 @@
 
 #include "Lut.h"
 
-#include <cstdint>
 
 namespace OFX {
     namespace Color {
