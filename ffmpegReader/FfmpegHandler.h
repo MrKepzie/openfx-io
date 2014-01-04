@@ -44,6 +44,17 @@
 #include <vector>
 #include <string>
 
+#include <locale>
+#include <cstdio>
+#if _WIN32
+#define snprintf sprintf_s
+extern "C"
+{
+#ifndef __STDC_CONSTANT_MACROS
+#  define __STDC_CONSTANT_MACROS
+#endif
+}
+#endif
 extern "C" {
 #include <errno.h>
 #include <libavformat/avformat.h>

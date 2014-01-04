@@ -75,7 +75,9 @@
 
 #include "GenericWriter.h"
 
-#include "../include/ofxsProcessing.H"
+#include <locale>
+
+#include "ofxsProcessing.H"
 
 
 #ifdef OFX_EXTENSIONS_NATRON
@@ -175,8 +177,9 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
     size_t i = sepPos;
     ++i;//< bypass the '.' character
     std::string ext;
+	std::locale loc;
     while(i < filename.size()){
-        ext.append(1,std::tolower(filename.at(i)));
+        ext.append(1,std::tolower(filename.at(i),loc));
         ++i;
     }
 
@@ -203,7 +206,8 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
         ///find the position of the first digit
         size_t firstDigitPos = sepPos;
         --firstDigitPos;
-        while (firstDigitPos &&  std::isdigit(filename.at(firstDigitPos))) {
+		std::locale loc;
+        while (firstDigitPos &&  std::isdigit(filename.at(firstDigitPos),loc)) {
             --firstDigitPos;
         }
         ++firstDigitPos; 

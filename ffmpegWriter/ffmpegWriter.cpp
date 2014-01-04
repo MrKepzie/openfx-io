@@ -38,6 +38,20 @@
  */
 
 #include "ffmpegWriter.h"
+
+#include <cstdio>
+#if _WIN32
+#define snprintf sprintf_s
+extern "C"
+{
+#ifndef __STDC_CONSTANT_MACROS
+#  define __STDC_CONSTANT_MACROS
+#endif
+}
+#endif
+
+
+
 #ifdef OFX_EXTENSIONS_NATRON
 #include "IOExtensions.h"
 #endif
@@ -420,7 +434,7 @@ void FfmpegWriterPlugin::encode(const std::string& filename,OfxTime time,const O
         if (ret > 0) {
             AVPacket pkt;
             av_init_packet(&pkt);
-            if (_codecContext->coded_frame && static_cast<unsigned long>(_codecContext->coded_frame->pts) != AV_NOPTS_VALUE)
+            if (_codecContext->coded_frame && static_cast<uint64_t>(_codecContext->coded_frame->pts) != AV_NOPTS_VALUE)
                 pkt.pts = av_rescale_q(_codecContext->coded_frame->pts, _codecContext->time_base, _stream->time_base);
             if (_codecContext->coded_frame && _codecContext->coded_frame->key_frame)
                 pkt.flags |= AV_PKT_FLAG_KEY;

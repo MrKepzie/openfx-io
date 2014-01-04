@@ -40,6 +40,8 @@
 
 #include "FfmpegHandler.h"
 
+
+
 #include "ffmpegReader.h"
 
 namespace FFmpeg {
@@ -92,8 +94,9 @@ namespace FFmpeg {
         }
         ++lastDot;//< bypass the '.' character
         std::string ext;
+		std::locale loc;
         while(lastDot < filename.size()){
-            ext.append(1,std::tolower(filename.at(lastDot)));
+            ext.append(1,std::tolower(filename.at(lastDot),loc));
             ++lastDot;
         }
         return extensionCorrespondToImageFile(ext);
