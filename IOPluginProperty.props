@@ -8,6 +8,9 @@
       <AdditionalIncludeDirectories>..\;..\openfx\Support\Plugins\include;..\openfx\Support\include;..\openfx\include;..\openfx\include\natron;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_VEGAS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <Link>
+      <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
