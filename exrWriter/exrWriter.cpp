@@ -192,10 +192,10 @@ void ExrWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX:
                 halfwriterow = new Imf_::Array2D<half>(4 ,rod.x2 - rod.x1);
                 
                 for(int chan = 0; chan < 4 ; ++chan){
-//                    fbuf.insert(chanNames[chan],
-//                                Imf_::Slice(Imf_::HALF,
-//                                            (char*)(&(*halfwriterow)[chan][0] - exrDataW.min.x),
-//                                            sizeof((*halfwriterow)[chan][0]), 0));
+                    fbuf.insert(chanNames[chan],
+                                Imf_::Slice(Imf_::HALF,
+                                            (char*)(&(*halfwriterow)[chan][0] - exrDataW.min.x),
+                                            sizeof((*halfwriterow)[chan][0]), 0));
                     const float* from = src_pixels + chan;
                     for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += 4) {
                         (*halfwriterow)[chan][i - exrDataW.min.x] = from[f];
