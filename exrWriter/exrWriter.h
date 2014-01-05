@@ -1,6 +1,6 @@
 /*
- OFX exrReader plugin.
- Reads a an input image using the OpenEXR library.
+ OFX exrWriter plugin.
+ Writes a an output image using the OpenEXR library.
  
  Copyright (C) 2013 INRIA
  Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
@@ -36,42 +36,42 @@
  78153 Le Chesnay Cedex - France
  
  */
+#ifndef __Io__exrWriter__
+#define __Io__exrWriter__
 
+#include "GenericWriter.h"
 
-#ifndef __Io__exrReader__
-#define __Io__exrReader__
+#include <ImfChannelList.h>
+#include <ImfArray.h>
+#include <ImfOutputFile.h>
+#include <half.h>
 
-#include "GenericReader.h"
-
-class ExrReaderPlugin : public GenericReaderPlugin {
-  
+class ExrWriterPlugin : public GenericWriterPlugin {
+    
 public:
     
-    ExrReaderPlugin(OfxImageEffectHandle handle);
+    ExrWriterPlugin(OfxImageEffectHandle handle);
     
-    virtual ~ExrReaderPlugin();
     
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual ~ExrWriterPlugin();
     
     virtual void supportedFileFormats(std::vector<std::string>* formats) const;
     
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    
 private:
     
-    virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
-    
-    virtual void onInputFileChanged(const std::string& /*filename*/) {}
-    
-    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
     
     virtual void initializeLut();
     
-    virtual bool getTimeDomain(const std::string& filename,OfxRangeD &range);
+    virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg);
     
-    virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const;
+    virtual bool isImageFile(const std::string& fileExtension) const;
     
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
     
+    OFX::ChoiceParam* _compression;
+    OFX::ChoiceParam* _bitDepth;
+
 };
 
-
-#endif /* defined(__Io__exrReader__) */
+#endif /* defined(__Io__exrWriter__) */

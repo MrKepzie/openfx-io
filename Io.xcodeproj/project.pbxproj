@@ -13,6 +13,7 @@
 			buildPhases = (
 			);
 			dependencies = (
+				D769DE261879A08300AED3D6 /* PBXTargetDependency */,
 				D709B977187890F900D5A0B4 /* PBXTargetDependency */,
 				D74E62E41875ABD400D8FA13 /* PBXTargetDependency */,
 				D74E62641875A91100D8FA13 /* PBXTargetDependency */,
@@ -118,6 +119,33 @@
 		D74E62EE1875ABE400D8FA13 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
 		D74E62EF1875ABE400D8FA13 /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
 		D74E62F01875ABE400D8FA13 /* ofxsSupportPrivate.h in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
+		D769DE141879A07800AED3D6 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
+		D769DE291879A11600AED3D6 /* exrWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D769DE271879A11600AED3D6 /* exrWriter.cpp */; };
+		D769DE2A1879A11600AED3D6 /* exrWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = D769DE281879A11600AED3D6 /* exrWriter.h */; };
+		D769DE2B1879A12C00AED3D6 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62BE1875AB2000D8FA13 /* GenericWriter.cpp */; };
+		D769DE2C1879A12C00AED3D6 /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62C01875AB2000D8FA13 /* Lut.cpp */; };
+		D769DE2D1879A12C00AED3D6 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A81875AB0800D8FA13 /* ofxsCore.cpp */; };
+		D769DE2E1879A12C00AED3D6 /* ofxsHWNDInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A91875AB0800D8FA13 /* ofxsHWNDInteract.cpp */; };
+		D769DE2F1879A12C00AED3D6 /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AA1875AB0800D8FA13 /* ofxsImageEffect.cpp */; };
+		D769DE301879A12C00AED3D6 /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AB1875AB0800D8FA13 /* ofxsInteract.cpp */; };
+		D769DE311879A12C00AED3D6 /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AC1875AB0800D8FA13 /* ofxsLog.cpp */; };
+		D769DE321879A12C00AED3D6 /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AD1875AB0800D8FA13 /* ofxsMultiThread.cpp */; };
+		D769DE331879A12C00AED3D6 /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AE1875AB0800D8FA13 /* ofxsParams.cpp */; };
+		D769DE341879A12C00AED3D6 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
+		D769DE351879A12C00AED3D6 /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
+		D769DE361879A12C00AED3D6 /* ofxsSupportPrivate.h in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
+		D769DE371879A13900AED3D6 /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62BF1875AB2000D8FA13 /* GenericWriter.h */; };
+		D769DE381879A13900AED3D6 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62C11875AB2000D8FA13 /* Lut.h */; };
+		D769DE391879A13900AED3D6 /* ofxsCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62941875AAE100D8FA13 /* ofxsCore.h */; };
+		D769DE3A1879A13900AED3D6 /* ofxsHWNDInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62951875AAE100D8FA13 /* ofxsHWNDInteract.h */; };
+		D769DE3B1879A13900AED3D6 /* ofxsImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62961875AAE100D8FA13 /* ofxsImageEffect.h */; };
+		D769DE3C1879A13900AED3D6 /* ofxsInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62971875AAE100D8FA13 /* ofxsInteract.h */; };
+		D769DE3D1879A13900AED3D6 /* ofxsLog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62981875AAE100D8FA13 /* ofxsLog.h */; };
+		D769DE3E1879A13900AED3D6 /* ofxsMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62991875AAE100D8FA13 /* ofxsMemory.h */; };
+		D769DE3F1879A13900AED3D6 /* ofxsMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E629A1875AAE100D8FA13 /* ofxsMessage.h */; };
+		D769DE401879A13900AED3D6 /* ofxsMultiThread.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E629B1875AAE100D8FA13 /* ofxsMultiThread.h */; };
+		D769DE411879A13900AED3D6 /* ofxsParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E629C1875AAE100D8FA13 /* ofxsParam.h */; };
+		D769DE421879A13900AED3D6 /* IOExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62711875AAB500D8FA13 /* IOExtensions.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -141,6 +169,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = D74E62CB1875AB4600D8FA13;
 			remoteInfo = ffmpegWriter;
+		};
+		D769DE251879A08300AED3D6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D769DE121879A07800AED3D6;
+			remoteInfo = exrWriter;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -203,6 +238,10 @@
 		D74E62DE1875ABCB00D8FA13 /* ffmpegWriter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ffmpegWriter.cpp; sourceTree = "<group>"; };
 		D74E62DF1875ABCB00D8FA13 /* ffmpegWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ffmpegWriter.h; sourceTree = "<group>"; };
 		D74E62E01875ABCB00D8FA13 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D769DE131879A07800AED3D6 /* exrWriter.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = exrWriter.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		D769DE271879A11600AED3D6 /* exrWriter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = exrWriter.cpp; sourceTree = "<group>"; };
+		D769DE281879A11600AED3D6 /* exrWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = exrWriter.h; sourceTree = "<group>"; };
+		D769DE431879A17100AED3D6 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -227,6 +266,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				D74E62CD1875AB4600D8FA13 /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D769DE101879A07800AED3D6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D769DE141879A07800AED3D6 /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +303,7 @@
 				D74E624B1875A7A400D8FA13 /* ffmpegReader */,
 				D74E62CE1875AB4600D8FA13 /* ffmpegWriter */,
 				D709B95518787D6700D5A0B4 /* exrReader */,
+				D769DE151879A07800AED3D6 /* exrWriter */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
 			);
@@ -267,6 +315,7 @@
 				D74E62461875A7A400D8FA13 /* ffmpegReader.ofx.bundle */,
 				D74E62CC1875AB4600D8FA13 /* ffmpegWriter.ofx.bundle */,
 				D709B95318787D6700D5A0B4 /* exrReader.ofx.bundle */,
+				D769DE131879A07800AED3D6 /* exrWriter.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -370,6 +419,16 @@
 			path = ffmpegWriter;
 			sourceTree = "<group>";
 		};
+		D769DE151879A07800AED3D6 /* exrWriter */ = {
+			isa = PBXGroup;
+			children = (
+				D769DE431879A17100AED3D6 /* Info.plist */,
+				D769DE271879A11600AED3D6 /* exrWriter.cpp */,
+				D769DE281879A11600AED3D6 /* exrWriter.h */,
+			);
+			path = exrWriter;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -446,6 +505,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D769DE111879A07800AED3D6 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D769DE371879A13900AED3D6 /* GenericWriter.h in Headers */,
+				D769DE381879A13900AED3D6 /* Lut.h in Headers */,
+				D769DE391879A13900AED3D6 /* ofxsCore.h in Headers */,
+				D769DE3A1879A13900AED3D6 /* ofxsHWNDInteract.h in Headers */,
+				D769DE3B1879A13900AED3D6 /* ofxsImageEffect.h in Headers */,
+				D769DE3C1879A13900AED3D6 /* ofxsInteract.h in Headers */,
+				D769DE3D1879A13900AED3D6 /* ofxsLog.h in Headers */,
+				D769DE3E1879A13900AED3D6 /* ofxsMemory.h in Headers */,
+				D769DE3F1879A13900AED3D6 /* ofxsMessage.h in Headers */,
+				D769DE401879A13900AED3D6 /* ofxsMultiThread.h in Headers */,
+				D769DE411879A13900AED3D6 /* ofxsParam.h in Headers */,
+				D769DE421879A13900AED3D6 /* IOExtensions.h in Headers */,
+				D769DE2A1879A11600AED3D6 /* exrWriter.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
@@ -500,6 +579,23 @@
 			productReference = D74E62CC1875AB4600D8FA13 /* ffmpegWriter.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
+		D769DE121879A07800AED3D6 /* exrWriter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D769DE241879A07800AED3D6 /* Build configuration list for PBXNativeTarget "exrWriter" */;
+			buildPhases = (
+				D769DE0F1879A07800AED3D6 /* Sources */,
+				D769DE101879A07800AED3D6 /* Frameworks */,
+				D769DE111879A07800AED3D6 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = exrWriter;
+			productName = exrWriter;
+			productReference = D769DE131879A07800AED3D6 /* exrWriter.ofx.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -524,6 +620,7 @@
 				D74E62CB1875AB4600D8FA13 /* ffmpegWriter */,
 				D74E625F1875A90800D8FA13 /* all */,
 				D709B95218787D6700D5A0B4 /* exrReader */,
+				D769DE121879A07800AED3D6 /* exrWriter */,
 			);
 		};
 /* End PBXProject section */
@@ -590,6 +687,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D769DE0F1879A07800AED3D6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D769DE2B1879A12C00AED3D6 /* GenericWriter.cpp in Sources */,
+				D769DE2C1879A12C00AED3D6 /* Lut.cpp in Sources */,
+				D769DE2D1879A12C00AED3D6 /* ofxsCore.cpp in Sources */,
+				D769DE2E1879A12C00AED3D6 /* ofxsHWNDInteract.cpp in Sources */,
+				D769DE2F1879A12C00AED3D6 /* ofxsImageEffect.cpp in Sources */,
+				D769DE301879A12C00AED3D6 /* ofxsInteract.cpp in Sources */,
+				D769DE311879A12C00AED3D6 /* ofxsLog.cpp in Sources */,
+				D769DE321879A12C00AED3D6 /* ofxsMultiThread.cpp in Sources */,
+				D769DE331879A12C00AED3D6 /* ofxsParams.cpp in Sources */,
+				D769DE341879A12C00AED3D6 /* ofxsProperty.cpp in Sources */,
+				D769DE351879A12C00AED3D6 /* ofxsPropertyValidation.cpp in Sources */,
+				D769DE361879A12C00AED3D6 /* ofxsSupportPrivate.h in Sources */,
+				D769DE291879A11600AED3D6 /* exrWriter.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -607,6 +724,11 @@
 			isa = PBXTargetDependency;
 			target = D74E62CB1875AB4600D8FA13 /* ffmpegWriter */;
 			targetProxy = D74E62E31875ABD400D8FA13 /* PBXContainerItemProxy */;
+		};
+		D769DE261879A08300AED3D6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D769DE121879A07800AED3D6 /* exrWriter */;
+			targetProxy = D769DE251879A08300AED3D6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -658,6 +780,14 @@
 				LIBRARY_SEARCH_PATHS = "$(EXR_PATH)/lib";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-L$(EXR_PATH)/lib",
+					"-lIlmThread",
+					"-lImath",
+					"-lHalf",
+					"-lIex",
+					"-lIlmImf",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME).ofx";
 				SDKROOT = macosx;
 			};
@@ -704,6 +834,14 @@
 				INFOPLIST_FILE = exrReader/Info.plist;
 				LIBRARY_SEARCH_PATHS = "$(EXR_PATH)/lib";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				OTHER_LDFLAGS = (
+					"-L$(EXR_PATH)/lib",
+					"-lIlmThread",
+					"-lImath",
+					"-lHalf",
+					"-lIex",
+					"-lIlmImf",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME).ofx";
 				SDKROOT = macosx;
 			};
@@ -938,6 +1076,120 @@
 			};
 			name = Release;
 		};
+		D769DE221879A07800AED3D6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				EXR_PATH = /opt/local;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					"$(OFX_PATH)/include",
+					"$(OFX_PATH)/Support/include",
+					"$(OFX_PATH)/Support/Plugins/include",
+					"$(EXR_PATH)/include/OpenEXR",
+				);
+				INFOPLIST_FILE = exrWriter/Info.plist;
+				LIBRARY_SEARCH_PATHS = "$(EXR_PATH)/lib";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-L$(EXR_PATH)/lib",
+					"-lIlmImf",
+					"-lImath",
+					"-lIex",
+					"-lHalf",
+					"-lIlmThread",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D769DE231879A07800AED3D6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				EXR_PATH = /opt/local;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "";
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
+					"$(OFX_PATH)/include",
+					"$(OFX_PATH)/Support/include",
+					"$(OFX_PATH)/Support/Plugins/include",
+					"$(EXR_PATH)/include/OpenEXR",
+				);
+				INFOPLIST_FILE = exrWriter/Info.plist;
+				LIBRARY_SEARCH_PATHS = "$(EXR_PATH)/lib";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				OTHER_LDFLAGS = (
+					"-L$(EXR_PATH)/lib",
+					"-lIlmImf",
+					"-lImath",
+					"-lIex",
+					"-lHalf",
+					"-lIlmThread",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -948,6 +1200,7 @@
 				D709B96318787D6700D5A0B4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "Io" */ = {
 			isa = XCConfigurationList;
@@ -984,6 +1237,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		D769DE241879A07800AED3D6 /* Build configuration list for PBXNativeTarget "exrWriter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D769DE221879A07800AED3D6 /* Debug */,
+				D769DE231879A07800AED3D6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 /* End XCConfigurationList section */
 	};

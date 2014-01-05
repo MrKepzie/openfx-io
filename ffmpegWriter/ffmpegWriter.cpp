@@ -513,6 +513,12 @@ void FfmpegWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
+    
+    
+    ////base class params
+    GenericWriterPluginFactory::describeInContext(desc, context);
+    
+    
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
     OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kFfmpegWriterFormatParamName);
@@ -590,11 +596,7 @@ void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
     mbDecisionParam->setDefault(FF_MB_DECISION_SIMPLE);
     mbDecisionParam->setParent(*groupParam);
     mbDecisionParam->setAnimates(false);
-    
-    ////base class params
-    GenericWriterPluginFactory::describeInContext(desc, context);
-    
-    
+  
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
