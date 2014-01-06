@@ -490,7 +490,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static FfmpegWriterPluginFactory p("fr.inria.openfx:ffmpegWriter", 1, 0);
+            static FfmpegWriterPluginFactory p("fr.inria.openfx:WriteFFmpeg", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -501,8 +501,8 @@ namespace OFX
 void FfmpegWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels("FfmpegWriterOFX", "FfmpegWriterOFX", "FfmpegWriterOFX");
-    desc.setPluginDescription("Writes image or video file using the libav");
+    desc.setLabels("WriteFFmpegOFX", "WriteFFmpegOFX", "WriteFFmpegOFX");
+    desc.setPluginDescription("Write images or video file using FFmpeg or libav");
 
 
     

@@ -226,7 +226,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static FfmpegReaderPluginFactory p("fr.inria.openfx:ffmpegReader", 1, 0);
+            static FfmpegReaderPluginFactory p("fr.inria.openfx:ReadFFmpeg", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -236,8 +236,8 @@ namespace OFX
 void FfmpegReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels("FfmpegReaderOFX", "FfmpegReaderOFX", "FfmpegReaderOFX");
-    desc.setPluginDescription("Reads image or video file using the libav");
+    desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
+    desc.setPluginDescription("Read images or video using FFmpeg or libav");
     
     GenericReaderPluginFactory::describe(desc);
     

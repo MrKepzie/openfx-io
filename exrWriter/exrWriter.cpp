@@ -236,7 +236,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static ExrWriterPluginFactory p("fr.inria.openfx:exrWriter", 1, 0);
+            static ExrWriterPluginFactory p("fr.inria.openfx:WriteEXR", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -247,8 +247,8 @@ namespace OFX
 void ExrWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels("ExrWriterOFX", "ExrWriterOFX", "ExrWriterOFX");
-    desc.setPluginDescription("Writes image file using the OpenEXR library.");
+    desc.setLabels("WriteEXROFX", "WriteEXROFX", "WriteEXROFX");
+    desc.setPluginDescription("Write EXR images file using OpenEXR.");
     
     
     

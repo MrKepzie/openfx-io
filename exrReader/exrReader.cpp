@@ -581,7 +581,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static ExrReaderPluginFactory p("fr.inria.openfx:exrReader", 1, 0);
+            static ExrReaderPluginFactory p("fr.inria.openfx:ReadEXR", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -591,8 +591,8 @@ namespace OFX
 void ExrReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels("ExrReaderOFX", "ExrReaderOFX", "ExrReaderOFX");
-    desc.setPluginDescription("Reads image an exr file using the OpenEXR library.");
+    desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
+    desc.setPluginDescription("Read EXR images using OpenEXR.");
     
     GenericReaderPluginFactory::describe(desc);
     
