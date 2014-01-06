@@ -78,7 +78,7 @@
 #include <locale>
 
 #include "ofxsProcessing.H"
-
+#include "ofxsLog.h"
 
 #ifdef OFX_EXTENSIONS_NATRON
 #include "IOExtensions.h"
@@ -90,6 +90,9 @@
 #define kReaderFirstFrameParamName "firstFrame"
 #define kReaderLastFrameParamName "lastFrame"
 
+#ifdef OFX_EXTENSIONS_NATRON
+static bool gHostIsNatron = true;
+#endif
 
 // Base class for the RGBA and the Alpha processor
 class CopierBase : public OFX::ImageProcessor {
@@ -412,14 +415,22 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
     
-    
 #ifdef OFX_EXTENSIONS_NATRON
-    std::vector<std::string> fileFormats;
-    supportedFileFormats(&fileFormats);
-    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
+    // to check if the host is Natron-compatible, we could rely on gHostDescription.hostName,
+    // but we prefer checking if the host has the right properties, in care another host implements
+    // these extensions
+    try {
+        std::vector<std::string> fileFormats;
+        supportedFileFormats(&fileFormats);
+        for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+            desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
+        }
+        desc.getPropertySet().propSetInt(kNatronImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+    } catch (const OFX::Exception::PropertyUnknownToHost &e) {
+        // the host is does not implement Natron extensions
+        gHostIsNatron = false;
     }
-    desc.getPropertySet().propSetInt(kNatronImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+    OFX::Log::warning(!gHostIsNatron, "WriteOFX: Host does not implement Natron extensions.");
 #endif
 }
 
@@ -428,7 +439,22 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
-void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context){
+void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
+{
+    // create the mandated source clip
+    ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
+    srcClip->addSupportedComponent(ePixelComponentRGBA);
+    srcClip->setSupportsTiles(true);
+
+
+    // create the mandated output clip
+    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
+    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    dstClip->setSupportsTiles(false);//< we don't support tiles in output!
+
+    // make some pages and to things in
+    PageParamDescriptor *page = desc.definePageParam("Controls");
+
     //////////Output file
     OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
     fileParam->setLabels("File", "File", "File");
@@ -443,12 +469,14 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
                        " there will be 2 digits). You don't even need to provide the # character.");
     fileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*fileParam);
-    
 #ifdef OFX_EXTENSIONS_NATRON
-    fileParam->setFilePathIsImage(true);
-    fileParam->setFilePathIsOutput(true);
+    if (gHostIsNatron) {
+        fileParam->setFilePathIsImage(true);
+        fileParam->setFilePathIsOutput(true);
+    }
 #endif
-    
+    page->addChild(*fileParam);
+
     ///////////Frame range choosal
     OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kReaderFrameRangeChoiceParamName);
     frameRangeChoiceParam->setLabels("Frame range", "Frame range", "Frame range");
@@ -458,33 +486,28 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     frameRangeChoiceParam->setAnimates(false);
     frameRangeChoiceParam->setHint("What frame range should be rendered.");
     frameRangeChoiceParam->setDefault(0);
+    page->addChild(*frameRangeChoiceParam);
     
     /////////////First frame
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
     firstFrameParam->setLabels("First frame", "First frame", "First frame");
     firstFrameParam->setIsSecret(true);
-    
+    page->addChild(*firstFrameParam);
+
     ////////////Last frame
     OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kReaderLastFrameParamName);
     lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
     lastFrameParam->setIsSecret(true);
-    
+    page->addChild(*lastFrameParam);
+
     ///////////Render button
     OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kReaderRenderParamName);
     renderParam->setLabels("Render","Render","Render");
     renderParam->setHint("Starts rendering all the frame range.");
 #ifdef OFX_EXTENSIONS_NATRON
-    renderParam->setAsRenderButton();
+    if (gHostIsNatron) {
+        renderParam->setAsRenderButton();
+    }
 #endif
-    
-    // create the mandated source clip
-    ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
-    srcClip->addSupportedComponent(ePixelComponentRGBA);
-    srcClip->setSupportsTiles(true);
-    
-    
-    // create the mandated output clip
-    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-    dstClip->addSupportedComponent(ePixelComponentRGBA);
-    dstClip->setSupportsTiles(false);//< we don't support tiles in output!
+    page->addChild(*renderParam);
 }

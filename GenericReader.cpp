@@ -37,6 +37,9 @@
  
  */
 #include "GenericReader.h"
+
+#include "ofxsLog.h"
+
 #include "Lut.h"
 #ifdef OFX_EXTENSIONS_NATRON
 #include "IOExtensions.h"
@@ -47,6 +50,9 @@
 #define kReaderMissingFrameParamName "onMissingFrame"
 #define kReaderTimeOffsetParamName "timeOffset"
 
+#ifdef OFX_EXTENSIONS_NATRON
+static bool gHostIsNatron = true;
+#endif
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -149,13 +155,15 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     std::string filename;
     _fileParam->getValueAtTime(args.time - timeOffset, filename);
     
-    if(filename.empty()){
+    if (filename.empty()) {
         int choice;
         _missingFrameParam->getValue(choice);
-        if(choice == 1) {//error
+        // FIXME: nearest frame search should be implemented here, just do a getValue for
+        // t-1, t+1, t-2, t+2, etc, until a valid filename is found
+        if (choice == 1) {//error
             setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+            throw kOfxStatErrValue;
         }
-        return;
     }
     
     decode(filename, args.time - timeOffset, _dstImg);
@@ -172,25 +180,25 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         onInputFileChanged(filename);
         refreshMissingFrameParamValue(filename);
     }
-#ifdef OFX_EXTENSIONS_NATRON
-    else if(paramName == kReaderMissingFrameParamName){
+    else if(paramName == kReaderMissingFrameParamName) {
         std::string filename;
         _fileParam->getValueAtTime(args.time,filename);
 
         refreshMissingFrameParamValue(filename);
     }
-#endif
-    
 }
 
 void GenericReaderPlugin::refreshMissingFrameParamValue(const std::string& currentFile){
-#ifdef OFX_EXTENSIONS_NATRON
-    int choice;
-    _missingFrameParam->getValue(choice);
-    if(choice == 0 || isVideoStream(currentFile)){ //for video-streams we always want the nearest...
-        _fileParam->setImageFilePathShouldLoadNearestFrame(true);
-    }else{
-        _fileParam->setImageFilePathShouldLoadNearestFrame(false);
+#ifdef OFX_EXTENSIONS_NATRON // FIXME: should be implemented here, not in Natron!
+    if (gHostIsNatron) {
+        int choice;
+        _missingFrameParam->getValue(choice);
+        if (choice == 0 || isVideoStream(currentFile)) {
+            //for video-streams we always want the nearest...
+            _fileParam->setImageFilePathShouldLoadNearestFrame(true);
+        } else {
+            _fileParam->setImageFilePathShouldLoadNearestFrame(false);
+        }
     }
 #endif
 }
@@ -220,14 +228,22 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
     
     
-    
 #ifdef OFX_EXTENSIONS_NATRON
-    std::vector<std::string> fileFormats;
-    supportedFileFormats(&fileFormats);
-    for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-        desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
+    // to check if the host is Natron-compatible, we could rely on gHostDescription.hostName,
+    // but we prefer checking if the host has the right properties, in care another host implements
+    // these extensions
+    try {
+        std::vector<std::string> fileFormats;
+        supportedFileFormats(&fileFormats);
+        for (unsigned int i = 0; i < fileFormats.size(); ++i) {
+            desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
+        }
+        desc.getPropertySet().propSetInt(kNatronImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+    } catch (const OFX::Exception::PropertyUnknownToHost &e) {
+        // the host is does not implement Natron extensions
+        gHostIsNatron = false;
     }
-    desc.getPropertySet().propSetInt(kNatronImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
+    OFX::Log::warning(!gHostIsNatron, "ReadOFX: Host does not implement Natron extensions.");
 #endif
 }
 
@@ -239,33 +255,39 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     fileParam->setHint("The input image sequence/video stream file(s).");
     fileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*fileParam);
-    
+
+    // create the mandated output clip
+    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
+    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    dstClip->setSupportsTiles(true);
+
+    // make some pages and to things in
+    PageParamDescriptor *page = desc.definePageParam("Controls");
+
 #ifdef OFX_EXTENSIONS_NATRON
-    fileParam->setFilePathIsImage(true);
+    if (gHostIsNatron) {
+        fileParam->setFilePathIsImage(true);
+    }
 #endif
-    
-    
+
     ///////////Missing frame choice
+    // FIXME: could this be implemented for non-Natron hosts? After all, the plugin knows everything about the sequence.
     OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
     missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
-    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream");
+    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream (FIXME: only supported on Natron, why?)");
     missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
     missingFrameParam->appendOption("Error","An error is reported.");
     missingFrameParam->appendOption("Black image","A black image is rendered.");
     missingFrameParam->setAnimates(false);
     missingFrameParam->setDefault(0); //< default to nearest frame.
-    
+    page->addChild(*missingFrameParam);
+
     ///////////Time offset
     OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
     timeOffsetParam->setLabels("Time Offset", "Time Offset", "Time Offset");
     timeOffsetParam->setHint("Offset in frames (frame f of the input will be at f + offset).");
     timeOffsetParam->setDefault(0);
     timeOffsetParam->setAnimates(false);
-    
-    
-    // create the mandated output clip
-    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-    dstClip->addSupportedComponent(ePixelComponentRGBA);
-    dstClip->setSupportsTiles(true);
+    page->addChild(*timeOffsetParam);
 }
 
