@@ -206,7 +206,7 @@ void GenericReaderPlugin::refreshMissingFrameParamValue(const std::string& curre
 using namespace OFX;
 
 void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
-    desc.setPluginGrouping("IO/OpenFXReaders");
+    desc.setPluginGrouping("Image/ReadOFX");
     
     desc.addSupportedContext(OFX::eContextGenerator);
     desc.addSupportedContext(OFX::eContextGeneral);

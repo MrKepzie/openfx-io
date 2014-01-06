@@ -394,7 +394,7 @@ using namespace OFX;
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
 void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
-    desc.setPluginGrouping("IO/OpenFXWriters");
+    desc.setPluginGrouping("Image/WriteOFX");
     
     desc.addSupportedContext(OFX::eContextFilter);
     desc.addSupportedContext(OFX::eContextGeneral);
