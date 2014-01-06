@@ -1,5 +1,5 @@
-PLUGINOBJECTS = ffmpegReader.o FfmpegHandler.o ../GenericReader.o ../Lut.o
-PLUGINNAME = ffmpegReader
+PLUGINOBJECTS = ffmpegWriter.o ../GenericWriter.o ../Lut.o
+PLUGINNAME = ffmpegWriter
 
 include ../Makefile.master
 
