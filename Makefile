@@ -1,4 +1,4 @@
-SUBDIRS = ffmpegWriter
+SUBDIRS = ffmpegReader ffmpegWriter exrReader exrWriter
 
 default : 
 	@ echo making sub projects... $(SUBDIRS)
