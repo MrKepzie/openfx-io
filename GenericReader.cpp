@@ -84,7 +84,7 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     
     std::string filename;
-    _fileParam->getValue(filename);
+    _fileParam->getValueAtTime(0,filename);
     
     int timeOffset;
     _timeOffset->getValue(timeOffset);
@@ -121,28 +121,29 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     _fileParam->getValueAtTime(args.time - timeOffset, filename);
     
     ///we want to load the nearest frame
-    if (choice == 0) {
-        while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
-            ++nearestIndex;
-            _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
-            if (!filename.empty()) {
-                break;
-            }
-            _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+    while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
+        ++nearestIndex;
+        _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
+        if (!filename.empty()) {
+            break;
         }
-        if(filename.empty()){
-            setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
-            return true;
-        }
+        _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+    }
+    if(filename.empty()){
+        setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+        return true;
     } else {
-        if(filename.empty()) {
-            std::stringstream ss;
-            ss << "Couldn't find a frame at time " << args.time - timeOffset;
-            setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
-            return true;
+        if (nearestIndex != 0) {
+            bool video = isVideoStream(filename);
+            if(choice == 1 && !video) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                return true;
+            }else if(choice == 2 && !video) {
+                return true;
+            }
         }
     }
-    
+
     ///we want to cache away the rod and the image read from file
     if(areHeaderAndDataTied(filename,args.time - timeOffset)){
         
@@ -153,7 +154,7 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
             initializeLut();
         }
         
-        decode(filename, args.time, _dstImg);
+        decode(filename, args.time - timeOffset, _dstImg);
         imgRoI = _dstImg->getRegionOfDefinition();
         rod.x1 = imgRoI.x1;
         rod.x2 = imgRoI.x2;
@@ -192,25 +193,26 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     
     ///we want to load the nearest frame
     int nearestIndex = 0;
-    if (choice == 0) {
-        while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
-            ++nearestIndex;
-            _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
-            if (!filename.empty()) {
-                break;
-            }
-            _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+    while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
+        ++nearestIndex;
+        _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
+        if (!filename.empty()) {
+            break;
         }
-        if(filename.empty()){
-            setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
-            return;
-        }
+        _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+    }
+    if(filename.empty()){
+        setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+        return;
     } else {
-        if(filename.empty()){
-            std::stringstream ss;
-            ss << "Couldn't find a frame at time " << args.time - timeOffset;
-            setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
-            return;
+        if (nearestIndex != 0) {
+            bool video = isVideoStream(filename);
+            if(choice == 1 && !video) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                return;
+            }else if(choice == 2 && !video) {
+                return;
+            }
         }
     }
     
