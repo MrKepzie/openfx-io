@@ -130,13 +130,17 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
             }
             _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
         }
-        setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
-        return true;
+        if(filename.empty()){
+            setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+            return true;
+        }
     } else {
-        std::stringstream ss;
-        ss << "Couldn't find a frame at time " << args.time - timeOffset;
-        setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
-        return true;
+        if(filename.empty()) {
+            std::stringstream ss;
+            ss << "Couldn't find a frame at time " << args.time - timeOffset;
+            setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
+            return true;
+        }
     }
     
     ///we want to cache away the rod and the image read from file
@@ -197,13 +201,17 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
             }
             _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
         }
-        setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
-        return;
+        if(filename.empty()){
+            setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+            return;
+        }
     } else {
-        std::stringstream ss;
-        ss << "Couldn't find a frame at time " << args.time - timeOffset;
-        setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
-        return;
+        if(filename.empty()){
+            std::stringstream ss;
+            ss << "Couldn't find a frame at time " << args.time - timeOffset;
+            setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
+            return;
+        }
     }
     
     
@@ -293,7 +301,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     // FIXME: could this be implemented for non-Natron hosts? After all, the plugin knows everything about the sequence.
     OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
     missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
-    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream (FIXME: only supported on Natron, why?)");
+    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream.");
     missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
     missingFrameParam->appendOption("Error","An error is reported.");
     missingFrameParam->appendOption("Black image","A black image is rendered.");
