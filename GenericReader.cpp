@@ -56,7 +56,7 @@
 static bool gHostIsNatron = true;
 #endif
 
-static int nearestFrameSearchLimit = 10000;
+static int nearestFrameSearchLimit = 50000;
 
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
@@ -67,6 +67,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _timeOffset(0)
 , _lut(0)
 , _dstImg(0)
+, _frameRangeValid(false)
+, _frameRange()
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -83,18 +85,89 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     
-    std::string filename;
-    _fileParam->getValueAtTime(0,filename);
-    
+    if(!_frameRangeValid) {
+        std::string filename;
+        _fileParam->getValueAtTime(0,filename);
+        
+        ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
+        ///find-out the time domain
+        if(!getTimeDomain(filename,range)){
+            ///the plugin wants to have the default behaviour
+            
+            ///They're 3 cases:
+            /// 1) - the frame range is lesser than 0, e.g: [-10,-5]
+            /// 2) - the frame range contains 0, e.g: [-5,5]
+            /// 3) - the frame range is greater than 0, e.g: [5,10]
+            
+            
+            if(filename.empty()) {
+                /// If the filename is empty for the frame 0, that means we're in cases 1 or 3
+                /// If we're in case 1, we must find a frame below 0
+                int firstValidFrame = 0;
+                while (filename.empty() && firstValidFrame != -nearestFrameSearchLimit) {
+                    --firstValidFrame;
+                    _fileParam->getValueAtTime(firstValidFrame,filename);
+                }
+                if (filename.empty()) {
+                    ///the only solution left is the 3rd case
+                    firstValidFrame = 0;
+                    while (filename.empty() && firstValidFrame != nearestFrameSearchLimit) {
+                        ++firstValidFrame;
+                        _fileParam->getValueAtTime(firstValidFrame,filename);
+                    }
+                    if (filename.empty()) {
+                        ///hmmm...we're not in cases 1,2 or 3, just return false...let the host deal with it.
+                        return false;
+                    } else {
+                        ///we're in the 3rd case, find the right bound
+                        int rightBound = firstValidFrame;
+                        while (!filename.empty() && rightBound != nearestFrameSearchLimit) {
+                            ++rightBound;
+                            _fileParam->getValueAtTime(rightBound,filename);
+                        }
+                        range.min = firstValidFrame;
+                        range.max = rightBound;
+                    }
+                } else {
+                    /// we're in the 1st case, firstValidFrame is the right bound, we need to find the left bound now
+                    int leftBound = firstValidFrame;
+                    while (!filename.empty() && leftBound != -nearestFrameSearchLimit) {
+                        --leftBound;
+                        _fileParam->getValueAtTime(leftBound,filename);
+                    }
+                    range.min = leftBound;
+                    range.max = firstValidFrame;
+                }
+            } else {
+                ///we're in the 2nd, find out the left bound and right bound
+                int leftBound = 0;
+                while (!filename.empty() && leftBound != -nearestFrameSearchLimit) {
+                    --leftBound;
+                    _fileParam->getValueAtTime(leftBound,filename);
+                }
+                
+                int rightBound = 0;
+                while (!filename.empty() && rightBound != nearestFrameSearchLimit) {
+                    ++rightBound;
+                    _fileParam->getValueAtTime(rightBound,filename);
+                }
+                
+                range.min = leftBound;
+                range.max = rightBound;
+            }
+            
+            
+        }
+        _frameRangeValid = true;
+    }else {
+        range = _frameRange;
+    }
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
-    ///if the file is a video stream, let the plugin determine the frame range
-    ///let the host handle the time domain for the image sequence if getTimeDomain returns false.
-    bool ret = getTimeDomain(filename,range);
     range.min += timeOffset;
     range.max += timeOffset;
-    return ret;
+    return true;
     
 }
 
@@ -143,7 +216,7 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
             }
         }
     }
-
+    
     ///we want to cache away the rod and the image read from file
     if(areHeaderAndDataTied(filename,args.time - timeOffset)){
         
@@ -181,7 +254,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     if(!_lut){
         initializeLut();
     }
-
+    
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
@@ -228,6 +301,11 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     if(paramName == kReaderFileParamName){
         std::string filename;
         _fileParam->getValueAtTime(args.time,filename);
+        _frameRangeValid = false;
+        
+        ///we don't pass the _frameRange range as we don't want to store the time domain too
+        OfxRangeD tmp;
+        getTimeDomain(tmp);
         onInputFileChanged(filename);
     }
 }
@@ -284,23 +362,22 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     fileParam->setHint("The input image sequence/video stream file(s).");
     fileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*fileParam);
-
+    
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->setSupportsTiles(true);
-
+    
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
-
+    
 #ifdef OFX_EXTENSIONS_NATRON
     if (gHostIsNatron) {
         fileParam->setFilePathIsImage(true);
     }
 #endif
-
+    
     ///////////Missing frame choice
-    // FIXME: could this be implemented for non-Natron hosts? After all, the plugin knows everything about the sequence.
     OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
     missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
     missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream.");
@@ -310,7 +387,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     missingFrameParam->setAnimates(false);
     missingFrameParam->setDefault(0); //< default to nearest frame.
     page->addChild(*missingFrameParam);
-
+    
     ///////////Time offset
     OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
     timeOffsetParam->setLabels("Time Offset", "Time Offset", "Time Offset");

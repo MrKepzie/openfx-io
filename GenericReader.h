@@ -171,6 +171,9 @@ private:
     
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded
+    
+    bool _frameRangeValid; //< false if _frameRange has not been set after an inputfile change
+    OfxRangeD _frameRange; //< the frame range, it is updated every time the input file changes.
 
 };
 
