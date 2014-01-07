@@ -56,8 +56,8 @@
 static bool gHostIsNatron = true;
 #endif
 
-static int nearestFrameSearchLimit = 50000;
-
+// if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
+#define MAX_SEARCH_RANGE 1000
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -91,7 +91,7 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
         
         ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
         ///find-out the time domain
-        if(!getTimeDomain(filename,range)){
+        if(!getSequenceTimeDomain(filename,range)){
             ///the plugin wants to have the default behaviour
             
             ///They're 3 cases:
@@ -104,14 +104,14 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
                 /// If the filename is empty for the frame 0, that means we're in cases 1 or 3
                 /// If we're in case 1, we must find a frame below 0
                 int firstValidFrame = 0;
-                while (filename.empty() && firstValidFrame != -nearestFrameSearchLimit) {
+                while (filename.empty() && firstValidFrame != -MAX_SEARCH_RANGE) {
                     --firstValidFrame;
                     _fileParam->getValueAtTime(firstValidFrame,filename);
                 }
                 if (filename.empty()) {
                     ///the only solution left is the 3rd case
                     firstValidFrame = 0;
-                    while (filename.empty() && firstValidFrame != nearestFrameSearchLimit) {
+                    while (filename.empty() && firstValidFrame != MAX_SEARCH_RANGE) {
                         ++firstValidFrame;
                         _fileParam->getValueAtTime(firstValidFrame,filename);
                     }
@@ -121,7 +121,7 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
                     } else {
                         ///we're in the 3rd case, find the right bound
                         int rightBound = firstValidFrame;
-                        while (!filename.empty() && rightBound != nearestFrameSearchLimit) {
+                        while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
                             ++rightBound;
                             _fileParam->getValueAtTime(rightBound,filename);
                         }
@@ -131,7 +131,7 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
                 } else {
                     /// we're in the 1st case, firstValidFrame is the right bound, we need to find the left bound now
                     int leftBound = firstValidFrame;
-                    while (!filename.empty() && leftBound != -nearestFrameSearchLimit) {
+                    while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
                         --leftBound;
                         _fileParam->getValueAtTime(leftBound,filename);
                     }
@@ -141,13 +141,13 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
             } else {
                 ///we're in the 2nd, find out the left bound and right bound
                 int leftBound = 0;
-                while (!filename.empty() && leftBound != -nearestFrameSearchLimit) {
+                while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
                     --leftBound;
                     _fileParam->getValueAtTime(leftBound,filename);
                 }
                 
                 int rightBound = 0;
-                while (!filename.empty() && rightBound != nearestFrameSearchLimit) {
+                while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
                     ++rightBound;
                     _fileParam->getValueAtTime(rightBound,filename);
                 }
@@ -158,6 +158,7 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
             
             
         }
+        _frameRange = range;
         _frameRangeValid = true;
     }else {
         range = _frameRange;
@@ -171,8 +172,81 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     
 }
 
-bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
+
+double GenericReaderPlugin::getSequenceTime(double t)
+{
+    //std::string sequenceFilename;
+    //  _fileParam->getValue(sequenceFilename);
+
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+
+    return t - timeOffset;
+
     
+//    OfxRangeD sequenceTimeDomain;
+//    bool hasTimeDomain = getTimeDomain(sequenceTimeDomain);//getSequenceTimeDomain(sequenceFilename, sequenceTimeDomain);
+//    if (hasTimeDomain) {
+//        if (sequenceTime < sequenceTimeDomain.min) {
+//            sequenceTime = sequenceTimeDomain.min;
+//        } else if (sequenceTime > sequenceTimeDomain.max) {
+//            sequenceTime = sequenceTimeDomain.max;
+//        }
+//    }
+//    return sequenceTime;
+}
+
+void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::string &filename)
+{
+    // for now, just use the sequence's time domain, and default to "hold" if we're out of the bounds.
+
+    if (filename.empty()) {
+        
+        int offset = 0;
+        int maxOffset = MAX_SEARCH_RANGE;
+        //std::string sequenceFilename;
+        //_fileParam->getValue(sequenceFilename);
+        int timeOffset;
+        _timeOffset->getValue(timeOffset);
+        OfxRangeD sequenceTimeDomain;
+        bool hasTimeDomain = getTimeDomain(sequenceTimeDomain);// getSequenceTimeDomain(sequenceFilename, sequenceTimeDomain);
+        if (hasTimeDomain) {
+            maxOffset = std::max(sequenceTimeDomain.max - sequenceTime, sequenceTime - sequenceTimeDomain.min);
+        }
+        while (filename.empty() && offset <= maxOffset) {
+            _fileParam->getValueAtTime(sequenceTime + offset, filename);
+            if (!filename.empty()) {
+                break;
+            }
+            _fileParam->getValueAtTime(sequenceTime - offset, filename);
+            ++offset;
+        }
+        
+        int choice;
+        _missingFrameParam->getValue(choice);
+        switch (choice) {
+            case 0: // Load nearest
+                if(filename.empty()){
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+                    // return a black image
+                }
+                break;
+            case 1: // Error
+                if (!isVideoStream(filename) || sequenceTime < sequenceTimeDomain.min || sequenceTime > sequenceTimeDomain.max ) {
+                    filename.clear();
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                }
+            case 2: // Black image
+                if (!isVideoStream(filename) || sequenceTime < sequenceTimeDomain.min || sequenceTime > sequenceTimeDomain.max ) {
+                    filename.clear();
+                }
+                break;
+        }
+    }
+}
+
+bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
+
     OfxRectI imgRoI;
     if(_dstImg){
         imgRoI = _dstImg->getRegionOfDefinition();
@@ -183,43 +257,20 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         return true;
     }
     
-    int timeOffset;
-    _timeOffset->getValue(timeOffset);
-    
-    int choice;
-    _missingFrameParam->getValue(choice);
-    
+    double sequenceTime = getSequenceTime(args.time);
     std::string filename;
-    int nearestIndex = 0;
-    _fileParam->getValueAtTime(args.time - timeOffset, filename);
-    
-    ///we want to load the nearest frame
-    while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
-        ++nearestIndex;
-        _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
-        if (!filename.empty()) {
-            break;
-        }
-        _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+
+    getFilenameAtSequenceTime(sequenceTime, filename);
+  
+    if (filename.empty()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    if(filename.empty()){
-        setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-        return true;
-    } else {
-        if (nearestIndex != 0) {
-            bool video = isVideoStream(filename);
-            if(choice == 1 && !video) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-                return true;
-            }else if(choice == 2 && !video) {
-                return true;
-            }
-        }
-    }
-    
+
     ///we want to cache away the rod and the image read from file
-    if(areHeaderAndDataTied(filename,args.time - timeOffset)){
-        
+    if (!areHeaderAndDataTied(filename, sequenceTime)) {
+        getFrameRegionOfDefinition(filename, sequenceTime, rod);
+
+    } else {
         _dstImg = _outputClip->fetchImage(args.time);
         
         ///initialize the color-space if it wasn't
@@ -227,23 +278,19 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
             initializeLut();
         }
         
-        decode(filename, args.time - timeOffset, _dstImg);
+        decode(filename, sequenceTime, _dstImg);
         imgRoI = _dstImg->getRegionOfDefinition();
         rod.x1 = imgRoI.x1;
         rod.x2 = imgRoI.x2;
         rod.y1 = imgRoI.y1;
         rod.y2 = imgRoI.y2;
-        
-    }else{
-        
-        getFrameRegionOfDefinition(filename,args.time - timeOffset,rod);
-        
     }
-    return true;
+
+     return true;
 }
 
 void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
-    
+
     if (_dstImg) {
         return;
     }
@@ -254,44 +301,15 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     if(!_lut){
         initializeLut();
     }
-    
-    int timeOffset;
-    _timeOffset->getValue(timeOffset);
-    
-    int choice;
-    _missingFrameParam->getValue(choice);
-    
+
+    double sequenceTime = getSequenceTime(args.time);
     std::string filename;
-    _fileParam->getValueAtTime(args.time - timeOffset, filename);
-    
-    ///we want to load the nearest frame
-    int nearestIndex = 0;
-    while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
-        ++nearestIndex;
-        _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
-        if (!filename.empty()) {
-            break;
-        }
-        _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+    getFilenameAtSequenceTime(sequenceTime, filename);
+    if (!filename.empty()) {
+        decode(filename, sequenceTime, _dstImg);
     }
-    if(filename.empty()){
-        setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-        return;
-    } else {
-        if (nearestIndex != 0) {
-            bool video = isVideoStream(filename);
-            if(choice == 1 && !video) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-                return;
-            }else if(choice == 2 && !video) {
-                return;
-            }
-        }
-    }
-    
-    
-    decode(filename, args.time - timeOffset, _dstImg);
-    
+
+
     /// flush the cached image
     delete _dstImg;
     _dstImg = 0;
