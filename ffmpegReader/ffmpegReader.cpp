@@ -166,7 +166,7 @@ void FfmpegReaderPlugin::initializeLut() {
     _lut = OFX::Color::LutManager::sRGBLut();
 }
 
-bool FfmpegReaderPlugin::getTimeDomain(const std::string& filename,OfxRangeD &range) {
+bool FfmpegReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
     
     if(!FFmpeg::isImageFile(filename)){
         _ffmpegFile = getFile(filename);

@@ -106,6 +106,11 @@ public:
     
     
 protected:
+    OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
+
+    const OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
+
+private:
     
     /**
      * @brief Override if you want to do something when the input image/video file changed.
@@ -139,7 +144,7 @@ protected:
      * @brief Override to indicate the time domain. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getTimeDomain(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
+    virtual bool getSequenceTimeDomain(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
     
     /**
      * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its
@@ -159,20 +164,19 @@ protected:
      **/
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod){}
     
-    
+    /**
+     * @brief compute the sequence/file time from time
+     */
+    double getSequenceTime(double t);
+
+    void getFilenameAtSequenceTime(double t, std::string &filename);
+
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
-    OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
     OFX::IntParam* _timeOffset; //< a time offset to apply to sequences/streams
-    
-    const OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
-    
-private:
-    
+
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded
-
-    void refreshMissingFrameParamValue(const std::string& currentFile);
 };
 
 

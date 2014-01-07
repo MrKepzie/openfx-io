@@ -549,7 +549,7 @@ void ExrReaderPlugin::initializeLut(){
     _lut = 0;
 }
 
-bool ExrReaderPlugin::getTimeDomain(const std::string& filename,OfxRangeD &range){
+bool ExrReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range){
     ///let the host determine the frame range
     return false;
 }

@@ -38,6 +38,8 @@
  */
 #include "GenericReader.h"
 
+#include <sstream>
+
 #include "ofxsLog.h"
 
 #include "Lut.h"
@@ -53,6 +55,9 @@
 #ifdef OFX_EXTENSIONS_NATRON
 static bool gHostIsNatron = true;
 #endif
+
+#define MAX_SEARCH_RANGE 1000 // if a hole in the sequence is larger than 2000 frames, this will output black frames.
+
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -78,23 +83,98 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     
-    std::string filename;
-    _fileParam->getValue(filename);
-    
+    std::string sequenceFilename;
+    _fileParam->getValue(sequenceFilename);
+
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
     ///if the file is a video stream, let the plugin determine the frame range
     ///let the host handle the time domain for the image sequence if getTimeDomain returns false.
-    bool ret = getTimeDomain(filename,range);
-    range.min += timeOffset;
-    range.max += timeOffset;
+    bool ret = getSequenceTimeDomain(sequenceFilename, range);
+    if (ret) {
+        range.min += timeOffset;
+        range.max += timeOffset;
+    }
     return ret;
     
 }
 
+
+double GenericReaderPlugin::getSequenceTime(double t)
+{
+    std::string sequenceFilename;
+    _fileParam->getValue(sequenceFilename);
+
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+
+    double sequenceTime = t - timeOffset;
+
+    // TODO: handle the frame range parameters, and the "before" and "after" parameters here
+    // "before" and "after" can be: "hold" (default), "loop", "bounce", "black"
+
+    // for now, just use the sequence's time domain, and default to "hold" if we're out of the bounds.
+    OfxRangeD sequenceTimeDomain;
+    bool hasTimeDomain = getSequenceTimeDomain(sequenceFilename, sequenceTimeDomain);
+    if (hasTimeDomain) {
+        if (sequenceTime < sequenceTimeDomain.min) {
+            sequenceTime = sequenceTimeDomain.min;
+        } else if (sequenceTime > sequenceTimeDomain.max) {
+            sequenceTime = sequenceTimeDomain.max;
+        }
+    }
+    return sequenceTime;
+}
+
+void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::string &filename)
+{
+    _fileParam->getValueAtTime(sequenceTime, filename);
+
+    if (filename.empty()) {
+        int choice;
+        _missingFrameParam->getValue(choice);
+        // FIXME: nearest frame search should be implemented here, just do a getValue for
+        // t-1, t+1, t-2, t+2, etc, until a valid filename is found
+        switch (choice) {
+            case 0: // Load nearest
+            {
+                int offset = -1;
+                int maxOffset = MAX_SEARCH_RANGE;
+                std::string sequenceFilename;
+                _fileParam->getValue(sequenceFilename);
+                int timeOffset;
+                _timeOffset->getValue(timeOffset);
+                OfxRangeD sequenceTimeDomain;
+                bool hasTimeDomain = getSequenceTimeDomain(sequenceFilename, sequenceTimeDomain);
+                if (hasTimeDomain) {
+                    maxOffset = std::max(sequenceTimeDomain.max - sequenceTime, sequenceTime - sequenceTimeDomain.min);
+                }
+                while (filename.empty() && offset <= maxOffset) {
+                    _fileParam->getValueAtTime(sequenceTime + offset, filename);
+                    if (offset < 0) {
+                        offset = -offset;
+                    } else {
+                        ++offset;
+                    }
+                }
+                if(filename.empty()){
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+                    // return a black image
+                }
+            }
+                break;
+            case 1: // Error
+                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                throw kOfxStatErrValue;
+            case 2: // Black image
+                break;
+        }
+    }
+}
+
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
-    
+
     OfxRectI imgRoI;
     if(_dstImg){
         imgRoI = _dstImg->getRegionOfDefinition();
@@ -105,15 +185,15 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         return true;
     }
     
-    int timeOffset;
-    _timeOffset->getValue(timeOffset);
-    
+    double sequenceTime = getSequenceTime(args.time);
     std::string filename;
-    _fileParam->getValueAtTime(args.time - timeOffset, filename);
-    
+    getFilenameAtSequenceTime(sequenceTime, filename);
+
     ///we want to cache away the rod and the image read from file
-    if(areHeaderAndDataTied(filename,args.time - timeOffset)){
-        
+    if (!areHeaderAndDataTied(filename, sequenceTime)) {
+        getFrameRegionOfDefinition(filename, sequenceTime, rod);
+
+    } else {
         _dstImg = _outputClip->fetchImage(args.time);
         
         ///initialize the color-space if it wasn't
@@ -121,23 +201,19 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
             initializeLut();
         }
         
-        decode(filename, args.time, _dstImg);
+        decode(filename, sequenceTime, _dstImg);
         imgRoI = _dstImg->getRegionOfDefinition();
         rod.x1 = imgRoI.x1;
         rod.x2 = imgRoI.x2;
         rod.y1 = imgRoI.y1;
         rod.y2 = imgRoI.y2;
-        
-    }else{
-        
-        getFrameRegionOfDefinition(filename,args.time - timeOffset,rod);
-        
     }
-    return true;
+
+     return true;
 }
 
 void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
-    
+
     if (_dstImg) {
         return;
     }
@@ -149,25 +225,12 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         initializeLut();
     }
 
-    int timeOffset;
-    _timeOffset->getValue(timeOffset);
-    
+    double sequenceTime = getSequenceTime(args.time);
     std::string filename;
-    _fileParam->getValueAtTime(args.time - timeOffset, filename);
-    
-    if (filename.empty()) {
-        int choice;
-        _missingFrameParam->getValue(choice);
-        // FIXME: nearest frame search should be implemented here, just do a getValue for
-        // t-1, t+1, t-2, t+2, etc, until a valid filename is found
-        if (choice == 1) {//error
-            setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-            throw kOfxStatErrValue;
-        }
-    }
-    
-    decode(filename, args.time - timeOffset, _dstImg);
-    
+    getFilenameAtSequenceTime(sequenceTime, filename);
+
+    decode(filename, sequenceTime, _dstImg);
+
     /// flush the cached image
     delete _dstImg;
     _dstImg = 0;
@@ -178,29 +241,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         std::string filename;
         _fileParam->getValueAtTime(args.time,filename);
         onInputFileChanged(filename);
-        refreshMissingFrameParamValue(filename);
     }
-    else if(paramName == kReaderMissingFrameParamName) {
-        std::string filename;
-        _fileParam->getValueAtTime(args.time,filename);
-
-        refreshMissingFrameParamValue(filename);
-    }
-}
-
-void GenericReaderPlugin::refreshMissingFrameParamValue(const std::string& currentFile){
-#ifdef OFX_EXTENSIONS_NATRON // FIXME: should be implemented here, not in Natron!
-    if (gHostIsNatron) {
-        int choice;
-        _missingFrameParam->getValue(choice);
-        if (choice == 0 || isVideoStream(currentFile)) {
-            //for video-streams we always want the nearest...
-            _fileParam->setImageFilePathShouldLoadNearestFrame(true);
-        } else {
-            _fileParam->setImageFilePathShouldLoadNearestFrame(false);
-        }
-    }
-#endif
 }
 
 using namespace OFX;
@@ -274,7 +315,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     // FIXME: could this be implemented for non-Natron hosts? After all, the plugin knows everything about the sequence.
     OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
     missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
-    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream (FIXME: only supported on Natron, why?)");
+    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream.");
     missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
     missingFrameParam->appendOption("Error","An error is reported.");
     missingFrameParam->appendOption("Black image","A black image is rendered.");
