@@ -608,9 +608,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				D74E625F1875A90800D8FA13 /* all */,
 				D74E62451875A7A400D8FA13 /* ffmpegReader */,
 				D74E62CB1875AB4600D8FA13 /* ffmpegWriter */,
-				D74E625F1875A90800D8FA13 /* all */,
 				D709B95218787D6700D5A0B4 /* exrReader */,
 				D769DE121879A07800AED3D6 /* exrWriter */,
 			);
@@ -850,6 +850,7 @@
 					"$(OFX_PATH)/Support/Plugins/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				OFX_PATH = openfx;
 			};
 			name = Debug;
@@ -872,6 +873,7 @@
 					"$(OFX_PATH)/Support/Plugins/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				OFX_PATH = openfx;
 			};
 			name = Release;
