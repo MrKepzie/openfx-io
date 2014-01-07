@@ -56,8 +56,8 @@
 static bool gHostIsNatron = true;
 #endif
 
-#define MAX_SEARCH_RANGE 1000 // if a hole in the sequence is larger than 2000 frames, this will output black frames.
-
+// if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
+#define MAX_SEARCH_RANGE 1000
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -85,7 +85,6 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     
     std::string sequenceFilename;
     _fileParam->getValue(sequenceFilename);
-
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
