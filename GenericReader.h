@@ -172,7 +172,6 @@ private:
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded
 
-    void refreshMissingFrameParamValue(const std::string& currentFile);
 };
 
 

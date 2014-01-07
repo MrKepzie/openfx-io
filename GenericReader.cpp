@@ -38,6 +38,8 @@
  */
 #include "GenericReader.h"
 
+#include <sstream>
+
 #include "ofxsLog.h"
 
 #include "Lut.h"
@@ -53,6 +55,9 @@
 #ifdef OFX_EXTENSIONS_NATRON
 static bool gHostIsNatron = true;
 #endif
+
+static int nearestFrameSearchLimit = 10000;
+
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -108,8 +113,31 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
+    int choice;
+    _missingFrameParam->getValue(choice);
+    
     std::string filename;
+    int nearestIndex = 0;
     _fileParam->getValueAtTime(args.time - timeOffset, filename);
+    
+    ///we want to load the nearest frame
+    if (choice == 0) {
+        while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
+            ++nearestIndex;
+            _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
+            if (!filename.empty()) {
+                break;
+            }
+            _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
+        }
+        setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+        return true;
+    } else {
+        std::stringstream ss;
+        ss << "Couldn't find a frame at time " << args.time - timeOffset;
+        setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
+        return true;
+    }
     
     ///we want to cache away the rod and the image read from file
     if(areHeaderAndDataTied(filename,args.time - timeOffset)){
@@ -152,19 +180,32 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
+    int choice;
+    _missingFrameParam->getValue(choice);
+    
     std::string filename;
     _fileParam->getValueAtTime(args.time - timeOffset, filename);
     
-    if (filename.empty()) {
-        int choice;
-        _missingFrameParam->getValue(choice);
-        // FIXME: nearest frame search should be implemented here, just do a getValue for
-        // t-1, t+1, t-2, t+2, etc, until a valid filename is found
-        if (choice == 1) {//error
-            setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-            throw kOfxStatErrValue;
+    ///we want to load the nearest frame
+    int nearestIndex = 0;
+    if (choice == 0) {
+        while (filename.empty() && nearestIndex < nearestFrameSearchLimit) {
+            ++nearestIndex;
+            _fileParam->getValueAtTime(args.time - timeOffset + nearestIndex, filename);
+            if (!filename.empty()) {
+                break;
+            }
+            _fileParam->getValueAtTime(args.time - timeOffset - nearestIndex, filename);
         }
+        setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+        return;
+    } else {
+        std::stringstream ss;
+        ss << "Couldn't find a frame at time " << args.time - timeOffset;
+        setPersistentMessage(OFX::Message::eMessageError, "",ss.str());
+        return;
     }
+    
     
     decode(filename, args.time - timeOffset, _dstImg);
     
@@ -178,29 +219,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         std::string filename;
         _fileParam->getValueAtTime(args.time,filename);
         onInputFileChanged(filename);
-        refreshMissingFrameParamValue(filename);
     }
-    else if(paramName == kReaderMissingFrameParamName) {
-        std::string filename;
-        _fileParam->getValueAtTime(args.time,filename);
-
-        refreshMissingFrameParamValue(filename);
-    }
-}
-
-void GenericReaderPlugin::refreshMissingFrameParamValue(const std::string& currentFile){
-#ifdef OFX_EXTENSIONS_NATRON // FIXME: should be implemented here, not in Natron!
-    if (gHostIsNatron) {
-        int choice;
-        _missingFrameParam->getValue(choice);
-        if (choice == 0 || isVideoStream(currentFile)) {
-            //for video-streams we always want the nearest...
-            _fileParam->setImageFilePathShouldLoadNearestFrame(true);
-        } else {
-            _fileParam->setImageFilePathShouldLoadNearestFrame(false);
-        }
-    }
-#endif
 }
 
 using namespace OFX;
