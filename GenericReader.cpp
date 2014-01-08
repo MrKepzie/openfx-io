@@ -472,6 +472,8 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         
         _lastFrame->setValue(_frameRange.max);
         _lastFrame->setRange(_frameRange.min, _frameRange.max);
+        
+        _startTime->setValue(_frameRange.min);
     } else if( paramName == kReaderStartTimeParamName) {
         _frameRangeValid = false;
         OfxRangeD tmp;
