@@ -173,8 +173,17 @@ private:
 
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
-    OFX::IntParam* _timeOffset; //< a time offset to apply to sequences/streams
-
+    
+    OFX::IntParam* _firstFrame; //< the first frame in the sequence (clamped to the time domain)
+    OFX::ChoiceParam* _beforeFirst;//< what to do before the first frame
+    OFX::IntParam* _lastFrame; //< the last frame in the sequence (clamped to the time domain)
+    OFX::ChoiceParam* _afterLast; //< what to do after the last frame
+    OFX::IntParam* _startTime; //< at what time the sequence should start
+    
+#if 0 //remove to use occio
+    OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
+#endif
+    
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
                          //has already been decoded    
     bool _frameRangeValid; //< false if _frameRange has not been set after an inputfile change

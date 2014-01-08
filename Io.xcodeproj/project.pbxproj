@@ -835,23 +835,31 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "compiler-default";
+				CLANG_CXX_LIBRARY = "compiler-default";
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
+				GCC_C_LANGUAGE_STANDARD = "compiler-default";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NATRON,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_NUKE,
 					"DEBUG=1",
 				);
+				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					"$(OFX_PATH)/include",
 					"$(OFX_PATH)/Support/include",
 					"$(OFX_PATH)/Support/Plugins/include",
+					"$(OCCIO_PATH)/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
+				OCCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
+				OTHER_LDFLAGS = "-L$(OCCIO_PATH)/lib";
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
@@ -859,22 +867,30 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "compiler-default";
+				CLANG_CXX_LIBRARY = "compiler-default";
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
+				GCC_C_LANGUAGE_STANDARD = "compiler-default";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NATRON,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_NUKE,
 				);
+				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
 					"$(OFX_PATH)/include",
 					"$(OFX_PATH)/Support/include",
 					"$(OFX_PATH)/Support/Plugins/include",
+					"$(OCCIO_PATH)/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
+				OCCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
+				OTHER_LDFLAGS = "-L$(OCCIO_PATH)/lib";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
