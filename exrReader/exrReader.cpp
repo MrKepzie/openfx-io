@@ -519,13 +519,12 @@ void ExrReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image
         
         Imf_::FrameBuffer fbuf;
         for(std::map<Exr::Channel,DecodingChannelsMap >::const_iterator z = channels.begin(); z != channels.end();++z){
-            
             if(!z->second.subsampled){
                 fbuf.insert(z->second.channelName.c_str(),
-                            Imf_::Slice(Imf_::FLOAT,(char*)(z->second.buf + (int)z->first /*+_imp->_dataOffset*/),sizeof(float) * 4, 0));
+                            Imf_::Slice(Imf_::FLOAT,(char*)(z->second.buf /*+_imp->_dataOffset*/),sizeof(float) * 4, 0));
             }else{
                 fbuf.insert(z->second.channelName.c_str(),
-                            Imf_::Slice(Imf_::FLOAT,(char*)(z->second.buf + (int)z->first/*+_imp->_dataOffset*/),sizeof(float) * 4, 0,2,2));
+                            Imf_::Slice(Imf_::FLOAT,(char*)(z->second.buf /*+_imp->_dataOffset*/),sizeof(float) * 4, 0,2,2));
             }
             
         }
