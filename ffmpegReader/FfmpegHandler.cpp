@@ -40,7 +40,7 @@
 
 #include "FfmpegHandler.h"
 
-
+#include <cmath>
 
 #include "ffmpegReader.h"
 

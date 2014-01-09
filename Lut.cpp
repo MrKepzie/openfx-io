@@ -37,6 +37,9 @@
 
 #include "Lut.h"
 
+#include <cstdlib>
+#include <cstring>
+#include <limits>
 
 namespace OFX {
     namespace Color {
@@ -50,8 +53,8 @@ namespace OFX {
             O32_PDP_ENDIAN = 0x01000302ul
         };
         static const union {
-            uint8_t bytes[4];
-            uint32_t value;
+            unsigned char bytes[4];
+            unsigned int  value;
         } o32_host_order = { { 0, 1, 2, 3 } };
 #define O32_HOST_ORDER (o32_host_order.value)
         

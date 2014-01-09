@@ -41,6 +41,13 @@
 #ifndef __Io__FfmpegHandler__
 #define __Io__FfmpegHandler__
 
+#if (defined(_STDINT_H) || defined(_STDINT_H_)) && !defined(UINT64_C)
+#warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
+#endif
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS // ...or stdint.h wont' define UINT64_C, needed by libavutil
+#endif
+
 #include <vector>
 #include <string>
 
@@ -48,12 +55,6 @@
 #include <cstdio>
 #if _WIN32
 #define snprintf sprintf_s
-extern "C"
-{
-#ifndef __STDC_CONSTANT_MACROS
-#  define __STDC_CONSTANT_MACROS
-#endif
-}
 #endif
 extern "C" {
 #include <errno.h>
@@ -64,6 +65,7 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/error.h>
 }
+#include "ffmpegCompat.h"
 
 #include "ofxsMultiThread.h"
 

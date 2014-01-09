@@ -39,15 +39,15 @@
 
 #include "ffmpegWriter.h"
 
+#if (defined(_STDINT_H) || defined(_STDINT_H_)) && !defined(UINT64_C)
+#warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
+#endif
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS // ...or stdint.h wont' define UINT64_C, needed by libavutil
+#endif
 #include <cstdio>
 #if _WIN32
 #define snprintf sprintf_s
-extern "C"
-{
-#ifndef __STDC_CONSTANT_MACROS
-#  define __STDC_CONSTANT_MACROS
-#endif
-}
 #endif
 
 
@@ -62,13 +62,15 @@ extern "C" {
 #include <errno.h>
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
-#include "libavutil/imgutils.h"
-#include "libavformat/avio.h"
+#include <libavutil/imgutils.h>
+#include <libavformat/avio.h>
 #include <libavutil/opt.h>
 #include <libswscale/swscale.h>
 #include <libavutil/avutil.h>
 #include <libavutil/error.h>
+#include <libavutil/mathematics.h>
 }
+#include "ffmpegCompat.h"
 
 #define kFfmpegWriterFormatParamName "format"
 #define kFfmpegWriterFPSParamName "fps"
@@ -254,9 +256,14 @@ void FfmpegWriterPlugin::encode(const std::string& filename,OfxTime time,const O
         }
     }
     
-    if (!_formatContext)
+    if (!_formatContext) {
+#     if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53, 2, 0)
         avformat_alloc_output_context2(&_formatContext, fmt, NULL, filename.c_str());
-    
+#     else
+        _formatContext = avformat_alloc_output_context(NULL, fmt, filename.c_str());
+#     endif
+    }
+
     snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
     
     AVCodecID codecId = fmt->video_codec;
