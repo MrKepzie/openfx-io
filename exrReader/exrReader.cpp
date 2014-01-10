@@ -467,7 +467,7 @@ ExrReaderPlugin::~ExrReaderPlugin(){
 }
 
 void ExrReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    
+    GenericReaderPlugin::changedParam(args, paramName);
 }
 
 static void supportedFileFormats_static(std::vector<std::string>* formats){

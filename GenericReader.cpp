@@ -147,21 +147,24 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
                         return false;
                     } else {
                         ///we're in the 3rd case, find the right bound
-                        int rightBound = firstValidFrame;
+                        int rightBound = firstValidFrame + 1;
+                        _fileParam->getValueAtTime(rightBound,filename);
                         while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
                             ++rightBound;
                             _fileParam->getValueAtTime(rightBound,filename);
                         }
+                        --rightBound;
                         range.min = firstValidFrame;
                         range.max = rightBound;
                     }
                 } else {
                     /// we're in the 1st case, firstValidFrame is the right bound, we need to find the left bound now
-                    int leftBound = firstValidFrame;
+                    int leftBound = firstValidFrame - 1;
                     while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
                         --leftBound;
                         _fileParam->getValueAtTime(leftBound,filename);
                     }
+                    ++leftBound;
                     range.min = leftBound;
                     range.max = firstValidFrame;
                 }
@@ -172,20 +175,22 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
                     --leftBound;
                     _fileParam->getValueAtTime(leftBound,filename);
                 }
+                ++leftBound;
                 
                 int rightBound = 0;
+                _fileParam->getValueAtTime(0, filename);
                 while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
                     ++rightBound;
                     _fileParam->getValueAtTime(rightBound,filename);
                 }
                 
+                --rightBound;
                 range.min = leftBound;
                 range.max = rightBound;
             }
             
             
         }
-        _frameRange = range;
         _frameRangeValid = true;
     }else {
         range = _frameRange;
@@ -193,8 +198,10 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     int startingTime;
     _startTime->getValue(startingTime);
     
-    range.min += startingTime;
-    range.max += startingTime;
+    int rangeSpan  = range.max - range.min;
+    range.min = startingTime;
+    range.max = startingTime + rangeSpan;
+    _frameRange = range;
     return true;
     
 }
