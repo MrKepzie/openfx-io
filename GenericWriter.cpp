@@ -425,7 +425,6 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
         for (unsigned int i = 0; i < fileFormats.size(); ++i) {
             desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
         }
-        desc.getPropertySet().propSetInt(kNatronImageEffectPropFormatsCount, (int)fileFormats.size(), 0);
     } catch (const OFX::Exception::PropertyUnknownToHost &e) {
         // the host is does not implement Natron extensions
         gHostIsNatron = false;
