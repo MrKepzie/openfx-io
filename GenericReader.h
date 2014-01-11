@@ -147,6 +147,11 @@ private:
     virtual bool getSequenceTimeDomain(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
     
     /**
+     * @brief Called internally by getTimeDomain(...)
+     **/
+    bool getTimeDomainInternal(OfxRangeD& range,bool mustSetFrameRange);
+    
+    /**
      * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its
      * meta-data (i.e: bitdepth & image bounds)
      **/

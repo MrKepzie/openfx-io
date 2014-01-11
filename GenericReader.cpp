@@ -109,7 +109,10 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 }
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
-    
+    getTimeDomainInternal(range, false);
+}
+
+bool GenericReaderPlugin::getTimeDomainInternal(OfxRangeD& range,bool mustSetFrameRange) {
     std::string filename;
     _fileParam->getValueAtTime(0,filename);
     
@@ -189,25 +192,33 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
         
     }
     
-    ///these are the value held by the "First frame" and "Last frame" param
-    int frameRangeFirst;
-    _firstFrame->getValue(frameRangeFirst);
-    int frameRangeLast;
-    _lastFrame->getValue(frameRangeLast);
+    int frameRange;
     
-    bool areFrameRangeValuesValid = frameRangeFirst >= range.min && frameRangeFirst <= range.max
-    && frameRangeLast >= range.min && frameRangeLast <= range.max;
+    if (mustSetFrameRange) {
+        frameRange = range.max - range.min;
+    } else {
+        ///these are the value held by the "First frame" and "Last frame" param
+        int frameRangeFirst;
+        _firstFrame->getValue(frameRangeFirst);
+        int frameRangeLast;
+        _lastFrame->getValue(frameRangeLast);
+        frameRange = frameRangeLast - frameRangeFirst ;
+        
+    }
     
     int startingTime;
     _startTime->getValue(startingTime);
-    
     range.min = startingTime; //< the first frame is always the starting time
-    
-    int frameRange = areFrameRangeValuesValid ? frameRangeLast - frameRangeFirst : range.max - range.min;
     range.max = startingTime + frameRange;
     
-    return true;
+    if (mustSetFrameRange) {
+        _firstFrame->setValue(range.min);
+        _lastFrame->setValue(range.max);
+        _firstFrame->setRange(range.min, range.max);
+        _lastFrame->setRange(range.min, range.max);
+    }
     
+    return true;
 }
 
 
@@ -493,15 +504,8 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         
         ///we don't pass the _frameRange range as we don't want to store the time domain too
         OfxRangeD tmp;
-        getTimeDomain(tmp);
+        getTimeDomainInternal(tmp,true);
         onInputFileChanged(filename);
-        
-        ///adjust the first frame / last frame params
-        _firstFrame->setValue(tmp.min);
-        _firstFrame->setRange(tmp.min, tmp.max);
-        
-        _lastFrame->setValue(tmp.max);
-        _lastFrame->setRange(tmp.min, tmp.max);
         
         _startTime->setValue(tmp.min);
     } else if( paramName == kReaderFirstFrameParamName) {
