@@ -87,6 +87,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _inputColorSpace(0)
 #endif
 , _dstImg(0)
+, _settingFrameRange(false)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -212,10 +213,12 @@ bool GenericReaderPlugin::getTimeDomainInternal(OfxRangeD& range,bool mustSetFra
     range.max = startingTime + frameRange;
     
     if (mustSetFrameRange) {
+        _settingFrameRange = true;
+        _firstFrame->setDisplayRange(range.min, range.max);
+        _lastFrame->setDisplayRange(range.min, range.max);
+
         _firstFrame->setValue(range.min);
         _lastFrame->setValue(range.max);
-        _firstFrame->setRange(range.min, range.max);
-        _lastFrame->setRange(range.min, range.max);
     }
     
     return true;
@@ -508,19 +511,19 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         onInputFileChanged(filename);
         
         _startTime->setValue(tmp.min);
-    } else if( paramName == kReaderFirstFrameParamName) {
+    } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _startTime->setValue(first);
-        _lastFrame->setRange(first, last);
-    } else if( paramName == kReaderLastFrameParamName) {
+        _firstFrame->setDisplayRange(first, last);
+    } else if( paramName == kReaderLastFrameParamName && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setRange(first, last);
+        _firstFrame->setDisplayRange(first, last);
     }
     
 }

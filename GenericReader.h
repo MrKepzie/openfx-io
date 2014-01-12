@@ -190,7 +190,9 @@ private:
 #endif
     
     OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
-                         //has already been decoded    
+                         //has already been decoded
+    
+    bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
 
 };
 
