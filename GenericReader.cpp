@@ -555,7 +555,7 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     
 #ifdef OFX_EXTENSIONS_NATRON
     // to check if the host is Natron-compatible, we could rely on gHostDescription.hostName,
-    // but we prefer checking if the host has the right properties, in care another host implements
+    // but we prefer checking if the host has the right properties, in case another host implements
     // these extensions
     try {
         std::vector<std::string> fileFormats;
