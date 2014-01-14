@@ -193,6 +193,8 @@ private:
     OFX::IntParam* _timeOffset; //< the time offset applied to the sequence
     OFX::IntParam* _startingFrame; //< the starting frame of the sequence
     
+    OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
+    
 #if 0 //remove to use occio
     OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
 #endif

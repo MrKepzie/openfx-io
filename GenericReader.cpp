@@ -59,6 +59,7 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kReaderFrameModeParamName "frameMode"
 #define kReaderTimeOffsetParamName "timeOffset"
 #define kReaderStartingFrameParamName "startingFrame"
+#define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
 #define kReaderInputColorSpaceParamName "inputColorSpace"
 #define kReaderFirstFrameParamName "firstFrame"
 #define kReaderLastFrameParamName "lastFrame"
@@ -72,7 +73,7 @@ static bool gHostIsNatron = true;
 #endif
 
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
-#define MAX_SEARCH_RANGE 1000
+#define MAX_SEARCH_RANGE 400000
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -87,6 +88,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _frameMode(0)
 , _timeOffset(0)
 , _startingFrame(0)
+, _originalFrameRange(0)
 #if 0 //remove to use occio
 , _inputColorSpace(0)
 #endif
@@ -104,6 +106,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _frameMode = fetchChoiceParam(kReaderFrameModeParamName);
     _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
     _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
+    _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
     
 #if 0 //remove to use occio
     _inputColorSpace = fetchChoiceParam(kReaderInputColorSpaceParamName);
@@ -144,32 +147,48 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
 }
 
 bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
-    std::string filename;
-    _fileParam->getValueAtTime(0,filename);
     
+    ////first-off check if the original frame range param has valid values, in which
+    ///case we don't bother calculating the frame range
+    int originalMin,originalMax;
+    _originalFrameRange->getValue(originalMin, originalMax);
+    if (originalMin != INT_MIN && originalMax != INT_MAX) {
+        range.min = originalMin;
+        range.max = originalMax;
+        return true;
+    }
+    
+    ///otherwise compute the frame-range
+    
+    std::string filename;
+    _fileParam->getValue(filename);
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
-    ///find-out the time domain
+    ///find-out the time domain. If this function return false, it means this is an image sequence
     if(getSequenceTimeDomain(filename,range)){
+        _originalFrameRange->setValue(range.min, range.max);
         return true;
     }
     
     ///check whether the host implements kNatronImageSequenceRange, if so return this value
+    ///This is a speed-up for host that implements this property.
     int firstFrameProp = getPropertySet().propGetInt(kNatronImageSequenceRange, 0);
     int lastFrameProp = getPropertySet().propGetInt(kNatronImageSequenceRange, 1);
     
     if (firstFrameProp != INT_MIN && firstFrameProp != INT_MAX) {
         range.min = firstFrameProp;
         range.max = lastFrameProp;
+        _originalFrameRange->setValue(range.min, range.max);
         return true;
     }
     
+    ///The host doesn't support kNatronImageSequenceRange and we have an image sequence
     ///the plugin wants to have the default behaviour: compute the frame range by scanning the timeline
     
     ///They're 3 cases:
     /// 1) - the frame range is lesser than 0, e.g: [-10,-5]
     /// 2) - the frame range contains 0, e.g: [-5,5]
     /// 3) - the frame range is greater than 0, e.g: [5,10]
-    
+    _fileParam->getValueAtTime(0, filename);
     
     if(filename.empty()) {
         /// If the filename is empty for the frame 0, that means we're in cases 1 or 3
@@ -232,6 +251,7 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
         range.min = leftBound;
         range.max = rightBound;
     }
+    _originalFrameRange->setValue(range.min, range.max);
     return true;
 }
 
@@ -508,6 +528,11 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _firstFrame->setDisplayRange(first, last);
+        
+        int offset;
+        _timeOffset->getValue(offset);
+        _startingFrame->setValue(first + offset);
+        
     } else if( paramName == kReaderLastFrameParamName && !_settingFrameRange) {
         int first;
         int last;
@@ -710,6 +735,15 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     timeOffsetParam->setAnimates(false);
     timeOffsetParam->setIsSecret(true);
     page->addChild(*timeOffsetParam);
+    
+    ///////////Original frame range
+    OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kReaderOriginalFrameRangeParamName);
+    originalFrameRangeParam->setLabels("Original range", "Original range", "Original range");
+    originalFrameRangeParam->setDefault(INT_MIN, INT_MAX);
+    originalFrameRangeParam->setAnimates(false);
+    originalFrameRangeParam->setIsSecret(true);
+    originalFrameRangeParam->setIsPersistant(false);
+    page->addChild(*originalFrameRangeParam);
     
     
 #if 0 //remove to use occio
