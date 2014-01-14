@@ -149,7 +149,12 @@ private:
     /**
      * @brief Called internally by getTimeDomain(...)
      **/
-    bool getTimeDomainInternal(OfxRangeD& range,bool mustSetFrameRange);
+    bool getSequenceTimeDomainInternal(OfxRangeD& range);
+    
+    void timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange);
+    
+    double getTimeFromFrameParam(double time);
+    
     
     /**
      * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its
@@ -183,7 +188,10 @@ private:
     OFX::ChoiceParam* _beforeFirst;//< what to do before the first frame
     OFX::IntParam* _lastFrame; //< the last frame in the sequence (clamped to the time domain)
     OFX::ChoiceParam* _afterLast; //< what to do after the last frame
-    OFX::IntParam* _startTime; //< at what time the sequence should start
+    
+    OFX::ChoiceParam* _frameMode;//< do we use a time offset or an absolute starting frame
+    OFX::IntParam* _timeOffset; //< the time offset applied to the sequence
+    OFX::IntParam* _startingFrame; //< the starting frame of the sequence
     
 #if 0 //remove to use occio
     OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from

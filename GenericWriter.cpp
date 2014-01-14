@@ -76,6 +76,7 @@
 #include "GenericWriter.h"
 
 #include <locale>
+#include <sstream>
 
 #include "ofxsProcessing.H"
 #include "ofxsLog.h"
@@ -174,11 +175,60 @@ GenericWriterPlugin::~GenericWriterPlugin(){
     
 }
 
+static std::string filenameFromPattern(const std::string& pattern,int frameIndex) {
+    std::string ret = pattern;
+    int lastDot = pattern.find_last_of('.');
+    if(lastDot == std::string::npos){
+        ///the filename has not extension, return an empty str
+        return "";
+    }
+    
+    std::stringstream fStr;
+    fStr << frameIndex;
+    std::string frameIndexStr = fStr.str();
+    int lastPos = pattern.find_last_of('#');
+    
+    if (lastPos == std::string::npos) {
+        ///the filename has no #, just put the digits between etxension and path
+        ret.insert(lastDot, frameIndexStr);
+        return pattern;
+    }
+    
+    int nSharpChar = 0;
+    int i = lastDot;
+    --i; //< char before '.'
+    while (i >= 0 && pattern[i] == '#') {
+        --i;
+        ++nSharpChar;
+    }
+    
+    int prepending0s = nSharpChar > frameIndexStr.size() ? nSharpChar - frameIndexStr.size() : 0;
+    
+    //remove all ocurrences of the # char
+    ret.erase(std::remove(ret.begin(), ret.end(), '#'),ret.end());
+    
+    //insert prepending zeroes
+    std::string zeroesStr;
+    for (int j = 0; j < prepending0s; ++j) {
+        zeroesStr.push_back('0');
+    }
+    frameIndexStr.insert(0,zeroesStr);
+
+    //refresh the last '.' position
+    lastDot = ret.find_last_of('.');
+    
+    ret.insert(lastDot, frameIndexStr);
+    return ret;
+}
+
+
+
 void GenericWriterPlugin::render(const OFX::RenderArguments &args){
 
     
     std::string filename;
-    _fileParam->getValueAtTime(args.time, filename);
+    _fileParam->getValue(filename);
+    filename = filenameFromPattern(filename, args.time);
     
     ///find out whether we support this extension...
     size_t sepPos = filename.find_last_of('.');
