@@ -553,11 +553,6 @@ bool ExrReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRange
     return false;
 }
 
-bool ExrReaderPlugin::areHeaderAndDataTied(const std::string& filename,OfxTime time) const{
-    ///header and data are never tied for exr files
-    return false;
-}
-
 void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     rod.x1 = file->dataWindow.x1;
@@ -568,7 +563,7 @@ void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Ofx
 }
 
 using namespace OFX;
-mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {});
+mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {},false);
 
 void ExrReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);

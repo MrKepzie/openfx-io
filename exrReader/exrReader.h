@@ -70,9 +70,7 @@ private:
     virtual void initializeLut();
     
     virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range);
-    
-    virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const;
-    
+        
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
     
 };

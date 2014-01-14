@@ -188,10 +188,6 @@ bool FfmpegReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRa
     
 }
 
-bool FfmpegReaderPlugin::areHeaderAndDataTied(const std::string& filename,OfxTime time) const {
-    ///not sure about this
-    return false;
-}
 
 void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
     
@@ -214,11 +210,12 @@ void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,
 }
 
 using namespace OFX;
-mDeclareReaderPluginFactory(FfmpegReaderPluginFactory, {}, {});
+mDeclareReaderPluginFactory(FfmpegReaderPluginFactory, {}, {},true);
 
 void FfmpegReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     FFmpeg::supportedFileFormats(formats);
 }
+
 
 namespace OFX
 {

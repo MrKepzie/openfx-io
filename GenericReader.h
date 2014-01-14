@@ -121,6 +121,12 @@ private:
     
     
     /**
+     * @brief Overload this function to exctract the region of definition out of the header
+     * of the image targeted by the filename.
+     **/
+    virtual void getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) = 0;
+    
+    /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
      * If the file is a video-stream then you should decode the frame at the time given in parameters.
      * You must write the decoded image into dstImg. This function should convert the read pixels into the
@@ -151,34 +157,30 @@ private:
      **/
     bool getSequenceTimeDomainInternal(OfxRangeD& range);
     
+    /**
+     * @brief Used internally by the GenericReader.
+     **/
     void timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange);
     
-    double getTimeFromFrameParam(double time);
-    
-    
     /**
-     * @brief Override to indicate whether a frame needs to be decoded entirely to extract only its
-     * meta-data (i.e: bitdepth & image bounds)
+     * @brief Used internally by the GenericReader.
      **/
-    virtual bool areHeaderAndDataTied(const std::string& filename,OfxTime time) const = 0;
+    double getTimeFromFrameParam(double time);
     
     /**
      * @brief Should return true if the file indicated by filename is a video-stream and not 
      * a single image file.
      **/
     virtual bool isVideoStream(const std::string& filename) = 0;
-        
-    /**
-     * @brief Overload this function to exctract the region of definition out of the header
-     * of the image targeted by the filename. 
-     **/
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod){}
     
     /**
      * @brief compute the sequence/file time from time
      */
     double getSequenceTime(double t);
 
+    /**
+     * @brief Returns the filename of the image at the sequence time t.
+     **/
     void getFilenameAtSequenceTime(double t, std::string &filename);
 
     OFX::Clip *_outputClip; //< Mandated output clip
@@ -198,9 +200,6 @@ private:
 #if 0 //remove to use occio
     OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
 #endif
-    
-    OFX::Image* _dstImg; //< ptr to the output img, when this ptr is not NULL it means the image
-                         //has already been decoded
     
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
 
@@ -252,9 +251,11 @@ public:
      * For example "png" , "jpg" , etc...
      **/
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
+    
+    virtual bool isVideoStreamPlugin() const { return false; }
 };
 
-#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF) \
+#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
 class CLASS : public GenericReaderPluginFactory \
 { \
 public: \
@@ -265,6 +266,7 @@ virtual void describe(OFX::ImageEffectDescriptor &desc); \
 virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
 };
 
 #endif

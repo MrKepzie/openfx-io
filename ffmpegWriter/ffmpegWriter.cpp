@@ -484,7 +484,7 @@ void FfmpegWriterPlugin::freeFormat(){
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(FfmpegWriterPluginFactory, {}, {});
+mDeclareWriterPluginFactory(FfmpegWriterPluginFactory, {}, {},true);
 
 
 void FfmpegWriterPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{

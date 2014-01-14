@@ -221,7 +221,7 @@ bool ExrWriterPlugin::isImageFile(const std::string& /*fileExtension*/) const{
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {});
+mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},true);
 
 
 

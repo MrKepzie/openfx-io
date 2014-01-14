@@ -197,9 +197,12 @@ public:
      * For example "png" , "jpg" , etc...
      **/
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
+    
+    virtual bool isVideoStreamPlugin() const { return false; }
+
 };
 
-#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF) \
+#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
 class CLASS : public GenericWriterPluginFactory \
 { \
 public: \
@@ -210,6 +213,7 @@ virtual void describe(OFX::ImageEffectDescriptor &desc); \
 virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
 };
 
 

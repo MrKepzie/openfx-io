@@ -92,7 +92,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 #if 0 //remove to use occio
 , _inputColorSpace(0)
 #endif
-, _dstImg(0)
 , _settingFrameRange(false)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -430,16 +429,6 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
 
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
-    OfxRectI imgRoI;
-    if(_dstImg){
-        imgRoI = _dstImg->getRegionOfDefinition();
-        rod.x1 = imgRoI.x1;
-        rod.x2 = imgRoI.x2;
-        rod.y1 = imgRoI.y1;
-        rod.y2 = imgRoI.y2;
-        return true;
-    }
-    
     double sequenceTime;
     try {
         sequenceTime =  getSequenceTime(args.time);
@@ -454,36 +443,15 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    ///we want to cache away the rod and the image read from file
-    if (!areHeaderAndDataTied(filename, sequenceTime)) {
-        getFrameRegionOfDefinition(filename, sequenceTime, rod);
-        
-    } else {
-        _dstImg = _outputClip->fetchImage(args.time);
-        
-        ///initialize the color-space if it wasn't
-        if(!_lut){
-            initializeLut();
-        }
-        
-        decode(filename, sequenceTime, _dstImg);
-        imgRoI = _dstImg->getRegionOfDefinition();
-        rod.x1 = imgRoI.x1;
-        rod.x2 = imgRoI.x2;
-        rod.y1 = imgRoI.y1;
-        rod.y2 = imgRoI.y2;
-    }
-    
+    getFrameRegionOfDefinition(filename, sequenceTime, rod);
     return true;
 }
 
 void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     
-    if (_dstImg) {
-        return;
-    }
     
-    _dstImg = _outputClip->fetchImage(args.time);
+    
+    OFX::Image* dstImg = _outputClip->fetchImage(args.time);
     
     ///initialize the color-space if it wasn't
     if(!_lut){
@@ -499,7 +467,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
     if (!filename.empty()) {
-        decode(filename, sequenceTime, _dstImg);
+        decode(filename, sequenceTime, dstImg);
     }
     
 #if 0 //remove to use occio
@@ -522,9 +490,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
     }
 #endif
-    /// flush the cached image
-    delete _dstImg;
-    _dstImg = 0;
+
+    delete dstImg;
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
@@ -663,11 +630,13 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     
+    if (!isVideoStreamPlugin()) {
 #ifdef OFX_EXTENSIONS_NATRON
-    if (gHostIsNatron) {
-        fileParam->setFilePathIsImage(true);
-    }
+        if (gHostIsNatron) {
+            fileParam->setFilePathIsImage(true);
+        }
 #endif
+    }
     
     //////////First-frame
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
