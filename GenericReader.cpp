@@ -56,7 +56,9 @@ namespace OCIO = OCIO_NAMESPACE;
 
 #define kReaderFileParamName "file"
 #define kReaderMissingFrameParamName "onMissingFrame"
-#define kReaderStartTimeParamName "startingTime"
+#define kReaderFrameModeParamName "frameMode"
+#define kReaderTimeOffsetParamName "timeOffset"
+#define kReaderStartingFrameParamName "startingFrame"
 #define kReaderInputColorSpaceParamName "inputColorSpace"
 #define kReaderFirstFrameParamName "firstFrame"
 #define kReaderLastFrameParamName "lastFrame"
@@ -82,7 +84,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _beforeFirst(0)
 , _lastFrame(0)
 , _afterLast(0)
-, _startTime(0)
+, _frameMode(0)
+, _timeOffset(0)
+, _startingFrame(0)
 #if 0 //remove to use occio
 , _inputColorSpace(0)
 #endif
@@ -97,7 +101,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _beforeFirst = fetchChoiceParam(kReaderBeforeParamName);
     _lastFrame = fetchIntParam(kReaderLastFrameParamName);
     _afterLast = fetchChoiceParam(kReaderAfterParamName);
-    _startTime = fetchIntParam(kReaderStartTimeParamName);
+    _frameMode = fetchChoiceParam(kReaderFrameModeParamName);
+    _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
+    _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
     
 #if 0 //remove to use occio
     _inputColorSpace = fetchChoiceParam(kReaderInputColorSpaceParamName);
@@ -109,134 +115,163 @@ GenericReaderPlugin::~GenericReaderPlugin(){
     
 }
 
-bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
-    getTimeDomainInternal(range, false);
+double GenericReaderPlugin::getTimeFromFrameParam(double time) {
+    int frameMode;
+    _frameMode->getValue(frameMode);
+    switch (frameMode) {
+        case 0: //starting time
+        {
+            int startTime;
+            _startingFrame->getValue(startTime);
+            return time + startTime;
+        }
+        case 1: //time offset
+        {
+            int offset;
+            _timeOffset->getValue(offset);
+            return time + offset;
+        }
+        default:
+            //doesn't exist
+            assert(false);
+            break;
+    }
 }
 
-bool GenericReaderPlugin::getTimeDomainInternal(OfxRangeD& range,bool mustSetFrameRange) {
+bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
+    getSequenceTimeDomainInternal(range);
+    timeDomainFromSequenceTimeDomain(range, false);
+}
+
+bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
     std::string filename;
     _fileParam->getValueAtTime(0,filename);
     
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain
-    if(!getSequenceTimeDomain(filename,range)){
-        ///the plugin wants to have the default behaviour
-        
-        ///They're 3 cases:
-        /// 1) - the frame range is lesser than 0, e.g: [-10,-5]
-        /// 2) - the frame range contains 0, e.g: [-5,5]
-        /// 3) - the frame range is greater than 0, e.g: [5,10]
-        
-        
-        if(filename.empty()) {
-            /// If the filename is empty for the frame 0, that means we're in cases 1 or 3
-            /// If we're in case 1, we must find a frame below 0
-            int firstValidFrame = 0;
-            while (filename.empty() && firstValidFrame != -MAX_SEARCH_RANGE) {
-                --firstValidFrame;
+    if(getSequenceTimeDomain(filename,range)){
+        return true;
+    }
+    
+    ///check whether the host implements kNatronImageSequenceRange, if so return this value
+    int firstFrameProp = getPropertySet().propGetInt(kNatronImageSequenceRange, 0);
+    int lastFrameProp = getPropertySet().propGetInt(kNatronImageSequenceRange, 1);
+    
+    if (firstFrameProp != INT_MIN && firstFrameProp != INT_MAX) {
+        range.min = firstFrameProp;
+        range.max = lastFrameProp;
+        return true;
+    }
+    
+    ///the plugin wants to have the default behaviour: compute the frame range by scanning the timeline
+    
+    ///They're 3 cases:
+    /// 1) - the frame range is lesser than 0, e.g: [-10,-5]
+    /// 2) - the frame range contains 0, e.g: [-5,5]
+    /// 3) - the frame range is greater than 0, e.g: [5,10]
+    
+    
+    if(filename.empty()) {
+        /// If the filename is empty for the frame 0, that means we're in cases 1 or 3
+        /// If we're in case 1, we must find a frame below 0
+        int firstValidFrame = 0;
+        while (filename.empty() && firstValidFrame != -MAX_SEARCH_RANGE) {
+            --firstValidFrame;
+            _fileParam->getValueAtTime(firstValidFrame,filename);
+        }
+        if (filename.empty()) {
+            ///the only solution left is the 3rd case
+            firstValidFrame = 0;
+            while (filename.empty() && firstValidFrame != MAX_SEARCH_RANGE) {
+                ++firstValidFrame;
                 _fileParam->getValueAtTime(firstValidFrame,filename);
             }
             if (filename.empty()) {
-                ///the only solution left is the 3rd case
-                firstValidFrame = 0;
-                while (filename.empty() && firstValidFrame != MAX_SEARCH_RANGE) {
-                    ++firstValidFrame;
-                    _fileParam->getValueAtTime(firstValidFrame,filename);
-                }
-                if (filename.empty()) {
-                    ///hmmm...we're not in cases 1,2 or 3, just return false...let the host deal with it.
-                    return false;
-                } else {
-                    ///we're in the 3rd case, find the right bound
-                    int rightBound = firstValidFrame + 1;
-                    _fileParam->getValueAtTime(rightBound,filename);
-                    while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
-                        ++rightBound;
-                        _fileParam->getValueAtTime(rightBound,filename);
-                    }
-                    --rightBound;
-                    range.min = firstValidFrame;
-                    range.max = rightBound;
-                }
+                ///hmmm...we're not in cases 1,2 or 3, just return false...let the host deal with it.
+                return false;
             } else {
-                /// we're in the 1st case, firstValidFrame is the right bound, we need to find the left bound now
-                int leftBound = firstValidFrame - 1;
-                while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
-                    --leftBound;
-                    _fileParam->getValueAtTime(leftBound,filename);
+                ///we're in the 3rd case, find the right bound
+                int rightBound = firstValidFrame + 1;
+                _fileParam->getValueAtTime(rightBound,filename);
+                while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
+                    ++rightBound;
+                    _fileParam->getValueAtTime(rightBound,filename);
                 }
-                ++leftBound;
-                range.min = leftBound;
-                range.max = firstValidFrame;
+                --rightBound;
+                range.min = firstValidFrame;
+                range.max = rightBound;
             }
         } else {
-            ///we're in the 2nd, find out the left bound and right bound
-            int leftBound = 0;
+            /// we're in the 1st case, firstValidFrame is the right bound, we need to find the left bound now
+            int leftBound = firstValidFrame - 1;
             while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
                 --leftBound;
                 _fileParam->getValueAtTime(leftBound,filename);
             }
             ++leftBound;
-            
-            int rightBound = 0;
-            _fileParam->getValueAtTime(0, filename);
-            while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
-                ++rightBound;
-                _fileParam->getValueAtTime(rightBound,filename);
-            }
-            
-            --rightBound;
             range.min = leftBound;
-            range.max = rightBound;
+            range.max = firstValidFrame;
+        }
+    } else {
+        ///we're in the 2nd, find out the left bound and right bound
+        int leftBound = 0;
+        while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
+            --leftBound;
+            _fileParam->getValueAtTime(leftBound,filename);
+        }
+        ++leftBound;
+        
+        int rightBound = 0;
+        _fileParam->getValueAtTime(0, filename);
+        while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
+            ++rightBound;
+            _fileParam->getValueAtTime(rightBound,filename);
         }
         
-        
+        --rightBound;
+        range.min = leftBound;
+        range.max = rightBound;
     }
-    
-    int frameRange;
-    
-    if (mustSetFrameRange) {
-        frameRange = range.max - range.min;
-    } else {
-        ///these are the value held by the "First frame" and "Last frame" param
-        int frameRangeFirst;
-        _firstFrame->getValue(frameRangeFirst);
-        int frameRangeLast;
-        _lastFrame->getValue(frameRangeLast);
-        frameRange = frameRangeLast - frameRangeFirst ;
-        
-    }
-    
-    int startingTime;
-    _startTime->getValue(startingTime);
-    range.min = startingTime; //< the first frame is always the starting time
-    range.max = startingTime + frameRange;
-    
-    if (mustSetFrameRange) {
-        _settingFrameRange = true;
-        _firstFrame->setDisplayRange(range.min, range.max);
-        _lastFrame->setDisplayRange(range.min, range.max);
-
-        _firstFrame->setValue(range.min);
-        _lastFrame->setValue(range.max);
-    }
-    
     return true;
 }
 
 
+void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange)
+{
+    ///the values held by GUI parameters
+    int frameRangeFirst,frameRangeLast;
+    
+    if (mustSetFrameRange) {
+        frameRangeFirst = range.min;
+        frameRangeLast = range.max;
+        _settingFrameRange = true;
+        _firstFrame->setDisplayRange(range.min, range.max);
+        _lastFrame->setDisplayRange(range.min, range.max);
+        
+        _firstFrame->setValue(range.min);
+        _lastFrame->setValue(range.max);
+        _settingFrameRange = false;
+    } else {
+        ///these are the value held by the "First frame" and "Last frame" param
+        _firstFrame->getValue(frameRangeFirst);
+        _lastFrame->getValue(frameRangeLast);
+    }
+    
+;
+    range.min = getTimeFromFrameParam(frameRangeFirst);
+    range.max = getTimeFromFrameParam(frameRangeLast);
+    
+}
+
 double GenericReaderPlugin::getSequenceTime(double t)
 {
-    int startingTime;
-    _startTime->getValue(startingTime);
-    
+   
     ///the return value
     int sequenceTime =  t;
     
-    
     ///get the time domain (which will be offset to the starting time)
     OfxRangeD sequenceTimeDomain;
-    getTimeDomain(sequenceTimeDomain);
+    getSequenceTimeDomainInternal(sequenceTimeDomain);
     
     ///get the offset from the starting time of the sequence in case we bounce or loop
     int timeOffsetFromStart = t -  sequenceTimeDomain.min;
@@ -251,21 +286,19 @@ double GenericReaderPlugin::getSequenceTime(double t)
                 sequenceTime = sequenceTimeDomain.min;
                 break;
             case 1: //loop
-                    //call this function recursively with the appropriate offset in the time range
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                sequenceTime = sequenceTimeDomain.max - std::abs(timeOffsetFromStart);
+                sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 break;
             case 2: //bounce
-                    //call this function recursively with the appropriate offset in the time range
             {
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    sequenceTime = sequenceTimeDomain.min + std::abs(timeOffsetFromStart);
+                    sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
                 } else {
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    sequenceTime = sequenceTimeDomain.max - std::abs(timeOffsetFromStart);
+                    sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 }
             }
                 break;
@@ -290,21 +323,19 @@ double GenericReaderPlugin::getSequenceTime(double t)
                 sequenceTime = sequenceTimeDomain.max;
                 break;
             case 1: //loop
-                    //call this function recursively with the appropriate offset in the time range
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                sequenceTime = sequenceTimeDomain.min + std::abs(timeOffsetFromStart);
+                sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
                 break;
             case 2: //bounce
-                    //call this function recursively with the appropriate offset in the time range
             {
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    sequenceTime = sequenceTimeDomain.min + std::abs(timeOffsetFromStart);
+                    sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
                 } else {
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    sequenceTime = sequenceTimeDomain.max - std::abs(timeOffsetFromStart);
+                    sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
                 }
             }
                 
@@ -322,79 +353,39 @@ double GenericReaderPlugin::getSequenceTime(double t)
         
     }
     
-    ///get the sequence time by removing the startingTime from it
-    sequenceTime -= startingTime;
-    
-    ///also offset properly the frame to the frame range
-    ///get the "real" first frame.
-    int realFirst = sequenceTimeDomain.min - startingTime;
-    
-    /// value held by the "First frame" param
-    int frameRangeFirst;
-    _firstFrame->getValue(frameRangeFirst);
-    
-    ///the offset is the difference of the frameRangeFirst with the realFirst
-    assert(frameRangeFirst >= realFirst);
-    
-    sequenceTime += (frameRangeFirst - realFirst);
+    assert(sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max);
     return sequenceTime;
 }
 
 void GenericReaderPlugin::getFilenameAtSequenceTime(double time, std::string &filename)
 {
-    //////find the nearest frame, we have to do it anyway because in the case of a video stream file
-    ///// there's a single file and we don't know at what time the host has set it.
-    int offset = 0;
-    int maxOffset = MAX_SEARCH_RANGE;
-    
-    int startingTime;
-    _startTime->getValue(startingTime);
-    
-    ///get the rawTime by removing the startingTime that was removed from it
-    int rawTime = time + startingTime;
+
     
     OfxRangeD sequenceTimeDomain;
-    bool hasTimeDomain = getTimeDomain(sequenceTimeDomain);
-    if (hasTimeDomain) {
-        maxOffset = std::max(sequenceTimeDomain.max - rawTime, rawTime - sequenceTimeDomain.min);
-    }
+    getSequenceTimeDomainInternal(sequenceTimeDomain);
     
-    
-    while (filename.empty() && offset <= maxOffset) {
-        _fileParam->getValueAtTime(time + offset, filename);
-        if (!filename.empty()) {
-            break;
-        }
-        _fileParam->getValueAtTime(time - offset, filename);
-        ++offset;
-    }
+    _fileParam->getValueAtTime(time,filename);
     
     ///if the frame is missing, do smthing according to the missing frame param
-    int missingChoice;
-    _missingFrameParam->getValue(missingChoice);
-    switch (missingChoice) {
-        case 0: // Load nearest
+    if (filename.empty()) {
+        int missingChoice;
+        _missingFrameParam->getValue(missingChoice);
+        switch (missingChoice) {
+            case 0: // Load nearest
                 ///the nearest frame search went out of range and couldn't find a frame.
-            if(filename.empty()){
                 setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
-            }
-            break;
-        case 1: // Error
-                /// For images sequences, if the offset is not 0, that means no frame were found at the  originally given
-                /// time, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                // will have to handle the case itself.
-            if (offset != 0 && !isVideoStream(filename)) {
-                filename.clear();
+                break;
+            case 1: // Error
+                    /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                    // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
-            }
-        case 2: // Black image
-                /// For images sequences, if the offset is not 0, that means no frame were found at the  originally given
-                /// time, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                // will have to handle the case itself.
-            if (offset != 0 && !isVideoStream(filename)) {
-                filename.clear();
-            }
-            break;
+                break;
+            case 2: // Black image
+                    /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                    // will have to handle the case itself.
+                break;
+        }
+
     }
     
     
@@ -507,16 +498,15 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         
         ///we don't pass the _frameRange range as we don't want to store the time domain too
         OfxRangeD tmp;
-        getTimeDomainInternal(tmp,true);
+        getSequenceTimeDomainInternal(tmp);
+        timeDomainFromSequenceTimeDomain(tmp, true);
         onInputFileChanged(filename);
         
-        _startTime->setValue(tmp.min);
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _startTime->setValue(first);
         _firstFrame->setDisplayRange(first, last);
     } else if( paramName == kReaderLastFrameParamName && !_settingFrameRange) {
         int first;
@@ -524,7 +514,50 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _firstFrame->setDisplayRange(first, last);
+    } else if( paramName == kReaderFrameModeParamName ) {
+        int mode;
+        _frameMode->getValue(mode);
+        switch (mode) {
+            case 0: //starting frame
+                _startingFrame->setIsSecret(false);
+                _timeOffset->setIsSecret(true);
+                break;
+            case 1: //time offset
+                _startingFrame->setIsSecret(true);
+                _timeOffset->setIsSecret(false);
+                break;
+            default:
+                //no such case
+                assert(false);
+                break;
+        }
+    } else if( paramName == kReaderStartingFrameParamName && !_settingFrameRange) {
+        //also update the time offset
+        int startingFrame;
+        _startingFrame->getValue(startingFrame);
+        OfxRangeD sequenceTimeDomain;
+        getSequenceTimeDomainInternal(sequenceTimeDomain);
+        
+        ///prevent recursive calls of setValue(...)
+        _settingFrameRange = true;
+        _timeOffset->setValue(startingFrame - sequenceTimeDomain.min);
+        _settingFrameRange = false;
+        
+    } else if( paramName == kReaderTimeOffsetParamName && !_settingFrameRange) {
+        //also update the starting frame
+        int offset;
+        _timeOffset->getValue(offset);
+        OfxRangeD sequenceTimeDomain;
+        getSequenceTimeDomainInternal(sequenceTimeDomain);
+        
+        ///prevent recursive calls of setValue(...)
+        _settingFrameRange = true;
+        _startingFrame->setValue(offset + sequenceTimeDomain.min);
+        _settingFrameRange = false;
+
     }
+
+    
     
 }
 
@@ -579,6 +612,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     fileParam->setHint("The input image sequence/video stream file(s).");
     fileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*fileParam);
+    
     
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
@@ -651,13 +685,31 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     missingFrameParam->setDefault(0); //< default to nearest frame.
     page->addChild(*missingFrameParam);
     
+    
+    ///////////Frame-mode
+    OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kReaderFrameModeParamName);
+    frameModeParam->appendOption("Starting frame");
+    frameModeParam->appendOption("Time offset");
+    frameModeParam->setAnimates(false);
+    frameModeParam->setDefault(0);
+    
+    
     ///////////Starting frame
-    OFX::IntParamDescriptor* startingFrameParam = desc.defineIntParam(kReaderStartTimeParamName);
+    OFX::IntParamDescriptor* startingFrameParam = desc.defineIntParam(kReaderStartingFrameParamName);
     startingFrameParam->setLabels("Starting time", "Starting time", "Starting time");
     startingFrameParam->setHint("At what time (on the timeline) should this sequence/video start.");
     startingFrameParam->setDefault(0);
     startingFrameParam->setAnimates(false);
     page->addChild(*startingFrameParam);
+    
+    ///////////Time offset
+    OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
+    timeOffsetParam->setLabels("Time offset", "Time offset", "Time offset");
+    timeOffsetParam->setHint("Offset applied to the sequence in frames.");
+    timeOffsetParam->setDefault(0);
+    timeOffsetParam->setAnimates(false);
+    timeOffsetParam->setIsSecret(true);
+    page->addChild(*timeOffsetParam);
     
     
 #if 0 //remove to use occio
