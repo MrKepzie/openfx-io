@@ -357,14 +357,14 @@ double GenericReaderPlugin::getSequenceTime(double t)
     return sequenceTime;
 }
 
-void GenericReaderPlugin::getFilenameAtSequenceTime(double time, std::string &filename)
+void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::string &filename)
 {
 
     
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain);
     
-    _fileParam->getValueAtTime(time,filename);
+    _fileParam->getValueAtTime(sequenceTime,filename);
     
     ///if the frame is missing, do smthing according to the missing frame param
     if (filename.empty()) {
@@ -372,8 +372,24 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double time, std::string &fi
         _missingFrameParam->getValue(missingChoice);
         switch (missingChoice) {
             case 0: // Load nearest
-                ///the nearest frame search went out of range and couldn't find a frame.
-                setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+            {
+                int offset = -1;
+                int maxOffset = MAX_SEARCH_RANGE;
+                OfxRangeD sequenceTimeDomain;
+                getSequenceTimeDomainInternal(sequenceTimeDomain);
+                while (filename.empty() && offset <= maxOffset) {
+                    _fileParam->getValueAtTime(sequenceTime + offset, filename);
+                    if (offset < 0) {
+                        offset = -offset;
+                    } else {
+                        ++offset;
+                    }
+                }
+                if(filename.empty()){
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+                    // return a black image
+                }
+            }
                 break;
             case 1: // Error
                     /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
