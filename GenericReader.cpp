@@ -117,28 +117,7 @@ GenericReaderPlugin::~GenericReaderPlugin(){
     
 }
 
-double GenericReaderPlugin::getTimeFromFrameParam(double time) {
-    int frameMode;
-    _frameMode->getValue(frameMode);
-    switch (frameMode) {
-        case 0: //starting time
-        {
-            int startTime;
-            _startingFrame->getValue(startTime);
-            return time + startTime;
-        }
-        case 1: //time offset
-        {
-            int offset;
-            _timeOffset->getValue(offset);
-            return time + offset;
-        }
-        default:
-            //doesn't exist
-            assert(false);
-            break;
-    }
-}
+
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
     getSequenceTimeDomainInternal(range);
@@ -259,10 +238,11 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
 {
     ///the values held by GUI parameters
     int frameRangeFirst,frameRangeLast;
-    
+    int startingFrame;
     if (mustSetFrameRange) {
         frameRangeFirst = range.min;
         frameRangeLast = range.max;
+        startingFrame = frameRangeFirst;
         _settingFrameRange = true;
         _firstFrame->setDisplayRange(range.min, range.max);
         _lastFrame->setDisplayRange(range.min, range.max);
@@ -274,19 +254,21 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
         ///these are the value held by the "First frame" and "Last frame" param
         _firstFrame->getValue(frameRangeFirst);
         _lastFrame->getValue(frameRangeLast);
+        _startingFrame->getValue(startingFrame);
     }
     
-;
-    range.min = getTimeFromFrameParam(frameRangeFirst);
-    range.max = getTimeFromFrameParam(frameRangeLast);
+    range.min = startingFrame;
+    range.max = startingFrame + frameRangeLast - frameRangeFirst;
     
 }
 
 double GenericReaderPlugin::getSequenceTime(double t)
 {
-   
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+    
     ///the return value
-    int sequenceTime =  t;
+    int sequenceTime =  t + timeOffset;
     
     ///get the time domain (which will be offset to the starting time)
     OfxRangeD sequenceTimeDomain;
@@ -296,7 +278,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
     int timeOffsetFromStart = t -  sequenceTimeDomain.min;
     
     ///if the time given is before the sequence
-    if( t < sequenceTimeDomain.min) {
+    if( sequenceTime < sequenceTimeDomain.min) {
         /////if we're before the first frame
         int beforeChoice;
         _beforeFirst->getValue(beforeChoice);
@@ -332,7 +314,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
                 break;
         }
         
-    } else if( t > sequenceTimeDomain.max) { ///the time given is after the sequence
+    } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
                                              /////if we're after the last frame
         int afterChoice;
         _afterLast->getValue(afterChoice);
@@ -394,8 +376,6 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
             {
                 int offset = -1;
                 int maxOffset = MAX_SEARCH_RANGE;
-                OfxRangeD sequenceTimeDomain;
-                getSequenceTimeDomainInternal(sequenceTimeDomain);
                 while (filename.empty() && offset <= maxOffset) {
                     _fileParam->getValueAtTime(sequenceTime + offset, filename);
                     if (offset < 0) {
@@ -503,6 +483,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         OfxRangeD tmp;
         getSequenceTimeDomainInternal(tmp);
         timeDomainFromSequenceTimeDomain(tmp, true);
+        _startingFrame->setValue(tmp.min);
         onInputFileChanged(filename);
         
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
@@ -510,12 +491,13 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setDisplayRange(first, last);
+        _lastFrame->setDisplayRange(first, last);
         
         int offset;
         _timeOffset->getValue(offset);
+        _settingFrameRange = true,
         _startingFrame->setValue(first + offset);
-        
+        _settingFrameRange = false;
     } else if( paramName == kReaderLastFrameParamName && !_settingFrameRange) {
         int first;
         int last;
@@ -555,12 +537,12 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         //also update the starting frame
         int offset;
         _timeOffset->getValue(offset);
-        OfxRangeD sequenceTimeDomain;
-        getSequenceTimeDomainInternal(sequenceTimeDomain);
+        int first;
+        _firstFrame->getValue(first);
         
         ///prevent recursive calls of setValue(...)
         _settingFrameRange = true;
-        _startingFrame->setValue(offset + sequenceTimeDomain.min);
+        _startingFrame->setValue(offset + first);
         _settingFrameRange = false;
 
     }

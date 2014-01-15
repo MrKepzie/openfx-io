@@ -163,11 +163,6 @@ private:
     void timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange);
     
     /**
-     * @brief Used internally by the GenericReader.
-     **/
-    double getTimeFromFrameParam(double time);
-    
-    /**
      * @brief Should return true if the file indicated by filename is a video-stream and not 
      * a single image file.
      **/
