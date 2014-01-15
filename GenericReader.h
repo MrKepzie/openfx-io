@@ -192,7 +192,7 @@ private:
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
-#if 0 //remove to use occio
+#ifdef IO_USING_OCCIO
     OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
 #endif
     

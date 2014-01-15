@@ -914,6 +914,7 @@
 				OTHER_LDFLAGS = (
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
+					"$(inherited)",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME).ofx";
 				SDKROOT = macosx;
@@ -940,6 +941,7 @@
 				OTHER_LDFLAGS = (
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
+					"$(inherited)",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME).ofx";
 				SDKROOT = macosx;
@@ -953,9 +955,10 @@
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NATRON,
-					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_NUKE,
+					OFX_EXTENSIONS_VEGAS,
 					"DEBUG=1",
+					IO_USING_OCCIO,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",
@@ -965,10 +968,14 @@
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
+				LIBRARY_SEARCH_PATHS = "$(OCCIO_PATH)/lib";
 				OCCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-L$(OCCIO_PATH)/lib",
+					"-lOpenColorIO",
+				);
 			};
 			name = Debug;
 		};
@@ -979,8 +986,8 @@
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NATRON,
-					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_NUKE,
+					OFX_EXTENSIONS_VEGAS,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",
@@ -990,9 +997,13 @@
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
+				LIBRARY_SEARCH_PATHS = "$(OCCIO_PATH)/lib";
 				OCCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
-				OTHER_LDFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-L$(OCCIO_PATH)/lib",
+					"-lOpenColorIO",
+				);
 			};
 			name = Release;
 		};

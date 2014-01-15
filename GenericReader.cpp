@@ -43,7 +43,7 @@
 
 #include "ofxsLog.h"
 
-#if 0 //remove to use occio
+#ifdef IO_USING_OCCIO
 #include <OpenColorIO/OpenColorIO.h>
 namespace OCIO = OCIO_NAMESPACE;
 #endif
@@ -89,7 +89,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _timeOffset(0)
 , _startingFrame(0)
 , _originalFrameRange(0)
-#if 0 //remove to use occio
+#ifdef IO_USING_OCCIO
 , _inputColorSpace(0)
 #endif
 , _settingFrameRange(false)
@@ -107,7 +107,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
     _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
     
-#if 0 //remove to use occio
+#ifdef IO_USING_OCCIO
     _inputColorSpace = fetchChoiceParam(kReaderInputColorSpaceParamName);
 #endif
     
@@ -456,7 +456,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         decode(filename, sequenceTime, dstImg);
     }
     
-#if 0 //remove to use occio
+#ifdef IO_USING_OCCIO
     try
     {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -467,8 +467,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         OCIO::ConstContextRcPtr context = config->getCurrentContext();
         OCIO::ConstProcessorRcPtr proc = config->getProcessor(context, inputName, outputName);
         
-        OfxRectI rod = _dstImg->getRegionOfDefinition();
-        OCIO::PackedImageDesc img((float*)_dstImg->getPixelAddress(0, 0),rod.x2 - rod.x1,rod.y2 - rod.y1,4);
+        OfxRectI rod = dstImg->getRegionOfDefinition();
+        OCIO::PackedImageDesc img((float*)dstImg->getPixelAddress(0, 0),rod.x2 - rod.x1,rod.y2 - rod.y1,4);
         proc->apply(img);
     }
     catch(OCIO::Exception &e)
@@ -723,8 +723,8 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     page->addChild(*originalFrameRangeParam);
     
     
-#if 0 //remove to use occio
-      ///////////Input Color-space
+#ifdef IO_USING_OCCIO
+    ///////////Input Color-space
     OFX::ChoiceParamDescriptor* inputColorSpaceParam = desc.defineChoiceParam(kReaderInputColorSpaceParamName);
     inputColorSpaceParam->setLabels("Input color-space", "Input color-space", "Input color-space");
     inputColorSpaceParam->setHint("Input data is taken to be in this color-space.");
