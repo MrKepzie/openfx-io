@@ -47,7 +47,7 @@ OIIO_NAMESPACE_USING
 
 
 ////global OIIO image cache
-static ImageCache* cache = ImageCache::create();
+static ImageCache* cache = 0;
 
 OiioReaderPlugin::OiioReaderPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
@@ -191,7 +191,19 @@ void OiioReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Of
 
 
 using namespace OFX;
-mDeclareReaderPluginFactory(OiioReaderPluginFactory, {}, {},false);
+mDeclareReaderPluginFactory(OiioReaderPluginFactory, ;, ;,false);
+
+void OiioReaderPluginFactory::load() {
+    if (!cache) {
+        cache = ImageCache::create();
+    }
+}
+
+void OiioReaderPluginFactory::unload() {
+    if (cache) {
+        ImageCache::destroy(cache);
+    }
+}
 
 void OiioReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
