@@ -548,11 +548,6 @@ void ExrReaderPlugin::initializeLut(){
     _lut = 0;
 }
 
-bool ExrReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range){
-    ///let the host determine the frame range
-    return false;
-}
-
 void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     rod.x1 = file->dataWindow.x1;

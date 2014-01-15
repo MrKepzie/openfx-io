@@ -13,6 +13,7 @@
 			buildPhases = (
 			);
 			dependencies = (
+				D7330E0618867C2E004A6199 /* PBXTargetDependency */,
 				D769DE261879A08300AED3D6 /* PBXTargetDependency */,
 				D709B977187890F900D5A0B4 /* PBXTargetDependency */,
 				D74E62E41875ABD400D8FA13 /* PBXTargetDependency */,
@@ -55,6 +56,39 @@
 		D709B9871878918400D5A0B4 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D709B9881878918400D5A0B4 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D709B9891878918400D5A0B4 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
+		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
+		D7330DE518867BCD004A6199 /* oiioReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7330DE318867BCD004A6199 /* oiioReader.cpp */; };
+		D7330DE618867BCD004A6199 /* oiioReader.h in Headers */ = {isa = PBXBuildFile; fileRef = D7330DE418867BCD004A6199 /* oiioReader.h */; };
+		D7330DE718867C06004A6199 /* GenericReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62BC1875AB2000D8FA13 /* GenericReader.cpp */; };
+		D7330DE818867C06004A6199 /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62C01875AB2000D8FA13 /* Lut.cpp */; };
+		D7330DE918867C06004A6199 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A81875AB0800D8FA13 /* ofxsCore.cpp */; };
+		D7330DEA18867C06004A6199 /* ofxsHWNDInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A91875AB0800D8FA13 /* ofxsHWNDInteract.cpp */; };
+		D7330DEB18867C06004A6199 /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AA1875AB0800D8FA13 /* ofxsImageEffect.cpp */; };
+		D7330DEC18867C06004A6199 /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AB1875AB0800D8FA13 /* ofxsInteract.cpp */; };
+		D7330DED18867C06004A6199 /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AC1875AB0800D8FA13 /* ofxsLog.cpp */; };
+		D7330DEE18867C06004A6199 /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AD1875AB0800D8FA13 /* ofxsMultiThread.cpp */; };
+		D7330DEF18867C06004A6199 /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AE1875AB0800D8FA13 /* ofxsParams.cpp */; };
+		D7330DF018867C06004A6199 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
+		D7330DF118867C06004A6199 /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
+		D7330DF218867C06004A6199 /* ofxsSupportPrivate.h in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
+		D7330DF318867C1E004A6199 /* GenericReader.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62BD1875AB2000D8FA13 /* GenericReader.h */; };
+		D7330DF418867C1E004A6199 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62C11875AB2000D8FA13 /* Lut.h */; };
+		D7330DF518867C1E004A6199 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
+		D7330DF618867C1E004A6199 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
+		D7330DF718867C1E004A6199 /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
+		D7330DF818867C1E004A6199 /* ofxInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62751875AAB500D8FA13 /* ofxInteract.h */; };
+		D7330DF918867C1E004A6199 /* ofxKeySyms.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62761875AAB500D8FA13 /* ofxKeySyms.h */; };
+		D7330DFA18867C1E004A6199 /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
+		D7330DFB18867C1E004A6199 /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
+		D7330DFC18867C1E004A6199 /* ofxMultiThread.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62791875AAB500D8FA13 /* ofxMultiThread.h */; };
+		D7330DFD18867C1E004A6199 /* ofxOpenGLRender.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627A1875AAB500D8FA13 /* ofxOpenGLRender.h */; };
+		D7330DFE18867C1E004A6199 /* ofxParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627B1875AAB500D8FA13 /* ofxParam.h */; };
+		D7330DFF18867C1E004A6199 /* ofxParametricParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627C1875AAB500D8FA13 /* ofxParametricParam.h */; };
+		D7330E0018867C1E004A6199 /* ofxPixels.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627D1875AAB500D8FA13 /* ofxPixels.h */; };
+		D7330E0118867C1E004A6199 /* ofxProgress.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627E1875AAB500D8FA13 /* ofxProgress.h */; };
+		D7330E0218867C1E004A6199 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
+		D7330E0318867C1E004A6199 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
+		D7330E0418867C1E004A6199 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
 		D74E624A1875A7A400D8FA13 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D74E626B1875A9C800D8FA13 /* FfmpegHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62651875A9C800D8FA13 /* FfmpegHandler.cpp */; };
 		D74E626C1875A9C800D8FA13 /* FfmpegHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62661875A9C800D8FA13 /* FfmpegHandler.h */; };
@@ -148,6 +182,13 @@
 			remoteGlobalIDString = D709B95218787D6700D5A0B4;
 			remoteInfo = exrReader;
 		};
+		D7330E0518867C2E004A6199 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D7330DD018867B35004A6199;
+			remoteInfo = oiioReader;
+		};
 		D74E62631875A91100D8FA13 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
@@ -176,6 +217,9 @@
 		D709B96518787DBE00D5A0B4 /* exrReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = exrReader.cpp; sourceTree = "<group>"; };
 		D709B96618787DBE00D5A0B4 /* exrReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = exrReader.h; sourceTree = "<group>"; };
 		D709B96918787DF900D5A0B4 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = oiioReader.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		D7330DE318867BCD004A6199 /* oiioReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = oiioReader.cpp; sourceTree = "<group>"; };
+		D7330DE418867BCD004A6199 /* oiioReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = oiioReader.h; sourceTree = "<group>"; };
 		D74E62461875A7A400D8FA13 /* ffmpegReader.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ffmpegReader.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62491875A7A400D8FA13 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		D74E62651875A9C800D8FA13 /* FfmpegHandler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FfmpegHandler.cpp; sourceTree = "<group>"; };
@@ -245,6 +289,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D7330DCE18867B35004A6199 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D74E62431875A7A400D8FA13 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -282,6 +334,15 @@
 			path = exrReader;
 			sourceTree = "<group>";
 		};
+		D7330DD318867B35004A6199 /* oiioReader */ = {
+			isa = PBXGroup;
+			children = (
+				D7330DE318867BCD004A6199 /* oiioReader.cpp */,
+				D7330DE418867BCD004A6199 /* oiioReader.h */,
+			);
+			path = oiioReader;
+			sourceTree = "<group>";
+		};
 		D74E623B1875A79700D8FA13 = {
 			isa = PBXGroup;
 			children = (
@@ -296,6 +357,7 @@
 				D74E62CE1875AB4600D8FA13 /* ffmpegWriter */,
 				D709B95518787D6700D5A0B4 /* exrReader */,
 				D769DE151879A07800AED3D6 /* exrWriter */,
+				D7330DD318867B35004A6199 /* oiioReader */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
 			);
@@ -308,6 +370,7 @@
 				D74E62CC1875AB4600D8FA13 /* ffmpegWriter.ofx.bundle */,
 				D709B95318787D6700D5A0B4 /* exrReader.ofx.bundle */,
 				D769DE131879A07800AED3D6 /* exrWriter.ofx.bundle */,
+				D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -450,6 +513,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D7330DCF18867B35004A6199 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7330DF318867C1E004A6199 /* GenericReader.h in Headers */,
+				D7330DF418867C1E004A6199 /* Lut.h in Headers */,
+				D7330DF518867C1E004A6199 /* ofxCore.h in Headers */,
+				D7330DF618867C1E004A6199 /* ofxDialog.h in Headers */,
+				D7330DF718867C1E004A6199 /* ofxImageEffect.h in Headers */,
+				D7330DF818867C1E004A6199 /* ofxInteract.h in Headers */,
+				D7330DF918867C1E004A6199 /* ofxKeySyms.h in Headers */,
+				D7330DFA18867C1E004A6199 /* ofxMemory.h in Headers */,
+				D7330DFB18867C1E004A6199 /* ofxMessage.h in Headers */,
+				D7330DFC18867C1E004A6199 /* ofxMultiThread.h in Headers */,
+				D7330DFD18867C1E004A6199 /* ofxOpenGLRender.h in Headers */,
+				D7330DFE18867C1E004A6199 /* ofxParam.h in Headers */,
+				D7330DFF18867C1E004A6199 /* ofxParametricParam.h in Headers */,
+				D7330E0018867C1E004A6199 /* ofxPixels.h in Headers */,
+				D7330E0118867C1E004A6199 /* ofxProgress.h in Headers */,
+				D7330E0218867C1E004A6199 /* ofxProperty.h in Headers */,
+				D7330E0318867C1E004A6199 /* ofxSonyVegas.h in Headers */,
+				D7330E0418867C1E004A6199 /* ofxTimeLine.h in Headers */,
+				D7330DE618867BCD004A6199 /* oiioReader.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D74E62441875A7A400D8FA13 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -537,6 +626,23 @@
 			productReference = D709B95318787D6700D5A0B4 /* exrReader.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
+		D7330DD018867B35004A6199 /* oiioReader */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */;
+			buildPhases = (
+				D7330DCD18867B35004A6199 /* Sources */,
+				D7330DCE18867B35004A6199 /* Frameworks */,
+				D7330DCF18867B35004A6199 /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = oiioReader;
+			productName = oiioReader;
+			productReference = D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 		D74E62451875A7A400D8FA13 /* ffmpegReader */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D74E62581875A7A400D8FA13 /* Build configuration list for PBXNativeTarget "ffmpegReader" */;
@@ -613,6 +719,7 @@
 				D74E62CB1875AB4600D8FA13 /* ffmpegWriter */,
 				D709B95218787D6700D5A0B4 /* exrReader */,
 				D769DE121879A07800AED3D6 /* exrWriter */,
+				D7330DD018867B35004A6199 /* oiioReader */,
 			);
 		};
 /* End PBXProject section */
@@ -633,6 +740,26 @@
 				D709B97318787E4C00D5A0B4 /* ofxsProperty.cpp in Sources */,
 				D709B97418787E4C00D5A0B4 /* ofxsPropertyValidation.cpp in Sources */,
 				D709B96718787DBE00D5A0B4 /* exrReader.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D7330DCD18867B35004A6199 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7330DE718867C06004A6199 /* GenericReader.cpp in Sources */,
+				D7330DE818867C06004A6199 /* Lut.cpp in Sources */,
+				D7330DE918867C06004A6199 /* ofxsCore.cpp in Sources */,
+				D7330DEA18867C06004A6199 /* ofxsHWNDInteract.cpp in Sources */,
+				D7330DEB18867C06004A6199 /* ofxsImageEffect.cpp in Sources */,
+				D7330DEC18867C06004A6199 /* ofxsInteract.cpp in Sources */,
+				D7330DED18867C06004A6199 /* ofxsLog.cpp in Sources */,
+				D7330DEE18867C06004A6199 /* ofxsMultiThread.cpp in Sources */,
+				D7330DEF18867C06004A6199 /* ofxsParams.cpp in Sources */,
+				D7330DF018867C06004A6199 /* ofxsProperty.cpp in Sources */,
+				D7330DF118867C06004A6199 /* ofxsPropertyValidation.cpp in Sources */,
+				D7330DF218867C06004A6199 /* ofxsSupportPrivate.h in Sources */,
+				D7330DE518867BCD004A6199 /* oiioReader.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -699,6 +826,11 @@
 			target = D709B95218787D6700D5A0B4 /* exrReader */;
 			targetProxy = D709B976187890F900D5A0B4 /* PBXContainerItemProxy */;
 		};
+		D7330E0618867C2E004A6199 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D7330DD018867B35004A6199 /* oiioReader */;
+			targetProxy = D7330E0518867C2E004A6199 /* PBXContainerItemProxy */;
+		};
 		D74E62641875A91100D8FA13 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = D74E62451875A7A400D8FA13 /* ffmpegReader */;
@@ -763,6 +895,57 @@
 			};
 			name = Release;
 		};
+		D7330DE018867B35004A6199 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(OFX_PATH)/include",
+					"$(OFX_PATH)/Support/include",
+					"$(OFX_PATH)/Support/Plugins/include",
+					"$(OCCIO_PATH)/include",
+					"$(OIIO_PATH)/include",
+				);
+				INFOPLIST_FILE = oiioReader/Info.plist;
+				LIBRARY_SEARCH_PATHS = "$(OIIO_PATH)/lib";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				OIIO_PATH = /opt/local;
+				OTHER_LDFLAGS = (
+					"-L$(OIIO_PATH)/lib",
+					"-lOpenImageIO",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D7330DE118867B35004A6199 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(OFX_PATH)/include",
+					"$(OFX_PATH)/Support/include",
+					"$(OFX_PATH)/Support/Plugins/include",
+					"$(OCCIO_PATH)/include",
+					"$(OIIO_PATH)/include",
+				);
+				INFOPLIST_FILE = oiioReader/Info.plist;
+				LIBRARY_SEARCH_PATHS = "$(OIIO_PATH)/lib";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				OIIO_PATH = /opt/local;
+				OTHER_LDFLAGS = (
+					"-L$(OIIO_PATH)/lib",
+					"-lOpenImageIO",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		D74E62401875A79700D8FA13 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -785,7 +968,7 @@
 				OCCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "-L$(OCCIO_PATH)/lib";
+				OTHER_LDFLAGS = "";
 			};
 			name = Debug;
 		};
@@ -809,7 +992,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				OCCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
-				OTHER_LDFLAGS = "-L$(OCCIO_PATH)/lib";
+				OTHER_LDFLAGS = "";
 			};
 			name = Release;
 		};
@@ -976,6 +1159,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D7330DE018867B35004A6199 /* Debug */,
+				D7330DE118867B35004A6199 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 		D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "Io" */ = {
 			isa = XCConfigurationList;

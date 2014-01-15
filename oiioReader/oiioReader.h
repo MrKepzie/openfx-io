@@ -1,6 +1,6 @@
 /*
- OFX exrReader plugin.
- Reads a an input image using the OpenEXR library.
+ OFX oiioReader plugin.
+ Reads an image using the OpenImageIO library.
  
  Copyright (C) 2013 INRIA
  Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
@@ -36,40 +36,34 @@
  78153 Le Chesnay Cedex - France
  
  */
-
-
-#ifndef __Io__exrReader__
-#define __Io__exrReader__
-
-#ifdef _WIN32
-#define OPENEXR_DLL
-#endif
+#ifndef __Io__oiioReader__
+#define __Io__oiioReader__
 
 #include "GenericReader.h"
 
-class ExrReaderPlugin : public GenericReaderPlugin {
-  
+class OiioReaderPlugin : public GenericReaderPlugin {
+    
 public:
     
-    ExrReaderPlugin(OfxImageEffectHandle handle);
+    OiioReaderPlugin(OfxImageEffectHandle handle);
     
-    virtual ~ExrReaderPlugin();
+    virtual ~OiioReaderPlugin();
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
     virtual void supportedFileFormats(std::vector<std::string>* formats) const;
     
+    virtual void purgeCaches(void);
 private:
     
     virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
-    
+        
     virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
     
     virtual void initializeLut();
-    
+        
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
     
 };
 
-
-#endif /* defined(__Io__exrReader__) */
+#endif /* defined(__Io__oiioReader__) */

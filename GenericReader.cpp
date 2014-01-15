@@ -149,8 +149,11 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
     
     ///check whether the host implements kNatronImageSequenceRange, if so return this value
     ///This is a speed-up for host that implements this property.
-    int firstFrameProp = getPropertySet().propGetInt(kNatronImageSequenceRange, 0);
-    int lastFrameProp = getPropertySet().propGetInt(kNatronImageSequenceRange, 1);
+    int firstFrameProp = INT_MIN;
+    int lastFrameProp = INT_MAX;
+#ifdef OFX_EXTENSIONS_NATRON
+    _fileParam->getImageSequenceRange(firstFrameProp, lastFrameProp);
+#endif
     
     if (firstFrameProp != INT_MIN && firstFrameProp != INT_MAX) {
         range.min = firstFrameProp;
@@ -249,6 +252,9 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
         
         _firstFrame->setValue(range.min);
         _lastFrame->setValue(range.max);
+        
+        _originalFrameRange->setValue(range.min, range.max);
+        
         _settingFrameRange = false;
     } else {
         ///these are the value held by the "First frame" and "Last frame" param
@@ -479,12 +485,16 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         std::string filename;
         _fileParam->getValueAtTime(args.time,filename);
         
+        //reset the original range param
+        _originalFrameRange->setValue(INT_MIN, INT_MAX);
+        
         ///we don't pass the _frameRange range as we don't want to store the time domain too
         OfxRangeD tmp;
         getSequenceTimeDomainInternal(tmp);
         timeDomainFromSequenceTimeDomain(tmp, true);
         _startingFrame->setValue(tmp.min);
         onInputFileChanged(filename);
+        
         
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;

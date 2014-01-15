@@ -1106,6 +1106,7 @@ namespace OFX {
             return LutManager::m_instance.getLut("Gamma2_2",from_func_Gamma2_2,to_func_Gamma2_2);
         }
         
+        
         float from_func_Panalog(float v){
             return (std::pow(10.f,(1023.f * v - 681.f) / 444.f) - 0.0408) / 0.96f;
         }
