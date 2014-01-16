@@ -958,7 +958,7 @@
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					"DEBUG=1",
-					IO_USING_OCCIO,
+					IO_USING_OCIO,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",
@@ -988,6 +988,7 @@
 					OFX_EXTENSIONS_NATRON,
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
+					IO_USING_OCIO,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",

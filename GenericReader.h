@@ -177,6 +177,7 @@ private:
      * @brief Returns the filename of the image at the sequence time t.
      **/
     void getFilenameAtSequenceTime(double t, std::string &filename);
+    
 
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
@@ -192,7 +193,8 @@ private:
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
-#ifdef IO_USING_OCCIO
+#ifdef IO_USING_OCIO
+    OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
     OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
 #endif
     
@@ -200,6 +202,16 @@ private:
 
 };
 
+#ifdef IO_USING_OCIO
+namespace OCIO_OFX {
+/**
+ * @brief Reads the OpenColorIO config file pointed to by filename and extract from it a list of the color spaces names
+ * available in that config as-well as the default color-space index.
+ * If filename is NULL, then it will read the environment variable OCIO which should point to a OpenColorIO config file.
+ **/
+void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename = NULL);
+}
+#endif
 
 
 class GenericReaderPluginFactory : public OFX::PluginFactoryHelper<GenericReaderPluginFactory>

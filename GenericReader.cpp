@@ -43,7 +43,7 @@
 
 #include "ofxsLog.h"
 
-#ifdef IO_USING_OCCIO
+#ifdef IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
 namespace OCIO = OCIO_NAMESPACE;
 #endif
@@ -60,7 +60,12 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kReaderTimeOffsetParamName "timeOffset"
 #define kReaderStartingFrameParamName "startingFrame"
 #define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
+
+#ifdef IO_USING_OCIO
+#define kReaderOCCIOConfigFileParamName "ReaderOCCIOConfigFileParamName"
 #define kReaderInputColorSpaceParamName "inputColorSpace"
+#endif
+
 #define kReaderFirstFrameParamName "firstFrame"
 #define kReaderLastFrameParamName "lastFrame"
 #define kReaderBeforeParamName "before"
@@ -89,7 +94,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _timeOffset(0)
 , _startingFrame(0)
 , _originalFrameRange(0)
-#ifdef IO_USING_OCCIO
+#ifdef IO_USING_OCIO
+, _occioConfigFile(0)
 , _inputColorSpace(0)
 #endif
 , _settingFrameRange(false)
@@ -107,7 +113,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
     _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
     
-#ifdef IO_USING_OCCIO
+#ifdef IO_USING_OCIO
+    _occioConfigFile = fetchStringParam(kReaderOCCIOConfigFileParamName);
     _inputColorSpace = fetchChoiceParam(kReaderInputColorSpaceParamName);
 #endif
     
@@ -456,7 +463,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         decode(filename, sequenceTime, dstImg);
     }
     
-#ifdef IO_USING_OCCIO
+#ifdef IO_USING_OCIO
     try
     {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -556,10 +563,69 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _settingFrameRange = false;
 
     }
-
+#ifdef IO_USING_OCIO
+    else if ( paramName == kReaderOCCIOConfigFileParamName ) {
+        std::string filename;
+        _occioConfigFile->getValue(filename);
+        std::vector<std::string> colorSpaces;
+        int defaultIndex;
+        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
+        
+        _inputColorSpace->resetOptions();
+        for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
+            _inputColorSpace->appendOption(colorSpaces[i]);
+        }
+        if (defaultIndex < (int)colorSpaces.size()) {
+            _inputColorSpace->setValue(defaultIndex);
+        }
+    }
+#endif
     
     
 }
+
+#ifdef IO_USING_OCIO
+namespace OCIO_OFX {
+void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename) {
+    try
+    {
+        OCIO::ConstConfigRcPtr config;
+        if (filename) {
+            config = OCIO::Config::CreateFromFile(filename);
+        } else {
+            config = OCIO::Config::CreateFromEnv();
+        }
+        
+        OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(OCIO::ROLE_COMPOSITING_LOG);
+        if(!defaultcs){
+            throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
+        }
+        std::string defaultColorSpaceName = defaultcs->getName();
+        
+        for(int i = 0; i < config->getNumColorSpaces(); ++i)
+        {
+            std::string csname = config->getColorSpaceNameByIndex(i);
+            colorSpaces->push_back(csname);
+            
+            if(csname == defaultColorSpaceName)
+            {
+                *defaultColorSpaceIndex = i;
+            }
+        }
+    }
+    catch (OCIO::Exception& e)
+    {
+        std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
+    }
+    catch (...)
+    {
+        std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
+    }
+    
+
+}
+}
+#endif
 
 using namespace OFX;
 
@@ -723,7 +789,15 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     page->addChild(*originalFrameRangeParam);
     
     
-#ifdef IO_USING_OCCIO
+#ifdef IO_USING_OCIO
+    ////////// OCIO config file
+    OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kReaderOCCIOConfigFileParamName);
+    occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
+    occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    occioConfigFileParam->setHint("The file to read the OpenColorIO config from.");
+    occioConfigFileParam->setAnimates(false);
+    desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
+    
     ///////////Input Color-space
     OFX::ChoiceParamDescriptor* inputColorSpaceParam = desc.defineChoiceParam(kReaderInputColorSpaceParamName);
     inputColorSpaceParam->setLabels("Input color-space", "Input color-space", "Input color-space");
@@ -731,36 +805,18 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     inputColorSpaceParam->setAnimates(false);
     page->addChild(*inputColorSpaceParam);
     
-    // Query the color space names from the current config
-    try
-    {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        
-        OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(OCIO::ROLE_COMPOSITING_LOG);
-        if(!defaultcs){
-            throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
-        }
-        std::string defaultColorSpaceName = defaultcs->getName();
-        
-        for(int i = 0; i < config->getNumColorSpaces(); i++)
-        {
-            std::string csname = config->getColorSpaceNameByIndex(i);
-            inputColorSpaceParam->appendOption(csname);
-            
-            if(csname == defaultColorSpaceName)
-            {
-                inputColorSpaceParam->setDefault(i);
-            }
-        }
+    // Query the color space names from the default config
+    std::vector<std::string> colorSpaces;
+    int defaultIndex;
+    ///read the default config pointed to by the env var OCIO
+    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex);
+    for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
+        inputColorSpaceParam->appendOption(colorSpaces[i]);
     }
-    catch (OCIO::Exception& e)
-    {
-        std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
+    if (defaultIndex < (int)colorSpaces.size()) {
+        inputColorSpaceParam->setDefault(defaultIndex);
     }
-    catch (...)
-    {
-        std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
-    }
+
 #endif
 }
 
