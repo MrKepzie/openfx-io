@@ -155,15 +155,21 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
         return;
     }
     
-    ///do pixel transfer to the ofx image and color-space conversion if the host hopefully implements the color-space conversion suite.
-    _lut->from_byte_packed((float*)dstImg->getPixelAddress(0, 0), _buffer, imgBounds, imgBounds, imgBounds, OFX::Color::PACKING_RGB, OFX::Color::PACKING_RGBA, true, false);
-    
-}
-
-void FfmpegReaderPlugin::initializeLut() {
-    ///we don't have to call OFX::Color::LutManager::release somewhere because the base-class
-    ///already does it for us.
-    _lut = OFX::Color::LutManager::sRGBLut();
+    ///fill the dstImg with the buffer freshly decoded.
+    for (int y = imgBounds.y1; y < imgBounds.y2; ++y) {
+        int srcY = imgBounds.y2 - y - 1;
+        float* dst_pixels = (float*)dstImg->getPixelAddress(0, y);
+        const unsigned char* src_pixels = _buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
+        
+        for (int x = imgBounds.x1; x < imgBounds.x2; ++x) {
+            int srcCol = x * 3;
+            int dstCol = x * 4;
+            dst_pixels[dstCol] = (float)src_pixels[srcCol] / 255.f;
+            dst_pixels[dstCol + 1] = (float)src_pixels[srcCol + 1] / 255.f;
+            dst_pixels[dstCol + 2] = (float)src_pixels[srcCol + 2] / 255.f;
+            dst_pixels[dstCol + 3] = 1.f;
+        }
+    }
 }
 
 bool FfmpegReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
@@ -210,7 +216,7 @@ void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,
 }
 
 using namespace OFX;
-mDeclareReaderPluginFactory(FfmpegReaderPluginFactory, {}, {},true);
+mDeclareReaderPluginFactory(FfmpegReaderPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
 
 void FfmpegReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     FFmpeg::supportedFileFormats(formats);

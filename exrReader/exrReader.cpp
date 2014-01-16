@@ -543,10 +543,6 @@ void ExrReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image
     
 }
 
-void ExrReaderPlugin::initializeLut(){
-    ///exr is stored as linear
-    _lut = 0;
-}
 
 void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
@@ -558,7 +554,7 @@ void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Ofx
 }
 
 using namespace OFX;
-mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {},false);
+mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 void ExrReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);

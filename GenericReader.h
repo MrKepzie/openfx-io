@@ -42,11 +42,10 @@
 
 #include <ofxsImageEffect.h>
 
-namespace OFX {
-    namespace Color {
-        class Lut;
-    }
-}
+#ifdef IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
@@ -108,8 +107,6 @@ public:
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
-    const OFX::Color::Lut* _lut;//< the lut used to convert from the image's file format's color-space to linear.
-
 private:
     
     /**
@@ -140,11 +137,6 @@ private:
      **/
     virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) = 0;
     
-    /**
-     * @brief This function must initialize the _lut member. This lut can be used to do all
-     * conversions from the image's file format's color-space to linear.
-     **/
-    virtual void initializeLut()  = 0;
     
     /**
      * @brief Override to indicate the time domain. Return false if you know that the
@@ -209,7 +201,8 @@ namespace OCIO_OFX {
  * available in that config as-well as the default color-space index.
  * If filename is NULL, then it will read the environment variable OCIO which should point to a OpenColorIO config file.
  **/
-void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename = NULL);
+void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename = NULL,
+                         std::string occioRoleHint = std::string());
 }
 #endif
 
@@ -260,9 +253,18 @@ public:
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
     virtual bool isVideoStreamPlugin() const { return false; }
+    
+#ifdef IO_USING_OCIO
+    /**
+     * @brief Override to return in ocioRole the default OpenColorIO role the input color-space is.
+     * This is used as a hint by the describeInContext() function to determine what color-space is should use
+     * by-default to convert from the input color-space. The base-class version set ocioRole to OCIO::ROLE_SCENE_LINEAR.
+     **/
+    virtual void getInputColorSpace(std::string& ocioRole) const;
+#endif
 };
 
-#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
+#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
 class CLASS : public GenericReaderPluginFactory \
 { \
 public: \
@@ -274,6 +276,7 @@ virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
 virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
+virtual void getInputColorSpace(std::string& ocioRole) const  { ocioRole = std::string(OCIOROLE); }\
 };
 
 #endif

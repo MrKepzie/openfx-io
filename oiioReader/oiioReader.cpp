@@ -42,7 +42,6 @@
 #include <iostream>
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
-#include "Lut.h"
 OIIO_NAMESPACE_USING
 
 
@@ -66,6 +65,41 @@ void OiioReaderPlugin::purgeCaches(void) {
 
 void OiioReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     GenericReaderPlugin::changedParam(args, paramName);
+}
+
+void OiioReaderPlugin::onInputFileChanged(const std::string &filename) {
+    ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
+    
+//    ImageSpec spec;
+//    
+//    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
+//    if(!cache->get_imagespec(ustring(filename), spec)){
+//        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+//        return;
+//    }
+//    
+//    ///find-out the image color-space
+//    ParamValue* colorSpaceValue = spec.find_attribute("occio:ColorSpace",TypeDesc::STRING);
+//    
+//    //we found a color-space hint, use it to do the color-space conversion
+//    const char* colorSpaceStr;
+//    if (colorSpaceValue) {
+//        colorSpaceStr = *(const char**)colorSpaceValue->data();
+//        if (!strcmp(colorSpaceStr, "GammaCorrected")) {
+//            
+//        } else if(!strcmp(colorSpaceStr, "sRGB")) {
+//            
+//        } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
+//            
+//        } else if(!strcmp(colorSpaceStr, "Rec709")) {
+//            
+//        } else if(!strcmp(colorSpaceStr, "KodakLog")) {
+//            
+//        } else {
+//            //unknown color-space or Linear, don't do anything
+//        }
+//    }
+    
 }
 
 static void supportedFileFormats_static(std::vector<std::string>* formats) {
@@ -144,34 +178,7 @@ void OiioReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Imag
         return;
     }
     
-    //////UNCOMMENT WHEN WE WILL USE OCCIO
-    
-    ///find-out the image color-space
-//    ParamValue* colorSpaceValue = spec.find_attribute("occio:ColorSpace",TypeDesc::STRING);
-//    
-//    //we found a color-space hint, use it to do the color-space conversion
-//    const char* colorSpaceStr;
-//    if (colorSpaceValue) {
-//        colorSpaceStr = *(const char**)colorSpaceValue->data();
-//        if (!strcmp(colorSpaceStr, "GammaCorrected")) {
-//
-//        } else if(!strcmp(colorSpaceStr, "sRGB")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "Rec709")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "KodakLog")) {
-//            
-//        } else {
-//            //unknown color-space or Linear, don't do anything
-//        }
-//    }
-    
-}
 
-void OiioReaderPlugin::initializeLut() {
-    _lut = 0;
 }
 
 void OiioReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
@@ -191,7 +198,7 @@ void OiioReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Of
 
 
 using namespace OFX;
-mDeclareReaderPluginFactory(OiioReaderPluginFactory, ;, ;,false);
+mDeclareReaderPluginFactory(OiioReaderPluginFactory, ;, ;,false,OCIO::ROLE_SCENE_LINEAR);
 
 void OiioReaderPluginFactory::load() {
     if (!cache) {

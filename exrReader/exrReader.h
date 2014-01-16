@@ -64,9 +64,7 @@ private:
     virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
     
     virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
-    
-    virtual void initializeLut();
-    
+        
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
     
 };

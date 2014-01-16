@@ -43,12 +43,7 @@
 
 #include "ofxsLog.h"
 
-#ifdef IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-namespace OCIO = OCIO_NAMESPACE;
-#endif
 
-#include "Lut.h"
 #ifdef OFX_EXTENSIONS_NATRON
 #include "IOExtensions.h"
 #endif
@@ -83,7 +78,6 @@ static bool gHostIsNatron = true;
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
-, _lut(0)
 , _outputClip(0)
 , _fileParam(0)
 , _firstFrame(0)
@@ -281,7 +275,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
     _timeOffset->getValue(timeOffset);
     
     ///the return value
-    int sequenceTime =  t + timeOffset;
+    int sequenceTime =  t - timeOffset;
     
     ///get the time domain (which will be offset to the starting time)
     OfxRangeD sequenceTimeDomain;
@@ -446,10 +440,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     
     OFX::Image* dstImg = _outputClip->fetchImage(args.time);
     
-    ///initialize the color-space if it wasn't
-    if(!_lut){
-        initializeLut();
-    }
     
     double sequenceTime;
     try {
@@ -586,7 +576,12 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
 
 #ifdef IO_USING_OCIO
 namespace OCIO_OFX {
-void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename) {
+void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename,std::string occioRoleHint)
+{
+    *defaultColorSpaceIndex = 0;
+    if (occioRoleHint.empty()) {
+        occioRoleHint = std::string(OCIO::ROLE_SCENE_LINEAR);
+    }
     try
     {
         OCIO::ConstConfigRcPtr config;
@@ -595,8 +590,9 @@ void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorS
         } else {
             config = OCIO::Config::CreateFromEnv();
         }
+        OCIO::SetCurrentConfig(config);
         
-        OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(OCIO::ROLE_COMPOSITING_LOG);
+        OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(occioRoleHint.c_str());
         if(!defaultcs){
             throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
         }
@@ -628,6 +624,10 @@ void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorS
 #endif
 
 using namespace OFX;
+
+#ifdef IO_USING_OCIO
+void GenericReaderPluginFactory::getInputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIO::ROLE_SCENE_LINEAR); }
+#endif
 
 void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/ReadOFX");
@@ -805,11 +805,13 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     inputColorSpaceParam->setAnimates(false);
     page->addChild(*inputColorSpaceParam);
     
-    // Query the color space names from the default config
+    ///read the default config pointed to by the env var OCIO
     std::vector<std::string> colorSpaces;
     int defaultIndex;
-    ///read the default config pointed to by the env var OCIO
-    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex);
+    std::string defaultOcioRole;
+    getInputColorSpace(defaultOcioRole);
+    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
+    
     for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
         inputColorSpaceParam->appendOption(colorSpaces[i]);
     }
