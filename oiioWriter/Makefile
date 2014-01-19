@@ -1,5 +1,5 @@
-PLUGINOBJECTS = oiioReader.o ../GenericReader.o ../Lut.o
-PLUGINNAME = oiioReader
+PLUGINOBJECTS = oiioWriter.o ../GenericWriter.o ../Lut.o
+PLUGINNAME = oiioWriter
 
 include ../Makefile.master
 
