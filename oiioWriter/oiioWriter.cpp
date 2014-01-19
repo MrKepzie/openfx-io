@@ -171,7 +171,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static OiioWriterPluginFactory p("fr.inria.openfx:WriteEXR", 1, 0);
+            static OiioWriterPluginFactory p("fr.inria.openfx:WriteOIIO", 1, 0);
             ids.push_back(&p);
         }
     };
