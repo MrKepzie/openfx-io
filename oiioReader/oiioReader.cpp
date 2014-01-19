@@ -229,7 +229,7 @@ namespace OFX
 };
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void OiioReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void OiioReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 {
     
     ///set OIIO to use as many threads as there are cores on the CPU
@@ -241,14 +241,12 @@ void OiioReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setLabels("ReadOIIOOFX", "ReadOIIOOFX", "ReadOIIOOFX");
     desc.setPluginDescription("Read images using OpenImageIO.");
     
-    GenericReaderPluginFactory::describe(desc);
     
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OiioReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void OiioReaderPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
-    GenericReaderPluginFactory::describeInContext(desc, context);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

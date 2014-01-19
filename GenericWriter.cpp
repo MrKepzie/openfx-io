@@ -584,6 +584,8 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     }
     OFX::Log::warning(!gHostIsNatron, "WriteOFX: Host does not implement Natron extensions.");
 #endif
+    
+    describeWriter(desc);
 }
 
 /**
@@ -694,4 +696,6 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     }
     
 #endif
+    
+    describeWriterInContext(desc, context, page);
 }

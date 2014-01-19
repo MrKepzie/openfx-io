@@ -13,6 +13,7 @@
 			buildPhases = (
 			);
 			dependencies = (
+				D70E7DD7188C4B210068F1FF /* PBXTargetDependency */,
 				D7330E0618867C2E004A6199 /* PBXTargetDependency */,
 				D769DE261879A08300AED3D6 /* PBXTargetDependency */,
 				D709B977187890F900D5A0B4 /* PBXTargetDependency */,
@@ -56,6 +57,39 @@
 		D709B9871878918400D5A0B4 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D709B9881878918400D5A0B4 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D709B9891878918400D5A0B4 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
+		D70E7DC5188C4AD10068F1FF /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
+		D70E7DDA188C4F030068F1FF /* oiioWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D70E7DD8188C4F030068F1FF /* oiioWriter.cpp */; };
+		D70E7DDB188C4F030068F1FF /* oiioWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = D70E7DD9188C4F030068F1FF /* oiioWriter.h */; };
+		D70E7DDC188C4FC20068F1FF /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62BE1875AB2000D8FA13 /* GenericWriter.cpp */; };
+		D70E7DDD188C4FC20068F1FF /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62C01875AB2000D8FA13 /* Lut.cpp */; };
+		D70E7DDE188C4FC20068F1FF /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A81875AB0800D8FA13 /* ofxsCore.cpp */; };
+		D70E7DDF188C4FC20068F1FF /* ofxsHWNDInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A91875AB0800D8FA13 /* ofxsHWNDInteract.cpp */; };
+		D70E7DE0188C4FC30068F1FF /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AA1875AB0800D8FA13 /* ofxsImageEffect.cpp */; };
+		D70E7DE1188C4FC30068F1FF /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AB1875AB0800D8FA13 /* ofxsInteract.cpp */; };
+		D70E7DE2188C4FC30068F1FF /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AC1875AB0800D8FA13 /* ofxsLog.cpp */; };
+		D70E7DE3188C4FC30068F1FF /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AD1875AB0800D8FA13 /* ofxsMultiThread.cpp */; };
+		D70E7DE4188C4FC30068F1FF /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AE1875AB0800D8FA13 /* ofxsParams.cpp */; };
+		D70E7DE5188C4FC30068F1FF /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
+		D70E7DE6188C4FC30068F1FF /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
+		D70E7DE7188C4FC30068F1FF /* ofxsSupportPrivate.h in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
+		D70E7DE8188C4FD30068F1FF /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62BF1875AB2000D8FA13 /* GenericWriter.h */; };
+		D70E7DE9188C4FD30068F1FF /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62C11875AB2000D8FA13 /* Lut.h */; };
+		D70E7DEA188C4FD30068F1FF /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
+		D70E7DEB188C4FD30068F1FF /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
+		D70E7DEC188C4FD30068F1FF /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
+		D70E7DED188C4FD30068F1FF /* ofxInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62751875AAB500D8FA13 /* ofxInteract.h */; };
+		D70E7DEE188C4FD30068F1FF /* ofxKeySyms.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62761875AAB500D8FA13 /* ofxKeySyms.h */; };
+		D70E7DEF188C4FD30068F1FF /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
+		D70E7DF0188C4FD30068F1FF /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
+		D70E7DF1188C4FD30068F1FF /* ofxMultiThread.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62791875AAB500D8FA13 /* ofxMultiThread.h */; };
+		D70E7DF2188C4FD30068F1FF /* ofxOpenGLRender.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627A1875AAB500D8FA13 /* ofxOpenGLRender.h */; };
+		D70E7DF3188C4FD30068F1FF /* ofxParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627B1875AAB500D8FA13 /* ofxParam.h */; };
+		D70E7DF4188C4FD30068F1FF /* ofxParametricParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627C1875AAB500D8FA13 /* ofxParametricParam.h */; };
+		D70E7DF5188C4FD30068F1FF /* ofxPixels.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627D1875AAB500D8FA13 /* ofxPixels.h */; };
+		D70E7DF6188C4FD30068F1FF /* ofxProgress.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627E1875AAB500D8FA13 /* ofxProgress.h */; };
+		D70E7DF7188C4FD30068F1FF /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
+		D70E7DF8188C4FD30068F1FF /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
+		D70E7DF9188C4FD30068F1FF /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
 		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D7330DE518867BCD004A6199 /* oiioReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7330DE318867BCD004A6199 /* oiioReader.cpp */; };
 		D7330DE618867BCD004A6199 /* oiioReader.h in Headers */ = {isa = PBXBuildFile; fileRef = D7330DE418867BCD004A6199 /* oiioReader.h */; };
@@ -182,6 +216,13 @@
 			remoteGlobalIDString = D709B95218787D6700D5A0B4;
 			remoteInfo = exrReader;
 		};
+		D70E7DD6188C4B210068F1FF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D70E7DC3188C4AD10068F1FF;
+			remoteInfo = oiioWriter;
+		};
 		D7330E0518867C2E004A6199 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
@@ -217,6 +258,9 @@
 		D709B96518787DBE00D5A0B4 /* exrReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = exrReader.cpp; sourceTree = "<group>"; };
 		D709B96618787DBE00D5A0B4 /* exrReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = exrReader.h; sourceTree = "<group>"; };
 		D709B96918787DF900D5A0B4 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D70E7DC4188C4AD10068F1FF /* oiioWriter.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = oiioWriter.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		D70E7DD8188C4F030068F1FF /* oiioWriter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = oiioWriter.cpp; sourceTree = "<group>"; };
+		D70E7DD9188C4F030068F1FF /* oiioWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = oiioWriter.h; sourceTree = "<group>"; };
 		D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = oiioReader.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7330DE318867BCD004A6199 /* oiioReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = oiioReader.cpp; sourceTree = "<group>"; };
 		D7330DE418867BCD004A6199 /* oiioReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = oiioReader.h; sourceTree = "<group>"; };
@@ -289,6 +333,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D70E7DC1188C4AD10068F1FF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D70E7DC5188C4AD10068F1FF /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D7330DCE18867B35004A6199 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -334,6 +386,15 @@
 			path = exrReader;
 			sourceTree = "<group>";
 		};
+		D70E7DC6188C4AD10068F1FF /* oiioWriter */ = {
+			isa = PBXGroup;
+			children = (
+				D70E7DD8188C4F030068F1FF /* oiioWriter.cpp */,
+				D70E7DD9188C4F030068F1FF /* oiioWriter.h */,
+			);
+			path = oiioWriter;
+			sourceTree = "<group>";
+		};
 		D7330DD318867B35004A6199 /* oiioReader */ = {
 			isa = PBXGroup;
 			children = (
@@ -358,6 +419,7 @@
 				D709B95518787D6700D5A0B4 /* exrReader */,
 				D769DE151879A07800AED3D6 /* exrWriter */,
 				D7330DD318867B35004A6199 /* oiioReader */,
+				D70E7DC6188C4AD10068F1FF /* oiioWriter */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
 			);
@@ -371,6 +433,7 @@
 				D709B95318787D6700D5A0B4 /* exrReader.ofx.bundle */,
 				D769DE131879A07800AED3D6 /* exrWriter.ofx.bundle */,
 				D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */,
+				D70E7DC4188C4AD10068F1FF /* oiioWriter.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -513,6 +576,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D70E7DC2188C4AD10068F1FF /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D70E7DE8188C4FD30068F1FF /* GenericWriter.h in Headers */,
+				D70E7DE9188C4FD30068F1FF /* Lut.h in Headers */,
+				D70E7DEA188C4FD30068F1FF /* ofxCore.h in Headers */,
+				D70E7DEB188C4FD30068F1FF /* ofxDialog.h in Headers */,
+				D70E7DEC188C4FD30068F1FF /* ofxImageEffect.h in Headers */,
+				D70E7DED188C4FD30068F1FF /* ofxInteract.h in Headers */,
+				D70E7DEE188C4FD30068F1FF /* ofxKeySyms.h in Headers */,
+				D70E7DEF188C4FD30068F1FF /* ofxMemory.h in Headers */,
+				D70E7DF0188C4FD30068F1FF /* ofxMessage.h in Headers */,
+				D70E7DF1188C4FD30068F1FF /* ofxMultiThread.h in Headers */,
+				D70E7DF2188C4FD30068F1FF /* ofxOpenGLRender.h in Headers */,
+				D70E7DF3188C4FD30068F1FF /* ofxParam.h in Headers */,
+				D70E7DF4188C4FD30068F1FF /* ofxParametricParam.h in Headers */,
+				D70E7DF5188C4FD30068F1FF /* ofxPixels.h in Headers */,
+				D70E7DF6188C4FD30068F1FF /* ofxProgress.h in Headers */,
+				D70E7DF7188C4FD30068F1FF /* ofxProperty.h in Headers */,
+				D70E7DF8188C4FD30068F1FF /* ofxSonyVegas.h in Headers */,
+				D70E7DF9188C4FD30068F1FF /* ofxTimeLine.h in Headers */,
+				D70E7DDB188C4F030068F1FF /* oiioWriter.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D7330DCF18867B35004A6199 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -626,6 +715,23 @@
 			productReference = D709B95318787D6700D5A0B4 /* exrReader.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
+		D70E7DC3188C4AD10068F1FF /* oiioWriter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D70E7DD5188C4AD10068F1FF /* Build configuration list for PBXNativeTarget "oiioWriter" */;
+			buildPhases = (
+				D70E7DC0188C4AD10068F1FF /* Sources */,
+				D70E7DC1188C4AD10068F1FF /* Frameworks */,
+				D70E7DC2188C4AD10068F1FF /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = oiioWriter;
+			productName = oiioWriter;
+			productReference = D70E7DC4188C4AD10068F1FF /* oiioWriter.ofx.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 		D7330DD018867B35004A6199 /* oiioReader */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */;
@@ -720,6 +826,7 @@
 				D709B95218787D6700D5A0B4 /* exrReader */,
 				D769DE121879A07800AED3D6 /* exrWriter */,
 				D7330DD018867B35004A6199 /* oiioReader */,
+				D70E7DC3188C4AD10068F1FF /* oiioWriter */,
 			);
 		};
 /* End PBXProject section */
@@ -740,6 +847,26 @@
 				D709B97318787E4C00D5A0B4 /* ofxsProperty.cpp in Sources */,
 				D709B97418787E4C00D5A0B4 /* ofxsPropertyValidation.cpp in Sources */,
 				D709B96718787DBE00D5A0B4 /* exrReader.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D70E7DC0188C4AD10068F1FF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D70E7DDC188C4FC20068F1FF /* GenericWriter.cpp in Sources */,
+				D70E7DDD188C4FC20068F1FF /* Lut.cpp in Sources */,
+				D70E7DDE188C4FC20068F1FF /* ofxsCore.cpp in Sources */,
+				D70E7DDF188C4FC20068F1FF /* ofxsHWNDInteract.cpp in Sources */,
+				D70E7DE0188C4FC30068F1FF /* ofxsImageEffect.cpp in Sources */,
+				D70E7DE1188C4FC30068F1FF /* ofxsInteract.cpp in Sources */,
+				D70E7DE2188C4FC30068F1FF /* ofxsLog.cpp in Sources */,
+				D70E7DE3188C4FC30068F1FF /* ofxsMultiThread.cpp in Sources */,
+				D70E7DE4188C4FC30068F1FF /* ofxsParams.cpp in Sources */,
+				D70E7DE5188C4FC30068F1FF /* ofxsProperty.cpp in Sources */,
+				D70E7DE6188C4FC30068F1FF /* ofxsPropertyValidation.cpp in Sources */,
+				D70E7DE7188C4FC30068F1FF /* ofxsSupportPrivate.h in Sources */,
+				D70E7DDA188C4F030068F1FF /* oiioWriter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -826,6 +953,11 @@
 			target = D709B95218787D6700D5A0B4 /* exrReader */;
 			targetProxy = D709B976187890F900D5A0B4 /* PBXContainerItemProxy */;
 		};
+		D70E7DD7188C4B210068F1FF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D70E7DC3188C4AD10068F1FF /* oiioWriter */;
+			targetProxy = D70E7DD6188C4B210068F1FF /* PBXContainerItemProxy */;
+		};
 		D7330E0618867C2E004A6199 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = D7330DD018867B35004A6199 /* oiioReader */;
@@ -892,6 +1024,67 @@
 					"-lIlmImf",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+			};
+			name = Release;
+		};
+		D70E7DD3188C4AD10068F1FF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(OFX_PATH)/include",
+					"$(OFX_PATH)/Support/include",
+					"$(OFX_PATH)/Support/Plugins/include",
+					"$(OCCIO_PATH)/include",
+					"$(OIIO_PATH)/include",
+				);
+				INFOPLIST_FILE = oiioWriter/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(OCCIO_PATH)/lib",
+					"$(OIIO_PATH)/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				OIIO_PATH = /opt/local;
+				OTHER_LDFLAGS = (
+					"-L$(OCCIO_PATH)/lib",
+					"-lOpenColorIO",
+					"-L$(OIIO_PATH)/lib",
+					"-lOpenImageIO",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D70E7DD4188C4AD10068F1FF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(OFX_PATH)/include",
+					"$(OFX_PATH)/Support/include",
+					"$(OFX_PATH)/Support/Plugins/include",
+					"$(OCCIO_PATH)/include",
+					"$(OIIO_PATH)/include",
+				);
+				INFOPLIST_FILE = oiioWriter/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(OCCIO_PATH)/lib",
+					"$(OIIO_PATH)/lib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				OIIO_PATH = /opt/local;
+				OTHER_LDFLAGS = (
+					"-L$(OCCIO_PATH)/lib",
+					"-lOpenColorIO",
+					"-L$(OIIO_PATH)/lib",
+					"-lOpenImageIO",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
@@ -964,16 +1157,16 @@
 					"$(OFX_PATH)/include",
 					"$(OFX_PATH)/Support/include",
 					"$(OFX_PATH)/Support/Plugins/include",
-					"$(OCCIO_PATH)/include",
+					"$(OCIO_PATH)/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
-				LIBRARY_SEARCH_PATHS = "$(OCCIO_PATH)/lib";
-				OCCIO_PATH = /opt/local;
+				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
+				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
-					"-L$(OCCIO_PATH)/lib",
+					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
 			};
@@ -994,15 +1187,15 @@
 					"$(OFX_PATH)/include",
 					"$(OFX_PATH)/Support/include",
 					"$(OFX_PATH)/Support/Plugins/include",
-					"$(OCCIO_PATH)/include",
+					"$(OCIO_PATH)/include",
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
-				LIBRARY_SEARCH_PATHS = "$(OCCIO_PATH)/lib";
-				OCCIO_PATH = /opt/local;
+				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
+				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				OTHER_LDFLAGS = (
-					"-L$(OCCIO_PATH)/lib",
+					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
 			};
@@ -1172,6 +1365,14 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		D70E7DD5188C4AD10068F1FF /* Build configuration list for PBXNativeTarget "oiioWriter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D70E7DD3188C4AD10068F1FF /* Debug */,
+				D70E7DD4188C4AD10068F1FF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
 		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1179,6 +1380,7 @@
 				D7330DE118867B35004A6199 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "Io" */ = {
 			isa = XCConfigurationList;

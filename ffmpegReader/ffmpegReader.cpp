@@ -235,21 +235,21 @@ namespace OFX
     };
 };
 
+
+
 /** @brief The basic describe function, passed a plugin descriptor */
-void FfmpegReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void FfmpegReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
     desc.setPluginDescription("Read images or video using FFmpeg or libav");
-    
-    GenericReaderPluginFactory::describe(desc);
-    
+        
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void FfmpegReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void FfmpegReaderPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc,
+                                                        ContextEnum context,OFX::PageParamDescriptor* defaultPage)
 {
-    GenericReaderPluginFactory::describeInContext(desc, context);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

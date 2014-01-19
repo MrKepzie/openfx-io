@@ -674,16 +674,12 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     }
     OFX::Log::warning(!gHostIsNatron, "ReadOFX: Host does not implement Natron extensions.");
 #endif
+    
+    describeReader(desc);
 }
 
 void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context){
-    //////////Input file
-    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
-    fileParam->setLabels("File", "File", "File");
-    fileParam->setStringType(OFX::eStringTypeFilePath);
-    fileParam->setHint("The input image sequence/video stream file(s).");
-    fileParam->setAnimates(false);
-    desc.addClipPreferencesSlaveParam(*fileParam);
+  
     
     
     // create the mandated output clip
@@ -693,6 +689,15 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
+    
+    //////////Input file
+    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
+    fileParam->setLabels("File", "File", "File");
+    fileParam->setStringType(OFX::eStringTypeFilePath);
+    fileParam->setHint("The input image sequence/video stream file(s).");
+    fileParam->setAnimates(false);
+    desc.addClipPreferencesSlaveParam(*fileParam);
+    page->addChild(*fileParam);
     
     if (!isVideoStreamPlugin()) {
 #ifdef OFX_EXTENSIONS_NATRON
@@ -826,5 +831,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     }
 
 #endif
+    
+    describeReaderInContext(desc, context, page);
 }
 

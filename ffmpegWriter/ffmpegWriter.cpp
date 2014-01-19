@@ -506,25 +506,16 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void FfmpegWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void FfmpegWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("WriteFFmpegOFX", "WriteFFmpegOFX", "WriteFFmpegOFX");
     desc.setPluginDescription("Write images or video file using FFmpeg or libav");
-
-
-    
-    GenericWriterPluginFactory::describe(desc);
-    
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
-    
-    
-    ////base class params
-    GenericWriterPluginFactory::describeInContext(desc, context);
     
     
     ///////////Output format
@@ -538,6 +529,7 @@ void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
     }
     formatParam->setAnimates(false);
     formatParam->setDefault(0);
+    page->addChild(*formatParam);
     
     ///////////FPS
     OFX::DoubleParamDescriptor* fpsParam = desc.defineDoubleParam(kFfmpegWriterFPSParamName);
@@ -545,11 +537,13 @@ void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
     fpsParam->setRange(0.f, 100.f);
     fpsParam->setDefault(24.f);
     fpsParam->setAnimates(false);
+    page->addChild(*fpsParam);
 
     /////////// Advanced group
     OFX::GroupParamDescriptor* groupParam = desc.defineGroupParam(kFfmpegWriterAdvancedGroupParamName);
     groupParam->setLabels("Advanced", "Advanced", "Advanced");
     groupParam->setOpen(false);
+    page->addChild(*groupParam);
     
     ///////////Codec
     OFX::ChoiceParamDescriptor* codecParam = desc.defineChoiceParam(kFfmpegWriterCodecParamName);
@@ -577,6 +571,7 @@ void FfmpegWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &de
     bitRateTolParam->setDefault(4000 * 10000);
     bitRateTolParam->setParent(*groupParam);
     bitRateTolParam->setAnimates(false);
+    
     
     ///////////Gop size
     OFX::IntParamDescriptor* gopSizeParam = desc.defineIntParam(kFfmpegWriterGopParamName);

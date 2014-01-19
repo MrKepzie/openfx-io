@@ -216,7 +216,7 @@ bool ExrWriterPlugin::isImageFile(const std::string& /*fileExtension*/) const{
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},true,OCIO::ROLE_SCENE_LINEAR);
+mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 
 
@@ -239,26 +239,17 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ExrWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void ExrWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("WriteEXROFX", "WriteEXROFX", "WriteEXROFX");
     desc.setPluginDescription("Write EXR images file using OpenEXR.");
-    
-    
-    
-    GenericWriterPluginFactory::describe(desc);
-    
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ExrWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void ExrWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
-    
-    ////base class params
-    GenericWriterPluginFactory::describeInContext(desc, context);
-    
-
+   
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kExrWriterCompressionParamName);
     compressionParam->setAnimates(false);
@@ -266,6 +257,7 @@ void ExrWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         compressionParam->appendOption(Exr::compressionNames[i]);
     }
     compressionParam->setDefault(3);
+    page->addChild(*compressionParam);
     
     ////////Data type
     OFX::ChoiceParamDescriptor* dataTypeParam = desc.defineChoiceParam(kExrWriterDataTypeParamName);
@@ -273,7 +265,8 @@ void ExrWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     for(int i = 0 ; i < 2 ; ++i) {
         dataTypeParam->appendOption(Exr::depthNames[i]);
     }
-    compressionParam->setDefault(1);
+    dataTypeParam->setDefault(1);
+    page->addChild(*dataTypeParam);
     
 }
 

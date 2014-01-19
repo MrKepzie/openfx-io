@@ -183,16 +183,16 @@ public:
     virtual void unload(){}
     
     /**
-     * @brief Override this to describe the writer.
-     * You should call the base-class version at the end like this:
-     * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
+     * @brief Overriden to add the default description common for all writers.
+     * DON T OVERRIDE this, instead override describeWriter(...) which is called by describe.
+     * WARNING: This function is called after that the base class has set some flags, make sure
+     * you override them correctly.
      **/
     virtual void describe(OFX::ImageEffectDescriptor &desc);
     
     /**
-     * @brief Override this to describe in context the writer.
-     * You should call the base-class version at the end like this:
-     * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
+     * @brief Overriden to add the default params common for all writers.
+     * DON T OVERRIDE this, instead override describeWriterInContext(...) which is called by describeInContext.
      **/
     virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
     
@@ -218,6 +218,19 @@ public:
     virtual void getOutputColorSpace(std::string& ocioRole) const;
 #endif
 
+protected:
+    /**
+     * @brief Override to describe your writer as you would do in the describe function.
+     **/
+    virtual void describeWriter(OFX::ImageEffectDescriptor &desc) = 0;
+    
+    
+    /**
+     * @brief Override to describe your writer in context as you would in the describeInContext function.
+     **/
+    virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage) = 0;
+
+
 };
 
 #define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
@@ -227,12 +240,12 @@ public: \
 CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
 virtual void load() LOADFUNCDEF ;\
 virtual void unload() UNLOADFUNCDEF ;\
-virtual void describe(OFX::ImageEffectDescriptor &desc); \
-virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
 virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
 virtual void getOutputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIOROLE); } \
+virtual void describeWriter(OFX::ImageEffectDescriptor &desc); \
+virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
 };
 
 

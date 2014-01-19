@@ -573,20 +573,18 @@ namespace OFX
 };
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ExrReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void ExrReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");
     
-    GenericReaderPluginFactory::describe(desc);
     
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ExrReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void ExrReaderPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
-    GenericReaderPluginFactory::describeInContext(desc, context);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

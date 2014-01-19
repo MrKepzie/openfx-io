@@ -238,18 +238,18 @@ public:
     virtual void unload(){}
     
     /**
-     * @brief Override this to describe the reader.
-     * You should call the base-class version at the end like this:
-     * GenericReaderPluginFactory<YOUR_FACTORY>::describe(desc);
+     * @brief Overriden to add the default description common for all readers.
+     * DON T OVERRIDE this, instead override describeReader(...) which is called by describe.
+     * WARNING: This function is called after that the base class has set some flags, make sure
+     * you override them correctly.
      **/
-    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    void describe(OFX::ImageEffectDescriptor &desc);
     
     /**
-     * @brief Override this to describe in context the reader.
-     * You should call the base-class version at the end like this:
-     * GenericReaderPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
+     * @brief Overriden to add the default params common for all readers.
+     * DON T OVERRIDE this, instead override describeReaderInContext(...) which is called by describeInContext.
      **/
-    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+    void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
     
     /**
      * @brief Override to create the instance of your reader.
@@ -272,6 +272,19 @@ public:
      **/
     virtual void getInputColorSpace(std::string& ocioRole) const;
 #endif
+    
+protected:
+    
+    /**
+     * @brief Override to describe your reader as you would do in the describe function.
+     **/
+    virtual void describeReader(OFX::ImageEffectDescriptor &desc) = 0;
+    
+    
+    /**
+     * @brief Override to describe your reader in context as you would in the describeInContext function.
+     **/
+    virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage) = 0;
 };
 
 #define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
@@ -281,12 +294,12 @@ public: \
 CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericReaderPluginFactory(id, verMaj, verMin){} \
 virtual void load() LOADFUNCDEF ;\
 virtual void unload() UNLOADFUNCDEF ;\
-virtual void describe(OFX::ImageEffectDescriptor &desc); \
-virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
 virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
 virtual void getInputColorSpace(std::string& ocioRole) const  { ocioRole = std::string(OCIOROLE); }\
-};
+virtual void describeReader(OFX::ImageEffectDescriptor &desc); \
+virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
+}; 
 
 #endif
