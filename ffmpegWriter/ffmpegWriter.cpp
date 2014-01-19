@@ -56,8 +56,6 @@
 #include "IOExtensions.h"
 #endif
 
-#include "Lut.h"
-
 extern "C" {
 #include <errno.h>
 #include <libavformat/avformat.h>
@@ -212,9 +210,6 @@ void FfmpegWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
     GenericWriterPlugin::changedParam(args, paramName);
 }
 
-void FfmpegWriterPlugin::initializeLut(){
-    _lut = OFX::Color::LutManager::sRGBLut();
-}
 
 bool FfmpegWriterPlugin::isImageFile(const std::string& ext) const{
     return ext == "bmp" ||
@@ -401,15 +396,21 @@ void FfmpegWriterPlugin::encode(const std::string& filename,OfxTime time,const O
     // blank the values - this initialises stuff and seems to be needed
     avpicture_fill(&picture, buffer, PIX_FMT_RGB24, w, h);
 
-    
-    _lut->to_byte_packed(picture.data[0], //output buf
-                         (const float*)srcImg->getPixelAddress(0, 0), //input buf
-                         rod, //conversion rect
-                         rod, // src RoD
-                         rod, // dst RoD
-                         OFX::Color::PACKING_RGBA, OFX::Color::PACKING_RGB, //input & output packing
-                         true, // invertY ?
-                         false); // premult by alpha?
+
+    for (int y = rod.y1; y < rod.y2; ++y) {
+        int srcY = rod.y2 - y - 1;
+        const float* src_pixels = (float*)srcImg->getPixelAddress(0, y);
+        unsigned char* dst_pixels = picture.data[0] + (rod.x2 - rod.x1) * srcY * 3;
+        
+        for (int x = rod.x1; x < rod.x2; ++x) {
+            int srcCol = x * 4;
+            int dstCol = x * 3;
+            dst_pixels[dstCol] = (float)src_pixels[srcCol] * 255.f;
+            dst_pixels[dstCol + 1] = (float)src_pixels[srcCol + 1] * 255.f;
+            dst_pixels[dstCol + 2] = (float)src_pixels[srcCol + 2] * 255.f;
+        }
+    }
+
     
     // now allocate an image frame for the image in the output codec's format...
     AVFrame* output = avcodec_alloc_frame();
@@ -484,7 +485,7 @@ void FfmpegWriterPlugin::freeFormat(){
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(FfmpegWriterPluginFactory, {}, {},true);
+mDeclareWriterPluginFactory(FfmpegWriterPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
 
 
 void FfmpegWriterPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{

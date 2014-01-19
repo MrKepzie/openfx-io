@@ -59,9 +59,7 @@ public:
     
 private:
     
-    
-    virtual void initializeLut();
-    
+        
     virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg);
     
     virtual bool isImageFile(const std::string& fileExtension) const;

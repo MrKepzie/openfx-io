@@ -85,11 +85,16 @@
 #include "IOExtensions.h"
 #endif
 
-#define kReaderFileParamName "file"
-#define kReaderRenderParamName "render"
-#define kReaderFrameRangeChoiceParamName "frameRange"
-#define kReaderFirstFrameParamName "firstFrame"
-#define kReaderLastFrameParamName "lastFrame"
+#define kWriterFileParamName "file"
+#define kWriterRenderParamName "render"
+#define kWriterFrameRangeChoiceParamName "frameRange"
+#define kWriterFirstFrameParamName "firstFrame"
+#define kWriterLastFrameParamName "lastFrame"
+
+#ifdef IO_USING_OCIO
+#define kWriterOCCIOConfigFileParamName "WriterOCCIOConfigFileParamName"
+#define kWriterOutputColorSpaceParamName "outputColorSpace"
+#endif
 
 #ifdef OFX_EXTENSIONS_NATRON
 static bool gHostIsNatron = true;
@@ -160,15 +165,23 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _frameRange(0)
 , _firstFrame(0)
 , _lastFrame(0)
-, _lut(0)
+#ifdef IO_USING_OCIO
+, _occioConfigFile(0)
+, _outputColorSpace(0)
+#endif
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
-    _fileParam = fetchStringParam(kReaderFileParamName);
-    _frameRange = fetchChoiceParam(kReaderFrameRangeChoiceParamName);
-    _firstFrame = fetchIntParam(kReaderFirstFrameParamName);
-    _lastFrame = fetchIntParam(kReaderLastFrameParamName);
+    _fileParam = fetchStringParam(kWriterFileParamName);
+    _frameRange = fetchChoiceParam(kWriterFrameRangeChoiceParamName);
+    _firstFrame = fetchIntParam(kWriterFirstFrameParamName);
+    _lastFrame = fetchIntParam(kWriterLastFrameParamName);
+    
+#ifdef IO_USING_OCIO
+    _occioConfigFile = fetchStringParam(kWriterOCCIOConfigFileParamName);
+    _outputColorSpace = fetchChoiceParam(kWriterOutputColorSpaceParamName);
+#endif
 }
 
 GenericWriterPlugin::~GenericWriterPlugin(){
@@ -335,11 +348,28 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
         } // switch
     }
     
-    ///initialize the color-space if it wasn't
-    if(!_lut){
-        initializeLut();
+
+    ///do the color-space conversion
+#ifdef IO_USING_OCIO
+    try
+    {
+        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+        int colorSpaceIndex;
+        _outputColorSpace->getValue(colorSpaceIndex);
+        const char* inputName = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName();
+        const char * outputName = config->getColorSpaceNameByIndex(colorSpaceIndex);
+        OCIO::ConstContextRcPtr context = config->getCurrentContext();
+        OCIO::ConstProcessorRcPtr proc = config->getProcessor(context, inputName, outputName);
+        
+        OfxRectI rod = srcImg->getRegionOfDefinition();
+        OCIO::PackedImageDesc img((float*)srcImg->getPixelAddress(0, 0),rod.x2 - rod.x1,rod.y2 - rod.y1,4);
+        proc->apply(img);
     }
-    
+    catch(OCIO::Exception &e)
+    {
+        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+    }
+#endif
     
     ///and call the plug-in specific encode function.
     encode(filename, args.time, srcImg);
@@ -420,7 +450,7 @@ bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
 }
 
 void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    if(paramName == kReaderFrameRangeChoiceParamName){
+    if(paramName == kWriterFrameRangeChoiceParamName){
         int choice;
         double first,last;
         timeLineGetBounds(first,last);
@@ -435,9 +465,82 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
             _lastFrame->setIsSecret(true);
         }
     }
+#ifdef IO_USING_OCIO
+    else if ( paramName == kWriterOCCIOConfigFileParamName ) {
+        std::string filename;
+        _occioConfigFile->getValue(filename);
+        std::vector<std::string> colorSpaces;
+        int defaultIndex;
+        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
+        
+        _outputColorSpace->resetOptions();
+        for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
+            _outputColorSpace->appendOption(colorSpaces[i]);
+        }
+        if (defaultIndex < (int)colorSpaces.size()) {
+            _outputColorSpace->setValue(defaultIndex);
+        }
+    }
+#endif
+    
+
 }
 
+#ifdef IO_USING_OCIO
+namespace OCIO_OFX {
+    void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename,std::string occioRoleHint)
+    {
+        *defaultColorSpaceIndex = 0;
+        if (occioRoleHint.empty()) {
+            occioRoleHint = std::string(OCIO::ROLE_SCENE_LINEAR);
+        }
+        try
+        {
+            OCIO::ConstConfigRcPtr config;
+            if (filename) {
+                config = OCIO::Config::CreateFromFile(filename);
+            } else {
+                config = OCIO::Config::CreateFromEnv();
+            }
+            OCIO::SetCurrentConfig(config);
+            
+            OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(occioRoleHint.c_str());
+            if(!defaultcs){
+                throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
+            }
+            std::string defaultColorSpaceName = defaultcs->getName();
+            
+            for(int i = 0; i < config->getNumColorSpaces(); ++i)
+            {
+                std::string csname = config->getColorSpaceNameByIndex(i);
+                colorSpaces->push_back(csname);
+                
+                if(csname == defaultColorSpaceName)
+                {
+                    *defaultColorSpaceIndex = i;
+                }
+            }
+        }
+        catch (OCIO::Exception& e)
+        {
+            std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
+        }
+        catch (...)
+        {
+            std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
+        }
+        
+        
+    }
+}
+#endif
+
 using namespace OFX;
+
+#ifdef IO_USING_OCIO
+void GenericWriterPluginFactory::getOutputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIO::ROLE_SCENE_LINEAR); }
+#endif
+
 /**
  * @brief Override this to describe the writer.
  * You should call the base-class version at the end like this:
@@ -505,7 +608,7 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     //////////Output file
-    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
+    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kWriterFileParamName);
     fileParam->setLabels("File", "File", "File");
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The output image sequence/video stream file(s)."
@@ -527,7 +630,7 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     page->addChild(*fileParam);
 
     ///////////Frame range choosal
-    OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kReaderFrameRangeChoiceParamName);
+    OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
     frameRangeChoiceParam->setLabels("Frame range", "Frame range", "Frame range");
     frameRangeChoiceParam->appendOption("Inputs union","The union of all inputs frame ranges will be rendered.");
     frameRangeChoiceParam->appendOption("Timeline bounds","The frame range delimited by the timeline bounds will be rendered.");
@@ -538,19 +641,19 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     page->addChild(*frameRangeChoiceParam);
     
     /////////////First frame
-    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
+    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kWriterFirstFrameParamName);
     firstFrameParam->setLabels("First frame", "First frame", "First frame");
     firstFrameParam->setIsSecret(true);
     page->addChild(*firstFrameParam);
 
     ////////////Last frame
-    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kReaderLastFrameParamName);
+    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kWriterLastFrameParamName);
     lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
     lastFrameParam->setIsSecret(true);
     page->addChild(*lastFrameParam);
 
     ///////////Render button
-    OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kReaderRenderParamName);
+    OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kWriterRenderParamName);
     renderParam->setLabels("Render","Render","Render");
     renderParam->setHint("Starts rendering all the frame range.");
 #ifdef OFX_EXTENSIONS_NATRON
@@ -559,4 +662,36 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     }
 #endif
     page->addChild(*renderParam);
+    
+#ifdef IO_USING_OCIO
+    ////////// OCIO config file
+    OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kWriterOCCIOConfigFileParamName);
+    occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
+    occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    occioConfigFileParam->setHint("The file to read the OpenColorIO config from.");
+    occioConfigFileParam->setAnimates(false);
+    desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
+    
+    ///////////Output Color-space
+    OFX::ChoiceParamDescriptor* outputColorSpaceParam = desc.defineChoiceParam(kWriterOutputColorSpaceParamName);
+    outputColorSpaceParam->setLabels("Output color-space", "Output color-space", "Output color-space");
+    outputColorSpaceParam->setHint("Output data will be in this color-space.");
+    outputColorSpaceParam->setAnimates(false);
+    page->addChild(*outputColorSpaceParam);
+    
+    ///read the default config pointed to by the env var OCIO
+    std::vector<std::string> colorSpaces;
+    int defaultIndex;
+    std::string defaultOcioRole;
+    getOutputColorSpace(defaultOcioRole);
+    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
+    
+    for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
+        outputColorSpaceParam->appendOption(colorSpaces[i]);
+    }
+    if (defaultIndex < (int)colorSpaces.size()) {
+        outputColorSpaceParam->setDefault(defaultIndex);
+    }
+    
+#endif
 }

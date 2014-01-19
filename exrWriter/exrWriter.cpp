@@ -124,11 +124,6 @@ void ExrWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
 }
 
 
-void ExrWriterPlugin::initializeLut(){
-    //exr files are stored linear
-    _lut = 0;
-}
-
 void ExrWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
     try {
         int compressionIndex;
@@ -221,7 +216,7 @@ bool ExrWriterPlugin::isImageFile(const std::string& /*fileExtension*/) const{
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},true);
+mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},true,OCIO::ROLE_SCENE_LINEAR);
 
 
 

@@ -41,11 +41,12 @@
 
 #include <ofxsImageEffect.h>
 
-namespace OFX {
-    namespace Color {
-        class Lut;
-    }
-}
+#ifdef IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
+#endif
+
+
 class CopierBase;
 
 /**
@@ -106,13 +107,6 @@ public:
     
 protected:
     
-    
-    /**
-     * @brief This function must initialize the _lut member. This lut can be used to do all
-     * conversions from the image's file format's color-space to linear.
-     **/
-    virtual void initializeLut()  = 0;
-
     /**
      * @brief Override this function to actually encode the image in the file pointed to by filename.
      * If the file is a video-stream then you should encode the frame at the time given in parameters.
@@ -145,13 +139,28 @@ protected:
     OFX::IntParam* _firstFrame; //< the first frame if the frame range type is "Manual"
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
 
-    const OFX::Color::Lut* _lut;//< the lut used to convert to the image's file format's color-space from linear.
+#ifdef IO_USING_OCIO
+    OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
+    OFX::ChoiceParam* _outputColorSpace; //< the output color-space we're converting to
+#endif
     
 private:
     
     /* set up and run a copy processor */
     void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
 };
+
+#ifdef IO_USING_OCIO
+namespace OCIO_OFX {
+    /**
+     * @brief Reads the OpenColorIO config file pointed to by filename and extract from it a list of the color spaces names
+     * available in that config as-well as the default color-space index.
+     * If filename is NULL, then it will read the environment variable OCIO which should point to a OpenColorIO config file.
+     **/
+    void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename = NULL,
+                            std::string occioRoleHint = std::string());
+}
+#endif
 
 class GenericWriterPluginFactory : public OFX::PluginFactoryHelper<GenericWriterPluginFactory>
 {
@@ -199,10 +208,19 @@ public:
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
     virtual bool isVideoStreamPlugin() const { return false; }
+    
+#ifdef IO_USING_OCIO
+    /**
+     * @brief Override to return in ocioRole the default OpenColorIO role the input color-space is.
+     * This is used as a hint by the describeInContext() function to determine what color-space is should use
+     * by-default to convert from the input color-space. The base-class version set ocioRole to OCIO::ROLE_SCENE_LINEAR.
+     **/
+    virtual void getOutputColorSpace(std::string& ocioRole) const;
+#endif
 
 };
 
-#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
+#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
 class CLASS : public GenericWriterPluginFactory \
 { \
 public: \
@@ -214,6 +232,7 @@ virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
 virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
+virtual void getOutputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIOROLE); } \
 };
 
 
