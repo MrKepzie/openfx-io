@@ -115,9 +115,9 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
     
     OfxRectI imgBounds = dstImg->getBounds();
     
-    if((imgBounds.x2 - imgBounds.x1) != width ||
-       (imgBounds.y2 - imgBounds.y1) != height){
-        setPersistentMessage(OFX::Message::eMessageFatal, "", "The host provided an image of wrong size, can't decode.");
+    if((imgBounds.x2 - imgBounds.x1) < width ||
+       (imgBounds.y2 - imgBounds.y1) < height){
+        setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
     }
     
     ///set the pixel aspect ratio

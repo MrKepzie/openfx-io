@@ -465,7 +465,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         OCIO::ConstProcessorRcPtr proc = config->getProcessor(context, inputName, outputName);
         
         OfxRectI rod = dstImg->getRegionOfDefinition();
-        OCIO::PackedImageDesc img((float*)dstImg->getPixelAddress(0, 0),rod.x2 - rod.x1,rod.y2 - rod.y1,4);
+        OCIO::PackedImageDesc img((float*)dstImg->getPixelAddress(rod.x1, rod.y1),rod.x2 - rod.x1,rod.y2 - rod.y1,3,sizeof(float),
+                                  4*sizeof(float),(rod.x2 - rod.x1)*4*sizeof(float));
         proc->apply(img);
     }
     catch(OCIO::Exception &e)
@@ -475,6 +476,11 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
 #endif
 
     delete dstImg;
+}
+
+void GenericReaderPlugin::purgeCaches() {
+    OCIO::ClearAllCaches();
+    clearAnyCache();
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {

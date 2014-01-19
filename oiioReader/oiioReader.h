@@ -53,7 +53,7 @@ public:
     
     virtual void supportedFileFormats(std::vector<std::string>* formats) const;
     
-    virtual void purgeCaches(void);
+    virtual void clearAnyCache();
 private:
     
     virtual void onInputFileChanged(const std::string& filename);

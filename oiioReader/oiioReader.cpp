@@ -58,7 +58,7 @@ OiioReaderPlugin::~OiioReaderPlugin() {
     
 }
 
-void OiioReaderPlugin::purgeCaches(void) {
+void OiioReaderPlugin::clearAnyCache() {
     ///flush the OIIO cache
     cache->invalidate_all();
 }
@@ -168,7 +168,7 @@ void OiioReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Imag
                       0, //chan begin
                       channelsCount, // chan end
                       TypeDesc::FLOAT, // data type
-                      dstImg->getPixelAddress(0, spec.y + spec.height - 1),// output buffer
+                      dstImg->getPixelAddress(spec.x, spec.y + spec.height - 1),// output buffer
                       AutoStride, //x stride
                       -(spec.width * channelsCount * sizeof(float)), //y stride < make it invert Y
                       AutoStride //z stride

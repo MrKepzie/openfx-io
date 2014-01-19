@@ -103,6 +103,11 @@ public:
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+    /**
+     * @brief Overriden to clear any OCIO cache. 
+     * This function calls clearAnyCache() if you have any cache to clear.
+     **/
+    void purgeCaches(void);
     
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
@@ -115,6 +120,11 @@ private:
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
      **/
     virtual void onInputFileChanged(const std::string& /*newFile*/) {}
+    
+    /**
+     * @brief Override to clear any cache you may have.
+     **/
+    virtual void clearAnyCache() {}
     
     
     /**
