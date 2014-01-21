@@ -117,8 +117,11 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
-    getSequenceTimeDomainInternal(range);
-    timeDomainFromSequenceTimeDomain(range, false);
+    bool ret = getSequenceTimeDomainInternal(range);
+    if (ret) {
+        timeDomainFromSequenceTimeDomain(range, false);
+    }
+    return ret;
 }
 
 bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
