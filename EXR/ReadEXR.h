@@ -47,13 +47,13 @@
 
 #include "GenericReader.h"
 
-class ExrReaderPlugin : public GenericReaderPlugin {
+class ReadEXRPlugin : public GenericReaderPlugin {
   
 public:
     
-    ExrReaderPlugin(OfxImageEffectHandle handle);
+    ReadEXRPlugin(OfxImageEffectHandle handle);
     
-    virtual ~ExrReaderPlugin();
+    virtual ~ReadEXRPlugin();
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
@@ -69,6 +69,6 @@ private:
     
 };
 
-mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 #endif /* defined(__Io__exrReader__) */

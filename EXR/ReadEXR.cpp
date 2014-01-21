@@ -456,17 +456,17 @@ namespace Exr {
 
 
 
-ExrReaderPlugin::ExrReaderPlugin(OfxImageEffectHandle handle)
+ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
 {
     Exr::FileManager::s_readerManager.initialize();
 }
 
-ExrReaderPlugin::~ExrReaderPlugin(){
+ReadEXRPlugin::~ReadEXRPlugin(){
     
 }
 
-void ExrReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
+void ReadEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
@@ -474,7 +474,7 @@ static void supportedFileFormats_static(std::vector<std::string>* formats){
     formats->push_back("exr");
 }
 
-void ExrReaderPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
+void ReadEXRPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
     supportedFileFormats_static(formats);
 }
 
@@ -484,7 +484,7 @@ struct DecodingChannelsMap {
     std::string channelName;
 };
 
-void ExrReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
+void ReadEXRPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     OfxRectI roi = dstImg->getRegionOfDefinition();
     
@@ -544,7 +544,7 @@ void ExrReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image
 }
 
 
-void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
+void ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     rod.x1 = file->dataWindow.x1;
     rod.x2 = file->dataWindow.x2;
@@ -555,7 +555,7 @@ void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Ofx
 
 using namespace OFX;
 
-void ExrReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+void ReadEXRPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
 }
 
@@ -566,7 +566,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static ExrReaderPluginFactory p("fr.inria.openfx:ReadEXR", 1, 0);
+            static ReadEXRPluginFactory p("fr.inria.openfx:ReadEXR", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -574,7 +574,7 @@ namespace OFX
 #endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ExrReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
+void ReadEXRPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
@@ -584,14 +584,14 @@ void ExrReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ExrReaderPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void ReadEXRPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ExrReaderPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new ExrReaderPlugin(handle);
+    return new ReadEXRPlugin(handle);
 }
 
 

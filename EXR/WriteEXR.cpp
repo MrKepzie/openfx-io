@@ -46,8 +46,8 @@
 #include <ofxsMultiThread.h>
 
 
-#define kExrWriterCompressionParamName "compression"
-#define kExrWriterDataTypeParamName "dataType"
+#define kWriteEXRCompressionParamName "compression"
+#define kWriteEXRDataTypeParamName "dataType"
 
 #ifndef OPENEXR_IMF_NAMESPACE
 #define OPENEXR_IMF_NAMESPACE Imf
@@ -98,16 +98,16 @@ namespace Exr {
     
 }
 
-ExrWriterPlugin::ExrWriterPlugin(OfxImageEffectHandle handle)
+WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 , _compression(0)
 , _bitDepth(0)
 {
-    _compression = fetchChoiceParam(kExrWriterCompressionParamName);
-    _bitDepth = fetchChoiceParam(kExrWriterDataTypeParamName);
+    _compression = fetchChoiceParam(kWriteEXRCompressionParamName);
+    _bitDepth = fetchChoiceParam(kWriteEXRDataTypeParamName);
 }
 
-ExrWriterPlugin::~ExrWriterPlugin(){
+WriteEXRPlugin::~WriteEXRPlugin(){
     
 }
 
@@ -115,16 +115,16 @@ static void supportedFileFormats_static(std::vector<std::string>* formats) {
     formats->push_back("exr");
 }
 
-void ExrWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
+void WriteEXRPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
 }
 
-void ExrWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
+void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     
 }
 
 
-void ExrWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
+void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
     try {
         int compressionIndex;
         _compression->getValue(compressionIndex);
@@ -210,7 +210,7 @@ void ExrWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX:
     }
 }
 
-bool ExrWriterPlugin::isImageFile(const std::string& /*fileExtension*/) const{
+bool WriteEXRPlugin::isImageFile(const std::string& /*fileExtension*/) const{
     return true;
 }
 
@@ -220,7 +220,7 @@ using namespace OFX;
 
 
 
-void ExrWriterPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+void WriteEXRPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
 }
 
@@ -231,7 +231,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static ExrWriterPluginFactory p("fr.inria.openfx:WriteEXR", 1, 0);
+            static WriteEXRPluginFactory p("fr.inria.openfx:WriteEXR", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -240,7 +240,7 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ExrWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
+void WriteEXRPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("WriteEXROFX", "WriteEXROFX", "WriteEXROFX");
@@ -248,11 +248,11 @@ void ExrWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ExrWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void WriteEXRPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
    
     /////////Compression
-    OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kExrWriterCompressionParamName);
+    OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);
     compressionParam->setAnimates(false);
     for (int i =0; i < 6; ++i) {
         compressionParam->appendOption(Exr::compressionNames[i]);
@@ -261,7 +261,7 @@ void ExrWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor 
     page->addChild(*compressionParam);
     
     ////////Data type
-    OFX::ChoiceParamDescriptor* dataTypeParam = desc.defineChoiceParam(kExrWriterDataTypeParamName);
+    OFX::ChoiceParamDescriptor* dataTypeParam = desc.defineChoiceParam(kWriteEXRDataTypeParamName);
     dataTypeParam->setAnimates(false);
     for(int i = 0 ; i < 2 ; ++i) {
         dataTypeParam->appendOption(Exr::depthNames[i]);
@@ -272,7 +272,7 @@ void ExrWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor 
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ExrWriterPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new ExrWriterPlugin(handle);
+    return new WriteEXRPlugin(handle);
 }

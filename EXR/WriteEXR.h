@@ -50,14 +50,14 @@
 #include <ImfOutputFile.h>
 #include <half.h>
 
-class ExrWriterPlugin : public GenericWriterPlugin {
+class WriteEXRPlugin : public GenericWriterPlugin {
     
 public:
     
-    ExrWriterPlugin(OfxImageEffectHandle handle);
+    WriteEXRPlugin(OfxImageEffectHandle handle);
     
     
-    virtual ~ExrWriterPlugin();
+    virtual ~WriteEXRPlugin();
     
     virtual void supportedFileFormats(std::vector<std::string>* formats) const;
     
@@ -75,6 +75,6 @@ private:
 
 };
 
-mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
+mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 #endif /* defined(__Io__exrWriter__) */
