@@ -1,5 +1,7 @@
 #include "OCIO.h"
 
+#include <stdexcept>
+
 #ifdef IO_USING_OCIO
 namespace OCIO_OFX {
 void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorSpaceIndex,const char* filename,std::string occioRoleHint)
