@@ -88,7 +88,8 @@
 #include <natron/IOExtensions.h>
 #endif
 
-#define kWriterFileParamName "file"
+// in the Writer context, the script name must be "filename", @see kOfxImageEffectContextWriter
+#define kWriterFileParamName "filename"
 #define kWriterRenderParamName "render"
 #define kWriterFrameRangeChoiceParamName "frameRange"
 #define kWriterFirstFrameParamName "firstFrame"
@@ -564,7 +565,7 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
                        " there will be 2 digits). You don't even need to provide the # character.");
     fileParam->setAnimates(false);
     // in the Writer context, the script name should be "filename", for consistency with the reader nodes @see kOfxImageEffectContextReader
-    fileParam->setScriptName("filename");
+    fileParam->setScriptName(kWriterFileParamName);
     desc.addClipPreferencesSlaveParam(*fileParam);
 
 #ifdef OFX_EXTENSIONS_NATRON

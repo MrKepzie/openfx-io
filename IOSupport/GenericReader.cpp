@@ -50,7 +50,8 @@
 #include <natron/IOExtensions.h>
 #endif
 
-#define kReaderFileParamName "file"
+// in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
+#define kReaderFileParamName "filename"
 #define kReaderMissingFrameParamName "onMissingFrame"
 #define kReaderFrameModeParamName "frameMode"
 #define kReaderTimeOffsetParamName "timeOffset"
@@ -639,7 +640,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     fileParam->setHint("The input image sequence/video stream file(s).");
     fileParam->setAnimates(false);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
-    fileParam->setScriptName("filename");
+    fileParam->setScriptName(kReaderFileParamName);
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
     
