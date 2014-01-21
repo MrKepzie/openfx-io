@@ -469,6 +469,11 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     else if ( paramName == kWriterOCCIOConfigFileParamName ) {
         std::string filename;
         _occioConfigFile->getValue(filename);
+        
+        if (filename.empty()) {
+            return;
+        }
+        
         std::vector<std::string> colorSpaces;
         int defaultIndex;
         OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
@@ -562,7 +567,7 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     desc.setSupportsMultiResolution(true);
-    desc.setSupportsTiles(true);
+    desc.setSupportsTiles(false);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
@@ -598,8 +603,7 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
     srcClip->addSupportedComponent(ePixelComponentRGBA);
-    srcClip->setSupportsTiles(true);
-
+    srcClip->setSupportsTiles(false);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);

@@ -97,7 +97,7 @@ void OiioWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) c
 }
 
 void OiioWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    
+    GenericWriterPlugin::changedParam(args, paramName);
 }
 
 void OiioWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) {

@@ -153,7 +153,9 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
     int firstFrameProp = INT_MIN;
     int lastFrameProp = INT_MAX;
 #ifdef OFX_EXTENSIONS_NATRON
-    _fileParam->getImageSequenceRange(firstFrameProp, lastFrameProp);
+    if (gHostIsNatron) {
+        _fileParam->getImageSequenceRange(firstFrameProp, lastFrameProp);
+    }
 #endif
     
     if (firstFrameProp != INT_MIN && firstFrameProp != INT_MAX) {
@@ -563,6 +565,11 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     else if ( paramName == kReaderOCCIOConfigFileParamName ) {
         std::string filename;
         _occioConfigFile->getValue(filename);
+        
+        if (filename.empty()) {
+            return;
+        }
+        
         std::vector<std::string> colorSpaces;
         int defaultIndex;
         OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
@@ -651,7 +658,7 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     desc.setSupportsMultiResolution(true);
-    desc.setSupportsTiles(true);
+    desc.setSupportsTiles(false);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
@@ -679,8 +686,12 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
 }
 
 void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context){
-  
-    
+
+    // create the optional source clip
+    ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
+    srcClip->addSupportedComponent(ePixelComponentRGBA);
+    srcClip->setSupportsTiles(true);
+    srcClip->setOptional(true);
     
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
