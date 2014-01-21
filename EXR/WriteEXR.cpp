@@ -36,7 +36,7 @@
  78153 Le Chesnay Cedex - France
  
  */
-#include "exrWriter.h"
+#include "WriteEXR.h"
 
 #include <ImfChannelList.h>
 #include <ImfArray.h>
@@ -216,7 +216,6 @@ bool ExrWriterPlugin::isImageFile(const std::string& /*fileExtension*/) const{
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(ExrWriterPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 
 
@@ -225,6 +224,7 @@ void ExrWriterPluginFactory::supportedFileFormats(std::vector<std::string>* form
     supportedFileFormats_static(formats);
 }
 
+#if 0
 namespace OFX
 {
     namespace Plugin
@@ -236,6 +236,7 @@ namespace OFX
         }
     };
 };
+#endif
 
 
 /** @brief The basic describe function, passed a plugin descriptor */

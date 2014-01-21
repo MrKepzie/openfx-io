@@ -1,4 +1,4 @@
-SUBDIRS = ffmpegReader ffmpegWriter exrReader exrWriter
+SUBDIRS = ffmpegReader ffmpegWriter EXR
 
 all: subdirs
 

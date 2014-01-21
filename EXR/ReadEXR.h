@@ -69,5 +69,6 @@ private:
     
 };
 
+mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 #endif /* defined(__Io__exrReader__) */

@@ -36,7 +36,7 @@
  78153 Le Chesnay Cedex - France
  
  */
-#include "exrReader.h"
+#include "ReadEXR.h"
 
 #include <algorithm>
 
@@ -554,12 +554,12 @@ void ExrReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Ofx
 }
 
 using namespace OFX;
-mDeclareReaderPluginFactory(ExrReaderPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 void ExrReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
 }
 
+#if 0
 namespace OFX
 {
     namespace Plugin
@@ -571,6 +571,7 @@ namespace OFX
         }
     };
 };
+#endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void ExrReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
