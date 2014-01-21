@@ -611,7 +611,7 @@
 			attributes = {
 				LastUpgradeCheck = 0500;
 			};
-			buildConfigurationList = D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "Io" */;
+			buildConfigurationList = D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "IO" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -963,7 +963,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "Io" */ = {
+		D74E623F1875A79700D8FA13 /* Build configuration list for PBXProject "IO" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D74E62401875A79700D8FA13 /* Debug */,
