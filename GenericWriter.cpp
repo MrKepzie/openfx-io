@@ -81,8 +81,11 @@
 #include "ofxsProcessing.H"
 #include "ofxsLog.h"
 
+#ifdef OFX_EXTENSIONS_TUTTLE
+#include <tuttle/ofxReadWrite.h>
+#endif
 #ifdef OFX_EXTENSIONS_NATRON
-#include "IOExtensions.h"
+#include <natron/IOExtensions.h>
 #endif
 
 #define kWriterFileParamName "file"
@@ -94,10 +97,6 @@
 #ifdef IO_USING_OCIO
 #define kWriterOCCIOConfigFileParamName "WriterOCCIOConfigFileParamName"
 #define kWriterOutputColorSpaceParamName "outputColorSpace"
-#endif
-
-#ifdef OFX_EXTENSIONS_NATRON
-static bool gHostIsNatron = true;
 #endif
 
 // Base class for the RGBA and the Alpha processor
@@ -549,9 +548,11 @@ void GenericWriterPluginFactory::getOutputColorSpace(std::string& ocioRole) cons
 void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/WriteOFX");
     
-    desc.addSupportedContext(OFX::eContextFilter);
+#ifdef OFX_EXTENSIONS_TUTTLE
+    desc.addSupportedContext(OFX::eContextWriter);
+#endif
     desc.addSupportedContext(OFX::eContextGeneral);
-    
+
     ///Say we support only reading to float images.
     ///One would need to extend the ofxsColorSpace suite functions
     ///in order to support other bitdepths. I have no time for it
@@ -568,23 +569,12 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
     
-#ifdef OFX_EXTENSIONS_NATRON
-    // to check if the host is Natron-compatible, we could rely on gHostDescription.hostName,
-    // but we prefer checking if the host has the right properties, in case another host implements
-    // these extensions
-    try {
-        std::vector<std::string> fileFormats;
-        supportedFileFormats(&fileFormats);
-        for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-            desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
-        }
-    } catch (const OFX::Exception::PropertyUnknownToHost &e) {
-        // the host is does not implement Natron extensions
-        gHostIsNatron = false;
-    }
-    OFX::Log::warning(!gHostIsNatron, "WriteOFX: Host does not implement Natron extensions.");
+#ifdef OFX_EXTENSIONS_TUTTLE
+    std::vector<std::string> fileFormats;
+    supportedFileFormats(&fileFormats);
+    desc.addSupportedExtensions(fileFormats);
 #endif
-    
+
     describeWriter(desc);
 }
 
@@ -622,12 +612,13 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
                        " By default the plugin will append digits on demand (i.e: if you have 11 frames"
                        " there will be 2 digits). You don't even need to provide the # character.");
     fileParam->setAnimates(false);
+    // in the Writer context, the script name should be "filename", for consistency with the reader nodes @see kOfxImageEffectContextReader
+    fileParam->setScriptName("filename");
     desc.addClipPreferencesSlaveParam(*fileParam);
+
 #ifdef OFX_EXTENSIONS_NATRON
-    if (gHostIsNatron) {
-        fileParam->setFilePathIsImage(true);
-        fileParam->setFilePathIsOutput(true);
-    }
+    fileParam->setFilePathIsImage(true);
+    fileParam->setFilePathIsOutput(true);
 #endif
     page->addChild(*fileParam);
 
@@ -659,9 +650,7 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     renderParam->setLabels("Render","Render","Render");
     renderParam->setHint("Starts rendering all the frame range.");
 #ifdef OFX_EXTENSIONS_NATRON
-    if (gHostIsNatron) {
-        renderParam->setAsRenderButton();
-    }
+    renderParam->setAsRenderButton();
 #endif
     page->addChild(*renderParam);
     

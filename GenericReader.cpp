@@ -43,9 +43,11 @@
 
 #include "ofxsLog.h"
 
-
+#ifdef OFX_EXTENSIONS_TUTTLE
+#include <tuttle/ofxReadWrite.h>
+#endif
 #ifdef OFX_EXTENSIONS_NATRON
-#include "IOExtensions.h"
+#include <natron/IOExtensions.h>
 #endif
 
 
@@ -65,12 +67,6 @@
 #define kReaderLastFrameParamName "lastFrame"
 #define kReaderBeforeParamName "before"
 #define kReaderAfterParamName "after"
-
-
-
-#ifdef OFX_EXTENSIONS_NATRON
-static bool gHostIsNatron = true;
-#endif
 
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
 #define MAX_SEARCH_RANGE 400000
@@ -638,6 +634,9 @@ void GenericReaderPluginFactory::getInputColorSpace(std::string& ocioRole) const
 void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/ReadOFX");
     
+#ifdef OFX_EXTENSIONS_TUTTLE
+    desc.addSupportedContext(OFX::eContextReader);
+#endif
     desc.addSupportedContext(OFX::eContextGenerator);
     desc.addSupportedContext(OFX::eContextGeneral);
     
@@ -658,23 +657,12 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
     
     
-#ifdef OFX_EXTENSIONS_NATRON
-    // to check if the host is Natron-compatible, we could rely on gHostDescription.hostName,
-    // but we prefer checking if the host has the right properties, in case another host implements
-    // these extensions
-    try {
-        std::vector<std::string> fileFormats;
-        supportedFileFormats(&fileFormats);
-        for (unsigned int i = 0; i < fileFormats.size(); ++i) {
-            desc.getPropertySet().propSetString(kNatronImageEffectPropFormats, fileFormats[i], i,true);
-        }
-    } catch (const OFX::Exception::PropertyUnknownToHost &e) {
-        // the host is does not implement Natron extensions
-        gHostIsNatron = false;
-    }
-    OFX::Log::warning(!gHostIsNatron, "ReadOFX: Host does not implement Natron extensions.");
+#ifdef OFX_EXTENSIONS_TUTTLE
+    std::vector<std::string> fileFormats;
+    supportedFileFormats(&fileFormats);
+    desc.addSupportedExtensions(fileFormats);
 #endif
-    
+
     describeReader(desc);
 }
 
@@ -696,14 +684,14 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The input image sequence/video stream file(s).");
     fileParam->setAnimates(false);
+    // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
+    fileParam->setScriptName("filename");
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
     
     if (!isVideoStreamPlugin()) {
 #ifdef OFX_EXTENSIONS_NATRON
-        if (gHostIsNatron) {
-            fileParam->setFilePathIsImage(true);
-        }
+        fileParam->setFilePathIsImage(true);
 #endif
     }
     

@@ -1150,8 +1150,9 @@
 					OFX_EXTENSIONS_NATRON,
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
-					"DEBUG=1",
+					OFX_EXTENSIONS_TUTTLE,
 					IO_USING_OCIO,
+					"DEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",
@@ -1181,6 +1182,7 @@
 					OFX_EXTENSIONS_NATRON,
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
+					OFX_EXTENSIONS_TUTTLE,
 					IO_USING_OCIO,
 				);
 				HEADER_SEARCH_PATHS = (
@@ -1372,6 +1374,7 @@
 				D70E7DD4188C4AD10068F1FF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */ = {
 			isa = XCConfigurationList;
