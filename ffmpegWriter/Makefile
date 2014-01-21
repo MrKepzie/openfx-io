@@ -1,5 +1,6 @@
-PLUGINOBJECTS = ffmpegWriter.o ../GenericWriter.o ../Lut.o
+PLUGINOBJECTS = ffmpegWriter.o GenericWriter.o Lut.o
 PLUGINNAME = ffmpegWriter
+VPATH += ../IOSupport
 
 include ../Makefile.master
 

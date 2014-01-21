@@ -43,10 +43,6 @@
 #include "FfmpegHandler.h"
 #include "Lut.h"
 
-#ifdef OFX_EXTENSIONS_NATRON
-#include "IOExtensions.h"
-#endif
-
 FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
 , _ffmpegFile(0)

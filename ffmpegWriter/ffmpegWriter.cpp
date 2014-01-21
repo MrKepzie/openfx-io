@@ -52,10 +52,6 @@
 
 
 
-#ifdef OFX_EXTENSIONS_NATRON
-#include "IOExtensions.h"
-#endif
-
 extern "C" {
 #include <errno.h>
 #include <libavformat/avformat.h>
