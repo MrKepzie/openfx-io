@@ -37,7 +37,7 @@
  
  */
 
-#include "ffmpegWriter.h"
+#include "WriteFFmpeg.h"
 
 #if (defined(_STDINT_H) || defined(_STDINT_H_)) && !defined(UINT64_C)
 #warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
@@ -66,15 +66,15 @@ extern "C" {
 }
 #include "ffmpegCompat.h"
 
-#define kFfmpegWriterFormatParamName "format"
-#define kFfmpegWriterFPSParamName "fps"
-#define kFfmpegWriterAdvancedGroupParamName "advanced"
-#define kFfmpegWriterCodecParamName "codec"
-#define kFfmpegWriterBitRateParamName "bitRate"
-#define kFfmpegWriterBitRateToleranceParamName "bitRateTolerance"
-#define kFfmpegWriterGopParamName "gop"
-#define kFfmpegWriterBFramesParamName "bframes"
-#define kFfmpegWriterMBDecisionParamName "mbDecision"
+#define kWriteFFmpegFormatParamName "format"
+#define kWriteFFmpegFPSParamName "fps"
+#define kWriteFFmpegAdvancedGroupParamName "advanced"
+#define kWriteFFmpegCodecParamName "codec"
+#define kWriteFFmpegBitRateParamName "bitRate"
+#define kWriteFFmpegBitRateToleranceParamName "bitRateTolerance"
+#define kWriteFFmpegGopParamName "gop"
+#define kWriteFFmpegBFramesParamName "bframes"
+#define kWriteFFmpegMBDecisionParamName "mbDecision"
 
 
 
@@ -149,7 +149,7 @@ FFmpegSingleton::~FFmpegSingleton(){
     
 }
 
-FfmpegWriterPlugin::FfmpegWriterPlugin(OfxImageEffectHandle handle)
+WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 , _codecContext(0)
 , _formatContext(0)
@@ -163,17 +163,17 @@ FfmpegWriterPlugin::FfmpegWriterPlugin(OfxImageEffectHandle handle)
 ,_bFrames(0)
 , _macroBlockDecision(0)
 {
-    _format = fetchChoiceParam(kFfmpegWriterFormatParamName);
-    _fps = fetchDoubleParam(kFfmpegWriterFPSParamName);
-    _codec = fetchChoiceParam(kFfmpegWriterCodecParamName);
-    _bitRate = fetchIntParam(kFfmpegWriterBitRateParamName);
-    _bitRateTolerance = fetchIntParam(kFfmpegWriterBitRateToleranceParamName);
-    _gopSize = fetchIntParam(kFfmpegWriterGopParamName);
-    _bFrames = fetchIntParam(kFfmpegWriterBFramesParamName);
-    _macroBlockDecision = fetchChoiceParam(kFfmpegWriterMBDecisionParamName);
+    _format = fetchChoiceParam(kWriteFFmpegFormatParamName);
+    _fps = fetchDoubleParam(kWriteFFmpegFPSParamName);
+    _codec = fetchChoiceParam(kWriteFFmpegCodecParamName);
+    _bitRate = fetchIntParam(kWriteFFmpegBitRateParamName);
+    _bitRateTolerance = fetchIntParam(kWriteFFmpegBitRateToleranceParamName);
+    _gopSize = fetchIntParam(kWriteFFmpegGopParamName);
+    _bFrames = fetchIntParam(kWriteFFmpegBFramesParamName);
+    _macroBlockDecision = fetchChoiceParam(kWriteFFmpegMBDecisionParamName);
 }
 
-FfmpegWriterPlugin::~FfmpegWriterPlugin(){
+WriteFFmpegPlugin::~WriteFFmpegPlugin(){
     
 }
 
@@ -198,16 +198,16 @@ static void static_supportedFileFormats(std::vector<std::string>* formats){
     formats->push_back("gif");
 }
 
-void FfmpegWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
+void WriteFFmpegPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
     static_supportedFileFormats(formats);
 }
 
-void FfmpegWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
+void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     GenericWriterPlugin::changedParam(args, paramName);
 }
 
 
-bool FfmpegWriterPlugin::isImageFile(const std::string& ext) const{
+bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
     return ext == "bmp" ||
     ext == "pix" ||
     ext == "dpx" ||
@@ -223,7 +223,7 @@ bool FfmpegWriterPlugin::isImageFile(const std::string& ext) const{
     ext == "rgb";
 }
 
-void FfmpegWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
+void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
     
     AVOutputFormat* fmt = 0;
     int formatValue;
@@ -470,7 +470,7 @@ void FfmpegWriterPlugin::encode(const std::string& filename,OfxTime time,const O
     
 }
 
-void FfmpegWriterPlugin::freeFormat(){
+void WriteFFmpegPlugin::freeFormat(){
     for (int i = 0; i < static_cast<int>(_formatContext->nb_streams); ++i){
         av_freep(&_formatContext->streams[i]);
     }
@@ -481,28 +481,29 @@ void FfmpegWriterPlugin::freeFormat(){
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(FfmpegWriterPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
 
 
-void FfmpegWriterPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+void WriteFFmpegPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     static_supportedFileFormats(formats);
 }
 
+#if 0
 namespace OFX
 {
     namespace Plugin
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static FfmpegWriterPluginFactory p("fr.inria.openfx:WriteFFmpeg", 1, 0);
+            static WriteFFmpegPluginFactory p("fr.inria.openfx:WriteFFmpeg", 1, 0);
             ids.push_back(&p);
         }
     };
 };
+#endif
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void FfmpegWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
+void WriteFFmpegPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("WriteFFmpegOFX", "WriteFFmpegOFX", "WriteFFmpegOFX");
@@ -510,13 +511,13 @@ void FfmpegWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void WriteFFmpegPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
     
     
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
-    OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kFfmpegWriterFormatParamName);
+    OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kWriteFFmpegFormatParamName);
     formatParam->setLabels("Format", "Format", "Format");
     formatParam->setHint("The outputformat");
     for (unsigned int i = 0; i < formatsV.size(); ++i) {
@@ -528,7 +529,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     page->addChild(*formatParam);
     
     ///////////FPS
-    OFX::DoubleParamDescriptor* fpsParam = desc.defineDoubleParam(kFfmpegWriterFPSParamName);
+    OFX::DoubleParamDescriptor* fpsParam = desc.defineDoubleParam(kWriteFFmpegFPSParamName);
     fpsParam->setLabels("fps", "fps", "fps");
     fpsParam->setRange(0.f, 100.f);
     fpsParam->setDefault(24.f);
@@ -536,13 +537,13 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     page->addChild(*fpsParam);
 
     /////////// Advanced group
-    OFX::GroupParamDescriptor* groupParam = desc.defineGroupParam(kFfmpegWriterAdvancedGroupParamName);
+    OFX::GroupParamDescriptor* groupParam = desc.defineGroupParam(kWriteFFmpegAdvancedGroupParamName);
     groupParam->setLabels("Advanced", "Advanced", "Advanced");
     groupParam->setOpen(false);
     page->addChild(*groupParam);
     
     ///////////Codec
-    OFX::ChoiceParamDescriptor* codecParam = desc.defineChoiceParam(kFfmpegWriterCodecParamName);
+    OFX::ChoiceParamDescriptor* codecParam = desc.defineChoiceParam(kWriteFFmpegCodecParamName);
     codecParam->setLabels("Codec","Codec","Codec");
     const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
     for (unsigned int i = 0; i < codecsV.size(); ++i) {
@@ -553,7 +554,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     codecParam->setDefault(0);
     
     ///////////bit-rate
-    OFX::IntParamDescriptor* bitRateParam = desc.defineIntParam(kFfmpegWriterBitRateParamName);
+    OFX::IntParamDescriptor* bitRateParam = desc.defineIntParam(kWriteFFmpegBitRateParamName);
     bitRateParam->setLabels("Bitrate", "Bitrate", "Bitrate");
     bitRateParam->setRange(0, 400000);
     bitRateParam->setDefault(400000);
@@ -561,7 +562,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     bitRateParam->setAnimates(false);
     
     ///////////bit-rate tolerance
-    OFX::IntParamDescriptor* bitRateTolParam = desc.defineIntParam(kFfmpegWriterBitRateToleranceParamName);
+    OFX::IntParamDescriptor* bitRateTolParam = desc.defineIntParam(kWriteFFmpegBitRateToleranceParamName);
     bitRateTolParam->setLabels("Bitrate tolerance", "Bitrate tolerance", "Bitrate tolerance");
     bitRateTolParam->setRange(0, 4000 * 10000);
     bitRateTolParam->setDefault(4000 * 10000);
@@ -570,7 +571,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     
     
     ///////////Gop size
-    OFX::IntParamDescriptor* gopSizeParam = desc.defineIntParam(kFfmpegWriterGopParamName);
+    OFX::IntParamDescriptor* gopSizeParam = desc.defineIntParam(kWriteFFmpegGopParamName);
     gopSizeParam->setLabels("GOP Size", "GOP Size", "GOP Size");
     gopSizeParam->setRange(0, 30);
     gopSizeParam->setDefault(12);
@@ -579,7 +580,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     
     
     ////////////B Frames
-    OFX::IntParamDescriptor* bFramesParam = desc.defineIntParam(kFfmpegWriterBFramesParamName);
+    OFX::IntParamDescriptor* bFramesParam = desc.defineIntParam(kWriteFFmpegBFramesParamName);
     bFramesParam->setLabels("B Frames", "B Frames", "B Frames");
     bFramesParam->setRange(0, 30);
     bFramesParam->setDefault(0);
@@ -587,7 +588,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
     bFramesParam->setAnimates(false);
     
     ////////////Macro block decision
-    OFX::ChoiceParamDescriptor* mbDecisionParam = desc.defineChoiceParam(kFfmpegWriterMBDecisionParamName);
+    OFX::ChoiceParamDescriptor* mbDecisionParam = desc.defineChoiceParam(kWriteFFmpegMBDecisionParamName);
     mbDecisionParam->setLabels("Macro block decision mode", "Macro block decision mode", "Macro block decision mode");
     mbDecisionParam->appendOption("FF_MB_DECISION_SIMPLE");
     mbDecisionParam->appendOption("FF_MB_DECISION_BITS");
@@ -599,7 +600,7 @@ void FfmpegWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescript
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* FfmpegWriterPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new FfmpegWriterPlugin(handle);
+    return new WriteFFmpegPlugin(handle);
 }

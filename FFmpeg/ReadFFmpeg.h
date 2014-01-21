@@ -1,6 +1,6 @@
 /*
- OFX ffmpegWriter plugin.
- Writes a video output file using the libav library.
+ OFX ffmpegReader plugin.
+ Reads a video input file using the libav library.
  
  Copyright (C) 2013 INRIA
  Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
@@ -36,51 +36,50 @@
  78153 Le Chesnay Cedex - France
  
  */
+#ifndef Io_ffmpegReader_h
+#define Io_ffmpegReader_h
 
-#ifndef Io_ffmpegWriter_h
-#define Io_ffmpegWriter_h
+#include "GenericReader.h"
 
-#include "GenericWriter.h"
+namespace FFmpeg {
+    class File;
+}
 
-struct AVCodecContext;
-struct AVFormatContext;
-struct AVStream;
-class FfmpegWriterPlugin : public GenericWriterPlugin {
+class ReadFFmpegPlugin : public GenericReaderPlugin {
+    
+    FFmpeg::File* _ffmpegFile; //< a ptr to the ffmpeg file, don't delete it the FFmpegFileManager handles their allocation/deallocation
+    
+    unsigned char* _buffer;
+    int _bufferWidth;
+    int _bufferHeight;
     
 public:
     
-    FfmpegWriterPlugin(OfxImageEffectHandle handle);
+    ReadFFmpegPlugin(OfxImageEffectHandle handle);
     
-    virtual ~FfmpegWriterPlugin();
-    
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
+    virtual ~ReadFFmpegPlugin();
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+    bool loadNearestFrame() const;
+    
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
+
 private:
     
+    FFmpeg::File* getFile(const std::string& filename) const;
+    
+    virtual bool isVideoStream(const std::string& filename);
+    
+    virtual void onInputFileChanged(const std::string& filename);
+    
+    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
         
-    virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg);
-    
-    virtual bool isImageFile(const std::string& fileExtension) const;
-    
-    void freeFormat();
-    
-    AVCodecContext*   _codecContext;
-    AVFormatContext*  _formatContext;
-    AVStream* _stream;
-    
-    OFX::ChoiceParam* _format;
-    OFX::DoubleParam* _fps;
-    
-    OFX::ChoiceParam* _codec;
-    OFX::IntParam* _bitRate;
-    OFX::IntParam* _bitRateTolerance;
-    OFX::IntParam* _gopSize;
-    OFX::IntParam* _bFrames;
-    OFX::ChoiceParam* _macroBlockDecision;
-    
+    virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range);
+        
+    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 };
 
+mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
 
 #endif

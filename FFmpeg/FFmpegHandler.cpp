@@ -38,11 +38,11 @@
  */
 
 
-#include "FfmpegHandler.h"
+#include "FFmpegHandler.h"
 
 #include <cmath>
 
-#include "ffmpegReader.h"
+#include "ReadFFmpeg.h"
 
 namespace FFmpeg {
     

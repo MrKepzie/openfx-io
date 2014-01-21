@@ -36,14 +36,15 @@
  78153 Le Chesnay Cedex - France
  
  */
+
+#include "ReadFFmpeg.h"
+
 #include <cmath>
 
-#include "ffmpegReader.h"
-
-#include "FfmpegHandler.h"
+#include "FFmpegHandler.h"
 #include "Lut.h"
 
-FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
+ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
 , _ffmpegFile(0)
 , _buffer(0)
@@ -54,20 +55,20 @@ FfmpegReaderPlugin::FfmpegReaderPlugin(OfxImageEffectHandle handle)
     FFmpeg::FileManager::s_readerManager.initialize();
 }
 
-FfmpegReaderPlugin::~FfmpegReaderPlugin() {
+ReadFFmpegPlugin::~ReadFFmpegPlugin() {
     
     if(_buffer){
         delete [] _buffer;
     }
 }
 
-bool FfmpegReaderPlugin::loadNearestFrame() const {
+bool ReadFFmpegPlugin::loadNearestFrame() const {
     int v;
     _missingFrameParam->getValue(v);
     return v == 0;
 }
 
-FFmpeg::File* FfmpegReaderPlugin::getFile(const std::string& filename) const {
+FFmpeg::File* ReadFFmpegPlugin::getFile(const std::string& filename) const {
     if(_ffmpegFile && _ffmpegFile->filename() == filename){
         return _ffmpegFile;
     }
@@ -75,11 +76,11 @@ FFmpeg::File* FfmpegReaderPlugin::getFile(const std::string& filename) const {
 }
 
 
-void FfmpegReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+void ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
-void FfmpegReaderPlugin::onInputFileChanged(const std::string& filename) {
+void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
     _ffmpegFile = getFile(filename);
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
@@ -87,15 +88,15 @@ void FfmpegReaderPlugin::onInputFileChanged(const std::string& filename) {
     }
 }
 
-bool FfmpegReaderPlugin::isVideoStream(const std::string& filename){
+bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
 }
 
-void FfmpegReaderPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
+void ReadFFmpegPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
     FFmpeg::supportedFileFormats(formats);
 }
 
-void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
+void ReadFFmpegPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
     
     _ffmpegFile = getFile(filename);
     
@@ -168,7 +169,7 @@ void FfmpegReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Im
     }
 }
 
-bool FfmpegReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
+bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
     
     if(!FFmpeg::isImageFile(filename)){
         _ffmpegFile = getFile(filename);
@@ -191,7 +192,7 @@ bool FfmpegReaderPlugin::getSequenceTimeDomain(const std::string& filename,OfxRa
 }
 
 
-void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
+void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
     
     _ffmpegFile = getFile(filename);
     
@@ -212,29 +213,29 @@ void FfmpegReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,
 }
 
 using namespace OFX;
-mDeclareReaderPluginFactory(FfmpegReaderPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
 
-void FfmpegReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+void ReadFFmpegPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     FFmpeg::supportedFileFormats(formats);
 }
 
 
+#if 0
 namespace OFX
 {
     namespace Plugin
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static FfmpegReaderPluginFactory p("fr.inria.openfx:ReadFFmpeg", 1, 0);
+            static ReadFFmpegPluginFactory p("fr.inria.openfx:ReadFFmpeg", 1, 0);
             ids.push_back(&p);
         }
     };
 };
-
+#endif
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void FfmpegReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
+void ReadFFmpegPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
@@ -243,14 +244,14 @@ void FfmpegReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void FfmpegReaderPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc,
+void ReadFFmpegPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc,
                                                         ContextEnum context,OFX::PageParamDescriptor* defaultPage)
 {
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* FfmpegReaderPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new FfmpegReaderPlugin(handle);
+    return new ReadFFmpegPlugin(handle);
 }
 

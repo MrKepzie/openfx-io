@@ -1,5 +1,5 @@
-PLUGINOBJECTS = ffmpegReader.o FfmpegHandler.o GenericReader.o Lut.o
-PLUGINNAME = ffmpegReader
+PLUGINOBJECTS = ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o PluginRegistration.o GenericReader.o GenericWriter.o OCIO.o Lut.o
+PLUGINNAME = FFmpeg
 VPATH += ../IOSupport
 
 include ../Makefile.master

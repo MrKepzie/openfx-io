@@ -38,8 +38,8 @@
  */
 
 
-#ifndef __Io__FfmpegHandler__
-#define __Io__FfmpegHandler__
+#ifndef __Io__FFmpegHandler__
+#define __Io__FFmpegHandler__
 
 #if (defined(_STDINT_H) || defined(_STDINT_H_)) && !defined(UINT64_C)
 #warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
@@ -248,4 +248,4 @@ namespace FFmpeg {
 } //namespace FFmpeg
 
 
-#endif /* defined(__Io__FfmpegHandler__) */
+#endif /* defined(__Io__FFmpegHandler__) */

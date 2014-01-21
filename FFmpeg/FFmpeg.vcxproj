@@ -77,14 +77,14 @@
     <ClCompile Include="..\openfx\Support\Library\ofxsParams.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsProperty.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsPropertyValidation.cpp" />
-    <ClCompile Include="FfmpegHandler.cpp" />
+    <ClCompile Include="FFmpegHandler.cpp" />
     <ClCompile Include="ffmpegReader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\GenericReader.h" />
     <ClInclude Include="..\Lut.h" />
     <ClInclude Include="..\openfx\Support\Library\ofxsSupportPrivate.h" />
-    <ClInclude Include="FfmpegHandler.h" />
+    <ClInclude Include="FFmpegHandler.h" />
     <ClInclude Include="ffmpegReader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
