@@ -42,6 +42,8 @@
 
 #include <ofxsImageEffect.h>
 
+#include "OCIO.h"
+
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 

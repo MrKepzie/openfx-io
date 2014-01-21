@@ -50,8 +50,6 @@
 #include <natron/IOExtensions.h>
 #endif
 
-#include "OCIO.h"
-
 #define kReaderFileParamName "file"
 #define kReaderMissingFrameParamName "onMissingFrame"
 #define kReaderFrameModeParamName "frameMode"
