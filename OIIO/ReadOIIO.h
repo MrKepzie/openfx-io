@@ -1,6 +1,6 @@
 /*
- OFX oiioWriter plugin.
- Writs an image using the OpenImageIO library.
+ OFX oiioReader plugin.
+ Reads an image using the OpenImageIO library.
  
  Copyright (C) 2013 INRIA
  Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
@@ -36,31 +36,36 @@
  78153 Le Chesnay Cedex - France
  
  */
-#ifndef __Io__oiioWriter__
-#define __Io__oiioWriter__
+#ifndef __Io__oiioReader__
+#define __Io__oiioReader__
 
+#include "GenericReader.h"
 
-#include "GenericWriter.h"
-
-class OiioWriterPlugin : public GenericWriterPlugin {
+class ReadOIIOPlugin : public GenericReaderPlugin {
     
 public:
     
-    OiioWriterPlugin(OfxImageEffectHandle handle);
+    ReadOIIOPlugin(OfxImageEffectHandle handle);
     
-    
-    virtual ~OiioWriterPlugin();
-    
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
+    virtual ~ReadOIIOPlugin();
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
+    
+    virtual void clearAnyCache();
 private:
     
-    virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg);
+    virtual void onInputFileChanged(const std::string& filename);
     
-    virtual bool isImageFile(const std::string& fileExtension) const;
+    virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
+        
+    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
+    
+    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
     
 };
 
-#endif /* defined(__Io__oiioWriter__) */
+mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false,OCIO::ROLE_SCENE_LINEAR);
+
+#endif /* defined(__Io__oiioReader__) */

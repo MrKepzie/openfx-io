@@ -37,19 +37,21 @@
  
  */
 
-#include "oiioWriter.h"
+#include "WriteOIIO.h"
+
 #include <OpenImageIO/imageio.h>
+
 OIIO_NAMESPACE_USING
 
 
-OiioWriterPlugin::OiioWriterPlugin(OfxImageEffectHandle handle)
+WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 {
     
 }
 
 
-OiioWriterPlugin::~OiioWriterPlugin() {
+WriteOIIOPlugin::~WriteOIIOPlugin() {
     
 }
 
@@ -92,15 +94,15 @@ static void supportedFileFormats_static(std::vector<std::string>* formats) {
     formats->push_back("zfile");
 }
 
-void OiioWriterPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
+void WriteOIIOPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
     supportedFileFormats_static(formats);
 }
 
-void OiioWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     
 }
 
-void OiioWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) {
+void WriteOIIOPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) {
     ImageOutput *output = ImageOutput::create(filename);
     if (!output) {
         setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
@@ -150,18 +152,17 @@ void OiioWriterPlugin::encode(const std::string& filename,OfxTime time,const OFX
     delete output;
 }
 
-bool OiioWriterPlugin::isImageFile(const std::string& /*fileExtension*/) const {
+bool WriteOIIOPlugin::isImageFile(const std::string& /*fileExtension*/) const {
     return true;
 }
 
 
 using namespace OFX;
-mDeclareWriterPluginFactory(OiioWriterPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
 
 
 
 
-void OiioWriterPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+void WriteOIIOPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
 }
 
@@ -171,7 +172,7 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static OiioWriterPluginFactory p("fr.inria.openfx:WriteOIIO", 1, 0);
+            static WriteOIIOPluginFactory p("fr.inria.openfx:WriteOIIO", 1, 0);
             ids.push_back(&p);
         }
     };
@@ -179,7 +180,7 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void OiioWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
+void WriteOIIOPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
@@ -187,12 +188,12 @@ void OiioWriterPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OiioWriterPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void WriteOIIOPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {    
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OiioWriterPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new OiioWriterPlugin(handle);
+    return new WriteOIIOPlugin(handle);
 }

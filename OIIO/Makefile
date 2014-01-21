@@ -1,5 +1,5 @@
-PLUGINOBJECTS = oiioReader.o GenericReader.o Lut.o
-PLUGINNAME = oiioReader
+PLUGINOBJECTS = ReadOIIO.o WriteOIIO.o GenericReader.o GenericWriter.o Lut.o
+PLUGINNAME = OIIO
 VPATH += ../IOSupport
 
 include ../Makefile.master

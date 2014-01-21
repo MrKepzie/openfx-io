@@ -38,36 +38,39 @@
  */
 
 
-#include "oiioReader.h"
+#include "ReadOIIO.h"
+
 #include <iostream>
+
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
+
 OIIO_NAMESPACE_USING
 
 
 ////global OIIO image cache
 static ImageCache* cache = 0;
 
-OiioReaderPlugin::OiioReaderPlugin(OfxImageEffectHandle handle)
+ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
 {
     
 }
 
-OiioReaderPlugin::~OiioReaderPlugin() {
+ReadOIIOPlugin::~ReadOIIOPlugin() {
     
 }
 
-void OiioReaderPlugin::clearAnyCache() {
+void ReadOIIOPlugin::clearAnyCache() {
     ///flush the OIIO cache
     cache->invalidate_all();
 }
 
-void OiioReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
-void OiioReaderPlugin::onInputFileChanged(const std::string &filename) {
+void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
     
 //    ImageSpec spec;
@@ -143,11 +146,11 @@ static void supportedFileFormats_static(std::vector<std::string>* formats) {
 }
 
 
-void OiioReaderPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
+void ReadOIIOPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
     supportedFileFormats_static(formats);
 }
 
-void OiioReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) {
+void ReadOIIOPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) {
     ImageSpec spec;
     
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -181,7 +184,7 @@ void OiioReaderPlugin::decode(const std::string& filename,OfxTime time,OFX::Imag
 
 }
 
-void OiioReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
+void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
     ImageSpec spec;
     
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -198,38 +201,39 @@ void OiioReaderPlugin::getFrameRegionOfDefinition(const std::string& filename,Of
 
 
 using namespace OFX;
-mDeclareReaderPluginFactory(OiioReaderPluginFactory, ;, ;,false,OCIO::ROLE_SCENE_LINEAR);
 
-void OiioReaderPluginFactory::load() {
+void ReadOIIOPluginFactory::load() {
     if (!cache) {
         cache = ImageCache::create();
     }
 }
 
-void OiioReaderPluginFactory::unload() {
+void ReadOIIOPluginFactory::unload() {
     if (cache) {
         ImageCache::destroy(cache);
     }
 }
 
-void OiioReaderPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
+void ReadOIIOPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
     supportedFileFormats_static(formats);
 }
 
+#if 0
 namespace OFX
 {
     namespace Plugin
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-            static OiioReaderPluginFactory p("fr.inria.openfx:ReadOIIO", 1, 0);
+            static ReadOIIOPluginFactory p("fr.inria.openfx:ReadOIIO", 1, 0);
             ids.push_back(&p);
         }
     };
 };
+#endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void OiioReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
+void ReadOIIOPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 {
     
     ///set OIIO to use as many threads as there are cores on the CPU
@@ -245,12 +249,12 @@ void OiioReaderPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OiioReaderPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void ReadOIIOPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
 {
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OiioReaderPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
 {
-    return new OiioReaderPlugin(handle);
+    return new ReadOIIOPlugin(handle);
 }

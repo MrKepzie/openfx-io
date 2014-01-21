@@ -13,7 +13,6 @@
 			buildPhases = (
 			);
 			dependencies = (
-				D70E7DD7188C4B210068F1FF /* PBXTargetDependency */,
 				D7330E0618867C2E004A6199 /* PBXTargetDependency */,
 				D709B977187890F900D5A0B4 /* PBXTargetDependency */,
 				D74E62641875A91100D8FA13 /* PBXTargetDependency */,
@@ -27,35 +26,27 @@
 		1E00B38F188EE887003BC7F3 /* GenericReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B387188EE887003BC7F3 /* GenericReader.cpp */; };
 		1E00B391188EE887003BC7F3 /* GenericReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B387188EE887003BC7F3 /* GenericReader.cpp */; };
 		1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B387188EE887003BC7F3 /* GenericReader.cpp */; };
-		1E00B394188EE887003BC7F3 /* GenericReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B387188EE887003BC7F3 /* GenericReader.cpp */; };
 		1E00B395188EE887003BC7F3 /* GenericReader.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B388188EE887003BC7F3 /* GenericReader.h */; };
 		1E00B397188EE887003BC7F3 /* GenericReader.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B388188EE887003BC7F3 /* GenericReader.h */; };
 		1E00B399188EE887003BC7F3 /* GenericReader.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B388188EE887003BC7F3 /* GenericReader.h */; };
-		1E00B39A188EE887003BC7F3 /* GenericReader.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B388188EE887003BC7F3 /* GenericReader.h */; };
 		1E00B39B188EE887003BC7F3 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E00B39D188EE887003BC7F3 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
-		1E00B3A0188EE887003BC7F3 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E00B3A1188EE887003BC7F3 /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
 		1E00B3A3188EE887003BC7F3 /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
 		1E00B3A5188EE887003BC7F3 /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
-		1E00B3A6188EE887003BC7F3 /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
 		1E00B3A7188EE887003BC7F3 /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38B188EE887003BC7F3 /* Lut.cpp */; };
 		1E00B3A9188EE887003BC7F3 /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38B188EE887003BC7F3 /* Lut.cpp */; };
 		1E00B3AB188EE887003BC7F3 /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38B188EE887003BC7F3 /* Lut.cpp */; };
-		1E00B3AC188EE887003BC7F3 /* Lut.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38B188EE887003BC7F3 /* Lut.cpp */; };
 		1E00B3AD188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3AF188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3B1188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
-		1E00B3B2188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3B3188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
 		1E00B3B5188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
 		1E00B3B7188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
-		1E00B3B8188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
 		1E00B3B9188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
 		1E00B3BB188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
 		1E00B3BD188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
-		1E00B3BE188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
 		1E00B3C9188EE90A003BC7F3 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C3188EE90A003BC7F3 /* Makefile */; };
 		1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C4188EE90A003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C5188EE90A003BC7F3 /* ReadEXR.cpp */; };
@@ -71,6 +62,12 @@
 		1E00B3E0188EE923003BC7F3 /* ReadFFmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D7188EE923003BC7F3 /* ReadFFmpeg.h */; };
 		1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D8188EE923003BC7F3 /* WriteFFmpeg.cpp */; };
 		1E00B3E2188EE923003BC7F3 /* WriteFFmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D9188EE923003BC7F3 /* WriteFFmpeg.h */; };
+		1E00B3EB188EEBC5003BC7F3 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E5188EEBC5003BC7F3 /* Makefile */; };
+		1E00B3EC188EEBC5003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E6188EEBC5003BC7F3 /* PluginRegistration.cpp */; };
+		1E00B3ED188EEBC5003BC7F3 /* ReadOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */; };
+		1E00B3EE188EEBC5003BC7F3 /* ReadOIIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3E8188EEBC5003BC7F3 /* ReadOIIO.h */; };
+		1E00B3EF188EEBC5003BC7F3 /* WriteOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */; };
+		1E00B3F0188EEBC5003BC7F3 /* WriteOIIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3EA188EEBC5003BC7F3 /* WriteOIIO.h */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D709B96C18787E4C00D5A0B4 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A81875AB0800D8FA13 /* ofxsCore.cpp */; };
 		D709B96E18787E4C00D5A0B4 /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AA1875AB0800D8FA13 /* ofxsImageEffect.cpp */; };
@@ -96,38 +93,7 @@
 		D709B9871878918400D5A0B4 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D709B9881878918400D5A0B4 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D709B9891878918400D5A0B4 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
-		D70E7DC5188C4AD10068F1FF /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
-		D70E7DDA188C4F030068F1FF /* oiioWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D70E7DD8188C4F030068F1FF /* oiioWriter.cpp */; };
-		D70E7DDB188C4F030068F1FF /* oiioWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = D70E7DD9188C4F030068F1FF /* oiioWriter.h */; };
-		D70E7DDE188C4FC20068F1FF /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A81875AB0800D8FA13 /* ofxsCore.cpp */; };
-		D70E7DDF188C4FC20068F1FF /* ofxsHWNDInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A91875AB0800D8FA13 /* ofxsHWNDInteract.cpp */; };
-		D70E7DE0188C4FC30068F1FF /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AA1875AB0800D8FA13 /* ofxsImageEffect.cpp */; };
-		D70E7DE1188C4FC30068F1FF /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AB1875AB0800D8FA13 /* ofxsInteract.cpp */; };
-		D70E7DE2188C4FC30068F1FF /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AC1875AB0800D8FA13 /* ofxsLog.cpp */; };
-		D70E7DE3188C4FC30068F1FF /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AD1875AB0800D8FA13 /* ofxsMultiThread.cpp */; };
-		D70E7DE4188C4FC30068F1FF /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AE1875AB0800D8FA13 /* ofxsParams.cpp */; };
-		D70E7DE5188C4FC30068F1FF /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
-		D70E7DE6188C4FC30068F1FF /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
-		D70E7DE7188C4FC30068F1FF /* ofxsSupportPrivate.h in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
-		D70E7DEA188C4FD30068F1FF /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
-		D70E7DEB188C4FD30068F1FF /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
-		D70E7DEC188C4FD30068F1FF /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
-		D70E7DED188C4FD30068F1FF /* ofxInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62751875AAB500D8FA13 /* ofxInteract.h */; };
-		D70E7DEE188C4FD30068F1FF /* ofxKeySyms.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62761875AAB500D8FA13 /* ofxKeySyms.h */; };
-		D70E7DEF188C4FD30068F1FF /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
-		D70E7DF0188C4FD30068F1FF /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
-		D70E7DF1188C4FD30068F1FF /* ofxMultiThread.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62791875AAB500D8FA13 /* ofxMultiThread.h */; };
-		D70E7DF2188C4FD30068F1FF /* ofxOpenGLRender.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627A1875AAB500D8FA13 /* ofxOpenGLRender.h */; };
-		D70E7DF3188C4FD30068F1FF /* ofxParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627B1875AAB500D8FA13 /* ofxParam.h */; };
-		D70E7DF4188C4FD30068F1FF /* ofxParametricParam.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627C1875AAB500D8FA13 /* ofxParametricParam.h */; };
-		D70E7DF5188C4FD30068F1FF /* ofxPixels.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627D1875AAB500D8FA13 /* ofxPixels.h */; };
-		D70E7DF6188C4FD30068F1FF /* ofxProgress.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627E1875AAB500D8FA13 /* ofxProgress.h */; };
-		D70E7DF7188C4FD30068F1FF /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
-		D70E7DF8188C4FD30068F1FF /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
-		D70E7DF9188C4FD30068F1FF /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
 		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
-		D7330DE518867BCD004A6199 /* oiioReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7330DE318867BCD004A6199 /* oiioReader.cpp */; };
-		D7330DE618867BCD004A6199 /* oiioReader.h in Headers */ = {isa = PBXBuildFile; fileRef = D7330DE418867BCD004A6199 /* oiioReader.h */; };
 		D7330DE918867C06004A6199 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A81875AB0800D8FA13 /* ofxsCore.cpp */; };
 		D7330DEA18867C06004A6199 /* ofxsHWNDInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62A91875AB0800D8FA13 /* ofxsHWNDInteract.cpp */; };
 		D7330DEB18867C06004A6199 /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AA1875AB0800D8FA13 /* ofxsImageEffect.cpp */; };
@@ -200,13 +166,6 @@
 			remoteGlobalIDString = D709B95218787D6700D5A0B4;
 			remoteInfo = exrReader;
 		};
-		D70E7DD6188C4B210068F1FF /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = D70E7DC3188C4AD10068F1FF;
-			remoteInfo = oiioWriter;
-		};
 		D7330E0518867C2E004A6199 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
@@ -250,13 +209,15 @@
 		1E00B3D7188EE923003BC7F3 /* ReadFFmpeg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ReadFFmpeg.h; sourceTree = "<group>"; };
 		1E00B3D8188EE923003BC7F3 /* WriteFFmpeg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WriteFFmpeg.cpp; sourceTree = "<group>"; };
 		1E00B3D9188EE923003BC7F3 /* WriteFFmpeg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WriteFFmpeg.h; sourceTree = "<group>"; };
+		1E00B3E4188EEBC5003BC7F3 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1E00B3E5188EEBC5003BC7F3 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		1E00B3E6188EEBC5003BC7F3 /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
+		1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReadOIIO.cpp; sourceTree = "<group>"; };
+		1E00B3E8188EEBC5003BC7F3 /* ReadOIIO.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ReadOIIO.h; sourceTree = "<group>"; };
+		1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WriteOIIO.cpp; sourceTree = "<group>"; };
+		1E00B3EA188EEBC5003BC7F3 /* WriteOIIO.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WriteOIIO.h; sourceTree = "<group>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		D70E7DC4188C4AD10068F1FF /* oiioWriter.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = oiioWriter.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		D70E7DD8188C4F030068F1FF /* oiioWriter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = oiioWriter.cpp; sourceTree = "<group>"; };
-		D70E7DD9188C4F030068F1FF /* oiioWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = oiioWriter.h; sourceTree = "<group>"; };
-		D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = oiioReader.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		D7330DE318867BCD004A6199 /* oiioReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = oiioReader.cpp; sourceTree = "<group>"; };
-		D7330DE418867BCD004A6199 /* oiioReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = oiioReader.h; sourceTree = "<group>"; };
+		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62491875A7A400D8FA13 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		D74E62711875AAB500D8FA13 /* IOExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOExtensions.h; sourceTree = "<group>"; };
@@ -303,14 +264,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D70E7DC1188C4AD10068F1FF /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D70E7DC5188C4AD10068F1FF /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -380,33 +333,28 @@
 			path = EXR;
 			sourceTree = "<group>";
 		};
-		D70E7DC6188C4AD10068F1FF /* oiioWriter */ = {
+		1E00B3E3188EEB98003BC7F3 /* OIIO */ = {
 			isa = PBXGroup;
 			children = (
-				D70E7DD8188C4F030068F1FF /* oiioWriter.cpp */,
-				D70E7DD9188C4F030068F1FF /* oiioWriter.h */,
+				1E00B3E4188EEBC5003BC7F3 /* Info.plist */,
+				1E00B3E5188EEBC5003BC7F3 /* Makefile */,
+				1E00B3E6188EEBC5003BC7F3 /* PluginRegistration.cpp */,
+				1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */,
+				1E00B3E8188EEBC5003BC7F3 /* ReadOIIO.h */,
+				1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */,
+				1E00B3EA188EEBC5003BC7F3 /* WriteOIIO.h */,
 			);
-			path = oiioWriter;
-			sourceTree = "<group>";
-		};
-		D7330DD318867B35004A6199 /* oiioReader */ = {
-			isa = PBXGroup;
-			children = (
-				D7330DE318867BCD004A6199 /* oiioReader.cpp */,
-				D7330DE418867BCD004A6199 /* oiioReader.h */,
-			);
-			path = oiioReader;
+			path = OIIO;
 			sourceTree = "<group>";
 		};
 		D74E623B1875A79700D8FA13 = {
 			isa = PBXGroup;
 			children = (
+				1E00B3E3188EEB98003BC7F3 /* OIIO */,
 				1E00B3C1188EE8AE003BC7F3 /* EXR */,
 				1E00B3C0188EE8A1003BC7F3 /* FFmpeg */,
 				1E00B386188EE860003BC7F3 /* IOSupport */,
 				D74E62931875AABD00D8FA13 /* OpenFX */,
-				D7330DD318867B35004A6199 /* oiioReader */,
-				D70E7DC6188C4AD10068F1FF /* oiioWriter */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
 			);
@@ -417,8 +365,7 @@
 			children = (
 				D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */,
 				D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */,
-				D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */,
-				D70E7DC4188C4AD10068F1FF /* oiioWriter.ofx.bundle */,
+				D7330DD118867B35004A6199 /* OIIO.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -531,34 +478,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D70E7DC2188C4AD10068F1FF /* Headers */ = {
-			isa = PBXHeadersBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D70E7DEA188C4FD30068F1FF /* ofxCore.h in Headers */,
-				1E00B3A6188EE887003BC7F3 /* GenericWriter.h in Headers */,
-				D70E7DEB188C4FD30068F1FF /* ofxDialog.h in Headers */,
-				D70E7DEC188C4FD30068F1FF /* ofxImageEffect.h in Headers */,
-				D70E7DED188C4FD30068F1FF /* ofxInteract.h in Headers */,
-				D70E7DEE188C4FD30068F1FF /* ofxKeySyms.h in Headers */,
-				D70E7DEF188C4FD30068F1FF /* ofxMemory.h in Headers */,
-				D70E7DF0188C4FD30068F1FF /* ofxMessage.h in Headers */,
-				1E00B3BE188EE887003BC7F3 /* OCIO.h in Headers */,
-				D70E7DF1188C4FD30068F1FF /* ofxMultiThread.h in Headers */,
-				D70E7DF2188C4FD30068F1FF /* ofxOpenGLRender.h in Headers */,
-				D70E7DF3188C4FD30068F1FF /* ofxParam.h in Headers */,
-				D70E7DF4188C4FD30068F1FF /* ofxParametricParam.h in Headers */,
-				D70E7DF5188C4FD30068F1FF /* ofxPixels.h in Headers */,
-				D70E7DF6188C4FD30068F1FF /* ofxProgress.h in Headers */,
-				D70E7DF7188C4FD30068F1FF /* ofxProperty.h in Headers */,
-				D70E7DF8188C4FD30068F1FF /* ofxSonyVegas.h in Headers */,
-				1E00B3B2188EE887003BC7F3 /* Lut.h in Headers */,
-				1E00B39A188EE887003BC7F3 /* GenericReader.h in Headers */,
-				D70E7DF9188C4FD30068F1FF /* ofxTimeLine.h in Headers */,
-				D70E7DDB188C4F030068F1FF /* oiioWriter.h in Headers */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		D7330DCF18867B35004A6199 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -571,19 +490,20 @@
 				D7330DF918867C1E004A6199 /* ofxKeySyms.h in Headers */,
 				D7330DFA18867C1E004A6199 /* ofxMemory.h in Headers */,
 				D7330DFB18867C1E004A6199 /* ofxMessage.h in Headers */,
+				1E00B3F0188EEBC5003BC7F3 /* WriteOIIO.h in Headers */,
 				1E00B3BD188EE887003BC7F3 /* OCIO.h in Headers */,
 				D7330DFC18867C1E004A6199 /* ofxMultiThread.h in Headers */,
 				D7330DFD18867C1E004A6199 /* ofxOpenGLRender.h in Headers */,
 				D7330DFE18867C1E004A6199 /* ofxParam.h in Headers */,
 				D7330DFF18867C1E004A6199 /* ofxParametricParam.h in Headers */,
 				D7330E0018867C1E004A6199 /* ofxPixels.h in Headers */,
+				1E00B3EE188EEBC5003BC7F3 /* ReadOIIO.h in Headers */,
 				D7330E0118867C1E004A6199 /* ofxProgress.h in Headers */,
 				D7330E0218867C1E004A6199 /* ofxProperty.h in Headers */,
 				D7330E0318867C1E004A6199 /* ofxSonyVegas.h in Headers */,
 				1E00B3B1188EE887003BC7F3 /* Lut.h in Headers */,
 				1E00B399188EE887003BC7F3 /* GenericReader.h in Headers */,
 				D7330E0418867C1E004A6199 /* ofxTimeLine.h in Headers */,
-				D7330DE618867BCD004A6199 /* oiioReader.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -649,26 +569,9 @@
 			productReference = D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
-		D70E7DC3188C4AD10068F1FF /* oiioWriter */ = {
+		D7330DD018867B35004A6199 /* OIIO */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D70E7DD5188C4AD10068F1FF /* Build configuration list for PBXNativeTarget "oiioWriter" */;
-			buildPhases = (
-				D70E7DC0188C4AD10068F1FF /* Sources */,
-				D70E7DC1188C4AD10068F1FF /* Frameworks */,
-				D70E7DC2188C4AD10068F1FF /* Headers */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = oiioWriter;
-			productName = oiioWriter;
-			productReference = D70E7DC4188C4AD10068F1FF /* oiioWriter.ofx.bundle */;
-			productType = "com.apple.product-type.bundle";
-		};
-		D7330DD018867B35004A6199 /* oiioReader */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */;
+			buildConfigurationList = D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "OIIO" */;
 			buildPhases = (
 				D7330DCD18867B35004A6199 /* Sources */,
 				D7330DCE18867B35004A6199 /* Frameworks */,
@@ -678,9 +581,9 @@
 			);
 			dependencies = (
 			);
-			name = oiioReader;
+			name = OIIO;
 			productName = oiioReader;
-			productReference = D7330DD118867B35004A6199 /* oiioReader.ofx.bundle */;
+			productReference = D7330DD118867B35004A6199 /* OIIO.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
 		D74E62451875A7A400D8FA13 /* FFmpeg */ = {
@@ -723,8 +626,7 @@
 				D74E625F1875A90800D8FA13 /* all */,
 				D74E62451875A7A400D8FA13 /* FFmpeg */,
 				D709B95218787D6700D5A0B4 /* EXR */,
-				D7330DD018867B35004A6199 /* oiioReader */,
-				D70E7DC3188C4AD10068F1FF /* oiioWriter */,
+				D7330DD018867B35004A6199 /* OIIO */,
 			);
 		};
 /* End PBXProject section */
@@ -753,28 +655,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D70E7DC0188C4AD10068F1FF /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D70E7DDE188C4FC20068F1FF /* ofxsCore.cpp in Sources */,
-				D70E7DDF188C4FC20068F1FF /* ofxsHWNDInteract.cpp in Sources */,
-				D70E7DE0188C4FC30068F1FF /* ofxsImageEffect.cpp in Sources */,
-				1E00B3AC188EE887003BC7F3 /* Lut.cpp in Sources */,
-				D70E7DE1188C4FC30068F1FF /* ofxsInteract.cpp in Sources */,
-				D70E7DE2188C4FC30068F1FF /* ofxsLog.cpp in Sources */,
-				D70E7DE3188C4FC30068F1FF /* ofxsMultiThread.cpp in Sources */,
-				D70E7DE4188C4FC30068F1FF /* ofxsParams.cpp in Sources */,
-				D70E7DE5188C4FC30068F1FF /* ofxsProperty.cpp in Sources */,
-				1E00B3B8188EE887003BC7F3 /* OCIO.cpp in Sources */,
-				D70E7DE6188C4FC30068F1FF /* ofxsPropertyValidation.cpp in Sources */,
-				1E00B3A0188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
-				D70E7DE7188C4FC30068F1FF /* ofxsSupportPrivate.h in Sources */,
-				1E00B394188EE887003BC7F3 /* GenericReader.cpp in Sources */,
-				D70E7DDA188C4F030068F1FF /* oiioWriter.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		D7330DCD18867B35004A6199 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -782,9 +662,12 @@
 				D7330DE918867C06004A6199 /* ofxsCore.cpp in Sources */,
 				D7330DEA18867C06004A6199 /* ofxsHWNDInteract.cpp in Sources */,
 				D7330DEB18867C06004A6199 /* ofxsImageEffect.cpp in Sources */,
+				1E00B3ED188EEBC5003BC7F3 /* ReadOIIO.cpp in Sources */,
 				1E00B3AB188EE887003BC7F3 /* Lut.cpp in Sources */,
+				1E00B3EC188EEBC5003BC7F3 /* PluginRegistration.cpp in Sources */,
 				D7330DEC18867C06004A6199 /* ofxsInteract.cpp in Sources */,
 				D7330DED18867C06004A6199 /* ofxsLog.cpp in Sources */,
+				1E00B3EB188EEBC5003BC7F3 /* Makefile in Sources */,
 				D7330DEE18867C06004A6199 /* ofxsMultiThread.cpp in Sources */,
 				D7330DEF18867C06004A6199 /* ofxsParams.cpp in Sources */,
 				D7330DF018867C06004A6199 /* ofxsProperty.cpp in Sources */,
@@ -792,8 +675,8 @@
 				D7330DF118867C06004A6199 /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				D7330DF218867C06004A6199 /* ofxsSupportPrivate.h in Sources */,
+				1E00B3EF188EEBC5003BC7F3 /* WriteOIIO.cpp in Sources */,
 				1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */,
-				D7330DE518867BCD004A6199 /* oiioReader.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -829,14 +712,9 @@
 			target = D709B95218787D6700D5A0B4 /* EXR */;
 			targetProxy = D709B976187890F900D5A0B4 /* PBXContainerItemProxy */;
 		};
-		D70E7DD7188C4B210068F1FF /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = D70E7DC3188C4AD10068F1FF /* oiioWriter */;
-			targetProxy = D70E7DD6188C4B210068F1FF /* PBXContainerItemProxy */;
-		};
 		D7330E0618867C2E004A6199 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D7330DD018867B35004A6199 /* oiioReader */;
+			target = D7330DD018867B35004A6199 /* OIIO */;
 			targetProxy = D7330E0518867C2E004A6199 /* PBXContainerItemProxy */;
 		};
 		D74E62641875A91100D8FA13 /* PBXTargetDependency */ = {
@@ -893,67 +771,6 @@
 			};
 			name = Release;
 		};
-		D70E7DD3188C4AD10068F1FF /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				COMBINE_HIDPI_IMAGES = YES;
-				HEADER_SEARCH_PATHS = (
-					"$(OFX_PATH)/include",
-					"$(OFX_PATH)/Support/include",
-					"$(OFX_PATH)/Support/Plugins/include",
-					"$(OCCIO_PATH)/include",
-					"$(OIIO_PATH)/include",
-				);
-				INFOPLIST_FILE = oiioWriter/Info.plist;
-				LIBRARY_SEARCH_PATHS = (
-					"$(OCCIO_PATH)/lib",
-					"$(OIIO_PATH)/lib",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
-				OIIO_PATH = /opt/local;
-				OTHER_LDFLAGS = (
-					"-L$(OCCIO_PATH)/lib",
-					"-lOpenColorIO",
-					"-L$(OIIO_PATH)/lib",
-					"-lOpenImageIO",
-				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
-				SDKROOT = macosx;
-			};
-			name = Debug;
-		};
-		D70E7DD4188C4AD10068F1FF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				COMBINE_HIDPI_IMAGES = YES;
-				COPY_PHASE_STRIP = YES;
-				HEADER_SEARCH_PATHS = (
-					"$(OFX_PATH)/include",
-					"$(OFX_PATH)/Support/include",
-					"$(OFX_PATH)/Support/Plugins/include",
-					"$(OCCIO_PATH)/include",
-					"$(OIIO_PATH)/include",
-				);
-				INFOPLIST_FILE = oiioWriter/Info.plist;
-				LIBRARY_SEARCH_PATHS = (
-					"$(OCCIO_PATH)/lib",
-					"$(OIIO_PATH)/lib",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
-				OIIO_PATH = /opt/local;
-				OTHER_LDFLAGS = (
-					"-L$(OCCIO_PATH)/lib",
-					"-lOpenColorIO",
-					"-L$(OIIO_PATH)/lib",
-					"-lOpenImageIO",
-				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
-				SDKROOT = macosx;
-			};
-			name = Release;
-		};
 		D7330DE018867B35004A6199 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -966,7 +783,7 @@
 					"$(OCCIO_PATH)/include",
 					"$(OIIO_PATH)/include",
 				);
-				INFOPLIST_FILE = oiioReader/Info.plist;
+				INFOPLIST_FILE = OIIO/Info.plist;
 				LIBRARY_SEARCH_PATHS = "$(OIIO_PATH)/lib";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OIIO_PATH = /opt/local;
@@ -993,7 +810,7 @@
 					"$(OCCIO_PATH)/include",
 					"$(OIIO_PATH)/include",
 				);
-				INFOPLIST_FILE = oiioReader/Info.plist;
+				INFOPLIST_FILE = OIIO/Info.plist;
 				LIBRARY_SEARCH_PATHS = "$(OIIO_PATH)/lib";
 				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OIIO_PATH = /opt/local;
@@ -1137,16 +954,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D70E7DD5188C4AD10068F1FF /* Build configuration list for PBXNativeTarget "oiioWriter" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				D70E7DD3188C4AD10068F1FF /* Debug */,
-				D70E7DD4188C4AD10068F1FF /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "oiioReader" */ = {
+		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "OIIO" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D7330DE018867B35004A6199 /* Debug */,
