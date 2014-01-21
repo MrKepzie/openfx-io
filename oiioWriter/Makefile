@@ -1,5 +1,6 @@
-PLUGINOBJECTS = oiioWriter.o ../GenericWriter.o ../Lut.o
+PLUGINOBJECTS = oiioWriter.o GenericWriter.o Lut.o
 PLUGINNAME = oiioWriter
+VPATH=../IOSupport
 
 include ../Makefile.master
 

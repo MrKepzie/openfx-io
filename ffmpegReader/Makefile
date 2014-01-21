@@ -1,5 +1,6 @@
-PLUGINOBJECTS = ffmpegReader.o FfmpegHandler.o ../GenericReader.o ../Lut.o
+PLUGINOBJECTS = ffmpegReader.o FfmpegHandler.o GenericReader.o Lut.o
 PLUGINNAME = ffmpegReader
+VPATH += ../IOSupport
 
 include ../Makefile.master
 
