@@ -61,6 +61,8 @@
 #ifdef OFX_IO_USING_OCIO
 #define kReaderOCCIOConfigFileParamName "ReaderOCCIOConfigFileParamName"
 #define kReaderInputColorSpaceParamName "inputColorSpace"
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
 static bool global_wasOCIOVarFund;
 #endif
 

@@ -42,11 +42,6 @@
 
 #include <ofxsImageEffect.h>
 
-#ifdef IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-namespace OCIO = OCIO_NAMESPACE;
-#endif
-
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 

@@ -41,11 +41,6 @@
 
 #include <ofxsImageEffect.h>
 
-#ifdef IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-namespace OCIO = OCIO_NAMESPACE;
-#endif
-
 class CopierBase;
 
 /**

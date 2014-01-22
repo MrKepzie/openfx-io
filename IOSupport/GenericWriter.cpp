@@ -98,6 +98,8 @@
 #ifdef OFX_IO_USING_OCIO
 #define kWriterOCCIOConfigFileParamName "WriterOCCIOConfigFileParamName"
 #define kWriterOutputColorSpaceParamName "outputColorSpace"
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
 static bool global_wasOCIOVarFund;
 #endif
 
