@@ -98,6 +98,10 @@
 #ifdef IO_USING_OCIO
 #define kWriterOCCIOConfigFileParamName "WriterOCCIOConfigFileParamName"
 #define kWriterOutputColorSpaceParamName "outputColorSpace"
+
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
+static bool global_wasOCIOVarFund;
 #endif
 
 // Base class for the RGBA and the Alpha processor
@@ -467,18 +471,19 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     }
 #ifdef IO_USING_OCIO
     else if ( paramName == kWriterOCCIOConfigFileParamName ) {
+        // this happens only if the parameter is enabled, i.e. on Natron
         std::string filename;
         _occioConfigFile->getValue(filename);
-        std::vector<std::string> colorSpaces;
-        int defaultIndex;
-        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
-        
+        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(filename.c_str());
+        // FIXME: why is getOutputColorSpace() in the plugin factory class?
+        //std::string defaultcsname = config->getColorSpace(getOutputColorSpace().c_str())->getName();
         _outputColorSpace->resetOptions();
-        for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
-            _outputColorSpace->appendOption(colorSpaces[i]);
-        }
-        if (defaultIndex < (int)colorSpaces.size()) {
-            _outputColorSpace->setValue(defaultIndex);
+        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
+            std::string csname = config->getColorSpaceNameByIndex(i);
+            _outputColorSpace->appendOption(csname);
+            //if (csname == defaultcsname) {
+            //    _outputColorSpace->setDefault(i);
+            //}
         }
     }
 #endif
@@ -489,7 +494,7 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
 using namespace OFX;
 
 #ifdef IO_USING_OCIO
-void GenericWriterPluginFactory::getOutputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIO::ROLE_SCENE_LINEAR); }
+std::string GenericWriterPluginFactory::getOutputColorSpace() const { return OCIO::ROLE_SCENE_LINEAR; }
 #endif
 
 /**
@@ -610,11 +615,23 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     ////////// OCIO config file
     OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kWriterOCCIOConfigFileParamName);
     occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
     occioConfigFileParam->setHint("The file to read the OpenColorIO config from.");
     occioConfigFileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
-    
+    // the OCIO config can only be set in a portable fashion using the environment variable.
+    // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
+    // disable it, and set the default from the env variable.
+    assert(getImageEffectHostDescription());
+    if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
+        // enable it on Natron host only
+        occioConfigFileParam->setEnabled(true);
+        occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    } else {
+        occioConfigFileParam->setEnabled(false);
+        //occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    }
+    char* file = std::getenv("OCIO");
+
     ///////////Output Color-space
     OFX::ChoiceParamDescriptor* outputColorSpaceParam = desc.defineChoiceParam(kWriterOutputColorSpaceParamName);
     outputColorSpaceParam->setLabels("Output color-space", "Output color-space", "Output color-space");
@@ -622,20 +639,29 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     outputColorSpaceParam->setAnimates(false);
     page->addChild(*outputColorSpaceParam);
     
-    ///read the default config pointed to by the env var OCIO
-    std::vector<std::string> colorSpaces;
-    int defaultIndex;
-    std::string defaultOcioRole;
-    getOutputColorSpace(defaultOcioRole);
-    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
-    
-    for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
-        outputColorSpaceParam->appendOption(colorSpaces[i]);
+    if (file == NULL) {
+        if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
+            occioConfigFileParam->setDefault("WARNING: You should set an OCIO environnement variable");
+        } else {
+            occioConfigFileParam->setDefault("WARNING: You must set an OCIO environnement variable");
+        }
+        outputColorSpaceParam->setEnabled(false);
+        global_wasOCIOVarFund = false;
+    } else {
+        global_wasOCIOVarFund = true;
+        occioConfigFileParam->setDefault(file);
+        //Add choices
+        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(file);
+        std::string defaultcsname = config->getColorSpace(getOutputColorSpace().c_str())->getName();
+        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
+            std::string csname = config->getColorSpaceNameByIndex(i);
+            outputColorSpaceParam->appendOption(csname);
+            if (csname == defaultcsname) {
+                outputColorSpaceParam->setDefault(i);
+            }
+        }
     }
-    if (defaultIndex < (int)colorSpaces.size()) {
-        outputColorSpaceParam->setDefault(defaultIndex);
-    }
-    
+
 #endif
     
     describeWriterInContext(desc, context, page);

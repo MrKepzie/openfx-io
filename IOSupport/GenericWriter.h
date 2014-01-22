@@ -41,9 +41,6 @@
 
 #include <ofxsImageEffect.h>
 
-#include "OCIO.h"
-
-
 class CopierBase;
 
 /**
@@ -200,7 +197,7 @@ public:
      * This is used as a hint by the describeInContext() function to determine what color-space is should use
      * by-default to convert from the input color-space. The base-class version set ocioRole to OCIO::ROLE_SCENE_LINEAR.
      **/
-    virtual void getOutputColorSpace(std::string& ocioRole) const;
+    virtual std::string getOutputColorSpace() const;
 #endif
 
 protected:
@@ -228,7 +225,7 @@ virtual void unload() UNLOADFUNCDEF ;\
 virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
 virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
 virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
-virtual void getOutputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIOROLE); } \
+virtual std::string getOutputColorSpace() const { return OCIOROLE; } \
 virtual void describeWriter(OFX::ImageEffectDescriptor &desc); \
 virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
 };

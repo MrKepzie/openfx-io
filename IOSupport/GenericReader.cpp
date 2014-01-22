@@ -61,6 +61,9 @@
 #ifdef IO_USING_OCIO
 #define kReaderOCCIOConfigFileParamName "ReaderOCCIOConfigFileParamName"
 #define kReaderInputColorSpaceParamName "inputColorSpace"
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
+static bool global_wasOCIOVarFund;
 #endif
 
 #define kReaderFirstFrameParamName "firstFrame"
@@ -560,18 +563,20 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     }
 #ifdef IO_USING_OCIO
     else if ( paramName == kReaderOCCIOConfigFileParamName ) {
+        // this happens only if the parameter is enabled, i.e. on Natron.
+        // Nuke, for example, doesn't support changing the options of a ChoiceParam.
         std::string filename;
         _occioConfigFile->getValue(filename);
-        std::vector<std::string> colorSpaces;
-        int defaultIndex;
-        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
-        
+        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(filename.c_str());
+        // FIXME: why is getInputColorSpace() in the plugin factory class?
+        //std::string defaultcsname = config->getColorSpace(getInputColorSpace().c_str())->getName();
         _inputColorSpace->resetOptions();
-        for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
-            _inputColorSpace->appendOption(colorSpaces[i]);
-        }
-        if (defaultIndex < (int)colorSpaces.size()) {
-            _inputColorSpace->setValue(defaultIndex);
+        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
+            std::string csname = config->getColorSpaceNameByIndex(i);
+            _inputColorSpace->appendOption(csname);
+            //if (csname == defaultcsname) {
+            //    _inputColorSpace->setDefault(i);
+            //}
         }
     }
 #endif
@@ -583,7 +588,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
 using namespace OFX;
 
 #ifdef IO_USING_OCIO
-void GenericReaderPluginFactory::getInputColorSpace(std::string& ocioRole) const { ocioRole = std::string(OCIO::ROLE_SCENE_LINEAR); }
+std::string GenericReaderPluginFactory::getInputColorSpace() const { return OCIO::ROLE_SCENE_LINEAR; }
 #endif
 
 void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
@@ -747,32 +752,53 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     ////////// OCIO config file
     OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kReaderOCCIOConfigFileParamName);
     occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
     occioConfigFileParam->setHint("The file to read the OpenColorIO config from.");
     occioConfigFileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
-    
+    // the OCIO config can only be set in a portable fashion using the environment variable.
+    // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
+    // disable it, and set the default from the env variable.
+    assert(getImageEffectHostDescription());
+    if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
+        // enable it on Natron host only
+        occioConfigFileParam->setEnabled(true);
+        occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    } else {
+        occioConfigFileParam->setEnabled(false);
+        //occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    }
+    char* file = std::getenv("OCIO");
+
     ///////////Input Color-space
     OFX::ChoiceParamDescriptor* inputColorSpaceParam = desc.defineChoiceParam(kReaderInputColorSpaceParamName);
     inputColorSpaceParam->setLabels("Input color-space", "Input color-space", "Input color-space");
     inputColorSpaceParam->setHint("Input data is taken to be in this color-space.");
     inputColorSpaceParam->setAnimates(false);
     page->addChild(*inputColorSpaceParam);
-    
-    ///read the default config pointed to by the env var OCIO
-    std::vector<std::string> colorSpaces;
-    int defaultIndex;
-    std::string defaultOcioRole;
-    getInputColorSpace(defaultOcioRole);
-    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
-    
-    for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
-        inputColorSpaceParam->appendOption(colorSpaces[i]);
-    }
-    if (defaultIndex < (int)colorSpaces.size()) {
-        inputColorSpaceParam->setDefault(defaultIndex);
-    }
 
+    if (file == NULL) {
+        if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
+            occioConfigFileParam->setDefault("WARNING: You should set an OCIO environnement variable");
+        } else {
+            occioConfigFileParam->setDefault("WARNING: You must set an OCIO environnement variable");
+        }
+        inputColorSpaceParam->setEnabled(false);
+        global_wasOCIOVarFund = false;
+    } else {
+        global_wasOCIOVarFund = true;
+        occioConfigFileParam->setDefault(file);
+        //Add choices
+        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(file);
+        std::string defaultcsname = config->getColorSpace(getInputColorSpace().c_str())->getName();
+        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
+            std::string csname = config->getColorSpaceNameByIndex(i);
+            inputColorSpaceParam->appendOption(csname);
+            if (csname == defaultcsname) {
+                inputColorSpaceParam->setDefault(i);
+            }
+        }
+    }
+    
 #endif
     
     describeReaderInContext(desc, context, page);

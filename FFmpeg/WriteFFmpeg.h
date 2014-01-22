@@ -82,6 +82,6 @@ private:
     
 };
 
-mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
+mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, {},true,OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
 
 #endif

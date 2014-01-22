@@ -80,6 +80,6 @@ private:
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 };
 
-mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true,OCIO::ROLE_COMPOSITING_LOG);
+mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true,OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
 
 #endif

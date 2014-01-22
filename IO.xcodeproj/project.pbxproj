@@ -41,12 +41,6 @@
 		1E00B3AD188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3AF188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3B1188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
-		1E00B3B3188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
-		1E00B3B5188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
-		1E00B3B7188EE887003BC7F3 /* OCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B38D188EE887003BC7F3 /* OCIO.cpp */; };
-		1E00B3B9188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
-		1E00B3BB188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
-		1E00B3BD188EE887003BC7F3 /* OCIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38E188EE887003BC7F3 /* OCIO.h */; };
 		1E00B3C9188EE90A003BC7F3 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C3188EE90A003BC7F3 /* Makefile */; };
 		1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C4188EE90A003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C5188EE90A003BC7F3 /* ReadEXR.cpp */; };
@@ -189,8 +183,6 @@
 		1E00B38A188EE887003BC7F3 /* GenericWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GenericWriter.h; sourceTree = "<group>"; };
 		1E00B38B188EE887003BC7F3 /* Lut.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Lut.cpp; sourceTree = "<group>"; };
 		1E00B38C188EE887003BC7F3 /* Lut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Lut.h; sourceTree = "<group>"; };
-		1E00B38D188EE887003BC7F3 /* OCIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIO.cpp; sourceTree = "<group>"; };
-		1E00B38E188EE887003BC7F3 /* OCIO.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIO.h; sourceTree = "<group>"; };
 		1E00B3C2188EE90A003BC7F3 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E00B3C3188EE90A003BC7F3 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E00B3C4188EE90A003BC7F3 /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -295,8 +287,6 @@
 				1E00B38A188EE887003BC7F3 /* GenericWriter.h */,
 				1E00B38B188EE887003BC7F3 /* Lut.cpp */,
 				1E00B38C188EE887003BC7F3 /* Lut.h */,
-				1E00B38D188EE887003BC7F3 /* OCIO.cpp */,
-				1E00B38E188EE887003BC7F3 /* OCIO.h */,
 			);
 			path = IOSupport;
 			sourceTree = "<group>";
@@ -462,7 +452,6 @@
 				D709B97F1878918400D5A0B4 /* ofxMemory.h in Headers */,
 				D709B9801878918400D5A0B4 /* ofxMessage.h in Headers */,
 				1E00B3CC188EE90A003BC7F3 /* ReadEXR.h in Headers */,
-				1E00B3BB188EE887003BC7F3 /* OCIO.h in Headers */,
 				D709B9811878918400D5A0B4 /* ofxMultiThread.h in Headers */,
 				D709B9821878918400D5A0B4 /* ofxOpenGLRender.h in Headers */,
 				D709B9831878918400D5A0B4 /* ofxParam.h in Headers */,
@@ -491,7 +480,6 @@
 				D7330DFA18867C1E004A6199 /* ofxMemory.h in Headers */,
 				D7330DFB18867C1E004A6199 /* ofxMessage.h in Headers */,
 				1E00B3F0188EEBC5003BC7F3 /* WriteOIIO.h in Headers */,
-				1E00B3BD188EE887003BC7F3 /* OCIO.h in Headers */,
 				D7330DFC18867C1E004A6199 /* ofxMultiThread.h in Headers */,
 				D7330DFD18867C1E004A6199 /* ofxOpenGLRender.h in Headers */,
 				D7330DFE18867C1E004A6199 /* ofxParam.h in Headers */,
@@ -516,7 +504,6 @@
 				D74E62A11875AAE100D8FA13 /* ofxsLog.h in Headers */,
 				D74E62A21875AAE100D8FA13 /* ofxsMemory.h in Headers */,
 				D74E62851875AAB500D8FA13 /* ofxImageEffect.h in Headers */,
-				1E00B3B9188EE887003BC7F3 /* OCIO.h in Headers */,
 				D74E628A1875AAB500D8FA13 /* ofxMultiThread.h in Headers */,
 				D74E62A51875AAE100D8FA13 /* ofxsParam.h in Headers */,
 				D74E62841875AAB500D8FA13 /* ofxDialog.h in Headers */,
@@ -647,7 +634,6 @@
 				1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E00B39D188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				D709B97418787E4C00D5A0B4 /* ofxsPropertyValidation.cpp in Sources */,
-				1E00B3B5188EE887003BC7F3 /* OCIO.cpp in Sources */,
 				1E00B3C9188EE90A003BC7F3 /* Makefile in Sources */,
 				1E00B3A9188EE887003BC7F3 /* Lut.cpp in Sources */,
 				1E00B391188EE887003BC7F3 /* GenericReader.cpp in Sources */,
@@ -671,7 +657,6 @@
 				D7330DEE18867C06004A6199 /* ofxsMultiThread.cpp in Sources */,
 				D7330DEF18867C06004A6199 /* ofxsParams.cpp in Sources */,
 				D7330DF018867C06004A6199 /* ofxsProperty.cpp in Sources */,
-				1E00B3B7188EE887003BC7F3 /* OCIO.cpp in Sources */,
 				D7330DF118867C06004A6199 /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				D7330DF218867C06004A6199 /* ofxsSupportPrivate.h in Sources */,
@@ -695,7 +680,6 @@
 				1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E00B38F188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				D74E62B21875AB0800D8FA13 /* ofxsCore.cpp in Sources */,
-				1E00B3B3188EE887003BC7F3 /* OCIO.cpp in Sources */,
 				1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */,
 				D74E62B71875AB0800D8FA13 /* ofxsMultiThread.cpp in Sources */,
 				D74E62B61875AB0800D8FA13 /* ofxsLog.cpp in Sources */,

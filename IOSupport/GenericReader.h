@@ -42,8 +42,6 @@
 
 #include <ofxsImageEffect.h>
 
-#include "OCIO.h"
-
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 
@@ -255,7 +253,7 @@ public:
      * This is used as a hint by the describeInContext() function to determine what color-space is should use
      * by-default to convert from the input color-space. The base-class version set ocioRole to OCIO::ROLE_SCENE_LINEAR.
      **/
-    virtual void getInputColorSpace(std::string& ocioRole) const;
+    virtual std::string getInputColorSpace() const;
 #endif
     
 protected:
