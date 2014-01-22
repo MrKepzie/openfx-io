@@ -214,7 +214,7 @@ namespace FFmpeg {
             stream->_avstream = avstream;
             stream->_codecContext = avstream->codec;
             stream->_videoCodec = videoCodec;
-            stream->_avFrame = avcodec_alloc_frame();
+            stream->_avFrame = av_frame_alloc();
             
             // If FPS is specified, record it.
             // Otherwise assume 1 fps (default value).

@@ -50,6 +50,11 @@
 #define snprintf sprintf_s
 #endif
 
+#if defined(WIN32) || defined(WIN64)
+#  include <windows.h> // for GetSystemInfo()
+#else
+#  include <unistd.h> // for sysconf()
+#endif
 
 
 extern "C" {
@@ -409,7 +414,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
 
     
     // now allocate an image frame for the image in the output codec's format...
-    AVFrame* output = avcodec_alloc_frame();
+    AVFrame* output = av_frame_alloc();
     picSize = avpicture_get_size(pixFMT,w, h);
     uint8_t* outBuffer = (uint8_t*)av_malloc(picSize);
     
