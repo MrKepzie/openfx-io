@@ -276,12 +276,17 @@ double GenericReaderPlugin::getSequenceTime(double t)
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
-    ///the return value
-    int sequenceTime =  t - timeOffset;
+    ///get the time sequence domain
+    OfxRangeI sequenceTimeDomain;
+    _firstFrame->getValue(sequenceTimeDomain.min);
+    _lastFrame->getValue(sequenceTimeDomain.max);
     
-    ///get the time domain (which will be offset to the starting time)
-    OfxRangeD sequenceTimeDomain;
-    getSequenceTimeDomainInternal(sequenceTimeDomain);
+    OfxRangeD originalTimeDomain;
+    getSequenceTimeDomainInternal(originalTimeDomain);
+    
+    ///the return value
+    int sequenceTime =  t - timeOffset + sequenceTimeDomain.min - originalTimeDomain.min;
+
     
     ///get the offset from the starting time of the sequence in case we bounce or loop
     int timeOffsetFromStart = t -  sequenceTimeDomain.min;
@@ -572,7 +577,13 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         
         std::vector<std::string> colorSpaces;
         int defaultIndex;
-        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
+        try {
+            OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
+        } catch (OCIO::Exception& e) {
+            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        } catch (...) {
+            setPersistentMessage(OFX::Message::eMessageError, "","Unknown exception during OCIO setup.");
+        }
         
         _inputColorSpace->resetOptions();
         for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
@@ -595,43 +606,31 @@ void openOCIOConfigFile(std::vector<std::string>* colorSpaces,int* defaultColorS
     if (occioRoleHint.empty()) {
         occioRoleHint = std::string(OCIO::ROLE_SCENE_LINEAR);
     }
-    try
-    {
-        OCIO::ConstConfigRcPtr config;
-        if (filename) {
-            config = OCIO::Config::CreateFromFile(filename);
-        } else {
-            config = OCIO::Config::CreateFromEnv();
-        }
-        OCIO::SetCurrentConfig(config);
-        
-        OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(occioRoleHint.c_str());
-        if(!defaultcs){
-            throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
-        }
-        std::string defaultColorSpaceName = defaultcs->getName();
-        
-        for(int i = 0; i < config->getNumColorSpaces(); ++i)
-        {
-            std::string csname = config->getColorSpaceNameByIndex(i);
-            colorSpaces->push_back(csname);
-            
-            if(csname == defaultColorSpaceName)
-            {
-                *defaultColorSpaceIndex = i;
-            }
-        }
-    }
-    catch (OCIO::Exception& e)
-    {
-        std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
-    }
-    catch (...)
-    {
-        std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
-    }
     
-
+    OCIO::ConstConfigRcPtr config;
+    if (filename) {
+        config = OCIO::Config::CreateFromFile(filename);
+    } else {
+        config = OCIO::Config::CreateFromEnv();
+    }
+    OCIO::SetCurrentConfig(config);
+    
+    OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(occioRoleHint.c_str());
+    if(!defaultcs){
+        throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
+    }
+    std::string defaultColorSpaceName = defaultcs->getName();
+    
+    for(int i = 0; i < config->getNumColorSpaces(); ++i)
+    {
+        std::string csname = config->getColorSpaceNameByIndex(i);
+        colorSpaces->push_back(csname);
+        
+        if(csname == defaultColorSpaceName)
+        {
+            *defaultColorSpaceIndex = i;
+        }
+    }
 }
 }
 #endif
@@ -646,7 +645,7 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/ReadOFX");
     
     desc.addSupportedContext(OFX::eContextGenerator);
-    desc.addSupportedContext(OFX::eContextGeneral);
+    desc.addSupportedContext(OFX::eContextFilter);
     
     ///Say we support only reading to float images.
     ///One would need to extend the ofxsColorSpace suite functions
@@ -831,8 +830,18 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     std::vector<std::string> colorSpaces;
     int defaultIndex;
     std::string defaultOcioRole;
+    
     getInputColorSpace(defaultOcioRole);
-    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
+    
+    try {
+        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
+        
+    } catch (OCIO::Exception& e) {
+        std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
+    }
+    
     
     for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
         inputColorSpaceParam->appendOption(colorSpaces[i]);

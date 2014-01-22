@@ -476,7 +476,13 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         
         std::vector<std::string> colorSpaces;
         int defaultIndex;
-        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
+        try {
+            OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,filename.c_str());
+        } catch (OCIO::Exception& e) {
+            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        } catch (...) {
+            setPersistentMessage(OFX::Message::eMessageError, "","Unknown exception during OCIO setup.");
+        }
         
         _outputColorSpace->resetOptions();
         for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
@@ -499,43 +505,31 @@ namespace OCIO_OFX {
         if (occioRoleHint.empty()) {
             occioRoleHint = std::string(OCIO::ROLE_SCENE_LINEAR);
         }
-        try
+        
+        OCIO::ConstConfigRcPtr config;
+        if (filename) {
+            config = OCIO::Config::CreateFromFile(filename);
+        } else {
+            config = OCIO::Config::CreateFromEnv();
+        }
+        OCIO::SetCurrentConfig(config);
+        
+        OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(occioRoleHint.c_str());
+        if(!defaultcs){
+            throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
+        }
+        std::string defaultColorSpaceName = defaultcs->getName();
+        
+        for(int i = 0; i < config->getNumColorSpaces(); ++i)
         {
-            OCIO::ConstConfigRcPtr config;
-            if (filename) {
-                config = OCIO::Config::CreateFromFile(filename);
-            } else {
-                config = OCIO::Config::CreateFromEnv();
-            }
-            OCIO::SetCurrentConfig(config);
+            std::string csname = config->getColorSpaceNameByIndex(i);
+            colorSpaces->push_back(csname);
             
-            OCIO::ConstColorSpaceRcPtr defaultcs = config->getColorSpace(occioRoleHint.c_str());
-            if(!defaultcs){
-                throw std::runtime_error("ROLE_COMPOSITING_LOG not defined.");
-            }
-            std::string defaultColorSpaceName = defaultcs->getName();
-            
-            for(int i = 0; i < config->getNumColorSpaces(); ++i)
+            if(csname == defaultColorSpaceName)
             {
-                std::string csname = config->getColorSpaceNameByIndex(i);
-                colorSpaces->push_back(csname);
-                
-                if(csname == defaultColorSpaceName)
-                {
-                    *defaultColorSpaceIndex = i;
-                }
+                *defaultColorSpaceIndex = i;
             }
         }
-        catch (OCIO::Exception& e)
-        {
-            std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
-        }
-        catch (...)
-        {
-            std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
-        }
-        
-        
     }
 }
 #endif
@@ -690,7 +684,14 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     int defaultIndex;
     std::string defaultOcioRole;
     getOutputColorSpace(defaultOcioRole);
-    OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
+    
+    try {
+        OCIO_OFX::openOCIOConfigFile(&colorSpaces, &defaultIndex,NULL,defaultOcioRole);
+    } catch (OCIO::Exception& e) {
+        std::cerr << "OCIOColorSpace: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "OCIOColorSpace: Unknown exception during OCIO setup." << std::endl;
+    }
     
     for (unsigned int i = 0; i < colorSpaces.size(); ++i) {
         outputColorSpaceParam->appendOption(colorSpaces[i]);
