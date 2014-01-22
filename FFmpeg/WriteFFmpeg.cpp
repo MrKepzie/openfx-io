@@ -475,6 +475,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         ret = av_interleaved_write_frame(_formatContext, &pkt);
     }
     else {
+#if 1 // LIBAVCODEC_VERSION_INT<AV_VERSION_INT(54,1,0)
         uint8_t* outbuf = (uint8_t*)av_malloc(picSize);
         assert(outbuf != NULL);
         ret = avcodec_encode_video(_codecContext, outbuf, picSize, output);
@@ -500,6 +501,36 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         }
         
         av_free(outbuf);
+#else
+        AVPacket pkt;
+        int got_packet;
+        av_init_packet(&pkt);
+        pkt.size = 0;
+        pkt.data = NULL;
+        pkt.stream_index = _stream->index;
+        ret = avcodec_encode_video2(_codecContext, &pkt, output, &got_packet);
+        if (ret < 0) {
+            // we've got an error
+            char szError[1024];
+            av_strerror(ret, szError, 1024);
+            setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
+        }
+        if (got_packet) {
+            if (pkt.pts != AV_NOPTS_VALUE)
+                pkt.pts = av_rescale_q(pkt.pts, _codecContext->time_base, _stream->time_base);
+            if (pkt.dts != AV_NOPTS_VALUE)
+                pkt.dts = av_rescale_q(pkt.dts, _codecContext->time_base, _stream->time_base);
+
+            ret = av_interleaved_write_frame(_formatContext, &pkt);
+            av_free_packet(&pkt);
+            if (ret< 0) {
+                // we've got an error
+                char szError[1024];
+                av_strerror(ret, szError, 1024);
+                setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
+            }
+        }
+#endif
     }
     
     av_free(outBuffer);
