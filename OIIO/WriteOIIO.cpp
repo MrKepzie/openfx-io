@@ -166,6 +166,7 @@ void WriteOIIOPluginFactory::supportedFileFormats(std::vector<std::string>* form
     supportedFileFormats_static(formats);
 }
 
+#if 0
 namespace OFX
 {
     namespace Plugin
@@ -177,7 +178,7 @@ namespace OFX
         }
     };
 };
-
+#endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)

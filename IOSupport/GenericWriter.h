@@ -93,6 +93,12 @@ public:
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
     /**
+     * @brief Overriden to clear any OCIO cache.
+     * This function calls clearAnyCache() if you have any cache to clear.
+     **/
+    void purgeCaches(void);
+
+    /**
      * @brief Should append in formats the list of the format this plug-in can encode.
      * For example "png" , "jpg" , etc...
      * This function should return the same as the named-alike function in the factory.
@@ -133,13 +139,17 @@ protected:
     OFX::IntParam* _firstFrame; //< the first frame if the frame range type is "Manual"
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
 
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
     OFX::ChoiceParam* _outputColorSpace; //< the output color-space we're converting to
 #endif
     
 private:
-    
+    /**
+     * @brief Override to clear any cache you may have.
+     **/
+    virtual void clearAnyCache() {}
+
     /* set up and run a copy processor */
     void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
 };
@@ -191,7 +201,7 @@ public:
     
     virtual bool isVideoStreamPlugin() const { return false; }
     
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     /**
      * @brief Override to return in ocioRole the default OpenColorIO role the input color-space is.
      * This is used as a hint by the describeInContext() function to determine what color-space is should use
@@ -215,20 +225,35 @@ protected:
 
 };
 
+#ifdef OFX_IO_USING_OCIO
 #define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
-class CLASS : public GenericWriterPluginFactory \
-{ \
-public: \
-CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
-virtual void load() LOADFUNCDEF ;\
-virtual void unload() UNLOADFUNCDEF ;\
-virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
-virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
-virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
-virtual std::string getOutputColorSpace() const { return OCIOROLE; } \
-virtual void describeWriter(OFX::ImageEffectDescriptor &desc); \
-virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
-};
-
+  class CLASS : public GenericWriterPluginFactory                       \
+  {                                                                     \
+  public:                                                                \
+    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
+    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void unload() UNLOADFUNCDEF ;                               \
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
+    virtual std::string getOutputColorSpace() const { return OCIOROLE; } \
+    virtual void describeWriter(OFX::ImageEffectDescriptor &desc);      \
+    virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
+  };
+#else
+#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
+  class CLASS : public GenericWriterPluginFactory                       \
+  {                                                                     \
+  public:                                                                \
+    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
+    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void unload() UNLOADFUNCDEF ;                               \
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
+    virtual void describeWriter(OFX::ImageEffectDescriptor &desc);      \
+    virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
+  };
+#endif
 
 #endif

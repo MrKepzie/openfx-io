@@ -407,8 +407,10 @@ namespace FFmpeg {
     // decode a single frame into the buffer thread safe
     bool File::decode(unsigned char* buffer, int frame, bool loadNearest,unsigned streamIdx)
     {
+#ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex guard(_lock);
-        
+#endif
+
         if (streamIdx >= _streams.size())
             return false;
         
@@ -701,8 +703,10 @@ namespace FFmpeg {
               int& frames,
               unsigned streamIdx)
     {
+#ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex guard(_lock);
-        
+#endif
+
         if (streamIdx >= _streams.size())
             return false;
         
@@ -722,8 +726,11 @@ namespace FFmpeg {
     
     // constructor
     FileManager::FileManager()
-    : _lock(0)
+    : _files()
     , _isLoaded(false)
+#ifdef OFX_IO_MT_FFMPEG
+    , _lock(0)
+#endif
     {
     }
     
@@ -734,7 +741,8 @@ namespace FFmpeg {
     }
 
     
-    int FileManager::FFmpegLockManager(void** mutex, enum AVLockOp op)
+#ifdef OFX_IO_MT_FFMPEG
+    static int FFmpegLockManager(void** mutex, enum AVLockOp op)
     {
         switch (op) {
             case AV_LOCK_CREATE: // Create a mutex.
@@ -773,18 +781,23 @@ namespace FFmpeg {
                 return 1;
         }
     }
-    
+#endif
+
     void FileManager::initialize() {
         if(!_isLoaded){
+#ifdef OFX_IO_MT_FFMPEG
             _lock = new OFX::MultiThread::Mutex();
-            
+#endif
+
             av_log_set_level(AV_LOG_WARNING);
             av_register_all();
             
+#ifdef OFX_IO_MT_FFMPEG
             // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
             // otherwise non-thread-safe calls.
             av_lockmgr_register(FFmpegLockManager);
-            
+#endif
+
             _isLoaded = true;
         }
         
@@ -795,7 +808,9 @@ namespace FFmpeg {
     {
         
         assert(_isLoaded);
+#ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex g(*_lock);
+#endif
         FilesMap::iterator it = _files.find(filename);
         if (it == _files.end()) {
             std::pair<FilesMap::iterator,bool> ret = _files.insert(std::make_pair(std::string(filename), new File(filename)));

@@ -41,7 +41,6 @@
 		1E00B3AD188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3AF188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
 		1E00B3B1188EE887003BC7F3 /* Lut.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38C188EE887003BC7F3 /* Lut.h */; };
-		1E00B3C9188EE90A003BC7F3 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C3188EE90A003BC7F3 /* Makefile */; };
 		1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C4188EE90A003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C5188EE90A003BC7F3 /* ReadEXR.cpp */; };
 		1E00B3CC188EE90A003BC7F3 /* ReadEXR.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3C6188EE90A003BC7F3 /* ReadEXR.h */; };
@@ -50,13 +49,11 @@
 		1E00B3DA188EE923003BC7F3 /* FFmpegCompat.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D0188EE923003BC7F3 /* FFmpegCompat.h */; };
 		1E00B3DB188EE923003BC7F3 /* FFmpegHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D1188EE923003BC7F3 /* FFmpegHandler.cpp */; };
 		1E00B3DC188EE923003BC7F3 /* FFmpegHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D2188EE923003BC7F3 /* FFmpegHandler.h */; };
-		1E00B3DD188EE923003BC7F3 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D4188EE923003BC7F3 /* Makefile */; };
 		1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D5188EE923003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3DF188EE923003BC7F3 /* ReadFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */; };
 		1E00B3E0188EE923003BC7F3 /* ReadFFmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D7188EE923003BC7F3 /* ReadFFmpeg.h */; };
 		1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D8188EE923003BC7F3 /* WriteFFmpeg.cpp */; };
 		1E00B3E2188EE923003BC7F3 /* WriteFFmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D9188EE923003BC7F3 /* WriteFFmpeg.h */; };
-		1E00B3EB188EEBC5003BC7F3 /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E5188EEBC5003BC7F3 /* Makefile */; };
 		1E00B3EC188EEBC5003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E6188EEBC5003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3ED188EEBC5003BC7F3 /* ReadOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */; };
 		1E00B3EE188EEBC5003BC7F3 /* ReadOIIO.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3E8188EEBC5003BC7F3 /* ReadOIIO.h */; };
@@ -97,7 +94,6 @@
 		D7330DEF18867C06004A6199 /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AE1875AB0800D8FA13 /* ofxsParams.cpp */; };
 		D7330DF018867C06004A6199 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
 		D7330DF118867C06004A6199 /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
-		D7330DF218867C06004A6199 /* ofxsSupportPrivate.h in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
 		D7330DF518867C1E004A6199 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D7330DF618867C1E004A6199 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
 		D7330DF718867C1E004A6199 /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
@@ -132,9 +128,6 @@
 		D74E62901875AAB500D8FA13 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D74E62911875AAB500D8FA13 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D74E62921875AAB500D8FA13 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
-		D74E629D1875AAE100D8FA13 /* ofxsCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62941875AAE100D8FA13 /* ofxsCore.h */; };
-		D74E629E1875AAE100D8FA13 /* ofxsHWNDInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62951875AAE100D8FA13 /* ofxsHWNDInteract.h */; };
-		D74E629F1875AAE100D8FA13 /* ofxsImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62961875AAE100D8FA13 /* ofxsImageEffect.h */; };
 		D74E62A01875AAE100D8FA13 /* ofxsInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62971875AAE100D8FA13 /* ofxsInteract.h */; };
 		D74E62A11875AAE100D8FA13 /* ofxsLog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62981875AAE100D8FA13 /* ofxsLog.h */; };
 		D74E62A21875AAE100D8FA13 /* ofxsMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62991875AAE100D8FA13 /* ofxsMemory.h */; };
@@ -149,7 +142,6 @@
 		D74E62B81875AB0800D8FA13 /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AE1875AB0800D8FA13 /* ofxsParams.cpp */; };
 		D74E62B91875AB0800D8FA13 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62AF1875AB0800D8FA13 /* ofxsProperty.cpp */; };
 		D74E62BA1875AB0800D8FA13 /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D74E62B01875AB0800D8FA13 /* ofxsPropertyValidation.cpp */; };
-		D74E62BB1875AB0800D8FA13 /* ofxsSupportPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62B11875AB0800D8FA13 /* ofxsSupportPrivate.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -512,7 +504,6 @@
 				D74E628F1875AAB500D8FA13 /* ofxProgress.h in Headers */,
 				1E00B395188EE887003BC7F3 /* GenericReader.h in Headers */,
 				D74E62901875AAB500D8FA13 /* ofxProperty.h in Headers */,
-				D74E629F1875AAE100D8FA13 /* ofxsImageEffect.h in Headers */,
 				D74E62921875AAB500D8FA13 /* ofxTimeLine.h in Headers */,
 				D74E62871875AAB500D8FA13 /* ofxKeySyms.h in Headers */,
 				D74E628D1875AAB500D8FA13 /* ofxParametricParam.h in Headers */,
@@ -520,7 +511,6 @@
 				D74E628C1875AAB500D8FA13 /* ofxParam.h in Headers */,
 				D74E62911875AAB500D8FA13 /* ofxSonyVegas.h in Headers */,
 				D74E62831875AAB500D8FA13 /* ofxCore.h in Headers */,
-				D74E629D1875AAE100D8FA13 /* ofxsCore.h in Headers */,
 				D74E62881875AAB500D8FA13 /* ofxMemory.h in Headers */,
 				D74E62821875AAB500D8FA13 /* IOExtensions.h in Headers */,
 				D74E628E1875AAB500D8FA13 /* ofxPixels.h in Headers */,
@@ -528,11 +518,9 @@
 				D74E628B1875AAB500D8FA13 /* ofxOpenGLRender.h in Headers */,
 				D74E62891875AAB500D8FA13 /* ofxMessage.h in Headers */,
 				D74E62A01875AAE100D8FA13 /* ofxsInteract.h in Headers */,
-				D74E629E1875AAE100D8FA13 /* ofxsHWNDInteract.h in Headers */,
 				1E00B3DA188EE923003BC7F3 /* FFmpegCompat.h in Headers */,
 				1E00B3E0188EE923003BC7F3 /* ReadFFmpeg.h in Headers */,
 				D74E62A31875AAE100D8FA13 /* ofxsMessage.h in Headers */,
-				D74E62BB1875AB0800D8FA13 /* ofxsSupportPrivate.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -634,7 +622,6 @@
 				1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E00B39D188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				D709B97418787E4C00D5A0B4 /* ofxsPropertyValidation.cpp in Sources */,
-				1E00B3C9188EE90A003BC7F3 /* Makefile in Sources */,
 				1E00B3A9188EE887003BC7F3 /* Lut.cpp in Sources */,
 				1E00B391188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */,
@@ -653,13 +640,11 @@
 				1E00B3EC188EEBC5003BC7F3 /* PluginRegistration.cpp in Sources */,
 				D7330DEC18867C06004A6199 /* ofxsInteract.cpp in Sources */,
 				D7330DED18867C06004A6199 /* ofxsLog.cpp in Sources */,
-				1E00B3EB188EEBC5003BC7F3 /* Makefile in Sources */,
 				D7330DEE18867C06004A6199 /* ofxsMultiThread.cpp in Sources */,
 				D7330DEF18867C06004A6199 /* ofxsParams.cpp in Sources */,
 				D7330DF018867C06004A6199 /* ofxsProperty.cpp in Sources */,
 				D7330DF118867C06004A6199 /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
-				D7330DF218867C06004A6199 /* ofxsSupportPrivate.h in Sources */,
 				1E00B3EF188EEBC5003BC7F3 /* WriteOIIO.cpp in Sources */,
 				1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 			);
@@ -683,7 +668,6 @@
 				1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */,
 				D74E62B71875AB0800D8FA13 /* ofxsMultiThread.cpp in Sources */,
 				D74E62B61875AB0800D8FA13 /* ofxsLog.cpp in Sources */,
-				1E00B3DD188EE923003BC7F3 /* Makefile in Sources */,
 				D74E62BA1875AB0800D8FA13 /* ofxsPropertyValidation.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -818,7 +802,7 @@
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
-					IO_USING_OCIO,
+					OFX_IO_USING_OCIO,
 					"DEBUG=1",
 				);
 				HEADER_SEARCH_PATHS = (
@@ -850,7 +834,7 @@
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
-					IO_USING_OCIO,
+					OFX_IO_USING_OCIO,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",

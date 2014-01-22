@@ -39,6 +39,10 @@
 #ifndef __Io__oiioReader__
 #define __Io__oiioReader__
 
+#ifdef OFX_IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+#endif
+
 #include "GenericReader.h"
 
 class ReadOIIOPlugin : public GenericReaderPlugin {
@@ -66,6 +70,6 @@ private:
     
 };
 
-mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false,OCIO::ROLE_SCENE_LINEAR);
+mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false,OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
 
 #endif /* defined(__Io__oiioReader__) */

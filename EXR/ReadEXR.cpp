@@ -51,7 +51,9 @@
 #include <ImfChannelList.h>
 #include <ImfInputFile.h>
 
+#ifdef OFX_IO_MT_EXR
 #include <ofxsMultiThread.h>
+#endif
 
 #ifndef OPENEXR_IMF_NAMESPACE
 #define OPENEXR_IMF_NAMESPACE Imf
@@ -258,8 +260,9 @@ namespace Exr {
         std::ifstream* inputStr;
         Imf::StdIFStream* inputStdStream;
 #endif
+#ifdef OFX_IO_MT_EXR
         OFX::MultiThread::Mutex lock;
-        
+#endif
 #ifdef _WIN32
         inline std::wstring s2ws(const std::string& s)
         {
@@ -286,7 +289,9 @@ namespace Exr {
     , inputStr(0)
     , inputStdStream(0)
 #endif
+#ifdef OFX_IO_MT_EXR
     , lock()
+#endif
     {
         
         try{
@@ -384,14 +389,17 @@ namespace Exr {
     class FileManager
     {
         typedef std::map<std::string, File*> FilesMap;
+
         FilesMap _files;
-        
+        bool _isLoaded;///< register all "global" flags to ffmpeg outside of the constructor to allow
+        /// all OpenFX related stuff (which depend on another singleton) to be allocated.
+
+#ifdef OFX_IO_MT_EXR
         // internal lock
         OFX::MultiThread::Mutex *_lock;
+#endif
         
-        bool _isLoaded;///< register all "global" flags to ffmpeg outside of the constructor to allow
-                       /// all OpenFX related stuff (which depend on another singleton) to be allocated.
-        
+
         
     public:
         
@@ -415,8 +423,11 @@ namespace Exr {
     
     // constructor
     FileManager::FileManager()
-    : _lock(0)
+    : _files()
     , _isLoaded(false)
+#ifdef OFX_IO_MT_EXR
+    , _lock(0)
+#endif
     {
     }
     
@@ -428,7 +439,9 @@ namespace Exr {
     
     void FileManager::initialize() {
         if(!_isLoaded){
+#ifdef OFX_IO_MT_EXR
             _lock = new OFX::MultiThread::Mutex();
+#endif
             _isLoaded = true;
         }
         
@@ -439,7 +452,9 @@ namespace Exr {
     {
         
         assert(_isLoaded);
+#ifdef OFX_IO_MT_EXR
         OFX::MultiThread::AutoMutex g(*_lock);
+#endif
         FilesMap::iterator it = _files.find(filename);
         if (it == _files.end()) {
             std::pair<FilesMap::iterator,bool> ret = _files.insert(std::make_pair(std::string(filename), new File(filename)));
@@ -506,8 +521,8 @@ void ReadEXRPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* 
         const Imath::Box2i& dispwin = file->inputfile->header().displayWindow();
         const Imath::Box2i& datawin = file->inputfile->header().dataWindow();
         int exrY = dispwin.max.y - y;
-        int r = roi.x2;
-        int x = roi.x1;
+        //int r = roi.x2;
+        //int x = roi.x1;
         
         //const int X = std::max(x, datawin.min.x + file->dataOffset);
         //const int R = std::min(r, datawin.max.x + file->dataOffset + 1);
@@ -529,7 +544,9 @@ void ReadEXRPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* 
             
         }
         {
+#ifdef OFX_IO_MT_EXR
             OFX::MultiThread::AutoMutex locker(file->lock);
+#endif
             try {
                 file->inputfile->setFrameBuffer(fbuf);
                 file->inputfile->readPixels(exrY);
@@ -579,8 +596,9 @@ void ReadEXRPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
     // basic labels
     desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");
-    
-    
+#ifdef OFX_IO_MT_EXR
+    desc.setRenderThreadSafety(eRenderFullySafe);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */

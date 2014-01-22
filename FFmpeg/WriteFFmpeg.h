@@ -40,6 +40,10 @@
 #ifndef Io_ffmpegWriter_h
 #define Io_ffmpegWriter_h
 
+#ifdef OFX_IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+#endif
+
 #include "GenericWriter.h"
 
 struct AVCodecContext;

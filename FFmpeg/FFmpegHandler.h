@@ -50,6 +50,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 #include <locale>
 #include <cstdio>
@@ -67,7 +68,9 @@ extern "C" {
 }
 #include "ffmpegCompat.h"
 
+#ifdef OFX_IO_MT_FFMPEG
 #include "ofxsMultiThread.h"
+#endif
 
 #define CHECK(x) \
 {\
@@ -90,18 +93,6 @@ namespace FFmpeg {
     // Keeps track of all FFmpegFile mapped against file name.
     class FileManager
     {
-        typedef std::map<std::string, File*> FilesMap;
-        FilesMap _files;
-        
-        // internal lock
-        OFX::MultiThread::Mutex *_lock;
-        
-        bool _isLoaded;///< register all "global" flags to ffmpeg outside of the constructor to allow
-                       /// all OpenFX related stuff (which depend on another singleton) to be allocated.
-        
-        // A lock manager function for FFmpeg, enabling it to use mutexes managed by this reader. Pass to av_lockmgr_register().
-        static int FFmpegLockManager(void** mutex, enum AVLockOp op);
-        
     public:
         
         // singleton
@@ -117,10 +108,21 @@ namespace FFmpeg {
         // get a specific reader
         File* get(const std::string& filename);
         
-        
+    private:
+        typedef std::map<std::string, File*> FilesMap;
+        FilesMap _files;
+
+        bool _isLoaded;///< register all "global" flags to ffmpeg outside of the constructor to allow
+        /// all OpenFX related stuff (which depend on another singleton) to be allocated.
+
+#ifdef OFX_IO_MT_FFMPEG
+        // internal lock
+        OFX::MultiThread::Mutex *_lock;
+#endif
+
     };
 
-    
+
     class File {
         
         struct Stream
@@ -190,9 +192,11 @@ namespace FFmpeg {
         
         AVPacket _avPacket;
         
+#ifdef OFX_IO_MT_FFMPEG
         // internal lock for multithread access
         OFX::MultiThread::Mutex _lock;
-        
+#endif
+
         // set reader error
         void setError(const char* msg, const char* prefix = 0);
         

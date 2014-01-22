@@ -58,7 +58,7 @@
 #define kReaderStartingFrameParamName "startingFrame"
 #define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
 
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
 #define kReaderOCCIOConfigFileParamName "ReaderOCCIOConfigFileParamName"
 #define kReaderInputColorSpaceParamName "inputColorSpace"
 #include <OpenColorIO/OpenColorIO.h>
@@ -87,7 +87,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _timeOffset(0)
 , _startingFrame(0)
 , _originalFrameRange(0)
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
 , _occioConfigFile(0)
 , _inputColorSpace(0)
 #endif
@@ -106,7 +106,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
     _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
     
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     _occioConfigFile = fetchStringParam(kReaderOCCIOConfigFileParamName);
     _inputColorSpace = fetchChoiceParam(kReaderInputColorSpaceParamName);
 #endif
@@ -455,7 +455,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
         decode(filename, sequenceTime, dstImg);
     }
     
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     try
     {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -478,11 +478,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
 #endif
 
     delete dstImg;
-}
-
-void GenericReaderPlugin::purgeCaches() {
-    OCIO::ClearAllCaches();
-    clearAnyCache();
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
@@ -561,7 +556,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _settingFrameRange = false;
 
     }
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     else if ( paramName == kReaderOCCIOConfigFileParamName ) {
         // this happens only if the parameter is enabled, i.e. on Natron.
         // Nuke, for example, doesn't support changing the options of a ChoiceParam.
@@ -580,14 +575,19 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         }
     }
 #endif
-    
-    
+}
+
+void GenericReaderPlugin::purgeCaches() {
+#ifdef OFX_IO_USING_OCIO
+    OCIO::ClearAllCaches();
+#endif
+    clearAnyCache();
 }
 
 
 using namespace OFX;
 
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
 std::string GenericReaderPluginFactory::getInputColorSpace() const { return OCIO::ROLE_SCENE_LINEAR; }
 #endif
 
@@ -748,7 +748,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     page->addChild(*originalFrameRangeParam);
     
     
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     ////////// OCIO config file
     OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kReaderOCCIOConfigFileParamName);
     occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");

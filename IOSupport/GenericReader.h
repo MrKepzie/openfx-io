@@ -190,7 +190,7 @@ private:
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
     OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
 #endif
@@ -247,7 +247,7 @@ public:
     
     virtual bool isVideoStreamPlugin() const { return false; }
     
-#ifdef IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
     /**
      * @brief Override to return in ocioRole the default OpenColorIO role the input color-space is.
      * This is used as a hint by the describeInContext() function to determine what color-space is should use
@@ -270,19 +270,35 @@ protected:
     virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage) = 0;
 };
 
+#ifdef OFX_IO_USING_OCIO
 #define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
-class CLASS : public GenericReaderPluginFactory \
-{ \
-public: \
-CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericReaderPluginFactory(id, verMaj, verMin){} \
-virtual void load() LOADFUNCDEF ;\
-virtual void unload() UNLOADFUNCDEF ;\
-virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
-virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
-virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; } \
-virtual void getInputColorSpace(std::string& ocioRole) const  { ocioRole = std::string(OCIOROLE); }\
-virtual void describeReader(OFX::ImageEffectDescriptor &desc); \
-virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
-}; 
+  class CLASS : public GenericReaderPluginFactory                       \
+  {                                                                     \
+  public:                                                                \
+    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericReaderPluginFactory(id, verMaj, verMin){} \
+    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void unload() UNLOADFUNCDEF ;                               \
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
+    virtual void getInputColorSpace(std::string& ocioRole) const  { ocioRole = std::string(OCIOROLE); } \
+    virtual void describeReader(OFX::ImageEffectDescriptor &desc);      \
+    virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
+  }; 
+#else
+#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
+  class CLASS : public GenericReaderPluginFactory                       \
+  {                                                                     \
+  public:                                                                 \
+    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericReaderPluginFactory(id, verMaj, verMin){} \
+    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void unload() UNLOADFUNCDEF ;                               \
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
+    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
+    virtual void describeReader(OFX::ImageEffectDescriptor &desc);      \
+    virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
+};
+#endif
 
 #endif

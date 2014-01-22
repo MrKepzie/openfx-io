@@ -39,6 +39,9 @@
 #ifndef __Io__oiioWriter__
 #define __Io__oiioWriter__
 
+#ifdef OFX_IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+#endif
 
 #include "GenericWriter.h"
 
@@ -63,6 +66,6 @@ private:
     
 };
 
-mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {},false,OCIO::ROLE_SCENE_LINEAR);
+mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {},false,OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
 
 #endif /* defined(__Io__oiioWriter__) */
