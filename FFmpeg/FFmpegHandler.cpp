@@ -44,6 +44,34 @@
 
 #include "ReadFFmpeg.h"
 
+#if defined(WIN32) || defined(WIN64)
+#  include <windows.h> // for GetSystemInfo()
+#else
+#  include <unistd.h> // for sysconf()
+#endif
+
+// Use one decoding thread per processor for video decoding.
+// source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+static int video_decoding_threads()
+{
+    static long n = -1;
+    if (n < 0) {
+#if defined(WIN32) || defined(WIN64)
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        n = si.dwNumberOfProcessors;
+#else
+        n = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+        if (n < 1) {
+            n = 1;
+        } else if (n > 16) {
+            n = 16;
+        }
+    }
+    return n;
+}
+
 namespace FFmpeg {
     
     void supportedFileFormats(std::vector<std::string>* formats){
@@ -204,6 +232,22 @@ namespace FFmpeg {
             //                continue;
             //            }
             
+            if (avstream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+                // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+
+                // Activate multithreaded decoding. This must be done before opening the codec; see
+                // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+                avstream->codec->thread_count = video_decoding_threads();
+                // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
+                // I don't know what exactly this does, but it is necessary to fix the problem
+                // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
+                int lowres = 0;
+#ifdef FF_API_LOWRES
+                lowres = avstream->codec->lowres;
+#endif
+                if (lowres || (videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1)))
+                    avstream->codec->flags |= CODEC_FLAG_EMU_EDGE;
+            }
             // skip if the codec can't be open
             if (avcodec_open2(avstream->codec, videoCodec, NULL) < 0) {
                 continue;

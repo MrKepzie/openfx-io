@@ -154,6 +154,28 @@ FFmpegSingleton::~FFmpegSingleton(){
     
 }
 
+// Use one decoding thread per processor for video decoding.
+// source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+static int video_decoding_threads()
+{
+    static long n = -1;
+    if (n < 0) {
+#if defined(WIN32) || defined(WIN64)
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        n = si.dwNumberOfProcessors;
+#else
+        n = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+        if (n < 1) {
+            n = 1;
+        } else if (n > 16) {
+            n = 16;
+        }
+    }
+    return n;
+}
+
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 , _codecContext(0)
@@ -373,6 +395,22 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
             _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
         
+        if (_codecContext->codec_type == AVMEDIA_TYPE_VIDEO) {
+            // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+
+            // Activate multithreaded decoding. This must be done before opening the codec; see
+            // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+            _codecContext->thread_count = video_decoding_threads();
+            // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
+            // I don't know what exactly this does, but it is necessary to fix the problem
+            // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
+            int lowres = 0;
+#ifdef FF_API_LOWRES
+            lowres = _codecContext->lowres;
+#endif
+            if (lowres || (videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1)))
+                _codecContext->flags |= CODEC_FLAG_EMU_EDGE;
+        }
         if (avcodec_open2(_codecContext, videoCodec, NULL) < 0) {
             setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open codec");
             freeFormat();
