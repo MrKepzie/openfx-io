@@ -44,6 +44,34 @@
 
 #include "ReadFFmpeg.h"
 
+#if defined(WIN32) || defined(WIN64)
+#  include <windows.h> // for GetSystemInfo()
+#else
+#  include <unistd.h> // for sysconf()
+#endif
+
+// Use one decoding thread per processor for video decoding.
+// source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+static int video_decoding_threads()
+{
+    static long n = -1;
+    if (n < 0) {
+#if defined(WIN32) || defined(WIN64)
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        n = si.dwNumberOfProcessors;
+#else
+        n = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+        if (n < 1) {
+            n = 1;
+        } else if (n > 16) {
+            n = 16;
+        }
+    }
+    return n;
+}
+
 namespace FFmpeg {
     
     void supportedFileFormats(std::vector<std::string>* formats){
@@ -204,6 +232,22 @@ namespace FFmpeg {
             //                continue;
             //            }
             
+            if (avstream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+                // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+
+                // Activate multithreaded decoding. This must be done before opening the codec; see
+                // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+                avstream->codec->thread_count = video_decoding_threads();
+                // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
+                // I don't know what exactly this does, but it is necessary to fix the problem
+                // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
+                int lowres = 0;
+#ifdef FF_API_LOWRES
+                lowres = avstream->codec->lowres;
+#endif
+                if (lowres || (videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1)))
+                    avstream->codec->flags |= CODEC_FLAG_EMU_EDGE;
+            }
             // skip if the codec can't be open
             if (avcodec_open2(avstream->codec, videoCodec, NULL) < 0) {
                 continue;
@@ -214,7 +258,7 @@ namespace FFmpeg {
             stream->_avstream = avstream;
             stream->_codecContext = avstream->codec;
             stream->_videoCodec = videoCodec;
-            stream->_avFrame = avcodec_alloc_frame();
+            stream->_avFrame = av_frame_alloc();
             
             // If FPS is specified, record it.
             // Otherwise assume 1 fps (default value).
@@ -407,8 +451,10 @@ namespace FFmpeg {
     // decode a single frame into the buffer thread safe
     bool File::decode(unsigned char* buffer, int frame, bool loadNearest,unsigned streamIdx)
     {
+#ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex guard(_lock);
-        
+#endif
+
         if (streamIdx >= _streams.size())
             return false;
         
@@ -701,8 +747,10 @@ namespace FFmpeg {
               int& frames,
               unsigned streamIdx)
     {
+#ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex guard(_lock);
-        
+#endif
+
         if (streamIdx >= _streams.size())
             return false;
         
@@ -722,8 +770,11 @@ namespace FFmpeg {
     
     // constructor
     FileManager::FileManager()
-    : _lock(0)
+    : _files()
     , _isLoaded(false)
+#ifdef OFX_IO_MT_FFMPEG
+    , _lock(0)
+#endif
     {
     }
     
@@ -734,7 +785,8 @@ namespace FFmpeg {
     }
 
     
-    int FileManager::FFmpegLockManager(void** mutex, enum AVLockOp op)
+#ifdef OFX_IO_MT_FFMPEG
+    static int FFmpegLockManager(void** mutex, enum AVLockOp op)
     {
         switch (op) {
             case AV_LOCK_CREATE: // Create a mutex.
@@ -773,18 +825,23 @@ namespace FFmpeg {
                 return 1;
         }
     }
-    
+#endif
+
     void FileManager::initialize() {
         if(!_isLoaded){
+#ifdef OFX_IO_MT_FFMPEG
             _lock = new OFX::MultiThread::Mutex();
-            
+#endif
+
             av_log_set_level(AV_LOG_WARNING);
             av_register_all();
             
+#ifdef OFX_IO_MT_FFMPEG
             // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
             // otherwise non-thread-safe calls.
             av_lockmgr_register(FFmpegLockManager);
-            
+#endif
+
             _isLoaded = true;
         }
         
@@ -795,7 +852,9 @@ namespace FFmpeg {
     {
         
         assert(_isLoaded);
+#ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex g(*_lock);
+#endif
         FilesMap::iterator it = _files.find(filename);
         if (it == _files.end()) {
             std::pair<FilesMap::iterator,bool> ret = _files.insert(std::make_pair(std::string(filename), new File(filename)));

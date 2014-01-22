@@ -50,6 +50,11 @@
 #define snprintf sprintf_s
 #endif
 
+#if defined(WIN32) || defined(WIN64)
+#  include <windows.h> // for GetSystemInfo()
+#else
+#  include <unistd.h> // for sysconf()
+#endif
 
 
 extern "C" {
@@ -147,6 +152,28 @@ FFmpegSingleton::FFmpegSingleton(){
 
 FFmpegSingleton::~FFmpegSingleton(){
     
+}
+
+// Use one decoding thread per processor for video decoding.
+// source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+static int video_decoding_threads()
+{
+    static long n = -1;
+    if (n < 0) {
+#if defined(WIN32) || defined(WIN64)
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        n = si.dwNumberOfProcessors;
+#else
+        n = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+        if (n < 1) {
+            n = 1;
+        } else if (n > 16) {
+            n = 16;
+        }
+    }
+    return n;
 }
 
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
@@ -368,6 +395,22 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
             _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
         
+        if (_codecContext->codec_type == AVMEDIA_TYPE_VIDEO) {
+            // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+
+            // Activate multithreaded decoding. This must be done before opening the codec; see
+            // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+            _codecContext->thread_count = video_decoding_threads();
+            // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
+            // I don't know what exactly this does, but it is necessary to fix the problem
+            // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
+            int lowres = 0;
+#ifdef FF_API_LOWRES
+            lowres = _codecContext->lowres;
+#endif
+            if (lowres || (videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1)))
+                _codecContext->flags |= CODEC_FLAG_EMU_EDGE;
+        }
         if (avcodec_open2(_codecContext, videoCodec, NULL) < 0) {
             setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open codec");
             freeFormat();
@@ -409,7 +452,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
 
     
     // now allocate an image frame for the image in the output codec's format...
-    AVFrame* output = avcodec_alloc_frame();
+    AVFrame* output = av_frame_alloc();
     picSize = avpicture_get_size(pixFMT,w, h);
     uint8_t* outBuffer = (uint8_t*)av_malloc(picSize);
     
@@ -432,6 +475,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         ret = av_interleaved_write_frame(_formatContext, &pkt);
     }
     else {
+#if 1 // LIBAVCODEC_VERSION_INT<AV_VERSION_INT(54,1,0)
         uint8_t* outbuf = (uint8_t*)av_malloc(picSize);
         assert(outbuf != NULL);
         ret = avcodec_encode_video(_codecContext, outbuf, picSize, output);
@@ -457,6 +501,36 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         }
         
         av_free(outbuf);
+#else
+        AVPacket pkt;
+        int got_packet;
+        av_init_packet(&pkt);
+        pkt.size = 0;
+        pkt.data = NULL;
+        pkt.stream_index = _stream->index;
+        ret = avcodec_encode_video2(_codecContext, &pkt, output, &got_packet);
+        if (ret < 0) {
+            // we've got an error
+            char szError[1024];
+            av_strerror(ret, szError, 1024);
+            setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
+        }
+        if (got_packet) {
+            if (pkt.pts != AV_NOPTS_VALUE)
+                pkt.pts = av_rescale_q(pkt.pts, _codecContext->time_base, _stream->time_base);
+            if (pkt.dts != AV_NOPTS_VALUE)
+                pkt.dts = av_rescale_q(pkt.dts, _codecContext->time_base, _stream->time_base);
+
+            ret = av_interleaved_write_frame(_formatContext, &pkt);
+            av_free_packet(&pkt);
+            if (ret< 0) {
+                // we've got an error
+                char szError[1024];
+                av_strerror(ret, szError, 1024);
+                setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
+            }
+        }
+#endif
     }
     
     av_free(outBuffer);

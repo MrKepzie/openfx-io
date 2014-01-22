@@ -39,6 +39,10 @@
 #ifndef Io_ffmpegReader_h
 #define Io_ffmpegReader_h
 
+#ifdef OFX_IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+#endif
+
 #include "GenericReader.h"
 
 namespace FFmpeg {

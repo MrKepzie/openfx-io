@@ -1,4 +1,7 @@
 // Various macros for backward compatibility with older ffmpeg versions
+// sources:
+// https://github.com/FFMS/ffms2/blob/master/include/ffmscompat.h
+// http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
 
 #ifndef FFMPEGCOMPAT_H
 #define FFMPEGCOMPAT_H
@@ -50,6 +53,9 @@
 #   endif
 #   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52, 107, 0)
 #       define AVIO_FLAG_WRITE URL_WRONLY
+#   endif
+#   if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(54,2,0))
+#        define AV_DISPOSITION_ATTACHED_PIC 0xBEEFFACE
 #   endif
 #endif
 
@@ -122,6 +128,28 @@ static void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 #       define av_dict_free av_metadata_free
 #   else
 #       define av_metadata_conv(ctx, d_conv, s_conv)
+#   endif
+#   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 27, 0, 51, 46, 100)
+#       define av_get_packed_sample_fmt(fmt) (fmt < AV_SAMPLE_FMT_U8P ? fmt : fmt - (AV_SAMPLE_FMT_U8P - AV_SAMPLE_FMT_U8))
+#   endif
+#   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 44, 0, 51, 76, 100)
+#       include <libavutil/pixdesc.h>
+
+#       if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 42, 0, 51, 74, 100)
+#           define AVPixelFormat PixelFormat
+#           define AV_PIX_FMT_NB PIX_FMT_NB
+#       endif
+
+static const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
+    if (pix_fmt < 0 || pix_fmt >= AV_PIX_FMT_NB)
+        return NULL;
+
+    return &av_pix_fmt_descriptors[pix_fmt];
+}
+
+#   endif
+#   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 52, 9, 0, 52, 20, 100)
+#       define av_frame_alloc avcodec_alloc_frame
 #   endif
 #endif
 #ifdef AVERROR 

@@ -43,9 +43,6 @@
 #include <ImfOutputFile.h>
 #include <half.h>
 
-#include <ofxsMultiThread.h>
-
-
 #define kWriteEXRCompressionParamName "compression"
 #define kWriteEXRDataTypeParamName "dataType"
 
