@@ -583,8 +583,12 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     desc.addClipPreferencesSlaveParam(*fileParam);
 
 #ifdef OFX_EXTENSIONS_NATRON
-    fileParam->setFilePathIsImage(true);
-    fileParam->setFilePathIsOutput(true);
+    try {
+        fileParam->setFilePathIsImage(true);
+        fileParam->setFilePathIsOutput(true);
+    } catch ( OFX::Exception::PropertyUnknownToHost& e) {
+        // ignore
+    }
 #endif
     page->addChild(*fileParam);
 
@@ -616,7 +620,11 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     renderParam->setLabels("Render","Render","Render");
     renderParam->setHint("Starts rendering all the frame range.");
 #ifdef OFX_EXTENSIONS_NATRON
-    renderParam->setAsRenderButton();
+    try {
+        renderParam->setAsRenderButton();
+    } catch ( OFX::Exception::PropertyUnknownToHost& e) {
+        // ignore
+    }
 #endif
     page->addChild(*renderParam);
     
