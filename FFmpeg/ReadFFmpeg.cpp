@@ -45,7 +45,7 @@
 #include "Lut.h"
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, "rec709", "reference")
 , _ffmpegFile(0)
 , _buffer(0)
 , _bufferWidth(0)

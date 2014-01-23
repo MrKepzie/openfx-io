@@ -45,7 +45,7 @@ OIIO_NAMESPACE_USING
 
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+: GenericWriterPlugin(handle, "reference", "reference")
 {
     
 }

@@ -42,6 +42,7 @@
 #include <ofxsImageEffect.h>
 
 class CopierBase;
+class GenericOCIO;
 
 /**
  * @brief A generic writer plugin, derive this to create a new writer for a specific file format.
@@ -53,7 +54,7 @@ class GenericWriterPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericWriterPlugin(OfxImageEffectHandle handle);
+    GenericWriterPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName);
     
     virtual ~GenericWriterPlugin();
     
@@ -139,11 +140,8 @@ protected:
     OFX::IntParam* _firstFrame; //< the first frame if the frame range type is "Manual"
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
 
-#ifdef OFX_IO_USING_OCIO
-    OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
-    OFX::ChoiceParam* _outputColorSpace; //< the output color-space we're converting to
-#endif
-    
+    GenericOCIO* _ocio;
+
 private:
     /**
      * @brief Override to clear any cache you may have.
@@ -200,15 +198,6 @@ public:
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
     virtual bool isVideoStreamPlugin() const { return false; }
-    
-#ifdef OFX_IO_USING_OCIO
-    /**
-     * @brief Override to return in ocioRole the default OpenColorIO role the input color-space is.
-     * This is used as a hint by the describeInContext() function to determine what color-space is should use
-     * by-default to convert from the input color-space. The base-class version set ocioRole to OCIO::ROLE_SCENE_LINEAR.
-     **/
-    virtual std::string getOutputColorSpace() const;
-#endif
 
 protected:
     /**
@@ -225,23 +214,7 @@ protected:
 
 };
 
-#ifdef OFX_IO_USING_OCIO
-#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
-  class CLASS : public GenericWriterPluginFactory                       \
-  {                                                                     \
-  public:                                                                \
-    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
-    virtual void load() LOADFUNCDEF ;                                   \
-    virtual void unload() UNLOADFUNCDEF ;                               \
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
-    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
-    virtual std::string getOutputColorSpace() const { return OCIOROLE; } \
-    virtual void describeWriter(OFX::ImageEffectDescriptor &desc);      \
-    virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
-  };
-#else
-#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
+#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
   class CLASS : public GenericWriterPluginFactory                       \
   {                                                                     \
   public:                                                                \
@@ -254,6 +227,5 @@ protected:
     virtual void describeWriter(OFX::ImageEffectDescriptor &desc);      \
     virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
   };
-#endif
 
 #endif

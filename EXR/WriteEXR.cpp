@@ -96,7 +96,7 @@ namespace Exr {
 }
 
 WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+: GenericWriterPlugin(handle,"reference", "reference")
 , _compression(0)
 , _bitDepth(0)
 {

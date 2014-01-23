@@ -52,7 +52,7 @@ OIIO_NAMESPACE_USING
 static ImageCache* cache = 0;
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, "texture_paint", "reference")
 {
     
 }
@@ -73,36 +73,37 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
     
-//    ImageSpec spec;
-//    
-//    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-//    if(!cache->get_imagespec(ustring(filename), spec)){
-//        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
-//        return;
-//    }
-//    
-//    ///find-out the image color-space
-//    ParamValue* colorSpaceValue = spec.find_attribute("occio:ColorSpace",TypeDesc::STRING);
-//    
-//    //we found a color-space hint, use it to do the color-space conversion
-//    const char* colorSpaceStr;
-//    if (colorSpaceValue) {
-//        colorSpaceStr = *(const char**)colorSpaceValue->data();
-//        if (!strcmp(colorSpaceStr, "GammaCorrected")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "sRGB")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "Rec709")) {
-//            
-//        } else if(!strcmp(colorSpaceStr, "KodakLog")) {
-//            
-//        } else {
-//            //unknown color-space or Linear, don't do anything
-//        }
-//    }
-    
+#if 0
+    ImageSpec spec;
+
+    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
+    if(!cache->get_imagespec(ustring(filename), spec)){
+        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+        return;
+    }
+
+    ///find-out the image color-space
+    ParamValue* colorSpaceValue = spec.find_attribute("occio:ColorSpace",TypeDesc::STRING);
+
+    //we found a color-space hint, use it to do the color-space conversion
+    const char* colorSpaceStr;
+    if (colorSpaceValue) {
+        colorSpaceStr = *(const char**)colorSpaceValue->data();
+        if (!strcmp(colorSpaceStr, "GammaCorrected")) {
+
+        } else if(!strcmp(colorSpaceStr, "sRGB")) {
+
+        } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
+
+        } else if(!strcmp(colorSpaceStr, "Rec709")) {
+
+        } else if(!strcmp(colorSpaceStr, "KodakLog")) {
+
+        } else {
+            //unknown color-space or Linear, don't do anything
+        }
+    }
+#endif //0
 }
 
 static void supportedFileFormats_static(std::vector<std::string>* formats) {

@@ -66,6 +66,6 @@ private:
     
 };
 
-mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {},false,OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
 
 #endif /* defined(__Io__oiioWriter__) */

@@ -177,7 +177,7 @@ static int video_decoding_threads()
 }
 
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+: GenericWriterPlugin(handle, "reference", "rec709")
 , _codecContext(0)
 , _formatContext(0)
 , _stream(0)

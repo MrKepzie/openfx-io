@@ -51,6 +51,7 @@
 #endif
 
 #include "SequenceParser/SequenceParser.h"
+#include "GenericOCIO.h"
 
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
@@ -60,13 +61,6 @@
 #define kReaderStartingFrameParamName "startingFrame"
 #define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
 
-#ifdef OFX_IO_USING_OCIO
-#define kReaderOCCIOConfigFileParamName "ReaderOCCIOConfigFileParamName"
-#define kReaderInputColorSpaceParamName "inputColorSpace"
-#include <OpenColorIO/OpenColorIO.h>
-namespace OCIO = OCIO_NAMESPACE;
-static bool global_wasOCIOVarFund;
-#endif
 
 #define kReaderFirstFrameParamName "firstFrame"
 #define kReaderLastFrameParamName "lastFrame"
@@ -76,7 +70,7 @@ static bool global_wasOCIOVarFund;
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
 #define MAX_SEARCH_RANGE 400000
 
-GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
+GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
 , _outputClip(0)
@@ -89,10 +83,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _timeOffset(0)
 , _startingFrame(0)
 , _originalFrameRange(0)
-#ifdef OFX_IO_USING_OCIO
-, _occioConfigFile(0)
-, _inputColorSpace(0)
-#endif
+, _ocio(new GenericOCIO(this, inputName, outputName))
 , _settingFrameRange(false)
 , _sequenceParser(new SequenceParser)
 {
@@ -108,16 +99,10 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
     _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
     _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
-    
-#ifdef OFX_IO_USING_OCIO
-    _occioConfigFile = fetchStringParam(kReaderOCCIOConfigFileParamName);
-    _inputColorSpace = fetchChoiceParam(kReaderInputColorSpaceParamName);
-#endif
-    
 }
 
 GenericReaderPlugin::~GenericReaderPlugin(){
-    
+    delete _ocio;
 }
 
 
@@ -378,29 +363,10 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     if (!filename.empty()) {
         decode(filename, sequenceTime, dstImg);
     }
-    
-#ifdef OFX_IO_USING_OCIO
-    try
-    {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        int colorSpaceIndex;
-        _inputColorSpace->getValue(colorSpaceIndex);
-        const char * inputName = config->getColorSpaceNameByIndex(colorSpaceIndex);
-        const char* outputName = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName();
-        OCIO::ConstContextRcPtr context = config->getCurrentContext();
-        OCIO::ConstProcessorRcPtr proc = config->getProcessor(context, inputName, outputName);
-        
-        OfxRectI rod = dstImg->getRegionOfDefinition();
-        OCIO::PackedImageDesc img((float*)dstImg->getPixelAddress(rod.x1, rod.y1),rod.x2 - rod.x1,rod.y2 - rod.y1,3,sizeof(float),
-                                  4*sizeof(float),(rod.x2 - rod.x1)*4*sizeof(float));
-        proc->apply(img);
-    }
-    catch(OCIO::Exception &e)
-    {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-    }
-#endif
 
+    ///do the color-space conversion
+    _ocio->apply(dstImg);
+    
     delete dstImg;
 }
 
@@ -484,42 +450,17 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _settingFrameRange = true;
         _startingFrame->setValue(offset + first);
         _settingFrameRange = false;
-
+    } else {
+        _ocio->changedParam(args, paramName);
     }
-#ifdef OFX_IO_USING_OCIO
-    else if ( paramName == kReaderOCCIOConfigFileParamName ) {
-        // this happens only if the parameter is enabled, i.e. on Natron.
-        // Nuke, for example, doesn't support changing the options of a ChoiceParam.
-        std::string filename;
-        _occioConfigFile->getValue(filename);
-        
-        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(filename.c_str());
-        // FIXME: why is getInputColorSpace() in the plugin factory class?
-        //std::string defaultcsname = config->getColorSpace(getInputColorSpace().c_str())->getName();
-        _inputColorSpace->resetOptions();
-        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
-            std::string csname = config->getColorSpaceNameByIndex(i);
-            _inputColorSpace->appendOption(csname);
-            //if (csname == defaultcsname) {
-            //    _inputColorSpace->setDefault(i);
-            //}
-        }
-    }
-#endif
 }
 
 void GenericReaderPlugin::purgeCaches() {
-#ifdef OFX_IO_USING_OCIO
-    OCIO::ClearAllCaches();
-#endif
     clearAnyCache();
+    _ocio->purgeCaches();
 }
 
 using namespace OFX;
-
-#ifdef OFX_IO_USING_OCIO
-std::string GenericReaderPluginFactory::getInputColorSpace() const { return OCIO::ROLE_SCENE_LINEAR; }
-#endif
 
 void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/ReadOFX");
@@ -540,7 +481,7 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     desc.setSupportsMultiResolution(true);
-    desc.setSupportsTiles(false);
+    desc.setSupportsTiles(false); // FIXME: why is it enabled in TuttleOFX? TuttleOFX/plugins/image/process/color/OCIO/src/OCIOColorSpace/OCIOColorSpacePluginFactory.hpp
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
@@ -685,61 +626,9 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     originalFrameRangeParam->setIsPersistant(false);
     page->addChild(*originalFrameRangeParam);
     
-    
-#ifdef OFX_IO_USING_OCIO
-    ////////// OCIO config file
-    OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kReaderOCCIOConfigFileParamName);
-    occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    occioConfigFileParam->setHint("The file to read the OpenColorIO config from.");
-    occioConfigFileParam->setAnimates(false);
-    desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
-    // the OCIO config can only be set in a portable fashion using the environment variable.
-    // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
-    // disable it, and set the default from the env variable.
-    assert(getImageEffectHostDescription());
-    if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
-        // enable it on Natron host only
-        occioConfigFileParam->setEnabled(true);
-        occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    } else {
-        occioConfigFileParam->setEnabled(false);
-        //occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    }
-    char* file = std::getenv("OCIO");
-
-    ///////////Input Color-space
-    OFX::ChoiceParamDescriptor* inputColorSpaceParam = desc.defineChoiceParam(kReaderInputColorSpaceParamName);
-    inputColorSpaceParam->setLabels("Input color-space", "Input color-space", "Input color-space");
-    inputColorSpaceParam->setHint("Input data is taken to be in this color-space.");
-    inputColorSpaceParam->setAnimates(false);
-    page->addChild(*inputColorSpaceParam);
-
-
-    if (file == NULL) {
-        if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
-            occioConfigFileParam->setDefault("WARNING: You should set an OCIO environnement variable");
-        } else {
-            occioConfigFileParam->setDefault("WARNING: You must set an OCIO environnement variable");
-        }
-        inputColorSpaceParam->setEnabled(false);
-        global_wasOCIOVarFund = false;
-    } else {
-        global_wasOCIOVarFund = true;
-        occioConfigFileParam->setDefault(file);
-        //Add choices
-        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(file);
-        std::string defaultcsname = config->getColorSpace(getInputColorSpace().c_str())->getName();
-        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
-            std::string csname = config->getColorSpaceNameByIndex(i);
-            inputColorSpaceParam->appendOption(csname);
-            if (csname == defaultcsname) {
-                inputColorSpaceParam->setDefault(i);
-            }
-        }
-    }
-    
-#endif
-    
     describeReaderInContext(desc, context, page);
+
+    // insert OCIO parameters
+    GenericOCIO::describeInContext(desc, context, page);
 }
 

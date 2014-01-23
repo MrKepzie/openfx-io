@@ -86,6 +86,9 @@
 		1E74D8491891074000E9034B /* ofxsSupportPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E74D8301891074000E9034B /* ofxsSupportPrivate.h */; };
 		1E74D84A1891074000E9034B /* ofxsSupportPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E74D8301891074000E9034B /* ofxsSupportPrivate.h */; };
 		1E74D84B1891074000E9034B /* ofxsSupportPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E74D8301891074000E9034B /* ofxsSupportPrivate.h */; };
+		1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
+		1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
+		1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D709B97A1878918400D5A0B4 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D709B97B1878918400D5A0B4 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
@@ -228,6 +231,8 @@
 		1E74D82E1891074000E9034B /* ofxsProperty.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsProperty.cpp; sourceTree = "<group>"; };
 		1E74D82F1891074000E9034B /* ofxsPropertyValidation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsPropertyValidation.cpp; sourceTree = "<group>"; };
 		1E74D8301891074000E9034B /* ofxsSupportPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsSupportPrivate.h; sourceTree = "<group>"; };
+		1E74D84E1891137B00E9034B /* GenericOCIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GenericOCIO.h; sourceTree = "<group>"; };
+		1E74D84F189115BC00E9034B /* GenericOCIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIO.cpp; sourceTree = "<group>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D70C17D818912AD10078C644 /* SequenceParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SequenceParser.cpp; path = SequenceParser/SequenceParser.cpp; sourceTree = "<group>"; };
 		D70C17D918912AD10078C644 /* SequenceParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SequenceParser.h; path = SequenceParser/SequenceParser.h; sourceTree = "<group>"; };
@@ -291,6 +296,8 @@
 				1E00B38A188EE887003BC7F3 /* GenericWriter.h */,
 				1E00B38B188EE887003BC7F3 /* Lut.cpp */,
 				1E00B38C188EE887003BC7F3 /* Lut.h */,
+				1E74D84E1891137B00E9034B /* GenericOCIO.h */,
+				1E74D84F189115BC00E9034B /* GenericOCIO.cpp */,
 			);
 			path = IOSupport;
 			sourceTree = "<group>";
@@ -653,6 +660,7 @@
 				1E74D83B1891074000E9034B /* ofxsLog.cpp in Sources */,
 				1E74D8441891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8351891074000E9034B /* ofxsImageEffect.cpp in Sources */,
+				1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E74D8471891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B3CD188EE90A003BC7F3 /* WriteEXR.cpp in Sources */,
 				D70C17DB18912AD10078C644 /* SequenceParser.cpp in Sources */,
@@ -675,6 +683,7 @@
 				1E74D8451891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E00B3ED188EEBC5003BC7F3 /* ReadOIIO.cpp in Sources */,
 				1E00B3AB188EE887003BC7F3 /* Lut.cpp in Sources */,
+				1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E00B3EC188EEBC5003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */,
 				D70C17DC18912AD10078C644 /* SequenceParser.cpp in Sources */,
@@ -701,6 +710,7 @@
 				1E74D8311891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8401891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8341891074000E9034B /* ofxsImageEffect.cpp in Sources */,
+				1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E74D8461891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B3A7188EE887003BC7F3 /* Lut.cpp in Sources */,
 				D70C17DA18912AD10078C644 /* SequenceParser.cpp in Sources */,
@@ -836,6 +846,7 @@
 		D74E62401875A79700D8FA13 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
 				COPY_PHASE_STRIP = NO;
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -869,6 +880,7 @@
 		D74E62411875A79700D8FA13 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LIBRARY = "libc++";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				GCC_PREPROCESSOR_DEFINITIONS = (

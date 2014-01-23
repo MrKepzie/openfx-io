@@ -88,21 +88,14 @@
 #include <natron/IOExtensions.h>
 #endif
 
+#include "GenericOCIO.h"
+
 // in the Writer context, the script name must be "filename", @see kOfxImageEffectContextWriter
 #define kWriterFileParamName "filename"
 #define kWriterRenderParamName "render"
 #define kWriterFrameRangeChoiceParamName "frameRange"
 #define kWriterFirstFrameParamName "firstFrame"
 #define kWriterLastFrameParamName "lastFrame"
-
-#ifdef OFX_IO_USING_OCIO
-#define kWriterOCCIOConfigFileParamName "WriterOCCIOConfigFileParamName"
-#define kWriterOutputColorSpaceParamName "outputColorSpace"
-#include <OpenColorIO/OpenColorIO.h>
-namespace OCIO = OCIO_NAMESPACE;
-static bool global_wasOCIOVarFund;
-#endif
-
 
 // Base class for the RGBA and the Alpha processor
 class CopierBase : public OFX::ImageProcessor {
@@ -161,7 +154,7 @@ class ImageCopier : public CopierBase {
     }
 };
 
-GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
+GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
 , _outputClip(0)
@@ -169,10 +162,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _frameRange(0)
 , _firstFrame(0)
 , _lastFrame(0)
-#ifdef OFX_IO_USING_OCIO
-, _occioConfigFile(0)
-, _outputColorSpace(0)
-#endif
+, _ocio(new GenericOCIO(this, inputName, outputName))
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -181,15 +171,11 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _frameRange = fetchChoiceParam(kWriterFrameRangeChoiceParamName);
     _firstFrame = fetchIntParam(kWriterFirstFrameParamName);
     _lastFrame = fetchIntParam(kWriterLastFrameParamName);
-    
-#ifdef OFX_IO_USING_OCIO
-    _occioConfigFile = fetchStringParam(kWriterOCCIOConfigFileParamName);
-    _outputColorSpace = fetchChoiceParam(kWriterOutputColorSpaceParamName);
-#endif
 }
 
-GenericWriterPlugin::~GenericWriterPlugin(){
-    
+GenericWriterPlugin::~GenericWriterPlugin()
+{
+    delete _ocio;
 }
 
 static std::string filenameFromPattern(const std::string& pattern,int frameIndex) {
@@ -354,27 +340,8 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
     
 
     ///do the color-space conversion
-#ifdef OFX_IO_USING_OCIO
-    try
-    {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        int colorSpaceIndex;
-        _outputColorSpace->getValue(colorSpaceIndex);
-        const char* inputName = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName();
-        const char * outputName = config->getColorSpaceNameByIndex(colorSpaceIndex);
-        OCIO::ConstContextRcPtr context = config->getCurrentContext();
-        OCIO::ConstProcessorRcPtr proc = config->getProcessor(context, inputName, outputName);
-        
-        OfxRectI rod = srcImg->getRegionOfDefinition();
-        OCIO::PackedImageDesc img((float*)srcImg->getPixelAddress(0, 0),rod.x2 - rod.x1,rod.y2 - rod.y1,4);
-        proc->apply(img);
-    }
-    catch(OCIO::Exception &e)
-    {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-    }
-#endif
-    
+    _ocio->apply(srcImg);
+
     ///and call the plug-in specific encode function.
     encode(filename, args.time, srcImg);
     
@@ -468,44 +435,20 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
             _firstFrame->setIsSecret(true);
             _lastFrame->setIsSecret(true);
         }
+    } else {
+        _ocio->changedParam(args, paramName);
     }
-#ifdef OFX_IO_USING_OCIO
-    else if ( paramName == kWriterOCCIOConfigFileParamName ) {
-        // this happens only if the parameter is enabled, i.e. on Natron
-        std::string filename;
-        _occioConfigFile->getValue(filename);
-
-        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(filename.c_str());
-        // FIXME: why is getOutputColorSpace() in the plugin factory class?
-        //std::string defaultcsname = config->getColorSpace(getOutputColorSpace().c_str())->getName();
-
-        _outputColorSpace->resetOptions();
-        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
-            std::string csname = config->getColorSpaceNameByIndex(i);
-            _outputColorSpace->appendOption(csname);
-            //if (csname == defaultcsname) {
-            //    _outputColorSpace->setDefault(i);
-            //}
-        }
-    }
-#endif
 }
 
 
 void GenericWriterPlugin::purgeCaches() {
-#ifdef OFX_IO_USING_OCIO
-    OCIO::ClearAllCaches();
-#endif
     clearAnyCache();
+    _ocio->purgeCaches();
 }
 
 
 
 using namespace OFX;
-
-#ifdef OFX_IO_USING_OCIO
-std::string GenericWriterPluginFactory::getOutputColorSpace() const { return OCIO::ROLE_SCENE_LINEAR; }
-#endif
 
 /**
  * @brief Override this to describe the writer.
@@ -592,6 +535,9 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
 #endif
     page->addChild(*fileParam);
 
+    // insert OCIO parameters
+    GenericOCIO::describeInContext(desc, context, page);
+
     ///////////Frame range choosal
     OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
     frameRangeChoiceParam->setLabels("Frame range", "Frame range", "Frame range");
@@ -627,60 +573,6 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     }
 #endif
     page->addChild(*renderParam);
-    
-#ifdef OFX_IO_USING_OCIO
-    ////////// OCIO config file
-    OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kWriterOCCIOConfigFileParamName);
-    occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    occioConfigFileParam->setHint("The file to read the OpenColorIO config from.");
-    occioConfigFileParam->setAnimates(false);
-    desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
-    // the OCIO config can only be set in a portable fashion using the environment variable.
-    // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
-    // disable it, and set the default from the env variable.
-    assert(getImageEffectHostDescription());
-    if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
-        // enable it on Natron host only
-        occioConfigFileParam->setEnabled(true);
-        occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    } else {
-        occioConfigFileParam->setEnabled(false);
-        //occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    }
-    char* file = std::getenv("OCIO");
 
-    ///////////Output Color-space
-    OFX::ChoiceParamDescriptor* outputColorSpaceParam = desc.defineChoiceParam(kWriterOutputColorSpaceParamName);
-    outputColorSpaceParam->setLabels("Output color-space", "Output color-space", "Output color-space");
-    outputColorSpaceParam->setHint("Output data will be in this color-space.");
-    outputColorSpaceParam->setAnimates(false);
-    page->addChild(*outputColorSpaceParam);
-    
-
-    if (file == NULL) {
-        if (OFX::getImageEffectHostDescription()->hostName == "NatronHost") {
-            occioConfigFileParam->setDefault("WARNING: You should set an OCIO environnement variable");
-        } else {
-            occioConfigFileParam->setDefault("WARNING: You must set an OCIO environnement variable");
-        }
-        outputColorSpaceParam->setEnabled(false);
-        global_wasOCIOVarFund = false;
-    } else {
-        global_wasOCIOVarFund = true;
-        occioConfigFileParam->setDefault(file);
-        //Add choices
-        OCIO::ConstConfigRcPtr config = OCIO::Config::CreateFromFile(file);
-        std::string defaultcsname = config->getColorSpace(getOutputColorSpace().c_str())->getName();
-        for (int i = 0; i < config->getNumColorSpaces(); ++i) {
-            std::string csname = config->getColorSpaceNameByIndex(i);
-            outputColorSpaceParam->appendOption(csname);
-            if (csname == defaultcsname) {
-                outputColorSpaceParam->setDefault(i);
-            }
-        }
-    }
-
-#endif
-    
     describeWriterInContext(desc, context, page);
 }

@@ -1,4 +1,4 @@
-PLUGINOBJECTS = ReadOIIO.o WriteOIIO.o GenericReader.o GenericWriter.o Lut.o
+PLUGINOBJECTS = ReadOIIO.o WriteOIIO.o GenericReader.o GenericWriter.o GenericOCIO.o Lut.o
 PLUGINNAME = OIIO
 VPATH += ../IOSupport
 

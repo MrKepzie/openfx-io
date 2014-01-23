@@ -43,6 +43,7 @@
 #include <ofxsImageEffect.h>
 
 class SequenceParser;
+class GenericOCIO;
 
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
@@ -55,7 +56,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle);
+    GenericReaderPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName);
     
     virtual ~GenericReaderPlugin();
     
@@ -192,10 +193,7 @@ private:
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
-#ifdef OFX_IO_USING_OCIO
-    OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
-    OFX::ChoiceParam* _inputColorSpace; //< the input color-space we're converting from
-#endif
+    GenericOCIO* _ocio;
     
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
@@ -250,16 +248,7 @@ public:
     virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
     
     virtual bool isVideoStreamPlugin() const { return false; }
-    
-#ifdef OFX_IO_USING_OCIO
-    /**
-     * @brief Override to return in ocioRole the default OpenColorIO role the input color-space is.
-     * This is used as a hint by the describeInContext() function to determine what color-space is should use
-     * by-default to convert from the input color-space. The base-class version set ocioRole to OCIO::ROLE_SCENE_LINEAR.
-     **/
-    virtual std::string getInputColorSpace() const;
-#endif
-    
+
 protected:
     
     /**
@@ -274,7 +263,6 @@ protected:
     virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage) = 0;
 };
 
-#ifdef OFX_IO_USING_OCIO
 #define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
   class CLASS : public GenericReaderPluginFactory                       \
   {                                                                     \
@@ -285,24 +273,9 @@ protected:
     virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
     virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
     virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
-    virtual void getInputColorSpace(std::string& ocioRole) const  { ocioRole = std::string(OCIOROLE); } \
+    /*virtual void getinputSpace(std::string& ocioRole) const  { ocioRole = std::string(OCIOROLE); }*/ \
     virtual void describeReader(OFX::ImageEffectDescriptor &desc);      \
     virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
   }; 
-#else
-#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM,OCIOROLE) \
-  class CLASS : public GenericReaderPluginFactory                       \
-  {                                                                     \
-  public:                                                                 \
-    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericReaderPluginFactory(id, verMaj, verMin){} \
-    virtual void load() LOADFUNCDEF ;                                   \
-    virtual void unload() UNLOADFUNCDEF ;                               \
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
-    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
-    virtual void describeReader(OFX::ImageEffectDescriptor &desc);      \
-    virtual void describeReaderInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
-};
-#endif
 
 #endif

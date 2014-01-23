@@ -79,6 +79,6 @@ private:
 
 };
 
-mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {},false,OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
 
 #endif /* defined(__Io__exrWriter__) */

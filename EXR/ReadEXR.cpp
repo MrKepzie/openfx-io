@@ -472,7 +472,7 @@ namespace Exr {
 
 
 ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, "reference", "reference")
 {
     Exr::FileManager::s_readerManager.initialize();
 }
