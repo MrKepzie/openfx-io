@@ -50,6 +50,8 @@
 #include <natron/IOExtensions.h>
 #endif
 
+#include "SequenceParser/SequenceParser.h"
+
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
 #define kReaderMissingFrameParamName "onMissingFrame"
@@ -92,6 +94,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _inputColorSpace(0)
 #endif
 , _settingFrameRange(false)
+, _sequenceParser(new SequenceParser)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -145,100 +148,12 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
     _fileParam->getValue(filename);
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain. If this function return false, it means this is an image sequence
-    if(getSequenceTimeDomain(filename,range)){
-        _originalFrameRange->setValue(range.min, range.max);
-        return true;
+    ///in which case our sequence parser will give us the sequence range
+    if(!getSequenceTimeDomain(filename,range)){
+        range.min = _sequenceParser->firstFrame();
+        range.max = _sequenceParser->lastFrame();
     }
-    
-    ///check whether the host implements kNatronImageSequenceRange, if so return this value
-    ///This is a speed-up for host that implements this property.
-    int firstFrameProp = INT_MIN;
-    int lastFrameProp = INT_MAX;
-#ifdef OFX_EXTENSIONS_NATRON
-    try {
-        _fileParam->getImageSequenceRange(firstFrameProp, lastFrameProp);
-    } catch ( OFX::Exception::PropertyUnknownToHost& e) {
-        // ignore
-    }
-#endif
-    
-    if (firstFrameProp != INT_MIN && firstFrameProp != INT_MAX) {
-        range.min = firstFrameProp;
-        range.max = lastFrameProp;
-        _originalFrameRange->setValue(range.min, range.max);
-        return true;
-    }
-    
-    ///The host doesn't support kNatronImageSequenceRange and we have an image sequence
-    ///the plugin wants to have the default behaviour: compute the frame range by scanning the timeline
-    
-    ///They're 3 cases:
-    /// 1) - the frame range is lesser than 0, e.g: [-10,-5]
-    /// 2) - the frame range contains 0, e.g: [-5,5]
-    /// 3) - the frame range is greater than 0, e.g: [5,10]
-    _fileParam->getValueAtTime(0, filename);
-    
-    if(filename.empty()) {
-        /// If the filename is empty for the frame 0, that means we're in cases 1 or 3
-        /// If we're in case 1, we must find a frame below 0
-        int firstValidFrame = 0;
-        while (filename.empty() && firstValidFrame != -MAX_SEARCH_RANGE) {
-            --firstValidFrame;
-            _fileParam->getValueAtTime(firstValidFrame,filename);
-        }
-        if (filename.empty()) {
-            ///the only solution left is the 3rd case
-            firstValidFrame = 0;
-            while (filename.empty() && firstValidFrame != MAX_SEARCH_RANGE) {
-                ++firstValidFrame;
-                _fileParam->getValueAtTime(firstValidFrame,filename);
-            }
-            if (filename.empty()) {
-                ///hmmm...we're not in cases 1,2 or 3, just return false...let the host deal with it.
-                return false;
-            } else {
-                ///we're in the 3rd case, find the right bound
-                int rightBound = firstValidFrame + 1;
-                _fileParam->getValueAtTime(rightBound,filename);
-                while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
-                    ++rightBound;
-                    _fileParam->getValueAtTime(rightBound,filename);
-                }
-                --rightBound;
-                range.min = firstValidFrame;
-                range.max = rightBound;
-            }
-        } else {
-            /// we're in the 1st case, firstValidFrame is the right bound, we need to find the left bound now
-            int leftBound = firstValidFrame - 1;
-            while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
-                --leftBound;
-                _fileParam->getValueAtTime(leftBound,filename);
-            }
-            ++leftBound;
-            range.min = leftBound;
-            range.max = firstValidFrame;
-        }
-    } else {
-        ///we're in the 2nd, find out the left bound and right bound
-        int leftBound = 0;
-        while (!filename.empty() && leftBound != -MAX_SEARCH_RANGE) {
-            --leftBound;
-            _fileParam->getValueAtTime(leftBound,filename);
-        }
-        ++leftBound;
-        
-        int rightBound = 0;
-        _fileParam->getValueAtTime(0, filename);
-        while (!filename.empty() && rightBound != MAX_SEARCH_RANGE) {
-            ++rightBound;
-            _fileParam->getValueAtTime(rightBound,filename);
-        }
-        
-        --rightBound;
-        range.min = leftBound;
-        range.max = rightBound;
-    }
+
     _originalFrameRange->setValue(range.min, range.max);
     return true;
 }
@@ -492,8 +407,14 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     if(paramName == kReaderFileParamName){
         std::string filename;
-        _fileParam->getValueAtTime(args.time,filename);
+        _fileParam->getValue(filename);
         
+        try {
+            _sequenceParser->initializeFromFile(filename);
+        } catch(const std::exception& e) {
+            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+            return;
+        }
         //reset the original range param
         _originalFrameRange->setValue(INT_MIN, INT_MAX);
         
