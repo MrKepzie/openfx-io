@@ -40,6 +40,7 @@
 
 #include <stdexcept>
 #include <cassert>
+#include <cstdlib>
 
 #include "tinydir/tinydir.h"
 
