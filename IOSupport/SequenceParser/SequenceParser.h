@@ -41,7 +41,7 @@
 
 #include <string>
 #include <set>
-
+#include <climits>
 
 class FrameIndexes{
 public:

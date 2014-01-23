@@ -73,9 +73,6 @@ static bool global_wasOCIOVarFund;
 #define kReaderBeforeParamName "before"
 #define kReaderAfterParamName "after"
 
-#ifdef OFX_EXTENSIONS_NATRON
-static bool gHostIsNatron = true;
-#endif
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
 #define MAX_SEARCH_RANGE 400000
 
@@ -156,7 +153,7 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
         range.min = _sequenceParser->firstFrame();
         range.max = _sequenceParser->lastFrame();
     }
-    
+
     _originalFrameRange->setValue(range.min, range.max);
     return true;
 }
@@ -588,7 +585,11 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     
     if (!isVideoStreamPlugin()) {
 #ifdef OFX_EXTENSIONS_NATRON
-        fileParam->setFilePathIsImage(true);
+        try {
+            fileParam->setFilePathIsImage(true);
+        } catch ( OFX::Exception::PropertyUnknownToHost& e) {
+            // ignore
+        }
 #endif
     }
     
