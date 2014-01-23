@@ -469,7 +469,7 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.addSupportedContext(OFX::eContextReader);
 #endif
     desc.addSupportedContext(OFX::eContextGenerator);
-    desc.addSupportedContext(OFX::eContextFilter);
+    desc.addSupportedContext(OFX::eContextGeneral);
     
     ///Say we support only reading to float images.
     ///One would need to extend the ofxsColorSpace suite functions
