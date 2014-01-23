@@ -103,6 +103,12 @@
 		D709B9871878918400D5A0B4 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D709B9881878918400D5A0B4 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D709B9891878918400D5A0B4 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
+		D70C17DA18912AD10078C644 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D70C17D818912AD10078C644 /* SequenceParser.cpp */; };
+		D70C17DB18912AD10078C644 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D70C17D818912AD10078C644 /* SequenceParser.cpp */; };
+		D70C17DC18912AD10078C644 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D70C17D818912AD10078C644 /* SequenceParser.cpp */; };
+		D70C17DD18912AD10078C644 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = D70C17D918912AD10078C644 /* SequenceParser.h */; };
+		D70C17DE18912AD10078C644 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = D70C17D918912AD10078C644 /* SequenceParser.h */; };
+		D70C17DF18912AD10078C644 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = D70C17D918912AD10078C644 /* SequenceParser.h */; };
 		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D7330DF518867C1E004A6199 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D7330DF618867C1E004A6199 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
@@ -223,6 +229,8 @@
 		1E74D82F1891074000E9034B /* ofxsPropertyValidation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsPropertyValidation.cpp; sourceTree = "<group>"; };
 		1E74D8301891074000E9034B /* ofxsSupportPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsSupportPrivate.h; sourceTree = "<group>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		D70C17D818912AD10078C644 /* SequenceParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SequenceParser.cpp; path = SequenceParser/SequenceParser.cpp; sourceTree = "<group>"; };
+		D70C17D918912AD10078C644 /* SequenceParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SequenceParser.h; path = SequenceParser/SequenceParser.h; sourceTree = "<group>"; };
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62491875A7A400D8FA13 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
@@ -276,6 +284,7 @@
 		1E00B386188EE860003BC7F3 /* IOSupport */ = {
 			isa = PBXGroup;
 			children = (
+				D70C17D718912A7B0078C644 /* SequenceParser */,
 				1E00B387188EE887003BC7F3 /* GenericReader.cpp */,
 				1E00B388188EE887003BC7F3 /* GenericReader.h */,
 				1E00B389188EE887003BC7F3 /* GenericWriter.cpp */,
@@ -350,6 +359,15 @@
 			);
 			name = Support;
 			path = Support/include;
+			sourceTree = "<group>";
+		};
+		D70C17D718912A7B0078C644 /* SequenceParser */ = {
+			isa = PBXGroup;
+			children = (
+				D70C17D818912AD10078C644 /* SequenceParser.cpp */,
+				D70C17D918912AD10078C644 /* SequenceParser.h */,
+			);
+			name = SequenceParser;
 			sourceTree = "<group>";
 		};
 		D74E623B1875A79700D8FA13 = {
@@ -461,6 +479,7 @@
 				D709B97B1878918400D5A0B4 /* ofxDialog.h in Headers */,
 				D709B97C1878918400D5A0B4 /* ofxImageEffect.h in Headers */,
 				D709B97D1878918400D5A0B4 /* ofxInteract.h in Headers */,
+				D70C17DE18912AD10078C644 /* SequenceParser.h in Headers */,
 				D709B97E1878918400D5A0B4 /* ofxKeySyms.h in Headers */,
 				D709B97F1878918400D5A0B4 /* ofxMemory.h in Headers */,
 				D709B9801878918400D5A0B4 /* ofxMessage.h in Headers */,
@@ -490,6 +509,7 @@
 				D7330DF618867C1E004A6199 /* ofxDialog.h in Headers */,
 				D7330DF718867C1E004A6199 /* ofxImageEffect.h in Headers */,
 				D7330DF818867C1E004A6199 /* ofxInteract.h in Headers */,
+				D70C17DF18912AD10078C644 /* SequenceParser.h in Headers */,
 				D7330DF918867C1E004A6199 /* ofxKeySyms.h in Headers */,
 				D7330DFA18867C1E004A6199 /* ofxMemory.h in Headers */,
 				D7330DFB18867C1E004A6199 /* ofxMessage.h in Headers */,
@@ -536,6 +556,7 @@
 				D74E62821875AAB500D8FA13 /* IOExtensions.h in Headers */,
 				D74E628E1875AAB500D8FA13 /* ofxPixels.h in Headers */,
 				D74E628B1875AAB500D8FA13 /* ofxOpenGLRender.h in Headers */,
+				D70C17DD18912AD10078C644 /* SequenceParser.h in Headers */,
 				D74E62891875AAB500D8FA13 /* ofxMessage.h in Headers */,
 				1E00B3DA188EE923003BC7F3 /* FFmpegCompat.h in Headers */,
 				1E00B3E0188EE923003BC7F3 /* ReadFFmpeg.h in Headers */,
@@ -634,6 +655,7 @@
 				1E74D8351891074000E9034B /* ofxsImageEffect.cpp in Sources */,
 				1E74D8471891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B3CD188EE90A003BC7F3 /* WriteEXR.cpp in Sources */,
+				D70C17DB18912AD10078C644 /* SequenceParser.cpp in Sources */,
 				1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E74D8411891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8381891074000E9034B /* ofxsInteract.cpp in Sources */,
@@ -655,6 +677,7 @@
 				1E00B3AB188EE887003BC7F3 /* Lut.cpp in Sources */,
 				1E00B3EC188EEBC5003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */,
+				D70C17DC18912AD10078C644 /* SequenceParser.cpp in Sources */,
 				1E74D8421891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8361891074000E9034B /* ofxsImageEffect.cpp in Sources */,
 				1E74D8481891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
@@ -680,6 +703,7 @@
 				1E74D8341891074000E9034B /* ofxsImageEffect.cpp in Sources */,
 				1E74D8461891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
 				1E00B3A7188EE887003BC7F3 /* Lut.cpp in Sources */,
+				D70C17DA18912AD10078C644 /* SequenceParser.cpp in Sources */,
 				1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E00B38F188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				1E74D83A1891074000E9034B /* ofxsLog.cpp in Sources */,
@@ -827,6 +851,7 @@
 					"$(OFX_PATH)/Support/include",
 					"$(OFX_PATH)/Support/Plugins/include",
 					"$(OCIO_PATH)/include",
+					IOSupport/SequenceParser,
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
@@ -858,6 +883,7 @@
 					"$(OFX_PATH)/Support/include",
 					"$(OFX_PATH)/Support/Plugins/include",
 					"$(OCIO_PATH)/include",
+					IOSupport/SequenceParser,
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
