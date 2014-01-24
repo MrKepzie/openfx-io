@@ -189,7 +189,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
     getSequenceTimeDomainInternal(originalTimeDomain);
     
     ///the return value
-    int sequenceTime =  t - timeOffset + sequenceTimeDomain.min - originalTimeDomain.min;
+    int sequenceTime =  t - timeOffset ;
 
     
     ///get the offset from the starting time of the sequence in case we bounce or loop
@@ -398,10 +398,10 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _lastFrame->setDisplayRange(first, last);
-        
+
         int offset;
         _timeOffset->getValue(offset);
-        _settingFrameRange = true,
+         _settingFrameRange = true,
         _startingFrame->setValue(first + offset);
         _settingFrameRange = false;
     } else if( paramName == kReaderLastFrameParamName && !_settingFrameRange) {
@@ -428,15 +428,21 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
                 break;
         }
     } else if( paramName == kReaderStartingFrameParamName && !_settingFrameRange) {
-        //also update the time offset
-        int startingFrame;
-        _startingFrame->getValue(startingFrame);
+        
+        ///recompute the timedomain
         OfxRangeD sequenceTimeDomain;
         getSequenceTimeDomainInternal(sequenceTimeDomain);
         
+        //also update the time offset
+        int startingFrame;
+        _startingFrame->getValue(startingFrame);
+        
+        int firstFrame;
+        _firstFrame->getValue(firstFrame);
+        
         ///prevent recursive calls of setValue(...)
         _settingFrameRange = true;
-        _timeOffset->setValue(startingFrame - sequenceTimeDomain.min);
+        _timeOffset->setValue(startingFrame - firstFrame);
         _settingFrameRange = false;
         
     } else if( paramName == kReaderTimeOffsetParamName && !_settingFrameRange) {

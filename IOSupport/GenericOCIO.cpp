@@ -64,6 +64,10 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent, const char* inputName, const 
     _occioConfigFile = _parent->fetchStringParam(kOCCIOParamConfigFilename);
     _inputSpace = _parent->fetchChoiceParam(kOCIOParamInputSpace);
     _outputSpace = _parent->fetchChoiceParam(kOCIOParamOutputSpace);
+    std::string filename;
+    _occioConfigFile->getValue(filename);
+    
+    _config = OCIO::Config::CreateFromFile(filename.c_str());
 #endif
     setDefault();
 }
@@ -71,6 +75,9 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent, const char* inputName, const 
 void
 GenericOCIO::apply(OFX::Image* dstImg)
 {
+    if (!_config) {
+        return;
+    }
 #ifdef OFX_IO_USING_OCIO
     try {
         const char * inputSpaceName;
