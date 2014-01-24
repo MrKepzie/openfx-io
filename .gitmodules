@@ -2,5 +2,5 @@
 	path = openfx
 	url = https://github.com/devernay/openfx.git
 [submodule "IOSupport/SequenceParser/tinydir"]
-	path = IOSupport/SequenceParser/tinydir
+	path = IOSupport/tinydir
 	url = https://github.com/MrKepzie/tinydir

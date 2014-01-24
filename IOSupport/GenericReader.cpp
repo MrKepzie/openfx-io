@@ -50,7 +50,7 @@
 #include <natron/IOExtensions.h>
 #endif
 
-#include "SequenceParser/SequenceParser.h"
+#include "SequenceParser.h"
 #include "GenericOCIO.h"
 
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
