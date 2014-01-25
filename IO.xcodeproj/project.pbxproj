@@ -234,7 +234,7 @@
 		1E2F4D94189295DA00F4CE25 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E2F4D95189295DA00F4CE25 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2F4D96189295DA00F4CE25 /* PluginRegistrationCombined.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistrationCombined.cpp; sourceTree = "<group>"; };
-		1E2F4DCA189295F600F4CE25 /* IO.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SequenceParser.cpp; sourceTree = "<group>"; };
 		1E2F4DCD1892965900F4CE25 /* SequenceParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SequenceParser.h; sourceTree = "<group>"; };
 		1E2F4DCE1892965900F4CE25 /* tinydir.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tinydir.h; path = tinydir/tinydir.h; sourceTree = "<group>"; };
@@ -437,7 +437,7 @@
 				D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */,
 				D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */,
 				D7330DD118867B35004A6199 /* OIIO.ofx.bundle */,
-				1E2F4DCA189295F600F4CE25 /* IO.bundle */,
+				1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -662,7 +662,7 @@
 			);
 			name = IO;
 			productName = ffmpegReader;
-			productReference = 1E2F4DCA189295F600F4CE25 /* IO.bundle */;
+			productReference = 1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
 		D709B95218787D6700D5A0B4 /* EXR */ = {
@@ -876,7 +876,7 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 				);
-				PRODUCT_NAME = IO;
+				PRODUCT_NAME = IO.ofx;
 			};
 			name = Debug;
 		};
@@ -905,7 +905,7 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 				);
-				PRODUCT_NAME = IO;
+				PRODUCT_NAME = IO.ofx;
 			};
 			name = Release;
 		};
