@@ -83,9 +83,6 @@ return;\
 
 
 namespace FFmpeg {
-    
-    void supportedFileFormats(std::vector<std::string>* formats);
-    
     bool isImageFile(const std::string& filename);
     
     

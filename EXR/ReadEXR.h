@@ -60,9 +60,7 @@ public:
     virtual ~ReadEXRPlugin();
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
-    
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
-    
+
 private:
     
     virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
@@ -73,6 +71,6 @@ private:
     
 };
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false,OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
 
 #endif /* defined(__Io__exrReader__) */

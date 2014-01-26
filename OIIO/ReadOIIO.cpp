@@ -106,51 +106,6 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
 #endif //0
 }
 
-static void supportedFileFormats_static(std::vector<std::string>* formats) {
-    formats->push_back("bmp");
-    formats->push_back("cin");
-    formats->push_back("dpx");
-    formats->push_back("fits");
-    formats->push_back("hdr");
-    formats->push_back("ico");
-    formats->push_back("iff");
-    formats->push_back("jpeg");
-    formats->push_back("jpg");
-    formats->push_back("jpe");
-    formats->push_back("jfif");
-    formats->push_back("jfi");
-    formats->push_back("jp2");
-    formats->push_back("j2k");
-    formats->push_back("exr");
-    formats->push_back("png");
-    formats->push_back("pbm");
-    formats->push_back("pgm");
-    formats->push_back("ppm");
-    formats->push_back("psd");
-    formats->push_back("rla");
-    formats->push_back("sgi");
-    formats->push_back("rgb");
-    formats->push_back("rgba");
-    formats->push_back("bw");
-    formats->push_back("int");
-    formats->push_back("inta");
-    formats->push_back("pic");
-    formats->push_back("tga");
-    formats->push_back("tpic");
-    formats->push_back("tif");
-    formats->push_back("tiff");
-    formats->push_back("tx");
-    formats->push_back("env");
-    formats->push_back("sm");
-    formats->push_back("vsm");
-    formats->push_back("zfile");
-}
-
-
-void ReadOIIOPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
-    supportedFileFormats_static(formats);
-}
-
 void ReadOIIOPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) {
     ImageSpec spec;
     
@@ -215,10 +170,6 @@ void ReadOIIOPluginFactory::unload() {
     }
 }
 
-void ReadOIIOPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
-    supportedFileFormats_static(formats);
-}
-
 #if 0
 namespace OFX
 {
@@ -234,9 +185,9 @@ namespace OFX
 #endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadOIIOPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
+void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    
+    GenericReaderDescribe(desc);
     ///set OIIO to use as many threads as there are cores on the CPU
     if(!attribute("threads", 0)){
         std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
@@ -245,13 +196,21 @@ void ReadOIIOPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
     // basic labels
     desc.setLabels("ReadOIIOOFX", "ReadOIIOOFX", "ReadOIIOOFX");
     desc.setPluginDescription("Read images using OpenImageIO.");
-    
-    
+
+
+#ifdef OFX_EXTENSIONS_TUTTLE
+    const char* extensions[] = { "bmp", "cin", "dpx", "fits", "hdr", "ico", "iff", "jpeg", "jpg", "jpe", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    desc.addSupportedExtensions(extensions);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ReadOIIOPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
+    // make some pages and to things in
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin());
+
+    GenericReaderDescribeInContextEnd(desc, context, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

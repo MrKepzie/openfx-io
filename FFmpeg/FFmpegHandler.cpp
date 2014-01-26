@@ -73,31 +73,7 @@ static int video_decoding_threads()
 }
 
 namespace FFmpeg {
-    
-    void supportedFileFormats(std::vector<std::string>* formats){
-        formats->push_back("avi");
-        formats->push_back("flv");
-        formats->push_back("mov");
-        formats->push_back("mp4");
-        formats->push_back("mkv");
-        formats->push_back("r3d");
-        formats->push_back("bmp");
-        formats->push_back("pix");
-        formats->push_back("dpx");
-        formats->push_back("exr");
-        formats->push_back("jpeg");
-        formats->push_back("jpg");
-        formats->push_back("png");
-        formats->push_back("pgm");
-        formats->push_back("ppm");
-        formats->push_back("ptx");
-        formats->push_back("rgba");
-        formats->push_back("rgb");
-        formats->push_back("tiff");
-        formats->push_back("tga");
-        formats->push_back("gif");
-    }
-    
+        
     static bool extensionCorrespondToImageFile(const std::string& ext){
         return ext == "bmp" ||
             ext == "pix" ||

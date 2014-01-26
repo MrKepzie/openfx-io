@@ -468,7 +468,7 @@ void GenericReaderPlugin::purgeCaches() {
 
 using namespace OFX;
 
-void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
+void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/ReadOFX");
     
 #ifdef OFX_EXTENSIONS_TUTTLE
@@ -492,18 +492,12 @@ void GenericReaderPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-    
-    
-#ifdef OFX_EXTENSIONS_TUTTLE
-    std::vector<std::string> fileFormats;
-    supportedFileFormats(&fileFormats);
-    desc.addSupportedExtensions(fileFormats);
-#endif
-
-    describeReader(desc);
 }
 
-void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context){
+OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin)
+{
+    // make some pages and to things in
+    PageParamDescriptor *page = desc.definePageParam("Controls");
 
     // create the optional source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -516,9 +510,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->setSupportsTiles(true);
     
-    // make some pages and to things in
-    PageParamDescriptor *page = desc.definePageParam("Controls");
-    
+
     //////////Input file
     OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
     fileParam->setLabels("File", "File", "File");
@@ -530,7 +522,7 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
     
-    if (!isVideoStreamPlugin()) {
+    if (isVideoStreamPlugin) {
 #ifdef OFX_EXTENSIONS_NATRON
         try {
             fileParam->setFilePathIsImage(true);
@@ -631,10 +623,13 @@ void GenericReaderPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
     originalFrameRangeParam->setIsSecret(true);
     originalFrameRangeParam->setIsPersistant(false);
     page->addChild(*originalFrameRangeParam);
-    
-    describeReaderInContext(desc, context, page);
+    return page;
+}
 
+
+void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page) {
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page);
 }
+
 

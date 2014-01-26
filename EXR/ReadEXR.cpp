@@ -485,14 +485,6 @@ void ReadEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
-static void supportedFileFormats_static(std::vector<std::string>* formats){
-    formats->push_back("exr");
-}
-
-void ReadEXRPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
-    supportedFileFormats_static(formats);
-}
-
 struct DecodingChannelsMap {
     float* buf;
     bool subsampled;
@@ -572,10 +564,6 @@ void ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
 
 using namespace OFX;
 
-void ReadEXRPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
-    supportedFileFormats_static(formats);
-}
-
 #if 0
 namespace OFX
 {
@@ -591,19 +579,29 @@ namespace OFX
 #endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadEXRPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
+void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
+    GenericReaderDescribe(desc);
     // basic labels
     desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");
 #ifdef OFX_IO_MT_EXR
     desc.setRenderThreadSafety(eRenderFullySafe);
 #endif
+
+#ifdef OFX_EXTENSIONS_TUTTLE
+    const char* extensions[] = { "exr", NULL };
+    desc.addSupportedExtensions(extensions);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ReadEXRPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
+    // make some pages and to things in
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin());
+
+    GenericReaderDescribeInContextEnd(desc, context, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

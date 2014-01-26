@@ -66,8 +66,6 @@ public:
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
     bool loadNearestFrame() const;
-    
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
 
 private:
     
@@ -84,6 +82,6 @@ private:
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 };
 
-mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true,OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true);
 
 #endif

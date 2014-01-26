@@ -54,9 +54,7 @@ public:
     virtual ~ReadOIIOPlugin();
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
-    
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
-    
+
     virtual void clearAnyCache();
 private:
     
@@ -70,6 +68,6 @@ private:
     
 };
 
-mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false,OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false);
 
 #endif /* defined(__Io__oiioReader__) */

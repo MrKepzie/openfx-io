@@ -92,10 +92,6 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
 }
 
-void ReadFFmpegPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
-    FFmpeg::supportedFileFormats(formats);
-}
-
 void ReadFFmpegPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
     
     _ffmpegFile = getFile(filename);
@@ -214,11 +210,6 @@ void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,Of
 
 using namespace OFX;
 
-void ReadFFmpegPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
-    FFmpeg::supportedFileFormats(formats);
-}
-
-
 #if 0
 namespace OFX
 {
@@ -235,18 +226,27 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadFFmpegPluginFactory::describeReader(OFX::ImageEffectDescriptor &desc)
+void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
+    GenericReaderDescribe(desc);
     // basic labels
     desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
     desc.setPluginDescription("Read images or video using FFmpeg or libav");
-        
+
+#ifdef OFX_EXTENSIONS_TUTTLE
+    const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    desc.addSupportedExtensions(extensions);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ReadFFmpegPluginFactory::describeReaderInContext(OFX::ImageEffectDescriptor &desc,
-                                                        ContextEnum context,OFX::PageParamDescriptor* defaultPage)
+void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+                                                        ContextEnum context)
 {
+    // make some pages and to things in
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin());
+
+    GenericReaderDescribeInContextEnd(desc, context, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
