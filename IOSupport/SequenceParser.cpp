@@ -41,6 +41,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
 
 #include "tinydir/tinydir.h"
 
@@ -62,7 +63,6 @@ void SequenceParser::initializeFromFile(const std::string& filename) {
     std::string commonPart,extension;
     int frameNumber;
     parseFileName(filename,true,frameNumber, commonPart, extension);
-    
     ///if we reach here (i.e: the extractCommonPartFromInitialName didn't throw an exception)
     ///and if the commonPart is empty, that means the filename is only constituted of digits
     ///in which case we just add a filename at time 0.
@@ -159,14 +159,13 @@ void SequenceParser::removePath(std::string& filename) {
 
 bool SequenceParser::isPartOfSequence(const std::string& filenameWithoutPath,const std::string& commonPart,
                                       const std::string& extension,int& frameNumber) {
-    size_t foundCommonPart = filenameWithoutPath.find_first_of(commonPart);
+    size_t foundCommonPart = filenameWithoutPath.find(commonPart);
     if (foundCommonPart == std::string::npos) {
         return false;
     }
-    
     ///okay we found the common part, now check that the file has the same extension
     
-    size_t foundSameExt = filenameWithoutPath.find_last_of('.' + extension);
+    size_t foundSameExt = filenameWithoutPath.find('.' + extension);
     if (foundSameExt == std::string::npos) {
         return false;
     }
