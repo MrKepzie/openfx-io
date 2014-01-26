@@ -234,7 +234,7 @@
 		1E2F4D94189295DA00F4CE25 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E2F4D95189295DA00F4CE25 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2F4D96189295DA00F4CE25 /* PluginRegistrationCombined.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistrationCombined.cpp; sourceTree = "<group>"; };
-		1E2F4DCA189295F600F4CE25 /* IO.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SequenceParser.cpp; sourceTree = "<group>"; };
 		1E2F4DCD1892965900F4CE25 /* SequenceParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SequenceParser.h; sourceTree = "<group>"; };
 		1E2F4DCE1892965900F4CE25 /* tinydir.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tinydir.h; path = tinydir/tinydir.h; sourceTree = "<group>"; };
@@ -437,7 +437,7 @@
 				D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */,
 				D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */,
 				D7330DD118867B35004A6199 /* OIIO.ofx.bundle */,
-				1E2F4DCA189295F600F4CE25 /* IO.bundle */,
+				1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -648,9 +648,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		1E2F4D97189295F600F4CE25 /* IO */ = {
+		1E2F4D97189295F600F4CE25 /* IO.ofx */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 1E2F4DC7189295F600F4CE25 /* Build configuration list for PBXNativeTarget "IO" */;
+			buildConfigurationList = 1E2F4DC7189295F600F4CE25 /* Build configuration list for PBXNativeTarget "IO.ofx" */;
 			buildPhases = (
 				1E2F4D98189295F600F4CE25 /* Sources */,
 				1E2F4DAA189295F600F4CE25 /* Frameworks */,
@@ -660,14 +660,14 @@
 			);
 			dependencies = (
 			);
-			name = IO;
+			name = IO.ofx;
 			productName = ffmpegReader;
-			productReference = 1E2F4DCA189295F600F4CE25 /* IO.bundle */;
+			productReference = 1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
-		D709B95218787D6700D5A0B4 /* EXR */ = {
+		D709B95218787D6700D5A0B4 /* EXR.ofx */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D709B96418787D6700D5A0B4 /* Build configuration list for PBXNativeTarget "EXR" */;
+			buildConfigurationList = D709B96418787D6700D5A0B4 /* Build configuration list for PBXNativeTarget "EXR.ofx" */;
 			buildPhases = (
 				D709B94F18787D6700D5A0B4 /* Sources */,
 				D709B95018787D6700D5A0B4 /* Frameworks */,
@@ -677,14 +677,14 @@
 			);
 			dependencies = (
 			);
-			name = EXR;
+			name = EXR.ofx;
 			productName = exrReader;
 			productReference = D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
-		D7330DD018867B35004A6199 /* OIIO */ = {
+		D7330DD018867B35004A6199 /* OIIO.ofx */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "OIIO" */;
+			buildConfigurationList = D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "OIIO.ofx" */;
 			buildPhases = (
 				D7330DCD18867B35004A6199 /* Sources */,
 				D7330DCE18867B35004A6199 /* Frameworks */,
@@ -694,14 +694,14 @@
 			);
 			dependencies = (
 			);
-			name = OIIO;
+			name = OIIO.ofx;
 			productName = oiioReader;
 			productReference = D7330DD118867B35004A6199 /* OIIO.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
-		D74E62451875A7A400D8FA13 /* FFmpeg */ = {
+		D74E62451875A7A400D8FA13 /* FFmpeg.ofx */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D74E62581875A7A400D8FA13 /* Build configuration list for PBXNativeTarget "FFmpeg" */;
+			buildConfigurationList = D74E62581875A7A400D8FA13 /* Build configuration list for PBXNativeTarget "FFmpeg.ofx" */;
 			buildPhases = (
 				D74E62421875A7A400D8FA13 /* Sources */,
 				D74E62431875A7A400D8FA13 /* Frameworks */,
@@ -711,7 +711,7 @@
 			);
 			dependencies = (
 			);
-			name = FFmpeg;
+			name = FFmpeg.ofx;
 			productName = ffmpegReader;
 			productReference = D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
@@ -737,10 +737,10 @@
 			projectRoot = "";
 			targets = (
 				D74E625F1875A90800D8FA13 /* all */,
-				D74E62451875A7A400D8FA13 /* FFmpeg */,
-				D709B95218787D6700D5A0B4 /* EXR */,
-				D7330DD018867B35004A6199 /* OIIO */,
-				1E2F4D97189295F600F4CE25 /* IO */,
+				D74E62451875A7A400D8FA13 /* FFmpeg.ofx */,
+				D709B95218787D6700D5A0B4 /* EXR.ofx */,
+				D7330DD018867B35004A6199 /* OIIO.ofx */,
+				1E2F4D97189295F600F4CE25 /* IO.ofx */,
 			);
 		};
 /* End PBXProject section */
@@ -845,7 +845,7 @@
 /* Begin PBXTargetDependency section */
 		1E2F4DDC189296E800F4CE25 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 1E2F4D97189295F600F4CE25 /* IO */;
+			target = 1E2F4D97189295F600F4CE25 /* IO.ofx */;
 			targetProxy = 1E2F4DDB189296E800F4CE25 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -876,7 +876,7 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 				);
-				PRODUCT_NAME = IO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
@@ -905,7 +905,7 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 				);
-				PRODUCT_NAME = IO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -927,7 +927,7 @@
 					"-lIex",
 					"-lIlmImf",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
@@ -949,7 +949,7 @@
 					"-lIex",
 					"-lIlmImf",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -973,7 +973,7 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -999,7 +999,7 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1090,7 +1090,7 @@
 					"-lavutil",
 					"-lswscale",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
@@ -1110,7 +1110,7 @@
 					"-lavutil",
 					"-lswscale",
 				);
-				PRODUCT_NAME = "$(TARGET_NAME).ofx";
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
@@ -1131,7 +1131,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1E2F4DC7189295F600F4CE25 /* Build configuration list for PBXNativeTarget "IO" */ = {
+		1E2F4DC7189295F600F4CE25 /* Build configuration list for PBXNativeTarget "IO.ofx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				1E2F4DC8189295F600F4CE25 /* Debug */,
@@ -1140,7 +1140,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D709B96418787D6700D5A0B4 /* Build configuration list for PBXNativeTarget "EXR" */ = {
+		D709B96418787D6700D5A0B4 /* Build configuration list for PBXNativeTarget "EXR.ofx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D709B96218787D6700D5A0B4 /* Debug */,
@@ -1149,7 +1149,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "OIIO" */ = {
+		D7330DE218867B35004A6199 /* Build configuration list for PBXNativeTarget "OIIO.ofx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D7330DE018867B35004A6199 /* Debug */,
@@ -1167,7 +1167,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D74E62581875A7A400D8FA13 /* Build configuration list for PBXNativeTarget "FFmpeg" */ = {
+		D74E62581875A7A400D8FA13 /* Build configuration list for PBXNativeTarget "FFmpeg.ofx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D74E62591875A7A400D8FA13 /* Debug */,
