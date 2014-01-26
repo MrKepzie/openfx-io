@@ -94,10 +94,6 @@ static void supportedFileFormats_static(std::vector<std::string>* formats) {
     formats->push_back("zfile");
 }
 
-void WriteOIIOPlugin::supportedFileFormats(std::vector<std::string>* formats) const {
-    supportedFileFormats_static(formats);
-}
-
 void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     GenericWriterPlugin::changedParam(args, paramName);
 }
@@ -159,13 +155,6 @@ bool WriteOIIOPlugin::isImageFile(const std::string& /*fileExtension*/) const {
 
 using namespace OFX;
 
-
-
-
-void WriteOIIOPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
-    supportedFileFormats_static(formats);
-}
-
 #if 0
 namespace OFX
 {
@@ -181,16 +170,26 @@ namespace OFX
 #endif
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void WriteOIIOPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
+void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
+    GenericWriterDescribe(desc);
     // basic labels
     desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
     desc.setPluginDescription("Write images file using the OpenImageIO library.");
+
+#ifdef OFX_EXTENSIONS_TUTTLE
+    const char* extensions[] = { "bmp", "cin", "dpx", "fits", "hdr", "ico", "iff", "jpeg", "jpg", "jpe", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    desc.addSupportedExtensions(extensions);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void WriteOIIOPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
+    // make some pages and to things in
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context);
+
+    GenericWriterDescribeInContextEnd(desc, context, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

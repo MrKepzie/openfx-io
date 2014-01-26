@@ -108,14 +108,6 @@ WriteEXRPlugin::~WriteEXRPlugin(){
     
 }
 
-static void supportedFileFormats_static(std::vector<std::string>* formats) {
-    formats->push_back("exr");
-}
-
-void WriteEXRPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
-    supportedFileFormats_static(formats);
-}
-
 void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     
 }
@@ -214,13 +206,6 @@ bool WriteEXRPlugin::isImageFile(const std::string& /*fileExtension*/) const{
 
 using namespace OFX;
 
-
-
-
-void WriteEXRPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
-    supportedFileFormats_static(formats);
-}
-
 #if 0
 namespace OFX
 {
@@ -237,17 +222,25 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void WriteEXRPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
+void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
+    GenericWriterDescribe(desc);
     // basic labels
     desc.setLabels("WriteEXROFX", "WriteEXROFX", "WriteEXROFX");
     desc.setPluginDescription("Write EXR images file using OpenEXR.");
+
+#ifdef OFX_EXTENSIONS_TUTTLE
+    const char* extensions[] = { "exr", NULL };
+    desc.addSupportedExtensions(extensions);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void WriteEXRPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-   
+    // make some pages and to things in
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context);
+
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);
     compressionParam->setAnimates(false);
@@ -265,7 +258,8 @@ void WriteEXRPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &
     }
     dataTypeParam->setDefault(1);
     page->addChild(*dataTypeParam);
-    
+
+    GenericWriterDescribeInContextEnd(desc, context, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

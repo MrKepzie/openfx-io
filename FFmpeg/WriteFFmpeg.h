@@ -57,8 +57,6 @@ public:
     
     virtual ~WriteFFmpegPlugin();
     
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const;
-    
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
 private:

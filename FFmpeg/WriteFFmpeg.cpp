@@ -204,31 +204,6 @@ WriteFFmpegPlugin::~WriteFFmpegPlugin(){
     
 }
 
-static void static_supportedFileFormats(std::vector<std::string>* formats){
-    formats->push_back("avi");
-    formats->push_back("flv");
-    formats->push_back("mov");
-    formats->push_back("mp4");
-    formats->push_back("mkv");
-    formats->push_back("bmp");
-    formats->push_back("pix");
-    formats->push_back("dpx");
-    formats->push_back("jpeg");
-    formats->push_back("jpg");
-    formats->push_back("png");
-    formats->push_back("pgm");
-    formats->push_back("ppm");
-    formats->push_back("rgba");
-    formats->push_back("rgb");
-    formats->push_back("tiff");
-    formats->push_back("tga");
-    formats->push_back("gif");
-}
-
-void WriteFFmpegPlugin::supportedFileFormats(std::vector<std::string>* formats) const{
-    static_supportedFileFormats(formats);
-}
-
 void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     GenericWriterPlugin::changedParam(args, paramName);
 }
@@ -556,11 +531,6 @@ void WriteFFmpegPlugin::freeFormat(){
 
 using namespace OFX;
 
-
-void WriteFFmpegPluginFactory::supportedFileFormats(std::vector<std::string>* formats) const{
-    static_supportedFileFormats(formats);
-}
-
 #if 0
 namespace OFX
 {
@@ -577,18 +547,25 @@ namespace OFX
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void WriteFFmpegPluginFactory::describeWriter(OFX::ImageEffectDescriptor &desc)
+void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
+    GenericWriterDescribe(desc);
     // basic labels
     desc.setLabels("WriteFFmpegOFX", "WriteFFmpegOFX", "WriteFFmpegOFX");
     desc.setPluginDescription("Write images or video file using FFmpeg or libav");
+
+#ifdef OFX_EXTENSIONS_TUTTLE
+    const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    desc.addSupportedExtensions(extensions);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void WriteFFmpegPluginFactory::describeWriterInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context,OFX::PageParamDescriptor* page)
+void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    
-    
+    // make some pages and to things in
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context);
+
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
     OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kWriteFFmpegFormatParamName);
@@ -670,7 +647,8 @@ void WriteFFmpegPluginFactory::describeWriterInContext(OFX::ImageEffectDescripto
     mbDecisionParam->setDefault(FF_MB_DECISION_SIMPLE);
     mbDecisionParam->setParent(*groupParam);
     mbDecisionParam->setAnimates(false);
-  
+
+    GenericWriterDescribeInContextEnd(desc, context, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

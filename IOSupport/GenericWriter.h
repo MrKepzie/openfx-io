@@ -99,13 +99,6 @@ public:
      **/
     void purgeCaches(void);
 
-    /**
-     * @brief Should append in formats the list of the format this plug-in can encode.
-     * For example "png" , "jpg" , etc...
-     * This function should return the same as the named-alike function in the factory.
-     **/
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
-    
 protected:
     
     /**
@@ -121,7 +114,7 @@ protected:
      * false colors or sub-par performances in the case the end-user has to prepend a color-space conversion
      * effect her/himself.
      *
-     * @pre The filename has been validated against the file extensions returned in supportedFileFormats(...)
+     * @pre The filename has been validated against the supported file extensions.
      * You don't need to check this yourself.
      **/
     virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) = 0;
@@ -152,80 +145,21 @@ private:
     void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
 };
 
-class GenericWriterPluginFactory : public OFX::PluginFactoryHelper<GenericWriterPluginFactory>
-{
-public:
-    
-    GenericWriterPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
-    :OFX::PluginFactoryHelper<GenericWriterPluginFactory>(id, verMaj, verMin)
-    {}
-    
-    /**
-     * @brief Override to do something when your plugin is loaded (kOfxActionLoad).
-     * Base-class doesn't do anything.
-     **/
-    virtual void load(){}
-    
-    /**
-     * @brief Override to do something when your plugin is unloaded (kOfxActionUnload).
-     * Base-class doesn't do anything.
-     **/
-    virtual void unload(){}
-    
-    /**
-     * @brief Overriden to add the default description common for all writers.
-     * DON T OVERRIDE this, instead override describeWriter(...) which is called by describe.
-     * WARNING: This function is called after that the base class has set some flags, make sure
-     * you override them correctly.
-     **/
-    virtual void describe(OFX::ImageEffectDescriptor &desc);
-    
-    /**
-     * @brief Overriden to add the default params common for all writers.
-     * DON T OVERRIDE this, instead override describeWriterInContext(...) which is called by describeInContext.
-     **/
-    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
-    
-    /**
-     * @brief Override to create the instance of your writer.
-     **/
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context){ return NULL; }
-    
-    /**
-     * @brief Should append in formats the list of the format this plug-in can encode.
-     * For example "png" , "jpg" , etc...
-     **/
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const = 0;
-    
-    virtual bool isVideoStreamPlugin() const { return false; }
-
-protected:
-    /**
-     * @brief Override to describe your writer as you would do in the describe function.
-     **/
-    virtual void describeWriter(OFX::ImageEffectDescriptor &desc) = 0;
-    
-    
-    /**
-     * @brief Override to describe your writer in context as you would in the describeInContext function.
-     **/
-    virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage) = 0;
-
-
-};
+void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc);
+OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 
 #define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
-  class CLASS : public GenericWriterPluginFactory                       \
+  class CLASS : public OFX::PluginFactoryHelper<CLASS>                       \
   {                                                                     \
   public:                                                                \
-    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):GenericWriterPluginFactory(id, verMaj, verMin){} \
+    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):OFX::PluginFactoryHelper<CLASS>(id, verMaj, verMin){} \
     virtual void load() LOADFUNCDEF ;                                   \
     virtual void unload() UNLOADFUNCDEF ;                               \
     virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
-    virtual void supportedFileFormats(std::vector<std::string>* formats) const; \
-    virtual bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
-    virtual void describeWriter(OFX::ImageEffectDescriptor &desc);      \
-    virtual void describeWriterInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage); \
+    bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
+    virtual void describe(OFX::ImageEffectDescriptor &desc);      \
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
   };
 
 #endif

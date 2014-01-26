@@ -248,23 +248,23 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
         ++i;
     }
 
-    
-    
+#ifdef OFX_EXTENSIONS_TUTTLE
     bool found = false;
-    std::vector<std::string> supportedExtensions;
-    supportedFileFormats(&supportedExtensions);
-    for (unsigned int i = 0; i < supportedExtensions.size(); ++i) {
-        if (supportedExtensions[i] == ext) {
+    int nExtensions = getPropertySet().propGetDimension(kTuttleOfxImageEffectPropSupportedExtensions);
+    for (int i = 0; i < nExtensions; ++i) {
+        std::string exti = getPropertySet().propGetString(kTuttleOfxImageEffectPropSupportedExtensions, i);
+        if (exti == ext) {
             found = true;
             break;
         }
     }
-    if(!found){
+    if (!found) {
         std::string err("Unsupported file extension: ");
         err.append(ext);
         setPersistentMessage(OFX::Message::eMessageError, "", ext);
     }
-    
+#endif
+
     ////if the file extension corresponds to a video file, remove file digits that were
     ////added to the file path in order to write into the same file.
     if(!isImageFile(ext)){
@@ -455,7 +455,7 @@ using namespace OFX;
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
-void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
+void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
     desc.setPluginGrouping("Image/WriteOFX");
     
 #ifdef OFX_EXTENSIONS_TUTTLE
@@ -478,14 +478,6 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-    
-#ifdef OFX_EXTENSIONS_TUTTLE
-    std::vector<std::string> fileFormats;
-    supportedFileFormats(&fileFormats);
-    desc.addSupportedExtensions(fileFormats);
-#endif
-
-    describeWriter(desc);
 }
 
 /**
@@ -493,7 +485,7 @@ void GenericWriterPluginFactory::describe(OFX::ImageEffectDescriptor &desc){
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
-void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
+PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -574,5 +566,10 @@ void GenericWriterPluginFactory::describeInContext(OFX::ImageEffectDescriptor &d
 #endif
     page->addChild(*renderParam);
 
-    describeWriterInContext(desc, context, page);
+    return page;
 }
+
+void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page)
+{
+}
+
