@@ -38,6 +38,7 @@ install:
   - cd oiio
   - make USE_QT=0 USE_TBB=0 USE_PYTHON=0 USE_FIELD3D=0 USE_OPENJPEG=1 USE_OCIO=1 OIIO_BUILD_TESTS=0 OIIO_BUILD_TOOLS=0 OCIO_HOME=/opt/ocio INSTALLDIR=/opt/oiio dist_dir=. cmake
   - sudo make dist_dir=.
+  - cd ..
 # FFmpeg
   - sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
 script: make BITS=64 OIIO_HOME=/opt/oiio
