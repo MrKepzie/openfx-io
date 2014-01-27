@@ -69,7 +69,7 @@ extern "C" {
 #include <libavutil/error.h>
 #include <libavutil/mathematics.h>
 }
-#include "ffmpegCompat.h"
+#include "FFmpegCompat.h"
 
 #define kWriteFFmpegFormatParamName "format"
 #define kWriteFFmpegFPSParamName "fps"
