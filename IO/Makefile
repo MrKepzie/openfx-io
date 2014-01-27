@@ -5,5 +5,16 @@ VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO
 include ../Makefile.master
 
 CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO
-CXXFLAGS +=`pkg-config --cflags OpenEXR` `pkg-config --cflags libavformat libavcodec libswscale libavutil`
-LINKFLAGS += `pkg-config --libs OpenEXR` `pkg-config --libs libavformat libavcodec libswscale libavutil` -lOpenImageIO
+
+# OpenEXR
+CXXFLAGS +=`pkg-config --cflags OpenEXR`
+LINKFLAGS += `pkg-config --libs OpenEXR`
+
+# FFmpeg
+CXXFLAGS +=`pkg-config --cflags libavformat libavcodec libswscale libavutil`
+LINKFLAGS += `pkg-config --libs libavformat libavcodec libswscale libavutil` 
+
+# OpenImageIO
+OIIO_HOME ?= /usr
+CXXFLAGS += -I$(OIIO_HOME)/include
+LINKFLAGS += -L$(OIIO_HOME)/lib -lOpenImageIO
