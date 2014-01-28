@@ -69,7 +69,7 @@ extern "C" {
 #include <libavutil/error.h>
 #include <libavutil/mathematics.h>
 }
-#include "ffmpegCompat.h"
+#include "FFmpegCompat.h"
 
 #define kWriteFFmpegFormatParamName "format"
 #define kWriteFFmpegFPSParamName "fps"
@@ -250,10 +250,15 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
     }
     
     if (!_formatContext) {
-#     if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(53, 2, 0)
+#     if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(54, 0, 0)
         avformat_alloc_output_context2(&_formatContext, fmt, NULL, filename.c_str());
 #     else
+#       ifdef FFMS_USE_FFMPEG_COMPAT
         _formatContext = avformat_alloc_output_context(NULL, fmt, filename.c_str());
+#       else
+        _formatContext = avformat_alloc_context();
+        _formatContext->oformat = fmt;
+#       endif
 #     endif
     }
 

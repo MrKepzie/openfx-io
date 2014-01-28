@@ -4,5 +4,6 @@ VPATH += ../IOSupport
 
 include ../Makefile.master
 
-CXXFLAGS += 
-LINKFLAGS += -lOpenImageIO
+OIIO_HOME ?= /usr
+CXXFLAGS += -I$(OIIO_HOME)/include
+LINKFLAGS += -L$(OIIO_HOME)/lib -lOpenImageIO

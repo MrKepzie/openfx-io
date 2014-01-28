@@ -66,7 +66,7 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/error.h>
 }
-#include "ffmpegCompat.h"
+#include "FFmpegCompat.h"
 
 #ifdef OFX_IO_MT_FFMPEG
 #include "ofxsMultiThread.h"
