@@ -99,8 +99,8 @@ void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
 }
 
 void WriteOIIOPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) {
-    ImageOutput *output = ImageOutput::create(filename);
-    if (!output) {
+    std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
+    if (!output.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
         return;
     }
@@ -145,7 +145,6 @@ void WriteOIIOPlugin::encode(const std::string& filename,OfxTime time,const OFX:
     }
     
     output->close();
-    delete output;
 }
 
 bool WriteOIIOPlugin::isImageFile(const std::string& /*fileExtension*/) const {

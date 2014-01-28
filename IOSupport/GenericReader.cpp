@@ -40,6 +40,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <memory>
 
 #include "ofxsLog.h"
 
@@ -222,16 +223,16 @@ double GenericReaderPlugin::getSequenceTime(double t)
             }
                 break;
             case 3: //black
-                throw std::invalid_argument("Out of frame range.");
                 break;
             case 4: //error
-                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
                 throw std::invalid_argument("Out of frame range.");
                 break;
             default:
                 break;
         }
-        
+        assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
+
     } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
                                              /////if we're after the last frame
         int afterChoice;
@@ -260,19 +261,17 @@ double GenericReaderPlugin::getSequenceTime(double t)
                 
                 break;
             case 3: //black
-                throw std::invalid_argument("Out of frame range.");
                 break;
             case 4: //error
-                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
                 throw std::invalid_argument("Out of frame range.");
                 break;
             default:
                 break;
         }
-        
+        assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
     }
     
-    assert(sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max);
     return sequenceTime;
 }
 
@@ -345,13 +344,15 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     return true;
 }
 
-void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
-    
-    
-    
-    OFX::Image* dstImg = _outputClip->fetchImage(args.time);
-    
-    
+void GenericReaderPlugin::render(const OFX::RenderArguments &args)
+{
+    if (!_outputClip) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+    if (!dstImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
     double sequenceTime;
     try {
         sequenceTime =  getSequenceTime(args.time);
@@ -361,13 +362,11 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args) {
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
     if (!filename.empty()) {
-        decode(filename, sequenceTime, dstImg);
+        decode(filename, sequenceTime, dstImg.get());
     }
 
     ///do the color-space conversion
-    _ocio->apply(dstImg);
-    
-    delete dstImg;
+    _ocio->apply(dstImg.get());
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
@@ -477,10 +476,9 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
     desc.addSupportedContext(OFX::eContextGenerator);
     desc.addSupportedContext(OFX::eContextGeneral);
     
-    ///Say we support only reading to float images.
-    ///One would need to extend the ofxsColorSpace suite functions
-    ///in order to support other bitdepths. I have no time for it
-    ///at the moment and float is generally widely used among hosts.
+    // add supported pixel depths
+    //desc.addSupportedBitDepth( eBitDepthUByte );
+    //desc.addSupportedBitDepth( eBitDepthUShort );
     desc.addSupportedBitDepth(eBitDepthFloat);
     
     // set a few flags

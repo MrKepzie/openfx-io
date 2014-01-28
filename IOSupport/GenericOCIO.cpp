@@ -101,6 +101,7 @@ GenericOCIO::apply(OFX::Image* dstImg)
         proc->apply(img);
     } catch(OCIO::Exception &e) {
         _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        throw std::runtime_error(std::string("OpenColorIO error: ")+e.what());
     }
 #endif
 }

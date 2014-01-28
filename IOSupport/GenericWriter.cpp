@@ -226,9 +226,12 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
 
 
 
-void GenericWriterPlugin::render(const OFX::RenderArguments &args){
+void GenericWriterPlugin::render(const OFX::RenderArguments &args)
+{
+    if (!_inputClip) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
 
-    
     std::string filename;
     _fileParam->getValue(filename);
     filename = filenameFromPattern(filename, args.time);
@@ -279,9 +282,12 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
         filename.erase(firstDigitPos, sepPos - firstDigitPos); //< erase the digits
     }
     
-    OFX::Image* srcImg = _inputClip->fetchImage(args.time);
+    std::auto_ptr<OFX::Image> srcImg(_inputClip->fetchImage(args.time));
+    if (!srcImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
     ////copy the image if the output clip is connected!
-    if (_outputClip->isConnected()) {
+    if (_outputClip && _outputClip->isConnected()) {
         // instantiate the render code based on the pixel depth of the dst clip
 
         std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
@@ -294,19 +300,19 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
             switch(dstBitDepth) {
                 case OFX::eBitDepthUByte : {
                     ImageCopier<unsigned char, 4> fred(*this);
-                    setupAndProcess(fred, args,srcImg,dstImg.get());
+                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
                 }
                     break;
                     
                 case OFX::eBitDepthUShort : {
                     ImageCopier<unsigned short, 4> fred(*this);
-                    setupAndProcess(fred, args,srcImg,dstImg.get());
+                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
                 }
                     break;
                     
                 case OFX::eBitDepthFloat : {
                     ImageCopier<float, 4> fred(*this);
-                    setupAndProcess(fred, args,srcImg,dstImg.get());
+                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
                 }
                     break;
                 default :
@@ -317,19 +323,19 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
             switch(dstBitDepth) {
                 case OFX::eBitDepthUByte : {
                     ImageCopier<unsigned char, 1> fred(*this);
-                    setupAndProcess(fred, args,srcImg,dstImg.get());
+                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
                 }
                     break;
                     
                 case OFX::eBitDepthUShort : {
                     ImageCopier<unsigned short, 1> fred(*this);
-                    setupAndProcess(fred, args,srcImg,dstImg.get());
+                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
                 }
                     break;
                     
                 case OFX::eBitDepthFloat : {
                     ImageCopier<float, 1> fred(*this);
-                    setupAndProcess(fred, args,srcImg,dstImg.get());
+                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
                 }                          
                     break;
                 default :
@@ -340,13 +346,10 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args){
     
 
     ///do the color-space conversion
-    _ocio->apply(srcImg);
+    _ocio->apply(srcImg.get());
 
     ///and call the plug-in specific encode function.
-    encode(filename, args.time, srcImg);
-    
-    delete srcImg;
-
+    encode(filename, args.time, srcImg.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
