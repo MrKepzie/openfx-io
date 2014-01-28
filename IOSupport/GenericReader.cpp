@@ -366,7 +366,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     ///do the color-space conversion
-    _ocio->apply(dstImg.get());
+    _ocio->apply(args.renderWindow, dstImg.get());
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {

@@ -346,7 +346,8 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
     
 
     ///do the color-space conversion
-    _ocio->apply(srcImg.get());
+    // FIXME: BUG: the source image must never be changed!
+    _ocio->apply(args.renderWindow, srcImg.get());
 
     ///and call the plug-in specific encode function.
     encode(filename, args.time, srcImg.get());

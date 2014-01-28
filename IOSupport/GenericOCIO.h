@@ -56,7 +56,8 @@ class GenericOCIO
 
 public:
     GenericOCIO(OFX::ImageEffect* parent, const char* inputName, const char* outputName);
-    void apply(OFX::Image* dstImg);
+    void apply(const OfxRectI& renderWindow, OFX::Image* dstImg);
+    void apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
     void setDefault();
