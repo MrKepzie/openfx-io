@@ -522,7 +522,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
     
-    if (isVideoStreamPlugin) {
+    if (!isVideoStreamPlugin) {
 #ifdef OFX_EXTENSIONS_NATRON
         try {
             fileParam->setFilePathIsImage(true);

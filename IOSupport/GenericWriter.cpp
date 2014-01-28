@@ -485,7 +485,7 @@ void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
-PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
+PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,bool isVideoStreamPlugin)
 {
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -519,7 +519,9 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
 
 #ifdef OFX_EXTENSIONS_NATRON
     try {
-        fileParam->setFilePathIsImage(true);
+        if (!isVideoStreamPlugin) {
+            fileParam->setFilePathIsImage(true);
+        }
         fileParam->setFilePathIsOutput(true);
     } catch ( OFX::Exception::PropertyUnknownToHost& e) {
         // ignore
