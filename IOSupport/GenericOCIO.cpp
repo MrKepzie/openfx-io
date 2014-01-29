@@ -90,27 +90,32 @@ GenericOCIO::isIdentity()
 void
 GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
 {
+#ifdef OFX_IO_USING_OCIO
+    if (!_config) {
+        return;
+    }
     OFX::BitDepthEnum bitDepth = img->getPixelDepth();
     if (bitDepth != OFX::eBitDepthFloat) {
         throw std::runtime_error("invalid pixel depth (only float is supported)");
     }
-    OfxRectI bounds = img->getBounds();
-    
+
+    apply(renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
+#endif
+}
+
+void
+GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
+#ifdef OFX_IO_USING_OCIO
+    if (!_config) {
+        return;
+    }
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
        renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
         throw std::runtime_error("render window outside of image bounds");
     }
 
-    apply(renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
-}
-
-void
-GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
-{
-    if (!_config) {
-        return;
-    }
     int numChannels;
     int pixelBytes;
     switch(pixelComponents)
@@ -128,7 +133,6 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
 
     pixelBytes = numChannels * sizeof(float);
     float *pix = (float *) (((char *) pixelData) + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes);
-#ifdef OFX_IO_USING_OCIO
     try {
         const char * inputSpaceName;
         {
@@ -214,9 +218,11 @@ GenericOCIO::setDefault()
 #endif
 }
 
+#ifdef OFX_IO_USING_OCIO
 std::string
 GenericOCIO::getInputColorspace()
 {
+    assert(_config);
     int index;
     _inputSpace->getValue(index);
     return _config->getColorSpaceNameByIndex(index);
@@ -225,21 +231,29 @@ GenericOCIO::getInputColorspace()
 std::string
 GenericOCIO::getOutputColorspace()
 {
+    assert(_config);
     int index;
     _outputSpace->getValue(index);
     return _config->getColorSpaceNameByIndex(index);
 }
+#endif
 
 void
 GenericOCIO::setInputColorspace(const char* name)
 {
+#ifdef OFX_IO_USING_OCIO
+    assert(_config);
     _inputSpace->setValue(_config->getIndexForColorSpace(name));
+#endif
 }
 
 void
 GenericOCIO::setOutputColorspace(const char* name)
 {
+#ifdef OFX_IO_USING_OCIO
+    assert(_config);
     _outputSpace->setValue(_config->getIndexForColorSpace(name));
+#endif
 }
 
 void
