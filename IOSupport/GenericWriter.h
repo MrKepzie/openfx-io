@@ -58,6 +58,7 @@ public:
     
     virtual ~GenericWriterPlugin();
     
+    static void getImageData(OFX::Image* img, float** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, int* rowBytes);
     
     /**
      * @brief Don't override this function, the GenericWriterPlugin class already does the rendering. The "encoding" of the frame
@@ -117,7 +118,7 @@ protected:
      * @pre The filename has been validated against the supported file extensions.
      * You don't need to check this yourself.
      **/
-    virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) = 0;
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) = 0;
 
     /**
      * @brief Overload to return false if the given file extension is a video file extension or
@@ -146,7 +147,7 @@ private:
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc);
-OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,bool isVideoStreamPlugin);
+OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 
 #define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \

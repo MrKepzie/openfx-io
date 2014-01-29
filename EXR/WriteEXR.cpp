@@ -113,7 +113,12 @@ void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 }
 
 
-void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
+void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) {
+    if (pixelComponents != OFX::ePixelComponentRGBA) {
+        // TODO: handle ePixelComponentRGB and ePixelComponentAlpha, at least!
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA components images");
+    }
     try {
         int compressionIndex;
         _compression->getValue(compressionIndex);
@@ -126,18 +131,18 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const OFX::
         int depth = Exr::depthNameToInt(Exr::depthNames[depthIndex]);
         Imath::Box2i exrDataW;
         
-        OfxRectI rod = srcImg->getBounds();
+        OfxRectI bounds;
         
-        exrDataW.min.x = rod.x1;
-        exrDataW.min.y = rod.y1;
-        exrDataW.max.x = rod.x2 - 1;
-        exrDataW.max.y = rod.y2 - 1;
+        exrDataW.min.x = bounds.x1;
+        exrDataW.min.y = bounds.y1;
+        exrDataW.max.x = bounds.x2 - 1;
+        exrDataW.max.y = bounds.y2 - 1;
         
         Imath::Box2i exrDispW;
         exrDispW.min.x = 0;
         exrDispW.min.y = 0;
-        exrDispW.max.x = (rod.x2 - rod.x1);
-        exrDispW.max.y = (rod.y2 - rod.y1);
+        exrDispW.max.x = (bounds.x2 - bounds.x1);
+        exrDispW.max.y = (bounds.y2 - bounds.y1);
 
         Imf_::Header exrheader(exrDispW, exrDataW, 1.,
                                Imath::V2f(0, 0), 1, Imf_::INCREASING_Y, compression);
@@ -158,12 +163,12 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const OFX::
         
         Imf_::OutputFile outputFile(filename.c_str(),exrheader);
         
-        for (int y = rod.y1; y < rod.y2; ++y) {
+        for (int y = bounds.y1; y < bounds.y2; ++y) {
             /*First we create a row that will serve as the output buffer.
              We copy the scan-line (with y inverted) in the inputImage to the row.*/
-            int exrY = rod.y2 - y - 1;
+            int exrY = bounds.y2 - y - 1;
             
-            float* src_pixels = (float*)srcImg->getPixelAddress(rod.x1, exrY);
+            float* src_pixels = (float*)((char*)pixelData + (exrY - bounds.y1)*rowBytes);
             
             /*we create the frame buffer*/
             Imf_::FrameBuffer fbuf;
@@ -173,7 +178,7 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const OFX::
                     fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan,sizeof(float) * 4, 0));
                 }
             } else {
-                halfwriterow = new Imf_::Array2D<half>(4 ,rod.x2 - rod.x1);
+                halfwriterow = new Imf_::Array2D<half>(4 ,bounds.x2 - bounds.x1);
                 
                 for(int chan = 0; chan < 4 ; ++chan){
                     fbuf.insert(chanNames[chan],
@@ -239,7 +244,7 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin());
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false);
 
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);

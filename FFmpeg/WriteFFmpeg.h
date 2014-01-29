@@ -62,7 +62,7 @@ public:
 private:
     
         
-    virtual void encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg);
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
     
     virtual bool isImageFile(const std::string& fileExtension) const;
     

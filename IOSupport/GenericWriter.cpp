@@ -225,6 +225,19 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
 }
 
 
+void
+GenericWriterPlugin::getImageData(OFX::Image* img, float** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, int* rowBytes)
+{
+    OFX::BitDepthEnum bitDepth = img->getPixelDepth();
+    if (bitDepth != OFX::eBitDepthFloat) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    *pixelData = (float*)img->getPixelData();
+    *bounds = img->getBounds();
+    *pixelComponents = img->getPixelComponents();
+    *rowBytes = img->getRowBytes();
+}
 
 void GenericWriterPlugin::render(const OFX::RenderArguments &args)
 {
@@ -286,71 +299,61 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+
+    std::auto_ptr<OFX::Image> dstImg;
     ////copy the image if the output clip is connected!
     if (_outputClip && _outputClip->isConnected()) {
         // instantiate the render code based on the pixel depth of the dst clip
 
-        std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+        dstImg.reset(_outputClip->fetchImage(args.time));
         
         OFX::BitDepthEnum       dstBitDepth    = _outputClip->getPixelDepth();
         OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
         
         // do the rendering
-        if(dstComponents == OFX::ePixelComponentRGBA) {
-            switch(dstBitDepth) {
-                case OFX::eBitDepthUByte : {
-                    ImageCopier<unsigned char, 4> fred(*this);
-                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-                }
-                    break;
-                    
-                case OFX::eBitDepthUShort : {
-                    ImageCopier<unsigned short, 4> fred(*this);
-                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-                }
-                    break;
-                    
-                case OFX::eBitDepthFloat : {
-                    ImageCopier<float, 4> fred(*this);
-                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-                }
-                    break;
-                default :
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-            }
+        if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
         }
-        else {
-            switch(dstBitDepth) {
-                case OFX::eBitDepthUByte : {
-                    ImageCopier<unsigned char, 1> fred(*this);
-                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-                }
-                    break;
-                    
-                case OFX::eBitDepthUShort : {
-                    ImageCopier<unsigned short, 1> fred(*this);
-                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-                }
-                    break;
-                    
-                case OFX::eBitDepthFloat : {
-                    ImageCopier<float, 1> fred(*this);
-                    setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-                }                          
-                    break;
-                default :
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-            }
+        if(dstComponents == OFX::ePixelComponentRGBA) {
+            ImageCopier<float, 4> fred(*this);
+            setupAndProcess(fred, args,srcImg.get(),dstImg.get());
+        } else if(dstComponents == OFX::ePixelComponentRGB) {
+            ImageCopier<float, 3> fred(*this);
+            setupAndProcess(fred, args,srcImg.get(),dstImg.get());
+        }  else if(dstComponents == OFX::ePixelComponentAlpha) {
+            ImageCopier<float, 1> fred(*this);
+            setupAndProcess(fred, args,srcImg.get(),dstImg.get());
         } // switch
     }
-    
 
-    ///do the color-space conversion
-    // FIXME: BUG: the source image must never be changed!
-    _ocio->apply(args.renderWindow, srcImg.get());
-
-    ///and call the plug-in specific encode function.
-    encode(filename, args.time, srcImg.get());
+    float *pixelData = NULL;
+    OfxRectI bounds;
+    OFX::PixelComponentEnum pixelComponents;
+    int rowBytes;
+    if (_ocio->isIdentity()) {
+        // no colorspace conversion, just encode the source image
+        getImageData(srcImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
+        encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+    } else if (dstImg.get()) {
+        // do the color-space conversion on dstImg
+        getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
+        _ocio->apply(args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
+        encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+    } else {
+        // allocate
+        getImageData(srcImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
+        size_t memSize = (bounds.y2-bounds.y1)*rowBytes;
+        OFX::ImageMemory mem((bounds.y2-bounds.y1)*rowBytes,this);
+        pixelData = (float*)mem.lock();
+        // copy
+        memcpy(pixelData, srcImg.get()->getPixelData(), memSize);
+        // do the color-space conversion
+        _ocio->apply(args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
+        // encode
+        encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+        // unlock (the OFX::ImageMemory destructor frees the memory)
+        mem.unlock();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,8 +384,10 @@ void GenericWriterPlugin::setupAndProcess(CopierBase & processor, const OFX::Ren
     
     
     // make sure bit depths are sane
-    if(srcImg) checkComponents(*srcImg, dstBitDepth, dstComponents);
-    
+    if(srcImg) {
+        checkComponents(*srcImg, dstBitDepth, dstComponents);
+    }
+
     // set the images
     processor.setDstImg(dstImg);
     processor.setSrcImg(srcImg);
@@ -467,12 +472,11 @@ void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
 #endif
     desc.addSupportedContext(OFX::eContextGeneral);
 
-    ///Say we support only reading to float images.
-    ///One would need to extend the ofxsColorSpace suite functions
-    ///in order to support other bitdepths. I have no time for it
-    ///at the moment and float is generally widely used among hosts.
+    // OCIO is only supported for float images.
+    //desc.addSupportedBitDepth(eBitDepthUByte);
+    //desc.addSupportedBitDepth(eBitDepthUShort);
     desc.addSupportedBitDepth(eBitDepthFloat);
-    
+
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
@@ -489,16 +493,32 @@ void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
-PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,bool isVideoStreamPlugin)
+PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha)
 {
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
-    srcClip->addSupportedComponent(ePixelComponentRGBA);
+    if (supportsRGBA) {
+        srcClip->addSupportedComponent(ePixelComponentRGBA);
+    }
+    if (supportsRGB) {
+        srcClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (supportsAlpha) {
+        srcClip->addSupportedComponent(ePixelComponentAlpha);
+    }
     srcClip->setSupportsTiles(false);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    if (supportsRGBA) {
+        dstClip->addSupportedComponent(ePixelComponentRGBA);
+    }
+    if (supportsRGB) {
+        srcClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (supportsAlpha) {
+        srcClip->addSupportedComponent(ePixelComponentAlpha);
+    }
     dstClip->setSupportsTiles(false);//< we don't support tiles in output!
 
     // make some pages and to things in

@@ -225,8 +225,37 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
     ext == "rgb";
 }
 
-void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg){
-    
+template <class T> inline T
+Clamp(T v, int min, int max)
+{
+    if(v < T(min)) return T(min);
+    if(v > T(max)) return T(max);
+    return v;
+}
+
+void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
+    }
+
+    int numChannels;
+    switch(pixelComponents)
+    {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            break;
+        case OFX::ePixelComponentRGB:
+            numChannels = 3;
+            break;
+        case OFX::ePixelComponentAlpha:
+            numChannels = 1;
+            break;
+        default:
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     AVOutputFormat* fmt = 0;
     int formatValue;
     _format->getValue(formatValue);
@@ -305,9 +334,8 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
         return;
     }
     
-    OfxRectI rod = srcImg->getRegionOfDefinition();
-    int w = (rod.x2 - rod.x1);
-    int h = (rod.y2 - rod.y1);
+    int w = (bounds.x2 - bounds.x1);
+    int h = (bounds.y2 - bounds.y1);
     
     if (!_stream) {
         _stream = avformat_new_stream(_formatContext, NULL);
@@ -416,17 +444,17 @@ void WriteFFmpegPlugin::encode(const std::string& filename,OfxTime time,const OF
     avpicture_fill(&picture, buffer, PIX_FMT_RGB24, w, h);
 
 
-    for (int y = rod.y1; y < rod.y2; ++y) {
-        int srcY = rod.y2 - y - 1;
-        const float* src_pixels = (float*)srcImg->getPixelAddress(0, y);
-        unsigned char* dst_pixels = picture.data[0] + (rod.x2 - rod.x1) * srcY * 3;
+    for (int y = bounds.y1; y < bounds.y2; ++y) {
+        int srcY = bounds.y2 - y - 1;
+        const float* src_pixels = (float*)((char*)pixelData + (y-bounds.y1)*rowBytes);
+        unsigned char* dst_pixels = picture.data[0] + (bounds.x2 - bounds.x1) * srcY * 3;
         
-        for (int x = rod.x1; x < rod.x2; ++x) {
-            int srcCol = x * 4;
+        for (int x = bounds.x1; x < bounds.x2; ++x) {
+            int srcCol = x * numChannels;
             int dstCol = x * 3;
-            dst_pixels[dstCol] = (float)src_pixels[srcCol] * 255.f;
-            dst_pixels[dstCol + 1] = (float)src_pixels[srcCol + 1] * 255.f;
-            dst_pixels[dstCol + 2] = (float)src_pixels[srcCol + 2] * 255.f;
+            dst_pixels[dstCol] = Clamp(src_pixels[srcCol],0,1) * 255.f;
+            dst_pixels[dstCol + 1] = Clamp(src_pixels[srcCol + 1],0,1) * 255.f;
+            dst_pixels[dstCol + 2] = Clamp(src_pixels[srcCol + 2],0,1) * 255.f;
         }
     }
 
@@ -569,7 +597,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin());
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, false);
 
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();

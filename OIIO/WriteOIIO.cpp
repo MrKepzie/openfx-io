@@ -98,23 +98,49 @@ void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
     GenericWriterPlugin::changedParam(args, paramName);
 }
 
-void WriteOIIOPlugin::encode(const std::string& filename,OfxTime time,const OFX::Image* srcImg) {
+void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
+    }
+
+    int numChannels;
+    switch(pixelComponents)
+    {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            break;
+        case OFX::ePixelComponentRGB:
+            numChannels = 3;
+            break;
+        case OFX::ePixelComponentAlpha:
+            numChannels = 1;
+            break;
+        default:
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (!output.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
         return;
     }
     
-    OfxRectI rod = srcImg->getRegionOfDefinition();
-    ImageSpec spec (rod.x2 - rod.x1, rod.y2 - rod.y1, 4, TypeDesc::FLOAT);
-    
+    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, TypeDesc::FLOAT);
+    // by default, the channel names are R, G, B, A, which is OK except for Alpha images
+    if (pixelComponents == OFX::ePixelComponentAlpha) {
+        spec.channelnames.clear();
+        spec.channelnames.push_back ("A");
+        spec.alpha_channel = 0;
+    }
     bool supportsRectangles = output->supports("rectangles");
     
     if (supportsRectangles) {
-        spec.x = rod.x1;
-        spec.y = rod.y1;
-        spec.full_x = rod.x1;
-        spec.full_y = rod.y1;
+        spec.x = bounds.x1;
+        spec.y = bounds.y1;
+        spec.full_x = bounds.x1;
+        spec.full_y = bounds.y1;
     }
     
     if (!output->open(filename, spec)) {
@@ -130,16 +156,16 @@ void WriteOIIOPlugin::encode(const std::string& filename,OfxTime time,const OFX:
                                 0, //zmin
                                 1, //zmax
                                 spec.format, //datatype
-                                srcImg->getPixelAddress(spec.x, spec.y + spec.height - 1), //invert y
+                                (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
                                 AutoStride, //xstride
-                                -(spec.width * 4 * sizeof(float)), //ystride
+                                -rowBytes, //ystride
                                 AutoStride //zstride
                                 );
     } else {
         output->write_image(spec.format,
-                            srcImg->getPixelAddress(spec.x, spec.y + spec.height - 1), //invert y
+                            (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
                             AutoStride, //xstride
-                            -(spec.width * 4 * sizeof(float)), //ystride
+                            -rowBytes, //ystride
                             AutoStride //zstride
                             );
     }
@@ -186,7 +212,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin());
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }
