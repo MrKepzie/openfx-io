@@ -77,6 +77,7 @@
 
 #include <locale>
 #include <sstream>
+#include <cstring>
 
 #include "ofxsProcessing.H"
 #include "ofxsLog.h"
