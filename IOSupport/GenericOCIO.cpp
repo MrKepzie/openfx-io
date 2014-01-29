@@ -39,6 +39,7 @@
 
 #include "GenericOCIO.h"
 
+#include <stdexcept>
 #include <ofxsParam.h>
 #include <ofxsImageEffect.h>
 #include <ofxsLog.h>
@@ -70,6 +71,20 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent, const char* inputName, const 
     _config = OCIO::Config::CreateFromFile(filename.c_str());
 #endif
     setDefault();
+}
+
+bool
+GenericOCIO::isIdentity()
+{
+#ifdef OFX_IO_USING_OCIO
+    int inputSpaceIndex;
+    _inputSpace->getValue(inputSpaceIndex);
+    int outputSpaceIndex;
+    _outputSpace->getValue(outputSpaceIndex);
+    return inputSpaceIndex == outputSpaceIndex;
+#else
+    return true;
+#endif
 }
 
 void
