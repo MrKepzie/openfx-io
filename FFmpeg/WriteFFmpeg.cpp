@@ -236,8 +236,8 @@ Clamp(T v, int min, int max)
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     int numChannels;

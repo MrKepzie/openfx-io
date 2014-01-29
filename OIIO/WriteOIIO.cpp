@@ -101,8 +101,8 @@ void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
 void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     int numChannels;
