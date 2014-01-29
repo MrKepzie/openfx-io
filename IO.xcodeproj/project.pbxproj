@@ -1018,6 +1018,7 @@
 					OFX_EXTENSIONS_TUTTLE,
 					OFX_IO_USING_OCIO,
 					"DEBUG=1",
+					OFX_IO_MT_FFMPEG,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",
@@ -1053,6 +1054,7 @@
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
 					OFX_IO_USING_OCIO,
+					OFX_IO_MT_FFMPEG,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(OFX_PATH)/include",
