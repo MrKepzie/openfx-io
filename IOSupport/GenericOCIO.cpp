@@ -82,8 +82,8 @@ GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
     OfxRectI bounds = img->getBounds();
     
     // are we in the image bounds
-    if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 > renderWindow.y2 ||
-       renderWindow.x2 < bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 < bounds.y1 || renderWindow.y2 > renderWindow.y2) {
+    if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
+       renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
         throw std::runtime_error("render window outside of image bounds");
     }
 
