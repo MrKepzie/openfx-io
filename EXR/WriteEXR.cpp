@@ -114,10 +114,24 @@ void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 
 
 void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) {
-    if (pixelComponents != OFX::ePixelComponentRGBA) {
-        // TODO: handle ePixelComponentRGB and ePixelComponentAlpha, at least!
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA components images");
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    int numChannels;
+    switch(pixelComponents)
+    {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            break;
+        case OFX::ePixelComponentRGB:
+            numChannels = 3;
+            break;
+        case OFX::ePixelComponentAlpha:
+            numChannels = 1;
+            break;
+        default:
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     try {
         int compressionIndex;
@@ -154,13 +168,15 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float
             assert(depth == 16);
             pixelType = Imf_::HALF;
         }
-        
+
         const char* chanNames[4] = { "R" , "G" , "B" , "A" };
-        
-        for (int chan = 0; chan < 4; ++chan) {
+        if (pixelComponents == OFX::ePixelComponentAlpha) {
+            chanNames[0] = chanNames[3];
+        }
+        for (int chan = 0; chan < numChannels; ++chan) {
             exrheader.channels().insert(chanNames[chan],Imf_::Channel(pixelType));
         }
-        
+
         Imf_::OutputFile outputFile(filename.c_str(),exrheader);
         
         for (int y = bounds.y1; y < bounds.y2; ++y) {
@@ -174,19 +190,19 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float
             Imf_::FrameBuffer fbuf;
             Imf_::Array2D<half>* halfwriterow = 0 ;
             if (depth == 32) {
-                for (int chan = 0; chan < 4; ++chan) {
-                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan,sizeof(float) * 4, 0));
+                for (int chan = 0; chan < numChannels; ++chan) {
+                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * numChannels, 0));
                 }
             } else {
-                halfwriterow = new Imf_::Array2D<half>(4 ,bounds.x2 - bounds.x1);
+                halfwriterow = new Imf_::Array2D<half>(numChannels ,bounds.x2 - bounds.x1);
                 
-                for(int chan = 0; chan < 4 ; ++chan){
+                for (int chan = 0; chan < numChannels; ++chan) {
                     fbuf.insert(chanNames[chan],
                                 Imf_::Slice(Imf_::HALF,
                                             (char*)(&(*halfwriterow)[chan][0] - exrDataW.min.x),
                                             sizeof((*halfwriterow)[chan][0]), 0));
                     const float* from = src_pixels + chan;
-                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += 4) {
+                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += numChannels) {
                         (*halfwriterow)[chan][i - exrDataW.min.x] = from[f];
                     }
                 }
@@ -198,9 +214,9 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float
 
         
         
-    }catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         setPersistentMessage(OFX::Message::eMessageError, "",std::string("OpenEXR error") + ": " + e.what());
-        return;
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 }
 
@@ -244,7 +260,7 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false);
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, true);
 
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);
