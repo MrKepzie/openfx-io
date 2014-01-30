@@ -547,11 +547,11 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
         if (!isVideoStreamPlugin) {
             fileParam->setFilePathIsImage(true);
         }
-        fileParam->setFilePathIsOutput(true);
     } catch ( OFX::Exception::PropertyUnknownToHost& e) {
         // ignore
     }
 #endif
+    fileParam->setFilePathExists(false);
     page->addChild(*fileParam);
 
     // insert OCIO parameters
