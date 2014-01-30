@@ -106,7 +106,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     
     if (!output->open(filename, spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
-        return;
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
     if (supportsRectangles) {
@@ -172,12 +172,12 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // basic labels
     desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
     desc.setPluginDescription("Write images file using the OpenImageIO library.\n"
-                              "OpenImageIO supports reading/writing the following file formats:\n"
+                              "OpenImageIO supports writing the following file formats:\n"
                               "BMP (*.bmp)\n"
                               "Cineon (*.cin)\n"
-                              "Direct Draw Surface (*.dds)\n"
+                              //"Direct Draw Surface (*.dds)\n"
                               "DPX (*.dpx)\n"
-                              "Field3D (*.f3d)\n"
+                              //"Field3D (*.f3d)\n"
                               "FITS (*.fits)\n"
                               "HDR/RGBE (*.hdr)\n"
                               "Icon (*.ico)\n"
@@ -188,7 +188,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Portable Network Graphics (*.png)\n"
                               "PNM / Netpbm (*.pbm *.pgm *.ppm)\n"
                               "PSD (*.psd *.pdd *.psb)\n"
-                              "Ptex (*.ptex)\n"
+                              //"Ptex (*.ptex)\n"
                               "RLA (*.rla)\n"
                               "SGI (*.sgi *.rgb *.rgba *.bw *.int *.inta)\n"
                               "Softimage PIC (*.pic)\n"
@@ -198,7 +198,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               + oiio_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico", "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    const char* extensions[] = { "bmp", "cin", /*"dds",*/ "dpx", /*"f3d",*/ "fits", "hdr", "ico", "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "pdd", "psb", /*"ptex",*/ "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
 #endif
 }
