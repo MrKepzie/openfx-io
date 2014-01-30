@@ -106,7 +106,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
 #endif //0
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg) {
+void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg) {
     ImageSpec spec;
     
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -218,7 +218,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin());
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), true, false, false);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }

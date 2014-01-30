@@ -362,7 +362,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
     if (!filename.empty()) {
-        decode(filename, sequenceTime, dstImg.get());
+        decode(filename, sequenceTime, args.renderWindow, dstImg.get());
     }
 
     ///do the color-space conversion
@@ -492,20 +492,36 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 }
 
-OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin)
+OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha)
 {
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     // create the optional source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
-    srcClip->addSupportedComponent(ePixelComponentRGBA);
+    if (supportsRGBA) {
+        srcClip->addSupportedComponent(ePixelComponentRGBA);
+    }
+    if (supportsRGB) {
+        srcClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (supportsAlpha) {
+        srcClip->addSupportedComponent(ePixelComponentAlpha);
+    }
     srcClip->setSupportsTiles(true);
     srcClip->setOptional(true);
     
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    if (supportsRGBA) {
+        dstClip->addSupportedComponent(ePixelComponentRGBA);
+    }
+    if (supportsRGB) {
+        dstClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (supportsAlpha) {
+        dstClip->addSupportedComponent(ePixelComponentAlpha);
+    }
     dstClip->setSupportsTiles(true);
     
 

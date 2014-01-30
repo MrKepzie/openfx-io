@@ -75,7 +75,7 @@ private:
     
     virtual void onInputFileChanged(const std::string& filename);
     
-    virtual void decode(const std::string& filename,OfxTime time,OFX::Image* dstImg);
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg);
         
     virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range);
         

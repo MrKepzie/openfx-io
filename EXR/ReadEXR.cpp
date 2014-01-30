@@ -491,7 +491,8 @@ struct DecodingChannelsMap {
     std::string channelName;
 };
 
-void ReadEXRPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
+void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+{
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     OfxRectI roi = dstImg->getRegionOfDefinition();
     
@@ -599,7 +600,7 @@ void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin());
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), true, false, false);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }

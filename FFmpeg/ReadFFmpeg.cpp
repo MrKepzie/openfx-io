@@ -93,7 +93,8 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
 }
 
-void ReadFFmpegPlugin::decode(const std::string& filename,OfxTime time,OFX::Image* dstImg){
+void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+{
     
     _ffmpegFile = getFile(filename);
     
@@ -277,7 +278,7 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
                                                         ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin());
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), true, false, false);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }
