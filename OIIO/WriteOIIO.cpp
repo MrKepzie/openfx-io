@@ -171,7 +171,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     GenericWriterDescribe(desc);
     // basic labels
     desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
-    desc.setPluginDescription("Write images file using the OpenImageIO library.\n"
+    desc.setPluginDescription("Write images file using the OpenImageIO library.\n\n"
                               "OpenImageIO supports writing the following file formats:\n"
                               "BMP (*.bmp)\n"
                               "Cineon (*.cin)\n"
@@ -194,7 +194,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Softimage PIC (*.pic)\n"
                               "Targa (*.tga *.tpic)\n"
                               "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
-                              "Zfile (*.zfile)\n"
+                              "Zfile (*.zfile)\n\n"
                               + oiio_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE

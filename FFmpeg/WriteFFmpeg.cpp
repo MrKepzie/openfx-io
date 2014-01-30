@@ -618,7 +618,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #                             else
                               "libav"
 #                             endif
-                              ".\n" + ffmpeg_versions());
+                              ".\n\n" + ffmpeg_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };

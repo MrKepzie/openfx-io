@@ -279,7 +279,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     // basic labels
     desc.setLabels("ReadOIIOOFX", "ReadOIIOOFX", "ReadOIIOOFX");
-    desc.setPluginDescription("Read images using OpenImageIO.\n"
+    desc.setPluginDescription("Read images using OpenImageIO.\n\n"
                               "OpenImageIO supports reading/writing the following file formats:\n"
                               "BMP (*.bmp)\n"
                               "Cineon (*.cin)\n"
@@ -302,7 +302,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Softimage PIC (*.pic)\n"
                               "Targa (*.tga *.tpic)\n"
                               "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
-                              "Zfile (*.zfile)\n"
+                              "Zfile (*.zfile)\n\n"
                               + oiio_versions());
 
 
