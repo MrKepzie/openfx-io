@@ -94,6 +94,9 @@ GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
     if (!_config) {
         return;
     }
+    if (isIdentity()) {
+        return;
+    }
     OFX::BitDepthEnum bitDepth = img->getPixelDepth();
     if (bitDepth != OFX::eBitDepthFloat) {
         throw std::runtime_error("invalid pixel depth (only float is supported)");
