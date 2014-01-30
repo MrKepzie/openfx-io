@@ -79,7 +79,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
-        return;
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
     ///find-out the image color-space
@@ -113,7 +113,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
-        return;
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
 
