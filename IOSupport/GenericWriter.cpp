@@ -93,7 +93,6 @@
 
 // in the Writer context, the script name must be "filename", @see kOfxImageEffectContextWriter
 #define kWriterFileParamName "filename"
-#define kWriterRenderParamName "render"
 #define kWriterFrameRangeChoiceParamName "frameRange"
 #define kWriterFirstFrameParamName "firstFrame"
 #define kWriterLastFrameParamName "lastFrame"
@@ -580,18 +579,6 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     lastFrameParam->setIsSecret(true);
     page->addChild(*lastFrameParam);
 
-    ///////////Render button
-    OFX::PushButtonParamDescriptor* renderParam = desc.definePushButtonParam(kWriterRenderParamName);
-    renderParam->setLabels("Render","Render","Render");
-    renderParam->setHint("Starts rendering all the frame range.");
-#ifdef OFX_EXTENSIONS_NATRON
-    try {
-        renderParam->setAsRenderButton();
-    } catch ( OFX::Exception::PropertyUnknownToHost& e) {
-        // ignore
-    }
-#endif
-    page->addChild(*renderParam);
 
     return page;
 }
