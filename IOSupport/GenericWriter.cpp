@@ -373,7 +373,7 @@ checkComponents(const OFX::Image &src,
     
     // see if they have the same depths and bytes and all
     if(srcBitDepth != dstBitDepth || srcComponents != dstComponents)
-        throw int(1); // HACK!! need to throw an sensible exception here!
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
 }
 
 void GenericWriterPlugin::setupAndProcess(CopierBase & processor, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg){
@@ -514,10 +514,10 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
         dstClip->addSupportedComponent(ePixelComponentRGBA);
     }
     if (supportsRGB) {
-        srcClip->addSupportedComponent(ePixelComponentRGB);
+        dstClip->addSupportedComponent(ePixelComponentRGB);
     }
     if (supportsAlpha) {
-        srcClip->addSupportedComponent(ePixelComponentAlpha);
+        dstClip->addSupportedComponent(ePixelComponentAlpha);
     }
     dstClip->setSupportsTiles(false);//< we don't support tiles in output!
 
