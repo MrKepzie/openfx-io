@@ -205,11 +205,36 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     // basic labels
     desc.setLabels("ReadOIIOOFX", "ReadOIIOOFX", "ReadOIIOOFX");
-    desc.setPluginDescription("Read images using OpenImageIO.\n" + oiio_versions());
+    desc.setPluginDescription("Read images using OpenImageIO.\n"
+                              "OpenImageIO supports reading/writing the following file formats:\n"
+                              "BMP (*.bmp)\n"
+                              "Cineon (*.cin)\n"
+                              "Direct Draw Surface (*.dds)\n"
+                              "DPX (*.dpx)\n"
+                              "Field3D (*.f3d)\n"
+                              "FITS (*.fits)\n"
+                              "HDR/RGBE (*.hdr)\n"
+                              "Icon (*.ico)\n"
+                              "IFF (*.iff)\n"
+                              "JPEG (*.jpg *.jpe *.jpeg *.jif *.jfif *.jfi)\n"
+                              "JPEG-2000 (*.jp2 *.j2k)\n"
+                              "OpenEXR (*.exr)\n"
+                              "Portable Network Graphics (*.png)\n"
+                              "PNM / Netpbm (*.pbm *.pgm *.ppm)\n"
+                              "PSD (*.psd *.pdd *.psb)\n"
+                              "Ptex (*.ptex)\n"
+                              "RLA (*.rla)\n"
+                              "SGI (*.sgi *.rgb *.rgba *.bw *.int *.inta)\n"
+                              "Softimage PIC (*.pic)\n"
+                              "Targa (*.tga *.tpic)\n"
+                              "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
+                              "Zfile (*.zfile)\n"
+                              + oiio_versions());
 
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "bmp", "cin", "dpx", "fits", "hdr", "ico", "iff", "jpeg", "jpg", "jpe", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+
+    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico", "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
 #endif
 }

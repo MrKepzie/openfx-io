@@ -55,45 +55,6 @@ WriteOIIOPlugin::~WriteOIIOPlugin() {
     
 }
 
-static void supportedFileFormats_static(std::vector<std::string>* formats) {
-    formats->push_back("bmp");
-    formats->push_back("cin");
-    formats->push_back("dpx");
-    formats->push_back("fits");
-    formats->push_back("hdr");
-    formats->push_back("ico");
-    formats->push_back("iff");
-    formats->push_back("jpeg");
-    formats->push_back("jpg");
-    formats->push_back("jpe");
-    formats->push_back("jfif");
-    formats->push_back("jfi");
-    formats->push_back("jp2");
-    formats->push_back("j2k");
-    formats->push_back("exr");
-    formats->push_back("png");
-    formats->push_back("pbm");
-    formats->push_back("pgm");
-    formats->push_back("ppm");
-    formats->push_back("psd");
-    formats->push_back("rla");
-    formats->push_back("sgi");
-    formats->push_back("rgb");
-    formats->push_back("rgba");
-    formats->push_back("bw");
-    formats->push_back("int");
-    formats->push_back("inta");
-    formats->push_back("tga");
-    formats->push_back("tpic");
-    formats->push_back("tif");
-    formats->push_back("tiff");
-    formats->push_back("tx");
-    formats->push_back("env");
-    formats->push_back("sm");
-    formats->push_back("vsm");
-    formats->push_back("zfile");
-}
-
 void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     GenericWriterPlugin::changedParam(args, paramName);
 }
@@ -210,10 +171,34 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     GenericWriterDescribe(desc);
     // basic labels
     desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
-    desc.setPluginDescription("Write images file using the OpenImageIO library.\n" + oiio_versions());
+    desc.setPluginDescription("Write images file using the OpenImageIO library.\n"
+                              "OpenImageIO supports reading/writing the following file formats:\n"
+                              "BMP (*.bmp)\n"
+                              "Cineon (*.cin)\n"
+                              "Direct Draw Surface (*.dds)\n"
+                              "DPX (*.dpx)\n"
+                              "Field3D (*.f3d)\n"
+                              "FITS (*.fits)\n"
+                              "HDR/RGBE (*.hdr)\n"
+                              "Icon (*.ico)\n"
+                              "IFF (*.iff)\n"
+                              "JPEG (*.jpg *.jpe *.jpeg *.jif *.jfif *.jfi)\n"
+                              "JPEG-2000 (*.jp2 *.j2k)\n"
+                              "OpenEXR (*.exr)\n"
+                              "Portable Network Graphics (*.png)\n"
+                              "PNM / Netpbm (*.pbm *.pgm *.ppm)\n"
+                              "PSD (*.psd *.pdd *.psb)\n"
+                              "Ptex (*.ptex)\n"
+                              "RLA (*.rla)\n"
+                              "SGI (*.sgi *.rgb *.rgba *.bw *.int *.inta)\n"
+                              "Softimage PIC (*.pic)\n"
+                              "Targa (*.tga *.tpic)\n"
+                              "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
+                              "Zfile (*.zfile)\n"
+                              + oiio_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "bmp", "cin", "dpx", "fits", "hdr", "ico", "iff", "jpeg", "jpg", "jpe", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico", "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
 #endif
 }
