@@ -480,7 +480,7 @@ void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
-    desc.setSupportsMultiResolution(true);
+    desc.setSupportsMultiResolution(false);
     desc.setSupportsTiles(false);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);

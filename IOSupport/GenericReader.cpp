@@ -484,7 +484,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
-    desc.setSupportsMultiResolution(true);
+    desc.setSupportsMultiResolution(false);
     desc.setSupportsTiles(false); // FIXME: why is it enabled in TuttleOFX? TuttleOFX/plugins/image/process/color/OCIO/src/OCIOColorSpace/OCIOColorSpacePluginFactory.hpp
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
