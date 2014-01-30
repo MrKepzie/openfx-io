@@ -40,6 +40,7 @@
 #include "ReadFFmpeg.h"
 
 #include <cmath>
+#include <sstream>
 
 #include "FFmpegHandler.h"
 #include "Lut.h"
@@ -224,6 +225,32 @@ namespace OFX
 };
 #endif
 
+static std::string ffmpeg_versions()
+{
+    std::ostringstream oss;
+#ifdef FFMS_USE_FFMPEG_COMPAT
+    oss << "FFmpeg ";
+#else
+    oss << "libav";
+#endif
+    oss << " versions (compiled with / running with):" << std::endl;
+    oss << "libavformat ";
+    oss << LIBAVFORMAT_VERSION_MAJOR << '.' << LIBAVFORMAT_VERSION_MINOR << '.' << LIBAVFORMAT_VERSION_MICRO << " / ";
+    oss << (avformat_version() >> 16) << '.' << (avformat_version() >> 8 & 0xff) << '.' << (avformat_version() & 0xff) << std::endl;
+    //oss << "libavdevice ";
+    //oss << LIBAVDEVICE_VERSION_MAJOR << '.' << LIBAVDEVICE_VERSION_MINOR << '.' << LIBAVDEVICE_VERSION_MICRO << " / ";
+    //oss << avdevice_version() >> 16 << '.' << avdevice_version() >> 8 & 0xff << '.' << avdevice_version() & 0xff << std::endl;
+    oss << "libavcodec ";
+    oss << LIBAVCODEC_VERSION_MAJOR << '.' << LIBAVCODEC_VERSION_MINOR << '.' << LIBAVCODEC_VERSION_MICRO << " / ";
+    oss << (avcodec_version() >> 16) << '.' << (avcodec_version() >> 8 & 0xff) << '.' << (avcodec_version() & 0xff) << std::endl;
+    oss << "libavutil ";
+    oss << LIBAVUTIL_VERSION_MAJOR << '.' << LIBAVUTIL_VERSION_MINOR << '.' << LIBAVUTIL_VERSION_MICRO << " / ";
+    oss << (avutil_version() >> 16) << '.' << (avutil_version() >> 8 & 0xff) << '.' << (avutil_version() & 0xff) << std::endl;
+    oss << "libswscale ";
+    oss << LIBSWSCALE_VERSION_MAJOR << '.' << LIBSWSCALE_VERSION_MINOR << '.' << LIBSWSCALE_VERSION_MICRO << " / ";
+    oss << (swscale_version() >> 16) << '.' << (swscale_version() >> 8 & 0xff) << '.' << (swscale_version() & 0xff) << std::endl;
+    return oss.str();
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
@@ -231,7 +258,13 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     GenericReaderDescribe(desc);
     // basic labels
     desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
-    desc.setPluginDescription("Read images or video using FFmpeg or libav");
+    desc.setPluginDescription("Read images or video using "
+#                             ifdef FFMS_USE_FFMPEG_COMPAT
+                              "FFmpeg"
+#                             else
+                              "libav"
+#                             endif
+                              ".\n" + ffmpeg_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
