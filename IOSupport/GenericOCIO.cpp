@@ -77,6 +77,9 @@ bool
 GenericOCIO::isIdentity()
 {
 #ifdef OFX_IO_USING_OCIO
+    if (!_config) {
+        return true;
+    }
     int inputSpaceIndex;
     _inputSpace->getValue(inputSpaceIndex);
     int outputSpaceIndex;
@@ -197,6 +200,9 @@ void
 GenericOCIO::setDefault()
 {
 #ifdef OFX_IO_USING_OCIO
+    if (!_config) {
+        return;
+    }
     printRole(_config, OCIO_NAMESPACE::ROLE_DEFAULT);
     printRole(_config, OCIO_NAMESPACE::ROLE_REFERENCE);
     printRole(_config, OCIO_NAMESPACE::ROLE_DATA);
@@ -228,7 +234,9 @@ GenericOCIO::setDefault()
 std::string
 GenericOCIO::getInputColorspace()
 {
-    assert(_config);
+    if (!_config) {
+        return "";
+    }
     int index;
     _inputSpace->getValue(index);
     return _config->getColorSpaceNameByIndex(index);
@@ -237,6 +245,9 @@ GenericOCIO::getInputColorspace()
 std::string
 GenericOCIO::getOutputColorspace()
 {
+    if (!_config) {
+        return "";
+    }
     assert(_config);
     int index;
     _outputSpace->getValue(index);
@@ -248,7 +259,9 @@ void
 GenericOCIO::setInputColorspace(const char* name)
 {
 #ifdef OFX_IO_USING_OCIO
-    assert(_config);
+    if (!_config) {
+        return;
+    }
     _inputSpace->setValue(_config->getIndexForColorSpace(name));
 #endif
 }
@@ -257,7 +270,9 @@ void
 GenericOCIO::setOutputColorspace(const char* name)
 {
 #ifdef OFX_IO_USING_OCIO
-    assert(_config);
+    if (!_config) {
+        return;
+    }
     _outputSpace->setValue(_config->getIndexForColorSpace(name));
 #endif
 }
