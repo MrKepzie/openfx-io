@@ -165,7 +165,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     if (fillRGB) {
         // fill RGB values with black
         assert(pixelComponents != OFX::ePixelComponentAlpha);
-        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1);
+        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
         for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
             float *cur = (float*)lineStart;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
@@ -179,7 +179,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         // fill Alpha values with opaque
         assert(pixelComponents != OFX::ePixelComponentRGB);
         int outputChannelAlpha = (pixelComponents == OFX::ePixelComponentAlpha) ? 0 : 3;
-        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1);
+        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
         for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
             float *cur = (float*)lineStart + outputChannelAlpha;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
