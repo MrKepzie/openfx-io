@@ -7,6 +7,9 @@ CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_NATRON
 # Comment the following two lines to disable OpenColorIO support
 CXXFLAGS += `pkg-config --cflags OpenColorIO` -DOFX_IO_USING_OCIO
 LINKFLAGS += `pkg-config --libs OpenColorIO`
+ifeq ($(OS),Linux)
+LINKFLAGS += -Wl,-rpath,`pkg-config --variable=libdir OpenColorIO`
+endif
 
 # Uncomment the following line to enable multithreaded ffmpeg reading (probably buggy!)
 #CXXFLAGS += -DOFX_IO_MT_FFMPEG
