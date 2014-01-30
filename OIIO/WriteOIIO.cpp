@@ -194,13 +194,23 @@ namespace OFX
 };
 #endif
 
+static std::string oiio_versions()
+{
+    std::ostringstream oss;
+    int ver = openimageio_version();
+    oss << "OIIO versions:" << std::endl;
+    oss << "compiled with " << OIIO_VERSION_STRING << std::endl;
+    oss << "running with " << ver/10000 << '.' << (ver%10000)/100 << '.' << (ver%100) << std::endl;
+    return oss.str();
+}
+
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc);
     // basic labels
     desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
-    desc.setPluginDescription("Write images file using the OpenImageIO library.");
+    desc.setPluginDescription("Write images file using the OpenImageIO library.\n" + oiio_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "bmp", "cin", "dpx", "fits", "hdr", "ico", "iff", "jpeg", "jpg", "jpe", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };

@@ -184,6 +184,16 @@ namespace OFX
 };
 #endif
 
+static std::string oiio_versions()
+{
+    std::ostringstream oss;
+    int ver = openimageio_version();
+    oss << "OIIO versions:" << std::endl;
+    oss << "compiled with " << OIIO_VERSION_STRING << std::endl;
+    oss << "running with " << ver/10000 << '.' << (ver%10000)/100 << '.' << (ver%100) << std::endl;
+    return oss.str();
+}
+
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
@@ -195,7 +205,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     // basic labels
     desc.setLabels("ReadOIIOOFX", "ReadOIIOOFX", "ReadOIIOOFX");
-    desc.setPluginDescription("Read images using OpenImageIO.");
+    desc.setPluginDescription("Read images using OpenImageIO.\n" + oiio_versions());
 
 
 #ifdef OFX_EXTENSIONS_TUTTLE
