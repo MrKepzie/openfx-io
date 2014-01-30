@@ -113,6 +113,9 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
     if (!_config) {
         return;
     }
+    if (isIdentity()) {
+        return;
+    }
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
        renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
