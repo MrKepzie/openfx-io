@@ -361,6 +361,19 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
+
+    OFX::BitDepthEnum bitDepth = dstImg->getPixelDepth();
+    if (bitDepth != OFX::eBitDepthFloat) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    // are we in the image bounds
+    OfxRectI bounds = dstImg->getBounds();
+    if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
+       args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
+        OFX::throwSuiteStatusException(kOfxStatErrValue);
+        //throw std::runtime_error("render window outside of image bounds");
+    }
+
     if (!filename.empty()) {
         decode(filename, sequenceTime, args.renderWindow, dstImg.get());
     }
