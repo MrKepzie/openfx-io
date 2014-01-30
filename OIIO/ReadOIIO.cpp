@@ -106,7 +106,8 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
 #endif //0
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg) {
+void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+{
     ImageSpec spec;
     
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -114,23 +115,96 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
         return;
     }
-    int channelsCount = 4; //< rgba
+    OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
+
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    int numChannels;
+    int outputChannelBegin = 0;
+    int chbegin;
+    int chend;
+    bool fillRGB = false;
+    bool fillAlpha = false;
+    switch(pixelComponents)
+    {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            fillRGB = (spec.nchannels == 1) || (spec.nchannels == 2);
+            if (spec.nchannels == 1) {
+                chbegin = chend = spec.alpha_channel;
+                fillAlpha = (spec.alpha_channel == -1);
+                outputChannelBegin = 3;
+            } else {
+                chbegin = 0;
+                chend = std::min(spec.nchannels, numChannels);
+                fillAlpha = (spec.alpha_channel == -1);
+            }
+            break;
+        case OFX::ePixelComponentRGB:
+            numChannels = 3;
+            fillRGB = (spec.nchannels == 1) || (spec.nchannels == 2);
+            if (spec.nchannels == 1) {
+                chbegin = chend = -1;
+            } else {
+                chbegin = 0;
+                chend = std::min(spec.nchannels, numChannels);
+            }
+            break;
+        case OFX::ePixelComponentAlpha:
+            numChannels = 1;
+            chbegin = chend = spec.alpha_channel;
+            fillAlpha = (spec.alpha_channel == -1);
+            break;
+        default:
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    if (fillRGB) {
+        // fill RGB values with black
+        assert(pixelComponents != OFX::ePixelComponentAlpha);
+        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
+            float *cur = (float*)lineStart;
+            for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
+                cur[0] = 0.;
+                cur[1] = 0.;
+                cur[2] = 0.;
+            }
+        }
+    }
+    if (fillAlpha) {
+        // fill Alpha values with opaque
+        assert(pixelComponents != OFX::ePixelComponentRGB);
+        int outputChannelAlpha = (pixelComponents == OFX::ePixelComponentAlpha) ? 0 : 3;
+        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
+            float *cur = (float*)lineStart + outputChannelAlpha;
+            for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
+                cur[0] = 1.;
+            }
+        }
+    }
+
+
     if(!cache->get_pixels(ustring(filename),
-                      0, //subimage
-                      0, //miplevel
-                      spec.x, //x begin
-                      spec.x + spec.width, //x end
-                      spec.y , //y begin
-                      spec.y + spec.height, //y end
-                      0, //z begin
-                      1, //z end
-                      0, //chan begin
-                      channelsCount, // chan end
-                      TypeDesc::FLOAT, // data type
-                      dstImg->getPixelAddress(spec.x, spec.y + spec.height - 1),// output buffer
-                      AutoStride, //x stride
-                      -(spec.width * channelsCount * sizeof(float)), //y stride < make it invert Y
-                      AutoStride //z stride
+                          0, //subimage
+                          0, //miplevel
+                          renderWindow.x1, //x begin
+                          renderWindow.x2, //x end
+                          renderWindow.y1 , //y begin
+                          renderWindow.y2, //y end
+                          0, //z begin
+                          1, //z end
+                          chbegin, //chan begin
+                          chend, // chan end
+                          TypeDesc::FLOAT, // data type
+                          (float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                          numChannels * sizeof(float), //x stride
+                          -dstImg->getRowBytes(), //y stride < make it invert Y
+                          AutoStride //z stride
                           )) {
         
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
