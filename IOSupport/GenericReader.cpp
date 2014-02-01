@@ -505,7 +505,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 }
 
-OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha)
+OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
 {
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
@@ -521,7 +521,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     if (supportsAlpha) {
         srcClip->addSupportedComponent(ePixelComponentAlpha);
     }
-    srcClip->setSupportsTiles(true);
+    srcClip->setSupportsTiles(supportsTiles);
     srcClip->setOptional(true);
     
     // create the mandated output clip
@@ -535,7 +535,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     if (supportsAlpha) {
         dstClip->addSupportedComponent(ePixelComponentAlpha);
     }
-    dstClip->setSupportsTiles(true);
+    dstClip->setSupportsTiles(supportsTiles);
     
 
     //////////Input file
