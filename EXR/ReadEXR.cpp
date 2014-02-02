@@ -600,7 +600,7 @@ void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), true, false, false);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ false);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }
