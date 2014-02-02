@@ -50,6 +50,7 @@ OIIO_NAMESPACE_USING
 
 ////global OIIO image cache
 static ImageCache* cache = 0;
+const bool kSupportsTiles = false;
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, "texture_paint", "reference")
@@ -121,6 +122,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+    assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
 
     int numChannels;
     int outputChannelBegin = 0;
@@ -194,8 +196,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
                           0, //miplevel
                           renderWindow.x1, //x begin
                           renderWindow.x2, //x end
-                          renderWindow.y1 , //y begin
-                          renderWindow.y2, //y end
+                          spec.height - renderWindow.y2, //y begin
+                          spec.height - renderWindow.y1, //y end
                           0, //z begin
                           1, //z end
                           chbegin, //chan begin
@@ -317,7 +319,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ false);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }
