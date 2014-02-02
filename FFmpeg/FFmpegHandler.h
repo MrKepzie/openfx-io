@@ -85,7 +85,7 @@ return;\
 namespace FFmpeg {
     bool isImageFile(const std::string& filename);
     
-    
+#if 0
     class File;
     // Keeps track of all FFmpegFile mapped against file name.
     class FileManager
@@ -118,6 +118,7 @@ namespace FFmpeg {
 #endif
 
     };
+#endif
 
 
     class File {
@@ -206,11 +207,9 @@ namespace FFmpeg {
         // Get the video stream duration in frames...
         int64_t getStreamFrames(Stream& stream);
         
-        friend class FileManager;
-        // private constructor used by the FileManager
-        File(const std::string& filename);
-        
     public:
+        
+        File(const std::string& filename);
         
         ~File();
         

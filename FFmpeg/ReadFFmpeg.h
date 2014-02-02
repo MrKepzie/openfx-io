@@ -66,10 +66,10 @@ public:
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
     bool loadNearestFrame() const;
+    
+    virtual void syncPrivateData();
 
 private:
-    
-    FFmpeg::File* getFile(const std::string& filename) const;
     
     virtual bool isVideoStream(const std::string& filename);
     

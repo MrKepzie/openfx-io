@@ -324,6 +324,10 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
     
 }
 
+void GenericReaderPlugin::getCurrentFileName(std::string& filename) {
+    _fileParam->getValue(filename);
+}
+
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
     double sequenceTime;
@@ -396,12 +400,15 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         //reset the original range param
         _originalFrameRange->setValue(INT_MIN, INT_MAX);
         
+        
+        ///let the derive class a chance to initialize any data structure it may need
+        onInputFileChanged(filename);
+        
         ///we don't pass the _frameRange range as we don't want to store the time domain too
         OfxRangeD tmp;
         getSequenceTimeDomainInternal(tmp);
         timeDomainFromSequenceTimeDomain(tmp, true);
         _startingFrame->setValue(tmp.min);
-        onInputFileChanged(filename);
         
         
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {

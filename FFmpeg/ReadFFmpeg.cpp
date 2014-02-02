@@ -52,14 +52,15 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 , _bufferWidth(0)
 , _bufferHeight(0)
 {
-    ///initialize the manager if it isn't
-    FFmpeg::FileManager::s_readerManager.initialize();
 }
 
 ReadFFmpegPlugin::~ReadFFmpegPlugin() {
     
     if(_buffer){
         delete [] _buffer;
+    }
+    if (_ffmpegFile) {
+        delete _ffmpegFile;
     }
 }
 
@@ -69,20 +70,41 @@ bool ReadFFmpegPlugin::loadNearestFrame() const {
     return v == 0;
 }
 
-FFmpeg::File* ReadFFmpegPlugin::getFile(const std::string& filename) const {
-    if(_ffmpegFile && _ffmpegFile->filename() == filename){
-        return _ffmpegFile;
-    }
-    return FFmpeg::FileManager::s_readerManager.get(filename);
-}
-
-
 void ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
 void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
-    _ffmpegFile = getFile(filename);
+    
+    if (_ffmpegFile) {
+        
+        if (_ffmpegFile->filename() == filename) {
+            return;
+        } else {
+            delete _ffmpegFile;
+        }
+    }
+    
+    _ffmpegFile = new FFmpeg::File(filename);
+    if(_ffmpegFile->invalid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+        return;
+    }
+}
+
+void ReadFFmpegPlugin::syncPrivateData() {
+    std::string filename;
+    getCurrentFileName(filename);
+    if (_ffmpegFile) {
+        if (_ffmpegFile->filename() == filename) {
+            return;
+        } else {
+            delete _ffmpegFile;
+        }
+    }
+    
+    _ffmpegFile = new FFmpeg::File(filename);
+    
     if(_ffmpegFile->invalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
         return;
@@ -95,11 +117,9 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
 
 void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
 {
-    
-    _ffmpegFile = getFile(filename);
-    
-    if(_ffmpegFile->invalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+    ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
+    if(!_ffmpegFile) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
         return;
     }
     
@@ -169,13 +189,14 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
 
 bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
     
+    ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
+    if(!_ffmpegFile) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
+        return true;
+    }
+
+    
     if(!FFmpeg::isImageFile(filename)){
-        _ffmpegFile = getFile(filename);
-        
-        if(_ffmpegFile->invalid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
-            return false;
-        }
         
         int width,height,frames;
         double ap;
@@ -192,14 +213,11 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 
 void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
     
-    _ffmpegFile = getFile(filename);
-    
-    if(_ffmpegFile->invalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+    ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
+    if(!_ffmpegFile) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
         return;
     }
-    
-    
     int width,height,frames;
     double ap;
     _ffmpegFile->info(width, height, ap, frames);

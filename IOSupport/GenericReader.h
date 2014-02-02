@@ -110,6 +110,8 @@ public:
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
+    void getCurrentFileName(std::string& filename);
+    
 private:
     
     /**
@@ -177,6 +179,7 @@ private:
      * @brief Returns the filename of the image at the sequence time t.
      **/
     void getFilenameAtSequenceTime(double t, std::string &filename);
+    
     
 
     OFX::Clip *_outputClip; //< Mandated output clip

@@ -261,9 +261,9 @@ namespace FFmpeg {
             // save the stream
             _streams.push_back(stream);
         }
-        
-        if (_streams.empty())
+        if (_streams.empty()) {
             setError( unsuported_codec ? "unsupported codec..." : "unable to find video stream" );
+        }
     }
     
     File::~File()
@@ -741,7 +741,7 @@ namespace FFmpeg {
         return true;
     }
     
-    
+#if 0
     FileManager FileManager::s_readerManager;
     
     // constructor
@@ -759,7 +759,7 @@ namespace FFmpeg {
             delete it->second;
         }
     }
-
+#endif
     
 #ifdef OFX_IO_MT_FFMPEG
     static int FFmpegLockManager(void** mutex, enum AVLockOp op)
@@ -802,6 +802,8 @@ namespace FFmpeg {
         }
     }
 #endif
+    
+#if 0
 
     void FileManager::initialize() {
         if(!_isLoaded){
@@ -841,6 +843,6 @@ namespace FFmpeg {
             return it->second;
         }
     }
-    
+#endif
     
 } //namespace FFmpeg
