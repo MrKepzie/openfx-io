@@ -45,6 +45,8 @@
 #include "FFmpegHandler.h"
 #include "Lut.h"
 
+static const bool kSupportsTiles = false;
+
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, "rec709", "reference")
 , _ffmpegFile(0)
@@ -127,7 +129,8 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     double ap;
     
     _ffmpegFile->info(width, height, ap, frames);
-    
+    assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
+
     OfxRectI imgBounds = dstImg->getBounds();
     
     if((imgBounds.x2 - imgBounds.x1) < width ||
@@ -296,7 +299,7 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
                                                         ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ false);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }

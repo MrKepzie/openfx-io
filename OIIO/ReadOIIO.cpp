@@ -50,7 +50,7 @@ OIIO_NAMESPACE_USING
 
 ////global OIIO image cache
 static ImageCache* cache = 0;
-const bool kSupportsTiles = false;
+static const bool kSupportsTiles = false;
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, "texture_paint", "reference")

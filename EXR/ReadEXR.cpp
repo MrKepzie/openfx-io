@@ -62,6 +62,7 @@ namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
 using std::cout; using std::endl;
 
+static const bool kSupportsTiles = false;
 
 namespace Exr {
     
@@ -495,7 +496,8 @@ void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxR
 {
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     OfxRectI roi = dstImg->getRegionOfDefinition();
-    
+    assert(kSupportsTiles || (renderWindow.x1 == file->dataWindow.x1 && renderWindow.x2 == file->dataWindow.x2 && renderWindow.y1 == file->dataWindow.y1 && renderWindow.y2 == file->dataWindow.y2));
+
     for (int y = roi.y1; y < roi.y2; ++y) {
         
         
@@ -600,7 +602,7 @@ void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ false);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page);
 }
