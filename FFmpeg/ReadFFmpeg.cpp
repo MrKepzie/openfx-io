@@ -277,7 +277,7 @@ static std::string ffmpeg_versions()
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc);
+    GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
     desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
     desc.setPluginDescription("Read images or video using "

@@ -50,7 +50,7 @@ OIIO_NAMESPACE_USING
 
 ////global OIIO image cache
 static ImageCache* cache = 0;
-static const bool kSupportsTiles = false;
+static const bool kSupportsTiles = true;
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, "texture_paint", "reference")
@@ -273,7 +273,7 @@ static std::string oiio_versions()
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc);
+    GenericReaderDescribe(desc, kSupportsTiles);
     ///set OIIO to use as many threads as there are cores on the CPU
     if(!attribute("threads", 0)){
         std::cerr << "Failed to set the number of threads for OIIO" << std::endl;

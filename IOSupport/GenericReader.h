@@ -205,7 +205,7 @@ private:
 };
 
 
-void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc);
+void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles);
 OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles);
 void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page);
 

@@ -584,7 +584,7 @@ namespace OFX
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc);
+    GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
     desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");

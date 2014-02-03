@@ -487,7 +487,8 @@ void GenericReaderPlugin::purgeCaches() {
 
 using namespace OFX;
 
-void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
+void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
+{
     desc.setPluginGrouping("Image/ReadOFX");
     
 #ifdef OFX_EXTENSIONS_TUTTLE
@@ -505,7 +506,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc){
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     desc.setSupportsMultiResolution(false);
-    desc.setSupportsTiles(false); // FIXME: why is it enabled in TuttleOFX? TuttleOFX/plugins/image/process/color/OCIO/src/OCIOColorSpace/OCIOColorSpacePluginFactory.hpp
+    desc.setSupportsTiles(supportsTiles);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
