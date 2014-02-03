@@ -42,6 +42,7 @@
 #include <ofxsImageEffect.h>
 
 class GenericOCIO;
+class CopierBase;
 
 class OCIOColorSpacePlugin : public OFX::ImageEffect 
 {
@@ -61,15 +62,18 @@ public:
   virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
 
   /* override changed clip */
-  virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName);
+  //virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName);
 
   // override the rod call
-  virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+  //virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
 
   // override the roi call
-  virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
+  //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
 
 private :
+  /* set up and run a copy processor */
+  void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
+
   // do not need to delete these, the ImageEffect is managing them for us
   OFX::Clip *dstClip_;
   OFX::Clip *srcClip_;

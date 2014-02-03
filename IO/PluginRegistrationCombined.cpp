@@ -6,6 +6,7 @@
 #include "WriteFFmpeg.h"
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
+#include "OCIOColorSpace.h"
 
 namespace OFX 
 {
@@ -25,6 +26,8 @@ namespace OFX
       ids.push_back(&p5);
       static WriteOIIOPluginFactory p6("fr.inria.openfx:WriteOIIO", 1, 0);
       ids.push_back(&p6);
+      static OCIOColorSpacePluginFactory p7("fr.inria.openfx:OCIOColorSpace", 1, 0);
+      ids.push_back(&p7);
     }
   }
 }

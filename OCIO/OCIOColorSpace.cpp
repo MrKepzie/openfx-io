@@ -40,9 +40,13 @@
 
 #include "OCIOColorSpace.h"
 
+//#include <iostream>
+
 #include <GenericOCIO.h>
 
-#include <iostream>
+
+#include "ofxsProcessing.H"
+#include "ofxsCopier.h"
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -56,6 +60,100 @@ OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
     
 }
 
+// make sure components are sane
+static void
+checkComponents(const OFX::Image &src,
+                OFX::BitDepthEnum dstBitDepth,
+                OFX::PixelComponentEnum dstComponents)
+{
+    OFX::BitDepthEnum      srcBitDepth     = src.getPixelDepth();
+    OFX::PixelComponentEnum srcComponents  = src.getPixelComponents();
+
+    // see if they have the same depths and bytes and all
+    if(srcBitDepth != dstBitDepth || srcComponents != dstComponents)
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+}
+
+void
+OCIOColorSpacePlugin::setupAndProcess(CopierBase & processor, const OFX::RenderArguments &args, OFX::Image* srcImg, OFX::Image* dstImg)
+{
+    // set the images
+    processor.setDstImg(dstImg);
+    processor.setSrcImg(srcImg);
+
+    // set the render window
+    processor.setRenderWindow(args.renderWindow);
+
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+/* Override the render */
+void
+OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
+{
+    if (!srcClip_) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    std::auto_ptr<OFX::Image> srcImg(srcClip_->fetchImage(args.time));
+    if (!srcImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
+    OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
+
+    if (!dstClip_) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    if (!dstImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
+    if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
+    if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
+        dstComponents != srcComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    // are we in the image bounds
+    OfxRectI bounds = dstImg->getBounds();
+    if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
+       args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
+        OFX::throwSuiteStatusException(kOfxStatErrValue);
+        //throw std::runtime_error("render window outside of image bounds");
+    }
+
+    if(dstComponents == OFX::ePixelComponentRGBA) {
+        ImageCopier<float, 4> fred(*this);
+        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
+    } else if(dstComponents == OFX::ePixelComponentRGB) {
+        ImageCopier<float, 3> fred(*this);
+        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
+    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
+        ImageCopier<float, 1> fred(*this);
+        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
+    } // switch
+
+    ///do the color-space conversion
+    _ocio->apply(args.renderWindow, dstImg.get());
+}
+
+bool
+OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
+{
+    return _ocio->isIdentity();
+}
+
+void
+OCIOColorSpacePlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+    return _ocio->changedParam(args, paramName);
+}
 
 using namespace OFX;
 

@@ -172,6 +172,7 @@
 		1ED499C818A00B66008A2D91 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
 		1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
 		1ED499D118A00BD6008A2D91 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */; };
+		1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D709B97A1878918400D5A0B4 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D709B97B1878918400D5A0B4 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
@@ -307,6 +308,7 @@
 		1ED499D218A00BE1008A2D91 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1ED499D318A00BE1008A2D91 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1ED499D418A00BE1008A2D91 /* OCIOColorSpace.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OCIOColorSpace.h; sourceTree = "<group>"; };
+		1ED499D518A03AD9008A2D91 /* ofxsCopier.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCopier.h; sourceTree = "<group>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -386,6 +388,7 @@
 				1E00B38A188EE887003BC7F3 /* GenericWriter.h */,
 				1E74D84E1891137B00E9034B /* GenericOCIO.h */,
 				1E74D84F189115BC00E9034B /* GenericOCIO.cpp */,
+				1ED499D518A03AD9008A2D91 /* ofxsCopier.h */,
 			);
 			path = IOSupport;
 			sourceTree = "<group>";
@@ -861,6 +864,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */,
 				1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */,
