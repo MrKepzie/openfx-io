@@ -4,7 +4,7 @@ VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../OCIO
 
 include ../Makefile.master
 
-CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO
+CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../OCIO
 
 # OpenEXR
 CXXFLAGS +=`pkg-config --cflags OpenEXR`
