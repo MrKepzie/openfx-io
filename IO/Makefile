@@ -1,6 +1,6 @@
 PLUGINOBJECTS = ReadEXR.o WriteEXR.o ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o ReadOIIO.o WriteOIIO.o GenericReader.o GenericWriter.o GenericOCIO.o PluginRegistrationCombined.o SequenceParser.o
 PLUGINNAME = IO
-VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO
+VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../OCIO
 
 include ../Makefile.master
 
