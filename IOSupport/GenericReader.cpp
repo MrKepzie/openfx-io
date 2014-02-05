@@ -560,7 +560,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     if (!isVideoStreamPlugin) {
 #ifdef OFX_EXTENSIONS_NATRON
         try {
-            fileParam->setFilePathIsImage(true);
+            fileParam->setFilePathSupportsImageSequences(true);
         } catch ( OFX::Exception::PropertyUnknownToHost& e) {
             // ignore
         }

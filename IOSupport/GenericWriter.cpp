@@ -488,7 +488,7 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
 #ifdef OFX_EXTENSIONS_NATRON
     try {
         if (!isVideoStreamPlugin) {
-            fileParam->setFilePathIsImage(true);
+            fileParam->setFilePathSupportsImageSequences(true);
         }
     } catch ( OFX::Exception::PropertyUnknownToHost& e) {
         // ignore
