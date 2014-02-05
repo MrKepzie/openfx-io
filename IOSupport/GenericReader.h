@@ -138,9 +138,6 @@ private:
      * If the file is a video-stream then you should decode the frame at the time given in parameters.
      * You must write the decoded image into dstImg. This function should convert the read pixels into the
      * bitdepth of the dstImg. You can inform the host of the bitdepth you support in the describe() function.
-     * Note that many hosts work with linear colors and we intend that this function transfer from the
-     * image file's color-space to linear. To help you do this you can use the color-space conversion
-     * class (Lut) written for this purpose.
      * You can always skip the color-space conversion, but for all linear hosts it would produce either
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.

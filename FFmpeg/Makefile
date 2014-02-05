@@ -1,4 +1,7 @@
-PLUGINOBJECTS = ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o PluginRegistration.o GenericReader.o GenericWriter.o GenericOCIO.o Lut.o SequenceParser.o
+PLUGINOBJECTS = \
+	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
+	PluginRegistration.o \
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o
 PLUGINNAME = FFmpeg
 VPATH += ../IOSupport
 

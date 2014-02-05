@@ -108,9 +108,6 @@ protected:
      * You must write the decoded image into dstImg. This function should convert the  pixels from srcImg
      * into the color-space and bitdepths of the newly created images's file.
      * You can inform the host of the bitdepth you support in input in the describe() function.
-     * Note that many hosts work with linear colors and we intend that this function transfer to the
-     * image file's color-space from linear. To help you do this you can use the color-space conversion
-     * class (Lut) written for this purpose.
      * You can always skip the color-space conversion, but for all linear hosts it would produce either
      * false colors or sub-par performances in the case the end-user has to prepend a color-space conversion
      * effect her/himself.

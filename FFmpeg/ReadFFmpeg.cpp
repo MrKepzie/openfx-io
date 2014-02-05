@@ -43,7 +43,6 @@
 #include <sstream>
 
 #include "FFmpegHandler.h"
-#include "Lut.h"
 
 static const bool kSupportsTiles = false;
 

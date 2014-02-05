@@ -1,4 +1,8 @@
-PLUGINOBJECTS = ReadOIIO.o WriteOIIO.o GenericReader.o GenericWriter.o GenericOCIO.o PluginRegistration.o SequenceParser.o
+PLUGINOBJECTS = \
+	ReadOIIO.o WriteOIIO.o \
+	PluginRegistration.o \
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o
+
 PLUGINNAME = OIIO
 VPATH += ../IOSupport
 

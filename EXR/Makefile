@@ -1,4 +1,7 @@
-PLUGINOBJECTS = ReadEXR.o WriteEXR.o PluginRegistration.o GenericReader.o GenericWriter.o Lut.o GenericOCIO.o SequenceParser.o
+PLUGINOBJECTS = \
+	ReadEXR.o WriteEXR.o \
+	PluginRegistration.o \
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o
 PLUGINNAME = EXR
 VPATH += ../IOSupport
 

@@ -67,7 +67,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\GenericReader.cpp" />
-    <ClCompile Include="..\Lut.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsCore.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsHWNDInteract.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsImageEffect.cpp" />
@@ -82,7 +81,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\GenericReader.h" />
-    <ClInclude Include="..\Lut.h" />
     <ClInclude Include="..\openfx\Support\Library\ofxsSupportPrivate.h" />
     <ClInclude Include="FFmpegHandler.h" />
     <ClInclude Include="ffmpegReader.h" />
