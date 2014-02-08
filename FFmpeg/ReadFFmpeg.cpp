@@ -43,6 +43,7 @@
 #include <sstream>
 
 #include "FFmpegHandler.h"
+#include "IOUtility.h"
 
 static const bool kSupportsTiles = false;
 
@@ -181,9 +182,9 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
         for (int x = imgBounds.x1; x < imgBounds.x2; ++x) {
             int srcCol = x * 3;
             int dstCol = x * 4;
-            dst_pixels[dstCol] = (float)src_pixels[srcCol] / 255.f;
-            dst_pixels[dstCol + 1] = (float)src_pixels[srcCol + 1] / 255.f;
-            dst_pixels[dstCol + 2] = (float)src_pixels[srcCol + 2] / 255.f;
+            dst_pixels[dstCol + 0] = intToFloat<256>(src_pixels[srcCol + 0]);
+            dst_pixels[dstCol + 1] = intToFloat<256>(src_pixels[srcCol + 1]);
+            dst_pixels[dstCol + 2] = intToFloat<256>(src_pixels[srcCol + 2]);
             dst_pixels[dstCol + 3] = 1.f;
         }
     }

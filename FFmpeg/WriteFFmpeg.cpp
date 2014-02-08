@@ -71,6 +71,7 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 #include "FFmpegCompat.h"
+#include "IOUtility.h"
 
 #define kWriteFFmpegFormatParamName "format"
 #define kWriteFFmpegFPSParamName "fps"
@@ -224,14 +225,6 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
     ext == "tga" ||
     ext == "rgba" ||
     ext == "rgb";
-}
-
-template <class T> inline T
-Clamp(T v, int min, int max)
-{
-    if(v < T(min)) return T(min);
-    if(v > T(max)) return T(max);
-    return v;
 }
 
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
@@ -453,9 +446,9 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         for (int x = bounds.x1; x < bounds.x2; ++x) {
             int srcCol = x * numChannels;
             int dstCol = x * 3;
-            dst_pixels[dstCol] = Clamp(src_pixels[srcCol],0,1) * 255.f;
-            dst_pixels[dstCol + 1] = Clamp(src_pixels[srcCol + 1],0,1) * 255.f;
-            dst_pixels[dstCol + 2] = Clamp(src_pixels[srcCol + 2],0,1) * 255.f;
+            dst_pixels[dstCol + 0] = floatToInt<256>(src_pixels[srcCol + 0]);
+            dst_pixels[dstCol + 1] = floatToInt<256>(src_pixels[srcCol + 1]);
+            dst_pixels[dstCol + 2] = floatToInt<256>(src_pixels[srcCol + 2]);
         }
     }
 
