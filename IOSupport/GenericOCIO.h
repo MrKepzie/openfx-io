@@ -49,6 +49,8 @@
 #define kOCCIOParamConfigFilename "ocio config file"
 #define kOCIOParamInputSpace "ocio input space"
 #define kOCIOParamOutputSpace "ocio output space"
+#define kOCIOParamInputSpaceChoice "ocio input space index"
+#define kOCIOParamOutputSpaceChoice "ocio output space index"
 #endif
 
 class GenericOCIO
@@ -72,9 +74,12 @@ public:
 private:
     OFX::ImageEffect* _parent;
 #ifdef OFX_IO_USING_OCIO
+    std::string _occioConfigFileName;
     OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
-    OFX::ChoiceParam* _inputSpace; //< the input colorspace we're converting from
-    OFX::ChoiceParam* _outputSpace; //< the output colorspace we're converting to
+    OFX::StringParam* _inputSpace;
+    OFX::ChoiceParam* _inputSpaceChoice; //< the input colorspace we're converting from
+    OFX::StringParam* _outputSpace;
+    OFX::ChoiceParam* _outputSpaceChoice; //< the output colorspace we're converting to
     std::string _inputSpaceNameDefault;
     std::string _outputSpaceNameDefault;
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
