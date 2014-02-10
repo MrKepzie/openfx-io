@@ -1,4 +1,4 @@
-ne/*
+/*
  OFX GenericOCIO plugin add-on.
  Adds OpenColorIO functionality to any plugin.
 
