@@ -292,7 +292,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     ////////// OCIO config file
     OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kOCCIOParamConfigFilename);
     occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    occioConfigFileParam->setHint("open an OpenColorIO config file");
+    occioConfigFileParam->setHint("OpenColorIO configuration file");
     occioConfigFileParam->setAnimates(false);
     desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
     // the OCIO config can only be set in a portable fashion using the environment variable.
@@ -330,6 +330,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
             occioConfigFileParam->setDefault("WARNING: You must set an OCIO environnement variable");
         }
         inputSpace->setEnabled(false);
+        outputSpace->setEnabled(false);
         global_wasOCIOVarFund = false;
     } else {
         global_wasOCIOVarFund = true;
