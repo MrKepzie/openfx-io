@@ -39,6 +39,8 @@
 
 #include "GenericOCIO.h"
 
+#include <cstring>
+#include <string>
 #include <stdexcept>
 #include <ofxsParam.h>
 #include <ofxsImageEffect.h>
