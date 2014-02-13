@@ -51,6 +51,24 @@ static bool global_wasOCIOVarFund;
 static bool global_hostIsNatron;
 #endif
 
+/* define to True to show the NATRON infinite loop bug in such cases as:
+ void
+ Plugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
+ {
+   if ( paramName == "blabla" && args.reason == OFX::eChangeUserEdit) {
+     int blabla;
+     _blabla->getValue(blabla);
+     _blabla->setValue(blabla);
+   }
+ }
+ 
+ normally, the recursion should stop at second level, since the reason should be eChangePluginEdit
+ */
+//#define NATRON_INFINITE_LOOP_BUG true
+#ifndef NATRON_INFINITE_LOOP_BUG
+#define NATRON_INFINITE_LOOP_BUG false
+#endif
+
 GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 : _parent(parent)
 #ifdef OFX_IO_USING_OCIO
@@ -161,7 +179,11 @@ GenericOCIO::inputCheck()
     _inputSpace->getValue(inputSpaceName);
     int inputSpaceIndex = _config->getIndexForColorSpace(inputSpaceName.c_str());
     if (inputSpaceIndex >= 0) {
-        _inputSpaceChoice->setValue(inputSpaceIndex);
+        int inputSpaceIndexOld;
+        _inputSpaceChoice->getValue(inputSpaceIndexOld);
+        if (NATRON_INFINITE_LOOP_BUG || inputSpaceIndexOld != inputSpaceIndex) {
+            _inputSpaceChoice->setValue(inputSpaceIndex);
+        }
         _inputSpace->setEnabled(false);
         _inputSpace->setIsSecret(true);
         _inputSpaceChoice->setEnabled(true);
@@ -190,7 +212,11 @@ GenericOCIO::outputCheck()
     _outputSpace->getValue(outputSpaceName);
     int outputSpaceIndex = _config->getIndexForColorSpace(outputSpaceName.c_str());
     if (outputSpaceIndex >= 0) {
-        _outputSpaceChoice->setValue(outputSpaceIndex);
+        int outputSpaceIndexOld;
+        _outputSpaceChoice->getValue(outputSpaceIndexOld);
+        if (NATRON_INFINITE_LOOP_BUG || outputSpaceIndexOld != outputSpaceIndex) {
+            _outputSpaceChoice->setValue(outputSpaceIndex);
+        }
         _outputSpace->setEnabled(false);
         _outputSpace->setIsSecret(true);
         _outputSpaceChoice->setEnabled(true);
@@ -394,11 +420,10 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     if (paramName == kOCIOParamInputSpace) {
         std::string inputSpace;
         _inputSpace->getValue(inputSpace);
-        std::cout << "Setting INPUTSPACE  to " << inputSpace << std::endl;
         int inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
         if (inputSpaceIndex < 0) {
             if (args.reason == OFX::eChangeUserEdit) {
-                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace '")+inputSpace+"'");
+                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+inputSpace+"\"");
             }
             inputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
             _inputSpace->setValue(inputSpace);
@@ -420,7 +445,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         int outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
         if (outputSpaceIndex < 0) {
             if (args.reason == OFX::eChangeUserEdit) {
-                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace '")+outputSpace+"'");
+                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+outputSpace+"\"");
             }
             outputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
             _outputSpace->setValue(outputSpace);
