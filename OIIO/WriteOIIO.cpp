@@ -45,7 +45,7 @@ OIIO_NAMESPACE_USING
 
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle, "reference", "reference")
+: GenericWriterPlugin(handle)
 {
     
 }
@@ -207,7 +207,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false);
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false, "reference", "reference");
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

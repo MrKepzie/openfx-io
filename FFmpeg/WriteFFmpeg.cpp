@@ -179,7 +179,7 @@ static int video_decoding_threads()
 }
 
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle, "reference", "rec709")
+: GenericWriterPlugin(handle)
 , _codecContext(0)
 , _formatContext(0)
 , _stream(0)
@@ -623,7 +623,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, false);
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, false, "reference", "rec709");
 
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();

@@ -56,7 +56,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName);
+    GenericReaderPlugin(OfxImageEffectHandle handle);
     
     virtual ~GenericReaderPlugin();
     
@@ -85,6 +85,9 @@ public:
     bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
     
     
+    /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+    virtual void beginEdit(void);
+
     /**
      * @brief You can override this to take actions in response to a param change. 
      * Make sure you call the base-class version of this function at the end: i.e:
@@ -204,7 +207,7 @@ private:
 
 void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles);
 OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles);
-void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page);
+void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 
 #define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
   class CLASS : public OFX::PluginFactoryHelper<CLASS>                       \

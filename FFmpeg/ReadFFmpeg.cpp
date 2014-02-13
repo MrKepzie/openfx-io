@@ -48,7 +48,7 @@
 static const bool kSupportsTiles = false;
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, "rec709", "reference")
+: GenericReaderPlugin(handle)
 , _ffmpegFile(0)
 , _buffer(0)
 , _bufferWidth(0)
@@ -301,7 +301,7 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
-    GenericReaderDescribeInContextEnd(desc, context, page);
+    GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "reference");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

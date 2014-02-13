@@ -71,7 +71,7 @@
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
 #define MAX_SEARCH_RANGE 400000
 
-GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName)
+GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
 , _outputClip(0)
@@ -84,7 +84,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, const char
 , _timeOffset(0)
 , _startingFrame(0)
 , _originalFrameRange(0)
-, _ocio(new GenericOCIO(this, inputName, outputName))
+, _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceParser(new SequenceParser)
 {
@@ -386,6 +386,12 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     _ocio->apply(args.renderWindow, dstImg.get());
 }
 
+/** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+void
+GenericReaderPlugin::beginEdit() {
+    return _ocio->beginEdit();
+}
+
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     if(paramName == kReaderFileParamName){
         std::string filename;
@@ -662,9 +668,9 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
 }
 
 
-void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page) {
+void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault) {
     // insert OCIO parameters
-    GenericOCIO::describeInContext(desc, context, page);
+    GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 }
 
 

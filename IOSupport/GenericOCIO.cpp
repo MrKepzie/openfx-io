@@ -51,44 +51,83 @@ static bool global_wasOCIOVarFund;
 static bool global_hostIsNatron;
 #endif
 
-GenericOCIO::GenericOCIO(OFX::ImageEffect* parent, const char* inputName, const char* outputName)
+GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 : _parent(parent)
 #ifdef OFX_IO_USING_OCIO
-, _occioConfigFileName()
-, _occioConfigFile(0)
+, _ocioConfigFileName()
+, _ocioConfigFile(0)
 , _inputSpace()
-, _inputSpaceChoice(0)
 , _outputSpace()
+#ifdef OFX_OCIO_CHOICE
+, _choiceIsOk(true)
+, _choiceFileName()
+, _inputSpaceChoice(0)
 , _outputSpaceChoice(0)
-, _inputSpaceNameDefault(inputName)
-, _outputSpaceNameDefault(outputName)
+#endif
 , _config()
 #endif
 {
 #ifdef OFX_IO_USING_OCIO
-    _occioConfigFile = _parent->fetchStringParam(kOCCIOParamConfigFilename);
+    _ocioConfigFile = _parent->fetchStringParam(kOCCIOParamConfigFilename);
     _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpace);
-    _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoice);
     _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpace);
+#ifdef OFX_OCIO_CHOICE
+    _ocioConfigFile->getDefault(_choiceFileName);
+    _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoice);
     _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoice);
+#endif
+#endif
+}
 
-    _occioConfigFile->getDefault(_occioConfigFileName);
+void
+GenericOCIO::loadConfig()
+{
+    std::string filename;
+    _ocioConfigFile->getValue(filename);
+
+    if (filename == _ocioConfigFileName) {
+        return;
+    }
+
+    _config.reset();
     try {
-        _config = OCIO::Config::CreateFromFile(_occioConfigFileName.c_str());
+        _ocioConfigFileName = filename;
+        _config = OCIO::Config::CreateFromFile(_ocioConfigFileName.c_str());
     } catch (OCIO::Exception &e) {
-        _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        //throw std::runtime_error(std::string("OpenColorIO error: ")+e.what());
-        _inputSpaceChoice->setEnabled(false);
+        _ocioConfigFileName.clear();
+        _inputSpace->setEnabled(false);
         _outputSpace->setEnabled(false);
+#ifdef OFX_OCIO_CHOICE
+        _inputSpaceChoice->setEnabled(false);
+        _outputSpaceChoice->setEnabled(false);
+#endif
+    }
+#ifdef OFX_OCIO_CHOICE
+    if (_config) {
+        if (global_hostIsNatron) {
+            // the choice menu can only be modified in Natron
+            // Natron supports changing the entries in a choiceparam
+            _inputSpaceChoice->resetOptions();
+            _outputSpaceChoice->resetOptions();
+            for (int i = 0; i < _config->getNumColorSpaces(); ++i) {
+                std::string csname = _config->getColorSpaceNameByIndex(i);
+                _inputSpaceChoice->appendOption(csname);
+                _outputSpaceChoice->appendOption(csname);
+            }
+            _choiceFileName = _ocioConfigFileName;
+        }
+        _choiceIsOk = (_ocioConfigFileName == _choiceFileName);
+        inputCheck();
+        outputCheck();
     }
 #endif
-    setDefault();
 }
 
 bool
 GenericOCIO::isIdentity()
 {
 #ifdef OFX_IO_USING_OCIO
+    loadConfig();
     if (!_config) {
         return true;
     }
@@ -102,10 +141,69 @@ GenericOCIO::isIdentity()
 #endif
 }
 
+
+void
+GenericOCIO::inputCheck()
+{
+#ifdef OFX_OCIO_CHOICE
+    if (!_config) {
+        return;
+    }
+    if (!_choiceIsOk) {
+        // choice menu is dirty, only use the text entry
+        _inputSpace->setEnabled(true);
+        _inputSpace->setIsSecret(false);
+        _inputSpaceChoice->setEnabled(false);
+        _inputSpaceChoice->setIsSecret(true);
+        return;
+    }
+    std::string inputSpaceName;
+    _inputSpace->getValue(inputSpaceName);
+    int inputSpaceIndex = _config->getIndexForColorSpace(inputSpaceName.c_str());
+    if (inputSpaceIndex >= 0) {
+        _inputSpaceChoice->setValue(inputSpaceIndex);
+        _inputSpace->setEnabled(false);
+        _inputSpace->setIsSecret(true);
+        _inputSpaceChoice->setEnabled(true);
+        _inputSpaceChoice->setIsSecret(false);
+    }
+#endif
+}
+
+// returns true if the choice menu item and the string must be synchronized
+void
+GenericOCIO::outputCheck()
+{
+#ifdef OFX_OCIO_CHOICE
+    if (!_config) {
+        return;
+    }
+    if (!_choiceIsOk) {
+        // choice menu is dirty, only use the text entry
+        _outputSpace->setEnabled(true);
+        _outputSpace->setIsSecret(false);
+        _outputSpaceChoice->setEnabled(false);
+        _outputSpaceChoice->setIsSecret(true);
+        return;
+    }
+    std::string outputSpaceName;
+    _outputSpace->getValue(outputSpaceName);
+    int outputSpaceIndex = _config->getIndexForColorSpace(outputSpaceName.c_str());
+    if (outputSpaceIndex >= 0) {
+        _outputSpaceChoice->setValue(outputSpaceIndex);
+        _outputSpace->setEnabled(false);
+        _outputSpace->setIsSecret(true);
+        _outputSpaceChoice->setEnabled(true);
+        _outputSpaceChoice->setIsSecret(false);
+    }
+#endif
+}
+
 void
 GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
 {
 #ifdef OFX_IO_USING_OCIO
+    loadConfig();
     if (!_config) {
         return;
     }
@@ -125,6 +223,7 @@ void
 GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
 #ifdef OFX_IO_USING_OCIO
+    loadConfig();
     if (!_config) {
         return;
     }
@@ -161,9 +260,10 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
         _outputSpace->getValue(outputSpace);
         OCIO::ConstContextRcPtr context = _config->getCurrentContext();
         OCIO::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
-
-        OCIO::PackedImageDesc img(pix,renderWindow.x2 - renderWindow.x1,renderWindow.y2 - renderWindow.y1, numChannels, sizeof(float), pixelBytes, rowBytes);
-        proc->apply(img);
+        if (proc) {
+            OCIO::PackedImageDesc img(pix,renderWindow.x2 - renderWindow.x1,renderWindow.y2 - renderWindow.y1, numChannels, sizeof(float), pixelBytes, rowBytes);
+            proc->apply(img);
+        }
     } catch (OCIO::Exception &e) {
         _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         throw std::runtime_error(std::string("OpenColorIO error: ")+e.what());
@@ -172,129 +272,172 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
 }
 
 void
+GenericOCIO::beginEdit()
+{
+    loadConfig();
+    // trigger changedParam() for inputSpace and outputSpace
+    std::string inputSpace;
+    _inputSpace->getValue(inputSpace);
+    _inputSpace->setValue(inputSpace);
+    std::string outputSpace;
+    _outputSpace->getValue(inputSpace);
+    _outputSpace->setValue(inputSpace);
+}
+
+void
 GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
 #ifdef OFX_IO_USING_OCIO
+    if ( paramName == kOCCIOParamConfigFilename ) {
+        beginEdit();
+        if (!_config && args.reason == OFX::eChangeUserEdit) {
+            _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file '") + _ocioConfigFileName);
+        }
+    }
+
+    if (paramName == kOCIOHelpButton) {
+        std::string msg = "OpenColorIO Help\n"
+            "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n";
+        if (_config) {
+            const char* configdesc = _config->getDescription();
+            int configdesclen = std::strlen(configdesc);
+            if ( configdesclen > 0 ) {
+                msg += "\nThis OCIO configuration is ";
+                msg += configdesc;
+                if (configdesc[configdesclen-1] != '\n') {
+                    msg += '\n';
+                }
+            }
+            msg += '\n';
+            msg += "Available colorspaces in this OCIO Configuration:\n";
+            int defaultcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
+            int referencecs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
+            int datacs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
+            int colorpickingcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_PICKING);
+            int scenelinearcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+            int compositinglogcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+            int colortimingcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_TIMING);
+            int texturepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
+            int mattepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
+
+            for (int i = 0; i < _config->getNumColorSpaces(); ++i) {
+                const char* csname = _config->getColorSpaceNameByIndex(i);;
+                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
+                msg += "- ";
+                msg += csname;
+                if (i == defaultcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_DEFAULT;
+                    msg += ')';
+                }
+                if (i == referencecs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_REFERENCE;
+                    msg += ')';
+                }
+                if (i == datacs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_DATA;
+                    msg += ')';
+                }
+                if (i == colorpickingcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_COLOR_PICKING;
+                    msg += ')';
+                }
+                if (i == scenelinearcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+                    msg += ')';
+                }
+                if (i == compositinglogcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
+                    msg += ')';
+                }
+                if (i == colortimingcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_COLOR_TIMING;
+                    msg += ')';
+                }
+                if (i == texturepaintcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
+                    msg += ')';
+                }
+                if (i == mattepaintcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_MATTE_PAINT;
+                    msg += ')';
+                }
+                const char *csdesc = cs->getDescription();
+                int csdesclen = std::strlen(csdesc);
+                if ( csdesclen > 0 ) {
+                    msg += ": ";
+                    msg += csdesc;
+                    if (csdesc[csdesclen-1] != '\n') {
+                        msg += '\n';
+                    }
+                } else {
+                    msg += '\n';
+                }
+            }
+        }
+        _parent->sendMessage(OFX::Message::eMessageMessage, "", msg);
+    }
+
+    // the other parameters assume there is a valid config
+    if (!_config) {
+        return;
+    }
+
     if (paramName == kOCIOParamInputSpace) {
         std::string inputSpace;
         _inputSpace->getValue(inputSpace);
-        int inputSpaceIndex = _config ? _config->getIndexForColorSpace(inputSpace.c_str()) : -1;
-        if (global_hostIsNatron && inputSpaceIndex >= 0) {
-            _inputSpace->setIsSecret(true);
-            // setIsSecret(true) to avoid triggering the changedParam() callback (see below)
-            _inputSpaceChoice->setIsSecret(true);
-            _inputSpaceChoice->setValue(inputSpaceIndex);
-            _inputSpaceChoice->setIsSecret(false);
-            _inputSpaceChoice->setEnabled(true);
-        } else {
-            // inputSpace can be modified by hand
-            _inputSpace->setEnabled(true);
-            _inputSpace->setIsSecret(false);
-            _inputSpaceChoice->setIsSecret(true);
-            _inputSpaceChoice->setEnabled(false);
-        }
-    }
-    if ( paramName == kOCIOParamInputSpaceChoice && !_inputSpaceChoice->getIsSecret()) {
-        assert(_config);
-        if (_config) {
-            int inputSpaceIndex;
-            _inputSpaceChoice->getValue(inputSpaceIndex);
-            std::string inputSpace = _config->getColorSpaceNameByIndex(inputSpaceIndex);
+        std::cout << "Setting INPUTSPACE  to " << inputSpace << std::endl;
+        int inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
+        if (inputSpaceIndex < 0) {
+            if (args.reason == OFX::eChangeUserEdit) {
+                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace '")+inputSpace+"'");
+            }
+            inputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
             _inputSpace->setValue(inputSpace);
         }
+        inputCheck();
     }
+#ifdef OFX_OCIO_CHOICE
+    if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
+        int inputSpaceIndex;
+        _inputSpaceChoice->getValue(inputSpaceIndex);
+        std::string inputSpace = _config->getColorSpaceNameByIndex(inputSpaceIndex);
+        _inputSpace->setValue(inputSpace);
+    }
+#endif
 
     if (paramName == kOCIOParamOutputSpace) {
         std::string outputSpace;
         _outputSpace->getValue(outputSpace);
-        int outputSpaceIndex = _config ? _config->getIndexForColorSpace(outputSpace.c_str()) : -1;
-        if (global_hostIsNatron && outputSpaceIndex >= 0) {
-            _outputSpace->setIsSecret(true);
-            // setIsSecret(true) to avoid triggering the changedParam() callback (see below)
-            _outputSpaceChoice->setIsSecret(true);
-            _outputSpaceChoice->setValue(outputSpaceIndex);
-            _outputSpaceChoice->setIsSecret(false);
-            _outputSpaceChoice->setEnabled(true);
-        } else {
-            // outputSpace can be modified by hand
-            _outputSpace->setEnabled(true);
-            _outputSpace->setIsSecret(false);
-            _outputSpaceChoice->setIsSecret(true);
-            _outputSpaceChoice->setEnabled(false);
-        }
-    }
-    if ( paramName == kOCIOParamOutputSpaceChoice && !_outputSpaceChoice->getIsSecret()) {
-        assert(_config);
-        if (_config) {
-            int outputSpaceIndex;
-            _outputSpaceChoice->getValue(outputSpaceIndex);
-            std::string outputSpace = _config->getColorSpaceNameByIndex(outputSpaceIndex);
+        int outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
+        if (outputSpaceIndex < 0) {
+            if (args.reason == OFX::eChangeUserEdit) {
+                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace '")+outputSpace+"'");
+            }
+            outputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
             _outputSpace->setValue(outputSpace);
+            outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
         }
+        outputCheck();
     }
-
-    if ( paramName == kOCCIOParamConfigFilename ) {
-        std::string filename;
-        _occioConfigFile->getValue(filename);
-        if (filename != _occioConfigFileName) {
-            _config.reset();
-            try {
-                _occioConfigFileName = filename;
-                _config = OCIO::Config::CreateFromFile(_occioConfigFileName.c_str());
-            } catch (OCIO::Exception &e) {
-                _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-                _occioConfigFileName.clear();
-            }
-            if (_config) {
-                if (global_hostIsNatron) {
-                    // Natron supports changing the entries in a choiceparam
-                    _inputSpaceChoice->resetOptions();
-                    _outputSpaceChoice->resetOptions();
-                    for (int i = 0; i < _config->getNumColorSpaces(); ++i) {
-                        std::string csname = _config->getColorSpaceNameByIndex(i);
-                        _inputSpaceChoice->appendOption(csname);
-                        _outputSpaceChoice->appendOption(csname);
-                    }
-                }
-            }
-            // trigger changedParam() for inputSpace and outputSpace
-            std::string inputSpace;
-            _inputSpace->getValue(inputSpace);
-            _inputSpace->setValue(inputSpace);
-            std::string outputSpace;
-            _outputSpace->getValue(inputSpace);
-            _outputSpace->setValue(inputSpace);
-        }
+#ifdef OFX_OCIO_CHOICE
+    if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
+        int outputSpaceIndex;
+        _outputSpaceChoice->getValue(outputSpaceIndex);
+        std::string outputSpace = _config->getColorSpaceNameByIndex(outputSpaceIndex);
+        _outputSpace->setValue(outputSpace);
     }
-#endif
-}
+#endif // OFX_OCIO_CHOICE
 
-static void
-printRole(OCIO::ConstConfigRcPtr config, const char* role)
-{
-    OFX::Log::print("OCIO %s->%s", role, config->getColorSpace(role)->getName());
-}
 
-void
-GenericOCIO::setDefault()
-{
-#ifdef OFX_IO_USING_OCIO
-    if (!_config) {
-        return;
-    }
-    printRole(_config, OCIO_NAMESPACE::ROLE_DEFAULT);
-    printRole(_config, OCIO_NAMESPACE::ROLE_REFERENCE);
-    printRole(_config, OCIO_NAMESPACE::ROLE_DATA);
-    printRole(_config, OCIO_NAMESPACE::ROLE_COLOR_PICKING);
-    printRole(_config, OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
-    printRole(_config, OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
-    printRole(_config, OCIO_NAMESPACE::ROLE_COLOR_TIMING);
-    printRole(_config, OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
-    printRole(_config, OCIO_NAMESPACE::ROLE_MATTE_PAINT);
-    std::string inputSpace = _config->getColorSpace(_inputSpaceNameDefault.c_str())->getName();
-    _inputSpace->setDefault(inputSpace);
-    std::string outputSpace = _config->getColorSpace(_outputSpaceNameDefault.c_str())->getName();
-    _outputSpace->setDefault(outputSpace);
 #endif
 }
 
@@ -341,59 +484,64 @@ GenericOCIO::purgeCaches()
 }
 
 void
-GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page)
+GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
 #ifdef OFX_IO_USING_OCIO
     global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "NatronHost");
     ////////// OCIO config file
-    OFX::StringParamDescriptor* occioConfigFileParam = desc.defineStringParam(kOCCIOParamConfigFilename);
-    occioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    occioConfigFileParam->setHint("OpenColorIO configuration file");
-    occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    occioConfigFileParam->setAnimates(false);
-    desc.addClipPreferencesSlaveParam(*occioConfigFileParam);
+    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCCIOParamConfigFilename);
+    ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
+    ocioConfigFileParam->setHint("OpenColorIO configuration file");
+    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    ocioConfigFileParam->setAnimates(false);
+    desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
     // the OCIO config can only be set in a portable fashion using the environment variable.
     // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
     // disable it, and set the default from the env variable.
     assert(OFX::getImageEffectHostDescription());
-    occioConfigFileParam->setEnabled(true);
-    occioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    ocioConfigFileParam->setEnabled(true);
+    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
 
     ///////////Input Color-space
-    {
-        OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpace);
-        inputSpace->setEnabled(false); // enabled only if host is not Natron and OCIO Config file is changed
-        inputSpace->setIsSecret(true); // visible only if host is not Natron and OCIO Config file is changed
-        page->addChild(*inputSpace);
-    }
+    OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpace);
+    inputSpace->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
+    inputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
+    inputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
+    page->addChild(*inputSpace);
 
+#ifdef OFX_OCIO_CHOICE
     OFX::ChoiceParamDescriptor* inputSpaceChoice = desc.defineChoiceParam(kOCIOParamInputSpaceChoice);
     inputSpaceChoice->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
     inputSpaceChoice->setHint("Input data is taken to be in this colorspace.");
     inputSpaceChoice->setAnimates(false);
     inputSpaceChoice->setIsPersistant(false);
     page->addChild(*inputSpaceChoice);
+#endif
 
     ///////////Output Color-space
-    {
-        OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpace);
-        outputSpace->setEnabled(false); // enabled only if host is not Natron and OCIO Config file is changed
-        outputSpace->setIsSecret(true); // visible only if host is not Natron and OCIO Config file is changed
-        page->addChild(*outputSpace);
-    }
+    OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpace);
+    outputSpace->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
+    outputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
+    outputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
+    page->addChild(*outputSpace);
 
+#ifdef OFX_OCIO_CHOICE
     OFX::ChoiceParamDescriptor* outputSpaceChoice = desc.defineChoiceParam(kOCIOParamOutputSpaceChoice);
     outputSpaceChoice->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
     outputSpaceChoice->setHint("Output data is taken to be in this colorspace.");
     outputSpaceChoice->setAnimates(false);
     outputSpaceChoice->setIsPersistant(false);
     page->addChild(*outputSpaceChoice);
+#endif
+
+    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
+    pb->setLabels("Colorspace help", "Colorspace help", "Colorspace help");
 
     char* file = std::getenv("OCIO");
     OCIO::ConstConfigRcPtr config;
     if (file != NULL) {
         global_wasOCIOVarFund = true;
-        occioConfigFileParam->setDefault(file);
+        ocioConfigFileParam->setDefault(file);
         //Add choices
         try {
             config = OCIO::Config::CreateFromFile(file);
@@ -401,32 +549,42 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
         }
     }
     if (config) {
+        std::string inputSpaceName = config->getColorSpace(inputSpaceNameDefault)->getName();
+        inputSpace->setDefault(inputSpaceName);
+        std::string outputSpaceName = config->getColorSpace(outputSpaceNameDefault)->getName();
+        outputSpace->setDefault(outputSpaceName);
+#ifdef OFX_OCIO_CHOICE
         //std::string inputSpaceNameDefault = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName(); // FIXME: default should depend
         //std::string outputSpaceNameDefault = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName(); // FIXME: default sshould depend
         for (int i = 0; i < config->getNumColorSpaces(); ++i) {
             std::string csname = config->getColorSpaceNameByIndex(i);
             inputSpaceChoice->appendOption(csname);
-            //if (csname == inputSpaceNameDefault) {
-            //    inputSpace->setDefault(i);
-            //}
+            if (csname == inputSpaceName) {
+                inputSpaceChoice->setDefault(i);
+            }
             outputSpaceChoice->appendOption(csname);
-            //if (csname == outputSpaceNameDefault) {
-            //    outputSpace->setDefault(i);
-            //}
+            if (csname == outputSpaceName) {
+                outputSpaceChoice->setDefault(i);
+            }
         }
+#endif
     } else {
         if (file == NULL) {
-            occioConfigFileParam->setDefault("WARNING: You should set an OCIO environnement variable");
+            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set an OCIO environnement variable");
         } else {
             std::string s("ERROR: Invalid OCIO configuration '");
             s += file;
             s += '\'';
-            occioConfigFileParam->setDefault(s);
+            ocioConfigFileParam->setDefault(s);
         }
+        inputSpace->setEnabled(false);
+        outputSpace->setEnabled(false);
+#ifdef OFX_OCIO_CHOICE
         inputSpaceChoice->setEnabled(false);
         inputSpaceChoice->setIsSecret(true);
         outputSpaceChoice->setEnabled(false);
         outputSpaceChoice->setIsSecret(true);
+#endif
         global_wasOCIOVarFund = false;
     }
 #endif

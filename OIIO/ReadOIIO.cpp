@@ -53,7 +53,7 @@ static ImageCache* cache = 0;
 static const bool kSupportsTiles = true;
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, "texture_paint", "reference")
+: GenericReaderPlugin(handle)
 {
     
 }
@@ -321,7 +321,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
-    GenericReaderDescribeInContextEnd(desc, context, page);
+    GenericReaderDescribeInContextEnd(desc, context, page, "texture_paint", "reference");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

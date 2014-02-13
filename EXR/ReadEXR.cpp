@@ -473,7 +473,7 @@ namespace Exr {
 
 
 ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, "reference", "reference")
+: GenericReaderPlugin(handle)
 {
     Exr::FileManager::s_readerManager.initialize();
 }
@@ -604,7 +604,7 @@ void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, C
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
-    GenericReaderDescribeInContextEnd(desc, context, page);
+    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

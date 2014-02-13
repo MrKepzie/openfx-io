@@ -96,7 +96,7 @@ namespace Exr {
 }
 
 WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle,"reference", "reference")
+: GenericWriterPlugin(handle)
 , _compression(0)
 , _bitDepth(0)
 {
@@ -260,7 +260,7 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, true);
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, true, "reference", "reference");
 
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);

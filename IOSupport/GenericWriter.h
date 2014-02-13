@@ -54,7 +54,7 @@ class GenericWriterPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericWriterPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName);
+    GenericWriterPlugin(OfxImageEffectHandle handle);
     
     virtual ~GenericWriterPlugin();
     
@@ -78,6 +78,9 @@ public:
      **/
     bool getTimeDomain(OfxRangeD &range);
     
+    /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+    virtual void beginEdit(void);
+
     /**
      * @brief You can override this to take actions in response to a param change.
      * Make sure you call the base-class version of this function at the end: i.e:
@@ -144,7 +147,7 @@ private:
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc);
-OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha);
+OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 
 #define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \

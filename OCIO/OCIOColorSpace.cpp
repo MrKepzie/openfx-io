@@ -50,7 +50,7 @@
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
-, _ocio(new GenericOCIO(this, OCIO_NAMESPACE::ROLE_REFERENCE, OCIO_NAMESPACE::ROLE_REFERENCE))
+, _ocio(new GenericOCIO(this))
 {
     
 }
@@ -150,6 +150,12 @@ OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &
     return _ocio->isIdentity();
 }
 
+/** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+void
+OCIOColorSpacePlugin::beginEdit() {
+    return _ocio->beginEdit();
+}
+
 void
 OCIOColorSpacePlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     return _ocio->changedParam(args, paramName);
@@ -198,7 +204,7 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
-    GenericOCIO::describeInContext(desc, context, page);
+    GenericOCIO::describeInContext(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE, OCIO_NAMESPACE::ROLE_REFERENCE);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

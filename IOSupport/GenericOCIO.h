@@ -44,44 +44,56 @@
 
 #include <ofxsImageEffect.h>
 
+// define OFX_OCIO_CHOICE to enable the colorspace choice popup menu
+#define OFX_OCIO_CHOICE
+
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
 #define kOCCIOParamConfigFilename "ocio config file"
 #define kOCIOParamInputSpace "ocio input space"
 #define kOCIOParamOutputSpace "ocio output space"
+#ifdef OFX_OCIO_CHOICE
 #define kOCIOParamInputSpaceChoice "ocio input space index"
 #define kOCIOParamOutputSpaceChoice "ocio output space index"
+#endif
+#define kOCIOHelpButton "ocio help"
 #endif
 
 class GenericOCIO
 {
 
 public:
-    GenericOCIO(OFX::ImageEffect* parent, const char* inputName, const char* outputName);
+    GenericOCIO(OFX::ImageEffect* parent);
     bool isIdentity();
     void apply(const OfxRectI& renderWindow, OFX::Image* dstImg);
     void apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    void beginEdit();
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
-    void setDefault();
     std::string getInputColorspace();
     std::string getOutputColorspace();
     void setInputColorspace(const char* name);
     void setOutputColorspace(const char* name);
 
-    static void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page);
-    
+    static void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
+
 private:
+    void loadConfig();
+    void inputCheck();
+    void outputCheck();
+
     OFX::ImageEffect* _parent;
 #ifdef OFX_IO_USING_OCIO
-    std::string _occioConfigFileName;
-    OFX::StringParam *_occioConfigFile; //< filepath of the OCCIO config file
+    std::string _ocioConfigFileName;
+    OFX::StringParam *_ocioConfigFile; //< filepath of the OCCIO config file
     OFX::StringParam* _inputSpace;
-    OFX::ChoiceParam* _inputSpaceChoice; //< the input colorspace we're converting from
     OFX::StringParam* _outputSpace;
+#ifdef OFX_OCIO_CHOICE
+    bool _choiceIsOk; //< true if the choice menu contains the right entries
+    std::string _choiceFileName; //< the name of the OCIO config file that was used for the choice menu
+    OFX::ChoiceParam* _inputSpaceChoice; //< the input colorspace we're converting from
     OFX::ChoiceParam* _outputSpaceChoice; //< the output colorspace we're converting to
-    std::string _inputSpaceNameDefault;
-    std::string _outputSpaceNameDefault;
+#endif
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
 #endif
 };

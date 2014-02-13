@@ -58,6 +58,9 @@ public:
   /* override is identity */
   virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
 
+  /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+  virtual void beginEdit(void);
+
   /* override changedParam */
   virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
 

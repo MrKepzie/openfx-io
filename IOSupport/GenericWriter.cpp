@@ -98,7 +98,7 @@
 #define kWriterFirstFrameParamName "firstFrame"
 #define kWriterLastFrameParamName "lastFrame"
 
-GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle, const char* inputName, const char* outputName)
+GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
 , _outputClip(0)
@@ -106,7 +106,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle, const char
 , _frameRange(0)
 , _firstFrame(0)
 , _lastFrame(0)
-, _ocio(new GenericOCIO(this, inputName, outputName))
+, _ocio(new GenericOCIO(this))
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -373,6 +373,12 @@ bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
     }
 }
 
+/** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+void
+GenericWriterPlugin::beginEdit() {
+    return _ocio->beginEdit();
+}
+
 void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     if(paramName == kWriterFrameRangeChoiceParamName){
         int choice;
@@ -437,7 +443,7 @@ void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
-PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha)
+PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -498,7 +504,7 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     page->addChild(*fileParam);
 
     // insert OCIO parameters
-    GenericOCIO::describeInContext(desc, context, page);
+    GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 
     ///////////Frame range choosal
     OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
