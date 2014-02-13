@@ -50,9 +50,12 @@
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
+, dstClip_(0)
+, srcClip_(0)
 , _ocio(new GenericOCIO(this))
 {
-    
+    dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
+    srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
 }
 
 OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
