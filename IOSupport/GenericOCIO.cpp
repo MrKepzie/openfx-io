@@ -317,7 +317,9 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     if ( paramName == kOCCIOParamConfigFilename ) {
         beginEdit();
         if (!_config && args.reason == OFX::eChangeUserEdit) {
-            _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file '") + _ocioConfigFileName);
+            std::string filename;
+            _ocioConfigFile->getValue(filename);
+            _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
     }
 
