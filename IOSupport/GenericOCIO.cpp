@@ -534,6 +534,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     ///////////Input Color-space
     OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpace);
     inputSpace->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
+    inputSpace->setAnimates(false);
     inputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
     inputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
     page->addChild(*inputSpace);
@@ -543,13 +544,15 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     inputSpaceChoice->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
     inputSpaceChoice->setHint("Input data is taken to be in this colorspace.");
     inputSpaceChoice->setAnimates(false);
-    inputSpaceChoice->setIsPersistant(false);
+    inputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
+    inputSpaceChoice->setIsPersistant(false); // don't save/serialize
     page->addChild(*inputSpaceChoice);
 #endif
 
     ///////////Output Color-space
     OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpace);
     outputSpace->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
+    outputSpace->setAnimates(false);
     outputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
     outputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
     page->addChild(*outputSpace);
@@ -559,7 +562,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     outputSpaceChoice->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
     outputSpaceChoice->setHint("Output data is taken to be in this colorspace.");
     outputSpaceChoice->setAnimates(false);
-    outputSpaceChoice->setIsPersistant(false);
+    outputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
+    outputSpaceChoice->setIsPersistant(false); // don't save/serialize
     page->addChild(*outputSpaceChoice);
 #endif
 
