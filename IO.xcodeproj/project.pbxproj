@@ -1155,6 +1155,7 @@
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				EXR_PATH = /opt/local;
 				FFMPEG_PATH = /opt/local;
+				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NATRON,
 					OFX_EXTENSIONS_NUKE,
