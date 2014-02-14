@@ -53,24 +53,6 @@ static bool global_wasOCIOVarFund;
 static bool global_hostIsNatron;
 #endif
 
-/* define to True to show the NATRON infinite loop bug in such cases as:
- void
- Plugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
- {
-   if ( paramName == "blabla" && args.reason == OFX::eChangeUserEdit) {
-     int blabla;
-     _blabla->getValue(blabla);
-     _blabla->setValue(blabla);
-   }
- }
- 
- normally, the recursion should stop at second level, since the reason should be eChangePluginEdit
- */
-//#define NATRON_INFINITE_LOOP_BUG true
-#ifndef NATRON_INFINITE_LOOP_BUG
-#define NATRON_INFINITE_LOOP_BUG false
-#endif
-
 GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 : _parent(parent)
 #ifdef OFX_IO_USING_OCIO
@@ -183,7 +165,8 @@ GenericOCIO::inputCheck()
     if (inputSpaceIndex >= 0) {
         int inputSpaceIndexOld;
         _inputSpaceChoice->getValue(inputSpaceIndexOld);
-        if (NATRON_INFINITE_LOOP_BUG || inputSpaceIndexOld != inputSpaceIndex) {
+        // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
+        if (inputSpaceIndexOld != inputSpaceIndex) {
             _inputSpaceChoice->setValue(inputSpaceIndex);
         }
         _inputSpace->setEnabled(false);
@@ -216,7 +199,8 @@ GenericOCIO::outputCheck()
     if (outputSpaceIndex >= 0) {
         int outputSpaceIndexOld;
         _outputSpaceChoice->getValue(outputSpaceIndexOld);
-        if (NATRON_INFINITE_LOOP_BUG || outputSpaceIndexOld != outputSpaceIndex) {
+        // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
+        if (outputSpaceIndexOld != outputSpaceIndex) {
             _outputSpaceChoice->setValue(outputSpaceIndex);
         }
         _outputSpace->setEnabled(false);
@@ -422,15 +406,18 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     }
 
     if (paramName == kOCIOParamInputSpace) {
-        std::string inputSpace;
-        _inputSpace->getValue(inputSpace);
-        int inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
-        if (inputSpaceIndex < 0) {
-            if (args.reason == OFX::eChangeUserEdit) {
-                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+inputSpace+"\"");
+        if (args.reason == OFX::eChangeUserEdit) {
+            // if the inputspace doesn't correspond to a valid one, reset to default
+            std::string inputSpace;
+            _inputSpace->getValue(inputSpace);
+            int inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
+            if (inputSpaceIndex < 0) {
+                if (args.reason == OFX::eChangeUserEdit) {
+                    _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+inputSpace+"\"");
+                }
+                inputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
+                _inputSpace->setValue(inputSpace);
             }
-            inputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
-            _inputSpace->setValue(inputSpace);
         }
         inputCheck();
     }
@@ -438,22 +425,30 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         int inputSpaceIndex;
         _inputSpaceChoice->getValue(inputSpaceIndex);
+        std::string inputSpaceOld;
+        _inputSpace->getValue(inputSpaceOld);
         std::string inputSpace = _config->getColorSpaceNameByIndex(inputSpaceIndex);
-        _inputSpace->setValue(inputSpace);
+        // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
+        if (inputSpace != inputSpaceOld) {
+            _inputSpace->setValue(inputSpace);
+        }
     }
 #endif
 
     if (paramName == kOCIOParamOutputSpace) {
-        std::string outputSpace;
-        _outputSpace->getValue(outputSpace);
-        int outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
-        if (outputSpaceIndex < 0) {
-            if (args.reason == OFX::eChangeUserEdit) {
-                _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+outputSpace+"\"");
+        if (args.reason == OFX::eChangeUserEdit) {
+            // if the outputspace doesn't correspond to a valid one, reset to default
+            std::string outputSpace;
+            _outputSpace->getValue(outputSpace);
+            int outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
+            if (outputSpaceIndex < 0) {
+                if (args.reason == OFX::eChangeUserEdit) {
+                    _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+outputSpace+"\"");
+                }
+                outputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
+                _outputSpace->setValue(outputSpace);
+                outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
             }
-            outputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
-            _outputSpace->setValue(outputSpace);
-            outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
         }
         outputCheck();
     }
@@ -461,8 +456,14 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         int outputSpaceIndex;
         _outputSpaceChoice->getValue(outputSpaceIndex);
+        std::string outputSpaceOld;
+        _outputSpace->getValue(outputSpaceOld);
         std::string outputSpace = _config->getColorSpaceNameByIndex(outputSpaceIndex);
         _outputSpace->setValue(outputSpace);
+        // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
+        if (outputSpace != outputSpaceOld) {
+            _outputSpace->setValue(outputSpace);
+        }
     }
 #endif // OFX_OCIO_CHOICE
 
