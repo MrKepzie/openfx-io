@@ -182,7 +182,6 @@ bool SequenceParser::isPartOfSequence(const std::string& filenameWithoutPath,con
         --pos;
     }
     
-    assert(pos > 0);
     
     frameNumber = std::atoi(frameNumberStr.c_str());
 
