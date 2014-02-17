@@ -311,7 +311,10 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 
     if (paramName == kOCIOHelpButton) {
         std::string msg = "OpenColorIO Help\n"
-            "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n";
+            "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
+            "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
+        msg += OCIO_NAMESPACE::GetVersion();
+        msg += '\n';
         if (_config) {
             const char* configdesc = _config->getDescription();
             int configdesclen = std::strlen(configdesc);
