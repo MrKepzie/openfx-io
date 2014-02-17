@@ -476,7 +476,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 
 #ifdef OFX_IO_USING_OCIO
 std::string
-GenericOCIO::getInputColorspace()
+GenericOCIO::getInputColorspace() const
 {
     std::string space;
     _inputSpace->getValue(space);
@@ -484,13 +484,24 @@ GenericOCIO::getInputColorspace()
 }
 
 std::string
-GenericOCIO::getOutputColorspace()
+GenericOCIO::getOutputColorspace() const
 {
     std::string space;
     _outputSpace->getValue(space);
     return space;
 }
 #endif
+
+
+bool
+GenericOCIO::hasColorspace(const char* name) const
+{
+#ifdef OFX_IO_USING_OCIO
+    return _config && (bool)_config->getColorSpace(name);
+#else
+    return false;
+#endif
+}
 
 void
 GenericOCIO::setInputColorspace(const char* name)

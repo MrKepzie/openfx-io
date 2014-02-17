@@ -70,8 +70,9 @@ public:
     void beginEdit();
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
-    std::string getInputColorspace();
-    std::string getOutputColorspace();
+    std::string getInputColorspace() const;
+    std::string getOutputColorspace() const;
+    bool hasColorspace(const char* name) const;
     void setInputColorspace(const char* name);
     void setOutputColorspace(const char* name);
 
