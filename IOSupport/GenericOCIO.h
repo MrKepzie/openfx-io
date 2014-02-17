@@ -49,7 +49,7 @@
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
-#define kOCCIOParamConfigFilename "ocio config file"
+#define kOCIOParamConfigFilename "ocio config file"
 #define kOCIOParamInputSpace "ocio input space"
 #define kOCIOParamOutputSpace "ocio output space"
 #ifdef OFX_OCIO_CHOICE
@@ -85,7 +85,7 @@ private:
     OFX::ImageEffect* _parent;
 #ifdef OFX_IO_USING_OCIO
     std::string _ocioConfigFileName;
-    OFX::StringParam *_ocioConfigFile; //< filepath of the OCCIO config file
+    OFX::StringParam *_ocioConfigFile; //< filepath of the OCIO config file
     OFX::StringParam* _inputSpace;
     OFX::StringParam* _outputSpace;
 #ifdef OFX_OCIO_CHOICE

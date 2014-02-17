@@ -70,7 +70,7 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 #endif
 {
 #ifdef OFX_IO_USING_OCIO
-    _ocioConfigFile = _parent->fetchStringParam(kOCCIOParamConfigFilename);
+    _ocioConfigFile = _parent->fetchStringParam(kOCIOParamConfigFilename);
     _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpace);
     _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpace);
 #ifdef OFX_OCIO_CHOICE
@@ -300,7 +300,7 @@ void
 GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
 #ifdef OFX_IO_USING_OCIO
-    if ( paramName == kOCCIOParamConfigFilename ) {
+    if ( paramName == kOCIOParamConfigFilename ) {
         beginEdit();
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
@@ -519,7 +519,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #ifdef OFX_IO_USING_OCIO
     global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "NatronHost");
     ////////// OCIO config file
-    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCCIOParamConfigFilename);
+    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFilename);
     ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
     ocioConfigFileParam->setHint("OpenColorIO configuration file");
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
