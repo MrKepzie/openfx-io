@@ -39,6 +39,7 @@
 
 
 #include "ReadOIIO.h"
+#include "GenericOCIO.h"
 
 #include <iostream>
 #include <sstream>
@@ -82,7 +83,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
     
-#if 0
+#ifdef OFX_IO_USING_OCIO
     ImageSpec spec;
 
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -92,27 +93,65 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     }
 
     ///find-out the image color-space
-    ParamValue* colorSpaceValue = spec.find_attribute("OCIO:ColorSpace",TypeDesc::STRING);
+    ParamValue* colorSpaceValue = spec.find_attribute("oiio:ColorSpace",TypeDesc::STRING);
 
     //we found a color-space hint, use it to do the color-space conversion
     const char* colorSpaceStr;
     if (colorSpaceValue) {
         colorSpaceStr = *(const char**)colorSpaceValue->data();
         if (!strcmp(colorSpaceStr, "GammaCorrected")) {
-
+            float gamma = spec.get_float_attribute("oiio:Gamma");
+            if (gamma == 1.8) {
+                if (_ocio->hasColorspace("Gamma1.8")) {
+                    // nuke-default
+                    _ocio->setInputColorspace("Gamma1.8");
+                }
+            } else if (gamma == 2.2) {
+                if (_ocio->hasColorspace("Gamma2.2")) {
+                    // nuke-default
+                    _ocio->setInputColorspace("Gamma2.2");
+                } else if (_ocio->hasColorspace("vd16")) {
+                    // vd16 in spi-anim and spi-vfx
+                    _ocio->setInputColorspace("vd16");
+                }
+            }
         } else if(!strcmp(colorSpaceStr, "sRGB")) {
-
+            if (_ocio->hasColorspace("sRGB")) {
+                // nuke-default
+                _ocio->setInputColorspace("sRGB");
+            } else if (_ocio->hasColorspace("rrt_srgb")) {
+                // rrt_srgb in aces
+                _ocio->setInputColorspace("rrt_srgb");
+            } else if (_ocio->hasColorspace("srgb8")) {
+                // srgb8 in spi-vfx
+                _ocio->setInputColorspace("srgb8");
+            }
         } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
-
+            // ???
         } else if(!strcmp(colorSpaceStr, "Rec709")) {
-
+            if (_ocio->hasColorspace("Rec709")) {
+                // nuke-default
+                _ocio->setInputColorspace("Rec709");
+            } else if (_ocio->hasColorspace("rrt_rec709")) {
+                // rrt_rec709 in aces
+                _ocio->setInputColorspace("rrt_rec709");
+            } else if (_ocio->hasColorspace("hd10")) {
+                // hd10 in spi-anim and spi-vfx
+                _ocio->setInputColorspace("hd10");
+            }
         } else if(!strcmp(colorSpaceStr, "KodakLog")) {
-
+            if (_ocio->hasColorspace("lg10")) {
+                // lg10 in spi-vfx
+                _ocio->setInputColorspace("lg10");
+            }
+        } else if(!strcmp(colorSpaceStr, "Linear")) {
+            _ocio->setInputColorspace("scene_linear");
+            // lnf in spi-vfx
         } else {
             //unknown color-space or Linear, don't do anything
         }
     }
-#endif //0
+#endif
 }
 
 void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, OFX::Image* dstImg)
@@ -402,7 +441,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     pb->setLabels("Image info", "Image info", "Image info");
     pb->setHint("Shows information and metadata from the image at current time.");
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "texture_paint", "reference");
+    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
