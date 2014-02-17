@@ -38,7 +38,6 @@
  */
 #include "GenericReader.h"
 
-#include <sstream>
 #include <iostream>
 #include <memory>
 
