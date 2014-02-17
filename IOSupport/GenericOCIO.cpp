@@ -122,8 +122,61 @@ GenericOCIO::loadConfig()
             int mattepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
             for (int i = 0; i < _config->getNumColorSpaces(); ++i) {
                 std::string csname = _config->getColorSpaceNameByIndex(i);
-                _inputSpaceChoice->appendOption(csname);
-                _outputSpaceChoice->appendOption(csname);
+                std::string msg;
+                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname.c_str());
+                if (i == defaultcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_DEFAULT;
+                    msg += ')';
+                }
+                if (i == referencecs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_REFERENCE;
+                    msg += ')';
+                }
+                if (i == datacs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_DATA;
+                    msg += ')';
+                }
+                if (i == colorpickingcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_COLOR_PICKING;
+                    msg += ')';
+                }
+                if (i == scenelinearcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+                    msg += ')';
+                }
+                if (i == compositinglogcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
+                    msg += ')';
+                }
+                if (i == colortimingcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_COLOR_TIMING;
+                    msg += ')';
+                }
+                if (i == texturepaintcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
+                    msg += ')';
+                }
+                if (i == mattepaintcs) {
+                    msg += " (";
+                    msg += OCIO_NAMESPACE::ROLE_MATTE_PAINT;
+                    msg += ')';
+                }
+                const char *csdesc = cs->getDescription();
+                int csdesclen = std::strlen(csdesc);
+                if ( csdesclen > 0 ) {
+                    msg += " ";
+                    msg += csdesc;
+                }
+                _inputSpaceChoice->appendOption(csname, msg);
+                _outputSpaceChoice->appendOption(csname, msg);
             }
             _choiceFileName = _ocioConfigFileName;
         }
@@ -628,13 +681,75 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #ifdef OFX_OCIO_CHOICE
         //std::string inputSpaceNameDefault = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName(); // FIXME: default should depend
         //std::string outputSpaceNameDefault = config->getColorSpace(OCIO::ROLE_SCENE_LINEAR)->getName(); // FIXME: default sshould depend
+        int defaultcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
+        int referencecs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
+        int datacs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
+        int colorpickingcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_PICKING);
+        int scenelinearcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+        int compositinglogcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+        int colortimingcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_TIMING);
+        int texturepaintcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
+        int mattepaintcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
         for (int i = 0; i < config->getNumColorSpaces(); ++i) {
             std::string csname = config->getColorSpaceNameByIndex(i);
-            inputSpaceChoice->appendOption(csname);
+            std::string msg;
+            OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
+            if (i == defaultcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_DEFAULT;
+                msg += ')';
+            }
+            if (i == referencecs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_REFERENCE;
+                msg += ')';
+            }
+            if (i == datacs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_DATA;
+                msg += ')';
+            }
+            if (i == colorpickingcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_COLOR_PICKING;
+                msg += ')';
+            }
+            if (i == scenelinearcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+                msg += ')';
+            }
+            if (i == compositinglogcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
+                msg += ')';
+            }
+            if (i == colortimingcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_COLOR_TIMING;
+                msg += ')';
+            }
+            if (i == texturepaintcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
+                msg += ')';
+            }
+            if (i == mattepaintcs) {
+                msg += " (";
+                msg += OCIO_NAMESPACE::ROLE_MATTE_PAINT;
+                msg += ')';
+            }
+            const char *csdesc = cs->getDescription();
+            int csdesclen = std::strlen(csdesc);
+            if ( csdesclen > 0 ) {
+                msg += " ";
+                msg += csdesc;
+            }
+            inputSpaceChoice->appendOption(csname, msg);
             if (csname == inputSpaceName) {
                 inputSpaceChoice->setDefault(i);
             }
-            outputSpaceChoice->appendOption(csname);
+            outputSpaceChoice->appendOption(csname, msg);
             if (csname == outputSpaceName) {
                 outputSpaceChoice->setDefault(i);
             }
