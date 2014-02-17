@@ -111,6 +111,15 @@ GenericOCIO::loadConfig()
             // Natron supports changing the entries in a choiceparam
             _inputSpaceChoice->resetOptions();
             _outputSpaceChoice->resetOptions();
+            int defaultcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
+            int referencecs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
+            int datacs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
+            int colorpickingcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_PICKING);
+            int scenelinearcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+            int compositinglogcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+            int colortimingcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_TIMING);
+            int texturepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
+            int mattepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
             for (int i = 0; i < _config->getNumColorSpaces(); ++i) {
                 std::string csname = _config->getColorSpaceNameByIndex(i);
                 _inputSpaceChoice->appendOption(csname);
@@ -173,6 +182,12 @@ GenericOCIO::inputCheck()
         _inputSpace->setIsSecret(true);
         _inputSpaceChoice->setEnabled(true);
         _inputSpaceChoice->setIsSecret(false);
+    } else {
+        // the input space name is not valid
+        _inputSpace->setEnabled(true);
+        _inputSpace->setIsSecret(false);
+        _inputSpaceChoice->setEnabled(false);
+        _inputSpaceChoice->setIsSecret(true);
     }
 #endif
 }
@@ -207,6 +222,12 @@ GenericOCIO::outputCheck()
         _outputSpace->setIsSecret(true);
         _outputSpaceChoice->setEnabled(true);
         _outputSpaceChoice->setIsSecret(false);
+    } else {
+        // the output space name is not valid
+        _outputSpace->setEnabled(true);
+        _outputSpace->setIsSecret(false);
+        _outputSpaceChoice->setEnabled(false);
+        _outputSpaceChoice->setIsSecret(true);
     }
 #endif
 }
