@@ -65,7 +65,8 @@ private:
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg);
     
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
-    
+
+    std::string metadata(const std::string& filename);
 };
 
 mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false);

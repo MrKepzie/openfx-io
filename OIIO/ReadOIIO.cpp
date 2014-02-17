@@ -41,12 +41,14 @@
 #include "ReadOIIO.h"
 
 #include <iostream>
+#include <sstream>
 
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
 
 OIIO_NAMESPACE_USING
 
+#define kMetadataButton "show metadata"
 
 ////global OIIO image cache
 static ImageCache* cache = 0;
@@ -68,7 +70,13 @@ void ReadOIIOPlugin::clearAnyCache() {
 }
 
 void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    GenericReaderPlugin::changedParam(args, paramName);
+    if (paramName == kMetadataButton) {
+        std::string filename;
+        getCurrentFileName(filename);
+        sendMessage(OFX::Message::eMessageMessage, "", metadata(filename));
+    } else {
+        GenericReaderPlugin::changedParam(args,paramName);
+    }
 }
 
 void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
@@ -84,7 +92,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     }
 
     ///find-out the image color-space
-    ParamValue* colorSpaceValue = spec.find_attribute("occio:ColorSpace",TypeDesc::STRING);
+    ParamValue* colorSpaceValue = spec.find_attribute("OCIO:ColorSpace",TypeDesc::STRING);
 
     //we found a color-space hint, use it to do the color-space conversion
     const char* colorSpaceStr;
@@ -107,7 +115,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
 #endif //0
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, OFX::Image* dstImg)
 {
     ImageSpec spec;
     
@@ -212,8 +220,6 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
         return;
     }
-    
-
 }
 
 void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
@@ -230,7 +236,78 @@ void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxT
     rod.y2 = spec.y + spec.height;
 }
 
+std::string ReadOIIOPlugin::metadata(const std::string& filename)
+{
+    std::stringstream ss;
 
+    ImageSpec spec;
+
+    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
+    if(!cache->get_imagespec(ustring(filename), spec)){
+        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    ss << filename << " : ";
+    ss << "    channel list: ";
+    for (int i = 0;  i < spec.nchannels;  ++i) {
+        if (i < (int)spec.channelnames.size()) {
+            ss << spec.channelnames[i];
+        } else {
+            ss << "unknown";
+        }
+        if (i < (int)spec.channelformats.size()) {
+            ss << " (" << spec.channelformats[i].c_str() << ")";
+        }
+        if (i < spec.nchannels-1) {
+            ss << ", ";
+        }
+    }
+    ss << std::endl;
+
+    if (spec.x || spec.y || spec.z) {
+        ss << "    pixel data origin: x=" << spec.x << ", y=" << spec.y;
+        if (spec.depth > 1) {
+                ss << ", z=" << spec.z;
+        }
+        ss << std::endl;
+    }
+    if (spec.full_x || spec.full_y || spec.full_z ||
+        (spec.full_width != spec.width && spec.full_width != 0) ||
+        (spec.full_height != spec.height && spec.full_height != 0) ||
+        (spec.full_depth != spec.depth && spec.full_depth != 0)) {
+        ss << "    full/display size: " << spec.full_width << " x " << spec.full_height;
+        if (spec.depth > 1) {
+            ss << " x " << spec.full_depth;
+        }
+        ss << std::endl;
+        ss << "    full/display origin: " << spec.full_x << ", " << spec.full_y;
+        if (spec.depth > 1) {
+            ss << ", " << spec.full_z;
+        }
+        ss << std::endl;
+    }
+    if (spec.tile_width) {
+        ss << "    tile size: " << spec.tile_width << " x " << spec.tile_height;
+        if (spec.depth > 1) {
+            ss << " x " << spec.tile_depth;
+        }
+        ss << std::endl;
+    }
+
+    for (ImageIOParameterList::const_iterator p = spec.extra_attribs.begin(); p != spec.extra_attribs.end(); ++p) {
+        std::string s = spec.metadata_val (*p, true);
+        ss << "    " << p->name() << ": ";
+        if (s == "1.#INF") {
+            ss << "inf";
+        } else {
+            ss << s;
+        }
+        ss << std::endl;
+    }
+
+    return ss.str();
+}
 
 using namespace OFX;
 
@@ -320,6 +397,10 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+
+    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButton);
+    pb->setLabels("Image info", "Image info", "Image info");
+    pb->setHint("Shows information and metadata from the image at current time.");
 
     GenericReaderDescribeInContextEnd(desc, context, page, "texture_paint", "reference");
 }
