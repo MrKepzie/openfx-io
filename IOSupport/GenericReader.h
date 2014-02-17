@@ -181,7 +181,7 @@ private:
     void getFilenameAtSequenceTime(double t, std::string &filename);
     
     
-
+protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
     
@@ -197,7 +197,7 @@ private:
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
     GenericOCIO* _ocio;
-    
+private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
     SequenceParser* _sequenceParser; //< parser to extract the time domain
