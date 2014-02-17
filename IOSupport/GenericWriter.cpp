@@ -394,9 +394,15 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
             _firstFrame->setIsSecret(true);
             _lastFrame->setIsSecret(true);
         }
-    } else {
-        _ocio->changedParam(args, paramName);
+    } else if (paramName == kWriterFileParamName) {
+        std::string filename;
+        _fileParam->getValue(filename);
+
+        ///let the derive class a chance to initialize any data structure it may need
+        onOutputFileChanged(filename);
     }
+
+    _ocio->changedParam(args, paramName);
 }
 
 
@@ -509,7 +515,7 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     ///////////Frame range choosal
     OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
     frameRangeChoiceParam->setLabels("Frame range", "Frame range", "Frame range");
-    frameRangeChoiceParam->appendOption("Inputs union","The union of all inputs frame ranges will be rendered.");
+    frameRangeChoiceParam->appendOption("Union of input ranges","The union of all inputs frame ranges will be rendered.");
     frameRangeChoiceParam->appendOption("Timeline bounds","The frame range delimited by the timeline bounds will be rendered.");
     frameRangeChoiceParam->appendOption("Manual","The frame range will be the one defined by the first frame and last frame parameters.");
     frameRangeChoiceParam->setAnimates(false);

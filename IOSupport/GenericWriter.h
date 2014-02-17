@@ -138,6 +138,13 @@ protected:
 
 private:
     /**
+     * @brief Override if you want to do something when the output image/video file changed.
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     **/
+    virtual void onOutputFileChanged(const std::string& /*newFile*/) {}
+
+    /**
      * @brief Override to clear any cache you may have.
      **/
     virtual void clearAnyCache() {}
