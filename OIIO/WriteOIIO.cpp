@@ -327,7 +327,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 			sizeOfChannel = 8;
 			break;
 	}
-    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth/*TypeDesc::FLOAT*/);
+    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth);
 
 
     bool premultiply;
@@ -458,14 +458,14 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
                                 spec.y + spec.height, //ymax
                                 0, //zmin
                                 1, //zmax
-                                spec.format, //datatype
+                                TypeDesc::FLOAT, //datatype
                                 (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
                                 AutoStride, //xstride
                                 -rowBytes, //ystride
                                 AutoStride //zstride
                                 );
     } else {
-        output->write_image(spec.format,
+        output->write_image(TypeDesc::FLOAT,
                             (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
                             AutoStride, //xstride
                             -rowBytes, //ystride
