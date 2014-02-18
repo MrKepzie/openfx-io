@@ -380,7 +380,50 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 	spec.attribute("oiio:BitsPerSample", bitsPerSample);
 	spec.attribute("oiio:UnassociatedAlpha", premultiply);
 #ifdef OFX_IO_USING_OCIO
-    spec.attribute("oiio:ColorSpace", _ocio->getOutputColorspace());
+    std::string ocioColorspace = _ocio->getOutputColorspace();
+    float gamma = 0.;
+    std::string colorSpaceStr;
+    if (ocioColorspace == "Gamma1.8") {
+        // Gamma1.8 in nuke-default
+       colorSpaceStr = "GammaCorrected";
+        gamma = 1.8;
+    } else if (ocioColorspace == "Gamma2.2" || ocioColorspace == "vd8" || ocioColorspace == "vd10" || ocioColorspace == "vd16") {
+        // Gamma2.2 in nuke-default
+        // vd8, vd10, vd16 in spi-anim and spi-vfx
+        colorSpaceStr = "GammaCorrected";
+        gamma = 2.2;
+    } else if (ocioColorspace == "sRGB" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
+        // sRGB in nuke-default
+        // rrt_srgb in aces
+        // srgb8 in spi-vfx
+        colorSpaceStr = "sRGB";
+    } else if (ocioColorspace == "Rec709" || ocioColorspace == "rrt_rec709" || ocioColorspace == "hd10") {
+        // Rec709 in nuke-default
+        // rrt_rec709 in aces
+        // hd10 in spi-anim and spi-vfx
+        colorSpaceStr = "Rec709";
+    } else if(ocioColorspace == "lg10") {
+        // lg10 in spi-vfx
+        colorSpaceStr = "KodakLog";
+    } else if(ocioColorspace == "linear" || ocioColorspace == "aces" || ocioColorspace == "lnf" || ocioColorspace == "ln16") {
+        // linear in nuke-default
+        // aces in aces
+        // lnf, ln16 in spi-anim and spi-vfx
+        colorSpaceStr = "Linear";
+    } else if(ocioColorspace == "raw" || ocioColorspace == "ncf") {
+        // raw in nuke-default
+        // raw in aces
+        // ncf in spi-anim and spi-vfx
+        // leave empty
+    } else {
+        //unknown color-space, don't do anything
+    }
+    if (!colorSpaceStr.empty()) {
+        spec.attribute("oiio:ColorSpace", colorSpaceStr);
+    }
+    if (gamma != 0.) {
+        spec.attribute("oiio:Gamma", gamma);
+    }
 #endif
 	spec.attribute("CompressionQuality", quality);
 	spec.attribute("Orientation", orientation + 1);
