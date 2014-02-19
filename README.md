@@ -48,31 +48,45 @@ uncompressed it in /Users/USER_NAME/Development/dports-dev, but it can be anywhe
 except in the Documents directory, which has special permissions.
 
 Give read/execute permissions to the local repository:
+
 	 "chmod 755 /Users/USER_NAME/Development/dports-dev"
 
 Check that the user "nobody" can read this directory by typing the following command in a Terminal:
+
 	 "sudo -u nobody ls /Users/USER_NAME/Development/dports-dev"
+	 
  If it fails, then try again after having given execution permissions on your home directory
 using the following command:
+
 	 "chmod o+x /Users/USER_NAME"
+	 
  If this still fails, then something is really wrong.
 
 Edit the sources.conf file for MacPorts, for example using the nano editor: 
+
 	sudo nano /opt/local/etc/macports/sources.conf
+	
 insert at the beginning of the file the configuration for a local repository 
 (read the comments in the file), by inserting the line 
+
 	file:///Users/USER_NAME/Development/dports-dev
+	
 Save and exit (if you're using nano, this means typing ctrl-X, Y and return).
  
 Update MacPorts: 
+
 	sudo port selfupdate
 
 Recreate the index in the local repository: 
+
 	cd /Users/USER_NAME/Development/dports-dev; portindex
+	
 (no need to be root for this)
 
 Add the following line to /opt/local/etc/macports/variants.conf:
+
 	-x11 +no_x11 +bash_completion +no_gnome +quartz
+	
 (add +universal on OSX 10.5 and 10.6)
 
 * special portfiles:
@@ -80,13 +94,17 @@ Add the following line to /opt/local/etc/macports/variants.conf:
 - graphics/opencolorio
 
 * external libraries
+
 	sudo port -v install \
 	openexr \
 	ffmpeg \
 	opencolorio \
-	openimageio \
+	openimageio
+	
 Then to compile...
+
 	make BITS=64 OCIO_HOME=/opt/local OIIO_HOME=/opt/local
+	
 where /opt/local is where the macports tree stores the includes and libs.
 
 Compiling on Windows
@@ -94,18 +112,24 @@ Compiling on Windows
 
 ### *OpenColorIO*
 Clone the repository from github:
-	git clone
+
+	git clone https://github.com/imageworks/OpenColorIO
+	
 See (this page) [https://github.com/MrKepzie/Natron/wiki/Compiling-OpenColorIO-static-on-Windows]
 
 ### *OpenEXR*
 
 Clone the repository from github:
+
 	git clone https://github.com/openexr/openexr
+	
 And follow the install instruction in IlmBase/README.win32
 
 ### *OpenImageIO*
 Clone the repository from github:
+
 	git clone https://github.com/OpenImageIO/oiio
+	
 Follow the instructions in the INSTALL file of the source distribution.
 When compiling to use the pre-compiled binaries of OpenEXR provided as the version is too
 old to successfully build OpenImageIO. Instead use the version you just compiled before
