@@ -8,11 +8,11 @@ PLUGINOBJECTS = \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO
-VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../OCIO
+VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../PFM ../OCIO
 
 include ../Makefile.master
 
-CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../OCIO
+CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO
 
 # OpenEXR
 CXXFLAGS +=`pkg-config --cflags OpenEXR`
