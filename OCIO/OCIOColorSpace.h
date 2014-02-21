@@ -1,10 +1,10 @@
 /*
- OFX oiioReader plugin.
- Reads an image using the OpenImageIO library.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
+ OCIOColorSpace plugin.
+ Convert from one colorspace to another.
+
+ Copyright (C) 2014 INRIA
+ Author: Frederic Devernay <frederic.devernay@inria.fr>
+
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
  
