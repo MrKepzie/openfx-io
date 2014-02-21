@@ -412,7 +412,11 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "JPEG-2000 (*.jp2 *.j2k)\n"
                               "OpenEXR (*.exr)\n"
                               "Portable Network Graphics (*.png)\n"
+#                           if OIIO_VERSION >= 10400
+                              "PNM / Netpbm (*.pbm *.pgm *.ppm *.pfm)\n"
+#                           else
                               "PNM / Netpbm (*.pbm *.pgm *.ppm)\n"
+#                           endif
                               "PSD (*.psd *.pdd *.psb)\n"
                               "Ptex (*.ptex)\n"
                               "RLA (*.rla)\n"
@@ -426,7 +430,13 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 
-    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico", "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
+        "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
+        "pbm", "pgm", "ppm",
+#     if OIIO_VERSION >= 10400
+        "pfm",
+#     endif
+        "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
 #endif
 }
