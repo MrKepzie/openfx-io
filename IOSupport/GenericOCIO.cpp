@@ -211,6 +211,7 @@ GenericOCIO::loadConfig()
         if (global_hostIsNatron) {
             // the choice menu can only be modified in Natron
             // Natron supports changing the entries in a choiceparam
+            // Nuke (at least up to 8.0v3) does not
             buildChoiceMenus(_config, _inputSpaceChoice, _outputSpaceChoice);
             _choiceFileName = _ocioConfigFileName;
         }
