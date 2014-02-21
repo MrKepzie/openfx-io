@@ -298,7 +298,7 @@ namespace Exr {
         try{
 #ifdef _WIN32
             inputStr = new std::ifstream(s2ws(filename),std::ios_base::binary);
-            inputStdStream = new Imf_::StdIFStream(*inputStr,filename);
+            inputStdStream = new Imf_::StdIFStream(*inputStr,filename.c_str());
             inputfile = new Imf_::InputFile(*inputStdStream);
 #else
             
