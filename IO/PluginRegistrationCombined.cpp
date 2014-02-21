@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "ofxsImageEffect.h"
 #include "ReadEXR.h"
 #include "WriteEXR.h"

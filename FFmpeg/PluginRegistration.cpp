@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "ofxsImageEffect.h"
 #include "ReadFFmpeg.h"
 #include "WriteFFmpeg.h"

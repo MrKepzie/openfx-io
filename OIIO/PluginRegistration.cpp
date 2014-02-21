@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "ofxsImageEffect.h"
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
