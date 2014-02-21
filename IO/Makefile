@@ -3,6 +3,7 @@ PLUGINOBJECTS = \
 	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
 	ReadOIIO.o WriteOIIO.o \
 	OCIOColorSpace.o \
+    ReadPFM.o WritePFM.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o \
 	PluginRegistrationCombined.o
 

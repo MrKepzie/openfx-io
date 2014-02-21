@@ -6,6 +6,8 @@
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
 #include "OCIOColorSpace.h"
+#include "ReadPFM.h"
+#include "WritePFM.h"
 
 namespace OFX 
 {
@@ -27,6 +29,10 @@ namespace OFX
       ids.push_back(&p6);
       static OCIOColorSpacePluginFactory p7("fr.inria.openfx:OCIOColorSpace", 1, 0);
       ids.push_back(&p7);
+      //static ReadPFMPluginFactory p8("fr.inria.openfx:ReadPFM", 1, 0);
+      //ids.push_back(&p8);
+      //static WritePFMPluginFactory p9("fr.inria.openfx:WritePFM", 1, 0);
+      //ids.push_back(&p9);
     }
   }
 }
