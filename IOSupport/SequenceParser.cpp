@@ -42,6 +42,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <cctype>
 
 #include "tinydir/tinydir.h"
 
