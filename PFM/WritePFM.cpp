@@ -38,6 +38,9 @@
  */
 
 #include "WritePFM.h"
+
+#include <cstdio>
+
 #include "GenericOCIO.h"
 
 /**
