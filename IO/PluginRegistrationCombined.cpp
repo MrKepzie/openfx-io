@@ -27,12 +27,12 @@ namespace OFX
       ids.push_back(&p5);
       static WriteOIIOPluginFactory p6("fr.inria.openfx:WriteOIIO", 1, 0);
       ids.push_back(&p6);
-      static OCIOColorSpacePluginFactory p7("fr.inria.openfx:OCIOColorSpace", 1, 0);
+      static ReadPFMPluginFactory p7("fr.inria.openfx:ReadPFM", 1, 0);
       ids.push_back(&p7);
-      //static ReadPFMPluginFactory p8("fr.inria.openfx:ReadPFM", 1, 0);
-      //ids.push_back(&p8);
-      //static WritePFMPluginFactory p9("fr.inria.openfx:WritePFM", 1, 0);
-      //ids.push_back(&p9);
+      static WritePFMPluginFactory p8("fr.inria.openfx:WritePFM", 1, 0);
+      ids.push_back(&p8);
+      static OCIOColorSpacePluginFactory p9("fr.inria.openfx:OCIOColorSpace", 1, 0);
+      ids.push_back(&p9);
     }
   }
 }

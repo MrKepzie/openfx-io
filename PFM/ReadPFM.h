@@ -62,6 +62,6 @@ private:
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 };
 
-mDeclareReaderPluginFactory(ReadPFMPluginFactory, ;, ;,false);
+mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
 
 #endif /* defined(__Io__ReadPFM__) */

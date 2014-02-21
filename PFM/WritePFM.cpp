@@ -40,6 +40,14 @@
 #include "WritePFM.h"
 #include "GenericOCIO.h"
 
+/**
+ \return \c false for "Little Endian", \c true for "Big Endian".
+ **/
+static inline bool endianness()
+{
+    const int x = 1;
+    return ((unsigned char *)&x)[0] ? false : true;
+}
 
 WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
@@ -51,9 +59,36 @@ WritePFMPlugin::~WritePFMPlugin()
 {
 }
 
-void WritePFMPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    GenericWriterPlugin::changedParam(args, paramName);
+template <class PIX, int srcC, int dstC>
+static void copyLine(const PIX* pixelData, int rowbytes, int W, int H, int C, int y, PIX *image)
+{
+    assert(srcC == C);
+
+    PIX *srcPix = (PIX*)((char*)pixelData + (H-1-y)*rowbytes);
+    PIX *dstPix = image;
+
+    for(int x = 0; x < W; ++x) {
+        if(srcC == 1) {
+            // alpha/grayscale image
+            for (int c = 0; c < std::min(dstC,3); ++c) {
+                dstPix[c] = srcPix[0];
+            }
+        } else {
+            // color image (if dstC == 1, only the red channel is extracted)
+            for (int c = 0; c < std::min(dstC,3); ++c) {
+                dstPix[c] = srcPix[c];
+            }
+        }
+        if (dstC == 4) {
+            dstPix[3] = 1.; // alpha
+        }
+
+        srcPix += srcC;
+        dstPix += dstC;
+    }
+    
 }
+
 
 void WritePFMPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
@@ -62,23 +97,73 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime time, const flo
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
-    int numChannels;
+    int spectrum;
     switch(pixelComponents)
     {
         case OFX::ePixelComponentRGBA:
-            numChannels = 4;
+            spectrum = 4;
             break;
         case OFX::ePixelComponentRGB:
-            numChannels = 3;
+            spectrum = 3;
             break;
         case OFX::ePixelComponentAlpha:
-            numChannels = 1;
+            spectrum = 1;
             break;
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
-#warning TODO
+    std::FILE *const nfile = std::fopen(filename.c_str(), "wb");
+    if (!nfile) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file \"" + filename + "\"");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    int width = (bounds.x2 - bounds.x1);
+    int height = (bounds.y2 - bounds.y1);
+
+    const int depth = (spectrum == 1 ? 1 : 3);
+    const unsigned int buf_size = width * depth;
+    float *buffer = new float[buf_size];
+    std::fill(buffer, buffer + buf_size, 0.);
+
+    std::fprintf(nfile, "P%c\n%u %u\n%d.0\n", (spectrum == 1 ? 'f' : 'F'), width, height, endianness() ? 1 : -1);
+
+    for (int y = 0; y < height; ++y) {
+
+        // now copy to the dstImg
+        if (depth == 1) {
+            switch (pixelComponents) {
+                case OFX::ePixelComponentAlpha:
+                    copyLine<float,1,1>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    break;
+                case OFX::ePixelComponentRGB:
+                    copyLine<float,3,1>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    break;
+                case OFX::ePixelComponentRGBA:
+                    copyLine<float,4,1>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    break;
+                default:
+                    break;
+            }
+        } else if (depth == 3) {
+            switch (pixelComponents) {
+                case OFX::ePixelComponentAlpha:
+                    copyLine<float,1,3>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    break;
+                case OFX::ePixelComponentRGB:
+                    copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    break;
+                case OFX::ePixelComponentRGBA:
+                    copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        std::fwrite(buffer, sizeof(float), buf_size, nfile);
+    }
+    std::fclose(nfile);
 }
 
 bool WritePFMPlugin::isImageFile(const std::string& /*fileExtension*/) const {
