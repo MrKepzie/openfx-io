@@ -494,6 +494,12 @@ struct DecodingChannelsMap {
 
 void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
 {
+    /// we only support RGBA output clip
+    OFX::PixelComponentEnum pixelComponent = dstImg->getPixelComponents();
+    if (pixelComponent != OFX::ePixelComponentRGBA) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     OfxRectI roi = dstImg->getRegionOfDefinition();
     assert(kSupportsTiles || (renderWindow.x1 == file->dataWindow.x1 && renderWindow.x2 == file->dataWindow.x2 && renderWindow.y1 == file->dataWindow.y1 && renderWindow.y2 == file->dataWindow.y2));
@@ -602,7 +608,7 @@ void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }

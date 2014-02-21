@@ -549,7 +549,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/false, /*supportsAlpha=*/false, "reference", "reference");
 
     OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kTuttlePluginBitDepth);
     bitDepth->setLabels(kTuttlePluginBitDepthLabel, kTuttlePluginBitDepthLabel, kTuttlePluginBitDepthLabel);

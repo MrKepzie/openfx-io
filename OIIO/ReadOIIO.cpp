@@ -163,8 +163,9 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
 
+    // we only support RGBA, RGB or Alpha output clip
+    OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -445,7 +446,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButton);
     pb->setLabels("Image info", "Image info", "Image info");

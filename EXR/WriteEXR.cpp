@@ -260,7 +260,7 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, true, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/true, "reference", "reference");
 
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);

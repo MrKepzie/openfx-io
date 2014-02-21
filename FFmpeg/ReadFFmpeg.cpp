@@ -119,6 +119,12 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
 
 void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
 {
+    /// we only support RGBA output clip
+    OFX::PixelComponentEnum pixelComponent = dstImg->getPixelComponents();
+    if(pixelComponent != OFX::ePixelComponentRGBA) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
@@ -165,14 +171,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
         }
         return;
     }
-    
-    ///we (aka the GenericReader) only support float bit depth
-    /// and RGBA output clip
-    OFX::BitDepthEnum e = dstImg->getPixelDepth();
-    if(e != OFX::eBitDepthFloat){
-        return;
-    }
-    
+
     ///fill the dstImg with the buffer freshly decoded.
     for (int y = imgBounds.y1; y < imgBounds.y2; ++y) {
         int srcY = imgBounds.y2 - y - 1;
@@ -299,7 +298,7 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
                                                         ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "reference");
 }

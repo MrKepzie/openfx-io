@@ -365,10 +365,13 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
 
-    OFX::BitDepthEnum bitDepth = dstImg->getPixelDepth();
-    if (bitDepth != OFX::eBitDepthFloat) {
+    OFX::BitDepthEnum dstBitDepth = _outputClip->getPixelDepth();
+    OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
+
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+
     // are we in the image bounds
     OfxRectI bounds = dstImg->getBounds();
     if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||

@@ -623,7 +623,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, false, "reference", "rec709");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/false, "reference", "rec709");
 
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
