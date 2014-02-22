@@ -69,6 +69,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.ofx</TargetExt>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt>.ofx</TargetExt>
@@ -99,7 +100,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\Lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\Lex\Documents\GitHub\openfx-io\EXR;C:\Users\Lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\Lex\Documents\GitHub\openfx-io\OIIO;C:\Users\Lex\Documents\GitHub\openfx-io\OCIO;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\Lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\Lex\Documents\GitHub\openfx-io\EXR;C:\Users\Lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\Lex\Documents\GitHub\openfx-io\OIIO;C:\Users\Lex\Documents\GitHub\openfx-io\OCIO;C:\Users\Lex\Documents\GitHub\openfx-io\PFM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;OPENEXR_DLL;OFX_IO_USING_OCIO;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_TUTTLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -116,7 +117,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\Lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\Lex\Documents\GitHub\openfx-io\EXR;C:\Users\Lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\Lex\Documents\GitHub\openfx-io\OIIO;C:\Users\Lex\Documents\GitHub\openfx-io\OCIO;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\Lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\Lex\Documents\GitHub\openfx-io\EXR;C:\Users\Lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\Lex\Documents\GitHub\openfx-io\OIIO;C:\Users\Lex\Documents\GitHub\openfx-io\OCIO;C:\Users\Lex\Documents\GitHub\openfx-io\PFM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN64;OPENEXR_DLL;OFX_IO_USING_OCIO;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_TUTTLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -148,6 +149,8 @@
     <ClCompile Include="..\openfx\Support\Library\ofxsParams.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsProperty.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsPropertyValidation.cpp" />
+    <ClCompile Include="..\PFM\ReadPFM.cpp" />
+    <ClCompile Include="..\PFM\WritePFM.cpp" />
     <ClCompile Include="PluginRegistrationCombined.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -168,6 +171,8 @@
     <ClInclude Include="..\OIIO\ReadOIIO.h" />
     <ClInclude Include="..\OIIO\WriteOIIO.h" />
     <ClInclude Include="..\openfx\Support\Library\ofxsSupportPrivate.h" />
+    <ClInclude Include="..\PFM\ReadPFM.h" />
+    <ClInclude Include="..\PFM\WritePFM.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
