@@ -214,6 +214,8 @@
 		1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
 		1ED499D118A00BD6008A2D91 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */; };
 		1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
+		1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA018B79E8100C31FDC /* ReadPFM.cpp */; };
+		1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA218B79E8100C31FDC /* WritePFM.cpp */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D709B97A1878918400D5A0B4 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D709B97B1878918400D5A0B4 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
@@ -1028,6 +1030,8 @@
 				1E8B5DAE18B7A2F300C31FDC /* SequenceParser.cpp in Sources */,
 				1E8B5DAF18B7A2F300C31FDC /* ofxsLog.cpp in Sources */,
 				1E8B5DB018B7A2F300C31FDC /* GenericWriter.cpp in Sources */,
+				1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */,
+				1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */,
 				1E8B5DB118B7A2F300C31FDC /* ofxsInteract.cpp in Sources */,
 				1E8B5DB218B7A2F300C31FDC /* WriteOIIO.cpp in Sources */,
 				1E8B5DB318B7A2F300C31FDC /* GenericReader.cpp in Sources */,
