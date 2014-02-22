@@ -100,7 +100,7 @@ static void copyLine(PIX *image, int W, int H, int C, int y, OFX::Image* dstImg)
     assert(srcC == C);
 
     PIX *srcPix = image;
-    PIX *dstPix = (PIX *) dstImg->getPixelAddress(0, H-1-y); // inverse y
+    PIX *dstPix = (PIX *) dstImg->getPixelAddress(0, y);
 
     for(int x = 0; x < W; ++x) {
         if(srcC == 1) {
@@ -123,19 +123,6 @@ static void copyLine(PIX *image, int W, int H, int C, int y, OFX::Image* dstImg)
     }
     
 }
-
-#if 0
-template <class PIX, int srcC, int dstC>
-static void copyImage(PIX *image, int W, int H, int C, OFX::Image* dstImg)
-{
-    assert(srcC == C);
-    for(int y = 0; y < H; ++y) {
-        copyLine<PIX,srcC,dstC>(image + srcC * y, W, H, C, dstImg);
-    }
-
-}
-#endif
-
 
 void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, OFX::Image* dstImg)
 {

@@ -67,7 +67,7 @@ static void copyLine(const PIX* pixelData, int rowbytes, int W, int H, int C, in
 {
     assert(srcC == C);
 
-    PIX *srcPix = (PIX*)((char*)pixelData + (H-1-y)*rowbytes);
+    PIX *srcPix = (PIX*)((char*)pixelData + y*rowbytes);
     PIX *dstPix = image;
 
     for(int x = 0; x < W; ++x) {
