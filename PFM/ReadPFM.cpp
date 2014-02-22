@@ -205,7 +205,6 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         if (is_inverted) {
             invert_endianness(image, numpixels);
         }
-        std::fclose(nfile);
 
         // now copy to the dstImg
         if (C == 1) {
@@ -238,6 +237,7 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
             }
         }
     }
+    std::fclose(nfile);
     delete [] image;
 }
 
