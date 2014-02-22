@@ -157,7 +157,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime time, const flo
                     copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer);
+                    copyLine<float,4,3>(pixelData, rowBytes, width, height, spectrum, y, buffer);
                     break;
                 default:
                     break;
