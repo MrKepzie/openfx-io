@@ -209,19 +209,23 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
     }
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-    bool found = false;
-    int nExtensions = getPropertySet().propGetDimension(kTuttleOfxImageEffectPropSupportedExtensions);
-    for (int i = 0; i < nExtensions; ++i) {
-        std::string exti = getPropertySet().propGetString(kTuttleOfxImageEffectPropSupportedExtensions, i);
-        if (exti == ext) {
-            found = true;
-            break;
+    try {
+        bool found = false;
+        int nExtensions = getPropertySet().propGetDimension(kTuttleOfxImageEffectPropSupportedExtensions);
+        for (int i = 0; i < nExtensions; ++i) {
+            std::string exti = getPropertySet().propGetString(kTuttleOfxImageEffectPropSupportedExtensions, i);
+            if (exti == ext) {
+                found = true;
+                break;
+            }
         }
-    }
-    if (!found) {
-        std::string err("Unsupported file extension: ");
-        err.append(ext);
-        setPersistentMessage(OFX::Message::eMessageError, "", ext);
+        if (!found) {
+            std::string err("Unsupported file extension: ");
+            err.append(ext);
+            setPersistentMessage(OFX::Message::eMessageError, "", ext);
+        }
+    } catch (OFX::Exception::PropertyUnknownToHost &e) {
+        // ignore exception
     }
 #endif
 
