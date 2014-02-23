@@ -86,9 +86,6 @@
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
 #endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include <natron/IOExtensions.h>
-#endif
 
 #include "GenericOCIO.h"
 
@@ -496,21 +493,12 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
                        " path/mySequence000.jpg, path/mySequence001.jpg, etc..."
                        " By default the plugin will append digits on demand (i.e: if you have 11 frames"
                        " there will be 2 digits). You don't even need to provide the # character.");
-    fileParam->setAnimates(false);
     // in the Writer context, the script name should be "filename", for consistency with the reader nodes @see kOfxImageEffectContextReader
     fileParam->setScriptName(kWriterFileParamName);
+    fileParam->setAnimates(!isVideoStreamPlugin);
+    fileParam->setFilePathExists(false);
     desc.addClipPreferencesSlaveParam(*fileParam);
 
-#ifdef OFX_EXTENSIONS_NATRON
-    try {
-        if (!isVideoStreamPlugin) {
-            fileParam->setFilePathSupportsImageSequences(true);
-        }
-    } catch ( OFX::Exception::PropertyUnknownToHost& e) {
-        // ignore
-    }
-#endif
-    fileParam->setFilePathExists(false);
     page->addChild(*fileParam);
 
     // insert OCIO parameters

@@ -46,9 +46,6 @@
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
 #endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include <natron/IOExtensions.h>
-#endif
 
 #include "SequenceParser.h"
 #include "GenericOCIO.h"
@@ -559,21 +556,11 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     fileParam->setLabels("File", "File", "File");
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The input image sequence/video stream file(s).");
-    fileParam->setAnimates(false);
+    fileParam->setAnimates(!isVideoStreamPlugin);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     fileParam->setScriptName(kReaderFileParamName);
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
-    
-    if (!isVideoStreamPlugin) {
-#ifdef OFX_EXTENSIONS_NATRON
-        try {
-            fileParam->setFilePathSupportsImageSequences(true);
-        } catch ( OFX::Exception::PropertyUnknownToHost& e) {
-            // ignore
-        }
-#endif
-    }
     
     //////////First-frame
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
