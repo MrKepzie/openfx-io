@@ -318,7 +318,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
             DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
             DBG(std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false"));
 #warning "throws an exception on Natron"
-            DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
+            //DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
         }
         DBG(std::cout << std::endl);
     }
@@ -424,7 +424,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
             DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
             DBG(std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false"));
 #warning "throws an exception on Natron"
-            DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
+            //DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
         }
         DBG(std::cout << std::endl);
     }
@@ -454,24 +454,24 @@ RunScriptPlugin::beginEdit(void)
             int_[i]->setIsSecret(true);
         } else {
             type_[i]->setIsSecret(false);
-            type_[i]->setEnabled(!validated);
-            type_[i]->setEvaluateOnChange(validated);
             int t_int;
             type_[i]->getValue(t_int);
             ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
             filename_[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
-            filename_[i]->setEnabled(!validated);
-            filename_[i]->setEvaluateOnChange(validated);
             string_[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
-            string_[i]->setEnabled(!validated);
-            string_[i]->setEvaluateOnChange(validated);
             double_[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
-            double_[i]->setEnabled(!validated);
-            double_[i]->setEvaluateOnChange(validated);
             int_[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
-            int_[i]->setEnabled(!validated);
-            int_[i]->setEvaluateOnChange(validated);
         }
+        type_[i]->setEnabled(!validated);
+        type_[i]->setEvaluateOnChange(validated);
+        filename_[i]->setEnabled(!validated);
+        filename_[i]->setEvaluateOnChange(validated);
+        string_[i]->setEnabled(!validated);
+        string_[i]->setEvaluateOnChange(validated);
+        double_[i]->setEnabled(!validated);
+        double_[i]->setEvaluateOnChange(validated);
+        int_[i]->setEnabled(!validated);
+        int_[i]->setEvaluateOnChange(validated);
     }
     script_->setEnabled(!validated);
     script_->setEvaluateOnChange(validated);
