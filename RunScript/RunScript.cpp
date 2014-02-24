@@ -72,16 +72,24 @@
 
  */
 
+#ifndef _WINDOWS // Sorry, MS Windows users, this plugin won't work for you
+
 #include "RunScript.h"
 
+#ifdef DEBUG
 #include <iostream>
+#define DBG(x) x
+#else
+#define DBG(x) (void)0
+#endif
 #include <string>
 #include <sstream>
+#include <cstdlib>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
-#ifdef _WINDOWS
-#include <windows.h>
-#endif
-
+#include "pstream.h"
 
 #define kRunScriptPluginSourceClipCount 10
 #define kRunScriptPluginArgumentsCount 10
@@ -110,6 +118,10 @@
 #define kRunScriptPluginParamScriptLabel             "Script"
 #define kRunScriptPluginParamScriptHint              "Contents of the script. Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
                                                      "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces)."
+
+#define kRunScriptPluginParamValidate                  "validate"
+#define kRunScriptPluginParamValidateLabel             "Validate"
+#define kRunScriptPluginParamValidateHint              "Validate the script contents and execute it on next render. This locks the script and all its parameters."
 
 enum ERunScriptPluginParamType
 {
@@ -148,6 +160,7 @@ private:
     OFX::DoubleParam *double_[kRunScriptPluginArgumentsCount];
     OFX::IntParam *int_[kRunScriptPluginArgumentsCount];
     OFX::StringParam *script_;
+    OFX::BooleanParam *validate_;
 };
 
 RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
@@ -190,61 +203,19 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
         }
     }
     script_ = fetchStringParam(kRunScriptPluginParamScript);
+    validate_ = fetchBooleanParam(kRunScriptPluginParamValidate);
 }
 
 void
 RunScriptPlugin::render(const OFX::RenderArguments &args)
 {
-    std::cout << "rendering time " << args.time << " scale " << args.renderScale.x << ',' << args.renderScale.y << " window " << args.renderWindow.x1 << ',' << args.renderWindow.y1 << " - " << args.renderWindow.x2 << ',' << args.renderWindow.y2 << " field " << (int)args.fieldToRender << " view " << args.renderView << std::endl;
+    DBG(std::cout << "rendering time " << args.time << " scale " << args.renderScale.x << ',' << args.renderScale.y << " window " << args.renderWindow.x1 << ',' << args.renderWindow.y1 << " - " << args.renderWindow.x2 << ',' << args.renderWindow.y2 << " field " << (int)args.fieldToRender << " view " << args.renderView << std::endl);
 
-    int param_count;
-    param_count_->getValue(param_count);
-
-    for (int i = 0; i < param_count; ++i) {
-        int t_int;
-        type_[i]->getValue(t_int);
-        ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
-        OFX::ValueParam *p = NULL;
-        switch (t) {
-            case eRunScriptPluginParamTypeFilename:
-            {
-                std::string s;
-                filename_[i]->getValue(s);
-                p = filename_[i];
-                std::cout << p->getName() << "=" << s;
-            }
-                break;
-            case eRunScriptPluginParamTypeString:
-            {
-                std::string s;
-                string_[i]->getValue(s);
-                p = string_[i];
-                std::cout << p->getName() << "=" << s;
-            }
-                break;
-            case eRunScriptPluginParamTypeDouble:
-            {
-                double v;
-                double_[i]->getValue(v);
-                p = double_[i];
-                std::cout << p->getName() << "=" << v;
-            }
-                break;
-            case eRunScriptPluginParamTypeInteger:
-            {
-                int v;
-                int_[i]->getValue(v);
-                p = int_[i];
-                std::cout << p->getName() << "=" << v;
-            }
-                break;
-        }
-        if (p) {
-            std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false");
-            std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false");
-            std::cout << "; NumKeys=" << p->getNumKeys();
-        }
-        std::cout << std::endl;
+    bool validated;
+    validate_->getValue(validated);
+    if (!validated) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
     // fetch images corresponding to all connected inputs,
@@ -269,7 +240,99 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-#warning "TODO: execute the script"
+    // create the script
+    char scriptname[] = "/tmp/runscriptXXXXXX";
+    int fd = mkstemp(scriptname); // modifies template
+    if (fd < 0) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    std::string script;
+    script_->getValue(script);
+    ssize_t s = write(fd, script.c_str(), script.size());
+    close(fd);
+    if (s < 0) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    // make the script executable
+    int stat = chmod(scriptname, S_IRWXU);
+    if (stat != 0) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    // build the command-line
+    std::vector<std::string> argv;
+    argv.push_back(scriptname);
+
+    int param_count;
+    param_count_->getValue(param_count);
+
+    for (int i = 0; i < param_count; ++i) {
+        int t_int;
+        type_[i]->getValue(t_int);
+        ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
+        OFX::ValueParam *p = NULL;
+        switch (t) {
+            case eRunScriptPluginParamTypeFilename:
+            {
+                std::string s;
+                filename_[i]->getValue(s);
+                p = filename_[i];
+                DBG(std::cout << p->getName() << "=" << s);
+                argv.push_back(s);
+            }
+                break;
+            case eRunScriptPluginParamTypeString:
+            {
+                std::string s;
+                string_[i]->getValue(s);
+                p = string_[i];
+                DBG(std::cout << p->getName() << "=" << s);
+                argv.push_back(s);
+            }
+                break;
+            case eRunScriptPluginParamTypeDouble:
+            {
+                double v;
+                double_[i]->getValue(v);
+                p = double_[i];
+                DBG(std::cout << p->getName() << "=" << v);
+                std::ostringstream ss;
+                ss << v;
+                argv.push_back(ss.str());
+            }
+                break;
+            case eRunScriptPluginParamTypeInteger:
+            {
+                int v;
+                int_[i]->getValue(v);
+                p = int_[i];
+                DBG(std::cout << p->getName() << "=" << v);
+                std::ostringstream ss;
+                ss << v;
+                argv.push_back(ss.str());
+            }
+                break;
+        }
+        if (p) {
+            std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false");
+            std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false");
+            std::cout << "; NumKeys=" << p->getNumKeys();
+        }
+        std::cout << std::endl;
+    }
+
+    // execute the script
+    std::vector<std::string> errors;
+    redi::ipstream in(scriptname, argv, redi::pstreambuf::pstderr);
+    std::string errmsg;
+    while (std::getline(in, errmsg)) {
+        errors.push_back(errmsg);
+        std::cout << "output: " << errmsg << std::endl;
+    }
+
+    // remove the script
+    (void)unlink(scriptname);
 }
 
 void
@@ -283,6 +346,24 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
     if (paramName == kRunScriptPluginParamCount) {
         // update the parameters visibility
         beginEdit();
+    } else if (paramName == kRunScriptPluginParamValidate) {
+        bool validated;
+        validate_->getValue(validated);
+        for (int i = 0; i < param_count; ++i) {
+            type_[i]->setEnabled(!validated);
+            type_[i]->setEvaluateOnChange(validated);
+            filename_[i]->setEnabled(!validated);
+            filename_[i]->setEvaluateOnChange(validated);
+            string_[i]->setEnabled(!validated);
+            string_[i]->setEvaluateOnChange(validated);
+            double_[i]->setEnabled(!validated);
+            double_[i]->setEvaluateOnChange(validated);
+            int_[i]->setEnabled(!validated);
+            int_[i]->setEvaluateOnChange(validated);
+        }
+        script_->setEnabled(!validated);
+        script_->setEvaluateOnChange(validated);
+        clearPersistentMessage();
     } else {
         for (int i = 0; i < param_count; ++i) {
             if (paramName == type_[i]->getName() && args.reason == OFX::eChangeUserEdit) {
@@ -354,6 +435,9 @@ RunScriptPlugin::beginEdit(void)
     int param_count;
     param_count_->getValue(param_count);
 
+    bool validated;
+    validate_->getValue(validated);
+
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
         if (i >= param_count) {
             type_[i]->setIsSecret(true);
@@ -363,14 +447,26 @@ RunScriptPlugin::beginEdit(void)
             int_[i]->setIsSecret(true);
         } else {
             type_[i]->setIsSecret(false);
+            type_[i]->setEnabled(!validated);
+            type_[i]->setEvaluateOnChange(validated);
             int t_int;
             type_[i]->getValue(t_int);
             ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
             filename_[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
+            filename_[i]->setEnabled(!validated);
+            filename_[i]->setEvaluateOnChange(validated);
             string_[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
+            string_[i]->setEnabled(!validated);
+            string_[i]->setEvaluateOnChange(validated);
             double_[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
+            double_[i]->setEnabled(!validated);
+            double_[i]->setEvaluateOnChange(validated);
             int_[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
+            int_[i]->setEnabled(!validated);
+            int_[i]->setEvaluateOnChange(validated);
         }
+        script_->setEnabled(!validated);
+        script_->setEvaluateOnChange(validated);
     }
 }
 
@@ -549,8 +645,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     script_->setHint(kRunScriptPluginParamScriptHint);
     script_->setStringType(eStringTypeMultiLine);
     script_->setAnimates(false);
+    script_->setDefault("#!/bin/sh\n");
     page->addChild(*script_);
 
+    BooleanParamDescriptor *validate_ = desc.defineBooleanParam(kRunScriptPluginParamValidate);
+    validate_->setLabels(kRunScriptPluginParamValidateLabel, kRunScriptPluginParamValidateLabel, kRunScriptPluginParamValidateLabel);
+    validate_->setHint(kRunScriptPluginParamValidateHint);
+    validate_->setEvaluateOnChange(true);
+    page->addChild(*validate_);
 }
 
 OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context)
@@ -558,3 +660,4 @@ OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle ha
     return new RunScriptPlugin(handle);
 }
 
+#endif // _WINDOWS
