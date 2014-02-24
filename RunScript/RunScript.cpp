@@ -317,14 +317,15 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
         if (p) {
             std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false");
             std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false");
-            std::cout << "; NumKeys=" << p->getNumKeys();
+#warning "throws an exception on Natron"
+            std::cout << "; NumKeys=" << p->getNumKeys(); // throws an exception on Natron
         }
         std::cout << std::endl;
     }
 
     // execute the script
     std::vector<std::string> errors;
-    redi::ipstream in(scriptname, argv, redi::pstreambuf::pstderr);
+    redi::ipstream in(scriptname, argv, redi::pstreambuf::pstderr|redi::pstreambuf::pstderr);
     std::string errmsg;
     while (std::getline(in, errmsg)) {
         errors.push_back(errmsg);
@@ -349,6 +350,8 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
     } else if (paramName == kRunScriptPluginParamValidate) {
         bool validated;
         validate_->getValue(validated);
+        param_count_->setEnabled(!validated);
+        param_count_->setEvaluateOnChange(validated);
         for (int i = 0; i < param_count; ++i) {
             type_[i]->setEnabled(!validated);
             type_[i]->setEvaluateOnChange(validated);
@@ -420,7 +423,8 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
         if (p) {
             std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false");
             std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false");
-            std::cout << "; NumKeys=" << p->getNumKeys();
+#warning "throws an exception on Natron"
+            std::cout << "; NumKeys=" << p->getNumKeys(); // throws an exception on Natron
         }
         std::cout << std::endl;
     }
@@ -438,6 +442,8 @@ RunScriptPlugin::beginEdit(void)
     bool validated;
     validate_->getValue(validated);
 
+    param_count_->setEnabled(!validated);
+    param_count_->setEvaluateOnChange(validated);
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
         if (i >= param_count) {
             type_[i]->setIsSecret(true);
@@ -465,9 +471,9 @@ RunScriptPlugin::beginEdit(void)
             int_[i]->setEnabled(!validated);
             int_[i]->setEvaluateOnChange(validated);
         }
-        script_->setEnabled(!validated);
-        script_->setEvaluateOnChange(validated);
     }
+    script_->setEnabled(!validated);
+    script_->setEvaluateOnChange(validated);
 }
 
 using namespace OFX;
@@ -480,13 +486,13 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setPluginGrouping("Image");
     desc.setPluginDescription("Run a script with the given arguments.\n"
                               "Each argument may be:\n"
-                              "- An output filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer)\n"
-                              "- An input filename (which can be linked to the input of a downstream Reader)\n"
-                              "- A double (which can be linked to any plugin)\n"
+                              "- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n"
+                              "- A floating-point value (which can be linked to any plugin)\n"
                               "- An integer\n"
                               "- A string\n"
                               "Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n"
-                              "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces)\n");
+                              "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces).\n"
+                              "This plugin uses pstream <http://pstreams.sourceforge.net>, which is distributed under the GNU LGPLv3.\n");
 
     // add the supported contexts
     desc.addSupportedContext(eContextFilter);
