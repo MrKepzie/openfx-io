@@ -315,12 +315,12 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
                 break;
         }
         if (p) {
-            std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false");
-            std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false");
+            DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
+            DBG(std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false"));
 #warning "throws an exception on Natron"
-            std::cout << "; NumKeys=" << p->getNumKeys(); // throws an exception on Natron
+            DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
         }
-        std::cout << std::endl;
+        DBG(std::cout << std::endl);
     }
 
     // execute the script
@@ -329,7 +329,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     std::string errmsg;
     while (std::getline(in, errmsg)) {
         errors.push_back(errmsg);
-        std::cout << "output: " << errmsg << std::endl;
+        DBG(std::cout << "output: " << errmsg << std::endl);
     }
 
     // remove the script
@@ -339,7 +339,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 void
 RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    std::cout << "changed param " << paramName << " at time " << args.time << " reason = " << (int)args.reason <<  std::endl;
+    DBG(std::cout << "changed param " << paramName << " at time " << args.time << " reason = " << (int)args.reason <<  std::endl);
 
     int param_count;
     param_count_->getValue(param_count);
@@ -392,7 +392,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
                 std::string s;
                 filename_[i]->getValue(s);
                 p = filename_[i];
-                std::cout << p->getName() << "=" << s;
+                DBG(std::cout << p->getName() << "=" << s);
             }
                 break;
             case eRunScriptPluginParamTypeString:
@@ -400,7 +400,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
                 std::string s;
                 string_[i]->getValue(s);
                 p = string_[i];
-                std::cout << p->getName() << "=" << s;
+                DBG(std::cout << p->getName() << "=" << s);
             }
                 break;
             case eRunScriptPluginParamTypeDouble:
@@ -408,7 +408,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
                 double v;
                 double_[i]->getValue(v);
                 p = double_[i];
-                std::cout << p->getName() << "=" << v;
+                DBG(std::cout << p->getName() << "=" << v);
             }
                 break;
             case eRunScriptPluginParamTypeInteger:
@@ -416,17 +416,17 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
                 int v;
                 int_[i]->getValue(v);
                 p = int_[i];
-                std::cout << p->getName() << "=" << v;
+                DBG(std::cout << p->getName() << "=" << v);
             }
                 break;
         }
         if (p) {
-            std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false");
-            std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false");
+            DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
+            DBG(std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false"));
 #warning "throws an exception on Natron"
-            std::cout << "; NumKeys=" << p->getNumKeys(); // throws an exception on Natron
+            DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
         }
-        std::cout << std::endl;
+        DBG(std::cout << std::endl);
     }
 
 }
@@ -434,6 +434,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
 void
 RunScriptPlugin::beginEdit(void)
 {
+    DBG(std::cout << "beginEdit" << std::endl);
     // Due to a bug in Nuke, all visibility changes have to be done after instance creation.
     // It is not possible in Nuke to show a parameter that was set as secret/hidden in describeInContext()
     int param_count;
@@ -480,7 +481,7 @@ using namespace OFX;
 
 void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    std::cout << "describing!\n";
+    DBG(std::cout << "describing!\n");
     // basic labels
     desc.setLabels("RunScriptOFX", "RunScriptOFX", "RunScriptOFX");
     desc.setPluginGrouping("Image");
@@ -517,7 +518,7 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    std::cout << "describing in context " << (int)context << std::endl;
+    DBG(std::cout << "describing in context " << (int)context << std::endl);
     // Source clip only in the filter context
     // create the mandated source clip
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
