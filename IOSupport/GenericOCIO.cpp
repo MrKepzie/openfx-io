@@ -241,6 +241,7 @@ GenericOCIO::isIdentity()
 }
 
 
+// sets the correct choice menu item from the inputSpace string value
 void
 GenericOCIO::inputCheck()
 {
@@ -280,7 +281,7 @@ GenericOCIO::inputCheck()
 #endif
 }
 
-// returns true if the choice menu item and the string must be synchronized
+// sets the correct choice menu item from the outputSpace string value
 void
 GenericOCIO::outputCheck()
 {
@@ -395,8 +396,8 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
 void
 GenericOCIO::beginEdit()
 {
-    loadConfig();
-    // trigger changedParam() for inputSpace and outputSpace
+    loadConfig(); // calls buildChoiceMenus(), and updates the menus if possible (e.g. on Natron only for now)
+    // now, trigger changedParam() for inputSpace and outputSpace, which also sets the correct options in the menus
     std::string inputSpace;
     _inputSpace->getValue(inputSpace);
     _inputSpace->setValue(inputSpace);
