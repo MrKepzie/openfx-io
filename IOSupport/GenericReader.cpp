@@ -83,6 +83,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceParser(new SequenceParser)
+, _wasOriginalRangeEverSet(false)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -104,7 +105,13 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 
 
 
-bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
+bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range) {
+    
+    if (!_wasOriginalRangeEverSet) {
+        inputFileChanged();
+        _wasOriginalRangeEverSet = true;
+    }
+    
     bool ret = getSequenceTimeDomainInternal(range);
     if (ret) {
         timeDomainFromSequenceTimeDomain(range, false);
@@ -391,31 +398,35 @@ GenericReaderPlugin::beginEdit() {
     return _ocio->beginEdit();
 }
 
+void GenericReaderPlugin::inputFileChanged() {
+    std::string filename;
+    _fileParam->getValue(filename);
+    
+    try {
+        _sequenceParser->initializeFromFile(filename);
+    } catch(const std::exception& e) {
+        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        return;
+    }
+    //reset the original range param
+    _originalFrameRange->setValue(INT_MIN, INT_MAX);
+    
+    
+    ///let the derive class a chance to initialize any data structure it may need
+    onInputFileChanged(filename);
+    
+    ///we don't pass the _frameRange range as we don't want to store the time domain too
+    OfxRangeD tmp;
+    getSequenceTimeDomainInternal(tmp);
+    timeDomainFromSequenceTimeDomain(tmp, true);
+    _startingFrame->setValue(tmp.min);
+ 
+}
+
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     if(paramName == kReaderFileParamName){
-        std::string filename;
-        _fileParam->getValue(filename);
-        
-        try {
-            _sequenceParser->initializeFromFile(filename);
-        } catch(const std::exception& e) {
-            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-            return;
-        }
-        //reset the original range param
-        _originalFrameRange->setValue(INT_MIN, INT_MAX);
-        
-        
-        ///let the derive class a chance to initialize any data structure it may need
-        onInputFileChanged(filename);
-        
-        ///we don't pass the _frameRange range as we don't want to store the time domain too
-        OfxRangeD tmp;
-        getSequenceTimeDomainInternal(tmp);
-        timeDomainFromSequenceTimeDomain(tmp, true);
-        _startingFrame->setValue(tmp.min);
-        
-        
+        inputFileChanged();
+        _wasOriginalRangeEverSet = true;
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
