@@ -94,6 +94,10 @@
 #define kRunScriptPluginSourceClipCount 10
 #define kRunScriptPluginArgumentsCount 10
 
+#define kRunScriptPluginParamGroup                   "script_parameters"
+#define kRunScriptPluginParamGroupLabel              "Script parameters"
+#define kRunScriptPluginParamGroupHint               "The list of command-line parameters passed to the script."
+
 #define kRunScriptPluginParamCount                   "param_count"
 #define kRunScriptPluginParamCountLabel              "Number of parameters"
 
@@ -551,11 +555,16 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
+    GroupParamDescriptor *script_parameters_ = desc.defineGroupParam(kRunScriptPluginParamGroup);
+    script_parameters_->setHint(kRunScriptPluginParamGroupHint);
+    script_parameters_->setLabels(kRunScriptPluginParamGroupLabel, kRunScriptPluginParamGroupLabel, kRunScriptPluginParamGroupLabel);
+
     IntParamDescriptor *param_count_ = desc.defineIntParam(kRunScriptPluginParamCount);
     param_count_->setLabels(kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel);
     param_count_->setAnimates(false);
     param_count_->setRange(0, kRunScriptPluginArgumentsCount);
     param_count_->setDisplayRange(0, kRunScriptPluginArgumentsCount);
+    param_count_->setParent(*script_parameters_);
 
     // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
     // We thus hide them in beginEdit(), which is called after instance creation
@@ -577,6 +586,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         type_->appendOption(kRunScriptPluginParamTypeDoubleLabel,   kRunScriptPluginParamTypeDoubleHint);
         type_->appendOption(kRunScriptPluginParamTypeIntLabel,      kRunScriptPluginParamTypeIntHint);
         //type_->setIsSecret(true);
+        type_->setParent(*script_parameters_);
         page->addChild(*type_);
 
         StringParamDescriptor *filename_;
@@ -595,6 +605,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         filename_->setFilePathExists(false); // the file may or may not exist
         filename_->setAnimates(true); // the file name may change with time
         //filename_->setIsSecret(true);
+        filename_->setParent(*script_parameters_);
         page->addChild(*filename_);
 
         StringParamDescriptor *string_;
@@ -611,6 +622,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         string_->setHint(kRunScriptPluginParamTypeStringHint);
         string_->setAnimates(true);
         //string_->setIsSecret(true);
+        string_->setParent(*script_parameters_);
         page->addChild(*string_);
 
         DoubleParamDescriptor *double_;
@@ -627,6 +639,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         double_->setHint(kRunScriptPluginParamTypeDoubleHint);
         double_->setAnimates(true);
         //double_->setIsSecret(true);
+        double_->setParent(*script_parameters_);
         page->addChild(*double_);
 
         IntParamDescriptor *int_;
@@ -643,6 +656,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         int_->setHint(kRunScriptPluginParamTypeIntHint);
         int_->setAnimates(true);
         //int_->setIsSecret(true);
+        int_->setParent(*script_parameters_);
         page->addChild(*int_);
 
     }
