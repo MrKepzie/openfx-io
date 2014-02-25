@@ -180,6 +180,10 @@ private:
      **/
     void getFilenameAtSequenceTime(double t, std::string &filename);
     
+    /**
+     * @brief Initializes the params depending on the input file.
+     **/
+    void inputFileChanged();
     
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
@@ -201,6 +205,7 @@ private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
     SequenceParser* _sequenceParser; //< parser to extract the time domain
+    bool _wasOriginalRangeEverSet;
 
 };
 
