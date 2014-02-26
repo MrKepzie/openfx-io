@@ -594,6 +594,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     beforeFirstParam->appendOption("error","Report an error");
     beforeFirstParam->setAnimates(false);
     beforeFirstParam->setDefault(0);
+    beforeFirstParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*beforeFirstParam);
     
     //////////Last-frame
@@ -617,6 +618,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     afterLastParam->appendOption("error","Report an error");
     afterLastParam->setAnimates(false);
     afterLastParam->setDefault(0);
+    afterLastParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*afterLastParam);
     
     ///////////Missing frame choice
@@ -645,6 +647,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     startingFrameParam->setHint("At what time (on the timeline) should this sequence/video start.");
     startingFrameParam->setDefault(0);
     startingFrameParam->setAnimates(false);
+    startingFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*startingFrameParam);
     
     ///////////Time offset
@@ -654,6 +657,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     timeOffsetParam->setDefault(0);
     timeOffsetParam->setAnimates(false);
     timeOffsetParam->setIsSecret(true);
+    timeOffsetParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*timeOffsetParam);
     
     ///////////Original frame range
