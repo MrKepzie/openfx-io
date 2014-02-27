@@ -107,8 +107,9 @@ buildChoiceMenus(OCIO::ConstConfigRcPtr config,
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
         OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
-        const char *csdesc = cs->getDescription();
-        int csdesclen = std::strlen(csdesc);
+        std::string csdesc = cs->getDescription();
+        csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+        int csdesclen = csdesc.size();
         if ( csdesclen > 0 ) {
             msg += csdesc;
         }
@@ -387,9 +388,10 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
             proc->apply(img);
         }
     } catch (OCIO::Exception &e) {
-        _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        throw std::runtime_error(std::string("OpenColorIO error: ")+e.what());
+        _parent->setPersistentMessage(OFX::Message::eMessageError, "", std::string("OpenColorIO error: ") + e.what());
+        throw std::runtime_error(std::string("OpenColorIO error: ") + e.what());
     }
+    _parent->clearPersistentMessage();
 #endif
 }
 
@@ -511,14 +513,13 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (roles > 0) {
                     msg += ')';
                 }
-                const char *csdesc = cs->getDescription();
-                int csdesclen = std::strlen(csdesc);
+                std::string csdesc = cs->getDescription();
+                csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+                int csdesclen = csdesc.size();
                 if ( csdesclen > 0 ) {
                     msg += ": ";
                     msg += csdesc;
-                    if (csdesc[csdesclen-1] != '\n') {
-                        msg += '\n';
-                    }
+                    msg += '\n';
                 } else {
                     msg += '\n';
                 }

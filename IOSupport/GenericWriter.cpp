@@ -196,6 +196,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         setPersistentMessage(OFX::Message::eMessageError, "", "Invalid file name");
         return;
     }
+    clearPersistentMessage();
     size_t i = sepPos;
     ++i;//< bypass the '.' character
     std::string ext;
@@ -299,6 +300,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         // unlock (the OFX::ImageMemory destructor frees the memory)
         mem.unlock();
     }
+    clearPersistentMessage();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
