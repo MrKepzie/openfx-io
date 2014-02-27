@@ -234,6 +234,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
             default:
                 break;
         }
+        clearPersistentMessage();
         assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
 
     } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
@@ -272,6 +273,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
             default:
                 break;
         }
+        clearPersistentMessage();
         assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
     }
     
@@ -307,17 +309,20 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
                 if(filename.empty()){
                     setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
                     // return a black image
+                } else {
+                    clearPersistentMessage();
                 }
             }
                 break;
             case 1: // Error
-                    /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                    // will have to handle the case itself.
+                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
                 break;
             case 2: // Black image
-                    /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                    // will have to handle the case itself.
+                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                // will have to handle the case itself.
+                clearPersistentMessage();
                 break;
         }
 
@@ -408,6 +413,7 @@ void GenericReaderPlugin::inputFileChanged() {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         return;
     }
+    clearPersistentMessage();
     //reset the original range param
     _originalFrameRange->setValue(INT_MIN, INT_MAX);
     
