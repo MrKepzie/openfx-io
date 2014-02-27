@@ -581,6 +581,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                              " frame of the sequence.");
     firstFrameParam->setDefault(0);
     firstFrameParam->setAnimates(false);
+    firstFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*firstFrameParam);
     
     ///////////Before first
@@ -594,7 +595,6 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     beforeFirstParam->appendOption("error","Report an error");
     beforeFirstParam->setAnimates(false);
     beforeFirstParam->setDefault(0);
-    beforeFirstParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*beforeFirstParam);
     
     //////////Last-frame
@@ -605,6 +605,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                             " frame of the sequence.");
     lastFrameParam->setDefault(0);
     lastFrameParam->setAnimates(false);
+    lastFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*lastFrameParam);
     
     ///////////After first
@@ -618,7 +619,6 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     afterLastParam->appendOption("error","Report an error");
     afterLastParam->setAnimates(false);
     afterLastParam->setDefault(0);
-    afterLastParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*afterLastParam);
     
     ///////////Missing frame choice
@@ -639,7 +639,8 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     frameModeParam->appendOption("Time offset");
     frameModeParam->setAnimates(false);
     frameModeParam->setDefault(0);
-    
+    frameModeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    page->addChild(*frameModeParam);
     
     ///////////Starting frame
     OFX::IntParamDescriptor* startingFrameParam = desc.defineIntParam(kReaderStartingFrameParamName);
@@ -657,7 +658,6 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     timeOffsetParam->setDefault(0);
     timeOffsetParam->setAnimates(false);
     timeOffsetParam->setIsSecret(true);
-    timeOffsetParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*timeOffsetParam);
     
     ///////////Original frame range
