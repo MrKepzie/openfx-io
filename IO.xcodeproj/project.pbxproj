@@ -84,7 +84,6 @@
 		1E2F4DBD189295F600F4CE25 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		1E2F4DBE189295F600F4CE25 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		1E2F4DBF189295F600F4CE25 /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
-		1E2F4DC0189295F600F4CE25 /* IOExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62711875AAB500D8FA13 /* IOExtensions.h */; };
 		1E2F4DC1189295F600F4CE25 /* ofxPixels.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627D1875AAB500D8FA13 /* ofxPixels.h */; };
 		1E2F4DC2189295F600F4CE25 /* ofxOpenGLRender.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627A1875AAB500D8FA13 /* ofxOpenGLRender.h */; };
 		1E2F4DC4189295F600F4CE25 /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
@@ -284,7 +283,6 @@
 		D7330E0318867C1E004A6199 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D7330E0418867C1E004A6199 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
 		D74E624A1875A7A400D8FA13 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
-		D74E62821875AAB500D8FA13 /* IOExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62711875AAB500D8FA13 /* IOExtensions.h */; };
 		D74E62831875AAB500D8FA13 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D74E62841875AAB500D8FA13 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
 		D74E62851875AAB500D8FA13 /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
@@ -386,6 +384,9 @@
 		1E8B5DA318B79E8100C31FDC /* WritePFM.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WritePFM.h; sourceTree = "<group>"; };
 		1E8B5DD218B7A2F300C31FDC /* PFM.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PFM.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1EA1571C18A642C30054B814 /* IOUtility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOUtility.h; sourceTree = "<group>"; };
+		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
+		1EC7C7F418BF4D4F002A246F /* fnPublicOfxExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fnPublicOfxExtensions.h; sourceTree = "<group>"; };
+		1EC7C7F618BF4D75002A246F /* ofxReadWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxReadWrite.h; sourceTree = "<group>"; };
 		1ED499CC18A00B66008A2D91 /* OCIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OCIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOColorSpace.cpp; sourceTree = "<group>"; };
 		1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -403,7 +404,6 @@
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62491875A7A400D8FA13 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
-		D74E62711875AAB500D8FA13 /* IOExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IOExtensions.h; sourceTree = "<group>"; };
 		D74E62721875AAB500D8FA13 /* ofxCore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxCore.h; path = ../openfx/include/ofxCore.h; sourceTree = "<group>"; };
 		D74E62731875AAB500D8FA13 /* ofxDialog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxDialog.h; path = ../openfx/include/ofxDialog.h; sourceTree = "<group>"; };
 		D74E62741875AAB500D8FA13 /* ofxImageEffect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxImageEffect.h; path = ../openfx/include/ofxImageEffect.h; sourceTree = "<group>"; };
@@ -589,6 +589,25 @@
 			path = PFM;
 			sourceTree = "<group>";
 		};
+		1EC7C7F218BF4D15002A246F /* nuke */ = {
+			isa = PBXGroup;
+			children = (
+				1EC7C7F318BF4D4F002A246F /* camera.h */,
+				1EC7C7F418BF4D4F002A246F /* fnPublicOfxExtensions.h */,
+			);
+			name = nuke;
+			path = include/nuke;
+			sourceTree = "<group>";
+		};
+		1EC7C7F518BF4D53002A246F /* tuttle */ = {
+			isa = PBXGroup;
+			children = (
+				1EC7C7F618BF4D75002A246F /* ofxReadWrite.h */,
+			);
+			name = tuttle;
+			path = include/tuttle;
+			sourceTree = "<group>";
+		};
 		1ED4999D18A00B49008A2D91 /* OCIO */ = {
 			isa = PBXGroup;
 			children = (
@@ -652,15 +671,6 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		D74E62701875AAB500D8FA13 /* natron */ = {
-			isa = PBXGroup;
-			children = (
-				D74E62711875AAB500D8FA13 /* IOExtensions.h */,
-			);
-			name = natron;
-			path = ../openfx/include/natron;
-			sourceTree = "<group>";
-		};
 		D74E62931875AABD00D8FA13 /* OpenFX */ = {
 			isa = PBXGroup;
 			children = (
@@ -675,7 +685,6 @@
 			isa = PBXGroup;
 			children = (
 				1E74D816189106E200E9034B /* Support */,
-				D74E62701875AAB500D8FA13 /* natron */,
 				D74E62721875AAB500D8FA13 /* ofxCore.h */,
 				D74E62731875AAB500D8FA13 /* ofxDialog.h */,
 				D74E62741875AAB500D8FA13 /* ofxImageEffect.h */,
@@ -692,6 +701,8 @@
 				D74E627F1875AAB500D8FA13 /* ofxProperty.h */,
 				D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */,
 				D74E62811875AAB500D8FA13 /* ofxTimeLine.h */,
+				1EC7C7F218BF4D15002A246F /* nuke */,
+				1EC7C7F518BF4D53002A246F /* tuttle */,
 			);
 			name = Headers;
 			sourceTree = "<group>";
@@ -744,7 +755,6 @@
 				1E2F4DBD189295F600F4CE25 /* ofxSonyVegas.h in Headers */,
 				1E2F4DBE189295F600F4CE25 /* ofxCore.h in Headers */,
 				1E2F4DBF189295F600F4CE25 /* ofxMemory.h in Headers */,
-				1E2F4DC0189295F600F4CE25 /* IOExtensions.h in Headers */,
 				1E2F4DC1189295F600F4CE25 /* ofxPixels.h in Headers */,
 				1E2F4DC2189295F600F4CE25 /* ofxOpenGLRender.h in Headers */,
 				1E2F4DD61892965A00F4CE25 /* SequenceParser.h in Headers */,
@@ -927,7 +937,6 @@
 				D74E62911875AAB500D8FA13 /* ofxSonyVegas.h in Headers */,
 				D74E62831875AAB500D8FA13 /* ofxCore.h in Headers */,
 				D74E62881875AAB500D8FA13 /* ofxMemory.h in Headers */,
-				D74E62821875AAB500D8FA13 /* IOExtensions.h in Headers */,
 				D74E628E1875AAB500D8FA13 /* ofxPixels.h in Headers */,
 				D74E628B1875AAB500D8FA13 /* ofxOpenGLRender.h in Headers */,
 				1E2F4DD31892965900F4CE25 /* SequenceParser.h in Headers */,
