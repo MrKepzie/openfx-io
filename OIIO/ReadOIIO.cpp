@@ -140,15 +140,21 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
                 _ocio->setInputColorspace("hd10");
             }
         } else if(!strcmp(colorSpaceStr, "KodakLog")) {
-            if (_ocio->hasColorspace("lg10")) {
+            if (_ocio->hasColorspace("Cineon")) {
+                // Cineon in nuke-default
+                _ocio->setInputColorspace("Cineon");
+            } else if (_ocio->hasColorspace("lg10")) {
                 // lg10 in spi-vfx
                 _ocio->setInputColorspace("lg10");
             }
         } else if(!strcmp(colorSpaceStr, "Linear")) {
             _ocio->setInputColorspace("scene_linear");
             // lnf in spi-vfx
+        } else if (_ocio->hasColorspace(colorSpaceStr)) {
+            // maybe we're lucky
+            _ocio->setInputColorspace(colorSpaceStr);
         } else {
-            //unknown color-space or Linear, don't do anything
+            // unknown color-space or Linear, don't do anything
         }
     }
 #endif

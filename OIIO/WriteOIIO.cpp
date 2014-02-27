@@ -385,7 +385,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     std::string colorSpaceStr;
     if (ocioColorspace == "Gamma1.8") {
         // Gamma1.8 in nuke-default
-       colorSpaceStr = "GammaCorrected";
+        colorSpaceStr = "GammaCorrected";
         gamma = 1.8;
     } else if (ocioColorspace == "Gamma2.2" || ocioColorspace == "vd8" || ocioColorspace == "vd10" || ocioColorspace == "vd16") {
         // Gamma2.2 in nuke-default
@@ -402,10 +402,11 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
         // rrt_rec709 in aces
         // hd10 in spi-anim and spi-vfx
         colorSpaceStr = "Rec709";
-    } else if(ocioColorspace == "lg10") {
+    } else if(ocioColorspace == "KodakLog" || ocioColorspace == "Cineon" || ocioColorspace == "lg10") {
+        // Cineon in nuke-default
         // lg10 in spi-vfx
         colorSpaceStr = "KodakLog";
-    } else if(ocioColorspace == "linear" || ocioColorspace == "aces" || ocioColorspace == "lnf" || ocioColorspace == "ln16") {
+    } else if(ocioColorspace == "Linear" || ocioColorspace == "linear" || ocioColorspace == "aces" || ocioColorspace == "lnf" || ocioColorspace == "ln16") {
         // linear in nuke-default
         // aces in aces
         // lnf, ln16 in spi-anim and spi-vfx
