@@ -483,7 +483,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     } else {
         // allocate
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-        std::cout << "pixelbytes=" << pixelBytes << std::endl;
         int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
         size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
