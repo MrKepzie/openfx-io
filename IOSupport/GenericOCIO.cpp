@@ -326,21 +326,33 @@ void
 GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
 {
 #ifdef OFX_IO_USING_OCIO
-    loadConfig();
-    if (!_config) {
-        return;
-    }
-    if (isIdentity()) {
-        return;
-    }
     OFX::BitDepthEnum bitDepth = img->getPixelDepth();
     if (bitDepth != OFX::eBitDepthFloat) {
-        throw std::runtime_error("invalid pixel depth (only float is supported)");
+        throw std::runtime_error("OCIO: invalid pixel depth (only float is supported)");
     }
 
     apply(renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
 #endif
 }
+
+
+class OCIOProcessor : public OFX::PixelProcessor {
+    public :
+    // ctor
+    OCIOProcessor(OFX::ImageEffect &instance, GenericOCIO &ocio)
+    : OFX::PixelProcessor(instance)
+    , _ocio(ocio)
+    {}
+
+    // and do some processing
+    void multiThreadProcessImages(OfxRectI procWindow)
+    {
+        _ocio.applyInternal(procWindow, (float*)_dstPixelData, _dstBounds, _dstPixelComponents, _dstRowBytes);
+    }
+private:
+    GenericOCIO & _ocio;
+
+};
 
 void
 GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
@@ -356,9 +368,31 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
        renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
-        throw std::runtime_error("render window outside of image bounds");
+        throw std::runtime_error("OCIO: render window outside of image bounds");
+    }
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
+        throw std::runtime_error("OCIO: invalid components (only RGB and RGBA are supported)");
     }
 
+    OCIOProcessor processor(*_parent, *this);
+    // set the images
+    processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
+
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+#endif
+}
+
+void
+GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
+#ifdef OFX_IO_USING_OCIO
+    if (!_config) {
+        throw std::logic_error("OCIO configuration not loaded");
+    }
     int numChannels;
     int pixelBytes;
     switch(pixelComponents)

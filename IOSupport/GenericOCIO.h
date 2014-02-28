@@ -43,6 +43,7 @@
 #include <string>
 
 #include <ofxsImageEffect.h>
+#include "ofxsPixelProcessor.h"
 
 // define OFX_OCIO_CHOICE to enable the colorspace choice popup menu
 #define OFX_OCIO_CHOICE
@@ -61,7 +62,7 @@
 
 class GenericOCIO
 {
-
+    friend class OCIOProcessor;
 public:
     GenericOCIO(OFX::ImageEffect* parent);
     bool isIdentity();
@@ -82,6 +83,7 @@ private:
     void loadConfig();
     void inputCheck();
     void outputCheck();
+    void applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
 
     OFX::ImageEffect* _parent;
 #ifdef OFX_IO_USING_OCIO
