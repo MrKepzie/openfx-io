@@ -105,6 +105,7 @@ int getPixelBytes(OFX::PixelComponentEnum pixelComponents,
 #endif
         case OFX::eBitDepthCustom : pixelBytes *= 0; break;
     }
+    return pixelBytes;
 }
 
 #endif
