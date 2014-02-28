@@ -167,17 +167,49 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
 
 
 void
-GenericWriterPlugin::getImageData(OFX::Image* img, float** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, int* rowBytes)
+GenericWriterPlugin::getImageData(OFX::Image* img, void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes)
 {
-    OFX::BitDepthEnum bitDepth = img->getPixelDepth();
-    if (bitDepth != OFX::eBitDepthFloat) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-
-    *pixelData = (float*)img->getPixelData();
+    *pixelData = img->getPixelData();
     *bounds = img->getBounds();
     *pixelComponents = img->getPixelComponents();
+    *bitDepth = img->getPixelDepth();
     *rowBytes = img->getRowBytes();
+}
+
+void
+GenericWriterPlugin::getImageData(const OFX::Image* img, const void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes)
+{
+    *pixelData = img->getPixelData();
+    *bounds = img->getBounds();
+    *pixelComponents = img->getPixelComponents();
+    *bitDepth = img->getPixelDepth();
+    *rowBytes = img->getRowBytes();
+}
+
+static int getPixelBytes(OFX::PixelComponentEnum pixelComponents,
+                      OFX::BitDepthEnum bitDepth)
+{
+    // compute bytes per pixel
+    int pixelBytes = 0;
+    switch (pixelComponents) {
+        case OFX::ePixelComponentNone : pixelBytes = 0; break;
+        case OFX::ePixelComponentRGBA  : pixelBytes = 4; break;
+        case OFX::ePixelComponentRGB  : pixelBytes = 3; break;
+        case OFX::ePixelComponentAlpha : pixelBytes = 1; break;
+        case OFX::ePixelComponentCustom : pixelBytes = 0; break;
+    }
+    switch (bitDepth) {
+        case OFX::eBitDepthNone   : pixelBytes *= 0; break;
+        case OFX::eBitDepthUByte  : pixelBytes *= 1; break;
+        case OFX::eBitDepthUShort : pixelBytes *= 2; break;
+        case OFX::eBitDepthFloat  : pixelBytes *= 4; break;
+#ifdef OFX_EXTENSIONS_VEGAS
+        case OFX::eBitDepthUByteBGRA  : pixelBytes *= 1; break;
+        case OFX::eBitDepthUShortBGRA : pixelBytes *= 2; break;
+        case OFX::eBitDepthFloatBGRA  : pixelBytes *= 4; break;
+#endif
+        case OFX::eBitDepthCustom : pixelBytes *= 0; break;
+    }
 }
 
 void GenericWriterPlugin::render(const OFX::RenderArguments &args)
@@ -241,62 +273,71 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         filename.erase(firstDigitPos, sepPos - firstDigitPos); //< erase the digits
     }
     
-    std::auto_ptr<OFX::Image> srcImg(_inputClip->fetchImage(args.time));
+    std::auto_ptr<const OFX::Image> srcImg(_inputClip->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    std::auto_ptr<OFX::Image> dstImg;
-    ////copy the image if the output clip is connected!
-    if (_outputClip && _outputClip->isConnected()) {
-        // instantiate the render code based on the pixel depth of the dst clip
 
-        dstImg.reset(_outputClip->fetchImage(args.time));
-        
-        OFX::BitDepthEnum       dstBitDepth    = _outputClip->getPixelDepth();
-        OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
-        
-        // do the rendering
-        if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        if(dstComponents == OFX::ePixelComponentRGBA) {
-            ImageCopier<float, 4> fred(*this);
-            setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-        } else if(dstComponents == OFX::ePixelComponentRGB) {
-            ImageCopier<float, 3> fred(*this);
-            setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-        }  else if(dstComponents == OFX::ePixelComponentAlpha) {
-            ImageCopier<float, 1> fred(*this);
-            setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-        } // switch
-    }
-
-    float *pixelData = NULL;
+    const void* srcPixelData = NULL;
     OfxRectI bounds;
     OFX::PixelComponentEnum pixelComponents;
-    int rowBytes;
+    OFX::BitDepthEnum bitDepth;
+    int srcRowBytes;
+    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+    if (bitDepth != OFX::eBitDepthFloat) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    const float* srcPixelDataF = (const float*)srcPixelData;
     if (_ocio->isIdentity()) {
         // no colorspace conversion, just encode the source image
-        getImageData(srcImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
-        encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
-    } else if (dstImg.get()) {
-        // do the color-space conversion on dstImg
-        getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
-        _ocio->apply(args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
-        encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+        // we ealways encode the whole input image, regardless of args.renderWindow
+        encode(filename, args.time, srcPixelDataF, bounds, pixelComponents, srcRowBytes);
+        // copy to dstImg if necessary
+        if (_outputClip && _outputClip->isConnected()) {
+            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+            assert(dstImg.get());
+            copyPixelData(args, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
+        }
     } else {
+        // The following code is not instance-safe, because two instances may be running
+        // on the same frame, and the apply() call both reads and writes dstImg.
+        // This results in colorspace conversion being applied several times.
+        //
+        //if (dstImg.get()) {
+        //// do the color-space conversion on dstImg
+        //getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
+        //_ocio->apply(args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
+        //encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+        //}
+        //
+        // The only viable solution (below) is to do the conversion in a temporary space,
+        // and finally copy the result.
+        //
         // allocate
-        getImageData(srcImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
-        size_t memSize = (bounds.y2-bounds.y1)*rowBytes;
-        OFX::ImageMemory mem((bounds.y2-bounds.y1)*rowBytes,this);
-        pixelData = (float*)mem.lock();
+        int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+        int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
+        size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
+        OFX::ImageMemory mem(memSize,this);
+        float *tmpPixelData = (float*)mem.lock();
         // copy
-        memcpy(pixelData, srcImg.get()->getPixelData(), memSize);
+        int height = bounds.y2 - bounds.y1;
+        for (int y = 0; y < height; ++y) {
+            void* tmpRowStart = (char*)tmpPixelData + y * tmpRowBytes;
+            void* srcRowStart = (char*)srcPixelData + y * srcRowBytes;
+            memcpy(tmpRowStart, srcRowStart, tmpRowBytes);
+        }
         // do the color-space conversion
-        _ocio->apply(args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
-        // encode
-        encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+        _ocio->apply(args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+        // write theimage file
+        encode(filename, args.time, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+        // copy to dstImg if necessary
+        if (_outputClip && _outputClip->isConnected()) {
+            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+            assert(dstImg.get());
+            copyPixelData(args, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+        }
+
         // unlock (the OFX::ImageMemory destructor frees the memory)
         mem.unlock();
     }
@@ -323,28 +364,64 @@ checkComponents(const OFX::Image &src,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
 }
 
-void GenericWriterPlugin::setupAndProcess(CopierBase & processor, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg){
-    
+void GenericWriterPlugin::setupAndProcess(CopierBase & processor,
+                                          const OFX::RenderArguments &args,
+                                          const void *srcPixelData,
+                                          const OfxRectI& srcBounds,
+                                          OFX::PixelComponentEnum srcPixelComponents,
+                                          OFX::BitDepthEnum srcPixelDepth,
+                                          int srcRowBytes,
+                                          OFX::Image* dstImg)
+{
+    assert(dstImg);
 
     OFX::BitDepthEnum          dstBitDepth    = dstImg->getPixelDepth();
     OFX::PixelComponentEnum    dstComponents  = dstImg->getPixelComponents();
     
     
     // make sure bit depths are sane
-    if(srcImg) {
-        checkComponents(*srcImg, dstBitDepth, dstComponents);
+    if(srcPixelDepth != dstBitDepth || srcPixelComponents != dstComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     // set the images
     processor.setDstImg(dstImg);
-    processor.setSrcImg(srcImg);
-    
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+
     // set the render window
     processor.setRenderWindow(args.renderWindow);
     
     // Call the base class process member, this will call the derived templated process code
     processor.process();
 
+}
+
+void GenericWriterPlugin::copyPixelData(const OFX::RenderArguments &args,
+                                        const void *srcPixelData,
+                                        const OfxRectI& srcBounds,
+                                        OFX::PixelComponentEnum srcPixelComponents,
+                                        OFX::BitDepthEnum srcPixelDepth,
+                                        int srcRowBytes,
+                                        OFX::Image* dstImg)
+{
+    assert(dstImg);
+    OFX::BitDepthEnum       dstBitDepth    = _outputClip->getPixelDepth();
+    OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
+
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if(dstComponents == OFX::ePixelComponentRGBA) {
+        ImageCopier<float, 4> fred(*this);
+        setupAndProcess(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    } else if(dstComponents == OFX::ePixelComponentRGB) {
+        ImageCopier<float, 3> fred(*this);
+        setupAndProcess(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
+        ImageCopier<float, 1> fred(*this);
+        setupAndProcess(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    } // switch
 }
 
 bool GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){

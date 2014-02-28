@@ -58,8 +58,9 @@ public:
     
     virtual ~GenericWriterPlugin();
     
-    static void getImageData(OFX::Image* img, float** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, int* rowBytes);
-    
+    static void getImageData(OFX::Image* img, void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes);
+    static void getImageData(const OFX::Image* img, const void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes);
+
     /**
      * @brief Don't override this function, the GenericWriterPlugin class already does the rendering. The "encoding" of the frame
      * must be done by the pure virtual function encode(...) instead.
@@ -150,7 +151,35 @@ private:
     virtual void clearAnyCache() {}
 
     /* set up and run a copy processor */
-    void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
+    void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         OFX::Image* dstImg);
+
+
+    void copyPixelData(const OFX::RenderArguments &args,
+                       const OFX::Image* srcImg,
+                       OFX::Image* dstImg)
+    {
+        const void* pixelData;
+        OfxRectI bounds;
+        OFX::PixelComponentEnum pixelComponents;
+        OFX::BitDepthEnum bitDepth;
+        int rowBytes;
+        getImageData(srcImg, &pixelData, &bounds, &pixelComponents, &bitDepth, &rowBytes);
+        copyPixelData(args, pixelData, bounds, pixelComponents, bitDepth, rowBytes, dstImg);
+    }
+
+    void copyPixelData(const OFX::RenderArguments &args,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       OFX::Image* dstImg);
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc);
