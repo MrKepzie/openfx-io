@@ -40,6 +40,7 @@
 #define Io_GenericWriter_h
 
 #include <ofxsImageEffect.h>
+#include "IOUtility.h"
 
 namespace OFX {
     class PixelProcessorFilterBase;
@@ -60,9 +61,6 @@ public:
     
     virtual ~GenericWriterPlugin();
     
-    static void getImageData(OFX::Image* img, void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes);
-    static void getImageData(const OFX::Image* img, const void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes);
-
     /**
      * @brief Don't override this function, the GenericWriterPlugin class already does the rendering. The "encoding" of the frame
      * must be done by the pure virtual function encode(...) instead.
