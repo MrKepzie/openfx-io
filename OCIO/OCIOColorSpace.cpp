@@ -44,9 +44,9 @@
 
 #include <GenericOCIO.h>
 
-
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
+#include "IOUtility.h"
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -78,17 +78,64 @@ checkComponents(const OFX::Image &src,
 }
 
 void
-OCIOColorSpacePlugin::setupAndProcess(CopierBase & processor, const OFX::RenderArguments &args, OFX::Image* srcImg, OFX::Image* dstImg)
+OCIOColorSpacePlugin::setupAndProcess(OFX::PixelProcessorFilterBase & processor,
+                                      const OfxRectI &renderWindow,
+                                      const void *srcPixelData,
+                                      const OfxRectI& srcBounds,
+                                      OFX::PixelComponentEnum srcPixelComponents,
+                                      OFX::BitDepthEnum srcPixelDepth,
+                                      int srcRowBytes,
+                                      OFX::Image* dstImg)
 {
+    assert(dstImg);
+
+    OFX::BitDepthEnum          dstBitDepth    = dstImg->getPixelDepth();
+    OFX::PixelComponentEnum    dstComponents  = dstImg->getPixelComponents();
+
+
+    // make sure bit depths are sane
+    if(srcPixelDepth != dstBitDepth || srcPixelComponents != dstComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     // set the images
     processor.setDstImg(dstImg);
-    processor.setSrcImg(srcImg);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
 
     // set the render window
-    processor.setRenderWindow(args.renderWindow);
+    processor.setRenderWindow(renderWindow);
 
     // Call the base class process member, this will call the derived templated process code
     processor.process();
+}
+
+void
+OCIOColorSpacePlugin::copyPixelData(const OfxRectI &renderWindow,
+                                    const void *srcPixelData,
+                                    const OfxRectI& srcBounds,
+                                    OFX::PixelComponentEnum srcPixelComponents,
+                                    OFX::BitDepthEnum srcPixelDepth,
+                                    int srcRowBytes,
+                                    OFX::Image* dstImg)
+{
+    assert(dstImg);
+    OFX::BitDepthEnum       dstBitDepth    = dstImg->getPixelDepth();
+    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
+
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if(dstComponents == OFX::ePixelComponentRGBA) {
+        PixelCopier<float, 4> fred(*this);
+        setupAndProcess(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    } else if(dstComponents == OFX::ePixelComponentRGB) {
+        PixelCopier<float, 3> fred(*this);
+        setupAndProcess(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
+        PixelCopier<float, 1> fred(*this);
+        setupAndProcess(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    } // switch
 }
 
 /* Override the render */
@@ -125,26 +172,45 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     }
 
     // are we in the image bounds
-    OfxRectI bounds = dstImg->getBounds();
-    if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
-       args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
+    OfxRectI dstBounds = dstImg->getBounds();
+    if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
+       args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    if(dstComponents == OFX::ePixelComponentRGBA) {
-        ImageCopier<float, 4> fred(*this);
-        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-    } else if(dstComponents == OFX::ePixelComponentRGB) {
-        ImageCopier<float, 3> fred(*this);
-        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
-        ImageCopier<float, 1> fred(*this);
-        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-    } // switch
+    const void* srcPixelData = NULL;
+    OfxRectI bounds;
+    OFX::PixelComponentEnum pixelComponents;
+    OFX::BitDepthEnum bitDepth;
+    int srcRowBytes;
+    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+
+    // allocate temporary image
+    int pixelBytes = getPixelBytes(srcComponents, srcBitDepth);
+    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
+    OFX::ImageMemory mem(memSize,this);
+    float *tmpPixelData = (float*)mem.lock();
+    // copy renderWindow to the temporary image
+    int height = args.renderWindow.y2 - args.renderWindow.y1;
+    for (int y = 0; y < height; ++y) {
+        void* tmpRowStart = (char*)tmpPixelData + y * tmpRowBytes;
+        void* srcRowStart = (char*)srcPixelData + (y + args.renderWindow.y1 - bounds.y1) * srcRowBytes;
+        memcpy(tmpRowStart, srcRowStart, tmpRowBytes);
+    }
 
     ///do the color-space conversion
-    _ocio->apply(args.renderWindow, dstImg.get());
+    _ocio->apply(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+
+    // copy the color-converted window
+    if(dstComponents == OFX::ePixelComponentRGBA) {
+        PixelCopier<float, 4> fred(*this);
+        setupAndProcess(fred, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+    } else if(dstComponents == OFX::ePixelComponentRGB) {
+        PixelCopier<float, 3> fred(*this);
+        setupAndProcess(fred, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+    } // switch
 }
 
 bool

@@ -40,9 +40,12 @@
 #define __Io__OCIOColorSpace__
 
 #include <ofxsImageEffect.h>
+#include "IOUtility.h"
 
 class GenericOCIO;
-class CopierBase;
+namespace OFX {
+    class PixelProcessorFilterBase;
+}
 
 class OCIOColorSpacePlugin : public OFX::ImageEffect 
 {
@@ -74,8 +77,37 @@ public:
   //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
 
 private :
-  /* set up and run a copy processor */
-  void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
+    /* set up and run a copy processor */
+    static void setupAndProcess(OFX::PixelProcessorFilterBase &processor,
+                                const OfxRectI &renderWindow,
+                                const void *srcPixelData,
+                                const OfxRectI& srcBounds,
+                                OFX::PixelComponentEnum srcPixelComponents,
+                                OFX::BitDepthEnum srcPixelDepth,
+                                int srcRowBytes,
+                                OFX::Image* dstImg);
+
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const OFX::Image* srcImg,
+                       OFX::Image* dstImg)
+    {
+        const void* pixelData;
+        OfxRectI bounds;
+        OFX::PixelComponentEnum pixelComponents;
+        OFX::BitDepthEnum bitDepth;
+        int rowBytes;
+        getImageData(srcImg, &pixelData, &bounds, &pixelComponents, &bitDepth, &rowBytes);
+        copyPixelData(renderWindow, pixelData, bounds, pixelComponents, bitDepth, rowBytes, dstImg);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       OFX::Image* dstImg);
 
   // do not need to delete these, the ImageEffect is managing them for us
   OFX::Clip *dstClip_;
