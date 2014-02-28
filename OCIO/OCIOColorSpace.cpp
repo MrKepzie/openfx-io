@@ -63,29 +63,29 @@ OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
     
 }
 
-void
-OCIOColorSpacePlugin::setupAndProcess(OFX::PixelProcessorFilterBase & processor,
-                                      const OfxRectI &renderWindow,
-                                      const void *srcPixelData,
-                                      const OfxRectI& srcBounds,
-                                      OFX::PixelComponentEnum srcPixelComponents,
-                                      OFX::BitDepthEnum srcPixelDepth,
-                                      int srcRowBytes,
-                                      OFX::Image* dstImg)
+/* set up and run a copy processor */
+static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                         const OfxRectI &renderWindow,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
 {
-    assert(dstImg);
-
-    OFX::BitDepthEnum          dstBitDepth    = dstImg->getPixelDepth();
-    OFX::PixelComponentEnum    dstComponents  = dstImg->getPixelComponents();
-
+    assert(srcPixelData && dstPixelData);
 
     // make sure bit depths are sane
-    if(srcPixelDepth != dstBitDepth || srcPixelComponents != dstComponents) {
+    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     // set the images
-    processor.setDstImg(dstImg);
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
     processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
 
     // set the render window
@@ -96,31 +96,33 @@ OCIOColorSpacePlugin::setupAndProcess(OFX::PixelProcessorFilterBase & processor,
 }
 
 void
-OCIOColorSpacePlugin::copyPixelData(const OfxRectI &renderWindow,
+OCIOColorSpacePlugin::copyPixelData(const OfxRectI& renderWindow,
                                     const void *srcPixelData,
                                     const OfxRectI& srcBounds,
                                     OFX::PixelComponentEnum srcPixelComponents,
                                     OFX::BitDepthEnum srcPixelDepth,
                                     int srcRowBytes,
-                                    OFX::Image* dstImg)
+                                    void *dstPixelData,
+                                    const OfxRectI& dstBounds,
+                                    OFX::PixelComponentEnum dstPixelComponents,
+                                    OFX::BitDepthEnum dstBitDepth,
+                                    int dstRowBytes)
 {
-    assert(dstImg);
-    OFX::BitDepthEnum       dstBitDepth    = dstImg->getPixelDepth();
-    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
+    assert(srcPixelData && dstPixelData);
 
     // do the rendering
-    if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    if(dstComponents == OFX::ePixelComponentRGBA) {
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
         PixelCopier<float, 4> fred(*this);
-        setupAndProcess(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
-    } else if(dstComponents == OFX::ePixelComponentRGB) {
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
         PixelCopier<float, 3> fred(*this);
-        setupAndProcess(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
-    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
         PixelCopier<float, 1> fred(*this);
-        setupAndProcess(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 }
 
@@ -179,24 +181,13 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     OFX::ImageMemory mem(memSize,this);
     float *tmpPixelData = (float*)mem.lock();
     // copy renderWindow to the temporary image
-    int height = args.renderWindow.y2 - args.renderWindow.y1;
-    for (int y = 0; y < height; ++y) {
-        void* tmpRowStart = (char*)tmpPixelData + y * tmpRowBytes;
-        void* srcRowStart = (char*)srcPixelData + (y + args.renderWindow.y1 - bounds.y1) * srcRowBytes;
-        memcpy(tmpRowStart, srcRowStart, tmpRowBytes);
-    }
+    copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
 
     ///do the color-space conversion
     _ocio->apply(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
 
     // copy the color-converted window
-    if(dstComponents == OFX::ePixelComponentRGBA) {
-        PixelCopier<float, 4> fred(*this);
-        setupAndProcess(fred, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
-    } else if(dstComponents == OFX::ePixelComponentRGB) {
-        PixelCopier<float, 3> fred(*this);
-        setupAndProcess(fred, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
-    } // switch
+    copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
 }
 
 bool
