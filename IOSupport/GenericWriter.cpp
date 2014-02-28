@@ -300,8 +300,9 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
             copyPixelData(args, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
         }
     } else {
-        // The following code is not instance-safe, because two instances may be running
-        // on the same frame, and the apply() call both reads and writes dstImg.
+        // The following code is not fully-safe, because the same instance may be have
+        // two threads running on the same area of the same frame, and the apply()
+        // calls both read and write dstImg.
         // This results in colorspace conversion being applied several times.
         //
         //if (dstImg.get()) {
@@ -364,28 +365,29 @@ checkComponents(const OFX::Image &src,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
 }
 
-void GenericWriterPlugin::setupAndProcess(CopierBase & processor,
-                                          const OFX::RenderArguments &args,
-                                          const void *srcPixelData,
-                                          const OfxRectI& srcBounds,
-                                          OFX::PixelComponentEnum srcPixelComponents,
-                                          OFX::BitDepthEnum srcPixelDepth,
-                                          int srcRowBytes,
-                                          OFX::Image* dstImg)
+/* set up and run a copy processor */
+static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                         const OFX::RenderArguments &args,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
 {
-    assert(dstImg);
+    assert(srcPixelData && dstPixelData);
 
-    OFX::BitDepthEnum          dstBitDepth    = dstImg->getPixelDepth();
-    OFX::PixelComponentEnum    dstComponents  = dstImg->getPixelComponents();
-    
-    
     // make sure bit depths are sane
-    if(srcPixelDepth != dstBitDepth || srcPixelComponents != dstComponents) {
+    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     // set the images
-    processor.setDstImg(dstImg);
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
     processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
 
     // set the render window
@@ -393,7 +395,6 @@ void GenericWriterPlugin::setupAndProcess(CopierBase & processor,
     
     // Call the base class process member, this will call the derived templated process code
     processor.process();
-
 }
 
 void GenericWriterPlugin::copyPixelData(const OFX::RenderArguments &args,
@@ -402,25 +403,27 @@ void GenericWriterPlugin::copyPixelData(const OFX::RenderArguments &args,
                                         OFX::PixelComponentEnum srcPixelComponents,
                                         OFX::BitDepthEnum srcPixelDepth,
                                         int srcRowBytes,
-                                        OFX::Image* dstImg)
+                                        void *dstPixelData,
+                                        const OfxRectI& dstBounds,
+                                        OFX::PixelComponentEnum dstPixelComponents,
+                                        OFX::BitDepthEnum dstBitDepth,
+                                        int dstRowBytes)
 {
-    assert(dstImg);
-    OFX::BitDepthEnum       dstBitDepth    = _outputClip->getPixelDepth();
-    OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
+    assert(srcPixelData && dstPixelData);
 
     // do the rendering
-    if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    if(dstComponents == OFX::ePixelComponentRGBA) {
-        ImageCopier<float, 4> fred(*this);
-        setupAndProcess(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
-    } else if(dstComponents == OFX::ePixelComponentRGB) {
-        ImageCopier<float, 3> fred(*this);
-        setupAndProcess(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
-    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
-        ImageCopier<float, 1> fred(*this);
-        setupAndProcess(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstImg);
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        PixelCopier<float, 4> fred(*this);
+        setupAndCopy(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        PixelCopier<float, 3> fred(*this);
+        setupAndCopy(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        PixelCopier<float, 1> fred(*this);
+        setupAndCopy(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 }
 
