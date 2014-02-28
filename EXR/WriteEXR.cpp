@@ -108,12 +108,15 @@ WriteEXRPlugin::~WriteEXRPlugin(){
     
 }
 
-void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    
-}
+//void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/, const std::string &paramName)
+//{
+//}
 
 
-void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) {
+void WriteEXRPlugin::encode(const std::string& filename,
+                            OfxTime /*time*/,
+                            const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -283,7 +286,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteEXRPlugin(handle);
 }

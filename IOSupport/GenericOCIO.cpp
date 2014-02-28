@@ -405,6 +405,7 @@ GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const
             break;
         //case OFX::ePixelComponentAlpha: pixelBytes = 1; break;
         default:
+            numChannels = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -688,7 +689,7 @@ GenericOCIO::purgeCaches()
 
 
 void
-GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
+GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
 #ifdef OFX_IO_USING_OCIO
     global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "NatronHost");

@@ -1495,6 +1495,7 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
+				WARNING_CFLAGS = "-Wall";
 			};
 			name = Debug;
 		};
@@ -1529,6 +1530,7 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
+				WARNING_CFLAGS = "-Wall";
 			};
 			name = Release;
 		};

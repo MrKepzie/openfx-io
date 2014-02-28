@@ -42,6 +42,7 @@
 
 #include "ofxsImageEffect.h"
 #include "ofxsMultiThread.h"
+#include "IOUtility.h"
 
 /** @file This file contains a useful base class that can be used to process images 
 
@@ -87,7 +88,7 @@ namespace OFX {
             _dstBounds = v->getBounds();
             _dstPixelComponents = v->getPixelComponents();
             _dstBitDepth = v->getPixelDepth();
-            _dstPixelBytes = pixelBytes(_dstPixelComponents, _dstBitDepth);
+            _dstPixelBytes = getPixelBytes(_dstPixelComponents, _dstBitDepth);
             _dstRowBytes = v->getRowBytes();
         }
 
@@ -102,7 +103,7 @@ namespace OFX {
             _dstBounds = dstBounds;
             _dstPixelComponents = dstPixelComponents;
             _dstBitDepth = dstPixelDepth;
-            _dstPixelBytes = pixelBytes(_dstPixelComponents, _dstBitDepth);
+            _dstPixelBytes = getPixelBytes(_dstPixelComponents, _dstBitDepth);
             _dstRowBytes = dstRowBytes;
         }
 
@@ -165,31 +166,6 @@ namespace OFX {
             return (void *) pix;
         }
 
-        static int pixelBytes(OFX::PixelComponentEnum pixelComponents,
-                              OFX::BitDepthEnum bitDepth)
-        {
-            // compute bytes per pixel
-            int pixelBytes = 0;
-            switch (pixelComponents) {
-                case OFX::ePixelComponentNone : pixelBytes = 0; break;
-                case OFX::ePixelComponentRGBA  : pixelBytes = 4; break;
-                case OFX::ePixelComponentRGB  : pixelBytes = 3; break;
-                case OFX::ePixelComponentAlpha : pixelBytes = 1; break;
-                case OFX::ePixelComponentCustom : pixelBytes = 0; break;
-            }
-            switch (bitDepth) {
-                case OFX::eBitDepthNone   : pixelBytes *= 0; break;
-                case OFX::eBitDepthUByte  : pixelBytes *= 1; break;
-                case OFX::eBitDepthUShort : pixelBytes *= 2; break;
-                case OFX::eBitDepthFloat  : pixelBytes *= 4; break;
-#ifdef OFX_EXTENSIONS_VEGAS
-                case OFX::eBitDepthUByteBGRA  : pixelBytes *= 1; break;
-                case OFX::eBitDepthUShortBGRA : pixelBytes *= 2; break;
-                case OFX::eBitDepthFloatBGRA  : pixelBytes *= 4; break;
-#endif
-                case OFX::eBitDepthCustom : pixelBytes *= 0; break;
-            }
-        }
     };
 
 
@@ -224,7 +200,7 @@ namespace OFX {
             _srcBounds = v->getBounds();
             _srcPixelComponents = v->getPixelComponents();
             _srcBitDepth = v->getPixelDepth();
-            _srcPixelBytes = pixelBytes(_srcPixelComponents, _srcBitDepth);
+            _srcPixelBytes = getPixelBytes(_srcPixelComponents, _srcBitDepth);
             _srcRowBytes = v->getRowBytes();
         }
 
@@ -239,7 +215,7 @@ namespace OFX {
             _srcBounds = srcBounds;
             _srcPixelComponents = srcPixelComponents;
             _srcBitDepth = srcPixelDepth;
-            _srcPixelBytes = pixelBytes(_srcPixelComponents, _srcBitDepth);
+            _srcPixelBytes = getPixelBytes(_srcPixelComponents, _srcBitDepth);
             _srcRowBytes = srcRowBytes;
         }
 

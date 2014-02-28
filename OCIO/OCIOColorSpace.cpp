@@ -63,20 +63,6 @@ OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
     
 }
 
-// make sure components are sane
-static void
-checkComponents(const OFX::Image &src,
-                OFX::BitDepthEnum dstBitDepth,
-                OFX::PixelComponentEnum dstComponents)
-{
-    OFX::BitDepthEnum      srcBitDepth     = src.getPixelDepth();
-    OFX::PixelComponentEnum srcComponents  = src.getPixelComponents();
-
-    // see if they have the same depths and bytes and all
-    if(srcBitDepth != dstBitDepth || srcComponents != dstComponents)
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-}
-
 void
 OCIOColorSpacePlugin::setupAndProcess(OFX::PixelProcessorFilterBase & processor,
                                       const OfxRectI &renderWindow,
@@ -214,7 +200,7 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
 }
 
 bool
-OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
+OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &/*args*/, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
 {
     return _ocio->isIdentity();
 }
@@ -277,7 +263,7 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new OCIOColorSpacePlugin(handle);
 }

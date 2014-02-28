@@ -208,7 +208,7 @@ namespace Exr {
             std::vector<std::string> splits = split(channelname, '.');
             std::vector<std::string> newSplits;
             //remove prepending digits
-            for (int i = 0; i < splits.size(); ++i) {
+            for (size_t i = 0; i < splits.size(); ++i) {
                 std::string s = removePrependingDigits(splits[i]);
                 if (!s.empty()){
                     newSplits.push_back(removeNonAlphaCharacters(s));
@@ -217,7 +217,7 @@ namespace Exr {
             
             if (newSplits.size() > 1){
                 
-                for (int i = 0; i < (newSplits.size() - 1);++i) {
+                for (size_t i = 0; i < (newSplits.size() - 1);++i) {
                     std::vector<std::string>::const_iterator foundView = std::find(views.begin(), views.end(),newSplits[i]);
                     if (foundView != views.end()) {
                         _view = *foundView;
@@ -492,7 +492,7 @@ struct DecodingChannelsMap {
     std::string channelName;
 };
 
-void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void ReadEXRPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     /// we only support RGBA output clip
     if (pixelComponents != OFX::ePixelComponentRGBA) {
@@ -613,7 +613,7 @@ void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, C
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadEXRPlugin(handle);
 }

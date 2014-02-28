@@ -438,9 +438,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
 
-    OFX::BitDepthEnum dstBitDepth = _outputClip->getPixelDepth();
-    OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
-
     void* dstPixelData = NULL;
     OfxRectI bounds;
     OFX::PixelComponentEnum pixelComponents;
@@ -486,6 +483,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     } else {
         // allocate
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+        std::cout << "pixelbytes=" << pixelBytes << std::endl;
         int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
         size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
@@ -640,7 +638,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 }
 
-OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
+OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
 {
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");

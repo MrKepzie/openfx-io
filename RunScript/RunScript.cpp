@@ -676,7 +676,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     page->addChild(*validate_);
 }
 
-OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context)
+OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum /*context*/)
 {
     return new RunScriptPlugin(handle);
 }

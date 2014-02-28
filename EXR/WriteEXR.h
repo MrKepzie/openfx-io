@@ -59,7 +59,7 @@ public:
     
     virtual ~WriteEXRPlugin();
     
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    //virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
 private:
     

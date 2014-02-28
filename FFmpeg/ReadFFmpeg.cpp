@@ -119,6 +119,7 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
 
 void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+#warning "BUG: should check that filename is the right one, else open the new file"
     /// we only support RGBA output clip
     if(pixelComponents != OFX::ePixelComponentRGBA) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -212,8 +213,9 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 }
 
 
-void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
-    
+void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod)
+{
+#warning "BUG: should check that filename is the right one, else open the new file"
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
@@ -303,7 +305,7 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadFFmpegPlugin(handle);
 }

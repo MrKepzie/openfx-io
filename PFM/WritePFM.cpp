@@ -63,7 +63,7 @@ WritePFMPlugin::~WritePFMPlugin()
 }
 
 template <class PIX, int srcC, int dstC>
-static void copyLine(const PIX* pixelData, int rowbytes, int W, int H, int C, int y, PIX *image)
+static void copyLine(const PIX* pixelData, int rowbytes, int W, int /*H*/, int C, int y, PIX *image)
 {
     assert(srcC == C);
 
@@ -93,7 +93,7 @@ static void copyLine(const PIX* pixelData, int rowbytes, int W, int H, int C, in
 }
 
 
-void WritePFMPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
@@ -113,6 +113,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime time, const flo
             spectrum = 1;
             break;
         default:
+            spectrum = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -200,7 +201,7 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WritePFMPlugin(handle);
 }

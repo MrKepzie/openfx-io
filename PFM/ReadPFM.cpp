@@ -95,7 +95,7 @@ ReadPFMPlugin::~ReadPFMPlugin()
 }
 
 template <class PIX, int srcC, int dstC>
-static void copyLine(PIX *image, int W, int H, int C, int y, PIX *dstPix)
+static void copyLine(PIX *image, int W, int /*H*/, int C, int /*y*/, PIX *dstPix)
 {
     assert(srcC == C);
 
@@ -300,7 +300,7 @@ void ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, C
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadPFMPlugin(handle);
 }

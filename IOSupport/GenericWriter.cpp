@@ -120,7 +120,7 @@ GenericWriterPlugin::~GenericWriterPlugin()
 
 static std::string filenameFromPattern(const std::string& pattern,int frameIndex) {
     std::string ret = pattern;
-    int lastDot = pattern.find_last_of('.');
+    size_t lastDot = pattern.find_last_of('.');
     if(lastDot == std::string::npos){
         ///the filename has not extension, return an empty str
         return "";
@@ -129,7 +129,7 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
     std::stringstream fStr;
     fStr << frameIndex;
     std::string frameIndexStr = fStr.str();
-    int lastPos = pattern.find_last_of('#');
+    size_t lastPos = pattern.find_last_of('#');
     
     if (lastPos == std::string::npos) {
         ///the filename has no #, just put the digits between etxension and path
@@ -137,7 +137,7 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
         return pattern;
     }
     
-    int nSharpChar = 0;
+    size_t nSharpChar = 0;
     int i = lastDot;
     --i; //< char before '.'
     while (i >= 0 && pattern[i] == '#') {
@@ -300,20 +300,6 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
 
 ////////////////////////////////////////////////////////////////////////////////
 // basic plugin render function, just a skelington to instantiate templates from
-
-// make sure components are sane
-static void
-checkComponents(const OFX::Image &src,
-                OFX::BitDepthEnum dstBitDepth,
-                OFX::PixelComponentEnum dstComponents)
-{
-    OFX::BitDepthEnum      srcBitDepth     = src.getPixelDepth();
-    OFX::PixelComponentEnum srcComponents  = src.getPixelComponents();
-    
-    // see if they have the same depths and bytes and all
-    if(srcBitDepth != dstBitDepth || srcComponents != dstComponents)
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-}
 
 /* set up and run a copy processor */
 static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
@@ -563,7 +549,7 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     return page;
 }
 
-void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page)
+void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &/*desc*/, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor* /*page*/)
 {
 }
 

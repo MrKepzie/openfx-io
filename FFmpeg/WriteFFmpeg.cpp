@@ -229,6 +229,8 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
 
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+#warning "BUG: should check that filename is the right one, and check _stream, else open the new file"
+#warning "BUG: howcome parameter 'time' is not used?"
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -260,8 +262,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
             setPersistentMessage(OFX::Message::eMessageError, "","Invalid file extension");
             return;
         }
-    }
-    else {
+    } else {
         const std::vector<std::string>& formatsShortNames = FFmpegSingleton::Instance().getFormatsShortNames();
         assert(formatValue < (int)formatsShortNames.size());
 
@@ -484,7 +485,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         if (ret > 0) {
             AVPacket pkt;
             av_init_packet(&pkt);
-            if (_codecContext->coded_frame && static_cast<uint64_t>(_codecContext->coded_frame->pts) != AV_NOPTS_VALUE)
+            if (_codecContext->coded_frame && _codecContext->coded_frame->pts != AV_NOPTS_VALUE)
                 pkt.pts = av_rescale_q(_codecContext->coded_frame->pts, _codecContext->time_base, _stream->time_base);
             if (_codecContext->coded_frame && _codecContext->coded_frame->key_frame)
                 pkt.flags |= AV_PKT_FLAG_KEY;
@@ -711,7 +712,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteFFmpegPlugin(handle);
 }

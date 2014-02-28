@@ -217,9 +217,6 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
 
 #ifdef OFX_IO_USING_OCIO
-	size_t sizeOfChannel = 0;
-	int    bitsPerSample  = 0;
-
 	int finalBitDepth_i;
     _bitDepth->getValue(finalBitDepth_i);
     ETuttlePluginBitDepth finalBitDepth = getDefaultBitDepth(filename, (ETuttlePluginBitDepth)finalBitDepth_i);
@@ -241,7 +238,7 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
 #endif
 }
 
-void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WriteOIIOPlugin::encode(const std::string& filename, OfxTime /*time*/, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
@@ -609,7 +606,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteOIIOPlugin(handle);
 }
