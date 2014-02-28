@@ -252,7 +252,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
             assert(dstImg.get());
-            copyPixelData(args, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
+            copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
         }
     } else {
         // The following (commented out) code is not fully-safe, because the same instance may be have
@@ -276,13 +276,9 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
-        // copy
-        int height = bounds.y2 - bounds.y1;
-        for (int y = 0; y < height; ++y) {
-            void* tmpRowStart = (char*)tmpPixelData + y * tmpRowBytes;
-            void* srcRowStart = (char*)srcPixelData + y * srcRowBytes;
-            memcpy(tmpRowStart, srcRowStart, tmpRowBytes);
-        }
+        // copy the whole image
+        copyPixelData(bounds, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes);
+
         // do the color-space conversion
         _ocio->apply(args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
         // write theimage file
@@ -291,7 +287,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
             assert(dstImg.get());
-            copyPixelData(args, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+            copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
         }
 
         // unlock (the OFX::ImageMemory destructor frees the memory)
@@ -322,7 +318,7 @@ checkComponents(const OFX::Image &src,
 
 /* set up and run a copy processor */
 static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-                         const OFX::RenderArguments &args,
+                         const OfxRectI &renderWindow,
                          const void *srcPixelData,
                          const OfxRectI& srcBounds,
                          OFX::PixelComponentEnum srcPixelComponents,
@@ -346,13 +342,13 @@ static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
 
     // set the render window
-    processor.setRenderWindow(args.renderWindow);
+    processor.setRenderWindow(renderWindow);
     
     // Call the base class process member, this will call the derived templated process code
     processor.process();
 }
 
-void GenericWriterPlugin::copyPixelData(const OFX::RenderArguments &args,
+void GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
                                         const void *srcPixelData,
                                         const OfxRectI& srcBounds,
                                         OFX::PixelComponentEnum srcPixelComponents,
@@ -372,13 +368,13 @@ void GenericWriterPlugin::copyPixelData(const OFX::RenderArguments &args,
     }
     if(dstPixelComponents == OFX::ePixelComponentRGBA) {
         PixelCopier<float, 4> fred(*this);
-        setupAndCopy(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
         PixelCopier<float, 3> fred(*this);
-        setupAndCopy(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
         PixelCopier<float, 1> fred(*this);
-        setupAndCopy(fred, args, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 }
 

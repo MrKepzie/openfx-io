@@ -150,7 +150,7 @@ private:
      **/
     virtual void clearAnyCache() {}
 
-    void copyPixelData(const OFX::RenderArguments &args,
+    void copyPixelData(const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
                        OFX::Image* dstImg)
     {
@@ -166,12 +166,12 @@ private:
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
-        copyPixelData(args,
+        copyPixelData(renderWindow,
                       srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
                       dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 
-    void copyPixelData(const OFX::RenderArguments &args,
+    void copyPixelData(const OfxRectI &renderWindow,
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
@@ -185,12 +185,12 @@ private:
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
-        copyPixelData(args,
+        copyPixelData(renderWindow,
                       srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
                       dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 
-    void copyPixelData(const OFX::RenderArguments &args,
+    void copyPixelData(const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
@@ -204,12 +204,12 @@ private:
         OFX::BitDepthEnum srcBitDepth;
         int srcRowBytes;
         getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
-        copyPixelData(args,
+        copyPixelData(renderWindow,
                       srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
                       dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 
-    void copyPixelData(const OFX::RenderArguments &args,
+    void copyPixelData(const OfxRectI &renderWindow,
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
