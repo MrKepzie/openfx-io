@@ -47,6 +47,8 @@
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
 
+#include "IOUtility.h"
+
 OIIO_NAMESPACE_USING
 
 #define kMetadataButton "show metadata"
@@ -160,7 +162,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
 #endif
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     ImageSpec spec;
     
@@ -171,7 +173,6 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
 
     // we only support RGBA, RGB or Alpha output clip
-    OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -218,11 +219,13 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
+    int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+
     if (fillRGB) {
         // fill RGB values with black
         assert(pixelComponents != OFX::ePixelComponentAlpha);
-        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
-        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
+        char* lineStart = (char*)pixelData + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
             float *cur = (float*)lineStart;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
                 cur[0] = 0.;
@@ -235,8 +238,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         // fill Alpha values with opaque
         assert(pixelComponents != OFX::ePixelComponentRGB);
         int outputChannelAlpha = (pixelComponents == OFX::ePixelComponentAlpha) ? 0 : 3;
-        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
-        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
+        char* lineStart = (char*)pixelData + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
             float *cur = (float*)lineStart + outputChannelAlpha;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
                 cur[0] = 1.;
@@ -257,9 +260,12 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
                           chbegin, //chan begin
                           chend, // chan end
                           TypeDesc::FLOAT, // data type
-                          (float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                          //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                          (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
+                                                    + (renderWindow.x1 - bounds.x1) * pixelBytes)
+                                   + outputChannelBegin,// output buffer
                           numChannels * sizeof(float), //x stride
-                          -dstImg->getRowBytes(), //y stride < make it invert Y
+                          -rowBytes, //y stride < make it invert Y
                           AutoStride //z stride
                           )) {
         

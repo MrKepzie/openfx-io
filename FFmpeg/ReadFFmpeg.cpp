@@ -117,11 +117,10 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
 }
 
-void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     /// we only support RGBA output clip
-    OFX::PixelComponentEnum pixelComponent = dstImg->getPixelComponents();
-    if(pixelComponent != OFX::ePixelComponentRGBA) {
+    if(pixelComponents != OFX::ePixelComponentRGBA) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -137,15 +136,15 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     _ffmpegFile->info(width, height, ap, frames);
     assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
 
-    OfxRectI imgBounds = dstImg->getBounds();
-    
     if((imgBounds.x2 - imgBounds.x1) < width ||
        (imgBounds.y2 - imgBounds.y1) < height){
         setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
     }
     
     ///set the pixel aspect ratio
-    dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
+    // sorry, but this seems to be read-only,
+    // see http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImagePropPixelAspectRatio
+    //dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
     
     if(_bufferWidth != width || _bufferHeight != height){
         delete [] _buffer;
@@ -175,7 +174,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     ///fill the dstImg with the buffer freshly decoded.
     for (int y = imgBounds.y1; y < imgBounds.y2; ++y) {
         int srcY = imgBounds.y2 - y - 1;
-        float* dst_pixels = (float*)dstImg->getPixelAddress(0, y);
+        float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
         const unsigned char* src_pixels = _buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
         
         for (int x = imgBounds.x1; x < imgBounds.x2; ++x) {

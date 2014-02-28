@@ -492,16 +492,15 @@ struct DecodingChannelsMap {
     std::string channelName;
 };
 
-void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     /// we only support RGBA output clip
-    OFX::PixelComponentEnum pixelComponent = dstImg->getPixelComponents();
-    if (pixelComponent != OFX::ePixelComponentRGBA) {
+    if (pixelComponents != OFX::ePixelComponentRGBA) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
-    OfxRectI roi = dstImg->getRegionOfDefinition();
+    OfxRectI roi = bounds; // used to be dstImg->getRegionOfDefinition(); why?
     assert(kSupportsTiles || (renderWindow.x1 == file->dataWindow.x1 && renderWindow.x2 == file->dataWindow.x2 && renderWindow.y1 == file->dataWindow.y1 && renderWindow.y2 == file->dataWindow.y2));
 
     for (int y = roi.y1; y < roi.y2; ++y) {
@@ -512,7 +511,7 @@ void ReadEXRPlugin::decode(const std::string& filename, OfxTime time, const OfxR
             DecodingChannelsMap d;
             
             ///This line means we only support FLOAT dst images with the RGBA format.
-            d.buf = (float*)dstImg->getPixelAddress(0, y) + (int)it->first;
+            d.buf = (float*)((char*)pixelData + (y-roi.y1)*rowBytes) + (int)it->first;
             
             d.subsampled = it->second == "BY" || it->second == "RY";
             d.channelName = it->second;

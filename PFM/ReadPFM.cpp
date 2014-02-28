@@ -95,12 +95,11 @@ ReadPFMPlugin::~ReadPFMPlugin()
 }
 
 template <class PIX, int srcC, int dstC>
-static void copyLine(PIX *image, int W, int H, int C, int y, OFX::Image* dstImg)
+static void copyLine(PIX *image, int W, int H, int C, int y, PIX *dstPix)
 {
     assert(srcC == C);
 
     PIX *srcPix = image;
-    PIX *dstPix = (PIX *) dstImg->getPixelAddress(0, y);
 
     for(int x = 0; x < W; ++x) {
         if(srcC == 1) {
@@ -124,10 +123,8 @@ static void copyLine(PIX *image, int W, int H, int C, int y, OFX::Image* dstImg)
     
 }
 
-void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
-
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -194,16 +191,17 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         }
 
         // now copy to the dstImg
+        float* dstPix = (float*)((char*)pixelData + (y - bounds.y1)*rowBytes);
         if (C == 1) {
             switch (pixelComponents) {
                 case OFX::ePixelComponentAlpha:
-                    copyLine<float,1,1>(image, W, H, C, y, dstImg);
+                    copyLine<float,1,1>(image, W, H, C, y, dstPix);
                     break;
                 case OFX::ePixelComponentRGB:
-                    copyLine<float,1,3>(image, W, H, C, y, dstImg);
+                    copyLine<float,1,3>(image, W, H, C, y, dstPix);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,1,4>(image, W, H, C, y, dstImg);
+                    copyLine<float,1,4>(image, W, H, C, y, dstPix);
                     break;
                 default:
                     break;
@@ -211,13 +209,13 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         } else if (C == 3) {
             switch (pixelComponents) {
                 case OFX::ePixelComponentAlpha:
-                    copyLine<float,3,1>(image, W, H, C, y, dstImg);
+                    copyLine<float,3,1>(image, W, H, C, y, dstPix);
                     break;
                 case OFX::ePixelComponentRGB:
-                    copyLine<float,3,3>(image, W, H, C, y, dstImg);
+                    copyLine<float,3,3>(image, W, H, C, y, dstPix);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,3,4>(image, W, H, C, y, dstImg);
+                    copyLine<float,3,4>(image, W, H, C, y, dstPix);
                     break;
                 default:
                     break;
