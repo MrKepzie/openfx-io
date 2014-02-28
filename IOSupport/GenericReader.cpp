@@ -42,6 +42,7 @@
 #include <memory>
 
 #include "ofxsLog.h"
+#include "ofxsCopier.h"
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
@@ -49,6 +50,7 @@
 
 #include "SequenceParser.h"
 #include "GenericOCIO.h"
+#include "IOUtility.h"
 
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
@@ -336,6 +338,68 @@ void GenericReaderPlugin::getCurrentFileName(std::string& filename) {
     _fileParam->getValue(filename);
 }
 
+/* set up and run a copy processor */
+static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                         const OfxRectI &renderWindow,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+
+    // make sure bit depths are sane
+    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
+                                        const void *srcPixelData,
+                                        const OfxRectI& srcBounds,
+                                        OFX::PixelComponentEnum srcPixelComponents,
+                                        OFX::BitDepthEnum srcPixelDepth,
+                                        int srcRowBytes,
+                                        void *dstPixelData,
+                                        const OfxRectI& dstBounds,
+                                        OFX::PixelComponentEnum dstPixelComponents,
+                                        OFX::BitDepthEnum dstBitDepth,
+                                        int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        PixelCopier<float, 4> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        PixelCopier<float, 3> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        PixelCopier<float, 1> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } // switch
+}
+
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
     double sequenceTime;
@@ -377,24 +441,65 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum dstBitDepth = _outputClip->getPixelDepth();
     OFX::PixelComponentEnum dstComponents  = _outputClip->getPixelComponents();
 
-    if (dstBitDepth != OFX::eBitDepthFloat || (dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha)) {
+    void* dstPixelData = NULL;
+    OfxRectI bounds;
+    OFX::PixelComponentEnum pixelComponents;
+    OFX::BitDepthEnum bitDepth;
+    int dstRowBytes;
+    getImageData(dstImg.get(), &dstPixelData, &bounds, &pixelComponents, &bitDepth, &dstRowBytes);
+    if (bitDepth != OFX::eBitDepthFloat) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    float* dstPixelDataF = (float*)dstPixelData;
+
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     // are we in the image bounds
-    OfxRectI bounds = dstImg->getBounds();
     if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
        args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    if (!filename.empty()) {
-        decode(filename, sequenceTime, args.renderWindow, dstImg.get());
+    if (filename.empty()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
+    // The following (commented out) code is not fully-safe, because the same instance may be have
+    // two threads running on the same area of the same frame, and the apply()
+    // calls both read and write dstImg.
+    // This results in colorspace conversion being applied several times.
+    //
+    //if (!filename.empty()) {
+    //    decode(filename, sequenceTime, args.renderWindow, dstImg.get());
+    //}
+    /////do the color-space conversion
+    //_ocio->apply(args.renderWindow, dstImg.get());
 
-    ///do the color-space conversion
-    _ocio->apply(args.renderWindow, dstImg.get());
+    // Good solution: read into a temporary image, apply colorspace conversion, then copy.
+
+    if (_ocio->isIdentity()) {
+        // no colorspace conversion, just read file
+        decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
+    } else {
+        // allocate
+        int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+        int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
+        size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
+        OFX::ImageMemory mem(memSize,this);
+        float *tmpPixelData = (float*)mem.lock();
+
+        // read file
+        decode(filename, sequenceTime, args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+
+        ///do the color-space conversion
+        _ocio->apply(args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+
+        // copy
+        copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+    }
 }
 
 /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */

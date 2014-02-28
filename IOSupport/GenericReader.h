@@ -59,7 +59,7 @@ public:
     GenericReaderPlugin(OfxImageEffectHandle handle);
     
     virtual ~GenericReaderPlugin();
-    
+
     /**
      * @brief Don't override this function, the GenericReaderPlugin class already does the rendering. The "decoding" of the frame
      * must be done by the pure virtual function decode(...) instead.
@@ -145,7 +145,7 @@ private:
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.
      **/
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg) = 0;
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) = 0;
     
     
     /**
@@ -184,7 +184,18 @@ private:
      * @brief Initializes the params depending on the input file.
      **/
     void inputFileChanged();
-    
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes);
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
