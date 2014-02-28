@@ -79,7 +79,6 @@
 #include <sstream>
 #include <cstring>
 
-#include "ofxsProcessing.H"
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
 
