@@ -365,8 +365,8 @@ void GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
 
 bool GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
-    ///get the RoD of the output clip
-    rod = _outputClip->getRegionOfDefinition(args.time);
+    ///get the RoD of the input clip
+    rod = _inputClip->getRegionOfDefinition(args.time);
     return true;
 }
 
