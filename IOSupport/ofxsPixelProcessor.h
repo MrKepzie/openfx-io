@@ -39,6 +39,7 @@
 
 */
 
+#include <cassert>
 
 #include "ofxsImageEffect.h"
 #include "ofxsMultiThread.h"
@@ -113,6 +114,7 @@ namespace OFX {
         /** @brief overridden from OFX::MultiThread::Processor. This function is called once on each SMP thread by the base class */
         void multiThreadFunction(unsigned int threadId, unsigned int nThreads)
         {
+            assert(threadId < nThreads && threadId == MultiThread::getThreadIndex());
             // slice the y range into the number of threads it has
             unsigned int dy = _renderWindow.y2 - _renderWindow.y1;
   
