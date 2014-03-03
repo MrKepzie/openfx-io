@@ -1,0 +1,213 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1B2B0D1D-EAD2-4E7C-89F6-CCD52F4B633B}</ProjectGuid>
+    <RootNamespace>IO</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <TargetExt>.dll</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetExt>.ofx</TargetExt>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <TargetExt>.ofx</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>../$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level2</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Users\lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\lex\Documents\GitHub\oiio\;C:\local\ffmpeg\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\lex\Documents\GitHub\OpenColorIO;C:\local\boost_1_55_0_vs2012_x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OFX_IO_USING_OCIO;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
+      <AdditionalDependencies>C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\swscale.lib;C:\Users\lex\Documents\GitHub\oiio\build\src\libOpenImageIO\Release\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Half.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Iex.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Imath.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\IlmImf.lib;C:\Users\lex\Documents\GitHub\OpenColorIO\build\x64\Release\OpenColorIO.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Users\lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\lex\Documents\GitHub\oiio\;C:\local\ffmpeg\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\lex\Documents\GitHub\OpenColorIO;C:\local\boost_1_55_0_vs2012_x64;C:\Users\lex\Documents\GitHub\openfx-io\EXR;C:\Users\lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\lex\Documents\GitHub\openfx-io\OIIO;C:\Users\lex\Documents\GitHub\openfx-io\OCIO;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OFX_IO_USING_OCIO;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;OPENEXR_DLL;WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <StringPooling>false</StringPooling>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\swscale.lib;C:\Users\lex\Documents\GitHub\oiio\build\src\libOpenImageIO\Release\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Half.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Iex.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Imath.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\IlmImf.lib;C:\Users\lex\Documents\GitHub\OpenColorIO\build\x64\Release\OpenColorIO.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\lex\Documents\GitHub\OpenColorIO\build\x64\Release</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\EXR\ReadEXR.cpp" />
+    <ClCompile Include="..\EXR\WriteEXR.cpp" />
+    <ClCompile Include="..\FFmpeg\FFmpegHandler.cpp" />
+    <ClCompile Include="..\FFmpeg\ReadFFmpeg.cpp" />
+    <ClCompile Include="..\FFmpeg\WriteFFmpeg.cpp" />
+    <ClCompile Include="..\IOSupport\GenericOCIO.cpp" />
+    <ClCompile Include="..\IOSupport\GenericReader.cpp" />
+    <ClCompile Include="..\IOSupport\GenericWriter.cpp" />
+    <ClCompile Include="..\IOSupport\SequenceParser.cpp" />
+    <ClCompile Include="..\OCIO\OCIOColorSpace.cpp" />
+    <ClCompile Include="..\OIIO\ReadOIIO.cpp" />
+    <ClCompile Include="..\OIIO\WriteOIIO.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsCore.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsImageEffect.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsInteract.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsLog.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsMultiThread.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsParams.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsProperty.cpp" />
+    <ClCompile Include="..\openfx\Support\Library\ofxsPropertyValidation.cpp" />
+    <ClCompile Include="PluginRegistrationCombined.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\EXR\ReadEXR.h" />
+    <ClInclude Include="..\EXR\WriteEXR.h" />
+    <ClInclude Include="..\FFmpeg\FFmpegCompat.h" />
+    <ClInclude Include="..\FFmpeg\FFmpegHandler.h" />
+    <ClInclude Include="..\FFmpeg\ReadFFmpeg.h" />
+    <ClInclude Include="..\FFmpeg\WriteFFmpeg.h" />
+    <ClInclude Include="..\IOSupport\GenericOCIO.h" />
+    <ClInclude Include="..\IOSupport\GenericReader.h" />
+    <ClInclude Include="..\IOSupport\GenericWriter.h" />
+    <ClInclude Include="..\IOSupport\IOUtility.h" />
+    <ClInclude Include="..\IOSupport\ofxsCopier.h" />
+    <ClInclude Include="..\IOSupport\SequenceParser.h" />
+    <ClInclude Include="..\IOSupport\tinydir\tinydir.h" />
+    <ClInclude Include="..\OCIO\OCIOColorSpace.h" />
+    <ClInclude Include="..\OIIO\ReadOIIO.h" />
+    <ClInclude Include="..\OIIO\WriteOIIO.h" />
+    <ClInclude Include="..\openfx\include\natron\IOExtensions.h" />
+    <ClInclude Include="..\openfx\include\ofxCore.h" />
+    <ClInclude Include="..\openfx\include\ofxDialog.h" />
+    <ClInclude Include="..\openfx\include\ofxImageEffect.h" />
+    <ClInclude Include="..\openfx\include\ofxInteract.h" />
+    <ClInclude Include="..\openfx\include\ofxKeySyms.h" />
+    <ClInclude Include="..\openfx\include\ofxMemory.h" />
+    <ClInclude Include="..\openfx\include\ofxMessage.h" />
+    <ClInclude Include="..\openfx\include\ofxMultiThread.h" />
+    <ClInclude Include="..\openfx\include\ofxOpenGLRender.h" />
+    <ClInclude Include="..\openfx\include\ofxParam.h" />
+    <ClInclude Include="..\openfx\include\ofxParametricParam.h" />
+    <ClInclude Include="..\openfx\include\ofxPixels.h" />
+    <ClInclude Include="..\openfx\include\ofxProgress.h" />
+    <ClInclude Include="..\openfx\include\ofxProperty.h" />
+    <ClInclude Include="..\openfx\include\ofxSonyVegas.h" />
+    <ClInclude Include="..\openfx\include\ofxTimeLine.h" />
+    <ClInclude Include="..\openfx\include\tuttle\ofxReadWrite.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsCore.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsImageEffect.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsInteract.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsLog.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsMemory.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsMessage.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsMultiThread.h" />
+    <ClInclude Include="..\openfx\Support\include\ofxsParam.h" />
+    <ClInclude Include="..\openfx\Support\Library\ofxsSupportPrivate.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
