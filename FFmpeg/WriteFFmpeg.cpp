@@ -230,8 +230,8 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
 
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-#warning "BUG: should check that filename is the right one, and check _stream, else open the new file"
-#warning "BUG: howcome parameter 'time' is not used?"
+#pragma message WARN("BUG: should check that filename is the right one, and check _stream, else open the new file")
+#pragma message WARN("BUG: howcome parameter 'time' is not used?")
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);

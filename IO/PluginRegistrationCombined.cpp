@@ -8,7 +8,9 @@
 #include "OCIOColorSpace.h"
 #include "ReadPFM.h"
 #include "WritePFM.h"
+#ifndef _WIN32
 #include "RunScript.h"
+#endif
 
 namespace OFX 
 {
@@ -34,7 +36,7 @@ namespace OFX
       ids.push_back(&p8);
       static OCIOColorSpacePluginFactory p9("fr.inria.openfx:OCIOColorSpace", 1, 0);
       ids.push_back(&p9);
-#ifndef _WINDOWS
+#ifndef _WIN32
       static RunScriptPluginFactory p10("fr.inria.openfx:RunScript", 1, 0);
       ids.push_back(&p10);
 #endif

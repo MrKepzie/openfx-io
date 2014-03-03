@@ -147,12 +147,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
         
         int depth = Exr::depthNameToInt(Exr::depthNames[depthIndex]);
         Imath::Box2i exrDataW;
-<<<<<<< HEAD
-             
-=======
-        
-   
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+
         exrDataW.min.x = bounds.x1;
         exrDataW.min.y = bounds.y1;
         exrDataW.max.x = bounds.x2 - 1;

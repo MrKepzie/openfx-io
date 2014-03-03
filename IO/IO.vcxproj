@@ -19,63 +19,34 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-<<<<<<< HEAD
-    <ProjectGuid>{1B2B0D1D-EAD2-4E7C-89F6-CCD52F4B633B}</ProjectGuid>
-=======
-    <ProjectGuid>{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}</ProjectGuid>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+    <ProjectGuid>{C7A6315D-4A32-4D6D-9192-8EED97ADAF03}</ProjectGuid>
     <RootNamespace>IO</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-<<<<<<< HEAD
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-=======
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-<<<<<<< HEAD
-    <PlatformToolset>v110</PlatformToolset>
-=======
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -90,13 +61,6 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-<<<<<<< HEAD
-    <TargetExt>.dll</TargetExt>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetExt>.ofx</TargetExt>
-    <LinkIncremental>false</LinkIncremental>
-=======
     <TargetExt>.ofx</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -104,51 +68,36 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.ofx</TargetExt>
-    <GenerateManifest>false</GenerateManifest>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt>.ofx</TargetExt>
+    <sxsProgramFolder>$(sxsProgramFolder)\</sxsProgramFolder>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-<<<<<<< HEAD
-      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\include\OpenEXR;C:\local\ffmpeg\include;C:\local\boost_1_55_0_vs2012_x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OutputFile>../$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
-=======
-      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+      <AdditionalDependencies>C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\lib\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmImf.lib;C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
+      <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-<<<<<<< HEAD
-      <WarningLevel>Level2</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\lex\Documents\GitHub\oiio\;C:\local\ffmpeg\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\lex\Documents\GitHub\OpenColorIO;C:\local\boost_1_55_0_vs2012_x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OFX_IO_USING_OCIO;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
-      <AdditionalDependencies>C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\swscale.lib;C:\Users\lex\Documents\GitHub\oiio\build\src\libOpenImageIO\Release\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Half.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Iex.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Imath.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\IlmImf.lib;C:\Users\lex\Documents\GitHub\OpenColorIO\build\x64\Release\OpenColorIO.lib;%(AdditionalDependencies)</AdditionalDependencies>
-=======
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\include\OpenEXR;C:\local\ffmpeg\include;C:\local\boost_1_55_0_vs2012_x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+      <AdditionalDependencies>C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\lib\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmImf.lib;C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -157,59 +106,45 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-<<<<<<< HEAD
-      <SDLCheck>true</SDLCheck>
-=======
-      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\Lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\Lex\Documents\GitHub\openfx-io\EXR;C:\Users\Lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\Lex\Documents\GitHub\openfx-io\OIIO;C:\Users\Lex\Documents\GitHub\openfx-io\OCIO;C:\Users\Lex\Documents\GitHub\openfx-io\PFM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;OPENEXR_DLL;OFX_IO_USING_OCIO;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_TUTTLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+      <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\include\OpenEXR;C:\local\ffmpeg\include;C:\local\boost_1_55_0_vs2012_x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-<<<<<<< HEAD
-=======
-      <AdditionalDependencies>C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x86\Half.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x86\Iex.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x86\IlmThread.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x86\Imath.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x86\IlmImf.lib;C:\Users\Lex\Documents\GitHub\OpenColorIO\lib\x86\OpenColorIO.lib;C:\Users\Lex\Documents\GitHub\oiio\lib\x86\OpenImageIO.lib;C:\Users\Lex\Documents\GitHub\zlib-1.2.8\contrib\vstudio\vc10\x86\ZlibDllRelease\zlibwapi.lib;C:\local\ffmpeg_x86\lib\avcodec.lib;C:\local\ffmpeg_x86\lib\avutil.lib;C:\local\ffmpeg_x86\lib\avformat.lib;C:\local\ffmpeg_x86\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\lib\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmImf.lib;C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-<<<<<<< HEAD
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\lex\Documents\GitHub\oiio\;C:\local\ffmpeg\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\lex\Documents\GitHub\OpenColorIO;C:\local\boost_1_55_0_vs2012_x64;C:\Users\lex\Documents\GitHub\openfx-io\EXR;C:\Users\lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\lex\Documents\GitHub\openfx-io\OIIO;C:\Users\lex\Documents\GitHub\openfx-io\OCIO;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OFX_IO_USING_OCIO;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;OPENEXR_DLL;WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CompileAs>CompileAsCpp</CompileAs>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <DebugInformationFormat>None</DebugInformationFormat>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <StringPooling>false</StringPooling>
-=======
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>C:\local\ffmpeg_x86\include;C:\boost_1_55_0;C:\Users\Lex\Documents\GitHub\OpenColorIO\include;C:\Users\Lex\Documents\GitHub\oiio\include;C:\Users\Lex\Documents\GitHub\openexr\Deploy\include\OpenEXR;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\include;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include\natron;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\Support\Plugins\include;C:\Users\Lex\Documents\GitHub\openfx-io\IOSupport;C:\Users\Lex\Documents\GitHub\openfx-io\openfx\include;C:\Users\Lex\Documents\GitHub\openfx-io\EXR;C:\Users\Lex\Documents\GitHub\openfx-io\FFmpeg;C:\Users\Lex\Documents\GitHub\openfx-io\OIIO;C:\Users\Lex\Documents\GitHub\openfx-io\OCIO;C:\Users\Lex\Documents\GitHub\openfx-io\PFM;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN64;OPENEXR_DLL;OFX_IO_USING_OCIO;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_TUTTLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+      <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\include\OpenEXR;C:\local\ffmpeg\include;C:\local\boost_1_55_0_vs2012_x64;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_IO_MT_FFMPEG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-<<<<<<< HEAD
-      <AdditionalDependencies>C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\swscale.lib;C:\Users\lex\Documents\GitHub\oiio\build\src\libOpenImageIO\Release\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Half.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Iex.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\Imath.lib;C:\Users\lex\Documents\GitHub\openexr\Deploy\lib\IlmImf.lib;C:\Users\lex\Documents\GitHub\OpenColorIO\build\x64\Release\OpenColorIO.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\lex\Documents\GitHub\OpenColorIO\build\x64\Release</AdditionalLibraryDirectories>
-=======
-      <AdditionalDependencies>C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x64\Half.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x64\Iex.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x64\IlmThread.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x64\Imath.lib;C:\Users\Lex\Documents\GitHub\openexr\Deploy\lib\x64\IlmImf.lib;C:\Users\Lex\Documents\GitHub\OpenColorIO\lib\x64\OpenColorIO.lib;C:\Users\Lex\Documents\GitHub\oiio\lib\x64\OpenImageIO.lib;C:\Users\Lex\Documents\GitHub\zlib-1.2.8\contrib\vstudio\vc10\x64\ZlibDllRelease\zlibwapi.lib;C:\local\ffmpeg_x64\lib\avcodec.lib;C:\local\ffmpeg_x64\lib\avutil.lib;C:\local\ffmpeg_x64\lib\avformat.lib;C:\local\ffmpeg_x64\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+      <AdditionalDependencies>C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\lib\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmImf.lib;C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</OutputFile>
     </Link>
+    <sxs32com>
+      <sxsBuildType>com</sxsBuildType>
+      <sxsAssemblyVersionFromFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</sxsAssemblyVersionFromFile>
+    </sxs32com>
+    <sxs32vs10 />
+    <Manifest>
+      <AdditionalManifestFiles>
+      </AdditionalManifestFiles>
+      <InputResourceManifests>
+      </InputResourceManifests>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\EXR\ReadEXR.cpp" />
@@ -232,11 +167,8 @@
     <ClCompile Include="..\openfx\Support\Library\ofxsParams.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsProperty.cpp" />
     <ClCompile Include="..\openfx\Support\Library\ofxsPropertyValidation.cpp" />
-<<<<<<< HEAD
-=======
     <ClCompile Include="..\PFM\ReadPFM.cpp" />
     <ClCompile Include="..\PFM\WritePFM.cpp" />
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
     <ClCompile Include="PluginRegistrationCombined.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -251,12 +183,11 @@
     <ClInclude Include="..\IOSupport\GenericWriter.h" />
     <ClInclude Include="..\IOSupport\IOUtility.h" />
     <ClInclude Include="..\IOSupport\ofxsCopier.h" />
+    <ClInclude Include="..\IOSupport\ofxsPixelProcessor.h" />
     <ClInclude Include="..\IOSupport\SequenceParser.h" />
-    <ClInclude Include="..\IOSupport\tinydir\tinydir.h" />
     <ClInclude Include="..\OCIO\OCIOColorSpace.h" />
     <ClInclude Include="..\OIIO\ReadOIIO.h" />
     <ClInclude Include="..\OIIO\WriteOIIO.h" />
-<<<<<<< HEAD
     <ClInclude Include="..\openfx\include\natron\IOExtensions.h" />
     <ClInclude Include="..\openfx\include\ofxCore.h" />
     <ClInclude Include="..\openfx\include\ofxDialog.h" />
@@ -274,7 +205,6 @@
     <ClInclude Include="..\openfx\include\ofxProperty.h" />
     <ClInclude Include="..\openfx\include\ofxSonyVegas.h" />
     <ClInclude Include="..\openfx\include\ofxTimeLine.h" />
-    <ClInclude Include="..\openfx\include\tuttle\ofxReadWrite.h" />
     <ClInclude Include="..\openfx\Support\include\ofxsCore.h" />
     <ClInclude Include="..\openfx\Support\include\ofxsImageEffect.h" />
     <ClInclude Include="..\openfx\Support\include\ofxsInteract.h" />
@@ -284,13 +214,12 @@
     <ClInclude Include="..\openfx\Support\include\ofxsMultiThread.h" />
     <ClInclude Include="..\openfx\Support\include\ofxsParam.h" />
     <ClInclude Include="..\openfx\Support\Library\ofxsSupportPrivate.h" />
-=======
-    <ClInclude Include="..\openfx\Support\Library\ofxsSupportPrivate.h" />
     <ClInclude Include="..\PFM\ReadPFM.h" />
     <ClInclude Include="..\PFM\WritePFM.h" />
->>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
+  </ItemGroup>
+  <ItemGroup>
+    <sxs32vs10 Include="..\oiio.sxs32mm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>
