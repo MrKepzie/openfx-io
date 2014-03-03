@@ -40,8 +40,11 @@
 #define Io_GenericWriter_h
 
 #include <ofxsImageEffect.h>
+#include "IOUtility.h"
 
-class CopierBase;
+namespace OFX {
+    class PixelProcessorFilterBase;
+}
 class GenericOCIO;
 
 /**
@@ -57,8 +60,6 @@ public:
     GenericWriterPlugin(OfxImageEffectHandle handle);
     
     virtual ~GenericWriterPlugin();
-    
-    static void getImageData(OFX::Image* img, float** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, int* rowBytes);
     
     /**
      * @brief Don't override this function, the GenericWriterPlugin class already does the rendering. The "encoding" of the frame
@@ -149,8 +150,76 @@ private:
      **/
     virtual void clearAnyCache() {}
 
-    /* set up and run a copy processor */
-    void setupAndProcess(CopierBase &, const OFX::RenderArguments &args,OFX::Image* srcImg,OFX::Image* dstImg);
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const OFX::Image* srcImg,
+                       OFX::Image* dstImg)
+    {
+        const void* srcPixelData;
+        OfxRectI srcBounds;
+        OFX::PixelComponentEnum srcPixelComponents;
+        OFX::BitDepthEnum srcBitDepth;
+        int srcRowBytes;
+        getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+        void* dstPixelData;
+        OfxRectI dstBounds;
+        OFX::PixelComponentEnum dstPixelComponents;
+        OFX::BitDepthEnum dstBitDepth;
+        int dstRowBytes;
+        getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+        copyPixelData(renderWindow,
+                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcBitDepth,
+                       int srcRowBytes,
+                       OFX::Image* dstImg)
+    {
+        void* dstPixelData;
+        OfxRectI dstBounds;
+        OFX::PixelComponentEnum dstPixelComponents;
+        OFX::BitDepthEnum dstBitDepth;
+        int dstRowBytes;
+        getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+        copyPixelData(renderWindow,
+                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const OFX::Image* srcImg,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes)
+    {
+        const void* srcPixelData;
+        OfxRectI srcBounds;
+        OFX::PixelComponentEnum srcPixelComponents;
+        OFX::BitDepthEnum srcBitDepth;
+        int srcRowBytes;
+        getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+        copyPixelData(renderWindow,
+                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes);
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc);

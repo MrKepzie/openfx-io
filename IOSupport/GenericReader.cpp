@@ -42,16 +42,15 @@
 #include <memory>
 
 #include "ofxsLog.h"
+#include "ofxsCopier.h"
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
 #endif
-#ifdef OFX_EXTENSIONS_NATRON
-#include <natron/IOExtensions.h>
-#endif
 
 #include "SequenceParser.h"
 #include "GenericOCIO.h"
+#include "IOUtility.h"
 
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
@@ -86,6 +85,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceParser(new SequenceParser)
+, _wasOriginalRangeEverSet(false)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -107,7 +107,13 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 
 
 
-bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range){
+bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range) {
+    
+    if (!_wasOriginalRangeEverSet) {
+        inputFileChanged();
+        _wasOriginalRangeEverSet = true;
+    }
+    
     bool ret = getSequenceTimeDomainInternal(range);
     if (ret) {
         timeDomainFromSequenceTimeDomain(range, false);
@@ -230,6 +236,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
             default:
                 break;
         }
+        clearPersistentMessage();
         assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
 
     } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
@@ -268,6 +275,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
             default:
                 break;
         }
+        clearPersistentMessage();
         assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
     }
     
@@ -303,17 +311,20 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
                 if(filename.empty()){
                     setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
                     // return a black image
+                } else {
+                    clearPersistentMessage();
                 }
             }
                 break;
             case 1: // Error
-                    /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                    // will have to handle the case itself.
+                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
                 break;
             case 2: // Black image
-                    /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                    // will have to handle the case itself.
+                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                // will have to handle the case itself.
+                clearPersistentMessage();
                 break;
         }
 
@@ -325,6 +336,68 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
 
 void GenericReaderPlugin::getCurrentFileName(std::string& filename) {
     _fileParam->getValue(filename);
+}
+
+/* set up and run a copy processor */
+static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                         const OfxRectI &renderWindow,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+
+    // make sure bit depths are sane
+    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
+                                        const void *srcPixelData,
+                                        const OfxRectI& srcBounds,
+                                        OFX::PixelComponentEnum srcPixelComponents,
+                                        OFX::BitDepthEnum srcPixelDepth,
+                                        int srcRowBytes,
+                                        void *dstPixelData,
+                                        const OfxRectI& dstBounds,
+                                        OFX::PixelComponentEnum dstPixelComponents,
+                                        OFX::BitDepthEnum dstBitDepth,
+                                        int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        PixelCopier<float, 4> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        PixelCopier<float, 3> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        PixelCopier<float, 1> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } // switch
 }
 
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
@@ -365,24 +438,65 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename);
 
-    OFX::BitDepthEnum bitDepth = dstImg->getPixelDepth();
+    void* dstPixelData = NULL;
+    OfxRectI bounds;
+    OFX::PixelComponentEnum pixelComponents;
+    OFX::BitDepthEnum bitDepth;
+    int dstRowBytes;
+    getImageData(dstImg.get(), &dstPixelData, &bounds, &pixelComponents, &bitDepth, &dstRowBytes);
     if (bitDepth != OFX::eBitDepthFloat) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+    float* dstPixelDataF = (float*)dstPixelData;
+
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     // are we in the image bounds
-    OfxRectI bounds = dstImg->getBounds();
     if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
        args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    if (!filename.empty()) {
-        decode(filename, sequenceTime, args.renderWindow, dstImg.get());
+    if (filename.empty()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
+    // The following (commented out) code is not fully-safe, because the same instance may be have
+    // two threads running on the same area of the same frame, and the apply()
+    // calls both read and write dstImg.
+    // This results in colorspace conversion being applied several times.
+    //
+    //if (!filename.empty()) {
+    //    decode(filename, sequenceTime, args.renderWindow, dstImg.get());
+    //}
+    /////do the color-space conversion
+    //_ocio->apply(args.renderWindow, dstImg.get());
 
-    ///do the color-space conversion
-    _ocio->apply(args.renderWindow, dstImg.get());
+    // Good solution: read into a temporary image, apply colorspace conversion, then copy.
+
+    if (_ocio->isIdentity()) {
+        // no colorspace conversion, just read file
+        decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
+    } else {
+        // allocate
+        int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+        int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
+        size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
+        OFX::ImageMemory mem(memSize,this);
+        float *tmpPixelData = (float*)mem.lock();
+
+        // read file
+        decode(filename, sequenceTime, args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+
+        ///do the color-space conversion
+        _ocio->apply(args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+
+        // copy
+        copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+    }
 }
 
 /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
@@ -391,31 +505,36 @@ GenericReaderPlugin::beginEdit() {
     return _ocio->beginEdit();
 }
 
+void GenericReaderPlugin::inputFileChanged() {
+    std::string filename;
+    _fileParam->getValue(filename);
+    
+    try {
+        _sequenceParser->initializeFromFile(filename);
+    } catch(const std::exception& e) {
+        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        return;
+    }
+    clearPersistentMessage();
+    //reset the original range param
+    _originalFrameRange->setValue(INT_MIN, INT_MAX);
+    
+    
+    ///let the derive class a chance to initialize any data structure it may need
+    onInputFileChanged(filename);
+    
+    ///we don't pass the _frameRange range as we don't want to store the time domain too
+    OfxRangeD tmp;
+    getSequenceTimeDomainInternal(tmp);
+    timeDomainFromSequenceTimeDomain(tmp, true);
+    _startingFrame->setValue(tmp.min);
+ 
+}
+
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     if(paramName == kReaderFileParamName){
-        std::string filename;
-        _fileParam->getValue(filename);
-        
-        try {
-            _sequenceParser->initializeFromFile(filename);
-        } catch(const std::exception& e) {
-            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-            return;
-        }
-        //reset the original range param
-        _originalFrameRange->setValue(INT_MIN, INT_MAX);
-        
-        
-        ///let the derive class a chance to initialize any data structure it may need
-        onInputFileChanged(filename);
-        
-        ///we don't pass the _frameRange range as we don't want to store the time domain too
-        OfxRangeD tmp;
-        getSequenceTimeDomainInternal(tmp);
-        timeDomainFromSequenceTimeDomain(tmp, true);
-        _startingFrame->setValue(tmp.min);
-        
-        
+        inputFileChanged();
+        _wasOriginalRangeEverSet = true;
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
@@ -518,7 +637,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 }
 
-OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
+OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
 {
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
@@ -556,21 +675,11 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     fileParam->setLabels("File", "File", "File");
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The input image sequence/video stream file(s).");
-    fileParam->setAnimates(false);
+    fileParam->setAnimates(!isVideoStreamPlugin);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     fileParam->setScriptName(kReaderFileParamName);
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
-    
-    if (!isVideoStreamPlugin) {
-#ifdef OFX_EXTENSIONS_NATRON
-        try {
-            fileParam->setFilePathSupportsImageSequences(true);
-        } catch ( OFX::Exception::PropertyUnknownToHost& e) {
-            // ignore
-        }
-#endif
-    }
     
     //////////First-frame
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
@@ -580,6 +689,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                              " frame of the sequence.");
     firstFrameParam->setDefault(0);
     firstFrameParam->setAnimates(false);
+    firstFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*firstFrameParam);
     
     ///////////Before first
@@ -603,6 +713,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                             " frame of the sequence.");
     lastFrameParam->setDefault(0);
     lastFrameParam->setAnimates(false);
+    lastFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*lastFrameParam);
     
     ///////////After first
@@ -636,7 +747,8 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     frameModeParam->appendOption("Time offset");
     frameModeParam->setAnimates(false);
     frameModeParam->setDefault(0);
-    
+    frameModeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    page->addChild(*frameModeParam);
     
     ///////////Starting frame
     OFX::IntParamDescriptor* startingFrameParam = desc.defineIntParam(kReaderStartingFrameParamName);
@@ -644,6 +756,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     startingFrameParam->setHint("At what time (on the timeline) should this sequence/video start.");
     startingFrameParam->setDefault(0);
     startingFrameParam->setAnimates(false);
+    startingFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*startingFrameParam);
     
     ///////////Time offset

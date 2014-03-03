@@ -1,7 +1,7 @@
 # build a combined plugin that reads all formats
 SUBDIRS = IO
 # separate plugins for each format can also be built by uncommenting the following line
-#SUBDIRS += FFmpeg EXR OIIO
+#SUBDIRS += FFmpeg EXR OIIO PFM OCIO
 
 all: subdirs
 

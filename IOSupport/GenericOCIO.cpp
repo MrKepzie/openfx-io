@@ -107,8 +107,9 @@ buildChoiceMenus(OCIO::ConstConfigRcPtr config,
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
         OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
-        const char *csdesc = cs->getDescription();
-        int csdesclen = std::strlen(csdesc);
+        std::string csdesc = cs->getDescription();
+        csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+        int csdesclen = csdesc.size();
         if ( csdesclen > 0 ) {
             msg += csdesc;
         }
@@ -211,6 +212,7 @@ GenericOCIO::loadConfig()
         if (global_hostIsNatron) {
             // the choice menu can only be modified in Natron
             // Natron supports changing the entries in a choiceparam
+            // Nuke (at least up to 8.0v3) does not
             buildChoiceMenus(_config, _inputSpaceChoice, _outputSpaceChoice);
             _choiceFileName = _ocioConfigFileName;
         }
@@ -240,6 +242,7 @@ GenericOCIO::isIdentity()
 }
 
 
+// sets the correct choice menu item from the inputSpace string value
 void
 GenericOCIO::inputCheck()
 {
@@ -279,7 +282,7 @@ GenericOCIO::inputCheck()
 #endif
 }
 
-// returns true if the choice menu item and the string must be synchronized
+// sets the correct choice menu item from the outputSpace string value
 void
 GenericOCIO::outputCheck()
 {
@@ -323,21 +326,33 @@ void
 GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
 {
 #ifdef OFX_IO_USING_OCIO
-    loadConfig();
-    if (!_config) {
-        return;
-    }
-    if (isIdentity()) {
-        return;
-    }
     OFX::BitDepthEnum bitDepth = img->getPixelDepth();
     if (bitDepth != OFX::eBitDepthFloat) {
-        throw std::runtime_error("invalid pixel depth (only float is supported)");
+        throw std::runtime_error("OCIO: invalid pixel depth (only float is supported)");
     }
 
     apply(renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
 #endif
 }
+
+
+class OCIOProcessor : public OFX::PixelProcessor {
+    public :
+    // ctor
+    OCIOProcessor(OFX::ImageEffect &instance, GenericOCIO &ocio)
+    : OFX::PixelProcessor(instance)
+    , _ocio(ocio)
+    {}
+
+    // and do some processing
+    void multiThreadProcessImages(OfxRectI procWindow)
+    {
+        _ocio.applyInternal(procWindow, (float*)_dstPixelData, _dstBounds, _dstPixelComponents, _dstRowBytes);
+    }
+private:
+    GenericOCIO & _ocio;
+
+};
 
 void
 GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
@@ -353,9 +368,31 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
        renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
-        throw std::runtime_error("render window outside of image bounds");
+        throw std::runtime_error("OCIO: render window outside of image bounds");
+    }
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
+        throw std::runtime_error("OCIO: invalid components (only RGB and RGBA are supported)");
     }
 
+    OCIOProcessor processor(*_parent, *this);
+    // set the images
+    processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
+
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+#endif
+}
+
+void
+GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
+#ifdef OFX_IO_USING_OCIO
+    if (!_config) {
+        throw std::logic_error("OCIO configuration not loaded");
+    }
     int numChannels;
     int pixelBytes;
     switch(pixelComponents)
@@ -368,6 +405,7 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
             break;
         //case OFX::ePixelComponentAlpha: pixelBytes = 1; break;
         default:
+            numChannels = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -385,17 +423,18 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
             proc->apply(img);
         }
     } catch (OCIO::Exception &e) {
-        _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        throw std::runtime_error(std::string("OpenColorIO error: ")+e.what());
+        _parent->setPersistentMessage(OFX::Message::eMessageError, "", std::string("OpenColorIO error: ") + e.what());
+        throw std::runtime_error(std::string("OpenColorIO error: ") + e.what());
     }
+    _parent->clearPersistentMessage();
 #endif
 }
 
 void
 GenericOCIO::beginEdit()
 {
-    loadConfig();
-    // trigger changedParam() for inputSpace and outputSpace
+    loadConfig(); // calls buildChoiceMenus(), and updates the menus if possible (e.g. on Natron only for now)
+    // now, trigger changedParam() for inputSpace and outputSpace, which also sets the correct options in the menus
     std::string inputSpace;
     _inputSpace->getValue(inputSpace);
     _inputSpace->setValue(inputSpace);
@@ -509,14 +548,13 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (roles > 0) {
                     msg += ')';
                 }
-                const char *csdesc = cs->getDescription();
-                int csdesclen = std::strlen(csdesc);
+                std::string csdesc = cs->getDescription();
+                csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+                int csdesclen = csdesc.size();
                 if ( csdesclen > 0 ) {
                     msg += ": ";
                     msg += csdesc;
-                    if (csdesc[csdesclen-1] != '\n') {
-                        msg += '\n';
-                    }
+                    msg += '\n';
                 } else {
                     msg += '\n';
                 }
@@ -651,7 +689,7 @@ GenericOCIO::purgeCaches()
 
 
 void
-GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
+GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
 #ifdef OFX_IO_USING_OCIO
     global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "NatronHost");

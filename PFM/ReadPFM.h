@@ -1,10 +1,10 @@
 /*
- OFX exrReader plugin.
- Reads a an input image using the OpenEXR library.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
+ OFX PFM reader plugin.
+ Reads an image in the Portable Float Map (PFM) format.
+
+ Copyright (C) 2014 INRIA
+ Author: Frederic Devernay frederic.devernay@inria.fr
+
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
  
@@ -36,37 +36,32 @@
  78153 Le Chesnay Cedex - France
  
  */
+#ifndef __Io__ReadPFM__
+#define __Io__ReadPFM__
 
-
-#ifndef __Io__exrReader__
-#define __Io__exrReader__
-
-#ifdef _WIN32
-#define OPENEXR_DLL
+#ifdef OFX_IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
 #endif
 
 #include "GenericReader.h"
 
-class ReadEXRPlugin : public GenericReaderPlugin {
-  
+class ReadPFMPlugin : public GenericReaderPlugin {
+    
 public:
     
-    ReadEXRPlugin(OfxImageEffectHandle handle);
+    ReadPFMPlugin(OfxImageEffectHandle handle);
     
-    virtual ~ReadEXRPlugin();
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual ~ReadPFMPlugin();
 
 private:
     
     virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
-    
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
         
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
     
+    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 };
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
+mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
 
-#endif /* defined(__Io__exrReader__) */
+#endif /* defined(__Io__ReadPFM__) */

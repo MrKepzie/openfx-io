@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "ofxsImageEffect.h"
 #include "ReadEXR.h"
 #include "WriteEXR.h"
@@ -7,6 +6,9 @@
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
 #include "OCIOColorSpace.h"
+#include "ReadPFM.h"
+#include "WritePFM.h"
+#include "RunScript.h"
 
 namespace OFX 
 {
@@ -26,8 +28,16 @@ namespace OFX
       ids.push_back(&p5);
       static WriteOIIOPluginFactory p6("fr.inria.openfx:WriteOIIO", 1, 0);
       ids.push_back(&p6);
-      static OCIOColorSpacePluginFactory p7("fr.inria.openfx:OCIOColorSpace", 1, 0);
+      static ReadPFMPluginFactory p7("fr.inria.openfx:ReadPFM", 1, 0);
       ids.push_back(&p7);
+      static WritePFMPluginFactory p8("fr.inria.openfx:WritePFM", 1, 0);
+      ids.push_back(&p8);
+      static OCIOColorSpacePluginFactory p9("fr.inria.openfx:OCIOColorSpace", 1, 0);
+      ids.push_back(&p9);
+#ifndef _WINDOWS
+      static RunScriptPluginFactory p10("fr.inria.openfx:RunScript", 1, 0);
+      ids.push_back(&p10);
+#endif
     }
   }
 }

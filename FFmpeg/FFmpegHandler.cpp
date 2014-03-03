@@ -759,8 +759,7 @@ namespace FFmpeg {
             delete it->second;
         }
     }
-#endif
-    
+
 #ifdef OFX_IO_MT_FFMPEG
     static int FFmpegLockManager(void** mutex, enum AVLockOp op)
     {
@@ -802,8 +801,6 @@ namespace FFmpeg {
         }
     }
 #endif
-    
-#if 0
 
     void FileManager::initialize() {
         if(!_isLoaded){
@@ -843,6 +840,6 @@ namespace FFmpeg {
             return it->second;
         }
     }
-#endif
+#endif // 0
     
 } //namespace FFmpeg

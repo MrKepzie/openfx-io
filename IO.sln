@@ -2,6 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IO", "IO\IO.vcxproj", "{1B2B0D1D-EAD2-4E7C-89F6-CCD52F4B633B}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IO", "IO\IO.vcxproj", "{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,6 +22,14 @@ Global
 		{1B2B0D1D-EAD2-4E7C-89F6-CCD52F4B633B}.Release|Win32.Build.0 = Release|Win32
 		{1B2B0D1D-EAD2-4E7C-89F6-CCD52F4B633B}.Release|x64.ActiveCfg = Release|x64
 		{1B2B0D1D-EAD2-4E7C-89F6-CCD52F4B633B}.Release|x64.Build.0 = Release|x64
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Debug|Win32.ActiveCfg = Debug|Win32
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Debug|Win32.Build.0 = Debug|Win32
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Debug|x64.ActiveCfg = Debug|x64
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Debug|x64.Build.0 = Debug|x64
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Release|Win32.ActiveCfg = Release|Win32
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Release|Win32.Build.0 = Release|Win32
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Release|x64.ActiveCfg = Release|x64
+		{21B7FA1B-B2B3-45DC-A7D6-A6DD12401C61}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

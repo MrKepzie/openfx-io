@@ -39,10 +39,6 @@
 #ifndef __Io__exrWriter__
 #define __Io__exrWriter__
 
-#ifdef OFX_IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-#endif
-
 #ifdef _WIN32
 #define OPENEXR_DLL
 #endif
@@ -63,7 +59,7 @@ public:
     
     virtual ~WriteEXRPlugin();
     
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    //virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
 private:
     

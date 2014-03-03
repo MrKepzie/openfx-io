@@ -1,10 +1,10 @@
 /*
- OFX exrReader plugin.
- Reads a an input image using the OpenEXR library.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
+ OFX PFM writer plugin.
+ Writes an image in the Portable Float Map (PFM) format.
+
+ Copyright (C) 2014 INRIA
+ Author: Frederic Devernay frederic.devernay@inria.fr
+
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
  
@@ -36,37 +36,26 @@
  78153 Le Chesnay Cedex - France
  
  */
+#ifndef __Io__WritePFM__
+#define __Io__WritePFM__
 
+#include "GenericWriter.h"
 
-#ifndef __Io__exrReader__
-#define __Io__exrReader__
-
-#ifdef _WIN32
-#define OPENEXR_DLL
-#endif
-
-#include "GenericReader.h"
-
-class ReadEXRPlugin : public GenericReaderPlugin {
-  
+class WritePFMPlugin : public GenericWriterPlugin {
+    
 public:
     
-    ReadEXRPlugin(OfxImageEffectHandle handle);
-    
-    virtual ~ReadEXRPlugin();
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    WritePFMPlugin(OfxImageEffectHandle handle);
+
+    virtual ~WritePFMPlugin();
 
 private:
+
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
     
-    virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
-    
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
-        
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
-    
+    virtual bool isImageFile(const std::string& fileExtension) const;
 };
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
+mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
 
-#endif /* defined(__Io__exrReader__) */
+#endif /* defined(__Io__WritePFM__) */

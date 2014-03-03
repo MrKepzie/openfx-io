@@ -108,12 +108,15 @@ WriteEXRPlugin::~WriteEXRPlugin(){
     
 }
 
-void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    
-}
+//void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/, const std::string &paramName)
+//{
+//}
 
 
-void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) {
+void WriteEXRPlugin::encode(const std::string& filename,
+                            OfxTime /*time*/,
+                            const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -144,7 +147,12 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float
         
         int depth = Exr::depthNameToInt(Exr::depthNames[depthIndex]);
         Imath::Box2i exrDataW;
+<<<<<<< HEAD
              
+=======
+        
+   
+>>>>>>> f93d9b5b4e25615e81a1b2217139bc98e63d0dc6
         exrDataW.min.x = bounds.x1;
         exrDataW.min.y = bounds.y1;
         exrDataW.max.x = bounds.x2 - 1;
@@ -258,7 +266,7 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, true, true, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/true, "reference", "reference");
 
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);
@@ -282,7 +290,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteEXRPlugin(handle);
 }

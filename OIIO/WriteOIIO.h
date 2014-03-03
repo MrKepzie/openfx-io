@@ -39,10 +39,6 @@
 #ifndef __Io__oiioWriter__
 #define __Io__oiioWriter__
 
-#ifdef OFX_IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-#endif
-
 #include "GenericWriter.h"
 
 class WriteOIIOPlugin : public GenericWriterPlugin {

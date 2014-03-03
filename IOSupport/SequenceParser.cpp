@@ -43,6 +43,7 @@
 #include <cstdlib>
 #include <cctype>
 #include <iostream>
+#include <cctype>
 
 #include "tinydir/tinydir.h"
 

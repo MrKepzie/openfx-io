@@ -47,6 +47,8 @@
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
 
+#include "IOUtility.h"
+
 OIIO_NAMESPACE_USING
 
 #define kMetadataButton "show metadata"
@@ -140,21 +142,27 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
                 _ocio->setInputColorspace("hd10");
             }
         } else if(!strcmp(colorSpaceStr, "KodakLog")) {
-            if (_ocio->hasColorspace("lg10")) {
+            if (_ocio->hasColorspace("Cineon")) {
+                // Cineon in nuke-default
+                _ocio->setInputColorspace("Cineon");
+            } else if (_ocio->hasColorspace("lg10")) {
                 // lg10 in spi-vfx
                 _ocio->setInputColorspace("lg10");
             }
         } else if(!strcmp(colorSpaceStr, "Linear")) {
             _ocio->setInputColorspace("scene_linear");
             // lnf in spi-vfx
+        } else if (_ocio->hasColorspace(colorSpaceStr)) {
+            // maybe we're lucky
+            _ocio->setInputColorspace(colorSpaceStr);
         } else {
-            //unknown color-space or Linear, don't do anything
+            // unknown color-space or Linear, don't do anything
         }
     }
 #endif
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     ImageSpec spec;
     
@@ -163,8 +171,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    OFX::PixelComponentEnum pixelComponents  = dstImg->getPixelComponents();
 
+    // we only support RGBA, RGB or Alpha output clip
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -211,11 +219,13 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
+    int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+
     if (fillRGB) {
         // fill RGB values with black
         assert(pixelComponents != OFX::ePixelComponentAlpha);
-        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
-        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
+        char* lineStart = (char*)pixelData + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
             float *cur = (float*)lineStart;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
                 cur[0] = 0.;
@@ -228,8 +238,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         // fill Alpha values with opaque
         assert(pixelComponents != OFX::ePixelComponentRGB);
         int outputChannelAlpha = (pixelComponents == OFX::ePixelComponentAlpha) ? 0 : 3;
-        char* lineStart = (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
-        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += dstImg->getRowBytes()) {
+        char* lineStart = (char*)pixelData + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
             float *cur = (float*)lineStart + outputChannelAlpha;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
                 cur[0] = 1.;
@@ -250,9 +260,12 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
                           chbegin, //chan begin
                           chend, // chan end
                           TypeDesc::FLOAT, // data type
-                          (float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                          //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                          (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
+                                                    + (renderWindow.x1 - bounds.x1) * pixelBytes)
+                                   + outputChannelBegin,// output buffer
                           numChannels * sizeof(float), //x stride
-                          -dstImg->getRowBytes(), //y stride < make it invert Y
+                          -rowBytes, //y stride < make it invert Y
                           AutoStride //z stride
                           )) {
         
@@ -412,7 +425,11 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "JPEG-2000 (*.jp2 *.j2k)\n"
                               "OpenEXR (*.exr)\n"
                               "Portable Network Graphics (*.png)\n"
+#                           if OIIO_VERSION >= 10400
+                              "PNM / Netpbm (*.pbm *.pgm *.ppm *.pfm)\n"
+#                           else
                               "PNM / Netpbm (*.pbm *.pgm *.ppm)\n"
+#                           endif
                               "PSD (*.psd *.pdd *.psb)\n"
                               "Ptex (*.ptex)\n"
                               "RLA (*.rla)\n"
@@ -426,7 +443,13 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 
-    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico", "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png", "pbm", "pgm", "ppm", "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
+        "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
+        "pbm", "pgm", "ppm",
+#     if OIIO_VERSION >= 10400
+        "pfm",
+#     endif
+        "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
 #endif
 }
@@ -435,7 +458,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButton);
     pb->setLabels("Image info", "Image info", "Image info");
@@ -445,7 +468,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadOIIOPlugin(handle);
 }

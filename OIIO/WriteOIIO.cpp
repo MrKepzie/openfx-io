@@ -217,9 +217,6 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
 
 #ifdef OFX_IO_USING_OCIO
-	size_t sizeOfChannel = 0;
-	int    bitsPerSample  = 0;
-
 	int finalBitDepth_i;
     _bitDepth->getValue(finalBitDepth_i);
     ETuttlePluginBitDepth finalBitDepth = getDefaultBitDepth(filename, (ETuttlePluginBitDepth)finalBitDepth_i);
@@ -241,7 +238,7 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
 #endif
 }
 
-void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WriteOIIOPlugin::encode(const std::string& filename, OfxTime /*time*/, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
@@ -327,7 +324,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 			sizeOfChannel = 8;
 			break;
 	}
-    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth/*TypeDesc::FLOAT*/);
+    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth);
 
 
     bool premultiply;
@@ -380,7 +377,51 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 	spec.attribute("oiio:BitsPerSample", bitsPerSample);
 	spec.attribute("oiio:UnassociatedAlpha", premultiply);
 #ifdef OFX_IO_USING_OCIO
-    spec.attribute("oiio:ColorSpace", _ocio->getOutputColorspace());
+    std::string ocioColorspace = _ocio->getOutputColorspace();
+    float gamma = 0.;
+    std::string colorSpaceStr;
+    if (ocioColorspace == "Gamma1.8") {
+        // Gamma1.8 in nuke-default
+        colorSpaceStr = "GammaCorrected";
+        gamma = 1.8;
+    } else if (ocioColorspace == "Gamma2.2" || ocioColorspace == "vd8" || ocioColorspace == "vd10" || ocioColorspace == "vd16") {
+        // Gamma2.2 in nuke-default
+        // vd8, vd10, vd16 in spi-anim and spi-vfx
+        colorSpaceStr = "GammaCorrected";
+        gamma = 2.2;
+    } else if (ocioColorspace == "sRGB" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
+        // sRGB in nuke-default
+        // rrt_srgb in aces
+        // srgb8 in spi-vfx
+        colorSpaceStr = "sRGB";
+    } else if (ocioColorspace == "Rec709" || ocioColorspace == "rrt_rec709" || ocioColorspace == "hd10") {
+        // Rec709 in nuke-default
+        // rrt_rec709 in aces
+        // hd10 in spi-anim and spi-vfx
+        colorSpaceStr = "Rec709";
+    } else if(ocioColorspace == "KodakLog" || ocioColorspace == "Cineon" || ocioColorspace == "lg10") {
+        // Cineon in nuke-default
+        // lg10 in spi-vfx
+        colorSpaceStr = "KodakLog";
+    } else if(ocioColorspace == "Linear" || ocioColorspace == "linear" || ocioColorspace == "aces" || ocioColorspace == "lnf" || ocioColorspace == "ln16") {
+        // linear in nuke-default
+        // aces in aces
+        // lnf, ln16 in spi-anim and spi-vfx
+        colorSpaceStr = "Linear";
+    } else if(ocioColorspace == "raw" || ocioColorspace == "ncf") {
+        // raw in nuke-default
+        // raw in aces
+        // ncf in spi-anim and spi-vfx
+        // leave empty
+    } else {
+        //unknown color-space, don't do anything
+    }
+    if (!colorSpaceStr.empty()) {
+        spec.attribute("oiio:ColorSpace", colorSpaceStr);
+    }
+    if (gamma != 0.) {
+        spec.attribute("oiio:Gamma", gamma);
+    }
 #endif
 	spec.attribute("CompressionQuality", quality);
 	spec.attribute("Orientation", orientation + 1);
@@ -415,14 +456,14 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
                                 spec.y + spec.height, //ymax
                                 0, //zmin
                                 1, //zmax
-                                spec.format, //datatype
+                                TypeDesc::FLOAT, //datatype
                                 (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
                                 AutoStride, //xstride
                                 -rowBytes, //ystride
                                 AutoStride //zstride
                                 );
     } else {
-        output->write_image(spec.format,
+        output->write_image(TypeDesc::FLOAT,
                             (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
                             AutoStride, //xstride
                             -rowBytes, //ystride
@@ -506,7 +547,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/false, /*supportsAlpha=*/false, "reference", "reference");
 
     OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kTuttlePluginBitDepth);
     bitDepth->setLabels(kTuttlePluginBitDepthLabel, kTuttlePluginBitDepthLabel, kTuttlePluginBitDepthLabel);
@@ -565,7 +606,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteOIIOPlugin(handle);
 }

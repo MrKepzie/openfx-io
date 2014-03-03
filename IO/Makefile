@@ -3,15 +3,17 @@ PLUGINOBJECTS = \
 	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
 	ReadOIIO.o WriteOIIO.o \
 	OCIOColorSpace.o \
+	ReadPFM.o WritePFM.o \
+	RunScript.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO
-VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../OCIO
+VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../PFM ../OCIO ../RunScript
 
 include ../Makefile.master
 
-CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../OCIO
+CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript
 
 # OpenEXR
 CXXFLAGS +=`pkg-config --cflags OpenEXR`

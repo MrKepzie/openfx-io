@@ -118,8 +118,14 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
 }
 
-void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg)
+void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+#warning "BUG: should check that filename is the right one, else open the new file"
+    /// we only support RGBA output clip
+    if(pixelComponents != OFX::ePixelComponentRGBA) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
@@ -132,15 +138,15 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     _ffmpegFile->info(width, height, ap, frames);
     assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
 
-    OfxRectI imgBounds = dstImg->getBounds();
-    
     if((imgBounds.x2 - imgBounds.x1) < width ||
        (imgBounds.y2 - imgBounds.y1) < height){
         setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
     }
     
     ///set the pixel aspect ratio
-    dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
+    // sorry, but this seems to be read-only,
+    // see http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImagePropPixelAspectRatio
+    //dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
     
     if(_bufferWidth != width || _bufferHeight != height){
         delete [] _buffer;
@@ -166,18 +172,11 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
         }
         return;
     }
-    
-    ///we (aka the GenericReader) only support float bit depth
-    /// and RGBA output clip
-    OFX::BitDepthEnum e = dstImg->getPixelDepth();
-    if(e != OFX::eBitDepthFloat){
-        return;
-    }
-    
+
     ///fill the dstImg with the buffer freshly decoded.
     for (int y = imgBounds.y1; y < imgBounds.y2; ++y) {
         int srcY = imgBounds.y2 - y - 1;
-        float* dst_pixels = (float*)dstImg->getPixelAddress(0, y);
+        float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
         const unsigned char* src_pixels = _buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
         
         for (int x = imgBounds.x1; x < imgBounds.x2; ++x) {
@@ -215,8 +214,9 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 }
 
 
-void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) {
-    
+void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod)
+{
+#warning "BUG: should check that filename is the right one, else open the new file"
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
@@ -300,13 +300,13 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
                                                         ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ false, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "reference");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadFFmpegPlugin(handle);
 }

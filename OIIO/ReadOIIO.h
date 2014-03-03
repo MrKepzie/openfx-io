@@ -39,10 +39,6 @@
 #ifndef __Io__oiioReader__
 #define __Io__oiioReader__
 
-#ifdef OFX_IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-#endif
-
 #include "GenericReader.h"
 
 class ReadOIIOPlugin : public GenericReaderPlugin {
@@ -62,7 +58,7 @@ private:
     
     virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
         
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, OFX::Image* dstImg);
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
     
     virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 

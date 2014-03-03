@@ -1,9 +1,9 @@
 /*
- OFX oiioReader plugin.
- Reads an image using the OpenImageIO library.
+ OCIOColorSpace plugin.
+ Convert from one colorspace to another.
  
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
+ Copyright (C) 2014 INRIA
+ Author: Frederic Devernay <frederic.devernay@inria.fr>
  
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -44,9 +44,9 @@
 
 #include <GenericOCIO.h>
 
-
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
+#include "IOUtility.h"
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -63,32 +63,67 @@ OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
     
 }
 
-// make sure components are sane
-static void
-checkComponents(const OFX::Image &src,
-                OFX::BitDepthEnum dstBitDepth,
-                OFX::PixelComponentEnum dstComponents)
+/* set up and run a copy processor */
+static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                         const OfxRectI &renderWindow,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
 {
-    OFX::BitDepthEnum      srcBitDepth     = src.getPixelDepth();
-    OFX::PixelComponentEnum srcComponents  = src.getPixelComponents();
+    assert(srcPixelData && dstPixelData);
 
-    // see if they have the same depths and bytes and all
-    if(srcBitDepth != dstBitDepth || srcComponents != dstComponents)
+    // make sure bit depths are sane
+    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
-}
+    }
 
-void
-OCIOColorSpacePlugin::setupAndProcess(CopierBase & processor, const OFX::RenderArguments &args, OFX::Image* srcImg, OFX::Image* dstImg)
-{
     // set the images
-    processor.setDstImg(dstImg);
-    processor.setSrcImg(srcImg);
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
 
     // set the render window
-    processor.setRenderWindow(args.renderWindow);
+    processor.setRenderWindow(renderWindow);
 
     // Call the base class process member, this will call the derived templated process code
     processor.process();
+}
+
+void
+OCIOColorSpacePlugin::copyPixelData(const OfxRectI& renderWindow,
+                                    const void *srcPixelData,
+                                    const OfxRectI& srcBounds,
+                                    OFX::PixelComponentEnum srcPixelComponents,
+                                    OFX::BitDepthEnum srcPixelDepth,
+                                    int srcRowBytes,
+                                    void *dstPixelData,
+                                    const OfxRectI& dstBounds,
+                                    OFX::PixelComponentEnum dstPixelComponents,
+                                    OFX::BitDepthEnum dstBitDepth,
+                                    int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        PixelCopier<float, 4> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        PixelCopier<float, 3> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        PixelCopier<float, 1> fred(*this);
+        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } // switch
 }
 
 /* Override the render */
@@ -125,30 +160,38 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     }
 
     // are we in the image bounds
-    OfxRectI bounds = dstImg->getBounds();
-    if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
-       args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
+    OfxRectI dstBounds = dstImg->getBounds();
+    if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
+       args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    if(dstComponents == OFX::ePixelComponentRGBA) {
-        ImageCopier<float, 4> fred(*this);
-        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-    } else if(dstComponents == OFX::ePixelComponentRGB) {
-        ImageCopier<float, 3> fred(*this);
-        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-    }  else if(dstComponents == OFX::ePixelComponentAlpha) {
-        ImageCopier<float, 1> fred(*this);
-        setupAndProcess(fred, args,srcImg.get(),dstImg.get());
-    } // switch
+    const void* srcPixelData = NULL;
+    OfxRectI bounds;
+    OFX::PixelComponentEnum pixelComponents;
+    OFX::BitDepthEnum bitDepth;
+    int srcRowBytes;
+    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+
+    // allocate temporary image
+    int pixelBytes = getPixelBytes(srcComponents, srcBitDepth);
+    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
+    OFX::ImageMemory mem(memSize,this);
+    float *tmpPixelData = (float*)mem.lock();
+    // copy renderWindow to the temporary image
+    copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
 
     ///do the color-space conversion
-    _ocio->apply(args.renderWindow, dstImg.get());
+    _ocio->apply(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+
+    // copy the color-converted window
+    copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
 }
 
 bool
-OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
+OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &/*args*/, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
 {
     return _ocio->isIdentity();
 }
@@ -211,7 +254,7 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum context)
+ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new OCIOColorSpacePlugin(handle);
 }

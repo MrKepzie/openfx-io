@@ -1,6 +1,6 @@
 #include "ofxsImageEffect.h"
-#include "ReadEXR.h"
-#include "WriteEXR.h"
+#include "ReadPFM.h"
+#include "WritePFM.h"
 
 namespace OFX 
 {
@@ -8,9 +8,9 @@ namespace OFX
   {
     void getPluginIDs(OFX::PluginFactoryArray &ids)
     {
-      static ReadEXRPluginFactory p1("fr.inria.openfx:ReadEXR", 1, 0);
+      static ReadPFMPluginFactory p1("fr.inria.openfx:ReadPFM", 1, 0);
       ids.push_back(&p1);
-      static WriteEXRPluginFactory p2("fr.inria.openfx:WriteEXR", 1, 0);
+      static WritePFMPluginFactory p2("fr.inria.openfx:WritePFM", 1, 0);
       ids.push_back(&p2);
     }
   }
