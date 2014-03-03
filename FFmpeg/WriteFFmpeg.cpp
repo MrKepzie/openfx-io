@@ -37,22 +37,23 @@
  
  */
 
-#include "WriteFFmpeg.h"
 
-#include <sstream>
-
-#if (defined(_STDINT_H) || defined(_STDINT_H_)) && !defined(UINT64_C)
+#if (defined(_STDINT_H) || defined(_STDINT_H_) || defined(_MSC_STDINT_H_)) && !defined(UINT64_C)
 #warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
 #endif
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS // ...or stdint.h wont' define UINT64_C, needed by libavutil
 #endif
+#include "WriteFFmpeg.h"
+
 #include <cstdio>
+#include <sstream>
+
 #if _WIN32
 #define snprintf sprintf_s
 #endif
 
-#if defined(WIN32) || defined(WIN64)
+#if defined(_WIN32) || defined(WIN64)
 #  include <windows.h> // for GetSystemInfo()
 #else
 #  include <unistd.h> // for sysconf()
@@ -477,7 +478,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         ret = av_interleaved_write_frame(_formatContext, &pkt);
     }
     else {
-#if 1 // LIBAVCODEC_VERSION_INT<AV_VERSION_INT(54,1,0)
+#if LIBAVCODEC_VERSION_INT<AV_VERSION_INT(54,1,0)
         uint8_t* outbuf = (uint8_t*)av_malloc(picSize);
         assert(outbuf != NULL);
         ret = avcodec_encode_video(_codecContext, outbuf, picSize, output);

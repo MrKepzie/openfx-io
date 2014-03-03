@@ -44,7 +44,7 @@
 
 #include "ReadFFmpeg.h"
 
-#if defined(WIN32) || defined(WIN64)
+#if defined(_WIN32) || defined(WIN64)
 #  include <windows.h> // for GetSystemInfo()
 #else
 #  include <unistd.h> // for sysconf()

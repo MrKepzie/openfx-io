@@ -144,9 +144,7 @@ void WriteEXRPlugin::encode(const std::string& filename,OfxTime time,const float
         
         int depth = Exr::depthNameToInt(Exr::depthNames[depthIndex]);
         Imath::Box2i exrDataW;
-        
-        OfxRectI bounds;
-        
+             
         exrDataW.min.x = bounds.x1;
         exrDataW.min.y = bounds.y1;
         exrDataW.max.x = bounds.x2 - 1;

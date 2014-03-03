@@ -37,12 +37,13 @@
  
  */
 
+#include "FFmpegHandler.h"
+
 #include "ReadFFmpeg.h"
 
 #include <cmath>
 #include <sstream>
 
-#include "FFmpegHandler.h"
 #include "IOUtility.h"
 
 static const bool kSupportsTiles = false;
