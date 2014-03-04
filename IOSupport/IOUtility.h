@@ -104,6 +104,10 @@ int getPixelBytes(OFX::PixelComponentEnum pixelComponents,
         case OFX::ePixelComponentRGBA  : pixelBytes = 4; break;
         case OFX::ePixelComponentRGB  : pixelBytes = 3; break;
         case OFX::ePixelComponentAlpha : pixelBytes = 1; break;
+#ifdef OFX_EXTENSIONS_NUKE
+        case OFX::ePixelComponentMotionVectors  : pixelBytes = 2; break;
+        case OFX::ePixelComponentStereoDisparity : pixelBytes = 2; break;
+#endif
         case OFX::ePixelComponentCustom : pixelBytes = 0; break;
     }
     switch (bitDepth) {
