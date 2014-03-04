@@ -321,8 +321,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
         if (p) {
             DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
             DBG(std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false"));
-#warning "throws an exception on Natron"
-            //DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
+            DBG(std::cout << "; NumKeys=" << p->getNumKeys());
         }
         DBG(std::cout << std::endl);
     }
@@ -427,8 +426,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
         if (p) {
             DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
             DBG(std::cout << "; IsAutoKeying=" << (p->getIsAutoKeying() ? "true" : "false"));
-#warning "throws an exception on Natron"
-            //DBG(std::cout << "; NumKeys=" << p->getNumKeys()); // throws an exception on Natron
+            DBG(std::cout << "; NumKeys=" << p->getNumKeys());
         }
         DBG(std::cout << std::endl);
     }
