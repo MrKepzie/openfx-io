@@ -43,7 +43,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>NotSet</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
@@ -74,6 +74,7 @@
     <sxsProgramFolder>$(sxsProgramFolder)\</sxsProgramFolder>
     <GenerateManifest>false</GenerateManifest>
     <EmbedManifest>false</EmbedManifest>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -124,10 +125,9 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\include;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\include\OpenEXR;C:\local\ffmpeg\include;C:\local\boost_1_55_0_vs2010_x86;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_IO_MT_FFMPEG;OpenColorIO_STATIC;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_IO_MT_FFMPEG;OpenColorIO_STATIC;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;WIN64;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
@@ -135,9 +135,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\lib\static\x64\libyaml-cppmd.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\lib\static\x64\tinyxml_STL.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\lib\static\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\jpeg-9a_static_MT_release\lib\x64\jpeg.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\libpng1.6.9_static_MT_release\lib\x64\libpng16.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\tiff-4.0.3_static_MT_release\lib\x64\libtiff.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\zlib1.2.8MT_release\lib\x64\zlibstat.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2MT_release\lib\static\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\IlmImf.lib;C:\local\ffmpeg\lib\x64\avcodec.lib;C:\local\ffmpeg\lib\x64\avutil.lib;C:\local\ffmpeg\lib\x64\avformat.lib;C:\local\ffmpeg\lib\x64\swscale.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_thread-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_date_time-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_system-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_chrono-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_filesystem-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_regex-vc100-mt-s-1_55.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\zlib1.2.8MT_release\lib\x64\zlibstat.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\lib\static\x64\libyaml-cppmd.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\lib\static\x64\tinyxml_STL.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9MT_release\lib\static\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\jpeg-9a_static_MT_release\lib\x64\jpeg.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\libpng1.6.9_static_MT_release\lib\x64\libpng16.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\tiff-4.0.3_static_MT_release\lib\x64\libtiff.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1MT_release\lib\static\x64\IlmImf.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2MT_release\lib\static\x64\OpenImageIO.lib;C:\local\ffmpeg\lib\x64\avcodec.lib;C:\local\ffmpeg\lib\x64\avutil.lib;C:\local\ffmpeg\lib\x64\avformat.lib;C:\local\ffmpeg\lib\x64\swscale.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_thread-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_date_time-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_system-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_chrono-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_filesystem-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_regex-vc100-mt-s-1_55.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</OutputFile>
       <AdditionalLibraryDirectories>.;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ImportLibrary>$(OutDir)$(ProjectName).lib</ImportLibrary>
     </Link>
     <sxs32com>
       <sxsBuildType>com</sxsBuildType>
@@ -150,6 +151,7 @@
       <InputResourceManifests>
       </InputResourceManifests>
     </Manifest>
+    <ProjectReference />
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\EXR\ReadEXR.cpp" />
