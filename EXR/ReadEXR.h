@@ -41,9 +41,6 @@
 #ifndef __Io__exrReader__
 #define __Io__exrReader__
 
-#ifdef _WIN32
-#define OPENEXR_DLL
-#endif
 
 #include "GenericReader.h"
 

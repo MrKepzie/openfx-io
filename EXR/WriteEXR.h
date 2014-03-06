@@ -39,9 +39,6 @@
 #ifndef __Io__exrWriter__
 #define __Io__exrWriter__
 
-#ifdef _WIN32
-#define OPENEXR_DLL
-#endif
 
 #include <ImfChannelList.h>
 #include <ImfArray.h>
