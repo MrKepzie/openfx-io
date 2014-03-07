@@ -86,6 +86,7 @@ private:
     void applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
 
     OFX::ImageEffect* _parent;
+    bool _created;
 #ifdef OFX_IO_USING_OCIO
     std::string _ocioConfigFileName;
     OFX::StringParam *_ocioConfigFile; //< filepath of the OCIO config file

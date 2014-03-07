@@ -55,6 +55,7 @@ static bool global_hostIsNatron;
 
 GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 : _parent(parent)
+, _created(false)
 #ifdef OFX_IO_USING_OCIO
 , _ocioConfigFileName()
 , _ocioConfigFile(0)
@@ -78,7 +79,9 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
     _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoice);
     _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoice);
 #endif
+    loadConfig();
 #endif
+    _created = true;
 }
 
 #ifdef OFX_OCIO_CHOICE
@@ -173,10 +176,12 @@ buildChoiceMenus(OCIO::ConstConfigRcPtr config,
             msg += ')';
         }
         inputSpaceChoice->appendOption(csname, msg);
+        // set the default value, in case the GUI uses it
         if (!inputSpaceName.empty() && csname == inputSpaceName) {
             inputSpaceChoice->setDefault(i);
         }
         outputSpaceChoice->appendOption(csname, msg);
+        // set the default value, in case the GUI uses it
         if (!outputSpaceName.empty() && csname == outputSpaceName) {
             outputSpaceChoice->setDefault(i);
         }
@@ -217,8 +222,9 @@ GenericOCIO::loadConfig()
             _choiceFileName = _ocioConfigFileName;
         }
         _choiceIsOk = (_ocioConfigFileName == _choiceFileName);
-        inputCheck();
-        outputCheck();
+        // do not set values during CreateInstance!!
+        ////inputCheck(); // may set values
+        ////outputCheck(); // may set values
     }
 #endif
 }
@@ -226,8 +232,8 @@ GenericOCIO::loadConfig()
 bool
 GenericOCIO::isIdentity()
 {
+    assert(_created);
 #ifdef OFX_IO_USING_OCIO
-    loadConfig();
     if (!_config) {
         return true;
     }
@@ -246,6 +252,7 @@ GenericOCIO::isIdentity()
 void
 GenericOCIO::inputCheck()
 {
+    assert(_created); // the instance must be created to call setValue()
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         return;
@@ -286,6 +293,7 @@ GenericOCIO::inputCheck()
 void
 GenericOCIO::outputCheck()
 {
+    assert(_created); // the instance must be created to call setValue()
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         return;
@@ -325,6 +333,7 @@ GenericOCIO::outputCheck()
 void
 GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
 {
+    assert(_created);
 #ifdef OFX_IO_USING_OCIO
     OFX::BitDepthEnum bitDepth = img->getPixelDepth();
     if (bitDepth != OFX::eBitDepthFloat) {
@@ -357,8 +366,8 @@ private:
 void
 GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+    assert(_created);
 #ifdef OFX_IO_USING_OCIO
-    loadConfig();
     if (!_config) {
         return;
     }
@@ -389,6 +398,7 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
 void
 GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+    assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if (!_config) {
         throw std::logic_error("OCIO configuration not loaded");
@@ -433,21 +443,19 @@ GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const
 void
 GenericOCIO::beginEdit()
 {
-    loadConfig(); // calls buildChoiceMenus(), and updates the menus if possible (e.g. on Natron only for now)
-    // now, trigger changedParam() for inputSpace and outputSpace, which also sets the correct options in the menus
-    std::string inputSpace;
-    _inputSpace->getValue(inputSpace);
-    _inputSpace->setValue(inputSpace);
-    std::string outputSpace;
-    _outputSpace->getValue(inputSpace);
-    _outputSpace->setValue(inputSpace);
+    assert(_created);
+    // setup the GUI
+    inputCheck();
+    outputCheck();
 }
 
 void
 GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
+    assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if ( paramName == kOCIOParamConfigFilename ) {
+        loadConfig(); // re-load the new OCIO config
         beginEdit();
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
@@ -455,8 +463,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
             _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
     }
-
-    if (paramName == kOCIOHelpButton) {
+    else if (paramName == kOCIOHelpButton) {
         std::string msg = "OpenColorIO Help\n"
             "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
             "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
@@ -562,13 +569,11 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         }
         _parent->sendMessage(OFX::Message::eMessageMessage, "", msg);
     }
-
-    // the other parameters assume there is a valid config
-    if (!_config) {
+    else if (!_config) {
+        // the other parameters assume there is a valid config
         return;
     }
-
-    if (paramName == kOCIOParamInputSpace) {
+    else if (paramName == kOCIOParamInputSpace) {
         if (args.reason == OFX::eChangeUserEdit) {
             // if the inputspace doesn't correspond to a valid one, reset to default
             std::string inputSpace;
@@ -585,7 +590,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         inputCheck();
     }
 #ifdef OFX_OCIO_CHOICE
-    if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
+    else if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         int inputSpaceIndex;
         _inputSpaceChoice->getValue(inputSpaceIndex);
         std::string inputSpaceOld;
@@ -597,8 +602,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         }
     }
 #endif
-
-    if (paramName == kOCIOParamOutputSpace) {
+    else if (paramName == kOCIOParamOutputSpace) {
         if (args.reason == OFX::eChangeUserEdit) {
             // if the outputspace doesn't correspond to a valid one, reset to default
             std::string outputSpace;
@@ -616,7 +620,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         outputCheck();
     }
 #ifdef OFX_OCIO_CHOICE
-    if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
+    else if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         int outputSpaceIndex;
         _outputSpaceChoice->getValue(outputSpaceIndex);
         std::string outputSpaceOld;
@@ -692,7 +696,7 @@ void
 GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
 #ifdef OFX_IO_USING_OCIO
-    global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "NatronHost");
+    global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "fr.inria.Natron");
     ////////// OCIO config file
     OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFilename);
     ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
