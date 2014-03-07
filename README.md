@@ -110,6 +110,12 @@ where /opt/local is where the macports tree stores the includes and libs.
 Compiling on Windows
 --------------------
 
+We provide pre-compiled static binaries for dependencies here:
+
+https://www.dropbox.com/s/s5yuh9k3kum99jp/3rdparty_windows_32_and_64bits_msvc2010.zip
+
+On the other hand if you want to compile them yourself, you can do so :
+
 ### *OpenColorIO*
 Clone the repository from github:
 
@@ -134,3 +140,79 @@ Follow the instructions in the INSTALL file of the source distribution.
 When compiling to use the pre-compiled binaries of OpenEXR provided as the version is too
 old to successfully build OpenImageIO. Instead use the version you just compiled before
 and change the include/lib paths in the visual studio project.
+
+
+### *FFmpeg*
+
+I can only advice you download the pre-built binaries from [Zeranoe](http://ffmpeg.zeranoe.com/builds/).
+You will need to download the Shared to have the dlls and the Dev to have the .lib files allowing you to link with the dlls.
+Note that on this website you can only get shared versions of the ffmpeg libraries.
+
+### *Boost*
+
+You can downlad pre-built binaries for your visual studio version here:
+
+http://boost.teeks99.com/
+
+
+### *Note about the external libraries*
+
+Please note that all libraries should be compiled as static libraries for the simplicity of the IO.ofx deployment.
+You should have all libraries as static EXCEPT ffmpeg. We will discuss at the end of the README how to deploy so the 
+library loader can find the shared libraries at run time.
+
+### *Compile IO.sln*
+
+There's a solution file in the repository whose purpose is to help building openfx-io on Windows.
+Note that you might have to make a few changes to the Configuration properties of the project so it can compile on your machine.
+You will need to change all the hardcoded path in the Additional Include directories to the ones on your machine.
+You will have to do the same with Additional Dependencies in the linker options.
+
+Also, some preprocessor definitions are mandatory, most notably:
+
+OFX_IO_USING_OCIO
+OFX_EXTENSIONS_VEGAS
+OFX_EXTENSIONS_TUTTLE
+OFX_EXTENSIONS_NUKE
+OFX_IO_MT_FFMPEG
+OpenColorIO_STATIC
+_WINDOWS
+WIN64 (if you're doing a x64 build)
+NOMINMAX
+
+Also note that you'll have to set the runtime library (in the Code Generation tab) to Multi-threaded (/MT).
+
+
+Once you compile successfully and you have your bundle, locate the IO.ofx file.
+We assume from now on that the only shared libraries you linked with was ffmpeg (i.e: avcodec.lib, avformat.lib avutil.lib and swscale.lib).
+Make a new file called INRIA.IO.manifest right next to IO.ofx in the bundle (i.e: at this location: IO.ofx.bundle/Content/Win64/INRIA.IO.manifest).
+In this file copy the following lines:
+
+	<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+
+	<assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
+
+	<file name="avcodec-55.dll">
+	</file>
+
+	<file name="avformat-55.dll">
+	</file>
+
+	<file name="avutil-52.dll">
+	</file>
+
+	<file name="swscale-2.dll">
+	</file>
+
+	</assembly>
+
+Now open the command line tool and navigate to IO.ofx.bundle/Content/Win64/
+Execute the following command:
+	mt -manifest INRIA.IO.manifest -outputresource:IO.ofx;2
+	
+This will embed the manifest into the .ofx file so it can now find at runtime the shared dependencies (i.e: the ffmpeg Dlls).
+
+
+
+
