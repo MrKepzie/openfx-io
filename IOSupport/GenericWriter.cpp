@@ -393,12 +393,6 @@ bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
     }
 }
 
-/** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
-void
-GenericWriterPlugin::beginEdit() {
-    return _ocio->beginEdit();
-}
-
 void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
     if(paramName == kWriterFrameRangeChoiceParamName){
         int choice;

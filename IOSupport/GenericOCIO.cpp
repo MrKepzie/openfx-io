@@ -81,6 +81,11 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 #endif
     loadConfig();
 #endif
+    // setup the GUI
+    // setValue() may be called from createInstance, according to
+    // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
+    inputCheck();
+    outputCheck();
     _created = true;
 }
 
@@ -252,7 +257,6 @@ GenericOCIO::isIdentity()
 void
 GenericOCIO::inputCheck()
 {
-    assert(_created); // the instance must be created to call setValue()
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         return;
@@ -293,7 +297,6 @@ GenericOCIO::inputCheck()
 void
 GenericOCIO::outputCheck()
 {
-    assert(_created); // the instance must be created to call setValue()
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         return;
@@ -441,22 +444,14 @@ GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const
 }
 
 void
-GenericOCIO::beginEdit()
-{
-    assert(_created);
-    // setup the GUI
-    inputCheck();
-    outputCheck();
-}
-
-void
 GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if ( paramName == kOCIOParamConfigFilename ) {
         loadConfig(); // re-load the new OCIO config
-        beginEdit();
+        inputCheck();
+        outputCheck();
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
             _ocioConfigFile->getValue(filename);

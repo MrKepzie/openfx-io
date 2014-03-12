@@ -499,12 +499,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 }
 
-/** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
-void
-GenericReaderPlugin::beginEdit() {
-    return _ocio->beginEdit();
-}
-
 void GenericReaderPlugin::inputFileChanged() {
     std::string filename;
     _fileParam->getValue(filename);

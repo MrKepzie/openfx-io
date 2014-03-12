@@ -85,9 +85,6 @@ public:
     bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
     
     
-    /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
-    virtual void beginEdit(void);
-
     /**
      * @brief You can override this to take actions in response to a param change. 
      * Make sure you call the base-class version of this function at the end: i.e:

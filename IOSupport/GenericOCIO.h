@@ -68,7 +68,6 @@ public:
     bool isIdentity();
     void apply(const OfxRectI& renderWindow, OFX::Image* dstImg);
     void apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
-    void beginEdit();
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
     std::string getInputColorspace() const;

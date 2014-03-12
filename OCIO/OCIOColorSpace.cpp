@@ -196,12 +196,6 @@ OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &/*args*/, OFX::Clip
     return _ocio->isIdentity();
 }
 
-/** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
-void
-OCIOColorSpacePlugin::beginEdit() {
-    return _ocio->beginEdit();
-}
-
 void
 OCIOColorSpacePlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
     return _ocio->changedParam(args, paramName);
