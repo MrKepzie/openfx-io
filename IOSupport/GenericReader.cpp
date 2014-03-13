@@ -99,6 +99,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
     _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
     _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
+    
+    ///set the values of the original range and the file param (and reparse the sequence)
+    inputFileChanged();
 }
 
 GenericReaderPlugin::~GenericReaderPlugin(){

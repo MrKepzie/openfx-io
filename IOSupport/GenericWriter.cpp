@@ -375,13 +375,13 @@ bool GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
 bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
     int choice;
     _frameRange->getValue(choice);
-    if(choice == 0){
+    if (choice == 0) {
         ///let the default be applied
         return false;
-    }else if(choice == 1){
+    } else if(choice == 1) {
         timeLineGetBounds(range.min, range.max);
         return true;
-    }else{
+    } else {
         int first;
         _firstFrame->getValue(first);
         range.min = first;
