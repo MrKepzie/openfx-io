@@ -529,9 +529,11 @@ void GenericReaderPlugin::inputFileChanged() {
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    if(paramName == kReaderFileParamName){
-        inputFileChanged();
-        _wasOriginalRangeEverSet = true;
+    if(paramName == kReaderFileParamName) {
+        if (args.reason != OFX::eChangeTime) {
+            inputFileChanged();
+            _wasOriginalRangeEverSet = true;
+        }
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
