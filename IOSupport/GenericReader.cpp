@@ -101,7 +101,15 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
     
     ///set the values of the original range and the file param (and reparse the sequence)
-    inputFileChanged();
+    std::string filename;
+    _fileParam->getValue(filename);
+    
+    try {
+        _sequenceParser->initializeFromFile(filename);
+    } catch(const std::exception& e) {
+        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        return;
+    }
 }
 
 GenericReaderPlugin::~GenericReaderPlugin(){
@@ -170,7 +178,6 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
         _lastFrame->setValue(range.max);
         
         _originalFrameRange->setValue(range.min, range.max);
-        
         _settingFrameRange = false;
     } else {
         ///these are the value held by the "First frame" and "Last frame" param
