@@ -85,7 +85,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceParser(new SequenceParser)
-, _wasOriginalRangeEverSet(false)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -105,7 +104,13 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _fileParam->getValue(filename);
     
     try {
-        _sequenceParser->initializeFromFile(filename);
+        if (!filename.empty()) {
+            _sequenceParser->initializeFromFile(filename);
+            if (!_sequenceParser->isEmpty()) {
+                _originalFrameRange->setValue(_sequenceParser->firstFrame(),_sequenceParser->lastFrame());
+            }
+        }
+
     } catch(const std::exception& e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         return;
@@ -119,20 +124,15 @@ GenericReaderPlugin::~GenericReaderPlugin(){
 
 
 bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range) {
-    
-    if (!_wasOriginalRangeEverSet) {
-        inputFileChanged();
-        _wasOriginalRangeEverSet = true;
-    }
-    
-    bool ret = getSequenceTimeDomainInternal(range);
+
+    bool ret = getSequenceTimeDomainInternal(range,false);
     if (ret) {
         timeDomainFromSequenceTimeDomain(range, false);
     }
     return ret;
 }
 
-bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
+bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetOriginalFrameRange) {
     
     ////first-off check if the original frame range param has valid values, in which
     ///case we don't bother calculating the frame range
@@ -155,8 +155,19 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range) {
         range.min = _sequenceParser->firstFrame();
         range.max = _sequenceParser->lastFrame();
     }
-
-    _originalFrameRange->setValue(range.min, range.max);
+    
+    
+    //// From http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
+//    Plugins are free to set parameters in limited set of circumstances, typically relating to user interaction. You can only set parameters in the following actions passed to the plug-in's main entry function...
+//    
+//    The Create Instance Action
+//    The The Begin Instance Changed Action
+//    The The Instance Changed Action
+//    The The End Instance Changed Action
+//    The The Sync Private Data Action
+    if (canSetOriginalFrameRange) {
+        _originalFrameRange->setValue(range.min, range.max);
+    }
     return true;
 }
 
@@ -191,7 +202,7 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
     
 }
 
-double GenericReaderPlugin::getSequenceTime(double t)
+double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange)
 {
     int timeOffset;
     _timeOffset->getValue(timeOffset);
@@ -202,7 +213,7 @@ double GenericReaderPlugin::getSequenceTime(double t)
     _lastFrame->getValue(sequenceTimeDomain.max);
     
     OfxRangeD originalTimeDomain;
-    getSequenceTimeDomainInternal(originalTimeDomain);
+    getSequenceTimeDomainInternal(originalTimeDomain,canSetOriginalFrameRange);
     
     ///the return value
     int sequenceTime =  t - timeOffset ;
@@ -297,7 +308,7 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
 
     
     OfxRangeD sequenceTimeDomain;
-    getSequenceTimeDomainInternal(sequenceTimeDomain);
+    getSequenceTimeDomainInternal(sequenceTimeDomain,false);
     
     _fileParam->getValueAtTime(sequenceTime,filename);
     
@@ -414,7 +425,7 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     
     double sequenceTime;
     try {
-        sequenceTime =  getSequenceTime(args.time);
+        sequenceTime =  getSequenceTime(args.time,false);
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -441,7 +452,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     double sequenceTime;
     try {
-        sequenceTime =  getSequenceTime(args.time);
+        sequenceTime =  getSequenceTime(args.time,false);
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -529,7 +540,7 @@ void GenericReaderPlugin::inputFileChanged() {
     
     ///we don't pass the _frameRange range as we don't want to store the time domain too
     OfxRangeD tmp;
-    getSequenceTimeDomainInternal(tmp);
+    getSequenceTimeDomainInternal(tmp,true);
     timeDomainFromSequenceTimeDomain(tmp, true);
     _startingFrame->setValue(tmp.min);
  
@@ -539,7 +550,6 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     if(paramName == kReaderFileParamName) {
         if (args.reason != OFX::eChangeTime) {
             inputFileChanged();
-            _wasOriginalRangeEverSet = true;
         }
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
@@ -580,7 +590,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         
         ///recompute the timedomain
         OfxRangeD sequenceTimeDomain;
-        getSequenceTimeDomainInternal(sequenceTimeDomain);
+        getSequenceTimeDomainInternal(sequenceTimeDomain,true);
         
         //also update the time offset
         int startingFrame;

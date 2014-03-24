@@ -532,12 +532,14 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kWriterFirstFrameParamName);
     firstFrameParam->setLabels("First frame", "First frame", "First frame");
     firstFrameParam->setIsSecret(true);
+    firstFrameParam->setAnimates(false);
     page->addChild(*firstFrameParam);
 
     ////////////Last frame
     OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kWriterLastFrameParamName);
     lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
     lastFrameParam->setIsSecret(true);
+    lastFrameParam->setAnimates(false);
     page->addChild(*lastFrameParam);
 
 

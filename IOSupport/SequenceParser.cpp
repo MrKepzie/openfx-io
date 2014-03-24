@@ -56,6 +56,11 @@ SequenceParser::~SequenceParser() {
     
 }
 
+bool SequenceParser::isEmpty() const
+{
+    return _frameIndexes.isEmpty();
+}
+
 void SequenceParser::initializeFromFile(const std::string& filename) {
     
     ///clear the previous indexes

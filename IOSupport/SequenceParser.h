@@ -110,6 +110,8 @@ public:
      **/
     int lastFrame() const;
     
+    bool isEmpty() const;
+    
 private:
     
     static void getDirectoryContainerPath(const std::string& filename,std::string& dirPath);

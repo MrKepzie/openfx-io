@@ -154,7 +154,7 @@ private:
     /**
      * @brief Called internally by getTimeDomain(...)
      **/
-    bool getSequenceTimeDomainInternal(OfxRangeD& range);
+    bool getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetOriginalFrameRange);
     
     /**
      * @brief Used internally by the GenericReader.
@@ -169,8 +169,10 @@ private:
     
     /**
      * @brief compute the sequence/file time from time
+     * @param canSetOriginalFrameRange If false, the underlying call
+     * cannot set the _originalFrameRange param values.
      */
-    double getSequenceTime(double t);
+    double getSequenceTime(double t,bool canSetOriginalFrameRange);
 
     /**
      * @brief Returns the filename of the image at the sequence time t.
@@ -213,7 +215,6 @@ private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
     SequenceParser* _sequenceParser; //< parser to extract the time domain
-    bool _wasOriginalRangeEverSet;
 
 };
 
