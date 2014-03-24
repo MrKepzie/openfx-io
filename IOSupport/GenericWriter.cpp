@@ -112,6 +112,20 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _frameRange = fetchChoiceParam(kWriterFrameRangeChoiceParamName);
     _firstFrame = fetchIntParam(kWriterFirstFrameParamName);
     _lastFrame = fetchIntParam(kWriterLastFrameParamName);
+    
+    int frameRangeChoice;
+    _frameRange->getValue(frameRangeChoice);
+    double first,last;
+    timeLineGetBounds(first,last);
+    if (frameRangeChoice == 2) {
+        _firstFrame->setIsSecret(false);
+        _firstFrame->setValue(first);
+        _lastFrame->setIsSecret(false);
+        _lastFrame->setValue(last);
+    } else {
+        _firstFrame->setIsSecret(true);
+        _lastFrame->setIsSecret(true);
+    }
 }
 
 GenericWriterPlugin::~GenericWriterPlugin()
