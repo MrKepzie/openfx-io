@@ -119,9 +119,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     timeLineGetBounds(first,last);
     if (frameRangeChoice == 2) {
         _firstFrame->setIsSecret(false);
-        _firstFrame->setValue(first);
         _lastFrame->setIsSecret(false);
-        _lastFrame->setValue(last);
     } else {
         _firstFrame->setIsSecret(true);
         _lastFrame->setIsSecret(true);
