@@ -504,8 +504,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     } else {
         // allocate
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-        int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
-        size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
+        int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
+        size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
 
