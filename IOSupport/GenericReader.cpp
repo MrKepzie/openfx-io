@@ -517,6 +517,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         // copy
         copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+        mem.unlock();
     }
 }
 
