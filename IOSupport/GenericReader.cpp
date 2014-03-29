@@ -510,13 +510,13 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         float *tmpPixelData = (float*)mem.lock();
 
         // read file
-        decode(filename, sequenceTime, args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+        decode(filename, sequenceTime, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
 
         ///do the color-space conversion
-        _ocio->apply(args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+        _ocio->apply(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
 
         // copy
-        copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+        copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
         mem.unlock();
     }
 }
@@ -630,7 +630,7 @@ using namespace OFX;
 
 void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
 {
-    desc.setPluginGrouping("Image/ReadOFX");
+    desc.setPluginGrouping("Image/Read");
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextReader);
