@@ -447,7 +447,7 @@ using namespace OFX;
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
-    desc.setPluginGrouping("Image/WriteOFX");
+    desc.setPluginGrouping("Image/Write");
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextWriter);
