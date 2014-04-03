@@ -630,7 +630,7 @@ using namespace OFX;
 
 void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
 {
-    desc.setPluginGrouping("Image/Read");
+    desc.setPluginGrouping("Image/Readers");
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextReader);
