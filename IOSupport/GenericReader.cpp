@@ -40,6 +40,7 @@
 
 #include <iostream>
 #include <memory>
+#include <climits>
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
