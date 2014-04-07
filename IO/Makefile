@@ -9,7 +9,8 @@ PLUGINOBJECTS = \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO
-VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../PFM ../OCIO ../RunScript
+VPATH += ../IOSupport ../EXR ../FFmpeg ../OIIO ../PFM ../OCIO ../RunScript \
+../IOSupport/SequenceParsing
 
 include ../Makefile.master
 
