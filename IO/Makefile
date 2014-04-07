@@ -5,7 +5,7 @@ PLUGINOBJECTS = \
 	OCIOColorSpace.o \
 	ReadPFM.o WritePFM.o \
 	RunScript.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o \
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO
