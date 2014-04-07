@@ -48,7 +48,7 @@
 #include <tuttle/ofxReadWrite.h>
 #endif
 
-#include "SequenceParser.h"
+#include "SequenceParsing/SequenceParsing.h"
 #include "GenericOCIO.h"
 #include "IOUtility.h"
 
@@ -84,7 +84,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _originalFrameRange(0)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
-, _sequenceParser(new SequenceParser)
+, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -105,9 +105,11 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     
     try {
         if (!filename.empty()) {
-            _sequenceParser->initializeFromFile(filename);
-            if (!_sequenceParser->isEmpty()) {
-                _originalFrameRange->setValue(_sequenceParser->firstFrame(),_sequenceParser->lastFrame());
+            SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
+            if (_sequenceFromFiles->isSingleFile()) {
+                _originalFrameRange->setValue(0, 0);
+            } else {
+                _originalFrameRange->setValue(_sequenceFromFiles->getFirstFrame(), _sequenceFromFiles->getLastFrame());
             }
         }
 
@@ -152,8 +154,12 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool ca
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
     if(!getSequenceTimeDomain(filename,range)){
-        range.min = _sequenceParser->firstFrame();
-        range.max = _sequenceParser->lastFrame();
+        if (_sequenceFromFiles->isSingleFile()) {
+            range.min = range.max = 0;
+        } else {
+            range.min = _sequenceFromFiles->getFirstFrame();
+            range.max = _sequenceFromFiles->getLastFrame();
+        }
     }
     
     
@@ -526,7 +532,9 @@ void GenericReaderPlugin::inputFileChanged() {
     _fileParam->getValue(filename);
     
     try {
-        _sequenceParser->initializeFromFile(filename);
+        delete _sequenceFromFiles;
+        _sequenceFromFiles = new SequenceParsing::SequenceFromFiles();
+        SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
     } catch(const std::exception& e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         return;

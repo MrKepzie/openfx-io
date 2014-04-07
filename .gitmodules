@@ -1,6 +1,6 @@
 [submodule "openfx"]
 	path = openfx
 	url = https://github.com/devernay/openfx.git
-[submodule "IOSupport/tinydir"]
-	path = IOSupport/tinydir
-	url = https://github.com/MrKepzie/tinydir
+[submodule "IOSupport/SequenceParsing"]
+	path = IOSupport/SequenceParsing
+	url = https://github.com/MrKepzie/SequenceParsing

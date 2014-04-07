@@ -44,7 +44,9 @@
 
 class SequenceParser;
 class GenericOCIO;
-
+namespace SequenceParsing {
+    class SequenceFromFiles;
+}
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 
@@ -214,7 +216,7 @@ protected:
 private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
-    SequenceParser* _sequenceParser; //< parser to extract the time domain
+    SequenceParsing::SequenceFromFiles* _sequenceFromFiles;
 
 };
 

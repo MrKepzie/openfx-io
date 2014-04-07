@@ -89,18 +89,6 @@
 		1E2F4DC4189295F600F4CE25 /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
 		1E2F4DC5189295F600F4CE25 /* FFmpegCompat.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D0188EE923003BC7F3 /* FFmpegCompat.h */; };
 		1E2F4DC6189295F600F4CE25 /* ReadFFmpeg.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B3D7188EE923003BC7F3 /* ReadFFmpeg.h */; };
-		1E2F4DCF1892965900F4CE25 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */; };
-		1E2F4DD01892965900F4CE25 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */; };
-		1E2F4DD11892965900F4CE25 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */; };
-		1E2F4DD21892965900F4CE25 /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */; };
-		1E2F4DD31892965900F4CE25 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
-		1E2F4DD41892965A00F4CE25 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
-		1E2F4DD51892965A00F4CE25 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
-		1E2F4DD61892965A00F4CE25 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
-		1E2F4DD71892965A00F4CE25 /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
-		1E2F4DD81892965A00F4CE25 /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
-		1E2F4DD91892965A00F4CE25 /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
-		1E2F4DDA1892965A00F4CE25 /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
 		1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F4D96189295DA00F4CE25 /* PluginRegistrationCombined.cpp */; };
 		1E2F4DDE1892977800F4CE25 /* ReadOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */; };
 		1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */; };
@@ -143,7 +131,6 @@
 		1E8B5DAB18B7A2F300C31FDC /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82D1891074000E9034B /* ofxsParams.cpp */; };
 		1E8B5DAC18B7A2F300C31FDC /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8291891074000E9034B /* ofxsImageEffect.cpp */; };
 		1E8B5DAD18B7A2F300C31FDC /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82F1891074000E9034B /* ofxsPropertyValidation.cpp */; };
-		1E8B5DAE18B7A2F300C31FDC /* SequenceParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */; };
 		1E8B5DAF18B7A2F300C31FDC /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82B1891074000E9034B /* ofxsLog.cpp */; };
 		1E8B5DB018B7A2F300C31FDC /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E8B5DB118B7A2F300C31FDC /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82A1891074000E9034B /* ofxsInteract.cpp */; };
@@ -152,11 +139,9 @@
 		1E8B5DB618B7A2F300C31FDC /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		1E8B5DB818B7A2F300C31FDC /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		1E8B5DB918B7A2F300C31FDC /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
-		1E8B5DBA18B7A2F300C31FDC /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
 		1E8B5DBB18B7A2F300C31FDC /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
 		1E8B5DBC18B7A2F300C31FDC /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
 		1E8B5DBD18B7A2F300C31FDC /* ofxInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62751875AAB500D8FA13 /* ofxInteract.h */; };
-		1E8B5DBE18B7A2F300C31FDC /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
 		1E8B5DBF18B7A2F300C31FDC /* ofxKeySyms.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62761875AAB500D8FA13 /* ofxKeySyms.h */; };
 		1E8B5DC018B7A2F300C31FDC /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
 		1E8B5DC118B7A2F300C31FDC /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
@@ -190,11 +175,9 @@
 		1ED499B018A00B66008A2D91 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		1ED499B218A00B66008A2D91 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		1ED499B318A00B66008A2D91 /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
-		1ED499B418A00B66008A2D91 /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
 		1ED499B518A00B66008A2D91 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
 		1ED499B618A00B66008A2D91 /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
 		1ED499B718A00B66008A2D91 /* ofxInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62751875AAB500D8FA13 /* ofxInteract.h */; };
-		1ED499B818A00B66008A2D91 /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
 		1ED499B918A00B66008A2D91 /* ofxKeySyms.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62761875AAB500D8FA13 /* ofxKeySyms.h */; };
 		1ED499BA18A00B66008A2D91 /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
 		1ED499BB18A00B66008A2D91 /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
@@ -227,11 +210,9 @@
 		1EDECBC418B9F8040093B6FC /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		1EDECBC618B9F8040093B6FC /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		1EDECBC718B9F8040093B6FC /* GenericWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E00B38A188EE887003BC7F3 /* GenericWriter.h */; };
-		1EDECBC818B9F8040093B6FC /* tinydir.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCE1892965900F4CE25 /* tinydir.h */; };
 		1EDECBC918B9F8040093B6FC /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
 		1EDECBCA18B9F8040093B6FC /* ofxImageEffect.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62741875AAB500D8FA13 /* ofxImageEffect.h */; };
 		1EDECBCB18B9F8040093B6FC /* ofxInteract.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62751875AAB500D8FA13 /* ofxInteract.h */; };
-		1EDECBCC18B9F8040093B6FC /* SequenceParser.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E2F4DCD1892965900F4CE25 /* SequenceParser.h */; };
 		1EDECBCD18B9F8040093B6FC /* ofxKeySyms.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62761875AAB500D8FA13 /* ofxKeySyms.h */; };
 		1EDECBCE18B9F8040093B6FC /* ofxMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62771875AAB500D8FA13 /* ofxMemory.h */; };
 		1EDECBCF18B9F8040093B6FC /* ofxMessage.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62781875AAB500D8FA13 /* ofxMessage.h */; };
@@ -299,6 +280,7 @@
 		D74E62901875AAB500D8FA13 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D74E62911875AAB500D8FA13 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D74E62921875AAB500D8FA13 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
+		D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -344,9 +326,6 @@
 		1E2F4D95189295DA00F4CE25 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2F4D96189295DA00F4CE25 /* PluginRegistrationCombined.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistrationCombined.cpp; sourceTree = "<group>"; };
 		1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SequenceParser.cpp; sourceTree = "<group>"; };
-		1E2F4DCD1892965900F4CE25 /* SequenceParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SequenceParser.h; sourceTree = "<group>"; };
-		1E2F4DCE1892965900F4CE25 /* tinydir.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tinydir.h; path = tinydir/tinydir.h; sourceTree = "<group>"; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
 		1E74D8181891070300E9034B /* ofxsCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCore.h; sourceTree = "<group>"; };
 		1E74D8191891070300E9034B /* ofxsHWNDInteract.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsHWNDInteract.h; sourceTree = "<group>"; };
@@ -421,6 +400,7 @@
 		D74E627F1875AAB500D8FA13 /* ofxProperty.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxProperty.h; path = ../openfx/include/ofxProperty.h; sourceTree = "<group>"; };
 		D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxSonyVegas.h; path = ../openfx/include/ofxSonyVegas.h; sourceTree = "<group>"; };
 		D74E62811875AAB500D8FA13 /* ofxTimeLine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxTimeLine.h; path = ../openfx/include/ofxTimeLine.h; sourceTree = "<group>"; };
+		D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SequenceParsing.cpp; path = SequenceParsing/SequenceParsing.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -486,9 +466,7 @@
 		1E00B386188EE860003BC7F3 /* IOSupport */ = {
 			isa = PBXGroup;
 			children = (
-				1E2F4DCC1892965900F4CE25 /* SequenceParser.cpp */,
-				1E2F4DCD1892965900F4CE25 /* SequenceParser.h */,
-				1E2F4DCE1892965900F4CE25 /* tinydir.h */,
+				D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */,
 				1E00B387188EE887003BC7F3 /* GenericReader.cpp */,
 				1E00B388188EE887003BC7F3 /* GenericReader.h */,
 				1E00B389188EE887003BC7F3 /* GenericWriter.cpp */,
@@ -746,7 +724,6 @@
 				1E2F4DB2189295F600F4CE25 /* GenericWriter.h in Headers */,
 				1E2F4DB3189295F600F4CE25 /* FFmpegHandler.h in Headers */,
 				1E2F4DB4189295F600F4CE25 /* ofxProgress.h in Headers */,
-				1E2F4DDA1892965A00F4CE25 /* tinydir.h in Headers */,
 				1E2F4DB5189295F600F4CE25 /* GenericReader.h in Headers */,
 				1E2F4DB6189295F600F4CE25 /* ofxsSupportPrivate.h in Headers */,
 				1E2F4DB7189295F600F4CE25 /* ofxProperty.h in Headers */,
@@ -759,7 +736,6 @@
 				1E2F4DBF189295F600F4CE25 /* ofxMemory.h in Headers */,
 				1E2F4DC1189295F600F4CE25 /* ofxPixels.h in Headers */,
 				1E2F4DC2189295F600F4CE25 /* ofxOpenGLRender.h in Headers */,
-				1E2F4DD61892965A00F4CE25 /* SequenceParser.h in Headers */,
 				1E2F4DC4189295F600F4CE25 /* ofxMessage.h in Headers */,
 				1E2F4DC5189295F600F4CE25 /* FFmpegCompat.h in Headers */,
 				1E2F4DC6189295F600F4CE25 /* ReadFFmpeg.h in Headers */,
@@ -772,11 +748,9 @@
 			files = (
 				1E8B5DB818B7A2F300C31FDC /* ofxCore.h in Headers */,
 				1E8B5DB918B7A2F300C31FDC /* GenericWriter.h in Headers */,
-				1E8B5DBA18B7A2F300C31FDC /* tinydir.h in Headers */,
 				1E8B5DBB18B7A2F300C31FDC /* ofxDialog.h in Headers */,
 				1E8B5DBC18B7A2F300C31FDC /* ofxImageEffect.h in Headers */,
 				1E8B5DBD18B7A2F300C31FDC /* ofxInteract.h in Headers */,
-				1E8B5DBE18B7A2F300C31FDC /* SequenceParser.h in Headers */,
 				1E8B5DBF18B7A2F300C31FDC /* ofxKeySyms.h in Headers */,
 				1E8B5DC018B7A2F300C31FDC /* ofxMemory.h in Headers */,
 				1E8B5DC118B7A2F300C31FDC /* ofxMessage.h in Headers */,
@@ -802,11 +776,9 @@
 			files = (
 				1ED499B218A00B66008A2D91 /* ofxCore.h in Headers */,
 				1ED499B318A00B66008A2D91 /* GenericWriter.h in Headers */,
-				1ED499B418A00B66008A2D91 /* tinydir.h in Headers */,
 				1ED499B518A00B66008A2D91 /* ofxDialog.h in Headers */,
 				1ED499B618A00B66008A2D91 /* ofxImageEffect.h in Headers */,
 				1ED499B718A00B66008A2D91 /* ofxInteract.h in Headers */,
-				1ED499B818A00B66008A2D91 /* SequenceParser.h in Headers */,
 				1ED499B918A00B66008A2D91 /* ofxKeySyms.h in Headers */,
 				1ED499BA18A00B66008A2D91 /* ofxMemory.h in Headers */,
 				1ED499BB18A00B66008A2D91 /* ofxMessage.h in Headers */,
@@ -832,11 +804,9 @@
 			files = (
 				1EDECBC618B9F8040093B6FC /* ofxCore.h in Headers */,
 				1EDECBC718B9F8040093B6FC /* GenericWriter.h in Headers */,
-				1EDECBC818B9F8040093B6FC /* tinydir.h in Headers */,
 				1EDECBC918B9F8040093B6FC /* ofxDialog.h in Headers */,
 				1EDECBCA18B9F8040093B6FC /* ofxImageEffect.h in Headers */,
 				1EDECBCB18B9F8040093B6FC /* ofxInteract.h in Headers */,
-				1EDECBCC18B9F8040093B6FC /* SequenceParser.h in Headers */,
 				1EDECBCD18B9F8040093B6FC /* ofxKeySyms.h in Headers */,
 				1EDECBCE18B9F8040093B6FC /* ofxMemory.h in Headers */,
 				1EDECBCF18B9F8040093B6FC /* ofxMessage.h in Headers */,
@@ -862,11 +832,9 @@
 			files = (
 				D709B97A1878918400D5A0B4 /* ofxCore.h in Headers */,
 				1E00B3A3188EE887003BC7F3 /* GenericWriter.h in Headers */,
-				1E2F4DD81892965A00F4CE25 /* tinydir.h in Headers */,
 				D709B97B1878918400D5A0B4 /* ofxDialog.h in Headers */,
 				D709B97C1878918400D5A0B4 /* ofxImageEffect.h in Headers */,
 				D709B97D1878918400D5A0B4 /* ofxInteract.h in Headers */,
-				1E2F4DD41892965A00F4CE25 /* SequenceParser.h in Headers */,
 				D709B97E1878918400D5A0B4 /* ofxKeySyms.h in Headers */,
 				D709B97F1878918400D5A0B4 /* ofxMemory.h in Headers */,
 				D709B9801878918400D5A0B4 /* ofxMessage.h in Headers */,
@@ -892,11 +860,9 @@
 			files = (
 				D7330DF518867C1E004A6199 /* ofxCore.h in Headers */,
 				1E00B3A5188EE887003BC7F3 /* GenericWriter.h in Headers */,
-				1E2F4DD91892965A00F4CE25 /* tinydir.h in Headers */,
 				D7330DF618867C1E004A6199 /* ofxDialog.h in Headers */,
 				D7330DF718867C1E004A6199 /* ofxImageEffect.h in Headers */,
 				D7330DF818867C1E004A6199 /* ofxInteract.h in Headers */,
-				1E2F4DD51892965A00F4CE25 /* SequenceParser.h in Headers */,
 				D7330DF918867C1E004A6199 /* ofxKeySyms.h in Headers */,
 				D7330DFA18867C1E004A6199 /* ofxMemory.h in Headers */,
 				D7330DFB18867C1E004A6199 /* ofxMessage.h in Headers */,
@@ -928,7 +894,6 @@
 				1E00B3A1188EE887003BC7F3 /* GenericWriter.h in Headers */,
 				1E00B3DC188EE923003BC7F3 /* FFmpegHandler.h in Headers */,
 				D74E628F1875AAB500D8FA13 /* ofxProgress.h in Headers */,
-				1E2F4DD71892965A00F4CE25 /* tinydir.h in Headers */,
 				1E00B395188EE887003BC7F3 /* GenericReader.h in Headers */,
 				1E74D8491891074000E9034B /* ofxsSupportPrivate.h in Headers */,
 				D74E62901875AAB500D8FA13 /* ofxProperty.h in Headers */,
@@ -941,7 +906,6 @@
 				D74E62881875AAB500D8FA13 /* ofxMemory.h in Headers */,
 				D74E628E1875AAB500D8FA13 /* ofxPixels.h in Headers */,
 				D74E628B1875AAB500D8FA13 /* ofxOpenGLRender.h in Headers */,
-				1E2F4DD31892965900F4CE25 /* SequenceParser.h in Headers */,
 				D74E62891875AAB500D8FA13 /* ofxMessage.h in Headers */,
 				1E00B3DA188EE923003BC7F3 /* FFmpegCompat.h in Headers */,
 				1E00B3E0188EE923003BC7F3 /* ReadFFmpeg.h in Headers */,
@@ -1108,6 +1072,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */,
+				D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */,
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
 				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
@@ -1122,7 +1087,6 @@
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,
 				1E2F4DA0189295F600F4CE25 /* GenericOCIO.cpp in Sources */,
-				1E2F4DD21892965900F4CE25 /* SequenceParser.cpp in Sources */,
 				1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */,
 				1E2F4D9D189295F600F4CE25 /* ofxsCore.cpp in Sources */,
 				1E2F4D9E189295F600F4CE25 /* ofxsParams.cpp in Sources */,
@@ -1142,7 +1106,6 @@
 				1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */,
 				1E8B5DA918B7A2F300C31FDC /* PluginRegistration.cpp in Sources */,
 				1E8B5DA818B7A2F300C31FDC /* GenericOCIO.cpp in Sources */,
-				1E8B5DAE18B7A2F300C31FDC /* SequenceParser.cpp in Sources */,
 				1E8B5DB018B7A2F300C31FDC /* GenericWriter.cpp in Sources */,
 				1E8B5DB318B7A2F300C31FDC /* GenericReader.cpp in Sources */,
 				1E8B5DA618B7A2F300C31FDC /* ofxsProperty.cpp in Sources */,
@@ -1204,7 +1167,6 @@
 				1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E74D8411891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8381891074000E9034B /* ofxsInteract.cpp in Sources */,
-				1E2F4DD01892965900F4CE25 /* SequenceParser.cpp in Sources */,
 				1E00B39D188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E74D8321891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D83E1891074000E9034B /* ofxsMultiThread.cpp in Sources */,
@@ -1223,7 +1185,6 @@
 				1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */,
-				1E2F4DD11892965900F4CE25 /* SequenceParser.cpp in Sources */,
 				1E74D8451891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8421891074000E9034B /* ofxsParams.cpp in Sources */,
@@ -1252,7 +1213,6 @@
 				1E00B38F188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				1E74D83A1891074000E9034B /* ofxsLog.cpp in Sources */,
 				1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */,
-				1E2F4DCF1892965900F4CE25 /* SequenceParser.cpp in Sources */,
 				1E74D8371891074000E9034B /* ofxsInteract.cpp in Sources */,
 				1E74D83D1891074000E9034B /* ofxsMultiThread.cpp in Sources */,
 			);
