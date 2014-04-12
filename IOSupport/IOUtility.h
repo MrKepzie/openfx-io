@@ -53,6 +53,7 @@
 #   define WARN(exp) ("WARNING: " exp)
 #endif
 
+#include <cmath>
 #include "ofxsImageEffect.h"
 
 /// numvals should be 256 for byte, 65536 for 16-bits, etc.
