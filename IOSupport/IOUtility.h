@@ -125,4 +125,24 @@ int getPixelBytes(OFX::PixelComponentEnum pixelComponents,
     return pixelBytes;
 }
 
+inline OfxRectI scaled(const OfxRectI& rect,double sx,double sy)
+{
+    OfxRectI ret;
+    ret.x1 = std::floor(((double)rect.x1 * sx) + 0.5);
+    ret.x2 = ret.x1 + std::floor(((double)(rect.x2 - rect.x1) * sx) + 0.5);
+    ret.y1 = std::floor(((double)rect.y1 * sy) + 0.5);
+    ret.y2 = ret.y1 + std::floor(((double)(rect.y2 - rect.y1) * sy) + 0.5);
+    return ret;
+}
+
+inline OfxRectD scaled(const OfxRectD& rect,double sx,double sy)
+{
+    OfxRectD ret;
+    ret.x1 = rect.x1 * sx;
+    ret.x2 = rect.x2 * sx;
+    ret.y1 = rect.y1 * sy;
+    ret.y2 = rect.y2 * sy;
+    return ret;
+}
+
 #endif

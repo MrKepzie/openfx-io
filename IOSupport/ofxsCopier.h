@@ -38,4 +38,48 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
 };
 
 
+template <class PIX, int nComponents>
+class PixelScaler : public OFX::PixelScalerProcessorFilterBase {
+    public :
+    // ctor
+    PixelScaler(OFX::ImageEffect &instance)
+    : OFX::PixelScalerProcessorFilterBase(instance)
+    {}
+    
+    // and do some processing
+    void multiThreadProcessImages(OfxRectI procWindow)
+    {
+        assert(procWindow.x1 == _dstBounds.x1 && procWindow.x2 == _dstBounds.x2);
+        std::cout << "dst y1 = " << procWindow.y1 << " dst y2 = " << procWindow.y2 << std::endl;
+        for(int y = procWindow.y1; y < procWindow.y2; ++y) {
+            double srcY = (double)y / _scale.y;
+            int fy = std::floor(srcY);
+            int cy = std::ceil(srcY);
+            double dy = std::max(0., std::min(srcY - fy, 1.));
+            
+            const PIX *srcPixFloor = (const PIX *) getSrcPixelAddress(_srcBounds.x1, fy);
+            const PIX *srcPixCeil = (const PIX *) getSrcPixelAddress(_srcBounds.x1, cy);
+            PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
+
+            for (int x = procWindow.x1; x < procWindow.x2; ++x) {
+                double srcX = (double)x / _scale.x;
+                int fx = std::floor(srcX);
+                int cx = std::ceil(srcX);
+                double dx = std::max(0., std::min(srcX - fx, 1.));
+                
+                for (int i = 0; i < nComponents ;++i) {
+                    
+                    const double Icc = (!srcPixFloor || fx < _srcBounds.x1) ? 0. : srcPixFloor[fx * nComponents + i];
+                    const double Inc = (!srcPixFloor || cx >= _srcBounds.x2) ? 0. : srcPixFloor[cx * nComponents + i];
+                    const double Icn = (!srcPixCeil || fx < _srcBounds.x1) ? 0. : srcPixCeil[fx * nComponents + i];
+                    const double Inn = (!srcPixCeil || cx >= _srcBounds.x2) ? 0. : srcPixCeil[cx * nComponents + i];
+                    *dstPix++ = Icc + dx*(Inc-Icc + dy*(Icc+Inn-Icn-Inc)) + dy*(Icn-Icc);
+                }
+
+            }
+        }
+    }
+};
+
+
 #endif

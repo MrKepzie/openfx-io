@@ -179,7 +179,7 @@ private:
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    void getFilenameAtSequenceTime(double t, std::string &filename);
+    void getFilenameAtSequenceTime(double t, std::string &filename,bool proxyFiles);
     
     /**
      * @brief Initializes the params depending on the input file.
@@ -197,9 +197,21 @@ private:
                        OFX::PixelComponentEnum dstPixelComponents,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
+    
+    void scalePixelData(const void* srcPixelData,
+                        OFX::PixelComponentEnum srcPixelComponents,
+                        OFX::BitDepthEnum srcPixelDepth,
+                        const OfxRectI& srcBounds,
+                        int srcRowBytes,
+                        void* dstPixelData,
+                        OFX::PixelComponentEnum dstPixelComponents,
+                        OFX::BitDepthEnum dstPixelDepth,
+                        const OfxRectI& dstBounds,
+                        int dstRowBytes);
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
+    OFX::StringParam  *_proxyFileParam; //< the proxy input files
     
     OFX::IntParam* _firstFrame; //< the first frame in the sequence (clamped to the time domain)
     OFX::ChoiceParam* _beforeFirst;//< what to do before the first frame

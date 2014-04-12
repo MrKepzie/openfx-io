@@ -41,6 +41,7 @@
 #include <iostream>
 #include <memory>
 #include <climits>
+#include <cmath>
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
@@ -55,6 +56,7 @@
 
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
+#define kReaderProxyFileParamName "proxy"
 #define kReaderMissingFrameParamName "onMissingFrame"
 #define kReaderFrameModeParamName "frameMode"
 #define kReaderTimeOffsetParamName "timeOffset"
@@ -75,6 +77,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _missingFrameParam(0)
 , _outputClip(0)
 , _fileParam(0)
+, _proxyFileParam(0)
 , _firstFrame(0)
 , _beforeFirst(0)
 , _lastFrame(0)
@@ -90,6 +93,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
     _fileParam = fetchStringParam(kReaderFileParamName);
+    _proxyFileParam = fetchStringParam(kReaderProxyFileParamName);
     _missingFrameParam = fetchChoiceParam(kReaderMissingFrameParamName);
     _firstFrame = fetchIntParam(kReaderFirstFrameParamName);
     _beforeFirst = fetchChoiceParam(kReaderBeforeParamName);
@@ -310,7 +314,7 @@ double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRan
     return sequenceTime;
 }
 
-void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::string &filename)
+void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::string &filename,bool proxyFiles)
 {
 
     
@@ -318,6 +322,13 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
     
     _fileParam->getValueAtTime(sequenceTime,filename);
+    if (proxyFiles) {
+        std::string proxyFileName;
+        _proxyFileParam->getValueAtTime(sequenceTime, proxyFileName);
+        if (!proxyFileName.empty() && !filename.empty()) {
+            filename = proxyFileName;
+        }
+    }
     
     ///if the frame is missing, do smthing according to the missing frame param
     if (filename.empty()) {
@@ -428,6 +439,75 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
     } // switch
 }
 
+
+/* set up and run a copy processor */
+static void setupAndScale(OFX::PixelScalerProcessorFilterBase & processor,
+                         const void *srcPixelData,
+                         const OfxRectI& srcBounds,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         OFX::BitDepthEnum srcPixelDepth,
+                         int srcRowBytes,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // make sure bit depths are sane
+    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+    
+    OfxPointD scale;
+    scale.x = (double)(dstBounds.x2 - dstBounds.x1) / (double)(srcBounds.x2 - srcBounds.x1);
+    scale.y = (double)(dstBounds.y2 - dstBounds.y1) / (double)(srcBounds.y2 - srcBounds.y1);
+    processor.setScale(scale);
+    
+    // set the render window
+    processor.setRenderWindow(dstBounds);
+    
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+void GenericReaderPlugin::scalePixelData(const void* srcPixelData,
+                    OFX::PixelComponentEnum srcPixelComponents,
+                    OFX::BitDepthEnum srcPixelDepth,
+                    const OfxRectI& srcBounds,
+                    int srcRowBytes,
+                    void* dstPixelData,
+                    OFX::PixelComponentEnum dstPixelComponents,
+                    OFX::BitDepthEnum dstPixelDepth,
+                    const OfxRectI& dstBounds,
+                    int dstRowBytes)
+{
+    
+    assert(srcPixelData && dstPixelData);
+    
+    // do the rendering
+    if (dstPixelDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        PixelScaler<float, 4> fred(*this);
+        setupAndScale(fred, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        PixelScaler<float, 3> fred(*this);
+        setupAndScale(fred, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        PixelScaler<float, 1> fred(*this);
+        setupAndScale(fred, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    } // switch
+
+
+}
+
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
     double sequenceTime;
@@ -437,8 +517,9 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     std::string filename;
-    
-    getFilenameAtSequenceTime(sequenceTime, filename);
+    ///Retrieve the original filename, we don't care about the proxy images here because the rod is
+    ///in canonical coordinates (it doesn't care about the render scale)
+    getFilenameAtSequenceTime(sequenceTime, filename,false);
     
     if (filename.empty()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -453,6 +534,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (!_outputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
+    ///The image will have the appropriate size since we support the render scale (multi-resolution)
     std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -463,8 +546,23 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
+    bool useProxy = false;
+    if (args.renderScale.x != 1. || args.renderScale.y != 1) {
+        useProxy = true;
+    }
+
+    
     std::string filename;
-    getFilenameAtSequenceTime(sequenceTime, filename);
+    getFilenameAtSequenceTime(sequenceTime, filename,false);
+    
+    std::string proxyFile;
+    if (useProxy) {
+        getFilenameAtSequenceTime(sequenceTime, proxyFile, true);
+        assert(!proxyFile.empty());
+    }
+    bool validProxy = proxyFile != filename;
+    
 
     void* dstPixelData = NULL;
     OfxRectI bounds;
@@ -492,6 +590,42 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
+    ///The args.renderWindow is already in pixels coordinate (render scale is already taken into account ).
+    ///If the filename IS NOT a proxy file we have to make sure the renderWindow is
+    ///upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
+    ///of the proxy file and adjust the scale so it fits the given scale.
+    // allocate
+    OfxRectI renderWindowToUse = args.renderWindow;
+    OfxPointD backScale;
+    if (useProxy) {
+        
+        if (!validProxy) {
+            ///the user didn't provide a proxy file, just decode the full image
+            ///upscale to a render scale of 1.
+            renderWindowToUse = scaled(args.renderWindow, 1. / args.renderScale.x, 1. / args.renderScale.y);
+            backScale = args.renderScale;
+        } else {
+            ///The user provided a proxyFile, scale it according to the render scale if needed
+            OfxRectD proxyFileRoD;
+            getFrameRegionOfDefinition(proxyFile, args.time, proxyFileRoD);
+            OfxRectD originalFileRoD;
+            getFrameRegionOfDefinition(filename, args.time, originalFileRoD);
+            
+            OfxPointD proxyActualScale;
+            proxyActualScale.x =  (proxyFileRoD.x2 - proxyFileRoD.x1) / (originalFileRoD.x2 - originalFileRoD.x1);
+            proxyActualScale.y =  (proxyFileRoD.y2 - proxyFileRoD.y1) / (originalFileRoD.y2 - originalFileRoD.y1);
+            
+            ///This is by how much we need to scale the proxy file in order to match the requested render scale
+            OfxPointD scaleAdjust;
+            scaleAdjust.x = (args.renderScale.x / proxyActualScale.x);
+            scaleAdjust.y = (args.renderScale.y / proxyActualScale.y);
+            renderWindowToUse = scaled(args.renderWindow, 1. / scaleAdjust.x,1. /  scaleAdjust.y);
+            backScale.x = scaleAdjust.x;
+            backScale.y = scaleAdjust.y;
+        }
+    }
+
+    
     // The following (commented out) code is not fully-safe, because the same instance may be have
     // two threads running on the same area of the same frame, and the apply()
     // calls both read and write dstImg.
@@ -507,23 +641,63 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     if (_ocio->isIdentity()) {
         // no colorspace conversion, just read file
-        decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
+        
+        if (!useProxy) {
+            decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
+        } else {
+            int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+            int tmpRowBytes = (renderWindowToUse.x2-renderWindowToUse.x1) * pixelBytes;
+            size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
+            OFX::ImageMemory mem(memSize,this);
+            float *tmpPixelData = (float*)mem.lock();
+            
+            // read file
+            if (!validProxy) {
+                decode(filename, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+            } else {
+                decode(proxyFile, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+            }
+            
+            if (backScale.x != 1. || backScale.y != 1.) {
+                /// adjust the scale to match the given output image
+                scalePixelData(tmpPixelData, pixelComponents, bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
+                               pixelComponents, bitDepth, args.renderWindow, dstRowBytes);
+            } else {
+                copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            }
+            
+            mem.unlock();
+        }
     } else {
-        // allocate
+        
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-        int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
-        size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
+        int tmpRowBytes = (renderWindowToUse.x2-renderWindowToUse.x1) * pixelBytes;
+        size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
 
         // read file
-        decode(filename, sequenceTime, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+        if (!validProxy || !useProxy) {
+            decode(filename, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+        } else {
+            decode(proxyFile, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+        }
 
         ///do the color-space conversion
-        _ocio->apply(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+        _ocio->apply(renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
 
+        if (useProxy) {
+            if (backScale.x != 1. || backScale.y != 1.) {
+            /// adjust the scale to match the given output image
+                scalePixelData(tmpPixelData, pixelComponents, bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
+                           pixelComponents, bitDepth, args.renderWindow, dstRowBytes);
+            } else {
+                copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            }
+        } else{
         // copy
-        copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+        }
         mem.unlock();
     }
 }
@@ -655,7 +829,11 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
-    desc.setSupportsMultiResolution(false);
+    
+    ///We do support multi-resolution via the proxy mode
+    desc.setSupportsMultiResolution(true);
+    
+    
     desc.setSupportsTiles(supportsTiles);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
@@ -802,6 +980,20 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     originalFrameRangeParam->setIsSecret(true);
     originalFrameRangeParam->setIsPersistant(false);
     page->addChild(*originalFrameRangeParam);
+    
+    
+    //////////Input proxy file
+    OFX::StringParamDescriptor* proxyFileParam = desc.defineStringParam(kReaderProxyFileParamName);
+    proxyFileParam->setLabels("Proxy file", "Proxy file", "Proxy file");
+    proxyFileParam->setStringType(OFX::eStringTypeFilePath);
+    proxyFileParam->setHint("Filename of the proxy images. They will be used instead of the images read from the File parameter "
+                       "when the proxy mode (downscaling of the images) is activated.");
+    proxyFileParam->setAnimates(!isVideoStreamPlugin);
+    // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
+    proxyFileParam->setScriptName(kReaderProxyFileParamName);
+    desc.addClipPreferencesSlaveParam(*proxyFileParam);
+    page->addChild(*proxyFileParam);
+    
     return page;
 }
 
