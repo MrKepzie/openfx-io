@@ -50,7 +50,6 @@ class PixelScaler : public OFX::PixelScalerProcessorFilterBase {
     void multiThreadProcessImages(OfxRectI procWindow)
     {
         assert(procWindow.x1 == _dstBounds.x1 && procWindow.x2 == _dstBounds.x2);
-        std::cout << "dst y1 = " << procWindow.y1 << " dst y2 = " << procWindow.y2 << std::endl;
         for(int y = procWindow.y1; y < procWindow.y2; ++y) {
             double srcY = (double)y / _scale.y;
             int fy = std::floor(srcY);
