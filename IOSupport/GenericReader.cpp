@@ -549,7 +549,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     bool useProxy = false;
     if (args.renderScale.x != 1. || args.renderScale.y != 1) {
-        useProxy = true;
+        //    useProxy = true;
     }
 
     
@@ -831,7 +831,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setHostFrameThreading(false);
     
     ///We do support multi-resolution via the proxy mode
-    desc.setSupportsMultiResolution(true);
+    desc.setSupportsMultiResolution(false);
     
     
     desc.setSupportsTiles(supportsTiles);
