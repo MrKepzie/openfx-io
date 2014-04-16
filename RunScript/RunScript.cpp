@@ -76,6 +76,7 @@
 
 #include "RunScript.h"
 
+#undef DEBUG
 #ifdef DEBUG
 #include <iostream>
 #define DBG(x) x
