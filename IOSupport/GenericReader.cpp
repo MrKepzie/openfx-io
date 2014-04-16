@@ -549,7 +549,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     bool useProxy = false;
     if (args.renderScale.x != 1. || args.renderScale.y != 1) {
-        useProxy = true;
+        // disabled (buggy)
+        //    useProxy = true;
     }
 
     
@@ -830,9 +831,8 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     
-    ///We do support multi-resolution via the proxy mode
-    //desc.setSupportsMultiResolution(true);
-    
+    // We may support multi-resolution in the future via the proxy mode
+    desc.setSupportsMultiResolution(false);
     
     desc.setSupportsTiles(supportsTiles);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
