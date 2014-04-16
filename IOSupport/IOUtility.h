@@ -136,14 +136,4 @@ inline OfxRectI scaled(const OfxRectI& rect,double sx,double sy)
     return ret;
 }
 
-inline OfxRectD scaled(const OfxRectD& rect,double sx,double sy)
-{
-    OfxRectD ret;
-    ret.x1 = rect.x1 * sx;
-    ret.x2 = rect.x2 * sx;
-    ret.y1 = rect.y1 * sy;
-    ret.y2 = rect.y2 * sy;
-    return ret;
-}
-
 #endif
