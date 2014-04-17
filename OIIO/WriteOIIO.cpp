@@ -268,7 +268,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime /*time*/, cons
     }
     
 	OpenImageIO::TypeDesc oiioBitDepth;
-	size_t sizeOfChannel = 0;
+	//size_t sizeOfChannel = 0;
 	int    bitsPerSample  = 0;
 
 	int finalBitDepth_i;
@@ -281,47 +281,47 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime /*time*/, cons
 		case eTuttlePluginBitDepth8:
 			oiioBitDepth = TypeDesc::UINT8;
 			bitsPerSample = 8;
-			sizeOfChannel = 1;
+			//sizeOfChannel = 1;
 			break;
 		case eTuttlePluginBitDepth10:
 			oiioBitDepth = TypeDesc::UINT16;
 			bitsPerSample = 10;
-			sizeOfChannel = 2;
+			//sizeOfChannel = 2;
 			break;
 		case eTuttlePluginBitDepth12:
 			oiioBitDepth = TypeDesc::UINT16;
 			bitsPerSample = 12;
-			sizeOfChannel = 2;
+			//sizeOfChannel = 2;
 			break;
 		case eTuttlePluginBitDepth16:
 			oiioBitDepth = TypeDesc::UINT16;
 			bitsPerSample = 16;
-			sizeOfChannel = 2;
+			//sizeOfChannel = 2;
 			break;
 		case eTuttlePluginBitDepth16f:
 			oiioBitDepth = TypeDesc::HALF;
 			bitsPerSample = 16;
-			sizeOfChannel = 2;
+			//sizeOfChannel = 2;
 			break;
 		case eTuttlePluginBitDepth32:
 			oiioBitDepth = TypeDesc::UINT32;
 			bitsPerSample = 32;
-			sizeOfChannel = 4;
+			//sizeOfChannel = 4;
 			break;
 		case eTuttlePluginBitDepth32f:
 			oiioBitDepth = TypeDesc::FLOAT;
 			bitsPerSample = 32;
-			sizeOfChannel = 4;
+			//sizeOfChannel = 4;
 			break;
 		case eTuttlePluginBitDepth64:
 			oiioBitDepth = TypeDesc::UINT64;
 			bitsPerSample = 64;
-			sizeOfChannel = 8;
+			//sizeOfChannel = 8;
 			break;
 		case eTuttlePluginBitDepth64f:
 			oiioBitDepth = TypeDesc::DOUBLE;
 			bitsPerSample = 64;
-			sizeOfChannel = 8;
+			//sizeOfChannel = 8;
 			break;
 	}
     ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth);

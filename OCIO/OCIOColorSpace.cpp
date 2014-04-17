@@ -133,6 +133,7 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     if (!srcClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    assert(srcClip_);
     std::auto_ptr<OFX::Image> srcImg(srcClip_->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -143,6 +144,7 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     if (!dstClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    assert(dstClip_);
     std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);

@@ -179,7 +179,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
     assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
 
-    int numChannels;
+    int numChannels = 0;
     int outputChannelBegin = 0;
     int chbegin;
     int chend;
@@ -218,7 +218,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-
+    assert(numChannels);
     int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
 
     if (fillRGB) {

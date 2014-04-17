@@ -121,7 +121,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    int numChannels;
+    int numChannels = 0;
     switch(pixelComponents)
     {
         case OFX::ePixelComponentRGBA:
@@ -136,6 +136,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+    assert(numChannels);
     try {
         int compressionIndex;
         _compression->getValue(compressionIndex);
@@ -163,9 +164,9 @@ void WriteEXRPlugin::encode(const std::string& filename,
                                Imath::V2f(0, 0), 1, Imf_::INCREASING_Y, compression);
         
         Imf_::PixelType pixelType;
-        if(depth == 32){
+        if (depth == 32) {
             pixelType = Imf_::FLOAT;
-        }else{
+        } else {
             assert(depth == 16);
             pixelType = Imf_::HALF;
         }

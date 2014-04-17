@@ -492,62 +492,62 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 msg += "- ";
                 msg += csname;
                 bool first = true;
-                int roles = 0;
+                //int roles = 0;
                 if (i == defaultcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_DEFAULT;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == referencecs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_REFERENCE;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == datacs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_DATA;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == colorpickingcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_COLOR_PICKING;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == scenelinearcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == compositinglogcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == colortimingcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_COLOR_TIMING;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == texturepaintcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
                 if (i == mattepaintcs) {
                     msg += first ? " (" : ", ";
                     msg += OCIO_NAMESPACE::ROLE_MATTE_PAINT;
                     first = false;
-                    ++roles;
+                    //++roles;
                 }
-                if (roles > 0) {
+                if (!first /*&& roles > 0*/) {
                     msg += ')';
                 }
                 std::string csdesc = cs->getDescription();
@@ -610,6 +610,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 outputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
                 _outputSpace->setValue(outputSpace);
                 outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
+                assert(outputSpaceIndex >= 0);
             }
         }
         outputCheck();
