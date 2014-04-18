@@ -263,8 +263,6 @@ inline OfxRectI nextRectLevel(const OfxRectI& r) {
     return ret;
 }
 
-inline int nearestPOT(double v) { return std::floor(std::log(v) / std::log(2) + 0.5); }
-
 inline double getScaleFromMipMapLevel(unsigned int level)
 {
     return 1./(1<<level);

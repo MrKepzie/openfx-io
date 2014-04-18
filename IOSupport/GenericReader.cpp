@@ -736,11 +736,11 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     OfxRectI renderWindowToUse = args.renderWindow;
     
     ///We only support downscaling at a power of two.
-    unsigned int renderMipmapLevel = getLevelFromScale(nearestPOT(std::max(1. / args.renderScale.x, 1. / args.renderScale.y)));
-    unsigned int proxyMipMapLevel = getLevelFromScale(nearestPOT(std::max(1. / proxyScaleThreshold.x, 1. / proxyScaleThreshold.y)));
+    unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
+    unsigned int proxyMipMapLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
     if (useProxy) {
         renderWindowToUse = roundPowerOfTwoLargestEnclosed(renderWindowToUse, renderMipmapLevel);
-    } else if (args.renderScale.x != 1. || args.renderScale.y != 1.) {
+    } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
         ///the user didn't provide a proxy file, just decode the full image
         ///upscale to a render scale of 1.
         renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
