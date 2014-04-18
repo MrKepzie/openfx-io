@@ -240,23 +240,7 @@ namespace OFX {
             return (void *) pix;
         }
     };
-    
-    class PixelScalerProcessorFilterBase : public OFX::PixelProcessorFilterBase {
-        
-    protected:
-        OfxPointD _scale;
-        
-    public:
-        PixelScalerProcessorFilterBase(OFX::ImageEffect &instance)
-        : PixelProcessorFilterBase(instance)
-        {
-            _scale.x = _scale.y = 0;
-        }
-        
-        void setScale(const OfxPointD& scale) {
-            _scale = scale;
-        }
-    };
+
 
 };
 #endif

@@ -198,7 +198,8 @@ private:
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
     
-    void scalePixelData(const void* srcPixelData,
+    void scalePixelData(unsigned int levels,
+                        const void* srcPixelData,
                         OFX::PixelComponentEnum srcPixelComponents,
                         OFX::BitDepthEnum srcPixelDepth,
                         const OfxRectI& srcBounds,
@@ -208,10 +209,14 @@ private:
                         OFX::BitDepthEnum dstPixelDepth,
                         const OfxRectI& dstBounds,
                         int dstRowBytes);
+    
+    OfxPointD detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time);
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
     OFX::StringParam  *_proxyFileParam; //< the proxy input files
+    OFX::Double2DParam *_proxyScale; //< the proxy images scale
+    OFX::BooleanParam *_enableCustomScale; //< is custom proxy scale enabled
     
     OFX::IntParam* _firstFrame; //< the first frame in the sequence (clamped to the time domain)
     OFX::ChoiceParam* _beforeFirst;//< what to do before the first frame

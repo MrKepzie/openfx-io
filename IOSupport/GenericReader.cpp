@@ -40,6 +40,7 @@
 
 #include <iostream>
 #include <memory>
+#include <algorithm>
 #include <climits>
 #include <cmath>
 
@@ -57,6 +58,8 @@
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
 #define kReaderProxyFileParamName "proxy"
+#define kReaderProxyScaleFileParamName "proxy scale"
+#define kReaderCustomScaleParamName "custom scale"
 #define kReaderMissingFrameParamName "onMissingFrame"
 #define kReaderFrameModeParamName "frameMode"
 #define kReaderTimeOffsetParamName "timeOffset"
@@ -72,12 +75,16 @@
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
 #define MAX_SEARCH_RANGE 400000
 
+#define kSupportsMultiResolution 0
+
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
 , _outputClip(0)
 , _fileParam(0)
 , _proxyFileParam(0)
+, _proxyScale(0)
+, _enableCustomScale(0)
 , _firstFrame(0)
 , _beforeFirst(0)
 , _lastFrame(0)
@@ -94,6 +101,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     
     _fileParam = fetchStringParam(kReaderFileParamName);
     _proxyFileParam = fetchStringParam(kReaderProxyFileParamName);
+    _proxyScale = fetchDouble2DParam(kReaderProxyScaleFileParamName);
+    _enableCustomScale = fetchBooleanParam(kReaderCustomScaleParamName);
     _missingFrameParam = fetchChoiceParam(kReaderMissingFrameParamName);
     _firstFrame = fetchIntParam(kReaderFirstFrameParamName);
     _beforeFirst = fetchChoiceParam(kReaderBeforeParamName);
@@ -439,53 +448,180 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
     } // switch
 }
 
-
-/* set up and run a copy processor */
-static void setupAndScale(OFX::PixelScalerProcessorFilterBase & processor,
-                         const void *srcPixelData,
-                         const OfxRectI& srcBounds,
-                         OFX::PixelComponentEnum srcPixelComponents,
-                         OFX::BitDepthEnum srcPixelDepth,
-                         int srcRowBytes,
-                         void *dstPixelData,
-                         const OfxRectI& dstBounds,
-                         OFX::PixelComponentEnum dstPixelComponents,
-                         OFX::BitDepthEnum dstPixelDepth,
-                         int dstRowBytes)
+template <typename PIX,int nComponents>
+void halve1DImage(const PIX* srcPixels,
+                  const OfxRectI& srcBounds,
+                  PIX* dstPixels,
+                  const OfxRectI& dstBounds)
 {
-    assert(srcPixelData && dstPixelData);
+    int width = srcBounds.x2 - srcBounds.x1;
+    int height = srcBounds.y2 - srcBounds.y1;
+
     
-    // make sure bit depths are sane
-    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    int halfWidth = width / 2;
+    int halfHeight = height / 2;
+    
+    assert(width == 1 || height == 1); /// must be 1D
+    assert(dstBounds.x1*2 >= srcBounds.x1 &&
+          dstBounds.x2*2 <= srcBounds.x2 &&
+          dstBounds.y1*2 >= srcBounds.y1 &&
+          dstBounds.y2*2 <= srcBounds.y2);
+    
+    
+    if (height == 1) { //1 row
+        assert(width != 1);	/// widthxheight can't be 1x1
+        
+        for (int x = 0; x < halfWidth; ++x) {
+            for (int k = 0; k < nComponents; ++k) {
+                *dstPixels++ = (*srcPixels + *(srcPixels + nComponents)) / 2.;
+                ++srcPixels;
+            }
+            srcPixels += nComponents;
+        }
+        
+    } else if (width == 1) {
+        
+        int rowSize = width * nComponents;
+        
+        for (int y = 0; y < halfHeight; ++y) {
+            for (int k = 0; k < nComponents;++k) {
+                *dstPixels++ = (*srcPixels + (*srcPixels + rowSize)) / 2.;
+                ++srcPixels;
+            }
+            srcPixels += rowSize;
+        }
     }
-    
-    // set the images
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
-    
-    OfxPointD scale;
-    scale.x = (double)(dstBounds.x2 - dstBounds.x1) / (double)(srcBounds.x2 - srcBounds.x1);
-    scale.y = (double)(dstBounds.y2 - dstBounds.y1) / (double)(srcBounds.y2 - srcBounds.y1);
-    processor.setScale(scale);
-    
-    // set the render window
-    processor.setRenderWindow(dstBounds);
-    
-    // Call the base class process member, this will call the derived templated process code
-    processor.process();
 }
 
-void GenericReaderPlugin::scalePixelData(const void* srcPixelData,
-                    OFX::PixelComponentEnum srcPixelComponents,
-                    OFX::BitDepthEnum srcPixelDepth,
-                    const OfxRectI& srcBounds,
-                    int srcRowBytes,
-                    void* dstPixelData,
-                    OFX::PixelComponentEnum dstPixelComponents,
-                    OFX::BitDepthEnum dstPixelDepth,
-                    const OfxRectI& dstBounds,
-                    int dstRowBytes)
+
+template <typename PIX,int nComponents>
+void halveImage(const PIX* srcPixels,
+                const OfxRectI& srcBounds,
+                PIX* dstPixels,
+                const OfxRectI& dstBounds)
+{
+    int width = srcBounds.x2 - srcBounds.x1;
+    int height = srcBounds.y2 - srcBounds.y1;
+    
+    if (width == 1 || height == 1) {
+        assert( !(width == 1 && height == 1) ); /// can't be 1x1
+        halve1DImage<PIX,nComponents>(srcPixels,srcBounds,dstPixels,dstBounds);
+        return;
+    }
+    
+    // the pixelRoD of the output should be enclosed in half the roi.
+    // It does not have to be exactly half of the input.
+    assert(dstBounds.x1*2 >= srcBounds.x1 &&
+           dstBounds.x2*2 <= srcBounds.x2 &&
+           dstBounds.y1*2 >= srcBounds.y1 &&
+           dstBounds.y2*2 <= srcBounds.y2);
+    
+    int rowSize = width * nComponents;
+    
+    int padding = rowSize - (width * nComponents);
+    
+    int dstWidth = dstBounds.x2 - dstBounds.x1;
+    int dstHeight = dstBounds.y2 - dstBounds.y1;
+    
+    for (int y = 0; y < dstHeight; ++y) {
+        for (int x = 0; x < dstWidth; ++x) {
+            for (int k = 0; k < nComponents; ++k) {
+                *dstPixels++ =  (*srcPixels +
+                           *(srcPixels + nComponents) +
+                           *(srcPixels + rowSize) +
+                           *(srcPixels + rowSize  + nComponents)) / 4;
+                ++srcPixels;
+            }
+            srcPixels += nComponents;
+        }
+        srcPixels += padding;
+        srcPixels += rowSize;
+    }
+
+}
+
+template <typename PIX,int nComponents>
+void buildMipMapLevel(OFX::ImageEffect* instance,
+                      unsigned int level,
+                      const PIX* srcPixels,
+                      const OfxRectI& srcBounds,
+                      PIX* dstPixels,
+                      const OfxRectI& dstBounds)
+{
+    assert(level > 0);
+    
+    OfxRectI srcBounds_rounded = roundPowerOfTwoLargestEnclosed(srcBounds,level);
+    
+    ///The last mip map level we will make with closestPo2
+    OfxRectI lastLevelBounds = downscalePowerOfTwo(srcBounds_rounded,level);
+    
+    ///The output image must contain the last level roi
+    assert(lastLevelBounds.x1 >= dstBounds.x1 && lastLevelBounds.x2 <= dstBounds.x2 &&
+           lastLevelBounds.y1 >= dstBounds.y1 && lastLevelBounds.y2 <= dstBounds.y2);
+
+    const PIX* srcImg = srcPixels;
+    OFX::ImageMemory* mem = NULL;
+    PIX* dstImg = NULL;
+    bool mustFreeSrc = false;
+    
+    
+    ///Build all the mipmap levels until we reach the one we are interested in
+    for (unsigned int i = 0; i < level; ++i) {
+        
+        ///Halve the closestPo2 rect
+        OfxRectI halvedRoI = nextRectLevel(srcBounds_rounded);
+        
+        ///Allocate an image with half the size of the source image
+        size_t memSize = (halvedRoI.x2 - halvedRoI.x1) * (halvedRoI.y2 - halvedRoI.y1) * nComponents * sizeof(PIX);
+        OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
+        dstImg = (float*)tmpMem->lock();
+
+        halveImage<PIX, nComponents>(srcImg, srcBounds_rounded, dstImg, halvedRoI);
+
+        ///Clean-up, we should use shared_ptrs for safety
+        if (mustFreeSrc) {
+            assert(mem);
+            mem->unlock();
+            delete mem;
+            mem = NULL;
+        }
+        
+        ///Switch for next pass
+        srcBounds_rounded = halvedRoI;
+        srcImg = dstImg;
+        mem = tmpMem;
+        mustFreeSrc = true;
+    }
+    
+    
+    
+    int endPixels = (srcBounds_rounded.x2 - srcBounds_rounded.x1) / (srcBounds_rounded.y2 - srcBounds_rounded.y1) * nComponents * sizeof(PIX);
+    
+    ///Finally copy the last mipmap level into output.
+    std::copy(srcImg, srcImg + endPixels, dstPixels);
+    
+    ///Clean-up, we should use shared_ptrs for safety
+    if (mustFreeSrc) {
+        assert(mem);
+        mem->unlock();
+        delete mem;
+        mem = NULL;
+    }
+}
+
+
+
+void GenericReaderPlugin::scalePixelData(unsigned int levels,
+                                         const void* srcPixelData,
+                                         OFX::PixelComponentEnum srcPixelComponents,
+                                         OFX::BitDepthEnum srcPixelDepth,
+                                         const OfxRectI& srcBounds,
+                                         int srcRowBytes,
+                                         void* dstPixelData,
+                                         OFX::PixelComponentEnum dstPixelComponents,
+                                         OFX::BitDepthEnum dstPixelDepth,
+                                         const OfxRectI& dstBounds,
+                                         int dstRowBytes)
 {
     
     assert(srcPixelData && dstPixelData);
@@ -494,15 +630,13 @@ void GenericReaderPlugin::scalePixelData(const void* srcPixelData,
     if (dstPixelDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+    
     if(dstPixelComponents == OFX::ePixelComponentRGBA) {
-        PixelScaler<float, 4> fred(*this);
-        setupAndScale(fred, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+        buildMipMapLevel<float, 4>(this, levels, (const float*)srcPixelData, srcBounds, (float*)dstPixelData, dstBounds);
     } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
-        PixelScaler<float, 3> fred(*this);
-        setupAndScale(fred, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+        buildMipMapLevel<float, 3>(this, levels, (const float*)srcPixelData, srcBounds, (float*)dstPixelData, dstBounds);
     }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
-        PixelScaler<float, 1> fred(*this);
-        setupAndScale(fred, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+        buildMipMapLevel<float, 1>(this, levels, (const float*)srcPixelData, srcBounds, (float*)dstPixelData, dstBounds);
     } // switch
 
 
@@ -547,10 +681,12 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
+    OfxPointD proxyScaleThreshold;
+    _proxyScale->getValue(proxyScaleThreshold.x, proxyScaleThreshold.y);
+    
     bool useProxy = false;
-    if (args.renderScale.x != 1. || args.renderScale.y != 1) {
-        // disabled (buggy)
-        //    useProxy = true;
+    if ((args.renderScale.x <= proxyScaleThreshold.x || args.renderScale.y <= proxyScaleThreshold.y) && kSupportsMultiResolution) {
+        useProxy = true;
     }
 
     
@@ -561,9 +697,10 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (useProxy) {
         getFilenameAtSequenceTime(sequenceTime, proxyFile, true);
         assert(!proxyFile.empty());
+        
+        ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
+        useProxy |= proxyFile != filename;
     }
-    bool validProxy = proxyFile != filename;
-    
 
     void* dstPixelData = NULL;
     OfxRectI bounds;
@@ -597,33 +734,16 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///of the proxy file and adjust the scale so it fits the given scale.
     // allocate
     OfxRectI renderWindowToUse = args.renderWindow;
-    OfxPointD backScale;
+    
+    ///We only support downscaling at a power of two.
+    unsigned int renderMipmapLevel = getLevelFromScale(nearestPOT(std::max(1. / args.renderScale.x, 1. / args.renderScale.y)));
+    unsigned int proxyMipMapLevel = getLevelFromScale(nearestPOT(std::max(1. / proxyScaleThreshold.x, 1. / proxyScaleThreshold.y)));
     if (useProxy) {
-        
-        if (!validProxy) {
-            ///the user didn't provide a proxy file, just decode the full image
-            ///upscale to a render scale of 1.
-            renderWindowToUse = scaled(args.renderWindow, 1. / args.renderScale.x, 1. / args.renderScale.y);
-            backScale = args.renderScale;
-        } else {
-            ///The user provided a proxyFile, scale it according to the render scale if needed
-            OfxRectD proxyFileRoD;
-            getFrameRegionOfDefinition(proxyFile, args.time, proxyFileRoD);
-            OfxRectD originalFileRoD;
-            getFrameRegionOfDefinition(filename, args.time, originalFileRoD);
-            
-            OfxPointD proxyActualScale;
-            proxyActualScale.x =  (proxyFileRoD.x2 - proxyFileRoD.x1) / (originalFileRoD.x2 - originalFileRoD.x1);
-            proxyActualScale.y =  (proxyFileRoD.y2 - proxyFileRoD.y1) / (originalFileRoD.y2 - originalFileRoD.y1);
-            
-            ///This is by how much we need to scale the proxy file in order to match the requested render scale
-            OfxPointD scaleAdjust;
-            scaleAdjust.x = (args.renderScale.x / proxyActualScale.x);
-            scaleAdjust.y = (args.renderScale.y / proxyActualScale.y);
-            renderWindowToUse = scaled(args.renderWindow, 1. / scaleAdjust.x,1. /  scaleAdjust.y);
-            backScale.x = scaleAdjust.x;
-            backScale.y = scaleAdjust.y;
-        }
+        renderWindowToUse = roundPowerOfTwoLargestEnclosed(renderWindowToUse, renderMipmapLevel);
+    } else if (args.renderScale.x != 1. || args.renderScale.y != 1.) {
+        ///the user didn't provide a proxy file, just decode the full image
+        ///upscale to a render scale of 1.
+        renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
     }
 
     
@@ -640,6 +760,16 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     // Good solution: read into a temporary image, apply colorspace conversion, then copy.
 
+    /// how many times do we need to halve the image read
+    int downscaleLevels;
+    
+    if (useProxy) {
+        downscaleLevels = renderMipmapLevel - proxyMipMapLevel;
+    } else {
+        downscaleLevels = renderMipmapLevel;
+    }
+    assert(downscaleLevels >= 0);
+
     if (_ocio->isIdentity()) {
         // no colorspace conversion, just read file
         
@@ -653,15 +783,17 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
             float *tmpPixelData = (float*)mem.lock();
             
             // read file
-            if (!validProxy) {
+            if (!useProxy) {
                 decode(filename, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
             } else {
                 decode(proxyFile, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
             }
             
-            if (backScale.x != 1. || backScale.y != 1.) {
+            
+            if (kSupportsMultiResolution && downscaleLevels > 0) {
                 /// adjust the scale to match the given output image
-                scalePixelData(tmpPixelData, pixelComponents, bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
+                scalePixelData((unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+                               bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
                                pixelComponents, bitDepth, args.renderWindow, dstRowBytes);
             } else {
                 copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
@@ -678,7 +810,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         float *tmpPixelData = (float*)mem.lock();
 
         // read file
-        if (!validProxy || !useProxy) {
+        if (!useProxy) {
             decode(filename, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
         } else {
             decode(proxyFile, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
@@ -686,17 +818,14 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         ///do the color-space conversion
         _ocio->apply(renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
-
-        if (useProxy) {
-            if (backScale.x != 1. || backScale.y != 1.) {
+        
+        if (kSupportsMultiResolution && downscaleLevels > 0) {
             /// adjust the scale to match the given output image
-                scalePixelData(tmpPixelData, pixelComponents, bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
+            scalePixelData((unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+                           bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
                            pixelComponents, bitDepth, args.renderWindow, dstRowBytes);
-            } else {
-                copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
-            }
         } else{
-        // copy
+            // copy
             copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
         }
         mem.unlock();
@@ -736,6 +865,34 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         if (args.reason != OFX::eChangeTime) {
             inputFileChanged();
         }
+    } else if ( paramName == kReaderProxyFileParamName) {
+        ///Detect the scale of the proxy.
+        std::string proxyFile,originalFileName;
+        double sequenceTime;
+        try {
+            sequenceTime =  getSequenceTime(args.time,false);
+        } catch (const std::exception& e) {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        getFilenameAtSequenceTime(sequenceTime, originalFileName,false);
+        getFilenameAtSequenceTime(sequenceTime, proxyFile, true);
+        
+        if (!proxyFile.empty() && proxyFile != originalFileName) {
+            ///show the scale param
+            _proxyScale->setIsSecret(false);
+            _enableCustomScale->setIsSecret(false);
+            
+            OfxPointD scale = detectProxyScale(originalFileName,proxyFile,args.time);
+            _proxyScale->setValue(scale.x, scale.y);
+        } else {
+            _proxyScale->setIsSecret(true);
+            _enableCustomScale->setIsSecret(true);
+        }
+        
+    } else if (paramName == kReaderCustomScaleParamName) {
+        bool enabled;
+        _enableCustomScale->getValue(enabled);
+        _proxyScale->setEnabled(enabled);
     } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
@@ -810,6 +967,17 @@ void GenericReaderPlugin::purgeCaches() {
     _ocio->purgeCaches();
 }
 
+OfxPointD GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time)
+{
+    OfxRectD originalRoD,proxyRoD;
+    getFrameRegionOfDefinition(originalFileName, time, originalRoD);
+    getFrameRegionOfDefinition(proxyFileName, time, proxyRoD);
+    OfxPointD ret;
+    ret.x = (proxyRoD.x2 - proxyRoD.x1) / (originalRoD.x2 - originalRoD.x1);
+    ret.y = (proxyRoD.y2 - proxyRoD.y1) / (originalRoD.y2 - originalRoD.y1);
+    return ret;
+}
+
 using namespace OFX;
 
 void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
@@ -832,7 +1000,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setHostFrameThreading(false);
     
     // We may support multi-resolution in the future via the proxy mode
-    desc.setSupportsMultiResolution(false);
+    desc.setSupportsMultiResolution(kSupportsMultiResolution);
     
     desc.setSupportsTiles(supportsTiles);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
@@ -993,6 +1161,31 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     proxyFileParam->setScriptName(kReaderProxyFileParamName);
     desc.addClipPreferencesSlaveParam(*proxyFileParam);
     page->addChild(*proxyFileParam);
+    
+    ////Proxy file scale
+    OFX::Double2DParamDescriptor* proxyScaleParam = desc.defineDouble2DParam(kReaderProxyScaleFileParamName);
+    proxyScaleParam->setLabels("Proxy scale", "Proxy scale", "Proxy scale");
+    proxyScaleParam->setDefault(1., 1.);
+    proxyScaleParam->setIsSecret(true);
+    proxyScaleParam->setEnabled(false);
+    proxyScaleParam->setHint("The scale of the proxy images. By default it will be automatically computed out of the "
+                             "images headers when you set the proxy file(s) path. When the render scale (proxy) is set to "
+                             "a scale lower or equal to this value then the proxy image files will be used instead of the "
+                             "original images. You can change this parameter by checking the \"Custom scale\" checkbox "
+                             "so that you can change the scale at which the proxy images should be used instead of the original images.");
+    proxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    proxyScaleParam->setAnimates(false);
+    page->addChild(*proxyScaleParam);
+    
+    ///Enable custom proxy scale
+    OFX::BooleanParamDescriptor* enableCustomScale = desc.defineBooleanParam(kReaderCustomScaleParamName);
+    enableCustomScale->setLabels("Custom scale", "Custom scale", "Custom scale");
+    enableCustomScale->setIsSecret(true);
+    enableCustomScale->setDefault(false);
+    enableCustomScale->setHint("Check to enable the Proxy scale edition.");
+    enableCustomScale->setAnimates(false);
+    enableCustomScale->setEvaluateOnChange(false);
+    page->addChild(*enableCustomScale);
     
     return page;
 }
