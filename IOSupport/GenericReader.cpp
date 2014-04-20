@@ -75,7 +75,7 @@
 // if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
 #define MAX_SEARCH_RANGE 400000
 
-#define kSupportsMultiResolution 0
+#define kSupportsMultiResolution 1
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -552,12 +552,6 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     
     OfxRectI srcBounds_rounded = roundPowerOfTwoLargestEnclosed(srcBounds,level);
     
-    ///The last mip map level we will make with closestPo2
-    OfxRectI lastLevelBounds = downscalePowerOfTwo(srcBounds_rounded,level);
-    
-    ///The output image must contain the last level roi
-    assert(lastLevelBounds.x1 >= dstBounds.x1 && lastLevelBounds.x2 <= dstBounds.x2 &&
-           lastLevelBounds.y1 >= dstBounds.y1 && lastLevelBounds.y2 <= dstBounds.y2);
 
     const PIX* srcImg = srcPixels;
     OFX::ImageMemory* mem = NULL;
@@ -595,7 +589,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     
     
     
-    int endPixels = (srcBounds_rounded.x2 - srcBounds_rounded.x1) / (srcBounds_rounded.y2 - srcBounds_rounded.y1) * nComponents * sizeof(PIX);
+    int endPixels = (srcBounds_rounded.x2 - srcBounds_rounded.x1) * (srcBounds_rounded.y2 - srcBounds_rounded.y1) * nComponents;
     
     ///Finally copy the last mipmap level into output.
     std::copy(srcImg, srcImg + endPixels, dstPixels);
@@ -699,7 +693,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         assert(!proxyFile.empty());
         
         ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
-        useProxy |= proxyFile != filename;
+        useProxy &= proxyFile != filename;
     }
 
     void* dstPixelData = NULL;
@@ -739,7 +733,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
     unsigned int proxyMipMapLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
     if (useProxy) {
-        renderWindowToUse = roundPowerOfTwoLargestEnclosed(renderWindowToUse, renderMipmapLevel);
+        renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel - proxyMipMapLevel);
     } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
         ///the user didn't provide a proxy file, just decode the full image
         ///upscale to a render scale of 1.
@@ -773,7 +767,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (_ocio->isIdentity()) {
         // no colorspace conversion, just read file
         
-        if (!useProxy) {
+        if (renderMipmapLevel == 0 || !kSupportsMultiResolution) {
             decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
         } else {
             int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
