@@ -965,8 +965,15 @@ OfxPointD GenericReaderPlugin::detectProxyScale(const std::string& originalFileN
 {
     OfxRectD originalRoD,proxyRoD;
     getFrameRegionOfDefinition(originalFileName, time, originalRoD);
+    proxyRoD.x1 = proxyRoD.x2 = proxyRoD.y1 = proxyRoD.y2 = 0.;
     getFrameRegionOfDefinition(proxyFileName, time, proxyRoD);
     OfxPointD ret;
+    if (proxyRoD.x1 == 0 && proxyRoD.x2 == 0 && proxyRoD.y1 == 0 && proxyRoD.y2 == 0) {
+        ret.x = 1.;
+        ret.y = 1.;
+        setPersistentMessage(OFX::Message::eMessageError, "", "Cannot read the proxy file.");
+        return ret;
+    }
     ret.x = (proxyRoD.x2 - proxyRoD.x1) / (originalRoD.x2 - originalRoD.x1);
     ret.y = (proxyRoD.y2 - proxyRoD.y1) / (originalRoD.y2 - originalRoD.y1);
     return ret;
