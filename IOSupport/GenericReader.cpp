@@ -550,27 +550,25 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
 {
     assert(level > 0);
     
-    OfxRectI srcBounds_rounded = roundPowerOfTwoLargestEnclosed(srcBounds,level);
     
-
     const PIX* srcImg = srcPixels;
     OFX::ImageMemory* mem = NULL;
     PIX* dstImg = NULL;
     bool mustFreeSrc = false;
     
-    
+    OfxRectI previousRoI = srcBounds;
     ///Build all the mipmap levels until we reach the one we are interested in
-    for (unsigned int i = 0; i < level; ++i) {
+    for (unsigned int i = 1; i <= level; ++i) {
         
         ///Halve the closestPo2 rect
-        OfxRectI halvedRoI = nextRectLevel(srcBounds_rounded);
+        OfxRectI halvedRoI = downscalePowerOfTwoLargestEnclosed(srcBounds,i);
         
         ///Allocate an image with half the size of the source image
         size_t memSize = (halvedRoI.x2 - halvedRoI.x1) * (halvedRoI.y2 - halvedRoI.y1) * nComponents * sizeof(PIX);
         OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
         dstImg = (float*)tmpMem->lock();
 
-        halveImage<PIX, nComponents>(srcImg, srcBounds_rounded, dstImg, halvedRoI);
+        halveImage<PIX, nComponents>(srcImg, previousRoI, dstImg, halvedRoI);
 
         ///Clean-up, we should use shared_ptrs for safety
         if (mustFreeSrc) {
@@ -581,7 +579,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
         }
         
         ///Switch for next pass
-        srcBounds_rounded = halvedRoI;
+        previousRoI = halvedRoI;
         srcImg = dstImg;
         mem = tmpMem;
         mustFreeSrc = true;
@@ -589,7 +587,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     
     
     
-    int endPixels = (srcBounds_rounded.x2 - srcBounds_rounded.x1) * (srcBounds_rounded.y2 - srcBounds_rounded.y1) * nComponents;
+    int endPixels = (previousRoI.x2 - previousRoI.x1) * (previousRoI.y2 - previousRoI.y1) * nComponents;
     
     ///Finally copy the last mipmap level into output.
     std::copy(srcImg, srcImg + endPixels, dstPixels);
