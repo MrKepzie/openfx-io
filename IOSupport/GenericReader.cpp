@@ -516,26 +516,24 @@ void halveImage(const PIX* srcPixels,
            dstBounds.y1*2 >= srcBounds.y1 &&
            dstBounds.y2*2 <= srcBounds.y2);
     
-    int rowSize = width * nComponents;
-    
-    int padding = rowSize - (width * nComponents);
+    OfxRectI srcBounds_rounded = roundPowerOfTwoLargestEnclosed(srcBounds,1);
+    width = srcBounds_rounded.x2 - srcBounds_rounded.x1;
+    height = srcBounds_rounded.y2 - srcBounds_rounded.y1;
     
     int dstWidth = dstBounds.x2 - dstBounds.x1;
     int dstHeight = dstBounds.y2 - dstBounds.y1;
     
-    for (int y = 0; y < dstHeight; ++y) {
-        for (int x = 0; x < dstWidth; ++x) {
-            for (int k = 0; k < nComponents; ++k) {
-                *dstPixels++ =  (*srcPixels +
-                           *(srcPixels + nComponents) +
-                           *(srcPixels + rowSize) +
-                           *(srcPixels + rowSize  + nComponents)) / 4;
-                ++srcPixels;
+    int srcRowSize = width * nComponents;
+
+    for (int y = 0; y < dstHeight;++y,srcPixels += srcRowSize) {
+        for (int x = 0; x < dstWidth;++x,srcPixels += nComponents) {
+            for (int k = 0; k < nComponents; ++k, ++dstPixels, ++srcPixels) {
+                *dstPixels = (*srcPixels +
+                        *(srcPixels + nComponents) +
+                        *(srcPixels + srcRowSize) +
+                        *(srcPixels + srcRowSize  + nComponents)) / 4;
             }
-            srcPixels += nComponents;
         }
-        srcPixels += padding;
-        srcPixels += rowSize;
     }
 
 }
