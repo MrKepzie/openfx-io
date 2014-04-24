@@ -658,7 +658,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (!_outputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    
+
+    assert(kSupportsMultiResolution || (args.renderScale.x == 1. && args.renderScale.y == 1.));
     ///The image will have the appropriate size since we support the render scale (multi-resolution)
     std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
     if (!dstImg.get()) {
@@ -778,6 +779,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
             size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
             OFX::ImageMemory mem(memSize,this);
             float *tmpPixelData = (float*)mem.lock();
+            // offset the tmpPixelData pointer so that renderWindowToUse corresponds to the data window
+            tmpPixelData -= (renderWindowToUse.x1 + renderWindowToUse.y1*(renderWindowToUse.x2-renderWindowToUse.x1))*pixelComponents;
             
             // read file
             if (!useProxy) {
@@ -805,6 +808,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
+        // offset the tmpPixelData pointer so that renderWindowToUse corresponds to the data window
+        tmpPixelData -= (renderWindowToUse.x1 + renderWindowToUse.y1*(renderWindowToUse.x2-renderWindowToUse.x1))*pixelComponents;
 
         // read file
         if (!useProxy) {
