@@ -41,30 +41,6 @@
 
 #include "GenericReader.h"
 
-class ReadOIIOPlugin : public GenericReaderPlugin {
-    
-public:
-    
-    ReadOIIOPlugin(OfxImageEffectHandle handle);
-    
-    virtual ~ReadOIIOPlugin();
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
-
-    virtual void clearAnyCache();
-private:
-    
-    virtual void onInputFileChanged(const std::string& filename);
-    
-    virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
-        
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
-    
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
-
-    std::string metadata(const std::string& filename);
-};
-
 mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false);
 
 #endif /* defined(__Io__oiioReader__) */

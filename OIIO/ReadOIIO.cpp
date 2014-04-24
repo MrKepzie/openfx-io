@@ -53,23 +53,50 @@ OIIO_NAMESPACE_USING
 
 #define kMetadataButton "show metadata"
 
-////global OIIO image cache
-static ImageCache* cache = 0;
 static const bool kSupportsTiles = true;
+
+class ReadOIIOPlugin : public GenericReaderPlugin {
+
+public:
+
+    ReadOIIOPlugin(OfxImageEffectHandle handle);
+
+    virtual ~ReadOIIOPlugin();
+
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+
+    virtual void clearAnyCache();
+private:
+
+    virtual void onInputFileChanged(const std::string& filename);
+
+    virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
+
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+
+    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
+
+    std::string metadata(const std::string& filename);
+
+    //// OIIO image cache
+    ImageCache* _cache;
+};
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
+, _cache(ImageCache::create(true)) // shared cache
+//, _cache(ImageCache::create(false)) // non-shared cache
 {
-    
 }
 
-ReadOIIOPlugin::~ReadOIIOPlugin() {
-    
+ReadOIIOPlugin::~ReadOIIOPlugin()
+{
+    ImageCache::destroy(_cache, false); // don't teardown if it's a shared cache
 }
 
 void ReadOIIOPlugin::clearAnyCache() {
     ///flush the OIIO cache
-    cache->invalidate_all();
+    _cache->invalidate_all();
 }
 
 void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
@@ -89,8 +116,8 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
     ImageSpec spec;
 
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if(!cache->get_imagespec(ustring(filename), spec)){
-        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+    if(!_cache->get_imagespec(ustring(filename), spec)){
+        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -167,8 +194,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     ImageSpec spec;
     
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if(!cache->get_imagespec(ustring(filename), spec)){
-        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+    if(!_cache->get_imagespec(ustring(filename), spec)){
+        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -248,7 +275,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
 
 
-    if(!cache->get_pixels(ustring(filename),
+    if(!_cache->get_pixels(ustring(filename),
                           0, //subimage
                           0, //miplevel
                           renderWindow.x1, //x begin
@@ -269,7 +296,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
                           AutoStride //z stride
                           )) {
         
-        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         return;
     }
 }
@@ -278,8 +305,8 @@ void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxT
     ImageSpec spec;
     
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if(!cache->get_imagespec(ustring(filename), spec)){
-        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+    if(!_cache->get_imagespec(ustring(filename), spec)){
+        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         return;
     }
     rod.x1 = spec.x;
@@ -295,8 +322,8 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
     ImageSpec spec;
 
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if(!cache->get_imagespec(ustring(filename), spec)){
-        setPersistentMessage(OFX::Message::eMessageError, "", cache->geterror());
+    if(!_cache->get_imagespec(ustring(filename), spec)){
+        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -364,15 +391,17 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 using namespace OFX;
 
 void ReadOIIOPluginFactory::load() {
-    if (!cache) {
-        cache = ImageCache::create();
-    }
 }
 
-void ReadOIIOPluginFactory::unload() {
-    if (cache) {
-        ImageCache::destroy(cache);
-    }
+void ReadOIIOPluginFactory::unload()
+{
+    // get the shared image cache (may be shared with other plugins using OIIO)
+    ImageCache* sharedcache = ImageCache::create(true);
+    // purge it
+    // teardown is dangerous if there are other users
+
+    //ImageCache::destroy(sharedcache, true);
+    ImageCache::destroy(sharedcache);
 }
 
 #if 0
