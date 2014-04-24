@@ -768,41 +768,14 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     assert(downscaleLevels >= 0);
 
-    if (_ocio->isIdentity()) {
+#if 1
+    if (_ocio->isIdentity() && (renderMipmapLevel == 0 || !kSupportsMultiResolution)) {
         // no colorspace conversion, just read file
-        
-        if (renderMipmapLevel == 0 || !kSupportsMultiResolution) {
-            decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
-        } else {
-            int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-            int tmpRowBytes = (renderWindowToUse.x2-renderWindowToUse.x1) * pixelBytes;
-            size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
-            OFX::ImageMemory mem(memSize,this);
-            float *tmpPixelData = (float*)mem.lock();
-            // offset the tmpPixelData pointer so that renderWindowToUse corresponds to the data window
-            tmpPixelData -= (renderWindowToUse.x1 + renderWindowToUse.y1*(renderWindowToUse.x2-renderWindowToUse.x1))*pixelComponents;
-            
-            // read file
-            if (!useProxy) {
-                decode(filename, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
-            } else {
-                decode(proxyFile, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
-            }
-            
-            
-            if (kSupportsMultiResolution && downscaleLevels > 0) {
-                /// adjust the scale to match the given output image
-                scalePixelData((unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
-                               bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
-                               pixelComponents, bitDepth, args.renderWindow, dstRowBytes);
-            } else {
-                copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
-            }
-            
-            mem.unlock();
-        }
-    } else {
-        
+        decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
+    } else
+#endif
+    {
+
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
         int tmpRowBytes = (renderWindowToUse.x2-renderWindowToUse.x1) * pixelBytes;
         size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
@@ -819,7 +792,9 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         }
 
         ///do the color-space conversion
-        _ocio->apply(renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+        if (!_ocio->isIdentity()) {
+            _ocio->apply(renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+        }
         
         if (kSupportsMultiResolution && downscaleLevels > 0) {
             /// adjust the scale to match the given output image
