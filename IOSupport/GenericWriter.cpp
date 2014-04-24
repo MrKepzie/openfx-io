@@ -244,6 +244,12 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    if (srcImg->getRenderScale().x != args.renderScale.x ||
+        srcImg->getRenderScale().y != args.renderScale.y ||
+        srcImg->getField() == args.fieldToRender) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
 
 
     const void* srcPixelData = NULL;
@@ -263,7 +269,15 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         // copy to dstImg if necessary
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-            assert(dstImg.get());
+            if (!dstImg.get()) {
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            if (dstImg->getRenderScale().x != args.renderScale.x ||
+                dstImg->getRenderScale().y != args.renderScale.y ||
+                dstImg->getField() == args.fieldToRender) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
             copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
         }
     } else {
@@ -298,7 +312,15 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         // copy to dstImg if necessary
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-            assert(dstImg.get());
+            if (!dstImg.get()) {
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            if (dstImg->getRenderScale().x != args.renderScale.x ||
+                dstImg->getRenderScale().y != args.renderScale.y ||
+                dstImg->getField() == args.fieldToRender) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
             copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
         }
 

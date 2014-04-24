@@ -138,6 +138,13 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    if (srcImg->getRenderScale().x != args.renderScale.x ||
+        srcImg->getRenderScale().y != args.renderScale.y ||
+        srcImg->getField() == args.fieldToRender) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
     OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
@@ -147,6 +154,12 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     assert(dstClip_);
     std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
     if (!dstImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    if (dstImg->getRenderScale().x != args.renderScale.x ||
+        dstImg->getRenderScale().y != args.renderScale.y ||
+        dstImg->getField() == args.fieldToRender) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
