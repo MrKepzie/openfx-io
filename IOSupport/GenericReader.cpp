@@ -667,7 +667,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (dstImg->getRenderScale().x != args.renderScale.x ||
         dstImg->getRenderScale().y != args.renderScale.y ||
         dstImg->getField() == args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 

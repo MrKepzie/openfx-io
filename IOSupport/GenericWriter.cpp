@@ -247,7 +247,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
     if (srcImg->getRenderScale().x != args.renderScale.x ||
         srcImg->getRenderScale().y != args.renderScale.y ||
         srcImg->getField() == args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -275,7 +275,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
             if (dstImg->getRenderScale().x != args.renderScale.x ||
                 dstImg->getRenderScale().y != args.renderScale.y ||
                 dstImg->getField() == args.fieldToRender) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
             copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
@@ -318,7 +318,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
             if (dstImg->getRenderScale().x != args.renderScale.x ||
                 dstImg->getRenderScale().y != args.renderScale.y ||
                 dstImg->getField() == args.fieldToRender) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host bug: Host gave image with wrong scale or field properties");
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
             copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
