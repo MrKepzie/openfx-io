@@ -40,7 +40,7 @@
 */
 
 #include <cassert>
-#include <cmath>
+
 #include "ofxsImageEffect.h"
 #include "ofxsMultiThread.h"
 #include "IOUtility.h"
@@ -116,7 +116,8 @@ namespace OFX {
         {
             // slice the y range into the number of threads it has
             unsigned int dy = _renderWindow.y2 - _renderWindow.y1;
-            unsigned int h = std::ceil(dy/(double)nThreads);
+            // the following is equivalent to std::ceil(dy/(double)nThreads);
+            unsigned int h = (dy+nThreads-1)/nThreads;
             if (h == 0) {
                 // there are more threads than lines to process
                 h = 1;
