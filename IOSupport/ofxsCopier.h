@@ -37,5 +37,32 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
     }
 };
 
+template<class PIX,int nComponents>
+void copyPixels(const OfxRectI& renderWindow,
+                const PIX *srcPixelData,
+                const OfxRectI& srcBounds,
+                OFX::PixelComponentEnum srcPixelComponents,
+                OFX::BitDepthEnum srcPixelDepth,
+                int srcRowBytes,
+                PIX *dstPixelData,
+                const OfxRectI& dstBounds,
+                OFX::PixelComponentEnum dstPixelComponents,
+                OFX::BitDepthEnum dstBitDepth,
+                int dstRowBytes)
+{
+    int srcRowElements = (srcBounds.x2 - srcBounds.x1) * nComponents;
+    
+    const PIX* srcPixels = srcPixelData + (renderWindow.y1 - srcBounds.y1) * srcRowElements + (renderWindow.x1 - srcBounds.x1) * nComponents;
+    
+    int dstRowElements = (dstBounds.x2 - dstBounds.x1) * nComponents;
+    
+    PIX* dstPixels = dstPixelData + (renderWindow.y1 - dstBounds.y1) * dstRowElements + (renderWindow.x1 - dstBounds.x1) * nComponents;
+    
+    int rowBytes = sizeof(PIX) * nComponents * (renderWindow.x2 - renderWindow.x1);
+    
+    for (int y = renderWindow.y1; y < renderWindow.y2; ++y,srcPixels += srcRowElements, dstPixels += dstRowElements) {
+        std::memcpy(dstPixels, srcPixels, rowBytes);
+    }
+}
 
 #endif

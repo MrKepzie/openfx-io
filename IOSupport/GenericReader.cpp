@@ -77,6 +77,8 @@
 
 #define kSupportsMultiResolution 1
 
+#define GENERIC_READER_USE_MULTI_THREAD
+
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
@@ -432,6 +434,8 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
 {
     assert(srcPixelData && dstPixelData);
 
+#ifdef GENERIC_READER_USE_MULTI_THREAD
+
     // do the rendering
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -446,6 +450,15 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
         PixelCopier<float, 1> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
+#else
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        copyPixels<float,4>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        copyPixels<float,3>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        copyPixels<float,1>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } // switch
+#endif
 }
 
 template <typename PIX,int nComponents>

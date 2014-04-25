@@ -91,7 +91,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
 {
-    ImageCache::destroy(_cache, false); // don't teardown if it's a shared cache
+    ImageCache::destroy(_cache); // don't teardown if it's a shared cache
 }
 
 void ReadOIIOPlugin::clearAnyCache() {
