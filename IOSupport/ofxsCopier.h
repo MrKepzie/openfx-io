@@ -50,11 +50,11 @@ void copyPixels(const OfxRectI& renderWindow,
                 OFX::BitDepthEnum dstBitDepth,
                 int dstRowBytes)
 {
-    int srcRowElements = (srcBounds.x2 - srcBounds.x1) * nComponents;
+    int srcRowElements = srcRowBytes / sizeof(PIX);
     
     const PIX* srcPixels = srcPixelData + (renderWindow.y1 - srcBounds.y1) * srcRowElements + (renderWindow.x1 - srcBounds.x1) * nComponents;
     
-    int dstRowElements = (dstBounds.x2 - dstBounds.x1) * nComponents;
+    int dstRowElements = dstRowBytes / sizeof(PIX);
     
     PIX* dstPixels = dstPixelData + (renderWindow.y1 - dstBounds.y1) * dstRowElements + (renderWindow.x1 - dstBounds.x1) * nComponents;
     

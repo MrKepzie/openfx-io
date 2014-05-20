@@ -302,8 +302,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
-        // offset the tmpPixelData pointer so that renderWindowToUse corresponds to the data window
-        tmpPixelData -= (bounds.x1 + bounds.y1*(bounds.x2-bounds.x1))*pixelComponents;
+
         // copy the whole image
         copyPixelData(bounds, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes);
 

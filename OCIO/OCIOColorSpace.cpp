@@ -195,8 +195,7 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
     OFX::ImageMemory mem(memSize,this);
     float *tmpPixelData = (float*)mem.lock();
-    // offset the tmpPixelData pointer so that renderWindowToUse corresponds to the data window
-    tmpPixelData -= (args.renderWindow.x1 + args.renderWindow.y1*(args.renderWindow.x2-args.renderWindow.x1))*pixelComponents;
+
     // copy renderWindow to the temporary image
     copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
 

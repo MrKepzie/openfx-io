@@ -1,4 +1,4 @@
-    /*
+/*
  OFX GenericReader plugin.
  A base class for all OpenFX-based decoders.
  
@@ -486,7 +486,8 @@ void halve1DImage(const PIX* srcPixels,
         
         for (int x = 0; x < halfWidth; ++x) {
             for (int k = 0; k < nComponents; ++k) {
-                *dstPixels++ = (*srcPixels + *(srcPixels + nComponents)) / 2.;
+                *dstPixels = (*srcPixels + *(srcPixels + nComponents)) / 2.;
+                ++dstPixels;
                 ++srcPixels;
             }
             srcPixels += nComponents;
@@ -498,7 +499,8 @@ void halve1DImage(const PIX* srcPixels,
         
         for (int y = 0; y < halfHeight; ++y) {
             for (int k = 0; k < nComponents;++k) {
-                *dstPixels++ = (*srcPixels + (*srcPixels + rowSize)) / 2.;
+                *dstPixels = (*srcPixels + (*srcPixels + rowSize)) / 2.;
+                ++dstPixels;
                 ++srcPixels;
             }
             srcPixels += rowSize;
@@ -510,8 +512,10 @@ void halve1DImage(const PIX* srcPixels,
 template <typename PIX,int nComponents>
 void halveImage(const PIX* srcPixels,
                 const OfxRectI& srcBounds,
+                int srcRowBytes,
                 PIX* dstPixels,
-                const OfxRectI& dstBounds)
+                const OfxRectI& dstBounds,
+                int dstRowBytes)
 {
     int width = srcBounds.x2 - srcBounds.x1;
     int height = srcBounds.y2 - srcBounds.y1;
@@ -536,15 +540,20 @@ void halveImage(const PIX* srcPixels,
     int dstWidth = dstBounds.x2 - dstBounds.x1;
     int dstHeight = dstBounds.y2 - dstBounds.y1;
     
-    int srcRowSize = width * nComponents;
-
-    for (int y = 0; y < dstHeight;++y,srcPixels += srcRowSize) {
-        for (int x = 0; x < dstWidth;++x,srcPixels += nComponents) {
-            for (int k = 0; k < nComponents; ++k, ++dstPixels, ++srcPixels) {
-                *dstPixels = (*srcPixels +
-                        *(srcPixels + nComponents) +
-                        *(srcPixels + srcRowSize) +
-                        *(srcPixels + srcRowSize  + nComponents)) / 4;
+    int srcRowSize = srcRowBytes / sizeof(PIX);
+    int dstRowSize = dstRowBytes / sizeof(PIX);
+    
+    for (int y = 0; y < dstHeight;++y) {
+        
+        const PIX* srcLineStart = srcPixels + y * 2 * srcRowSize;
+        PIX* dstLineStart = dstPixels + y * dstRowSize;
+        
+        for (int x = 0; x < dstWidth;++x) {
+            for (int k = 0; k < nComponents; ++k) {
+                dstLineStart[x * nComponents + k] = (srcLineStart[x * 2 * nComponents + k] +
+                        srcLineStart[(x * 2 + 1) * nComponents + k] +
+                        srcLineStart[(x * 2 * nComponents) + srcRowSize + k] +
+                        srcLineStart[(x * 2 + 1) * nComponents + srcRowSize + k]) / 4;
             }
         }
     }
@@ -556,8 +565,10 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
                       unsigned int level,
                       const PIX* srcPixels,
                       const OfxRectI& srcBounds,
+                      int srcRowBytes,
                       PIX* dstPixels,
-                      const OfxRectI& dstBounds)
+                      const OfxRectI& dstBounds,
+                      int dstRowBytes)
 {
     assert(level > 0);
     
@@ -568,6 +579,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     bool mustFreeSrc = false;
     
     OfxRectI previousRoI = srcBounds;
+    int previousRowBytes = srcRowBytes;
     ///Build all the mipmap levels until we reach the one we are interested in
     for (unsigned int i = 1; i <= level; ++i) {
         
@@ -575,11 +587,12 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
         OfxRectI halvedRoI = downscalePowerOfTwoLargestEnclosed(srcBounds,i);
         
         ///Allocate an image with half the size of the source image
-        size_t memSize = (halvedRoI.x2 - halvedRoI.x1) * (halvedRoI.y2 - halvedRoI.y1) * nComponents * sizeof(PIX);
+        int dstRowBytes =  (halvedRoI.x2 - halvedRoI.x1)  * nComponents * sizeof(PIX);
+        size_t memSize =  (halvedRoI.y2 - halvedRoI.y1) * dstRowBytes;
         OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
         dstImg = (float*)tmpMem->lock();
-
-        halveImage<PIX, nComponents>(srcImg, previousRoI, dstImg, halvedRoI);
+        
+        halveImage<PIX, nComponents>(srcImg, previousRoI, previousRowBytes, dstImg, halvedRoI,dstRowBytes);
 
         ///Clean-up, we should use shared_ptrs for safety
         if (mustFreeSrc) {
@@ -591,6 +604,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
         
         ///Switch for next pass
         previousRoI = halvedRoI;
+        previousRowBytes = dstRowBytes;
         srcImg = dstImg;
         mem = tmpMem;
         mustFreeSrc = true;
@@ -635,11 +649,11 @@ void GenericReaderPlugin::scalePixelData(unsigned int levels,
     }
     
     if(dstPixelComponents == OFX::ePixelComponentRGBA) {
-        buildMipMapLevel<float, 4>(this, levels, (const float*)srcPixelData, srcBounds, (float*)dstPixelData, dstBounds);
+        buildMipMapLevel<float, 4>(this, levels, (const float*)srcPixelData, srcBounds,srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
-        buildMipMapLevel<float, 3>(this, levels, (const float*)srcPixelData, srcBounds, (float*)dstPixelData, dstBounds);
+        buildMipMapLevel<float, 3>(this, levels, (const float*)srcPixelData, srcBounds,srcRowBytes, (float*)dstPixelData, dstBounds,dstRowBytes);
     }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
-        buildMipMapLevel<float, 1>(this, levels, (const float*)srcPixelData, srcBounds, (float*)dstPixelData, dstBounds);
+        buildMipMapLevel<float, 1>(this, levels, (const float*)srcPixelData, srcBounds, srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } // switch
 
 
@@ -794,8 +808,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
-        // offset the tmpPixelData pointer so that renderWindowToUse corresponds to the data window
-        tmpPixelData -= (renderWindowToUse.x1 + renderWindowToUse.y1*(renderWindowToUse.x2-renderWindowToUse.x1))*pixelComponents;
 
         // read file
         if (!useProxy) {
