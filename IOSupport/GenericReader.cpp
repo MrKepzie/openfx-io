@@ -510,7 +510,8 @@ void halve1DImage(const PIX* srcPixels,
 
 
 template <typename PIX,int nComponents>
-void halveImage(const PIX* srcPixels,
+void halveImage(const OfxRectI& roi,
+                const PIX* srcPixels,
                 const OfxRectI& srcBounds,
                 int srcRowBytes,
                 PIX* dstPixels,
@@ -533,22 +534,18 @@ void halveImage(const PIX* srcPixels,
            dstBounds.y1*2 >= srcBounds.y1 &&
            dstBounds.y2*2 <= srcBounds.y2);
     
-    OfxRectI srcBounds_rounded = roundPowerOfTwoLargestEnclosed(srcBounds,1);
-    width = srcBounds_rounded.x2 - srcBounds_rounded.x1;
-    height = srcBounds_rounded.y2 - srcBounds_rounded.y1;
-    
-    int dstWidth = dstBounds.x2 - dstBounds.x1;
-    int dstHeight = dstBounds.y2 - dstBounds.y1;
-    
     int srcRowSize = srcRowBytes / sizeof(PIX);
     int dstRowSize = dstRowBytes / sizeof(PIX);
     
-    for (int y = 0; y < dstHeight;++y) {
+    const PIX* srcData =  srcPixels - (srcBounds.x1 * nComponents + srcRowSize * srcBounds.y1);
+    PIX* dstData = dstPixels - (dstBounds.x1 * nComponents + dstRowSize * dstBounds.y1);
+    
+    for (int y = roi.y1; y < roi.y2;++y) {
         
-        const PIX* srcLineStart = srcPixels + y * 2 * srcRowSize;
-        PIX* dstLineStart = dstPixels + y * dstRowSize;
+        const PIX* srcLineStart = srcData + y * 2 * srcRowSize;
+        PIX* dstLineStart = dstData + y * dstRowSize;
         
-        for (int x = 0; x < dstWidth;++x) {
+        for (int x = roi.x1; x < roi.x2;++x) {
             for (int k = 0; k < nComponents; ++k) {
                 dstLineStart[x * nComponents + k] = (srcLineStart[x * 2 * nComponents + k] +
                         srcLineStart[(x * 2 + 1) * nComponents + k] +
@@ -562,6 +559,7 @@ void halveImage(const PIX* srcPixels,
 
 template <typename PIX,int nComponents>
 void buildMipMapLevel(OFX::ImageEffect* instance,
+                      const OfxRectI& renderWindow,
                       unsigned int level,
                       const PIX* srcPixels,
                       const OfxRectI& srcBounds,
@@ -578,21 +576,22 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     PIX* dstImg = NULL;
     bool mustFreeSrc = false;
     
-    OfxRectI previousRoI = srcBounds;
+    OfxRectI previousBounds = srcBounds;
     int previousRowBytes = srcRowBytes;
     ///Build all the mipmap levels until we reach the one we are interested in
     for (unsigned int i = 1; i <= level; ++i) {
         
         ///Halve the closestPo2 rect
-        OfxRectI halvedRoI = downscalePowerOfTwoLargestEnclosed(srcBounds,i);
-        
+        OfxRectI nextBounds = downscalePowerOfTwoLargestEnclosed(srcBounds,i);
+        OfxRectI roi = downscalePowerOfTwoLargestEnclosed(renderWindow, i);
+
         ///Allocate an image with half the size of the source image
-        int dstRowBytes =  (halvedRoI.x2 - halvedRoI.x1)  * nComponents * sizeof(PIX);
-        size_t memSize =  (halvedRoI.y2 - halvedRoI.y1) * dstRowBytes;
+        int dstRowBytes =  (nextBounds.x2 - nextBounds.x1)  * nComponents * sizeof(PIX);
+        size_t memSize =  (nextBounds.y2 - nextBounds.y1) * dstRowBytes;
         OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
         dstImg = (float*)tmpMem->lock();
         
-        halveImage<PIX, nComponents>(srcImg, previousRoI, previousRowBytes, dstImg, halvedRoI,dstRowBytes);
+        halveImage<PIX, nComponents>(roi,srcImg, previousBounds, previousRowBytes, dstImg, nextBounds,dstRowBytes);
 
         ///Clean-up, we should use shared_ptrs for safety
         if (mustFreeSrc) {
@@ -603,7 +602,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
         }
         
         ///Switch for next pass
-        previousRoI = halvedRoI;
+        previousBounds = nextBounds;
         previousRowBytes = dstRowBytes;
         srcImg = dstImg;
         mem = tmpMem;
@@ -612,7 +611,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     
     
     
-    int endPixels = (previousRoI.x2 - previousRoI.x1) * (previousRoI.y2 - previousRoI.y1) * nComponents;
+    int endPixels = (previousBounds.x2 - previousBounds.x1) * (previousBounds.y2 - previousBounds.y1) * nComponents;
     
     ///Finally copy the last mipmap level into output.
     std::copy(srcImg, srcImg + endPixels, dstPixels);
@@ -628,7 +627,8 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
 
 
 
-void GenericReaderPlugin::scalePixelData(unsigned int levels,
+void GenericReaderPlugin::scalePixelData(const OfxRectI& renderWindow,
+                                         unsigned int levels,
                                          const void* srcPixelData,
                                          OFX::PixelComponentEnum srcPixelComponents,
                                          OFX::BitDepthEnum srcPixelDepth,
@@ -649,11 +649,14 @@ void GenericReaderPlugin::scalePixelData(unsigned int levels,
     }
     
     if(dstPixelComponents == OFX::ePixelComponentRGBA) {
-        buildMipMapLevel<float, 4>(this, levels, (const float*)srcPixelData, srcBounds,srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
+        buildMipMapLevel<float, 4>(this,renderWindow, levels, (const float*)srcPixelData,
+                                   srcBounds,srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
-        buildMipMapLevel<float, 3>(this, levels, (const float*)srcPixelData, srcBounds,srcRowBytes, (float*)dstPixelData, dstBounds,dstRowBytes);
+        buildMipMapLevel<float, 3>(this,renderWindow, levels, (const float*)srcPixelData,
+                                   srcBounds,srcRowBytes, (float*)dstPixelData, dstBounds,dstRowBytes);
     }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
-        buildMipMapLevel<float, 1>(this, levels, (const float*)srcPixelData, srcBounds, srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
+        buildMipMapLevel<float, 1>(this, renderWindow,levels, (const float*)srcPixelData,
+                                   srcBounds, srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } // switch
 
 
@@ -823,9 +826,9 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         
         if (kSupportsMultiResolution && downscaleLevels > 0) {
             /// adjust the scale to match the given output image
-            scalePixelData((unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+            scalePixelData(renderWindowToUse,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
                            bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
-                           pixelComponents, bitDepth, args.renderWindow, dstRowBytes);
+                           pixelComponents, bitDepth, bounds, dstRowBytes);
         } else{
             // copy
             copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
