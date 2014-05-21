@@ -402,6 +402,8 @@ void
 GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     assert(_created);
+    assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
+    assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
 #ifdef OFX_IO_USING_OCIO
     if (!_config) {
         throw std::logic_error("OCIO configuration not loaded");
@@ -423,7 +425,8 @@ GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const
     }
 
     pixelBytes = numChannels * sizeof(float);
-    float *pix = (float *) (((char *) pixelData) + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes);
+    size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+    float *pix = (float *) (((char *) pixelData) + pixelDataOffset); // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
     try {
         std::string inputSpace;
         _inputSpace->getValue(inputSpace);
