@@ -97,7 +97,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _originalFrameRange(0)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
-, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
+//, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -121,12 +121,26 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
     
     try {
         if (!filename.empty()) {
-            SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
-            if (_sequenceFromFiles->isSingleFile()) {
+            SequenceParsing::FileNameContent content(filename);
+            std::vector<int> indexes(1);
+            ///We try to match all the files in the same directory that match the pattern with the frame number
+            ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
+            ///everything as it would take too much time.
+            indexes[0] = content.getPotentialFrameNumbersCount() - 1;
+            content.generatePatternWithFrameNumberAtIndexes(indexes, &_sequencePattern);
+            _sequenceFromFiles.clear();
+            SequenceParsing::filesListFromPattern(_sequencePattern, &_sequenceFromFiles);
+            if (_sequenceFromFiles.size() == 1) {
                 _originalFrameRange->setValue(0, 0);
-            } else {
-                _originalFrameRange->setValue(_sequenceFromFiles->getFirstFrame(), _sequenceFromFiles->getLastFrame());
+            } else if (_sequenceFromFiles.size() > 1) {
+                _originalFrameRange->setValue(_sequenceFromFiles.begin()->first, _sequenceFromFiles.rbegin()->first);
             }
+//            //SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
+//            if (_sequenceFromFiles->isSingleFile()) {
+//                _originalFrameRange->setValue(0, 0);
+//            } else {
+//                _originalFrameRange->setValue(_sequenceFromFiles->getFirstFrame(), _sequenceFromFiles->getLastFrame());
+//            }
         }
 
     } catch(const std::exception& e) {
@@ -170,11 +184,19 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool ca
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
     if(!getSequenceTimeDomain(filename,range)){
-        if (_sequenceFromFiles->isSingleFile()) {
+//        if (_sequenceFromFiles->isSingleFile()) {
+//            range.min = range.max = 0;
+//        } else {
+//            range.min = _sequenceFromFiles->getFirstFrame();
+//            range.max = _sequenceFromFiles->getLastFrame();
+//        }
+        if (_sequenceFromFiles.size() == 1) {
             range.min = range.max = 0;
+        } else if (_sequenceFromFiles.size() > 1) {
+            range.min = _sequenceFromFiles.begin()->first;
+            range.max = _sequenceFromFiles.rbegin()->first;
         } else {
-            range.min = _sequenceFromFiles->getFirstFrame();
-            range.max = _sequenceFromFiles->getLastFrame();
+            return false;
         }
     }
     
@@ -832,14 +854,31 @@ void GenericReaderPlugin::inputFileChanged() {
     std::string filename;
     _fileParam->getValue(filename);
     
-    try {
-        delete _sequenceFromFiles;
-        _sequenceFromFiles = new SequenceParsing::SequenceFromFiles();
-        SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
-    } catch(const std::exception& e) {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        return;
+//    try {
+//        delete _sequenceFromFiles;
+//        _sequenceFromFiles = new SequenceParsing::SequenceFromFiles();
+//        SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
+//    } catch(const std::exception& e) {
+//        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+//        return;
+//    }
+    
+    SequenceParsing::FileNameContent content(filename);
+    std::string pattern;
+    std::vector<int> indexes(1);
+    ///We try to match all the files in the same directory that match the pattern with the frame number
+    ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
+    ///everything as it would take too much time.
+    indexes[0] = content.getPotentialFrameNumbersCount() - 1;
+    content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
+    
+    if (pattern != _sequencePattern) {
+        _sequencePattern = pattern;
+        _sequenceFromFiles.clear();
+        SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
     }
+
+ 
     clearPersistentMessage();
     //reset the original range param
     _originalFrameRange->setValue(INT_MIN, INT_MAX);
