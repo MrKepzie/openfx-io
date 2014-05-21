@@ -230,7 +230,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
-
+    assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
+    assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
     int numChannels = 0;
     int outputChannelBegin = 0;
     int chbegin;
@@ -272,11 +273,12 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
     assert(numChannels);
     int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+    size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
 
     if (fillRGB) {
         // fill RGB values with black
         assert(pixelComponents != OFX::ePixelComponentAlpha);
-        char* lineStart = (char*)pixelData + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        char* lineStart = (char*)pixelData + pixelDataOffset; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
         for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
             float *cur = (float*)lineStart;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
@@ -290,7 +292,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         // fill Alpha values with opaque
         assert(pixelComponents != OFX::ePixelComponentRGB);
         int outputChannelAlpha = (pixelComponents == OFX::ePixelComponentAlpha) ? 0 : 3;
-        char* lineStart = (char*)pixelData + (renderWindow.y1 - bounds.y1) * rowBytes + (renderWindow.x1 - bounds.x1) * pixelBytes; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        char* lineStart = (char*)pixelData + pixelDataOffset; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
         for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
             float *cur = (float*)lineStart + outputChannelAlpha;
             for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
@@ -300,6 +302,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
 
 #ifdef OFX_READ_OIIO_USES_CACHE
+    // offset for line y2-1
+    size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
     if(!_cache->get_pixels(ustring(filename),
                           0, //subimage
                           0, //miplevel
@@ -313,8 +317,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
                           chend, // chan end
                           TypeDesc::FLOAT, // data type
                           //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
-                          (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
-                                                    + (renderWindow.x1 - bounds.x1) * pixelBytes)
+                          (float*)((char*)pixelData + pixelDataOffset2)
                                    + outputChannelBegin,// output buffer
                           numChannels * sizeof(float), //x stride
                           -rowBytes, //y stride < make it invert Y
