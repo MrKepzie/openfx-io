@@ -78,25 +78,33 @@ private:
 
     std::string metadata(const std::string& filename);
 
+#ifdef OFX_READ_OIIO_USES_CACHE
     //// OIIO image cache
     ImageCache* _cache;
+#endif
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
+#ifdef OFX_READ_OIIO_USES_CACHE
 , _cache(ImageCache::create(true)) // shared cache
+#endif
 //, _cache(ImageCache::create(false)) // non-shared cache
 {
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
 {
+#ifdef OFX_READ_OIIO_USES_CACHE
     ImageCache::destroy(_cache); // don't teardown if it's a shared cache
+#endif
 }
 
 void ReadOIIOPlugin::clearAnyCache() {
+#ifdef OFX_READ_OIIO_USES_CACHE
     ///flush the OIIO cache
     _cache->invalidate_all();
+#endif
 }
 
 void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
@@ -115,11 +123,20 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
 #ifdef OFX_IO_USING_OCIO
     ImageSpec spec;
 
+#ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+#else
+    ImageInput* img = ImageInput::create(filename);
+    if (!img->open(filename,spec)) {
+        setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+#endif
+    
 
     ///find-out the image color-space
     ParamValue* colorSpaceValue = spec.find_attribute("oiio:ColorSpace",TypeDesc::STRING);
@@ -193,11 +210,19 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
 {
     ImageSpec spec;
     
+#ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+#else
+    ImageInput* srcImg = ImageInput::create(filename);
+    if (!srcImg->open(filename,spec)) {
+        setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+#endif
 
     // we only support RGBA, RGB or Alpha output clip
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
@@ -274,7 +299,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         }
     }
 
-
+#ifdef OFX_READ_OIIO_USES_CACHE
     if(!_cache->get_pixels(ustring(filename),
                           0, //subimage
                           0, //miplevel
@@ -299,16 +324,53 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         return;
     }
+#else
+    if (spec.tile_width == 0) {
+        ///read by scanlines
+        srcImg->read_scanlines(spec.height - renderWindow.y2,
+                               spec.height - renderWindow.y1,
+                               0,
+                               chbegin, chend,
+                               TypeDesc::FLOAT,
+                               (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
+                                        + (renderWindow.x1 - bounds.x1) * pixelBytes),
+                               numChannels * sizeof(float), //x stride
+                               -rowBytes); //y stride < make it invert Y;
+    } else {
+        srcImg->read_tiles(renderWindow.x1, //x begin
+                           renderWindow.x2,//x end
+                           spec.height - renderWindow.y2,//y begin
+                           spec.height - renderWindow.y1,//y end
+                           0, 1, //z begin/end
+                           chbegin, chend, //chan begin/end
+                           TypeDesc::FLOAT,  // data type
+                           (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
+                                    + (renderWindow.x1 - bounds.x1) * pixelBytes)
+                           + outputChannelBegin,
+                           numChannels * sizeof(float), //x stride
+                           -rowBytes, //y stride < make it invert Y
+                           AutoStride); //z stride
+    }
+#endif
 }
 
 void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
     ImageSpec spec;
     
+#ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         return;
     }
+#else 
+    ImageInput* srcImg = ImageInput::create(filename);
+    if (!srcImg->open(filename,spec)) {
+        setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
+        return;
+    }
+
+#endif
     rod.x1 = spec.x;
     rod.x2 = spec.x + spec.width;
     rod.y1 = spec.y;
@@ -321,12 +383,19 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 
     ImageSpec spec;
 
+#ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-
+#else 
+    ImageInput* srcImg = ImageInput::create(filename);
+    if (!srcImg->open(filename,spec)) {
+        setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+#endif
     ss << filename << " : ";
     ss << "    channel list: ";
     for (int i = 0;  i < spec.nchannels;  ++i) {

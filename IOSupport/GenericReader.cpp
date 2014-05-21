@@ -1039,7 +1039,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     
     // set a few flags
     desc.setSingleInstance(false);
-    desc.setHostFrameThreading(false);
+    desc.setHostFrameThreading(true);
     
     // We may support multi-resolution in the future via the proxy mode
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
@@ -1048,7 +1048,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
-    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    desc.setRenderThreadSafety(OFX::eRenderFullySafe);
 }
 
 OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
