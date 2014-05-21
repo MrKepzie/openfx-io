@@ -527,13 +527,6 @@ void halveImage(const OfxRectI& roi,
         return;
     }
     
-    // the pixelRoD of the output should be enclosed in half the roi.
-    // It does not have to be exactly half of the input.
-    assert(dstBounds.x1*2 >= srcBounds.x1 &&
-           dstBounds.x2*2 <= srcBounds.x2 &&
-           dstBounds.y1*2 >= srcBounds.y1 &&
-           dstBounds.y2*2 <= srcBounds.y2);
-    
     int srcRowSize = srcRowBytes / sizeof(PIX);
     int dstRowSize = dstRowBytes / sizeof(PIX);
     
@@ -585,36 +578,34 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
         OfxRectI nextBounds = downscalePowerOfTwoLargestEnclosed(srcBounds,i);
         OfxRectI roi = downscalePowerOfTwoLargestEnclosed(renderWindow, i);
 
-        ///Allocate an image with half the size of the source image
-        int dstRowBytes =  (nextBounds.x2 - nextBounds.x1)  * nComponents * sizeof(PIX);
-        size_t memSize =  (nextBounds.y2 - nextBounds.y1) * dstRowBytes;
-        OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
-        dstImg = (float*)tmpMem->lock();
-        
-        halveImage<PIX, nComponents>(roi,srcImg, previousBounds, previousRowBytes, dstImg, nextBounds,dstRowBytes);
-
-        ///Clean-up, we should use shared_ptrs for safety
-        if (mustFreeSrc) {
-            assert(mem);
-            mem->unlock();
-            delete mem;
-            mem = NULL;
+        ///On the last iteration halve directly into the dstPixels
+        if (i == level) {
+            halveImage<PIX, nComponents>(roi,srcImg, previousBounds, previousRowBytes, dstPixels, dstBounds,dstRowBytes);
+        } else {
+            ///Allocate an image with half the size of the source image
+            int targetRowBytes =  (nextBounds.x2 - nextBounds.x1)  * nComponents * sizeof(PIX);
+            size_t memSize =  (nextBounds.y2 - nextBounds.y1) * targetRowBytes;
+            OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
+            dstImg = (float*)tmpMem->lock();
+            
+            halveImage<PIX, nComponents>(roi,srcImg, previousBounds, previousRowBytes, dstImg, nextBounds,targetRowBytes);
+            
+            ///Clean-up, we should use shared_ptrs for safety
+            if (mustFreeSrc) {
+                assert(mem);
+                mem->unlock();
+                delete mem;
+                mem = NULL;
+            }
+            
+            ///Switch for next pass
+            previousBounds = nextBounds;
+            previousRowBytes = targetRowBytes;
+            srcImg = dstImg;
+            mem = tmpMem;
+            mustFreeSrc = true;
         }
-        
-        ///Switch for next pass
-        previousBounds = nextBounds;
-        previousRowBytes = dstRowBytes;
-        srcImg = dstImg;
-        mem = tmpMem;
-        mustFreeSrc = true;
     }
-    
-    
-    
-    int endPixels = (previousBounds.x2 - previousBounds.x1) * (previousBounds.y2 - previousBounds.y1) * nComponents;
-    
-    ///Finally copy the last mipmap level into output.
-    std::copy(srcImg, srcImg + endPixels, dstPixels);
     
     ///Clean-up, we should use shared_ptrs for safety
     if (mustFreeSrc) {
