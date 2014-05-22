@@ -821,7 +821,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
         int tmpRowBytes = (renderWindowToUse.x2-renderWindowToUse.x1) * pixelBytes;
-        size_t memSize = (renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
+        size_t memSize = (size_t)(renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
 
