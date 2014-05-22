@@ -51,6 +51,7 @@
 
 OIIO_NAMESPACE_USING
 
+#define OFX_READ_OIIO_USES_CACHE
 #define kMetadataButton "show metadata"
 
 static const bool kSupportsTiles = true;
