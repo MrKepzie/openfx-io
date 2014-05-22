@@ -27,11 +27,12 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
     void multiThreadProcessImages(OfxRectI procWindow)
     {
         int rowBytes = sizeof(PIX) * nComponents * (procWindow.x2 - procWindow.x1);
-        for(int y = procWindow.y1; y < procWindow.y2; y++) {
+        for(int y = procWindow.y1; y < procWindow.y2; ++y) {
             if(_effect.abort()) break;
 
             PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
             const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, y);
+            assert(srcPix && dstPix);
             std::memcpy(dstPix, srcPix, rowBytes);
         }
     }
