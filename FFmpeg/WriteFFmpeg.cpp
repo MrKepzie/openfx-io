@@ -230,7 +230,7 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
 
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-#pragma message WARN("BUG: should check that filename is the right one, and check _stream, else open the new file")
+    
 #pragma message WARN("BUG: howcome parameter 'time' is not used?")
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
@@ -333,7 +333,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     int w = (bounds.x2 - bounds.x1);
     int h = (bounds.y2 - bounds.y1);
     
-    if (!_stream) {
+    if (!_stream || (_stream && filename != std::string(_formatContext->filename))) {
         _stream = avformat_new_stream(_formatContext, NULL);
         if (!_stream) {
             setPersistentMessage(OFX::Message::eMessageError,"" ,"Out of memory");
