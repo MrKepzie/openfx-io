@@ -103,6 +103,7 @@ void ReadFFmpegPlugin::syncPrivateData() {
             return;
         } else {
             delete _ffmpegFile;
+            _ffmpegFile = 0;
         }
     }
     
@@ -120,7 +121,15 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
 
 void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-#pragma message WARN("BUG: should check that filename is the right one, else open the new file")
+    if (_ffmpegFile && filename != _ffmpegFile->filename()) {
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpeg::File(filename);
+        if(_ffmpegFile->invalid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+            return;
+        }
+    }
+
     /// we only support RGBA output clip
     if(pixelComponents != OFX::ePixelComponentRGBA) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -216,8 +225,16 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 
 void ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod)
 {
-#pragma message WARN("BUG: should check that filename is the right one, else open the new file")
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
+    if (_ffmpegFile && filename != _ffmpegFile->filename()) {
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpeg::File(filename);
+        if(_ffmpegFile->invalid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+            return;
+        }
+    }
+    
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
         return;

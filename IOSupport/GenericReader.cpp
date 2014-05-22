@@ -785,6 +785,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         ///the user didn't provide a proxy file, just decode the full image
         ///upscale to a render scale of 1.
         renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
+        intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
+
     }
 
     

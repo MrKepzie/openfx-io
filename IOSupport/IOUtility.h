@@ -159,6 +159,25 @@ inline OfxRectI downscalePowerOfTwo(const OfxRectI& r,unsigned int thisLevel)
     return ret;
 }
 
+inline bool isRectNull(const OfxRectI& r) {
+    return (r.x2 <= r.x1) || (r.y2 <= r.y1);
+}
+
+inline bool intersect(const OfxRectI& r1,const OfxRectI& r2,OfxRectI* intersection) {
+    if (isRectNull(r1) || isRectNull(r2))
+        return false;
+    
+    if (r1.x1 > r2.x2 || r2.x1 > r1.x2 || r1.y1 > r2.y2 || r2.y1 > r1.y2)
+        return false;
+    
+    intersection->x1 = std::max(r1.x1,r2.x1);
+    intersection->x2 = std::min(r1.x2,r2.x2);
+    intersection->y1 = std::max(r1.y1,r2.y1);
+    intersection->y2 = std::min(r1.y2,r2.y2);
+    return true;
+}
+
+
 /*
  test program for rounding integer to the next/previous pot:
  #include <stdio.h>
