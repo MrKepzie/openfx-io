@@ -130,7 +130,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else
-    ImageInput* img = ImageInput::create(filename);
+    std::auto_ptr<ImageInput> img(ImageInput::create(filename));
     if (!img->open(filename,spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -217,7 +217,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else
-    ImageInput* srcImg = ImageInput::create(filename);
+    std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
     if (!srcImg->open(filename,spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -367,7 +367,7 @@ void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxT
         return;
     }
 #else 
-    ImageInput* srcImg = ImageInput::create(filename);
+    std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
     if (!srcImg->open(filename,spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
         return;
@@ -393,7 +393,7 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else 
-    ImageInput* srcImg = ImageInput::create(filename);
+    std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
     if (!srcImg->open(filename,spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);

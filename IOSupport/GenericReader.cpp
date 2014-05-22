@@ -1039,7 +1039,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     
     // set a few flags
     desc.setSingleInstance(false);
-    desc.setHostFrameThreading(true);
+    desc.setHostFrameThreading(false);
     
     // We may support multi-resolution in the future via the proxy mode
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
