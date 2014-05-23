@@ -52,12 +52,13 @@ void copyPixels(const OfxRectI& renderWindow,
                 int dstRowBytes)
 {
     int srcRowElements = srcRowBytes / sizeof(PIX);
-    
-    const PIX* srcPixels = srcPixelData + (renderWindow.y1 - srcBounds.y1) * srcRowElements + (renderWindow.x1 - srcBounds.x1) * nComponents;
+    assert(srcBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= srcBounds.y2);
+    assert(srcBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= srcBounds.x2);
+    const PIX* srcPixels = srcPixelData + (size_t)(renderWindow.y1 - srcBounds.y1) * srcRowElements + (renderWindow.x1 - srcBounds.x1) * nComponents;
     
     int dstRowElements = dstRowBytes / sizeof(PIX);
     
-    PIX* dstPixels = dstPixelData + (renderWindow.y1 - dstBounds.y1) * dstRowElements + (renderWindow.x1 - dstBounds.x1) * nComponents;
+    PIX* dstPixels = dstPixelData + (size_t)(renderWindow.y1 - dstBounds.y1) * dstRowElements + (renderWindow.x1 - dstBounds.x1) * nComponents;
     
     int rowBytes = sizeof(PIX) * nComponents * (renderWindow.x2 - renderWindow.x1);
     
