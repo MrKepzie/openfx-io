@@ -846,7 +846,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
                            pixelComponents, bitDepth, bounds, dstRowBytes);
         } else{
             // copy
-            copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            copyPixelData(args.renderWindow, tmpPixelData, renderWindowToUse, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
         }
         mem.unlock();
     }
