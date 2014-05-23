@@ -171,7 +171,7 @@ namespace OFX {
             if(x < _dstBounds.x1 || x >= _dstBounds.x2 || y < _dstBounds.y1 || y >= _dstBounds.y2 || _dstPixelBytes == 0)
                 return 0;
 
-            char *pix = (char *) (((char *) _dstPixelData) + (y - _dstBounds.y1) * _dstRowBytes);
+            char *pix = (char *) (((char *) _dstPixelData) + (size_t)(y - _dstBounds.y1) * _dstRowBytes);
             pix += (x - _dstBounds.x1) * _dstPixelBytes;
             return (void *) pix;
         }
@@ -236,7 +236,7 @@ namespace OFX {
             if(x < _srcBounds.x1 || x >= _srcBounds.x2 || y < _srcBounds.y1 || y >= _srcBounds.y2 || _srcPixelBytes == 0)
                 return 0;
 
-            char *pix = (char *) (((char *) _srcPixelData) + (y - _srcBounds.y1) * _srcRowBytes);
+            char *pix = (char *) (((char *) _srcPixelData) + (size_t)(y - _srcBounds.y1) * _srcRowBytes);
             pix += (x - _srcBounds.x1) * _srcPixelBytes;
             return (void *) pix;
         }

@@ -425,6 +425,8 @@ static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
                          int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
+    assert(srcBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= srcBounds.y2);
+    assert(srcBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= srcBounds.x2);
 
     // make sure bit depths are sane
     if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
@@ -455,6 +457,8 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
                                         int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
+    assert(srcBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= srcBounds.y2);
+    assert(srcBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= srcBounds.x2);
 
 #ifdef GENERIC_READER_USE_MULTI_THREAD
 
