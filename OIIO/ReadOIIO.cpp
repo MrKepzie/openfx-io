@@ -235,23 +235,39 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
     int numChannels = 0;
     int outputChannelBegin = 0;
-    int chbegin;
-    int chend;
+    int chbegin; // start channel for reading
+    int chend; // last channel + 1
     bool fillRGB = false;
     bool fillAlpha = false;
-    switch(pixelComponents)
-    {
+    bool moveAlpha = false;
+    bool copyRtoGB = false;
+    switch(pixelComponents) {
         case OFX::ePixelComponentRGBA:
             numChannels = 4;
-            fillRGB = (spec.nchannels == 1) || (spec.nchannels == 2);
             if (spec.nchannels == 1) {
-                chbegin = chend = spec.alpha_channel;
-                fillAlpha = (spec.alpha_channel == -1);
-                outputChannelBegin = 3;
+                if (spec.alpha_channel == -1) {
+                    // fill alpha with 0, duplicate the single channel to r,g,b
+                    chbegin = 0;
+                    chend = 1;
+                    fillAlpha = true;
+                    copyRtoGB = true;
+                } else {
+                    fillRGB = true;
+                    chbegin = spec.alpha_channel;
+                    chend = spec.alpha_channel + 1;
+                    fillAlpha = false;
+                    outputChannelBegin = 3;
+                }
             } else {
                 chbegin = 0;
                 chend = std::min(spec.nchannels, numChannels);
-                fillAlpha = (spec.alpha_channel == -1);
+                // TODO: after reading, if spec.alpha_channel != 3 and -1,
+                // move the channel spec.alpha_channel to channel 3 and fill it
+                // with zeroes
+                moveAlpha = (0 <= spec.alpha_channel && spec.alpha_channel < 3);
+                fillAlpha = (spec.nchannels < 4); //(spec.alpha_channel == -1);
+
+                fillRGB = (spec.nchannels < 3); // need to fill B with black
             }
             break;
         case OFX::ePixelComponentRGB:
@@ -266,8 +282,12 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             break;
         case OFX::ePixelComponentAlpha:
             numChannels = 1;
-            chbegin = chend = spec.alpha_channel;
-            fillAlpha = (spec.alpha_channel == -1);
+            if (spec.alpha_channel != -1) {
+                chbegin = spec.alpha_channel;
+            } else {
+                chbegin = 0; // read the first channel, whatever it is
+            }
+            chend = chbegin + numChannels;
             break;
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -302,61 +322,85 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         }
     }
 
-    assert(0 <= chbegin && chbegin < spec.nchannels && chbegin <= chend && 0 <= chend && chend < spec.nchannels);
+    if (chbegin != -1 && chend != -1) {
+        assert(0 <= chbegin && chbegin < spec.nchannels && chbegin < chend && 0 < chend && chend <= spec.nchannels);
 #ifdef OFX_READ_OIIO_USES_CACHE
-    // offset for line y2-1
-    size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
-    if(!_cache->get_pixels(ustring(filename),
-                          0, //subimage
-                          0, //miplevel
-                          renderWindow.x1, //x begin
-                          renderWindow.x2, //x end
-                          spec.height - renderWindow.y2, //y begin
-                          spec.height - renderWindow.y1, //y end
-                          0, //z begin
-                          1, //z end
-                          chbegin, //chan begin
-                          chend, // chan end
-                          TypeDesc::FLOAT, // data type
-                          //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
-                          (float*)((char*)pixelData + pixelDataOffset2)
-                                   + outputChannelBegin,// output buffer
-                          numChannels * sizeof(float), //x stride
-                          -rowBytes, //y stride < make it invert Y
-                          AutoStride //z stride
-                          )) {
-        
-        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
-        return;
-    }
-#else
-    if (spec.tile_width == 0) {
-        ///read by scanlines
-        srcImg->read_scanlines(spec.height - renderWindow.y2, //y begin
+        // offset for line y2-1
+        size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+        if (!_cache->get_pixels(ustring(filename),
+                               0, //subimage
+                               0, //miplevel
+                               renderWindow.x1, //x begin
+                               renderWindow.x2, //x end
+                               spec.height - renderWindow.y2, //y begin
                                spec.height - renderWindow.y1, //y end
-                               0, // z
-                               chbegin, // chan begin
+                               0, //z begin
+                               1, //z end
+                               chbegin, //chan begin
                                chend, // chan end
                                TypeDesc::FLOAT, // data type
-                               (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                               //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                               (float*)((char*)pixelData + pixelDataOffset2)
+                               + outputChannelBegin,// output buffer
                                numChannels * sizeof(float), //x stride
-                               -rowBytes); //y stride < make it invert Y;
-    } else {
-        srcImg->read_tiles(renderWindow.x1, //x begin
-                           renderWindow.x2,//x end
-                           spec.height - renderWindow.y2,//y begin
-                           spec.height - renderWindow.y1,//y end
-                           0, // z begin
-                           1, // z end
-                           chbegin, // chan begin
-                           chend, // chan end
-                           TypeDesc::FLOAT,  // data type
-                           (float*)((char*)ppixelData + pixelDataOffset2) + outputChannelBegin,
-                           numChannels * sizeof(float), //x stride
-                           -rowBytes, //y stride < make it invert Y
-                           AutoStride); //z stride
-    }
+                               -rowBytes, //y stride < make it invert Y
+                               AutoStride //z stride
+                               )) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
+            return;
+        }
+#else
+        if (spec.tile_width == 0) {
+            ///read by scanlines
+            srcImg->read_scanlines(spec.height - renderWindow.y2, //y begin
+                                   spec.height - renderWindow.y1, //y end
+                                   0, // z
+                                   chbegin, // chan begin
+                                   chend, // chan end
+                                   TypeDesc::FLOAT, // data type
+                                   (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                   numChannels * sizeof(float), //x stride
+                                   -rowBytes); //y stride < make it invert Y;
+        } else {
+            srcImg->read_tiles(renderWindow.x1, //x begin
+                               renderWindow.x2,//x end
+                               spec.height - renderWindow.y2,//y begin
+                               spec.height - renderWindow.y1,//y end
+                               0, // z begin
+                               1, // z end
+                               chbegin, // chan begin
+                               chend, // chan end
+                               TypeDesc::FLOAT,  // data type
+                               (float*)((char*)ppixelData + pixelDataOffset2) + outputChannelBegin,
+                               numChannels * sizeof(float), //x stride
+                               -rowBytes, //y stride < make it invert Y
+                               AutoStride); //z stride
+        }
 #endif
+    }
+    if (moveAlpha) {
+        // move alpha channel to the right place
+        assert(pixelComponents == OFX::ePixelComponentRGB && spec.alpha_channel < 3 && spec.alpha_channel != -1);
+        char* lineStart = (char*)pixelData + pixelDataOffset; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
+            float *cur = (float*)lineStart;
+            for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
+                cur[3] = cur[spec.alpha_channel];
+                cur[spec.alpha_channel] = 0.;
+            }
+        }
+    }
+    if (copyRtoGB) {
+        // copy red to green and blue RGB values with black
+        assert(pixelComponents != OFX::ePixelComponentAlpha);
+        char* lineStart = (char*)pixelData + pixelDataOffset; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
+            float *cur = (float*)lineStart;
+            for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
+                cur[1] = cur[2] = cur[0];
+            }
+        }
+    }
 }
 
 void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
