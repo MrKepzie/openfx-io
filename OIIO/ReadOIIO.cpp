@@ -54,7 +54,11 @@ OIIO_NAMESPACE_USING
 #define OFX_READ_OIIO_USES_CACHE
 #define kMetadataButton "show metadata"
 
+#ifdef OFX_READ_OIIO_USES_CACHE
 static const bool kSupportsTiles = true;
+#else
+static const bool kSupportsTiles = false;
+#endif
 
 class ReadOIIOPlugin : public GenericReaderPlugin {
 
@@ -350,8 +354,9 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             return;
         }
 #else
+        assert(!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height);
         if (spec.tile_width == 0) {
-            ///read by scanlines
+           ///read by scanlines
             srcImg->read_scanlines(spec.height - renderWindow.y2, //y begin
                                    spec.height - renderWindow.y1, //y end
                                    0, // z
