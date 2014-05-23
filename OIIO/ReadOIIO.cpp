@@ -52,6 +52,7 @@
 OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
+#define OFX_READ_OIIO_SHARED_CACHE
 #define kMetadataButton "show metadata"
 
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -92,16 +93,23 @@ private:
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle)
 #ifdef OFX_READ_OIIO_USES_CACHE
+#  ifdef OFX_READ_OIIO_SHARED_CACHE
 , _cache(ImageCache::create(true)) // shared cache
+#  else
+, _cache(ImageCache::create(false)) // non-shared cache
+#  endif
 #endif
-//, _cache(ImageCache::create(false)) // non-shared cache
 {
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
+#  ifdef OFX_READ_OIIO_SHARED_CACHE
     ImageCache::destroy(_cache); // don't teardown if it's a shared cache
+#  else
+    ImageCache::destroy(_cache, true); // teardown non-shared cache
+#  endif
 #endif
 }
 
@@ -518,28 +526,14 @@ void ReadOIIOPluginFactory::load() {
 
 void ReadOIIOPluginFactory::unload()
 {
+#  ifdef OFX_READ_OIIO_SHARED_CACHE
     // get the shared image cache (may be shared with other plugins using OIIO)
     ImageCache* sharedcache = ImageCache::create(true);
     // purge it
     // teardown is dangerous if there are other users
-
-    //ImageCache::destroy(sharedcache, true);
     ImageCache::destroy(sharedcache);
+#  endif
 }
-
-#if 0
-namespace OFX
-{
-    namespace Plugin
-    {
-        void getPluginIDs(OFX::PluginFactoryArray &ids)
-        {
-            static ReadOIIOPluginFactory p("fr.inria.openfx:ReadOIIO", 1, 0);
-            ids.push_back(&p);
-        }
-    };
-};
-#endif
 
 static std::string oiio_versions()
 {
