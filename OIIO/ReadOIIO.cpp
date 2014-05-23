@@ -302,6 +302,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         }
     }
 
+    assert(0 <= chbegin && chbegin < spec.nchannels && chbegin <= chend && 0 <= chend && chend < spec.nchannels);
 #ifdef OFX_READ_OIIO_USES_CACHE
     // offset for line y2-1
     size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
@@ -331,13 +332,13 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
 #else
     if (spec.tile_width == 0) {
         ///read by scanlines
-        srcImg->read_scanlines(spec.height - renderWindow.y2,
-                               spec.height - renderWindow.y1,
-                               0,
-                               chbegin, chend,
-                               TypeDesc::FLOAT,
-                               (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
-                                        + (renderWindow.x1 - bounds.x1) * pixelBytes),
+        srcImg->read_scanlines(spec.height - renderWindow.y2, //y begin
+                               spec.height - renderWindow.y1, //y end
+                               0, // z
+                               chbegin, // chan begin
+                               chend, // chan end
+                               TypeDesc::FLOAT, // data type
+                               (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
                                numChannels * sizeof(float), //x stride
                                -rowBytes); //y stride < make it invert Y;
     } else {
@@ -345,12 +346,12 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
                            renderWindow.x2,//x end
                            spec.height - renderWindow.y2,//y begin
                            spec.height - renderWindow.y1,//y end
-                           0, 1, //z begin/end
-                           chbegin, chend, //chan begin/end
+                           0, // z begin
+                           1, // z end
+                           chbegin, // chan begin
+                           chend, // chan end
                            TypeDesc::FLOAT,  // data type
-                           (float*)((char*)pixelData + (renderWindow.y2 - 1 - bounds.y1) * rowBytes
-                                    + (renderWindow.x1 - bounds.x1) * pixelBytes)
-                           + outputChannelBegin,
+                           (float*)((char*)ppixelData + pixelDataOffset2) + outputChannelBegin,
                            numChannels * sizeof(float), //x stride
                            -rowBytes, //y stride < make it invert Y
                            AutoStride); //z stride
