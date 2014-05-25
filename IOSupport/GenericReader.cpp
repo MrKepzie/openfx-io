@@ -97,6 +97,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _originalFrameRange(0)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
+, _sequenceFromFiles()
+, _sequencePattern()
+, _numKeysForPattern(0)
 //, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -144,6 +147,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
             } else if (_sequenceFromFiles.size() > 1) {
                 _originalFrameRange->setValue(_sequenceFromFiles.begin()->first, _sequenceFromFiles.rbegin()->first);
             }
+            _numKeysForPattern = _sequenceFromFiles.size();
 //            //SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
 //            if (_sequenceFromFiles->isSingleFile()) {
 //                _originalFrameRange->setValue(0, 0);
@@ -886,11 +890,11 @@ void GenericReaderPlugin::inputFileChanged() {
     ///everything as it would take too much time.
     indexes[0] = content.getPotentialFrameNumbersCount() - 1;
     content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
-    
-    if (pattern != _sequencePattern) {
+    unsigned int numKeys = _fileParam->getNumKeys();
+
+    if (pattern != _sequencePattern || numKeys != _numKeysForPattern) {
         _sequencePattern = pattern;
         _sequenceFromFiles.clear();
-        unsigned int numKeys = _fileParam->getNumKeys();
         if (numKeys > 1) {
             SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
         }
@@ -901,6 +905,8 @@ void GenericReaderPlugin::inputFileChanged() {
             views.insert(std::make_pair(0, content.absoluteFileName()));
             _sequenceFromFiles.insert(std::make_pair(0, views));
         }
+        
+        _numKeysForPattern = _sequenceFromFiles.size();
     }
 
  
