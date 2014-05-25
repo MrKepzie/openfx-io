@@ -209,6 +209,7 @@ In this file copy the following lines:
 
 Now open the command line tool and navigate to IO.ofx.bundle/Content/Win64/
 Execute the following command:
+
 	mt -manifest INRIA.IO.manifest -outputresource:IO.ofx;2
 	
 This will embed the manifest into the .ofx file so it can now find at runtime the shared dependencies (i.e: the ffmpeg Dlls).
