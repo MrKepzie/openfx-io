@@ -336,9 +336,9 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
 
     if (chbegin != -1 && chend != -1) {
         assert(0 <= chbegin && chbegin < spec.nchannels && chbegin < chend && 0 < chend && chend <= spec.nchannels);
+        size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
 #ifdef OFX_READ_OIIO_USES_CACHE
         // offset for line y2-1
-        size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
         if (!_cache->get_pixels(ustring(filename),
                                0, //subimage
                                0, //miplevel
@@ -384,7 +384,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
                                chbegin, // chan begin
                                chend, // chan end
                                TypeDesc::FLOAT,  // data type
-                               (float*)((char*)ppixelData + pixelDataOffset2) + outputChannelBegin,
+                               (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
                                numChannels * sizeof(float), //x stride
                                -rowBytes, //y stride < make it invert Y
                                AutoStride); //z stride
