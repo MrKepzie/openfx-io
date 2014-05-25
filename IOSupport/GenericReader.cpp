@@ -130,6 +130,12 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
             content.generatePatternWithFrameNumberAtIndexes(indexes, &_sequencePattern);
             _sequenceFromFiles.clear();
             SequenceParsing::filesListFromPattern(_sequencePattern, &_sequenceFromFiles);
+            ///this may happen if the filename is only composed of digits
+            if (_sequenceFromFiles.empty()) {
+                std::map<int, std::string> views;
+                views.insert(std::make_pair(0, content.absoluteFileName()));
+                _sequenceFromFiles.insert(std::make_pair(0, views));
+            }
             if (_sequenceFromFiles.size() == 1) {
                 _originalFrameRange->setValue(0, 0);
             } else if (_sequenceFromFiles.size() > 1) {
@@ -882,6 +888,13 @@ void GenericReaderPlugin::inputFileChanged() {
         _sequencePattern = pattern;
         _sequenceFromFiles.clear();
         SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
+        
+        ///this may happen if the filename is only composed of digits
+        if (_sequenceFromFiles.empty()) {
+            std::map<int, std::string> views;
+            views.insert(std::make_pair(0, content.absoluteFileName()));
+            _sequenceFromFiles.insert(std::make_pair(0, views));
+        }
     }
 
  
