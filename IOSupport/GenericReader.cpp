@@ -577,7 +577,16 @@ void halveImage(const OfxRectI& roi,
         const PIX* srcLineStart = srcData + y * 2 * srcRowSize;
         PIX* dstLineStart = dstData + y * dstRowSize;
         
+//        if ((y * 2) >= (srcBounds.y2 - 1)) {
+//            return;
+//        }
+        
         for (int x = roi.x1; x < roi.x2;++x) {
+            
+//            if ((x * 2) >= (srcBounds.x2 - 1)) {
+//                break; 
+//            }
+//            
             for (int k = 0; k < nComponents; ++k) {
                 dstLineStart[x * nComponents + k] = (srcLineStart[x * 2 * nComponents + k] +
                         srcLineStart[(x * 2 + 1) * nComponents + k] +
@@ -614,7 +623,7 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     for (unsigned int i = 1; i <= level; ++i) {
         
         ///Halve the closestPo2 rect
-        OfxRectI nextBounds = downscalePowerOfTwoLargestEnclosed(srcBounds,i);
+        OfxRectI nextBounds = downscalePowerOfTwoLargestEnclosed(srcBounds,i); // was smallest enclosing
         OfxRectI roi = downscalePowerOfTwoLargestEnclosed(renderWindow, i);
 
         ///On the last iteration halve directly into the dstPixels
@@ -872,15 +881,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 void GenericReaderPlugin::inputFileChanged() {
     std::string filename;
     _fileParam->getValue(filename);
-    
-//    try {
-//        delete _sequenceFromFiles;
-//        _sequenceFromFiles = new SequenceParsing::SequenceFromFiles();
-//        SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
-//    } catch(const std::exception& e) {
-//        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-//        return;
-//    }
     
     SequenceParsing::FileNameContent content(filename);
     std::string pattern;
