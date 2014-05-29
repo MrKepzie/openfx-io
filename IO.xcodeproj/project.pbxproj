@@ -1232,6 +1232,14 @@
 		1E2F4DC8189295F600F4CE25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					OFX_EXTENSIONS_NUKE,
+					OFX_EXTENSIONS_VEGAS,
+					OFX_EXTENSIONS_TUTTLE,
+					"DEBUG=1",
+					OFX_IO_MT_FFMPEG,
+					OFX_IO_USING_OCIO,
+				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(EXR_PATH)/include/OpenEXR",

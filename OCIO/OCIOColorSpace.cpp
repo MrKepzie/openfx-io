@@ -257,10 +257,12 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(true);
 
+#ifdef OFX_IO_USING_OCIO
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE, OCIO_NAMESPACE::ROLE_REFERENCE);
+#endif
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

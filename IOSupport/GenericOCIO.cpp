@@ -89,6 +89,7 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
     _created = true;
 }
 
+#ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
 
 // ChoiceParamType may be OFX::ChoiceParamDescriptor or OFX::ChoiceParam
@@ -193,10 +194,12 @@ buildChoiceMenus(OCIO::ConstConfigRcPtr config,
     }
 }
 #endif
+#endif
 
 void
 GenericOCIO::loadConfig()
 {
+#ifdef OFX_IO_USING_OCIO
     std::string filename;
     _ocioConfigFile->getValue(filename);
 
@@ -232,6 +235,7 @@ GenericOCIO::loadConfig()
         ////outputCheck(); // may set values
     }
 #endif
+#endif
 }
 
 bool
@@ -257,6 +261,7 @@ GenericOCIO::isIdentity()
 void
 GenericOCIO::inputCheck()
 {
+#ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         return;
@@ -291,12 +296,14 @@ GenericOCIO::inputCheck()
         _inputSpaceChoice->setIsSecret(true);
     }
 #endif
+#endif
 }
 
 // sets the correct choice menu item from the outputSpace string value
 void
 GenericOCIO::outputCheck()
 {
+#ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         return;
@@ -330,6 +337,7 @@ GenericOCIO::outputCheck()
         _outputSpaceChoice->setEnabled(false);
         _outputSpaceChoice->setIsSecret(true);
     }
+#endif
 #endif
 }
 
