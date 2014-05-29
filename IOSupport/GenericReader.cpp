@@ -805,14 +805,23 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///We only support downscaling at a power of two.
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
     unsigned int proxyMipMapLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
-    if (useProxy) {
-        renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel - proxyMipMapLevel);
-    } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
-        ///the user didn't provide a proxy file, just decode the full image
-        ///upscale to a render scale of 1.
-        renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
-        intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
-
+    
+    if (getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0) == 0) {
+        ///if the plug-in doesn't support tiles, just render the full rod
+        OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
+        renderWindowToUse.x1 = rod.x1;
+        renderWindowToUse.x2 = rod.x2;
+        renderWindowToUse.y1 = rod.y1;
+        renderWindowToUse.y2 = rod.y2;
+    } else {
+        if (useProxy) {
+            renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel - proxyMipMapLevel);
+        } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
+            ///the user didn't provide a proxy file, just decode the full image
+            ///upscale to a render scale of 1.
+            renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
+            intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
+        }
     }
 
     
