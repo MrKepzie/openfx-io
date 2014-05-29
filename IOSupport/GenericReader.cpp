@@ -394,7 +394,7 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
                     }
                 }
                 if(filename.empty()){
-                    setPersistentMessage(OFX::Message::eMessageError, "", "Nearest frame search went out of range");
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
                     // return a black image
                 } else {
                     clearPersistentMessage();
