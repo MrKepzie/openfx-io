@@ -237,7 +237,7 @@ private:
     //SequenceParsing::SequenceFromFiles* _sequenceFromFiles;
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     std::string _sequencePattern;
-    unsigned int _numKeysForPattern; //< the number of frames the pattern currently have
+    int _numKeysForPattern; //< the number of frames the pattern currently have
 };
 
 

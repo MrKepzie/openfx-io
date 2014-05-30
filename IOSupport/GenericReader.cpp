@@ -99,7 +99,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _settingFrameRange(false)
 , _sequenceFromFiles()
 , _sequencePattern()
-, _numKeysForPattern(0)
+, _numKeysForPattern(-1)
 //, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -147,7 +147,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
             } else if (_sequenceFromFiles.size() > 1) {
                 _originalFrameRange->setValue(_sequenceFromFiles.begin()->first, _sequenceFromFiles.rbegin()->first);
             }
-            _numKeysForPattern = _sequenceFromFiles.size();
+            _numKeysForPattern = numKeys;
 //            //SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
 //            if (_sequenceFromFiles->isSingleFile()) {
 //                _originalFrameRange->setValue(0, 0);
@@ -900,24 +900,27 @@ void GenericReaderPlugin::inputFileChanged() {
     indexes[0] = content.getPotentialFrameNumbersCount() - 1;
     content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
     unsigned int numKeys = _fileParam->getNumKeys();
-
-    if (pattern != _sequencePattern || numKeys != _numKeysForPattern) {
+    
+    size_t oldNumKeys = _sequenceFromFiles.size();
+    bool patternChanged = true;
+    if (numKeys <= 1) {
+        ///this may happen if the filename is only composed of digits
         _sequencePattern = pattern;
         _sequenceFromFiles.clear();
-        if (numKeys > 1) {
+        std::map<int, std::string> views;
+        views.insert(std::make_pair(0, content.absoluteFileName()));
+        _sequenceFromFiles.insert(std::make_pair(0, views));
+    } else {
+        patternChanged = pattern != _sequencePattern;
+        if (patternChanged || (numKeys != _numKeysForPattern && _numKeysForPattern == 1)) {
+            _sequencePattern = pattern;
+            _sequenceFromFiles.clear();
             SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
         }
 
-        ///this may happen if the filename is only composed of digits
-        if (_sequenceFromFiles.empty()) {
-            std::map<int, std::string> views;
-            views.insert(std::make_pair(0, content.absoluteFileName()));
-            _sequenceFromFiles.insert(std::make_pair(0, views));
-        }
-        
-        _numKeysForPattern = _sequenceFromFiles.size();
     }
-
+    _numKeysForPattern = numKeys;
+    
  
     clearPersistentMessage();
     //reset the original range param
@@ -927,12 +930,14 @@ void GenericReaderPlugin::inputFileChanged() {
     ///let the derive class a chance to initialize any data structure it may need
     onInputFileChanged(filename);
     
-    ///we don't pass the _frameRange range as we don't want to store the time domain too
-    OfxRangeD tmp;
-    getSequenceTimeDomainInternal(tmp,true);
-    timeDomainFromSequenceTimeDomain(tmp, true);
-    _startingFrame->setValue(tmp.min);
- 
+    if (oldNumKeys != _sequenceFromFiles.size() || patternChanged) {
+        ///we don't pass the _frameRange range as we don't want to store the time domain too
+        OfxRangeD tmp;
+        getSequenceTimeDomainInternal(tmp,true);
+        timeDomainFromSequenceTimeDomain(tmp, true);
+        _startingFrame->setValue(tmp.min);
+    }
+    
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
