@@ -58,7 +58,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle);
+    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles);
     
     virtual ~GenericReaderPlugin();
 
@@ -238,6 +238,7 @@ private:
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     std::string _sequencePattern;
     int _numKeysForPattern; //< the number of frames the pattern currently have
+    const bool _supportsTiles;
 };
 
 

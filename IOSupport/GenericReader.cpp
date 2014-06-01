@@ -79,7 +79,7 @@
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
-GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
+GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
 , _outputClip(0)
@@ -100,6 +100,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle)
 , _sequenceFromFiles()
 , _sequencePattern()
 , _numKeysForPattern(-1)
+, _supportsTiles(supportsTiles)
 //, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -806,14 +807,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
     unsigned int proxyMipMapLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
     
-    if (getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0) == 0) {
-        ///if the plug-in doesn't support tiles, just render the full rod
-        OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
-        renderWindowToUse.x1 = rod.x1;
-        renderWindowToUse.x2 = rod.x2;
-        renderWindowToUse.y1 = rod.y1;
-        renderWindowToUse.y2 = rod.y2;
-    } else {
+    if (_supportsTiles) {
         if (useProxy) {
             renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel - proxyMipMapLevel);
         } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
@@ -822,6 +816,13 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
             renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
             intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
         }
+    } else {
+        ///if the plug-in doesn't support tiles, just render the full rod
+        OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
+        renderWindowToUse.x1 = rod.x1;
+        renderWindowToUse.x2 = rod.x2;
+        renderWindowToUse.y1 = rod.y1;
+        renderWindowToUse.y2 = rod.y2;
     }
 
     

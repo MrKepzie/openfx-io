@@ -86,7 +86,7 @@ static void invert_endianness(T *const buffer, const unsigned int size)
 }
 
 ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, kSupportsTiles)
 {
 }
 

@@ -91,7 +91,7 @@ private:
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, kSupportsTiles)
 #ifdef OFX_READ_OIIO_USES_CACHE
 #  ifdef OFX_READ_OIIO_SHARED_CACHE
 , _cache(ImageCache::create(true)) // shared cache

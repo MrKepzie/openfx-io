@@ -473,7 +473,7 @@ namespace Exr {
 
 
 ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, kSupportsTiles)
 {
     Exr::FileManager::s_readerManager.initialize();
 }

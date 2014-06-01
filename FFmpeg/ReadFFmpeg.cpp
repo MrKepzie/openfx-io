@@ -49,7 +49,7 @@
 static const bool kSupportsTiles = false;
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle)
+: GenericReaderPlugin(handle, kSupportsTiles)
 , _ffmpegFile(0)
 , _buffer(0)
 , _bufferWidth(0)
