@@ -198,7 +198,8 @@ private:
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
     
-    void scalePixelData(const OfxRectI& renderWindow,
+    void scalePixelData(const OfxRectI& originalRenderWindow,
+                        const OfxRectI& renderWindow,
                         unsigned int levels,
                         const void* srcPixelData,
                         OFX::PixelComponentEnum srcPixelComponents,

@@ -577,22 +577,25 @@ void halveImage(const OfxRectI& roi,
         
         const PIX* srcLineStart = srcData + y * 2 * srcRowSize;
         PIX* dstLineStart = dstData + y * dstRowSize;
-        
-//        if ((y * 2) >= (srcBounds.y2 - 1)) {
-//            return;
-//        }
-        
+
+        bool pickNextRow = (y * 2) < (srcBounds.y2 - 1);
+        bool pickThisRow = (y * 2) >= (srcBounds.y1);
+        int sumH = (int)pickNextRow + (int)pickThisRow;
         for (int x = roi.x1; x < roi.x2;++x) {
             
-//            if ((x * 2) >= (srcBounds.x2 - 1)) {
-//                break; 
-//            }
-//            
+            bool pickNextCol = (x * 2) < (srcBounds.x2 - 1);
+            bool pickThisCol = (x * 2) >= (srcBounds.x1);
+            int sumW = (int)pickThisCol + (int)pickNextCol;
             for (int k = 0; k < nComponents; ++k) {
-                dstLineStart[x * nComponents + k] = (srcLineStart[x * 2 * nComponents + k] +
-                        srcLineStart[(x * 2 + 1) * nComponents + k] +
-                        srcLineStart[(x * 2 * nComponents) + srcRowSize + k] +
-                        srcLineStart[(x * 2 + 1) * nComponents + srcRowSize + k]) / 4;
+                ///a b
+                ///c d
+                
+                PIX a = pickThisCol && pickThisRow ? srcLineStart[x * 2 * nComponents + k] : 0;
+                PIX b = pickNextCol && pickThisRow ? srcLineStart[(x * 2 + 1) * nComponents + k] : 0;
+                PIX c = pickThisCol && pickNextCol ? srcLineStart[(x * 2 * nComponents) + srcRowSize + k]: 0;
+                PIX d = pickNextCol && pickNextRow ? srcLineStart[(x * 2 + 1) * nComponents + srcRowSize + k] : 0;
+                
+                dstLineStart[x * nComponents + k] = (a + b + c + d) / (sumH * sumW);
             }
         }
     }
@@ -601,6 +604,7 @@ void halveImage(const OfxRectI& roi,
 
 template <typename PIX,int nComponents>
 void buildMipMapLevel(OFX::ImageEffect* instance,
+                      const OfxRectI& originalRenderWindow,
                       const OfxRectI& renderWindow,
                       unsigned int level,
                       const PIX* srcPixels,
@@ -624,12 +628,17 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     for (unsigned int i = 1; i <= level; ++i) {
         
         ///Halve the closestPo2 rect
-        OfxRectI nextBounds = downscalePowerOfTwoLargestEnclosed(srcBounds,i); // was smallest enclosing
-        OfxRectI roi = downscalePowerOfTwoLargestEnclosed(renderWindow, i);
+        OfxRectI nextBounds = downscalePowerOfTwo(srcBounds,i); // was smallest enclosing
+        OfxRectI roi = downscalePowerOfTwo(renderWindow, i);
+    
 
         ///On the last iteration halve directly into the dstPixels
         if (i == level) {
+            assert(originalRenderWindow.x1 == (roi.x1) && originalRenderWindow.x2 == (roi.x2) &&
+                   originalRenderWindow.y1 == (roi.y1) && originalRenderWindow.y2 == (roi.y2));
+            
             halveImage<PIX, nComponents>(roi,srcImg, previousBounds, previousRowBytes, dstPixels, dstBounds,dstRowBytes);
+
         } else {
             ///Allocate an image with half the size of the source image
             int targetRowBytes =  (nextBounds.x2 - nextBounds.x1)  * nComponents * sizeof(PIX);
@@ -667,7 +676,8 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
 
 
 
-void GenericReaderPlugin::scalePixelData(const OfxRectI& renderWindow,
+void GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
+                                         const OfxRectI& renderWindow,
                                          unsigned int levels,
                                          const void* srcPixelData,
                                          OFX::PixelComponentEnum srcPixelComponents,
@@ -689,13 +699,13 @@ void GenericReaderPlugin::scalePixelData(const OfxRectI& renderWindow,
     }
     
     if(dstPixelComponents == OFX::ePixelComponentRGBA) {
-        buildMipMapLevel<float, 4>(this,renderWindow, levels, (const float*)srcPixelData,
+        buildMipMapLevel<float, 4>(this,originalRenderWindow,renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds,srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
-        buildMipMapLevel<float, 3>(this,renderWindow, levels, (const float*)srcPixelData,
+        buildMipMapLevel<float, 3>(this,originalRenderWindow,renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds,srcRowBytes, (float*)dstPixelData, dstBounds,dstRowBytes);
     }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
-        buildMipMapLevel<float, 1>(this, renderWindow,levels, (const float*)srcPixelData,
+        buildMipMapLevel<float, 1>(this,originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } // switch
 
@@ -814,7 +824,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.
             renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
-            intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
+            //intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
         }
     } else {
         ///if the plug-in doesn't support tiles, just render the full rod
@@ -877,7 +887,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         
         if (kSupportsMultiResolution && downscaleLevels > 0) {
             /// adjust the scale to match the given output image
-            scalePixelData(renderWindowToUse,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+            scalePixelData(args.renderWindow,renderWindowToUse,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
                            bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
                            pixelComponents, bitDepth, bounds, dstRowBytes);
         } else{
