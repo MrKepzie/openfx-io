@@ -275,7 +275,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     }
     
     if (!_formatContext) {
-#     if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(54, 0, 0)
+#     if defined(FFMS_USE_FFMPEG_COMPAT) && LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(54, 0, 0)
         avformat_alloc_output_context2(&_formatContext, fmt, NULL, filename.c_str());
 #     else
 #       ifdef FFMS_USE_FFMPEG_COMPAT
