@@ -40,6 +40,7 @@
 #include "GenericOCIO.h"
 
 #include <cstring>
+#include <cstdlib>
 #include <string>
 #include <stdexcept>
 #include <ofxsParam.h>
