@@ -364,6 +364,7 @@
 		1E8B5DA318B79E8100C31FDC /* WritePFM.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WritePFM.h; sourceTree = "<group>"; };
 		1E8B5DD218B7A2F300C31FDC /* PFM.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PFM.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1EA1571C18A642C30054B814 /* IOUtility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOUtility.h; sourceTree = "<group>"; };
+		1EC04CAF193C8E4100E47D42 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
 		1EC7C7F418BF4D4F002A246F /* fnPublicOfxExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fnPublicOfxExtensions.h; sourceTree = "<group>"; };
 		1EC7C7F618BF4D75002A246F /* ofxReadWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxReadWrite.h; sourceTree = "<group>"; };
@@ -615,6 +616,7 @@
 		D74E623B1875A79700D8FA13 = {
 			isa = PBXGroup;
 			children = (
+				1EC04CAF193C8E4100E47D42 /* Makefile */,
 				1EDECBAA18B9F6BB0093B6FC /* RunScript */,
 				1E8B5D9C18B79E5700C31FDC /* PFM */,
 				1ED4999D18A00B49008A2D91 /* OCIO */,

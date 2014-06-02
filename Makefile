@@ -1,11 +1,19 @@
 # build a combined plugin that reads all formats
 SUBDIRS = IO
-# separate plugins for each format can also be built by uncommenting the following line
-#SUBDIRS += FFmpeg EXR OIIO PFM OCIO
+
+SUBDIRS_NOMULTI = \
+EXR \
+FFmpeg \
+OCIO \
+OIIO \
+PFM
 
 all: subdirs
 
-.PHONY: subdirs clean $(SUBDIRS)
+.PHONY: nomulti subdirs clean $(SUBDIRS)
+
+nomulti:
+	$(MAKE) SUBDIRS=$(SUBDIRS_NOMULTI)
 
 subdirs: $(SUBDIRS)
 
