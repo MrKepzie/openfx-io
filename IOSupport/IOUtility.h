@@ -143,6 +143,22 @@ inline OfxRectI upscalePowerOfTwo(const OfxRectI& r,unsigned int thisLevel)
 }
 
 /**
+ * @brief Upscales the bounds assuming this rectangle is the Nth level of mipmap
+ **/
+inline OfxRectD upscalePowerOfTwo(const OfxRectD& r,double thisLevel)
+{
+    if (thisLevel == 0) {
+        return r;
+    }
+    OfxRectD ret;
+    ret.x1 = std::pow(r.x1, thisLevel);
+    ret.x2 = std::pow(r.x2, thisLevel);
+    ret.y1 = std::pow(r.y1, thisLevel);
+    ret.y2 = std::pow(r.y2, thisLevel);
+    return ret;
+}
+
+/**
  * @brief Scales down the rectangle by the given power of 2
  **/
 inline OfxRectI downscalePowerOfTwo(const OfxRectI& r,unsigned int thisLevel)

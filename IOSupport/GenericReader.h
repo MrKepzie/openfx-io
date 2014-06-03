@@ -176,10 +176,17 @@ private:
      */
     double getSequenceTime(double t,bool canSetOriginalFrameRange);
 
+    enum eGetFilenameRetCode
+    {
+        eGetFileNameFailed = 0,
+        eGetFileNameReturnedFullRes,
+        eGetFileNameReturnedProxy
+    };
+    
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    void getFilenameAtSequenceTime(double t, std::string &filename,bool proxyFiles);
+    eGetFilenameRetCode getFilenameAtSequenceTime(double t, std::string &filename,bool proxyFiles);
     
     /**
      * @brief Initializes the params depending on the input file.

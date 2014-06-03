@@ -361,10 +361,11 @@ double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRan
     return sequenceTime;
 }
 
-void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::string &filename,bool proxyFiles)
+GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
+                                                                                        std::string &filename,bool proxyFiles)
 {
 
-    
+    GenericReaderPlugin::eGetFilenameRetCode ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
     
@@ -374,6 +375,7 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
         _proxyFileParam->getValueAtTime(sequenceTime, proxyFileName);
         if (!proxyFileName.empty() && !filename.empty()) {
             filename = proxyFileName;
+            ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
         }
     }
     
@@ -388,6 +390,14 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
                 int maxOffset = MAX_SEARCH_RANGE;
                 while (filename.empty() && offset <= maxOffset) {
                     _fileParam->getValueAtTime(sequenceTime + offset, filename);
+                    if (!filename.empty() && proxyFiles) {
+                        std::string proxyFileName;
+                        _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
+                        if (!proxyFileName.empty()) {
+                            filename = proxyFileName;
+                            ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
+                        }
+                    }
                     if (offset < 0) {
                         offset = -offset;
                     } else {
@@ -396,6 +406,7 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
                 }
                 if(filename.empty()){
                     setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                    ret = GenericReaderPlugin::eGetFileNameFailed;
                     // return a black image
                 } else {
                     clearPersistentMessage();
@@ -406,17 +417,19 @@ void GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime, std::st
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                ret = GenericReaderPlugin::eGetFileNameFailed;
                 break;
             case 2: // Black image
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 clearPersistentMessage();
+                ret = GenericReaderPlugin::eGetFileNameFailed;
                 break;
         }
 
     }
     
-    
+    return ret;
     
 }
 
@@ -573,6 +586,8 @@ void halveImage(const OfxRectI& roi,
     const PIX* srcData =  srcPixels - (srcBounds.x1 * nComponents + srcRowSize * srcBounds.y1);
     PIX* dstData = dstPixels - (dstBounds.x1 * nComponents + dstRowSize * dstBounds.y1);
     
+    assert(roi.x1 * 2 >= (srcBounds.x1 - 1) && (roi.x2-1) * 2 < srcBounds.x2 &&
+           roi.y1 * 2 >= (srcBounds.y1 - 1) && (roi.y2-1) * 2 < srcBounds.y2);
     for (int y = roi.y1; y < roi.y2;++y) {
         
         const PIX* srcLineStart = srcData + y * 2 * srcRowSize;
@@ -581,20 +596,24 @@ void halveImage(const OfxRectI& roi,
         bool pickNextRow = (y * 2) < (srcBounds.y2 - 1);
         bool pickThisRow = (y * 2) >= (srcBounds.y1);
         int sumH = (int)pickNextRow + (int)pickThisRow;
+        assert(sumH == 1 || sumH == 2);
         for (int x = roi.x1; x < roi.x2;++x) {
             
             bool pickNextCol = (x * 2) < (srcBounds.x2 - 1);
             bool pickThisCol = (x * 2) >= (srcBounds.x1);
             int sumW = (int)pickThisCol + (int)pickNextCol;
+            assert(sumW == 1 || sumW == 2);
             for (int k = 0; k < nComponents; ++k) {
                 ///a b
                 ///c d
                 
-                PIX a = pickThisCol && pickThisRow ? srcLineStart[x * 2 * nComponents + k] : 0;
-                PIX b = pickNextCol && pickThisRow ? srcLineStart[(x * 2 + 1) * nComponents + k] : 0;
-                PIX c = pickThisCol && pickNextCol ? srcLineStart[(x * 2 * nComponents) + srcRowSize + k]: 0;
-                PIX d = pickNextCol && pickNextRow ? srcLineStart[(x * 2 + 1) * nComponents + srcRowSize + k] : 0;
-                
+                PIX a = (pickThisCol && pickThisRow) ? srcLineStart[x * 2 * nComponents + k] : 0;
+                PIX b = (pickNextCol && pickThisRow) ? srcLineStart[(x * 2 + 1) * nComponents + k] : 0;
+                PIX c = (pickThisCol && pickNextRow) ? srcLineStart[(x * 2 * nComponents) + srcRowSize + k]: 0;
+                PIX d = (pickNextCol && pickNextRow) ? srcLineStart[(x * 2 + 1) * nComponents + srcRowSize + k] : 0;
+
+                assert(sumW == 2 || (sumW == 1 && ((a == 0 && c == 0) || (b == 0 && d == 0))));
+                assert(sumH == 2 || (sumH == 1 && ((a == 0 && b == 0) || (c == 0 && d == 0))));
                 dstLineStart[x * nComponents + k] = (a + b + c + d) / (sumH * sumW);
             }
         }
@@ -627,15 +646,15 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
     ///Build all the mipmap levels until we reach the one we are interested in
     for (unsigned int i = 1; i <= level; ++i) {
         
-        ///Halve the closestPo2 rect
-        OfxRectI nextBounds = downscalePowerOfTwo(srcBounds,i); // was smallest enclosing
-        OfxRectI roi = downscalePowerOfTwo(renderWindow, i);
+        ///Halve the smallest enclosing po2 rect as we need to render a minimum of the renderWindow
+        OfxRectI nextBounds = downscalePowerOfTwoSmallestEnclosing(srcBounds,i);
+        OfxRectI roi = downscalePowerOfTwoSmallestEnclosing(renderWindow, i);
     
 
         ///On the last iteration halve directly into the dstPixels
         if (i == level) {
-            assert(originalRenderWindow.x1 == (roi.x1) && originalRenderWindow.x2 == (roi.x2) &&
-                   originalRenderWindow.y1 == (roi.y1) && originalRenderWindow.y2 == (roi.y2));
+            //assert(originalRenderWindow.x1 == (roi.x1) && originalRenderWindow.x2 == (roi.x2) &&
+            //     originalRenderWindow.y1 == (roi.y1) && originalRenderWindow.y2 == (roi.y2));
             
             halveImage<PIX, nComponents>(roi,srcImg, previousBounds, previousRowBytes, dstPixels, dstBounds,dstRowBytes);
 
@@ -721,15 +740,21 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     std::string filename;
-    ///Retrieve the original filename, we don't care about the proxy images here because the rod is
-    ///in canonical coordinates (it doesn't care about the render scale)
-    getFilenameAtSequenceTime(sequenceTime, filename,false);
+ 
+    GenericReaderPlugin::eGetFilenameRetCode ret = getFilenameAtSequenceTime(sequenceTime, filename,true);
     
-    if (filename.empty()) {
+    if (ret == GenericReaderPlugin::eGetFileNameFailed) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
     getFrameRegionOfDefinition(filename, sequenceTime, rod);
+    
+    if (ret == GenericReaderPlugin::eGetFileNameReturnedProxy) {
+        ///upscale the proxy RoD to be in canonical coords.
+        unsigned int mipmapLvl = getLevelFromScale(args.renderScale.x);
+        rod = upscalePowerOfTwo(rod, (double)mipmapLvl);
+    }
+    
     return true;
 }
 
@@ -811,28 +836,36 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
     ///of the proxy file and adjust the scale so it fits the given scale.
     // allocate
-    OfxRectI renderWindowToUse = args.renderWindow;
+    OfxRectI renderWindowFullRes = args.renderWindow;
     
     ///We only support downscaling at a power of two.
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
     unsigned int proxyMipMapLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
     
+    OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
+    OfxRectI rodI;
+    rodI.x1 = rod.x1;
+    rodI.x2 = rod.x2;
+    rodI.y1 = rod.y1;
+    rodI.y2 = rod.y2;
     if (_supportsTiles) {
         if (useProxy) {
-            renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel - proxyMipMapLevel);
+            renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - proxyMipMapLevel);
         } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.
-            renderWindowToUse = upscalePowerOfTwo(renderWindowToUse, renderMipmapLevel);
-            //intersect(renderWindowToUse,dstImg->getRegionOfDefinition(), &renderWindowToUse);
+            renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel);
         }
+        ///Intersect the full res renderwindow to the real rod.
+        ///It works for both proxy and non proxy files
+        intersect(renderWindowFullRes, rodI, &renderWindowFullRes);
+
     } else {
         ///if the plug-in doesn't support tiles, just render the full rod
-        OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
-        renderWindowToUse.x1 = rod.x1;
-        renderWindowToUse.x2 = rod.x2;
-        renderWindowToUse.y1 = rod.y1;
-        renderWindowToUse.y2 = rod.y2;
+        renderWindowFullRes.x1 = rod.x1;
+        renderWindowFullRes.x2 = rod.x2;
+        renderWindowFullRes.y1 = rod.y1;
+        renderWindowFullRes.y2 = rod.y2;
     }
 
     
@@ -868,31 +901,31 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     {
 
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-        int tmpRowBytes = (renderWindowToUse.x2-renderWindowToUse.x1) * pixelBytes;
-        size_t memSize = (size_t)(renderWindowToUse.y2-renderWindowToUse.y1) * tmpRowBytes;
+        int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
+        size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
 
         // read file
         if (!useProxy) {
-            decode(filename, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+            decode(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         } else {
-            decode(proxyFile, sequenceTime, renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+            decode(proxyFile, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
 
         ///do the color-space conversion
         if (!_ocio->isIdentity()) {
-            _ocio->apply(renderWindowToUse, tmpPixelData, renderWindowToUse, pixelComponents, tmpRowBytes);
+            _ocio->apply(renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
         if (kSupportsMultiResolution && downscaleLevels > 0) {
             /// adjust the scale to match the given output image
-            scalePixelData(args.renderWindow,renderWindowToUse,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
-                           bitDepth, renderWindowToUse, tmpRowBytes, dstPixelData,
+            scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+                           bitDepth, renderWindowFullRes, tmpRowBytes, dstPixelData,
                            pixelComponents, bitDepth, bounds, dstRowBytes);
         } else{
             // copy
-            copyPixelData(args.renderWindow, tmpPixelData, renderWindowToUse, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
         }
         mem.unlock();
     }
