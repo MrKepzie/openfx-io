@@ -260,8 +260,10 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
     
 }
 
-double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange)
+GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime)
 {
+    GenericReaderPlugin::eGetSequenceTimeRet ret;
+    
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
@@ -274,7 +276,7 @@ double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRan
     getSequenceTimeDomainInternal(originalTimeDomain,canSetOriginalFrameRange);
     
     ///the return value
-    int sequenceTime =  t - timeOffset ;
+    sequenceTime =  t - timeOffset ;
 
     
     ///get the offset from the starting time of the sequence in case we bounce or loop
@@ -317,7 +319,7 @@ double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRan
         }
         clearPersistentMessage();
         assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
-
+        ret = GenericReaderPlugin::eGetSequenceTimeBeforeSequence;
     } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
                                              /////if we're after the last frame
         int afterChoice;
@@ -356,9 +358,11 @@ double GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRan
         }
         clearPersistentMessage();
         assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
+        ret = GenericReaderPlugin::eGetSequenceTimeAfterSequence;
+    } else {
+        ret = GenericReaderPlugin::eGetSequenceTimeWithinSequence;
     }
-    
-    return sequenceTime;
+    return ret;
 }
 
 GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
@@ -770,7 +774,7 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     
     double sequenceTime;
     try {
-        sequenceTime =  getSequenceTime(args.time,false);
+        getSequenceTime(args.time,false,sequenceTime);
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -814,7 +818,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     double sequenceTime;
     try {
-        sequenceTime =  getSequenceTime(args.time,false);
+        getSequenceTime(args.time,false,sequenceTime);
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -1029,7 +1033,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         std::string proxyFile,originalFileName;
         double sequenceTime;
         try {
-            sequenceTime =  getSequenceTime(args.time,false);
+            getSequenceTime(args.time,false,sequenceTime);
         } catch (const std::exception& e) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
@@ -1124,6 +1128,28 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
 void GenericReaderPlugin::purgeCaches() {
     clearAnyCache();
     _ocio->purgeCaches();
+}
+
+bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
+{
+    double sequenceTime;
+    GenericReaderPlugin::eGetSequenceTimeRet ret;
+    try {
+        ret = getSequenceTime(args.time,false,sequenceTime);
+    } catch (const std::exception& e) {
+        return false;
+    }
+    
+    if (ret == GenericReaderPlugin::eGetSequenceTimeAfterSequence || ret == GenericReaderPlugin::eGetSequenceTimeBeforeSequence) {
+        ///Transform the sequence time to "real" time
+        int timeOffset;
+        _timeOffset->getValue(timeOffset);
+        identityTime = sequenceTime + timeOffset;
+        identityClip = _outputClip;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 OfxPointD GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time)

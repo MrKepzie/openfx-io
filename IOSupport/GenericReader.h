@@ -103,6 +103,9 @@ public:
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+    /* override is identity */
+    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
+    
     /**
      * @brief Overriden to clear any OCIO cache. 
      * This function calls clearAnyCache() if you have any cache to clear.
@@ -169,12 +172,17 @@ private:
      **/
     virtual bool isVideoStream(const std::string& filename) = 0;
     
+    enum eGetSequenceTimeRet {
+        eGetSequenceTimeWithinSequence = 0,
+        eGetSequenceTimeBeforeSequence,
+        eGetSequenceTimeAfterSequence
+    };
     /**
      * @brief compute the sequence/file time from time
      * @param canSetOriginalFrameRange If false, the underlying call
      * cannot set the _originalFrameRange param values.
      */
-    double getSequenceTime(double t,bool canSetOriginalFrameRange);
+    eGetSequenceTimeRet getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime);
 
     enum eGetFilenameRetCode
     {
