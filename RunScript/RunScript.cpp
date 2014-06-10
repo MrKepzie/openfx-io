@@ -572,7 +572,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     IntParamDescriptor *param_count_ = desc.defineIntParam(kRunScriptPluginParamCount);
     param_count_->setLabels(kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel);
-    param_count_->setAnimates(false);
+    param_count_->setAnimates(true);
     param_count_->setRange(0, kRunScriptPluginArgumentsCount);
     param_count_->setDisplayRange(0, kRunScriptPluginArgumentsCount);
     param_count_->setParent(*script_parameters_);
@@ -591,7 +591,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             ss << kRunScriptPluginParamTypeLabel << ' ' << i+1;
             type_->setLabels(ss.str(), ss.str(), ss.str());
         }
-        type_->setAnimates(false);
+        type_->setAnimates(true);
         type_->appendOption(kRunScriptPluginParamTypeFilenameLabel, kRunScriptPluginParamTypeFilenameHint);
         type_->appendOption(kRunScriptPluginParamTypeStringLabel,   kRunScriptPluginParamTypeStringHint);
         type_->appendOption(kRunScriptPluginParamTypeDoubleLabel,   kRunScriptPluginParamTypeDoubleHint);
@@ -676,7 +676,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     script_->setLabels(kRunScriptPluginParamScriptLabel, kRunScriptPluginParamScriptLabel, kRunScriptPluginParamScriptLabel);
     script_->setHint(kRunScriptPluginParamScriptHint);
     script_->setStringType(eStringTypeMultiLine);
-    script_->setAnimates(false);
+    script_->setAnimates(true);
     script_->setDefault("#!/bin/sh\n");
     page->addChild(*script_);
 

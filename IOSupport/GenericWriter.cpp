@@ -262,7 +262,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     const float* srcPixelDataF = (const float*)srcPixelData;
-    if (_ocio->isIdentity()) {
+    if (_ocio->isIdentity(args.time)) {
         // no colorspace conversion, just encode the source image
         // we ealways encode the whole input image, regardless of args.renderWindow
         encode(filename, args.time, srcPixelDataF, bounds, pixelComponents, srcRowBytes);
@@ -289,7 +289,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         //if (dstImg.get()) {
         //// do the color-space conversion on dstImg
         //getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
-        //_ocio->apply(args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
+        //_ocio->apply(args.time, args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
         //encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
         //}
         //
@@ -307,7 +307,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         copyPixelData(bounds, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes);
 
         // do the color-space conversion
-        _ocio->apply(args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+        _ocio->apply(args.time, args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
         // write theimage file
         encode(filename, args.time, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
         // copy to dstImg if necessary
@@ -558,7 +558,7 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     frameRangeChoiceParam->appendOption("Union of input ranges","The union of all inputs frame ranges will be rendered.");
     frameRangeChoiceParam->appendOption("Timeline bounds","The frame range delimited by the timeline bounds will be rendered.");
     frameRangeChoiceParam->appendOption("Manual","The frame range will be the one defined by the first frame and last frame parameters.");
-    frameRangeChoiceParam->setAnimates(false);
+    frameRangeChoiceParam->setAnimates(true);
     frameRangeChoiceParam->setHint("What frame range should be rendered.");
     frameRangeChoiceParam->setDefault(0);
     page->addChild(*frameRangeChoiceParam);
@@ -567,14 +567,14 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kWriterFirstFrameParamName);
     firstFrameParam->setLabels("First frame", "First frame", "First frame");
     firstFrameParam->setIsSecret(true);
-    firstFrameParam->setAnimates(false);
+    firstFrameParam->setAnimates(true);
     page->addChild(*firstFrameParam);
 
     ////////////Last frame
     OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kWriterLastFrameParamName);
     lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
     lastFrameParam->setIsSecret(true);
-    lastFrameParam->setAnimates(false);
+    lastFrameParam->setAnimates(true);
     page->addChild(*lastFrameParam);
 
 

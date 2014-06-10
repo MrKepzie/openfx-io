@@ -80,13 +80,13 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
     _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoice);
     _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoice);
 #endif
-    loadConfig();
+    loadConfig(0.);
 #endif
     // setup the GUI
     // setValue() may be called from createInstance, according to
     // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
-    inputCheck();
-    outputCheck();
+    inputCheck(0.);
+    outputCheck(0.);
     _created = true;
 }
 
@@ -198,11 +198,11 @@ buildChoiceMenus(OCIO::ConstConfigRcPtr config,
 #endif
 
 void
-GenericOCIO::loadConfig()
+GenericOCIO::loadConfig(double time)
 {
 #ifdef OFX_IO_USING_OCIO
     std::string filename;
-    _ocioConfigFile->getValue(filename);
+    _ocioConfigFile->getValueAtTime(time, filename);
 
     if (filename == _ocioConfigFileName) {
         return;
@@ -240,7 +240,7 @@ GenericOCIO::loadConfig()
 }
 
 bool
-GenericOCIO::isIdentity()
+GenericOCIO::isIdentity(double time)
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
@@ -248,9 +248,9 @@ GenericOCIO::isIdentity()
         return true;
     }
     std::string inputSpace;
-    _inputSpace->getValue(inputSpace);
+    _inputSpace->getValueAtTime(time, inputSpace);
     std::string outputSpace;
-    _outputSpace->getValue(outputSpace);
+    _outputSpace->getValueAtTime(time, outputSpace);
     return inputSpace == outputSpace;
 #else
     return true;
@@ -260,7 +260,7 @@ GenericOCIO::isIdentity()
 
 // sets the correct choice menu item from the inputSpace string value
 void
-GenericOCIO::inputCheck()
+GenericOCIO::inputCheck(double time)
 {
 #ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
@@ -276,11 +276,11 @@ GenericOCIO::inputCheck()
         return;
     }
     std::string inputSpaceName;
-    _inputSpace->getValue(inputSpaceName);
+    _inputSpace->getValueAtTime(time, inputSpaceName);
     int inputSpaceIndex = _config->getIndexForColorSpace(inputSpaceName.c_str());
     if (inputSpaceIndex >= 0) {
         int inputSpaceIndexOld;
-        _inputSpaceChoice->getValue(inputSpaceIndexOld);
+        _inputSpaceChoice->getValueAtTime(time, inputSpaceIndexOld);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
         if (inputSpaceIndexOld != inputSpaceIndex) {
             _inputSpaceChoice->setValue(inputSpaceIndex);
@@ -302,7 +302,7 @@ GenericOCIO::inputCheck()
 
 // sets the correct choice menu item from the outputSpace string value
 void
-GenericOCIO::outputCheck()
+GenericOCIO::outputCheck(double time)
 {
 #ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
@@ -318,11 +318,11 @@ GenericOCIO::outputCheck()
         return;
     }
     std::string outputSpaceName;
-    _outputSpace->getValue(outputSpaceName);
+    _outputSpace->getValueAtTime(time, outputSpaceName);
     int outputSpaceIndex = _config->getIndexForColorSpace(outputSpaceName.c_str());
     if (outputSpaceIndex >= 0) {
         int outputSpaceIndexOld;
-        _outputSpaceChoice->getValue(outputSpaceIndexOld);
+        _outputSpaceChoice->getValueAtTime(time, outputSpaceIndexOld);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
         if (outputSpaceIndexOld != outputSpaceIndex) {
             _outputSpaceChoice->setValue(outputSpaceIndex);
@@ -343,7 +343,7 @@ GenericOCIO::outputCheck()
 }
 
 void
-GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
+GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
@@ -352,7 +352,7 @@ GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
         throw std::runtime_error("OCIO: invalid pixel depth (only float is supported)");
     }
 
-    apply(renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
+    apply(time, renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
 #endif
 }
 
@@ -360,30 +360,77 @@ GenericOCIO::apply(const OfxRectI& renderWindow, OFX::Image* img)
 class OCIOProcessor : public OFX::PixelProcessor {
     public :
     // ctor
-    OCIOProcessor(OFX::ImageEffect &instance, GenericOCIO &ocio)
+    OCIOProcessor(OFX::ImageEffect &instance)
     : OFX::PixelProcessor(instance)
-    , _ocio(ocio)
+    , _proc()
+    , _instance(&instance)
     {}
 
     // and do some processing
-    void multiThreadProcessImages(OfxRectI procWindow)
+    void multiThreadProcessImages(OfxRectI procWindow);
+
+    void setValues(OCIO_NAMESPACE::ConstConfigRcPtr config, const std::string& inputSpace, const std::string& outputSpace)
     {
-        _ocio.applyInternal(procWindow, (float*)_dstPixelData, _dstBounds, _dstPixelComponents, _dstRowBytes);
+        OCIO::ConstContextRcPtr context = config->getCurrentContext();
+        _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+        
     }
 private:
-    GenericOCIO & _ocio;
-
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OFX::ImageEffect* _instance;
 };
 
 void
-GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
+{
+    assert(_dstBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= _dstBounds.x2);
+    assert(_dstBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= _dstBounds.y2);
+#ifdef OFX_IO_USING_OCIO
+    if (!_proc) {
+        throw std::logic_error("OCIO configuration not loaded");
+    }
+    int numChannels;
+    int pixelBytes;
+    switch(_dstPixelComponents)
+    {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            break;
+        case OFX::ePixelComponentRGB:
+            numChannels = 3;
+            break;
+            //case OFX::ePixelComponentAlpha: pixelBytes = 1; break;
+        default:
+            numChannels = 0;
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    pixelBytes = numChannels * sizeof(float);
+    size_t pixelDataOffset = (size_t)(renderWindow.y1 - _dstBounds.y1) * _dstRowBytes + (size_t)(renderWindow.x1 - _dstBounds.x1) * pixelBytes;
+    float *pix = (float *) (((char *) _dstPixelData) + pixelDataOffset); // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+    try {
+        if (_proc) {
+            OCIO::PackedImageDesc img(pix,renderWindow.x2 - renderWindow.x1,renderWindow.y2 - renderWindow.y1, numChannels, sizeof(float), pixelBytes, _dstRowBytes);
+            _proc->apply(img);
+        }
+    } catch (OCIO::Exception &e) {
+        _instance->setPersistentMessage(OFX::Message::eMessageError, "", std::string("OpenColorIO error: ") + e.what());
+        throw std::runtime_error(std::string("OpenColorIO error: ") + e.what());
+    }
+    _instance->clearPersistentMessage();
+#endif
+}
+
+
+void
+GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if (!_config) {
         return;
     }
-    if (isIdentity()) {
+    if (isIdentity(time)) {
         return;
     }
     // are we in the image bounds
@@ -395,9 +442,15 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
         throw std::runtime_error("OCIO: invalid components (only RGB and RGBA are supported)");
     }
 
-    OCIOProcessor processor(*_parent, *this);
+    OCIOProcessor processor(*_parent);
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
+
+    std::string inputSpace;
+    _inputSpace->getValueAtTime(time, inputSpace);
+    std::string outputSpace;
+    _outputSpace->getValueAtTime(time, outputSpace);
+    processor.setValues(_config, inputSpace, outputSpace);
 
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -407,53 +460,6 @@ GenericOCIO::apply(const OfxRectI& renderWindow, float *pixelData, const OfxRect
 #endif
 }
 
-void
-GenericOCIO::applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
-{
-    assert(_created);
-    assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
-    assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
-#ifdef OFX_IO_USING_OCIO
-    if (!_config) {
-        throw std::logic_error("OCIO configuration not loaded");
-    }
-    int numChannels;
-    int pixelBytes;
-    switch(pixelComponents)
-    {
-        case OFX::ePixelComponentRGBA:
-            numChannels = 4;
-            break;
-        case OFX::ePixelComponentRGB:
-            numChannels = 3;
-            break;
-        //case OFX::ePixelComponentAlpha: pixelBytes = 1; break;
-        default:
-            numChannels = 0;
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-
-    pixelBytes = numChannels * sizeof(float);
-    size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
-    float *pix = (float *) (((char *) pixelData) + pixelDataOffset); // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
-    try {
-        std::string inputSpace;
-        _inputSpace->getValue(inputSpace);
-        std::string outputSpace;
-        _outputSpace->getValue(outputSpace);
-        OCIO::ConstContextRcPtr context = _config->getCurrentContext();
-        OCIO::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
-        if (proc) {
-            OCIO::PackedImageDesc img(pix,renderWindow.x2 - renderWindow.x1,renderWindow.y2 - renderWindow.y1, numChannels, sizeof(float), pixelBytes, rowBytes);
-            proc->apply(img);
-        }
-    } catch (OCIO::Exception &e) {
-        _parent->setPersistentMessage(OFX::Message::eMessageError, "", std::string("OpenColorIO error: ") + e.what());
-        throw std::runtime_error(std::string("OpenColorIO error: ") + e.what());
-    }
-    _parent->clearPersistentMessage();
-#endif
-}
 
 void
 GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
@@ -461,12 +467,12 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if ( paramName == kOCIOParamConfigFilename ) {
-        loadConfig(); // re-load the new OCIO config
-        inputCheck();
-        outputCheck();
+        loadConfig(args.time); // re-load the new OCIO config
+        inputCheck(args.time);
+        outputCheck(args.time);
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
-            _ocioConfigFile->getValue(filename);
+            _ocioConfigFile->getValueAtTime(args.time, filename);
             _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
     }
@@ -584,7 +590,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         if (args.reason == OFX::eChangeUserEdit) {
             // if the inputspace doesn't correspond to a valid one, reset to default
             std::string inputSpace;
-            _inputSpace->getValue(inputSpace);
+            _inputSpace->getValueAtTime(args.time, inputSpace);
             int inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
             if (inputSpaceIndex < 0) {
                 if (args.reason == OFX::eChangeUserEdit) {
@@ -594,14 +600,14 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 _inputSpace->setValue(inputSpace);
             }
         }
-        inputCheck();
+        inputCheck(args.time);
     }
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         int inputSpaceIndex;
-        _inputSpaceChoice->getValue(inputSpaceIndex);
+        _inputSpaceChoice->getValueAtTime(args.time, inputSpaceIndex);
         std::string inputSpaceOld;
-        _inputSpace->getValue(inputSpaceOld);
+        _inputSpace->getValueAtTime(args.time, inputSpaceOld);
         std::string inputSpace = _config->getColorSpaceNameByIndex(inputSpaceIndex);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
         if (inputSpace != inputSpaceOld) {
@@ -613,7 +619,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         if (args.reason == OFX::eChangeUserEdit) {
             // if the outputspace doesn't correspond to a valid one, reset to default
             std::string outputSpace;
-            _outputSpace->getValue(outputSpace);
+            _outputSpace->getValueAtTime(args.time, outputSpace);
             int outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
             if (outputSpaceIndex < 0) {
                 if (args.reason == OFX::eChangeUserEdit) {
@@ -625,14 +631,14 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 assert(outputSpaceIndex >= 0);
             }
         }
-        outputCheck();
+        outputCheck(args.time);
     }
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         int outputSpaceIndex;
-        _outputSpaceChoice->getValue(outputSpaceIndex);
+        _outputSpaceChoice->getValueAtTime(args.time, outputSpaceIndex);
         std::string outputSpaceOld;
-        _outputSpace->getValue(outputSpaceOld);
+        _outputSpace->getValueAtTime(args.time, outputSpaceOld);
         std::string outputSpace = _config->getColorSpaceNameByIndex(outputSpaceIndex);
         _outputSpace->setValue(outputSpace);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
@@ -648,18 +654,18 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 
 #ifdef OFX_IO_USING_OCIO
 std::string
-GenericOCIO::getInputColorspace() const
+GenericOCIO::getInputColorspace(double time) const
 {
     std::string space;
-    _inputSpace->getValue(space);
+    _inputSpace->getValueAtTime(time, space);
     return space;
 }
 
 std::string
-GenericOCIO::getOutputColorspace() const
+GenericOCIO::getOutputColorspace(double time) const
 {
     std::string space;
-    _outputSpace->getValue(space);
+    _outputSpace->getValueAtTime(time, space);
     return space;
 }
 #endif
@@ -710,7 +716,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
     ocioConfigFileParam->setHint("OpenColorIO configuration file");
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    ocioConfigFileParam->setAnimates(false);
+    ocioConfigFileParam->setAnimates(true);
     desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
     // the OCIO config can only be set in a portable fashion using the environment variable.
     // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
@@ -723,7 +729,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpace);
     inputSpace->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
     inputSpace->setHint("Input data is taken to be in this colorspace.");
-    inputSpace->setAnimates(false);
+    inputSpace->setAnimates(true);
     inputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
     inputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
     page->addChild(*inputSpace);
@@ -732,7 +738,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     OFX::ChoiceParamDescriptor* inputSpaceChoice = desc.defineChoiceParam(kOCIOParamInputSpaceChoice);
     inputSpaceChoice->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
     inputSpaceChoice->setHint("Input data is taken to be in this colorspace.");
-    inputSpaceChoice->setAnimates(false);
+    inputSpaceChoice->setAnimates(true);
     inputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
     inputSpaceChoice->setIsPersistant(false); // don't save/serialize
     page->addChild(*inputSpaceChoice);
@@ -742,7 +748,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpace);
     outputSpace->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
     outputSpace->setHint("Output data is taken to be in this colorspace.");
-    outputSpace->setAnimates(false);
+    outputSpace->setAnimates(true);
     outputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
     outputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
     page->addChild(*outputSpace);
@@ -751,7 +757,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     OFX::ChoiceParamDescriptor* outputSpaceChoice = desc.defineChoiceParam(kOCIOParamOutputSpaceChoice);
     outputSpaceChoice->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
     outputSpaceChoice->setHint("Output data is taken to be in this colorspace.");
-    outputSpaceChoice->setAnimates(false);
+    outputSpaceChoice->setAnimates(true);
     outputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
     outputSpaceChoice->setIsPersistant(false); // don't save/serialize
     page->addChild(*outputSpaceChoice);

@@ -917,7 +917,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     //    decode(filename, sequenceTime, args.renderWindow, dstImg.get());
     //}
     /////do the color-space conversion
-    //_ocio->apply(args.renderWindow, dstImg.get());
+    //_ocio->apply(args.time, args.renderWindow, dstImg.get());
 
     // Good solution: read into a temporary image, apply colorspace conversion, then copy.
 
@@ -932,7 +932,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     assert(downscaleLevels >= 0);
 
 #if 1
-    if (_ocio->isIdentity() && (renderMipmapLevel == 0 || !kSupportsMultiResolution)) {
+    if (_ocio->isIdentity(args.time) && (renderMipmapLevel == 0 || !kSupportsMultiResolution)) {
         // no colorspace conversion, just read file
         decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
     } else
@@ -953,8 +953,8 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         }
 
         ///do the color-space conversion
-        if (!_ocio->isIdentity()) {
-            _ocio->apply(renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
+        if (!_ocio->isIdentity(args.time)) {
+            _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
         if (kSupportsMultiResolution && downscaleLevels > 0) {
@@ -1016,9 +1016,10 @@ void GenericReaderPlugin::inputFileChanged() {
     if (oldNumKeys != _sequenceFromFiles.size() || patternChanged) {
         ///we don't pass the _frameRange range as we don't want to store the time domain too
         OfxRangeD tmp;
-        getSequenceTimeDomainInternal(tmp,true);
-        timeDomainFromSequenceTimeDomain(tmp, true);
-        _startingFrame->setValue(tmp.min);
+        if (getSequenceTimeDomainInternal(tmp,true)) {
+            timeDomainFromSequenceTimeDomain(tmp, true);
+            _startingFrame->setValue(tmp.min);
+        }
     }
     
 }
@@ -1252,7 +1253,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                              " than the first frame of the sequence and cannot be greater than the last"
                              " frame of the sequence.");
     firstFrameParam->setDefault(0);
-    firstFrameParam->setAnimates(false);
+    firstFrameParam->setAnimates(true);
     firstFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*firstFrameParam);
     
@@ -1265,7 +1266,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     beforeFirstParam->appendOption("bounce","Repeat the sequence in reverse before the first frame");
     beforeFirstParam->appendOption("black","Render a black image");
     beforeFirstParam->appendOption("error","Report an error");
-    beforeFirstParam->setAnimates(false);
+    beforeFirstParam->setAnimates(true);
     beforeFirstParam->setDefault(0);
     page->addChild(*beforeFirstParam);
     
@@ -1276,7 +1277,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                             " than the first frame of the sequence and cannot be greater than the last"
                             " frame of the sequence.");
     lastFrameParam->setDefault(0);
-    lastFrameParam->setAnimates(false);
+    lastFrameParam->setAnimates(true);
     lastFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*lastFrameParam);
     
@@ -1289,7 +1290,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     afterLastParam->appendOption("bounce","Repeat the sequence in reverse after the last frame");
     afterLastParam->appendOption("black","Render a black image");
     afterLastParam->appendOption("error","Report an error");
-    afterLastParam->setAnimates(false);
+    afterLastParam->setAnimates(true);
     afterLastParam->setDefault(0);
     page->addChild(*afterLastParam);
     
@@ -1300,7 +1301,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
     missingFrameParam->appendOption("Error","An error is reported.");
     missingFrameParam->appendOption("Black image","A black image is rendered.");
-    missingFrameParam->setAnimates(false);
+    missingFrameParam->setAnimates(true);
     missingFrameParam->setDefault(0); //< default to nearest frame.
     page->addChild(*missingFrameParam);
     
@@ -1309,7 +1310,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kReaderFrameModeParamName);
     frameModeParam->appendOption("Starting frame");
     frameModeParam->appendOption("Time offset");
-    frameModeParam->setAnimates(false);
+    frameModeParam->setAnimates(true);
     frameModeParam->setDefault(0);
     frameModeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*frameModeParam);
@@ -1319,7 +1320,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     startingFrameParam->setLabels("Starting time", "Starting time", "Starting time");
     startingFrameParam->setHint("At what time (on the timeline) should this sequence/video start.");
     startingFrameParam->setDefault(0);
-    startingFrameParam->setAnimates(false);
+    startingFrameParam->setAnimates(true);
     startingFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*startingFrameParam);
     
@@ -1328,7 +1329,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     timeOffsetParam->setLabels("Time offset", "Time offset", "Time offset");
     timeOffsetParam->setHint("Offset applied to the sequence in frames.");
     timeOffsetParam->setDefault(0);
-    timeOffsetParam->setAnimates(false);
+    timeOffsetParam->setAnimates(true);
     timeOffsetParam->setIsSecret(true);
     page->addChild(*timeOffsetParam);
     
@@ -1336,7 +1337,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kReaderOriginalFrameRangeParamName);
     originalFrameRangeParam->setLabels("Original range", "Original range", "Original range");
     originalFrameRangeParam->setDefault(INT_MIN, INT_MAX);
-    originalFrameRangeParam->setAnimates(false);
+    originalFrameRangeParam->setAnimates(true);
     originalFrameRangeParam->setIsSecret(true);
     originalFrameRangeParam->setIsPersistant(false);
     page->addChild(*originalFrameRangeParam);
@@ -1366,7 +1367,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
                              "original images. You can change this parameter by checking the \"Custom scale\" checkbox "
                              "so that you can change the scale at which the proxy images should be used instead of the original images.");
     proxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    proxyScaleParam->setAnimates(false);
+    proxyScaleParam->setAnimates(true);
     page->addChild(*proxyScaleParam);
     
     ///Enable custom proxy scale
@@ -1375,7 +1376,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     enableCustomScale->setIsSecret(true);
     enableCustomScale->setDefault(false);
     enableCustomScale->setHint("Check to enable the Proxy scale edition.");
-    enableCustomScale->setAnimates(false);
+    enableCustomScale->setAnimates(true);
     enableCustomScale->setEvaluateOnChange(false);
     page->addChild(*enableCustomScale);
     

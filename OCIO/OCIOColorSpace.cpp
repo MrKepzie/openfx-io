@@ -200,16 +200,16 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
 
     ///do the color-space conversion
-    _ocio->apply(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+    _ocio->apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
 
     // copy the color-converted window
     copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
 }
 
 bool
-OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &/*args*/, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
+OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
 {
-    return _ocio->isIdentity();
+    return _ocio->isIdentity(args.time);
 }
 
 void

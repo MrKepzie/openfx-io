@@ -65,13 +65,13 @@ class GenericOCIO
     friend class OCIOProcessor;
 public:
     GenericOCIO(OFX::ImageEffect* parent);
-    bool isIdentity();
-    void apply(const OfxRectI& renderWindow, OFX::Image* dstImg);
-    void apply(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    bool isIdentity(double time);
+    void apply(double time, const OfxRectI& renderWindow, OFX::Image* dstImg);
+    void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
-    std::string getInputColorspace() const;
-    std::string getOutputColorspace() const;
+    std::string getInputColorspace(double time) const;
+    std::string getOutputColorspace(double time) const;
     bool hasColorspace(const char* name) const;
     void setInputColorspace(const char* name);
     void setOutputColorspace(const char* name);
@@ -79,10 +79,9 @@ public:
     static void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 
 private:
-    void loadConfig();
-    void inputCheck();
-    void outputCheck();
-    void applyInternal(const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    void loadConfig(double time);
+    void inputCheck(double time);
+    void outputCheck(double time);
 
     OFX::ImageEffect* _parent;
     bool _created;
