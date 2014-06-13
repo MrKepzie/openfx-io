@@ -238,7 +238,7 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
     
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
-        return;
+        return false;
     }
     int width,height,frames;
     double ap;
@@ -247,7 +247,7 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
     rod.x2 = width;
     rod.y1 = 0;
     rod.y2 = height;
-    
+    return true;
 }
 
 using namespace OFX;
