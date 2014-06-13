@@ -226,7 +226,7 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
     delete [] image;
 }
 
-void ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod)
+bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod)
 {
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
@@ -267,6 +267,7 @@ void ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     rod.x2 = W;
     rod.y1 = 0;
     rod.y2 = H;
+    return true;
 }
 
 

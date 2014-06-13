@@ -75,7 +75,7 @@ private:
         
     virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range);
         
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 };
 
 mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true);

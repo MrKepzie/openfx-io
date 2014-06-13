@@ -561,13 +561,16 @@ void ReadEXRPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
 }
 
 
-void ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
+bool ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
+    if (!file) {
+        return false;
+    }
     rod.x1 = file->dataWindow.x1;
     rod.x2 = file->dataWindow.x2;
     rod.y1 = file->dataWindow.y1;
     rod.y2 = file->dataWindow.y2;
-    
+    return true;
 }
 
 using namespace OFX;

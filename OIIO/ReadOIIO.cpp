@@ -80,7 +80,7 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
 
-    virtual void getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
 
     std::string metadata(const std::string& filename);
 
@@ -417,20 +417,20 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
 }
 
-void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
+bool ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod) {
     ImageSpec spec;
     
 #ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
-        return;
+        return false;
     }
 #else 
     std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
     if (!srcImg->open(filename,spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
-        return;
+        return false;
     }
 
 #endif
@@ -438,6 +438,7 @@ void ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxT
     rod.x2 = spec.x + spec.width;
     rod.y1 = spec.y;
     rod.y2 = spec.y + spec.height;
+    return true;
 }
 
 std::string ReadOIIOPlugin::metadata(const std::string& filename)

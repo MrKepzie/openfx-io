@@ -786,7 +786,10 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    getFrameRegionOfDefinition(filename, sequenceTime, rod);
+    bool success = getFrameRegionOfDefinition(filename, sequenceTime, rod);
+    if (!success) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
     
     if (ret == GenericReaderPlugin::eGetFileNameReturnedProxy) {
         ///upscale the proxy RoD to be in canonical coords.

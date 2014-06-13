@@ -1234,6 +1234,7 @@
 		1E2F4DC8189295F600F4CE25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LIBRARY = "libstdc++";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
@@ -1272,6 +1273,7 @@
 		1E2F4DC9189295F600F4CE25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_CXX_LIBRARY = "libstdc++";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(EXR_PATH)/include/OpenEXR",
@@ -1457,6 +1459,7 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				OIIO_PATH = /opt/local;
@@ -1493,6 +1496,7 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				OIIO_PATH = /opt/local;

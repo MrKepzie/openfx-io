@@ -136,7 +136,7 @@ private:
      * @brief Overload this function to exctract the region of definition out of the header
      * of the image targeted by the filename.
      **/
-    virtual void getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) = 0;
+    virtual bool getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) = 0;
     
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
