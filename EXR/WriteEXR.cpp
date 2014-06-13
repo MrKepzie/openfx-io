@@ -266,7 +266,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     /////////Compression
     OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);
-    compressionParam->setAnimates(false);
+    compressionParam->setAnimates(true);
     for (int i =0; i < 6; ++i) {
         compressionParam->appendOption(Exr::compressionNames[i]);
     }
@@ -275,7 +275,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     
     ////////Data type
     OFX::ChoiceParamDescriptor* dataTypeParam = desc.defineChoiceParam(kWriteEXRDataTypeParamName);
-    dataTypeParam->setAnimates(false);
+    dataTypeParam->setAnimates(true);
     for(int i = 0 ; i < 2 ; ++i) {
         dataTypeParam->appendOption(Exr::depthNames[i]);
     }

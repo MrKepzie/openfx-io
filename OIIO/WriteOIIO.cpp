@@ -238,7 +238,7 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
 #endif
 }
 
-void WriteOIIOPlugin::encode(const std::string& filename, OfxTime /*time*/, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
@@ -377,7 +377,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime /*time*/, cons
 	spec.attribute("oiio:BitsPerSample", bitsPerSample);
 	spec.attribute("oiio:UnassociatedAlpha", premultiply);
 #ifdef OFX_IO_USING_OCIO
-    std::string ocioColorspace = _ocio->getOutputColorspace();
+    std::string ocioColorspace = _ocio->getOutputColorspace(time);
     float gamma = 0.;
     std::string colorSpaceStr;
     if (ocioColorspace == "Gamma1.8") {
