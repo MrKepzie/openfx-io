@@ -38,6 +38,29 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
     }
 };
 
+
+template <class PIX, int nComponents>
+class BlackFiller : public OFX::PixelProcessorFilterBase {
+    public :
+    // ctor
+    BlackFiller(OFX::ImageEffect &instance)
+    : OFX::PixelProcessorFilterBase(instance)
+    {}
+    
+    // and do some processing
+    void multiThreadProcessImages(OfxRectI procWindow)
+    {
+        int rowSize =  nComponents * (procWindow.x2 - procWindow.x1);
+        for(int y = procWindow.y1; y < procWindow.y2; ++y) {
+            if(_effect.abort()) break;
+            
+            PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
+            assert(dstPix);
+            std::fill(dstPix, dstPix + rowSize,0);
+        }
+    }
+};
+
 template<class PIX,int nComponents>
 void copyPixels(const OfxRectI& renderWindow,
                 const PIX *srcPixelData,

@@ -60,7 +60,7 @@ private:
     
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
         
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod);
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error);
     
 };
 

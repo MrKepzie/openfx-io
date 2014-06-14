@@ -43,6 +43,7 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <fstream>
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
@@ -260,6 +261,15 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
     
 }
 
+
+static bool fileExists(const std::string& filename)
+{
+    std::ifstream f(filename.c_str());
+    bool ret = f.good();
+    f.close();
+    return ret;
+}
+
 GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime)
 {
     GenericReaderPlugin::eGetSequenceTimeRet ret;
@@ -383,6 +393,9 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
         }
     }
     
+    
+   
+    
     ///if the frame is missing, do smthing according to the missing frame param
     if (filename.empty()) {
         int missingChoice;
@@ -413,7 +426,12 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
                     ret = GenericReaderPlugin::eGetFileNameFailed;
                     // return a black image
                 } else {
-                    clearPersistentMessage();
+                    if (!fileExists(filename)) {
+                        setPersistentMessage(OFX::Message::eMessageError, "", filename + " : File does not exist.");
+                        ret = GenericReaderPlugin::eGetFileNameFailed;
+                    } else {
+                        clearPersistentMessage();
+                    }
                 }
             }
                 break;
@@ -770,6 +788,48 @@ void GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
 
 }
 
+/* set up and run a copy processor */
+static void setupAndFillWithBlack(OFX::PixelProcessorFilterBase & processor,
+                         const OfxRectI &renderWindow,
+                         void *dstPixelData,
+                         const OfxRectI& dstBounds,
+                         OFX::PixelComponentEnum dstPixelComponents,
+                         OFX::BitDepthEnum dstPixelDepth,
+                         int dstRowBytes)
+{
+
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+    
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+
+void GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
+                   void *dstPixelData,
+                   const OfxRectI& dstBounds,
+                   OFX::PixelComponentEnum dstPixelComponents,
+                   OFX::BitDepthEnum dstBitDepth,
+                   int dstRowBytes)
+{
+    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+        BlackFiller<float, 4> fred(*this);
+        setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+        BlackFiller<float, 3> fred(*this);
+        setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+        BlackFiller<float, 1> fred(*this);
+        setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } // switch
+
+}
+
+
 bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
     
     double sequenceTime;
@@ -786,9 +846,18 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    bool success = getFrameRegionOfDefinition(filename, sequenceTime, rod);
+    std::string error;
+    bool success = getFrameRegionOfDefinition(filename, sequenceTime, rod,error);
+    
     if (!success) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        int missingChoice;
+        _missingFrameParam->getValue(missingChoice);
+        if (missingChoice != 2) {
+            setPersistentMessage(OFX::Message::eMessageError, "", error);
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        } else {
+            return false;
+        }
     }
     
     if (ret == GenericReaderPlugin::eGetFileNameReturnedProxy) {
@@ -837,6 +906,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename,false);
+    
     
     std::string proxyFile;
     if (useProxy) {
@@ -910,6 +980,15 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         renderWindowFullRes.y2 = rod.y2;
     }
 
+    if (!fileExists(filename)) {
+        int choice;
+        _missingFrameParam->getValue(choice);
+        
+        ///If we reached here and the file is not valid it can only be because we want to render a black frame.
+        assert(choice == 2);
+        fillWithBlack(args.renderWindow,dstPixelDataF,bounds,pixelComponents,dstImg->getPixelDepth(),dstRowBytes);
+        return;
+    }
     
     // The following (commented out) code is not fully-safe, because the same instance may be have
     // two threads running on the same area of the same frame, and the apply()
@@ -1159,9 +1238,10 @@ bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip
 OfxPointD GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time)
 {
     OfxRectD originalRoD,proxyRoD;
-    getFrameRegionOfDefinition(originalFileName, time, originalRoD);
+    std::string error;
+    getFrameRegionOfDefinition(originalFileName, time, originalRoD,error);
     proxyRoD.x1 = proxyRoD.x2 = proxyRoD.y1 = proxyRoD.y2 = 0.;
-    getFrameRegionOfDefinition(proxyFileName, time, proxyRoD);
+    getFrameRegionOfDefinition(proxyFileName, time, proxyRoD,error);
     OfxPointD ret;
     if (proxyRoD.x1 == 0 && proxyRoD.x2 == 0 && proxyRoD.y1 == 0 && proxyRoD.y2 == 0) {
         ret.x = 1.;

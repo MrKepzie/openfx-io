@@ -226,7 +226,7 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
     delete [] image;
 }
 
-bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod)
+bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error)
 {
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
@@ -241,16 +241,16 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("PFM header not found in file \"") + filename + "\".");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        error = std::string("PFM header not found in file \"") + filename + "\".";
+        return false;
     }
     while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
         std::fgetc(nfile);
     }
     if ((err = std::sscanf(item, " %d %d", &W, &H)) < 2) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        error =  std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".";
+        return false;
     }
     if (err == 2) {
         clearPersistentMessage();

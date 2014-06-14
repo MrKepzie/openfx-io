@@ -561,9 +561,10 @@ void ReadEXRPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
 }
 
 
-bool ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod){
+bool ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error) {
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     if (!file) {
+        error = "No such file";
         return false;
     }
     rod.x1 = file->dataWindow.x1;

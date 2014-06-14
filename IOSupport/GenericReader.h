@@ -136,7 +136,7 @@ private:
      * @brief Overload this function to exctract the region of definition out of the header
      * of the image targeted by the filename.
      **/
-    virtual bool getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod) = 0;
+    virtual bool getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod,std::string& error) = 0;
     
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
@@ -226,6 +226,14 @@ private:
                         OFX::BitDepthEnum dstPixelDepth,
                         const OfxRectI& dstBounds,
                         int dstRowBytes);
+    
+    void fillWithBlack(const OfxRectI &renderWindow,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes);
+
     
     OfxPointD detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time);
 protected:

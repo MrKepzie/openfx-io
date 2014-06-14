@@ -223,21 +223,21 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 }
 
 
-bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod)
+bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod,std::string& error)
 {
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (_ffmpegFile && filename != _ffmpegFile->filename()) {
         delete _ffmpegFile;
         _ffmpegFile = new FFmpeg::File(filename);
         if(_ffmpegFile->invalid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+            error = _ffmpegFile->error();
             return false;
         }
     }
     return true;
     
     if(!_ffmpegFile) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Filename empty");
+        error = "No suche file";
         return false;
     }
     int width,height,frames;
