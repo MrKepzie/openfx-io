@@ -1223,6 +1223,24 @@ bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip
         return false;
     }
     
+    if (ret == GenericReaderPlugin::eGetSequenceTimeBeforeSequence) {
+        ///If before choice is set to black or error, just don't say we're identity
+        int beforeChoice;
+        _beforeFirst->getValue(beforeChoice);
+        if (beforeChoice == 3 || beforeChoice == 4) {
+            return false;
+        }
+    }
+    
+    if (ret == GenericReaderPlugin::eGetSequenceTimeAfterSequence) {
+        ///If before choice is set to black or error, just don't say we're identity
+        int afterChoice;
+        _afterLast->getValue(afterChoice);
+        if (afterChoice == 3 || afterChoice == 4) {
+            return false;
+        }
+    }
+    
     if (ret == GenericReaderPlugin::eGetSequenceTimeAfterSequence || ret == GenericReaderPlugin::eGetSequenceTimeBeforeSequence) {
         ///Transform the sequence time to "real" time
         int timeOffset;
