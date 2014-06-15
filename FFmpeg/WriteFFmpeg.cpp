@@ -618,6 +618,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(0);
 #endif
 }
 

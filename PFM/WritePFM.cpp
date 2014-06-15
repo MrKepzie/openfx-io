@@ -188,6 +188,7 @@ void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "pfm", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(40);
 #endif
 }
 

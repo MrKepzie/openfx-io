@@ -599,6 +599,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #     endif
         "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(50);
 #endif
 }
 

@@ -288,6 +288,7 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
     const char* extensions[] = { "pfm", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(40);
 #endif
 }
 

@@ -604,6 +604,7 @@ void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "exr", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(10);
 #endif
 }
 
