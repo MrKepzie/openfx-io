@@ -94,6 +94,11 @@
 		1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */; };
 		1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C5188EE90A003BC7F3 /* ReadEXR.cpp */; };
 		1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C7188EE90A003BC7F3 /* WriteEXR.cpp */; };
+		1E378A87194DE23F00800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
+		1E378A88194DE27400800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
+		1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
+		1E378A8A194DE30D00800F5F /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5D9F18B79E8100C31FDC /* PluginRegistration.cpp */; };
+		1E378A8B194DE31700800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 		1E74D8311891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E74D8321891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -126,7 +131,6 @@
 		1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E8B5DA618B7A2F300C31FDC /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
 		1E8B5DA818B7A2F300C31FDC /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
-		1E8B5DA918B7A2F300C31FDC /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E6188EEBC5003BC7F3 /* PluginRegistration.cpp */; };
 		1E8B5DAA18B7A2F300C31FDC /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E8B5DAB18B7A2F300C31FDC /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82D1891074000E9034B /* ofxsParams.cpp */; };
 		1E8B5DAC18B7A2F300C31FDC /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8291891074000E9034B /* ofxsImageEffect.cpp */; };
@@ -1074,21 +1078,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */,
-				D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */,
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
-				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
-				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */,
 				1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */,
 				1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */,
 				1E2F4D9C189295F600F4CE25 /* FFmpegHandler.cpp in Sources */,
 				1E2F4DA7189295F600F4CE25 /* WriteFFmpeg.cpp in Sources */,
+				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E2F4DDE1892977800F4CE25 /* ReadOIIO.cpp in Sources */,
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
+				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,
 				1E2F4DA0189295F600F4CE25 /* GenericOCIO.cpp in Sources */,
+				D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */,
 				1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */,
 				1E2F4D9D189295F600F4CE25 /* ofxsCore.cpp in Sources */,
 				1E2F4D9E189295F600F4CE25 /* ofxsParams.cpp in Sources */,
@@ -1106,10 +1110,11 @@
 			files = (
 				1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */,
 				1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */,
-				1E8B5DA918B7A2F300C31FDC /* PluginRegistration.cpp in Sources */,
+				1E378A8A194DE30D00800F5F /* PluginRegistration.cpp in Sources */,
 				1E8B5DA818B7A2F300C31FDC /* GenericOCIO.cpp in Sources */,
 				1E8B5DB018B7A2F300C31FDC /* GenericWriter.cpp in Sources */,
 				1E8B5DB318B7A2F300C31FDC /* GenericReader.cpp in Sources */,
+				1E378A8B194DE31700800F5F /* SequenceParsing.cpp in Sources */,
 				1E8B5DA618B7A2F300C31FDC /* ofxsProperty.cpp in Sources */,
 				1E8B5DAA18B7A2F300C31FDC /* ofxsCore.cpp in Sources */,
 				1E8B5DAB18B7A2F300C31FDC /* ofxsParams.cpp in Sources */,
@@ -1160,20 +1165,21 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */,
+				1E00B3CD188EE90A003BC7F3 /* WriteEXR.cpp in Sources */,
+				1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */,
+				1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */,
+				1E00B391188EE887003BC7F3 /* GenericReader.cpp in Sources */,
+				1E00B39D188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
+				1E378A88194DE27400800F5F /* SequenceParsing.cpp in Sources */,
 				1E74D83B1891074000E9034B /* ofxsLog.cpp in Sources */,
 				1E74D8441891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8351891074000E9034B /* ofxsImageEffect.cpp in Sources */,
-				1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E74D8471891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
-				1E00B3CD188EE90A003BC7F3 /* WriteEXR.cpp in Sources */,
-				1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E74D8411891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8381891074000E9034B /* ofxsInteract.cpp in Sources */,
-				1E00B39D188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E74D8321891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D83E1891074000E9034B /* ofxsMultiThread.cpp in Sources */,
-				1E00B391188EE887003BC7F3 /* GenericReader.cpp in Sources */,
-				1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1187,6 +1193,7 @@
 				1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */,
+				1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */,
 				1E74D8451891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8421891074000E9034B /* ofxsParams.cpp in Sources */,
@@ -1203,18 +1210,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				1E00B3DF188EE923003BC7F3 /* ReadFFmpeg.cpp in Sources */,
-				1E00B39B188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
-				1E74D8431891074000E9034B /* ofxsProperty.cpp in Sources */,
+				1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */,
 				1E00B3DB188EE923003BC7F3 /* FFmpegHandler.cpp in Sources */,
+				1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */,
+				1E00B39B188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
+				1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */,
+				1E00B38F188EE887003BC7F3 /* GenericReader.cpp in Sources */,
+				1E378A87194DE23F00800F5F /* SequenceParsing.cpp in Sources */,
+				1E74D8431891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8311891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8401891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8341891074000E9034B /* ofxsImageEffect.cpp in Sources */,
-				1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1E74D8461891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
-				1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */,
-				1E00B38F188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				1E74D83A1891074000E9034B /* ofxsLog.cpp in Sources */,
-				1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */,
 				1E74D8371891074000E9034B /* ofxsInteract.cpp in Sources */,
 				1E74D83D1891074000E9034B /* ofxsMultiThread.cpp in Sources */,
 			);
@@ -1234,7 +1242,6 @@
 		1E2F4DC8189295F600F4CE25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LIBRARY = "libstdc++";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
@@ -1265,6 +1272,7 @@
 					"-lswscale",
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
+					"-lOpenImageIO_Util",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1273,7 +1281,6 @@
 		1E2F4DC9189295F600F4CE25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LIBRARY = "libstdc++";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(EXR_PATH)/include/OpenEXR",
@@ -1296,6 +1303,7 @@
 					"-lswscale",
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
+					"-lOpenImageIO_Util",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1410,6 +1418,7 @@
 					"$(inherited)",
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
+					"-lOpenImageIO_Util",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1428,6 +1437,7 @@
 					"$(inherited)",
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
+					"-lOpenImageIO_Util",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1459,7 +1469,6 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				OIIO_PATH = /opt/local;
@@ -1496,7 +1505,6 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
 				OIIO_PATH = /opt/local;

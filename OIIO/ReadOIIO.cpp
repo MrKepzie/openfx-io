@@ -53,7 +53,9 @@ OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SHARED_CACHE
-#define kMetadataButton "show metadata"
+#define kMetadataButtonName "showMetadata"
+#define kMetadataButtonLabel "Image Info"
+#define kMetadataButtonHint "Shows information and metadata from the image at current time."
 
 #ifdef OFX_READ_OIIO_USES_CACHE
 static const bool kSupportsTiles = true;
@@ -121,7 +123,7 @@ void ReadOIIOPlugin::clearAnyCache() {
 }
 
 void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    if (paramName == kMetadataButton) {
+    if (paramName == kMetadataButtonName) {
         std::string filename;
         getCurrentFileName(filename);
         sendMessage(OFX::Message::eMessageMessage, "", metadata(filename));
@@ -460,7 +462,7 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #endif
-    ss << filename << " : ";
+    ss << "file: " << filename << std::endl;
     ss << "    channel list: ";
     for (int i = 0;  i < spec.nchannels;  ++i) {
         if (i < (int)spec.channelnames.size()) {
@@ -599,6 +601,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #     endif
         "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(50);
 #endif
 }
 
@@ -608,9 +611,9 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
-    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButton);
-    pb->setLabels("Image info", "Image info", "Image info");
-    pb->setHint("Shows information and metadata from the image at current time.");
+    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButtonName);
+    pb->setLabels(kMetadataButtonLabel, kMetadataButtonLabel, kMetadataButtonLabel);
+    pb->setHint(kMetadataButtonHint);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }

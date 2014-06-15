@@ -310,6 +310,7 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(0);
 #endif
 }
 
