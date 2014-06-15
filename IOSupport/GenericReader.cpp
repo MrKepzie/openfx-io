@@ -889,8 +889,9 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     double sequenceTime;
+    GenericReaderPlugin::eGetSequenceTimeRet sequenceTimeRet;
     try {
-        getSequenceTime(args.time,false,sequenceTime);
+        sequenceTimeRet = getSequenceTime(args.time,false,sequenceTime);
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -906,6 +907,21 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, filename,false);
+    
+    if (sequenceTimeRet == eGetSequenceTimeBeforeSequence) {
+        int beforeChoice;
+        _beforeFirst->getValue(beforeChoice);
+        if (beforeChoice == 3 || beforeChoice == 4) {
+            filename.clear();
+        }
+    } else if (sequenceTimeRet == eGetSequenceTimeAfterSequence) {
+        int afterChoice;
+        _afterLast->getValue(afterChoice);
+        if (afterChoice == 3 || afterChoice == 4) {
+            filename.clear();
+        }
+    }
+
     
     
     std::string proxyFile;
@@ -939,9 +955,6 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    if (filename.empty()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
     
     ///The args.renderWindow is already in pixels coordinate (render scale is already taken into account ).
     ///If the filename IS NOT a proxy file we have to make sure the renderWindow is
@@ -980,12 +993,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         renderWindowFullRes.y2 = rod.y2;
     }
 
-    if (!fileExists(filename)) {
-        int choice;
-        _missingFrameParam->getValue(choice);
-        
-        ///If we reached here and the file is not valid it can only be because we want to render a black frame.
-        assert(choice == 2);
+    if (filename.empty() || !fileExists(filename)) {
         fillWithBlack(args.renderWindow,dstPixelDataF,bounds,pixelComponents,dstImg->getPixelDepth(),dstRowBytes);
         return;
     }
@@ -1233,7 +1241,7 @@ bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip
     }
     
     if (ret == GenericReaderPlugin::eGetSequenceTimeAfterSequence) {
-        ///If before choice is set to black or error, just don't say we're identity
+        ///If after choice is set to black or error, just don't say we're identity
         int afterChoice;
         _afterLast->getValue(afterChoice);
         if (afterChoice == 3 || afterChoice == 4) {
