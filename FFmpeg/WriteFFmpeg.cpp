@@ -620,14 +620,34 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(0);
 #endif
+
+    ///We support only a single render call per instance
+    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    
+    ///check that the host supports sequential render
+    
+    ///This plug-in only supports sequential render
+    int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;
+    if (hostSequentialRender == 1 || hostSequentialRender == 2) {
+        desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 1);
+    }
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
+    
+    
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/false, "reference", "rec709");
 
+    ///If the host doesn't support sequential render, fail.
+    int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;
+    if (hostSequentialRender == 0) {
+        throwSuiteStatusException(kOfxStatErrMissingHostFeature);
+    }
+
+    
     ///////////Output format
     const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
     OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kWriteFFmpegFormatParamName);
