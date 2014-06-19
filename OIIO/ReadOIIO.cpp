@@ -102,10 +102,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 #  endif
 #endif
 {
-#ifdef OFX_READ_OIIO_USES_CACHE
-    ///Set maximum files opened to 50
-    _cache->attribute("max_open_files",50);
-#endif
+
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
