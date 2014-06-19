@@ -177,17 +177,10 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
     return ret;
 }
 
-
-
-void GenericWriterPlugin::render(const OFX::RenderArguments &args)
+void GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string& filename)
 {
-    if (!_inputClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
-
-    std::string filename;
     _fileParam->getValue(filename);
-    filename = filenameFromPattern(filename, args.time);
+    filename = filenameFromPattern(filename, time);
     
     ///find out whether we support this extension...
     size_t sepPos = filename.find_last_of('.');
@@ -195,16 +188,16 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         setPersistentMessage(OFX::Message::eMessageError, "", "Invalid file name");
         return;
     }
-    clearPersistentMessage();
+    
+    std::string ext;
     size_t i = sepPos;
     ++i;//< bypass the '.' character
-    std::string ext;
 	std::locale loc;
     while(i < filename.size()){
         ext.append(1,std::tolower(filename.at(i),loc));
         ++i;
     }
-
+    
 #ifdef OFX_EXTENSIONS_TUTTLE
     try {
         bool found = false;
@@ -225,7 +218,7 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         // ignore exception
     }
 #endif
-
+    
     ////if the file extension corresponds to a video file, remove file digits that were
     ////added to the file path in order to write into the same file.
     if(!isImageFile(ext)){
@@ -236,9 +229,20 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         while (firstDigitPos &&  std::isdigit(filename.at(firstDigitPos),loc)) {
             --firstDigitPos;
         }
-        ++firstDigitPos; 
+        ++firstDigitPos;
         filename.erase(firstDigitPos, sepPos - firstDigitPos); //< erase the digits
     }
+
+}
+
+void GenericWriterPlugin::render(const OFX::RenderArguments &args)
+{
+    if (!_inputClip) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    std::string filename;
+    getOutputFileNameAndExtension(args.time, filename);
     
     std::auto_ptr<const OFX::Image> srcImg(_inputClip->fetchImage(args.time));
     if (!srcImg.get()) {
@@ -329,6 +333,31 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
         mem.unlock();
     }
     clearPersistentMessage();
+}
+
+
+void GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments &args)
+{
+    std::string filename;
+    getOutputFileNameAndExtension(args.frameRange.min, filename);
+    
+    OfxRectD rod = _inputClip->getRegionOfDefinition(args.frameRange.min);
+    
+    ////Since the generic writer doesn't support tiles and multi-resolution, the RoD is necesserarily the
+    ////output image size.
+    OfxRectI rodI;
+    rodI.x1 = rod.x1;
+    rodI.y1 = rod.y1;
+    rodI.x2 = rod.x2;
+    rodI.y2 = rod.y2;
+    
+    beginEncode(filename, rodI, args);
+}
+
+
+void GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &args)
+{
+    endEncode(args);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
