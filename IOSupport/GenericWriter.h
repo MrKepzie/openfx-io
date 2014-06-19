@@ -69,6 +69,13 @@ public:
      **/
     void render(const OFX::RenderArguments &args);
     
+    
+    /** @brief client begin sequence render function */
+    void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args);
+    
+    /** @brief client end sequence render function */
+    void endSequenceRender(const OFX::EndSequenceRenderArguments &args);
+    
     /**
      * @brief Don't override this. It returns the projects region of definition.
      **/
@@ -101,6 +108,8 @@ public:
      **/
     void purgeCaches(void);
 
+    
+    
 protected:
     
     /**
@@ -117,6 +126,10 @@ protected:
      * You don't need to check this yourself.
      **/
     virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) = 0;
+    
+    virtual void beginEncode(const std::string& /*filename*/,const OfxRectI& /*rod*/,const OFX::BeginSequenceRenderArguments &/*args*/) {}
+    
+    virtual void endEncode(const OFX::EndSequenceRenderArguments &/*args*/) {}
 
     /**
      * @brief Overload to return false if the given file extension is a video file extension or
@@ -135,6 +148,12 @@ protected:
     GenericOCIO* _ocio;
 
 private:
+    
+    /**
+     * @brief Retrieves the output filename at the given time and checks if the extension is supported.
+     **/
+    void getOutputFileNameAndExtension(OfxTime time,std::string& filename);
+    
     /**
      * @brief Override if you want to do something when the output image/video file changed.
      * You shouldn't do any strong processing as this is called on the main thread and

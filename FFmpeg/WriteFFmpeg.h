@@ -55,10 +55,16 @@ public:
     
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     
+
+    
 private:
     
-        
+    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args);
+    
+    virtual void endEncode(const OFX::EndSequenceRenderArguments& args);
+    
     virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    
     
     virtual bool isImageFile(const std::string& fileExtension) const;
     

@@ -179,6 +179,8 @@ static int video_decoding_threads()
     return n;
 }
 
+using namespace OFX;
+
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 , _codecContext(0)
@@ -228,31 +230,21 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
     ext == "rgb";
 }
 
-void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+
+
+void WriteFFmpegPlugin::beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args)
 {
+    if (!args.sequentialRenderStatus || _formatContext || _stream) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order, the host didn't inform  "
+                             "it could support it.");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    assert(!_formatContext);
     
-#pragma message WARN("BUG: howcome parameter 'time' is not used?")
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-
-    int numChannels;
-    switch(pixelComponents)
-    {
-        case OFX::ePixelComponentRGBA:
-            numChannels = 4;
-            break;
-        case OFX::ePixelComponentRGB:
-            numChannels = 3;
-            break;
-        case OFX::ePixelComponentAlpha:
-            numChannels = 1;
-            break;
-        default:
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-
+        ////////////////////                        ////////////////////
+        //////////////////// INTIALISE FORMAT       ////////////////////
+    
     AVOutputFormat* fmt = 0;
     int formatValue;
     _format->getValue(formatValue);
@@ -261,33 +253,34 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         fmt = av_guess_format(NULL, filename.c_str(), NULL);
         if (!fmt) {
             setPersistentMessage(OFX::Message::eMessageError, "","Invalid file extension");
+            throwSuiteStatusException(kOfxStatFailed);
             return;
         }
     } else {
         const std::vector<std::string>& formatsShortNames = FFmpegSingleton::Instance().getFormatsShortNames();
         assert(formatValue < (int)formatsShortNames.size());
-
+        
         fmt = av_guess_format(formatsShortNames[formatValue].c_str(), NULL, NULL);
         if (!fmt) {
             setPersistentMessage(OFX::Message::eMessageError, "","Invalid file extension");
+            throwSuiteStatusException(kOfxStatFailed);
             return;
         }
     }
     
-    if (!_formatContext) {
 #     if defined(FFMS_USE_FFMPEG_COMPAT) && LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(54, 0, 0)
-        avformat_alloc_output_context2(&_formatContext, fmt, NULL, filename.c_str());
+    avformat_alloc_output_context2(&_formatContext, fmt, NULL, filename.c_str());
 #     else
 #       ifdef FFMS_USE_FFMPEG_COMPAT
-        _formatContext = avformat_alloc_output_context(NULL, fmt, filename.c_str());
+    _formatContext = avformat_alloc_output_context(NULL, fmt, filename.c_str());
 #       else
-        _formatContext = avformat_alloc_context();
-        _formatContext->oformat = fmt;
+    _formatContext = avformat_alloc_context();
+    _formatContext->oformat = fmt;
 #       endif
 #     endif
-    }
-
-    snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
+    
+    /////////////////////                            ////////////////////
+    ////////////////////    INITIALISE STREAM     ////////////////////
     
     AVCodecID codecId = fmt->video_codec;
     int codecValue;
@@ -318,6 +311,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
             pixFMT = PIX_FMT_RGB24;
         }
     }
+
     
     bool isCodecSupportedInContainer = (avformat_query_codec(fmt, codecId, FF_COMPLIANCE_NORMAL) == 1);
     // mov seems to be able to cope with anything, which the above function doesn't seem to think is the case (even with FF_COMPLIANCE_EXPERIMENTAL)
@@ -327,110 +321,165 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     if (!isCodecSupportedInContainer) {
         setPersistentMessage(OFX::Message::eMessageError, "","The selected codec is not supported in this container.");
         freeFormat();
+        throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
+    
+    
+    assert(!_stream);
+    _stream = avformat_new_stream(_formatContext, NULL);
+    if (!_stream) {
+        setPersistentMessage(OFX::Message::eMessageError,"" ,"Out of memory");
+        throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+    
+    _codecContext = _stream->codec;
+    
+    // this seems to be needed for certain codecs, as otherwise they don't have relevant options set
+    avcodec_get_context_defaults3(_codecContext, videoCodec);
+    
+    _codecContext->pix_fmt = pixFMT;   // this is set to the first element of FMT a choice could be added
+    
+    int bitRateValue;
+    _bitRate->getValue(bitRateValue);
+    _codecContext->bit_rate = bitRateValue;
+    
+    int bitRateTol;
+    _bitRateTolerance->getValue(bitRateTol);
+    _codecContext->bit_rate_tolerance = bitRateTol;
+    
+    
+    _codecContext->width = (rod.x2 - rod.x1);
+    _codecContext->height = (rod.y2 - rod.y1);
+    
+    // Bug 23953
+    // ffmpeg does a horrible job of converting floats to AVRationals
+    // It adds 0.5 randomly and does some other stuff
+    // To work around that, we just multiply the fps by what I think is a reasonable number to make it an int
+    // and use the reasonable number as the numerator for the timebase.
+    // Timebase is not the frame rate; it's the inverse of the framerate
+    // So instead of doing 1/fps, we just set the numerator and denominator of the timebase directly.
+    // The upshot is that this allows ffmpeg to properly do framerates of 23.78 (or 23.796, which is what the user really wants when they put that in).
+    //
+    // The code was this:
+    //stream_->codec->time_base = av_d2q(1.0 / fps_, 100);
+    const float CONVERSION_FACTOR = 1000.0f;
+    _codecContext->time_base.num = (int) CONVERSION_FACTOR;
+    
+    double fps;
+    _fps->getValue(fps);
+    _codecContext->time_base.den = (int) (fps * CONVERSION_FACTOR);
+    
+    int gopSize;
+    _gopSize->getValue(gopSize);
+    _codecContext->gop_size = gopSize;
+    
+    int bFrames;
+    _bFrames->getValue(bFrames);
+    if (bFrames != 0) {
+        _codecContext->max_b_frames = bFrames;
+        _codecContext->b_frame_strategy = 0;
+        _codecContext->b_quant_factor = 2.0f;
+    }
+    
+    int mbDecision;
+    _macroBlockDecision->getValue(mbDecision);
+    _codecContext->mb_decision = mbDecision;
+    
+    if (!strcmp(_formatContext->oformat->name, "mp4") || !strcmp(_formatContext->oformat->name, "mov") || !strcmp(_formatContext->oformat->name, "3gp"))
+        _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    
+    if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
+        _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    
+    if (_codecContext->codec_type == AVMEDIA_TYPE_VIDEO) {
+        // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+        
+        // Activate multithreaded decoding. This must be done before opening the codec; see
+        // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+        _codecContext->thread_count = video_decoding_threads();
+        // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
+        // I don't know what exactly this does, but it is necessary to fix the problem
+        // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
+        int lowres = 0;
+#ifdef FF_API_LOWRES
+        lowres = _codecContext->lowres;
+#endif
+        if (lowres || (videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1)))
+            _codecContext->flags |= CODEC_FLAG_EMU_EDGE;
+    }
+    if (avcodec_open2(_codecContext, videoCodec, NULL) < 0) {
+        setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open codec");
+        freeFormat();
+        throwSuiteStatusException(kOfxStatFailed);
+    }
+    
+    if (!(fmt->flags & AVFMT_NOFILE)) {
+        if (avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
+            setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open file");
+            freeFormat();
+            throwSuiteStatusException(kOfxStatFailed);
+        }
+    }
+    
+    avformat_write_header(_formatContext, NULL);
+    
+    
+}
+
+
+void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &args)
+{
+    if (!_formatContext) {
+        return;
+    }
+    av_write_trailer(_formatContext);
+    avcodec_close(_codecContext);
+    if (!(_formatContext->oformat->flags & AVFMT_NOFILE)) {
+        avio_close(_formatContext->pb);
+    }
+    freeFormat();
+}
+
+void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+{
+    
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
+    if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order, the host didn't inform  "
+                             "it could support it.");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    int numChannels;
+    switch(pixelComponents)
+    {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            break;
+        case OFX::ePixelComponentRGB:
+            numChannels = 3;
+            break;
+        case OFX::ePixelComponentAlpha:
+            numChannels = 1;
+            break;
+        default:
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    
+    snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
+    
+
     int w = (bounds.x2 - bounds.x1);
     int h = (bounds.y2 - bounds.y1);
     
-    if (!_stream || (_stream && filename != std::string(_formatContext->filename))) {
-        _stream = avformat_new_stream(_formatContext, NULL);
-        if (!_stream) {
-            setPersistentMessage(OFX::Message::eMessageError,"" ,"Out of memory");
-            return;
-        }
-        
-        _codecContext = _stream->codec;
-        
-        // this seems to be needed for certain codecs, as otherwise they don't have relevant options set
-        avcodec_get_context_defaults3(_codecContext, videoCodec);
-        
-        _codecContext->pix_fmt = pixFMT;   // this is set to the first element of FMT a choice could be added
-        
-        int bitRateValue;
-        _bitRate->getValue(bitRateValue);
-        _codecContext->bit_rate = bitRateValue;
-        
-        int bitRateTol;
-        _bitRateTolerance->getValue(bitRateTol);
-        _codecContext->bit_rate_tolerance = bitRateTol;
-        
-       
-        _codecContext->width = w;
-        _codecContext->height = h;
-        
-        // Bug 23953
-        // ffmpeg does a horrible job of converting floats to AVRationals
-        // It adds 0.5 randomly and does some other stuff
-        // To work around that, we just multiply the fps by what I think is a reasonable number to make it an int
-        // and use the reasonable number as the numerator for the timebase.
-        // Timebase is not the frame rate; it's the inverse of the framerate
-        // So instead of doing 1/fps, we just set the numerator and denominator of the timebase directly.
-        // The upshot is that this allows ffmpeg to properly do framerates of 23.78 (or 23.796, which is what the user really wants when they put that in).
-        //
-        // The code was this:
-        //stream_->codec->time_base = av_d2q(1.0 / fps_, 100);
-        const float CONVERSION_FACTOR = 1000.0f;
-        _codecContext->time_base.num = (int) CONVERSION_FACTOR;
-        
-        double fps;
-        _fps->getValue(fps);
-        _codecContext->time_base.den = (int) (fps * CONVERSION_FACTOR);
-        
-        int gopSize;
-        _gopSize->getValue(gopSize);
-        _codecContext->gop_size = gopSize;
-        
-        int bFrames;
-        _bFrames->getValue(bFrames);
-        if (bFrames != 0) {
-            _codecContext->max_b_frames = bFrames;
-            _codecContext->b_frame_strategy = 0;
-            _codecContext->b_quant_factor = 2.0f;
-        }
-        
-        int mbDecision;
-        _macroBlockDecision->getValue(mbDecision);
-        _codecContext->mb_decision = mbDecision;
-        
-        if (!strcmp(_formatContext->oformat->name, "mp4") || !strcmp(_formatContext->oformat->name, "mov") || !strcmp(_formatContext->oformat->name, "3gp"))
-            _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
-        
-        if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER)
-            _codecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
-        
-        if (_codecContext->codec_type == AVMEDIA_TYPE_VIDEO) {
-            // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
-
-            // Activate multithreaded decoding. This must be done before opening the codec; see
-            // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
-            _codecContext->thread_count = video_decoding_threads();
-            // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
-            // I don't know what exactly this does, but it is necessary to fix the problem
-            // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
-            int lowres = 0;
-#ifdef FF_API_LOWRES
-            lowres = _codecContext->lowres;
-#endif
-            if (lowres || (videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1)))
-                _codecContext->flags |= CODEC_FLAG_EMU_EDGE;
-        }
-        if (avcodec_open2(_codecContext, videoCodec, NULL) < 0) {
-            setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open codec");
-            freeFormat();
-            return;
-        }
-        
-        if (!(fmt->flags & AVFMT_NOFILE)) {
-            if (avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
-                setPersistentMessage(OFX::Message::eMessageError,"" ,"Unable to open file");
-                freeFormat();
-                return;
-            }
-        }
-        
-        avformat_write_header(_formatContext, NULL);
-    }
     
     AVPicture picture;
     int picSize = avpicture_get_size(PIX_FMT_RGB24, w, h);
@@ -457,6 +506,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     
     // now allocate an image frame for the image in the output codec's format...
     AVFrame* output = av_frame_alloc();
+    PixelFormat pixFMT = _codecContext->pix_fmt;
     picSize = avpicture_get_size(pixFMT,w, h);
     uint8_t* outBuffer = (uint8_t*)av_malloc(picSize);
     
@@ -532,6 +582,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
                 char szError[1024];
                 av_strerror(ret, szError, 1024);
                 setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
+                throwSuiteStatusException(kOfxStatFailed);
             }
         }
 #endif
@@ -543,12 +594,13 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     
     if (ret) {
         setPersistentMessage(OFX::Message::eMessageError,"" ,"Error writing frame to file");
+        throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
 }
 
-void WriteFFmpegPlugin::freeFormat(){
+void WriteFFmpegPlugin::freeFormat() { 
     for (int i = 0; i < static_cast<int>(_formatContext->nb_streams); ++i){
         av_freep(&_formatContext->streams[i]);
     }

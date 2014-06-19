@@ -102,6 +102,10 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 #  endif
 #endif
 {
+#ifdef OFX_READ_OIIO_USES_CACHE
+    ///Set maximum files opened to 50
+    _cache->attribute("max_open_files",50);
+#endif
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
@@ -310,6 +314,9 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             chend = chbegin + numChannels;
             break;
         default:
+#ifndef OFX_READ_OIIO_USES_CACHE
+            srcImg->close();
+#endif
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     assert(numChannels);
@@ -423,6 +430,10 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             }
         }
     }
+    
+#ifndef OFX_READ_OIIO_USES_CACHE
+    srcImg->close();
+#endif
 }
 
 bool ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error)
