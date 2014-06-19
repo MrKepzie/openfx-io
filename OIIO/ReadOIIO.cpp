@@ -132,29 +132,30 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     }
 }
 
-void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
+void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
+{
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
     
 #ifdef OFX_IO_USING_OCIO
-    ImageSpec spec;
-
 #ifdef OFX_READ_OIIO_USES_CACHE
+    ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else
-    std::auto_ptr<ImageInput> img(ImageInput::create(filename));
-    if (!img->open(filename,spec)) {
-        setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
+    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+    if (!img.get()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    const ImageSpec &spec = img->spec();
 #endif
     
 
     ///find-out the image color-space
-    ParamValue* colorSpaceValue = spec.find_attribute("oiio:ColorSpace",TypeDesc::STRING);
+    const ParamValue* colorSpaceValue = spec.find_attribute("oiio:ColorSpace",TypeDesc::STRING);
 
     //we found a color-space hint, use it to do the color-space conversion
     const char* colorSpaceStr;
@@ -218,25 +219,29 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename) {
             // unknown color-space or Linear, don't do anything
         }
     }
+#ifdef OFX_READ_OIIO_USES_CACHE
+#else
+    img->close();
+#endif
 #endif
 }
 
 void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    ImageSpec spec;
-    
 #ifdef OFX_READ_OIIO_USES_CACHE
+    ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else
-    std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
-    if (!srcImg->open(filename,spec)) {
-        setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
+    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+    if (!img.get()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    const ImageSpec &spec = img->spec();
 #endif
 
     // we only support RGBA, RGB or Alpha output clip
@@ -368,30 +373,31 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         assert(!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height);
         if (spec.tile_width == 0) {
            ///read by scanlines
-            srcImg->read_scanlines(spec.height - renderWindow.y2, //y begin
-                                   spec.height - renderWindow.y1, //y end
-                                   0, // z
-                                   chbegin, // chan begin
-                                   chend, // chan end
-                                   TypeDesc::FLOAT, // data type
-                                   (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                                   numChannels * sizeof(float), //x stride
-                                   -rowBytes); //y stride < make it invert Y;
+            img->read_scanlines(spec.height - renderWindow.y2, //y begin
+                                spec.height - renderWindow.y1, //y end
+                                0, // z
+                                chbegin, // chan begin
+                                chend, // chan end
+                                TypeDesc::FLOAT, // data type
+                                (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                numChannels * sizeof(float), //x stride
+                                -rowBytes); //y stride < make it invert Y;
         } else {
-            srcImg->read_tiles(renderWindow.x1, //x begin
-                               renderWindow.x2,//x end
-                               spec.height - renderWindow.y2,//y begin
-                               spec.height - renderWindow.y1,//y end
-                               0, // z begin
-                               1, // z end
-                               chbegin, // chan begin
-                               chend, // chan end
-                               TypeDesc::FLOAT,  // data type
-                               (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                               numChannels * sizeof(float), //x stride
-                               -rowBytes, //y stride < make it invert Y
-                               AutoStride); //z stride
+            img->read_tiles(renderWindow.x1, //x begin
+                            renderWindow.x2,//x end
+                            spec.height - renderWindow.y2,//y begin
+                            spec.height - renderWindow.y1,//y end
+                            0, // z begin
+                            1, // z end
+                            chbegin, // chan begin
+                            chend, // chan end
+                            TypeDesc::FLOAT,  // data type
+                            (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                            numChannels * sizeof(float), //x stride
+                            -rowBytes, //y stride < make it invert Y
+                            AutoStride); //z stride
         }
+        img->close();
 #endif
     }
     if (moveAlpha) {
@@ -419,27 +425,31 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
 }
 
-bool ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error) {
-    ImageSpec spec;
-    
+bool ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error)
+{
 #ifdef OFX_READ_OIIO_USES_CACHE
+    ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)) {
         error = _cache->geterror();
         return false;
     }
 #else 
-    std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
-    if (!srcImg->open(filename,spec)) {
-        error = srcImg->geterror();
+    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+    if (!img.get()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         return false;
     }
-
+    const ImageSpec &spec = img->spec();
 #endif
     rod.x1 = spec.x;
     rod.x2 = spec.x + spec.width;
     rod.y1 = spec.y;
     rod.y2 = spec.y + spec.height;
+#ifdef OFX_READ_OIIO_USES_CACHE
+#else
+    img->close();
+#endif
     return true;
 }
 
@@ -447,20 +457,20 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 {
     std::stringstream ss;
 
-    ImageSpec spec;
-
 #ifdef OFX_READ_OIIO_USES_CACHE
+    ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else 
-    std::auto_ptr<ImageInput> srcImg(ImageInput::create(filename));
-    if (!srcImg->open(filename,spec)) {
-        setPersistentMessage(OFX::Message::eMessageError, "", srcImg->geterror());
+    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+    if (!img.get()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    const ImageSpec& spec = img->spec();
 #endif
     ss << "file: " << filename << std::endl;
     ss << "    channel list: ";
@@ -519,6 +529,10 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
         }
         ss << std::endl;
     }
+#ifdef OFX_READ_OIIO_USES_CACHE
+#else
+    img->close();
+#endif
 
     return ss.str();
 }

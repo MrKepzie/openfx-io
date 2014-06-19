@@ -133,7 +133,7 @@ private:
     
     
     /**
-     * @brief Overload this function to exctract the region of definition out of the header
+     * @brief Overload this function to extract the region of definition out of the header
      * of the image targeted by the filename.
      **/
     virtual bool getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod,std::string& error) = 0;
