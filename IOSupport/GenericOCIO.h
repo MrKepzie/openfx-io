@@ -50,14 +50,14 @@
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
-#define kOCIOParamConfigFilename "ocio config file"
-#define kOCIOParamInputSpace "ocio input space"
-#define kOCIOParamOutputSpace "ocio output space"
+#define kOCIOParamConfigFileName "ocioConfigFile"
+#define kOCIOParamInputSpaceName "ocioInputSpace"
+#define kOCIOParamOutputSpaceName "ocioOutputSpace"
 #ifdef OFX_OCIO_CHOICE
-#define kOCIOParamInputSpaceChoice "ocio input space index"
-#define kOCIOParamOutputSpaceChoice "ocio output space index"
+#define kOCIOParamInputSpaceChoiceName "ocioInputSpaceIndex"
+#define kOCIOParamOutputSpaceChoiceName "ocioOutputSpaceIndex"
 #endif
-#define kOCIOHelpButton "ocio help"
+#define kOCIOHelpButtonName "ocioHelp"
 #endif
 
 class GenericOCIO

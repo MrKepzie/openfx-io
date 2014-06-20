@@ -72,13 +72,13 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 #endif
 {
 #ifdef OFX_IO_USING_OCIO
-    _ocioConfigFile = _parent->fetchStringParam(kOCIOParamConfigFilename);
-    _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpace);
-    _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpace);
+    _ocioConfigFile = _parent->fetchStringParam(kOCIOParamConfigFileName);
+    _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpaceName);
+    _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpaceName);
 #ifdef OFX_OCIO_CHOICE
     _ocioConfigFile->getDefault(_choiceFileName);
-    _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoice);
-    _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoice);
+    _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoiceName);
+    _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoiceName);
 #endif
     loadConfig(0.);
 #endif
@@ -466,7 +466,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
-    if ( paramName == kOCIOParamConfigFilename ) {
+    if (paramName == kOCIOParamConfigFileName) {
         loadConfig(args.time); // re-load the new OCIO config
         inputCheck(args.time);
         outputCheck(args.time);
@@ -475,8 +475,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
             _ocioConfigFile->getValueAtTime(args.time, filename);
             _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
-    }
-    else if (paramName == kOCIOHelpButton) {
+    } else if (paramName == kOCIOHelpButtonName) {
         std::string msg = "OpenColorIO Help\n"
             "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
             "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
@@ -581,12 +580,10 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
             }
         }
         _parent->sendMessage(OFX::Message::eMessageMessage, "", msg);
-    }
-    else if (!_config) {
+    } else if (!_config) {
         // the other parameters assume there is a valid config
         return;
-    }
-    else if (paramName == kOCIOParamInputSpace) {
+    } else if (paramName == kOCIOParamInputSpaceName) {
         if (args.reason == OFX::eChangeUserEdit) {
             // if the inputspace doesn't correspond to a valid one, reset to default
             std::string inputSpace;
@@ -603,7 +600,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         inputCheck(args.time);
     }
 #ifdef OFX_OCIO_CHOICE
-    else if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
+    else if ( paramName == kOCIOParamInputSpaceChoiceName && args.reason == OFX::eChangeUserEdit) {
         int inputSpaceIndex;
         _inputSpaceChoice->getValueAtTime(args.time, inputSpaceIndex);
         std::string inputSpaceOld;
@@ -615,7 +612,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         }
     }
 #endif
-    else if (paramName == kOCIOParamOutputSpace) {
+    else if (paramName == kOCIOParamOutputSpaceName) {
         if (args.reason == OFX::eChangeUserEdit) {
             // if the outputspace doesn't correspond to a valid one, reset to default
             std::string outputSpace;
@@ -634,7 +631,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         outputCheck(args.time);
     }
 #ifdef OFX_OCIO_CHOICE
-    else if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
+    else if ( paramName == kOCIOParamOutputSpaceChoiceName && args.reason == OFX::eChangeUserEdit) {
         int outputSpaceIndex;
         _outputSpaceChoice->getValueAtTime(args.time, outputSpaceIndex);
         std::string outputSpaceOld;
@@ -712,7 +709,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #ifdef OFX_IO_USING_OCIO
     global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "fr.inria.Natron");
     ////////// OCIO config file
-    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFilename);
+    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
     ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
     ocioConfigFileParam->setHint("OpenColorIO configuration file");
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
@@ -726,7 +723,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
 
     ///////////Input Color-space
-    OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpace);
+    OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpaceName);
     inputSpace->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
     inputSpace->setHint("Input data is taken to be in this colorspace.");
     inputSpace->setAnimates(true);
@@ -735,7 +732,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     page->addChild(*inputSpace);
 
 #ifdef OFX_OCIO_CHOICE
-    OFX::ChoiceParamDescriptor* inputSpaceChoice = desc.defineChoiceParam(kOCIOParamInputSpaceChoice);
+    OFX::ChoiceParamDescriptor* inputSpaceChoice = desc.defineChoiceParam(kOCIOParamInputSpaceChoiceName);
     inputSpaceChoice->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
     inputSpaceChoice->setHint("Input data is taken to be in this colorspace.");
     inputSpaceChoice->setAnimates(true);
@@ -745,7 +742,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #endif
 
     ///////////Output Color-space
-    OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpace);
+    OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpaceName);
     outputSpace->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
     outputSpace->setHint("Output data is taken to be in this colorspace.");
     outputSpace->setAnimates(true);
@@ -754,7 +751,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     page->addChild(*outputSpace);
 
 #ifdef OFX_OCIO_CHOICE
-    OFX::ChoiceParamDescriptor* outputSpaceChoice = desc.defineChoiceParam(kOCIOParamOutputSpaceChoice);
+    OFX::ChoiceParamDescriptor* outputSpaceChoice = desc.defineChoiceParam(kOCIOParamOutputSpaceChoiceName);
     outputSpaceChoice->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
     outputSpaceChoice->setHint("Output data is taken to be in this colorspace.");
     outputSpaceChoice->setAnimates(true);
@@ -763,7 +760,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     page->addChild(*outputSpaceChoice);
 #endif
 
-    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
+    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
     pb->setLabels("OCIO config help", "OCIO config help", "OCIO config help");
     pb->setHint("Help about the OpenColorIO configuration.");
 

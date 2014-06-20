@@ -95,36 +95,36 @@
 #define kRunScriptPluginSourceClipCount 10
 #define kRunScriptPluginArgumentsCount 10
 
-#define kRunScriptPluginParamGroup                   "script_parameters"
+#define kRunScriptPluginParamGroupName               "scriptParameters"
 #define kRunScriptPluginParamGroupLabel              "Script parameters"
 #define kRunScriptPluginParamGroupHint               "The list of command-line parameters passed to the script."
 
-#define kRunScriptPluginParamCount                   "param_count"
+#define kRunScriptPluginParamCountName               "paramCount"
 #define kRunScriptPluginParamCountLabel              "Number of parameters"
 
-#define kRunScriptPluginParamType                    "type"
+#define kRunScriptPluginParamTypeName                "type"
 #define kRunScriptPluginParamTypeLabel               "Type of parameter"
 
-#define kRunScriptPluginParamTypeFilename      "filename"
+#define kRunScriptPluginParamTypeFilenameName  "filename"
 #define kRunScriptPluginParamTypeFilenameLabel "File name"
 #define kRunScriptPluginParamTypeFilenameHint  "A constant or animated string containing a filename.\nIf the string contains hashes (like ####) or a printf token (like %04d), they will be replaced by the frame number, and if it contains %v or %V, it will be replaced by the view ID (\"l\" or \"r\" for %v, \"left\" or \"right\" for %V).\nThis is usually linked to the output filename of an upstream Writer node, or to the input filename of a downstream Reader node."
-#define kRunScriptPluginParamTypeString              "string"
+#define kRunScriptPluginParamTypeStringName          "string"
 #define kRunScriptPluginParamTypeStringLabel         "String"
 #define kRunScriptPluginParamTypeStringHint          "A string (or sequence of characters)."
-#define kRunScriptPluginParamTypeDouble              "double"
+#define kRunScriptPluginParamTypeDoubleName          "double"
 #define kRunScriptPluginParamTypeDoubleLabel         "Floating point"
 #define kRunScriptPluginParamTypeDoubleHint          "A floating point numerical value."
-#define kRunScriptPluginParamTypeInt                 "integer"
+#define kRunScriptPluginParamTypeIntName             "integer"
 #define kRunScriptPluginParamTypeIntLabel            "Integer"
 #define kRunScriptPluginParamTypeIntHint             "An integer numerical value."
 
 
-#define kRunScriptPluginParamScript                  "script"
+#define kRunScriptPluginParamScriptName              "script"
 #define kRunScriptPluginParamScriptLabel             "Script"
 #define kRunScriptPluginParamScriptHint              "Contents of the script. Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
                                                      "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces)."
 
-#define kRunScriptPluginParamValidate                  "validate"
+#define kRunScriptPluginParamValidateName              "validate"
 #define kRunScriptPluginParamValidateLabel             "Validate"
 #define kRunScriptPluginParamValidateHint              "Validate the script contents and execute it on next render. This locks the script and all its parameters."
 
@@ -178,37 +178,37 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     }
     dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
 
-    param_count_ = fetchIntParam(kRunScriptPluginParamCount);
+    param_count_ = fetchIntParam(kRunScriptPluginParamCountName);
 
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamType << i+1;
+            ss << kRunScriptPluginParamTypeName << i+1;
             type_[i] = fetchChoiceParam(ss.str());
         }
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeFilename << i+1;
+            ss << kRunScriptPluginParamTypeFilenameName << i+1;
             filename_[i] = fetchStringParam(ss.str());
         }
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeString << i+1;
+            ss << kRunScriptPluginParamTypeStringName << i+1;
             string_[i] = fetchStringParam(ss.str());
         }
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeDouble << i+1;
+            ss << kRunScriptPluginParamTypeDoubleName << i+1;
             double_[i] = fetchDoubleParam(ss.str());
         }
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeInt << i+1;
+            ss << kRunScriptPluginParamTypeIntName << i+1;
             int_[i] = fetchIntParam(ss.str());
         }
     }
-    script_ = fetchStringParam(kRunScriptPluginParamScript);
-    validate_ = fetchBooleanParam(kRunScriptPluginParamValidate);
+    script_ = fetchStringParam(kRunScriptPluginParamScriptName);
+    validate_ = fetchBooleanParam(kRunScriptPluginParamValidateName);
 }
 
 void
@@ -360,10 +360,10 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
     int param_count;
     param_count_->getValue(param_count);
 
-    if (paramName == kRunScriptPluginParamCount) {
+    if (paramName == kRunScriptPluginParamCountName) {
         // update the parameters visibility
         beginEdit();
-    } else if (paramName == kRunScriptPluginParamValidate) {
+    } else if (paramName == kRunScriptPluginParamValidateName) {
         bool validated;
         validate_->getValue(validated);
         param_count_->setEnabled(!validated);
@@ -566,11 +566,11 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    GroupParamDescriptor *script_parameters_ = desc.defineGroupParam(kRunScriptPluginParamGroup);
+    GroupParamDescriptor *script_parameters_ = desc.defineGroupParam(kRunScriptPluginParamGroupName);
     script_parameters_->setHint(kRunScriptPluginParamGroupHint);
     script_parameters_->setLabels(kRunScriptPluginParamGroupLabel, kRunScriptPluginParamGroupLabel, kRunScriptPluginParamGroupLabel);
 
-    IntParamDescriptor *param_count_ = desc.defineIntParam(kRunScriptPluginParamCount);
+    IntParamDescriptor *param_count_ = desc.defineIntParam(kRunScriptPluginParamCountName);
     param_count_->setLabels(kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel);
     param_count_->setAnimates(true);
     param_count_->setRange(0, kRunScriptPluginArgumentsCount);
@@ -583,7 +583,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         ChoiceParamDescriptor *type_;
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamType << i+1;
+            ss << kRunScriptPluginParamTypeName << i+1;
             type_ = desc.defineChoiceParam(ss.str());
         }
         {
@@ -603,7 +603,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         StringParamDescriptor *filename_;
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeFilename << i+1;
+            ss << kRunScriptPluginParamTypeFilenameName << i+1;
             filename_ = desc.defineStringParam(ss.str());
         }
         {
@@ -622,7 +622,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         StringParamDescriptor *string_;
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeString << i+1;
+            ss << kRunScriptPluginParamTypeStringName << i+1;
             string_ = desc.defineStringParam(ss.str());
         }
         {
@@ -639,7 +639,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         DoubleParamDescriptor *double_;
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeDouble << i+1;
+            ss << kRunScriptPluginParamTypeDoubleName << i+1;
             double_ = desc.defineDoubleParam(ss.str());
         }
         {
@@ -656,7 +656,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         IntParamDescriptor *int_;
         {
             std::stringstream ss;
-            ss << kRunScriptPluginParamTypeInt << i+1;
+            ss << kRunScriptPluginParamTypeIntName << i+1;
             int_ = desc.defineIntParam(ss.str());
         }
         {
@@ -672,7 +672,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     }
 
-    StringParamDescriptor *script_ = desc.defineStringParam(kRunScriptPluginParamScript);
+    StringParamDescriptor *script_ = desc.defineStringParam(kRunScriptPluginParamScriptName);
     script_->setLabels(kRunScriptPluginParamScriptLabel, kRunScriptPluginParamScriptLabel, kRunScriptPluginParamScriptLabel);
     script_->setHint(kRunScriptPluginParamScriptHint);
     script_->setStringType(eStringTypeMultiLine);
@@ -680,7 +680,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     script_->setDefault("#!/bin/sh\n");
     page->addChild(*script_);
 
-    BooleanParamDescriptor *validate_ = desc.defineBooleanParam(kRunScriptPluginParamValidate);
+    BooleanParamDescriptor *validate_ = desc.defineBooleanParam(kRunScriptPluginParamValidateName);
     validate_->setLabels(kRunScriptPluginParamValidateLabel, kRunScriptPluginParamValidateLabel, kRunScriptPluginParamValidateLabel);
     validate_->setHint(kRunScriptPluginParamValidateHint);
     validate_->setEvaluateOnChange(true);

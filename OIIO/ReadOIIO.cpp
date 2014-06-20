@@ -54,7 +54,7 @@ OIIO_NAMESPACE_USING
 #define OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SHARED_CACHE
 #define kMetadataButtonName "showMetadata"
-#define kMetadataButtonLabel "Image Info"
+#define kMetadataButtonLabel "Image Info..."
 #define kMetadataButtonHint "Shows information and metadata from the image at current time."
 
 #ifdef OFX_READ_OIIO_USES_CACHE

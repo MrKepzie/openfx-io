@@ -45,33 +45,33 @@
 
 OIIO_NAMESPACE_USING
 
-#define kParamPremultiplied "premultiplied"
+#define kParamPremultipliedName "premultiplied"
 #define kParamPremultipliedLabel "Premultiplied"
 
-#define kTuttlePluginBitDepth        "bitDepth"
-#define kTuttlePluginBitDepthLabel   "Bit depth"
+#define kParamBitDepthName    "bitDepth"
+#define kParamBitDepthLabel   "Bit depth"
 
-#define kTuttlePluginBitDepthAuto     "auto"
-#define kTuttlePluginBitDepthAutoLabel "Guess from the output format"
-//#define kTuttlePluginBitDepthNone     "none"
-#define kTuttlePluginBitDepth8      "8i"
-#define kTuttlePluginBitDepth8Label   "8  bits integer"
-#define kTuttlePluginBitDepth10     "10i"
-#define kTuttlePluginBitDepth10Label  "10 bits integer"
-#define kTuttlePluginBitDepth12     "12i"
-#define kTuttlePluginBitDepth12Label  "12 bits integer"
-#define kTuttlePluginBitDepth16     "16i"
-#define kTuttlePluginBitDepth16Label  "16 bits integer"
-#define kTuttlePluginBitDepth16f    "16f"
-#define kTuttlePluginBitDepth16fLabel "16 bits floating point"
-#define kTuttlePluginBitDepth32     "32i"
-#define kTuttlePluginBitDepth32Label  "32 bits integer"
-#define kTuttlePluginBitDepth32f    "32f"
-#define kTuttlePluginBitDepth32fLabel "32 bits floating point"
-#define kTuttlePluginBitDepth64     "64i"
-#define kTuttlePluginBitDepth64Label  "64 bits integer"
-#define kTuttlePluginBitDepth64f    "64f"
-#define kTuttlePluginBitDepth64fLabel "64 bits floating point"
+#define kParamBitDepthAuto     "auto"
+#define kParamBitDepthAutoLabel "Guess from the output format"
+//#define kParamBitDepthNone     "none"
+#define kParamBitDepth8      "8i"
+#define kParamBitDepth8Label   "8  bits integer"
+#define kParamBitDepth10     "10i"
+#define kParamBitDepth10Label  "10 bits integer"
+#define kParamBitDepth12     "12i"
+#define kParamBitDepth12Label  "12 bits integer"
+#define kParamBitDepth16     "16i"
+#define kParamBitDepth16Label  "16 bits integer"
+#define kParamBitDepth16f    "16f"
+#define kParamBitDepth16fLabel "16 bits floating point"
+#define kParamBitDepth32     "32i"
+#define kParamBitDepth32Label  "32 bits integer"
+#define kParamBitDepth32f    "32f"
+#define kParamBitDepth32fLabel "32 bits floating point"
+#define kParamBitDepth64     "64i"
+#define kParamBitDepth64Label  "64 bits integer"
+#define kParamBitDepth64f    "64f"
+#define kParamBitDepth64fLabel "64 bits floating point"
 
 enum ETuttlePluginBitDepth
 {
@@ -95,10 +95,10 @@ enum ETuttlePluginComponents
 	eTuttlePluginComponentsRGBA
 };
 
-#define kParamOutputQuality        "quality"
+#define kParamOutputQualityName    "quality"
 #define kParamOutputQualityLabel   "Quality"
 
-#define kParamOutputOrientation        "orientation"
+#define kParamOutputOrientationName    "orientation"
 #define kParamOutputOrientationLabel   "Orientation"
 
 /*
@@ -123,8 +123,9 @@ enum ETuttlePluginComponents
 #define kParamOutputOrientationR90CounterClockwise   "90counter-clockwise"
 
 
-#define kParamOutputCompression        "compression"
+#define kParamOutputCompressionName    "compression"
 #define kParamOutputCompressionLabel   "Compression"
+#define kParamOutputCompressionHint "Compression quality [JPEG, WEBP]"
 
 #define kParamOutputCompressionAuto        "default"
 #define kParamOutputCompressionAutoLabel     "Guess from the output format"
@@ -170,11 +171,11 @@ enum EParamCompression
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 {
-  _bitDepth = fetchChoiceParam(kTuttlePluginBitDepth);
-  _premult = fetchBooleanParam(kParamPremultiplied);
-  _quality     = fetchIntParam(kParamOutputQuality);   
-  _orientation = fetchChoiceParam(kParamOutputOrientation);
-  _compression = fetchChoiceParam(kParamOutputCompression);
+  _bitDepth = fetchChoiceParam(kParamBitDepthName);
+  _premult = fetchBooleanParam(kParamPremultipliedName);
+  _quality     = fetchIntParam(kParamOutputQualityName);
+  _orientation = fetchChoiceParam(kParamOutputOrientationName);
+  _compression = fetchChoiceParam(kParamOutputCompressionName);
 }
 
 
@@ -550,31 +551,31 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/false, /*supportsAlpha=*/false, "reference", "reference");
 
-    OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kTuttlePluginBitDepth);
-    bitDepth->setLabels(kTuttlePluginBitDepthLabel, kTuttlePluginBitDepthLabel, kTuttlePluginBitDepthLabel);
-    bitDepth->appendOption(kTuttlePluginBitDepthAuto, kTuttlePluginBitDepthAutoLabel);
-    bitDepth->appendOption(kTuttlePluginBitDepth8, kTuttlePluginBitDepth8Label);
-    bitDepth->appendOption(kTuttlePluginBitDepth10, kTuttlePluginBitDepth10Label);
-    bitDepth->appendOption(kTuttlePluginBitDepth12, kTuttlePluginBitDepth12Label);
-    bitDepth->appendOption(kTuttlePluginBitDepth16, kTuttlePluginBitDepth16Label);
-    bitDepth->appendOption(kTuttlePluginBitDepth16f, kTuttlePluginBitDepth16fLabel);
-    bitDepth->appendOption(kTuttlePluginBitDepth32, kTuttlePluginBitDepth32Label);
-    bitDepth->appendOption(kTuttlePluginBitDepth32f, kTuttlePluginBitDepth32fLabel);
-    bitDepth->appendOption(kTuttlePluginBitDepth64, kTuttlePluginBitDepth64Label);
-    bitDepth->appendOption(kTuttlePluginBitDepth64f, kTuttlePluginBitDepth64fLabel);
+    OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kParamBitDepthName);
+    bitDepth->setLabels(kParamBitDepthLabel, kParamBitDepthLabel, kParamBitDepthLabel);
+    bitDepth->appendOption(kParamBitDepthAuto, kParamBitDepthAutoLabel);
+    bitDepth->appendOption(kParamBitDepth8, kParamBitDepth8Label);
+    bitDepth->appendOption(kParamBitDepth10, kParamBitDepth10Label);
+    bitDepth->appendOption(kParamBitDepth12, kParamBitDepth12Label);
+    bitDepth->appendOption(kParamBitDepth16, kParamBitDepth16Label);
+    bitDepth->appendOption(kParamBitDepth16f, kParamBitDepth16fLabel);
+    bitDepth->appendOption(kParamBitDepth32, kParamBitDepth32Label);
+    bitDepth->appendOption(kParamBitDepth32f, kParamBitDepth32fLabel);
+    bitDepth->appendOption(kParamBitDepth64, kParamBitDepth64Label);
+    bitDepth->appendOption(kParamBitDepth64f, kParamBitDepth64fLabel);
     bitDepth->setDefault(eTuttlePluginBitDepthAuto);
 
-    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultiplied);
+    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultipliedName);
     premult->setLabels(kParamPremultipliedLabel, kParamPremultipliedLabel, kParamPremultipliedLabel);
     premult->setDefault(false);
 
-    OFX::IntParamDescriptor* quality = desc.defineIntParam(kParamOutputQuality);
+    OFX::IntParamDescriptor* quality = desc.defineIntParam(kParamOutputQualityName);
     quality->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
     quality->setRange(0, 100);
     quality->setDisplayRange(0, 100);
     quality->setDefault(80);
 
-    OFX::ChoiceParamDescriptor* orientation = desc.defineChoiceParam(kParamOutputOrientation);
+    OFX::ChoiceParamDescriptor* orientation = desc.defineChoiceParam(kParamOutputOrientationName);
     orientation->setLabels(kParamOutputOrientationLabel, kParamOutputOrientationLabel, kParamOutputOrientationLabel);
     orientation->appendOption(kParamOutputOrientationNormal);
     orientation->appendOption(kParamOutputOrientationFlop);
@@ -586,9 +587,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     orientation->appendOption(kParamOutputOrientationR90CounterClockwise);
     orientation->setDefault(0);
 
-    OFX::ChoiceParamDescriptor* compression = desc.defineChoiceParam(kParamOutputCompression);
+    OFX::ChoiceParamDescriptor* compression = desc.defineChoiceParam(kParamOutputCompressionName);
     compression->setLabels(kParamOutputCompressionLabel, kParamOutputCompressionLabel, kParamOutputCompressionLabel);
-    compression->setHint("Compression quality [JPEG, WEBP]");
+    compression->setHint(kParamOutputCompressionHint);
     compression->appendOption(kParamOutputCompressionAuto, kParamOutputCompressionAutoLabel);
     compression->appendOption(kParamOutputCompressionNone, kParamOutputCompressionNoneLabel);
     compression->appendOption(kParamOutputCompressionZip, kParamOutputCompressionZipLabel);
