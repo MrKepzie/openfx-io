@@ -239,6 +239,8 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
 
 void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+    bool unassociatedAlpha;
+    _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
 #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -246,11 +248,14 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    bool unassociatedAlpha;
-    _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
     _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 #else
-    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+    ImageSpec config;
+    if (unassociatedAlpha) {
+        config.attribute("oiio:UnassociatedAlpha",1);
+    }
+
+    std::auto_ptr<ImageInput> img(ImageInput::open(filename, &config));
     if (!img.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -325,7 +330,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
             break;
         default:
 #ifndef OFX_READ_OIIO_USES_CACHE
-            srcImg->close();
+            img->close();
 #endif
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
@@ -442,7 +447,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     }
     
 #ifndef OFX_READ_OIIO_USES_CACHE
-    srcImg->close();
+    img->close();
 #endif
 }
 
@@ -665,9 +670,6 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlphaName);
     unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
     unassociatedAlpha->setHint(kParamUnassociatedAlphaHint);
-#ifndef OFX_READ_OIIO_USES_CACHE
-    unassociatedAlpha->setIsSecret(true);
-#endif
     page->addChild(*unassociatedAlpha);
     desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
 
