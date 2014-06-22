@@ -59,8 +59,8 @@
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
 #define kReaderProxyFileParamName "proxy"
-#define kReaderProxyScaleFileParamName "proxy scale"
-#define kReaderCustomScaleParamName "custom scale"
+#define kReaderProxyScaleFileParamName "proxyScale"
+#define kReaderCustomScaleParamName "customScale"
 #define kReaderMissingFrameParamName "onMissingFrame"
 #define kReaderFrameModeParamName "frameMode"
 #define kReaderTimeOffsetParamName "timeOffset"

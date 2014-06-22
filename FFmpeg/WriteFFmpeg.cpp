@@ -743,7 +743,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     codecParam->setAnimates(false);
     codecParam->setParent(*groupParam);
     codecParam->setDefault(0);
-    
+    page->addChild(*codecParam);
+
     ///////////bit-rate
     OFX::IntParamDescriptor* bitRateParam = desc.defineIntParam(kWriteFFmpegBitRateParamName);
     bitRateParam->setLabels("Bitrate", "Bitrate", "Bitrate");
@@ -751,7 +752,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     bitRateParam->setDefault(400000);
     bitRateParam->setParent(*groupParam);
     bitRateParam->setAnimates(false);
-    
+    page->addChild(*bitRateParam);
+
     ///////////bit-rate tolerance
     OFX::IntParamDescriptor* bitRateTolParam = desc.defineIntParam(kWriteFFmpegBitRateToleranceParamName);
     bitRateTolParam->setLabels("Bitrate tolerance", "Bitrate tolerance", "Bitrate tolerance");
@@ -759,8 +761,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     bitRateTolParam->setDefault(4000 * 10000);
     bitRateTolParam->setParent(*groupParam);
     bitRateTolParam->setAnimates(false);
-    
-    
+    page->addChild(*bitRateTolParam);
+
     ///////////Gop size
     OFX::IntParamDescriptor* gopSizeParam = desc.defineIntParam(kWriteFFmpegGopParamName);
     gopSizeParam->setLabels("GOP Size", "GOP Size", "GOP Size");
@@ -768,8 +770,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     gopSizeParam->setDefault(12);
     gopSizeParam->setParent(*groupParam);
     gopSizeParam->setAnimates(false);
-    
-    
+    page->addChild(*gopSizeParam);
+
     ////////////B Frames
     OFX::IntParamDescriptor* bFramesParam = desc.defineIntParam(kWriteFFmpegBFramesParamName);
     bFramesParam->setLabels("B Frames", "B Frames", "B Frames");
@@ -777,7 +779,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     bFramesParam->setDefault(0);
     bFramesParam->setParent(*groupParam);
     bFramesParam->setAnimates(false);
-    
+    page->addChild(*bFramesParam);
+
     ////////////Macro block decision
     OFX::ChoiceParamDescriptor* mbDecisionParam = desc.defineChoiceParam(kWriteFFmpegMBDecisionParamName);
     mbDecisionParam->setLabels("Macro block decision mode", "Macro block decision mode", "Macro block decision mode");
@@ -787,6 +790,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     mbDecisionParam->setDefault(FF_MB_DECISION_SIMPLE);
     mbDecisionParam->setParent(*groupParam);
     mbDecisionParam->setAnimates(false);
+    page->addChild(*mbDecisionParam);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

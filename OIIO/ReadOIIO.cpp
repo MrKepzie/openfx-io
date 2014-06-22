@@ -54,8 +54,11 @@ OIIO_NAMESPACE_USING
 #define OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SHARED_CACHE
 #define kMetadataButtonName "showMetadata"
-#define kMetadataButtonLabel "Image Info"
+#define kMetadataButtonLabel "Image Info..."
 #define kMetadataButtonHint "Shows information and metadata from the image at current time."
+#define kParamUnassociatedAlphaName "unassociatedAlpha"
+#define kParamUnassociatedAlphaLabel "Keep Unassoc. Alpha"
+#define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata. Images which have associated alpha (i.e. are already premultiplied) are unaffected."
 
 #ifdef OFX_READ_OIIO_USES_CACHE
 static const bool kSupportsTiles = true;
@@ -86,10 +89,14 @@ private:
 
     std::string metadata(const std::string& filename);
 
+    /** @brief get the clip preferences */
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) /* OVERRIDE FINAL */;
+
 #ifdef OFX_READ_OIIO_USES_CACHE
     //// OIIO image cache
     ImageCache* _cache;
 #endif
+    OFX::BooleanParam* _unassociatedAlpha;
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
@@ -101,8 +108,9 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _cache(ImageCache::create(false)) // non-shared cache
 #  endif
 #endif
+, _unassociatedAlpha(false)
 {
-
+    _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlphaName);
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
@@ -116,14 +124,16 @@ ReadOIIOPlugin::~ReadOIIOPlugin()
 #endif
 }
 
-void ReadOIIOPlugin::clearAnyCache() {
+void ReadOIIOPlugin::clearAnyCache()
+{
 #ifdef OFX_READ_OIIO_USES_CACHE
     ///flush the OIIO cache
     _cache->invalidate_all();
 #endif
 }
 
-void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
+{
     if (paramName == kMetadataButtonName) {
         std::string filename;
         getCurrentFileName(filename);
@@ -227,8 +237,10 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
 #endif
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
+    bool unassociatedAlpha;
+    _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
 #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -236,8 +248,14 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 #else
-    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+    ImageSpec config;
+    if (unassociatedAlpha) {
+        config.attribute("oiio:UnassociatedAlpha",1);
+    }
+
+    std::auto_ptr<ImageInput> img(ImageInput::open(filename, &config));
     if (!img.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -312,7 +330,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
             break;
         default:
 #ifndef OFX_READ_OIIO_USES_CACHE
-            srcImg->close();
+            img->close();
 #endif
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
@@ -429,7 +447,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime /*time*/, const
     }
     
 #ifndef OFX_READ_OIIO_USES_CACHE
-    srcImg->close();
+    img->close();
 #endif
 }
 
@@ -545,6 +563,22 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
     return ss.str();
 }
 
+/* Override the clip preferences */
+void
+ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    // set the premultiplication of dstClip_
+    // OIIO always outputs premultiplied images, except if it's tol
+    bool unassociatedAlpha = false;
+#ifndef OFX_READ_OIIO_USES_CACHE
+    // We assume that if "unassociatedAlpha" is checked, output is UnPremultiplied,
+    // but its only true if the image had originally unassociated alpha
+    // (OIIO metadata "oiio:UnassociatedAlpha")
+    _unassociatedAlpha->getValue(unassociatedAlpha);
+#endif
+    clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
+}
+
 using namespace OFX;
 
 void ReadOIIOPluginFactory::load() {
@@ -633,9 +667,16 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
 
+    OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlphaName);
+    unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
+    unassociatedAlpha->setHint(kParamUnassociatedAlphaHint);
+    page->addChild(*unassociatedAlpha);
+    desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
+
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButtonName);
     pb->setLabels(kMetadataButtonLabel, kMetadataButtonLabel, kMetadataButtonLabel);
     pb->setHint(kMetadataButtonHint);
+    page->addChild(*pb);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
