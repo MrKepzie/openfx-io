@@ -239,6 +239,11 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,const OfxRectI& 
                              "it could support it.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
+    if (args.isInteractive) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files when in non-interactive mode.");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
 
     assert(!_formatContext);
     
@@ -457,6 +462,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
+    
     int numChannels;
     switch(pixelComponents)
     {
