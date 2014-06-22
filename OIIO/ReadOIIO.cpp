@@ -570,12 +570,14 @@ ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     // set the premultiplication of dstClip_
     // OIIO always outputs premultiplied images, except if it's tol
     bool unassociatedAlpha = false;
-#ifndef OFX_READ_OIIO_USES_CACHE
+
     // We assume that if "unassociatedAlpha" is checked, output is UnPremultiplied,
     // but its only true if the image had originally unassociated alpha
-    // (OIIO metadata "oiio:UnassociatedAlpha")
+    // (OIIO metadata "oiio:UnassociatedAlpha").
+    // However, it is not possible to check here if the alpha in the
+    // images is associated or not. If the user checked the option, it's
+    // probably because it was not associated/premultiplied.
     _unassociatedAlpha->getValue(unassociatedAlpha);
-#endif
     clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
 }
 
