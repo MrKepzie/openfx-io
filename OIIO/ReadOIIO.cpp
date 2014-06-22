@@ -248,11 +248,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     }
     bool unassociatedAlpha;
     _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
-    int unassociatedAlpha_prev;
-    _cache->getattribute("unassociatedalpha", unassociatedAlpha_prev);
-    if ((bool)unassociatedAlpha_prev != unassociatedAlpha) {
-        _cache->attribute("unassociatedalpha", (bool)unassociatedAlpha);
-    }
+    _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 #else
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
