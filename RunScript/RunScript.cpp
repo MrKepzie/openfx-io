@@ -569,6 +569,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     GroupParamDescriptor *script_parameters_ = desc.defineGroupParam(kRunScriptPluginParamGroupName);
     script_parameters_->setHint(kRunScriptPluginParamGroupHint);
     script_parameters_->setLabels(kRunScriptPluginParamGroupLabel, kRunScriptPluginParamGroupLabel, kRunScriptPluginParamGroupLabel);
+    page->addChild(*script_parameters_);
 
     IntParamDescriptor *param_count_ = desc.defineIntParam(kRunScriptPluginParamCountName);
     param_count_->setLabels(kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel, kRunScriptPluginParamCountLabel);
@@ -576,6 +577,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     param_count_->setRange(0, kRunScriptPluginArgumentsCount);
     param_count_->setDisplayRange(0, kRunScriptPluginArgumentsCount);
     param_count_->setParent(*script_parameters_);
+    page->addChild(*param_count_);
 
     // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
     // We thus hide them in beginEdit(), which is called after instance creation
@@ -669,7 +671,6 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         //int_->setIsSecret(true);
         int_->setParent(*script_parameters_);
         page->addChild(*int_);
-
     }
 
     StringParamDescriptor *script_ = desc.defineStringParam(kRunScriptPluginParamScriptName);

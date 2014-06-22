@@ -721,6 +721,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     assert(OFX::getImageEffectHostDescription());
     ocioConfigFileParam->setEnabled(true);
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    page->addChild(*ocioConfigFileParam);
 
     ///////////Input Color-space
     OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpaceName);
@@ -763,6 +764,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
     pb->setLabels("OCIO config help", "OCIO config help", "OCIO config help");
     pb->setHint("Help about the OpenColorIO configuration.");
+    page->addChild(*pb);
 
     char* file = std::getenv("OCIO");
     OCIO::ConstConfigRcPtr config;

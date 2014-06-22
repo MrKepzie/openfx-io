@@ -564,16 +564,19 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     bitDepth->appendOption(kParamBitDepth64, kParamBitDepth64Label);
     bitDepth->appendOption(kParamBitDepth64f, kParamBitDepth64fLabel);
     bitDepth->setDefault(eTuttlePluginBitDepthAuto);
+    page->addChild(*bitDepth);
 
     OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultipliedName);
     premult->setLabels(kParamPremultipliedLabel, kParamPremultipliedLabel, kParamPremultipliedLabel);
     premult->setDefault(false);
+    page->addChild(*premult);
 
     OFX::IntParamDescriptor* quality = desc.defineIntParam(kParamOutputQualityName);
     quality->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
     quality->setRange(0, 100);
     quality->setDisplayRange(0, 100);
     quality->setDefault(80);
+    page->addChild(*quality);
 
     OFX::ChoiceParamDescriptor* orientation = desc.defineChoiceParam(kParamOutputOrientationName);
     orientation->setLabels(kParamOutputOrientationLabel, kParamOutputOrientationLabel, kParamOutputOrientationLabel);
@@ -586,6 +589,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     orientation->appendOption(kParamOutputOrientationTransverse);
     orientation->appendOption(kParamOutputOrientationR90CounterClockwise);
     orientation->setDefault(0);
+    page->addChild(*orientation);
 
     OFX::ChoiceParamDescriptor* compression = desc.defineChoiceParam(kParamOutputCompressionName);
     compression->setLabels(kParamOutputCompressionLabel, kParamOutputCompressionLabel, kParamOutputCompressionLabel);
@@ -603,6 +607,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     compression->appendOption(kParamOutputCompressionCCITTRLE, kParamOutputCompressionCCITTRLELabel);
     compression->appendOption(kParamOutputCompressionPACKBITS, kParamOutputCompressionPACKBITSLabel);
     compression->setDefault(eParamCompressionAuto);
+    page->addChild(*compression);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }
