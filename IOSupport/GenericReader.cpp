@@ -80,6 +80,9 @@
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
+static bool global_hostIsNatron;
+
+
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
@@ -133,29 +136,13 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
             ///everything as it would take too much time.
             indexes[0] = content.getPotentialFrameNumbersCount() - 1;
             content.generatePatternWithFrameNumberAtIndexes(indexes, &_sequencePattern);
-            _sequenceFromFiles.clear();
-            unsigned int numKeys = _fileParam->getNumKeys();
-            if (numKeys > 1) {
-                SequenceParsing::filesListFromPattern(_sequencePattern, &_sequenceFromFiles);
-            }
-            ///this may happen if the filename is only composed of digits
-            if (_sequenceFromFiles.empty()) {
-                std::map<int, std::string> views;
-                views.insert(std::make_pair(0, content.absoluteFileName()));
-                _sequenceFromFiles.insert(std::make_pair(0, views));
-            }
+            SequenceParsing::filesListFromPattern(_sequencePattern, &_sequenceFromFiles);
+            
             if (_sequenceFromFiles.size() == 1) {
                 _originalFrameRange->setValue(0, 0);
             } else if (_sequenceFromFiles.size() > 1) {
                 _originalFrameRange->setValue(_sequenceFromFiles.begin()->first, _sequenceFromFiles.rbegin()->first);
             }
-            _numKeysForPattern = numKeys;
-//            //SequenceParsing::SequenceFromFiles::getSequenceOutOfFile(filename, _sequenceFromFiles);
-//            if (_sequenceFromFiles->isSingleFile()) {
-//                _originalFrameRange->setValue(0, 0);
-//            } else {
-//                _originalFrameRange->setValue(_sequenceFromFiles->getFirstFrame(), _sequenceFromFiles->getLastFrame());
-//            }
         }
 
     } catch(const std::exception& e) {
@@ -199,12 +186,6 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool ca
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
     if(!getSequenceTimeDomain(filename,range)){
-//        if (_sequenceFromFiles->isSingleFile()) {
-//            range.min = range.max = 0;
-//        } else {
-//            range.min = _sequenceFromFiles->getFirstFrame();
-//            range.max = _sequenceFromFiles->getLastFrame();
-//        }
         if (_sequenceFromFiles.size() == 1) {
             range.min = range.max = 0;
         } else if (_sequenceFromFiles.size() > 1) {
@@ -1072,29 +1053,16 @@ void GenericReaderPlugin::inputFileChanged() {
     ///everything as it would take too much time.
     indexes[0] = content.getPotentialFrameNumbersCount() - 1;
     content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
-    unsigned int numKeys = _fileParam->getNumKeys();
     
-    size_t oldNumKeys = _sequenceFromFiles.size();
-    bool patternChanged = true;
-    if (numKeys <= 1) {
-        ///this may happen if the filename is only composed of digits
+    bool patternChanged = pattern != _sequencePattern;
+    if (patternChanged) {
         _sequencePattern = pattern;
         _sequenceFromFiles.clear();
-        std::map<int, std::string> views;
-        views.insert(std::make_pair(0, content.absoluteFileName()));
-        _sequenceFromFiles.insert(std::make_pair(0, views));
-    } else {
-        patternChanged = pattern != _sequencePattern;
-        if (patternChanged || (numKeys != _numKeysForPattern && _numKeysForPattern == 1)) {
-            _sequencePattern = pattern;
-            _sequenceFromFiles.clear();
-            SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
-        }
-
+        SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
     }
-    _numKeysForPattern = numKeys;
     
- 
+    
+    
     clearPersistentMessage();
     //reset the original range param
     _originalFrameRange->setValue(INT_MIN, INT_MAX);
@@ -1103,7 +1071,7 @@ void GenericReaderPlugin::inputFileChanged() {
     ///let the derive class a chance to initialize any data structure it may need
     onInputFileChanged(filename);
     
-    if (oldNumKeys != _sequenceFromFiles.size() || patternChanged) {
+    if (patternChanged) {
         ///we don't pass the _frameRange range as we don't want to store the time domain too
         OfxRangeD tmp;
         if (getSequenceTimeDomainInternal(tmp,true)) {
@@ -1223,6 +1191,9 @@ void GenericReaderPlugin::purgeCaches() {
 
 bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
 {
+    if (!global_hostIsNatron) {
+        return false;
+    }
     double sequenceTime;
     GenericReaderPlugin::eGetSequenceTimeRet ret;
     try {
@@ -1313,6 +1284,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
 
 OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
 {
+    global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "fr.inria.Natron");
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
