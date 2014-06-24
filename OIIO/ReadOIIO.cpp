@@ -114,6 +114,11 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _unassociatedAlpha(false)
 {
     _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlphaName);
+#ifdef OFX_READ_OIIO_USES_CACHE
+    bool unassociatedAlpha;
+    _unassociatedAlpha->getValue(unassociatedAlpha);
+    _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
+#endif
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
@@ -146,7 +151,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     ///This cannot be done elsewhere as the Cache::attribute function is not thread safe!
     else if (paramName == kParamUnassociatedAlphaName) {
         bool unassociatedAlpha;
-        _unassociatedAlpha->getValueAtTime(args.time, unassociatedAlpha);
+        _unassociatedAlpha->getValue(unassociatedAlpha); // non-animatable
         _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
     }
 #endif
@@ -251,7 +256,7 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
 
 void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    #ifdef OFX_READ_OIIO_USES_CACHE
+#ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
@@ -683,6 +688,9 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlphaName);
     unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
     unassociatedAlpha->setHint(kParamUnassociatedAlphaHint);
+#ifdef OFX_READ_OIIO_USES_CACHE
+    unassociatedAlpha->setAnimates(false); // cannot be animated, because relies on changedParam()
+#endif
     page->addChild(*unassociatedAlpha);
     desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
 
