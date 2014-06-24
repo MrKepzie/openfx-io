@@ -52,7 +52,10 @@
 OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
-#define OFX_READ_OIIO_SHARED_CACHE
+
+///This has been disabled because shared caches won't work if several instances do not have the same value for
+///the unassociated alpha parameter.
+//#define OFX_READ_OIIO_SHARED_CACHE
 #define kMetadataButtonName "showMetadata"
 #define kMetadataButtonLabel "Image Info..."
 #define kMetadataButtonHint "Shows information and metadata from the image at current time."
@@ -138,7 +141,16 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         std::string filename;
         getCurrentFileName(filename);
         sendMessage(OFX::Message::eMessageMessage, "", metadata(filename));
-    } else {
+    }
+#ifdef OFX_READ_OIIO_USES_CACHE
+    ///This cannot be done elsewhere as the Cache::attribute function is not thread safe!
+    else if (paramName == kParamUnassociatedAlphaName) {
+        bool unassociatedAlpha;
+        _unassociatedAlpha->getValueAtTime(args.time, unassociatedAlpha);
+        _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
+    }
+#endif
+    else {
         GenericReaderPlugin::changedParam(args,paramName);
     }
 }
@@ -239,17 +251,16 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
 
 void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    bool unassociatedAlpha;
-    _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
-#ifdef OFX_READ_OIIO_USES_CACHE
+    #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 #else
+    bool unassociatedAlpha;
+    _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
     ImageSpec config;
     if (unassociatedAlpha) {
         config.attribute("oiio:UnassociatedAlpha",1);
