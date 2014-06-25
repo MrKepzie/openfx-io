@@ -234,7 +234,6 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
             return false;
         }
     }
-    return true;
     
     if(!_ffmpegFile) {
         error = "No suche file";
