@@ -18,10 +18,10 @@ namespace OFX
   {
     void getPluginIDs(OFX::PluginFactoryArray &ids)
     {
-      static ReadEXRPluginFactory p1("fr.inria.openfx:ReadEXR", 1, 1);
-      ids.push_back(&p1);
-      static WriteEXRPluginFactory p2("fr.inria.openfx:WriteEXR", 1, 0);
-      ids.push_back(&p2);
+//      static ReadEXRPluginFactory p1("fr.inria.openfx:ReadEXR", 1, 1);
+//      ids.push_back(&p1);
+//      static WriteEXRPluginFactory p2("fr.inria.openfx:WriteEXR", 1, 0);
+//      ids.push_back(&p2);
       static ReadFFmpegPluginFactory p3("fr.inria.openfx:ReadFFmpeg", 1, 1);
       ids.push_back(&p3);
       static WriteFFmpegPluginFactory p4("fr.inria.openfx:WriteFFmpeg", 1, 0);
