@@ -124,10 +124,12 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     if (_ffmpegFile && filename != _ffmpegFile->filename()) {
         delete _ffmpegFile;
         _ffmpegFile = new FFmpeg::File(filename);
-        if(_ffmpegFile->invalid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
-            return;
-        }
+    } else if (!_ffmpegFile) {
+        _ffmpegFile = new FFmpeg::File(filename);
+    }
+    if(_ffmpegFile->invalid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+        return;
     }
 
     /// we only support RGBA output clip
@@ -229,14 +231,16 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
     if (_ffmpegFile && filename != _ffmpegFile->filename()) {
         delete _ffmpegFile;
         _ffmpegFile = new FFmpeg::File(filename);
-        if(_ffmpegFile->invalid()) {
-            error = _ffmpegFile->error();
-            return false;
-        }
+    } else if (!_ffmpegFile) {
+        _ffmpegFile = new FFmpeg::File(filename);
+    }
+    if(_ffmpegFile->invalid()) {
+        error = _ffmpegFile->error();
+        return false;
     }
     
     if(!_ffmpegFile) {
-        error = "No suche file";
+        error = filename + ": no such file";
         return false;
     }
     int width,height,frames;
