@@ -176,8 +176,8 @@ namespace FFmpeg {
     , _invalidState(false)
     {
         
-        CHECK( avformat_open_input(&_context, filename.c_str(), _format, NULL) );
-        CHECK( avformat_find_stream_info(_context, NULL) );
+        CHECKMSG(avformat_open_input(&_context, filename.c_str(), _format, NULL), "Cannot open file");
+        CHECKMSG(avformat_find_stream_info(_context, NULL),"Could not find codec parameters");
         
         // fill the array with all available video streams
         bool unsuported_codec = false;
@@ -717,11 +717,11 @@ namespace FFmpeg {
     }
     
     // get stream information
-    bool File::info( int& width,
-              int& height,
-              double& aspect,
-              int& frames,
-              unsigned streamIdx)
+    bool File::getInfo(int& width,
+                       int& height,
+                       double& aspect,
+                       int& frames,
+                       unsigned streamIdx)
     {
 #ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex guard(_lock);

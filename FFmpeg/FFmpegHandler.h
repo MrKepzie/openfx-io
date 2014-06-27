@@ -74,13 +74,21 @@ extern "C" {
 
 #define CHECK(x) \
 {\
-int error = x;\
-if (error<0) {\
-setInternalError(error);\
-return;\
-}\
-}\
+  int error = (x);\
+  if (error < 0) {\
+    setInternalError(error);\
+    return;\
+  }\
+}
 
+#define CHECKMSG(x,msg) \
+{\
+  int error = (x);\
+  if (error < 0) {\
+    setError((msg),"");\
+    return;\
+  }\
+}
 
 namespace FFmpeg {
     bool isImageFile(const std::string& filename);
@@ -213,22 +221,22 @@ namespace FFmpeg {
         
         ~File();
         
-        const std::string& filename() const { return _filename; }
+        const std::string& getFilename() const { return _filename; }
         
         // get the internal error string
-        const char* error() const
+        const std::string& getError() const
         {
-            return _errorMsg.c_str();
+            return _errorMsg;
         }
         
         // return true if the reader can't decode the frame
-        bool invalid() const
+        bool isValid() const
         {
-            return _invalidState;
+            return !_invalidState;
         }
         
         // return the numbers of streams supported by the reader
-        unsigned int streams() const
+        unsigned int getNbStreams() const
         {
             return (unsigned int)_streams.size();
         }
@@ -237,11 +245,11 @@ namespace FFmpeg {
         bool decode(unsigned char* buffer, int frame,bool loadNearest, unsigned streamIdx = 0);
         
         // get stream information
-        bool info( int& width,
-                  int& height,
-                  double& aspect,
-                  int& frames,
-                  unsigned streamIdx = 0);
+        bool getInfo(int& width,
+                     int& height,
+                     double& aspect,
+                     int& frames,
+                     unsigned streamIdx = 0);
         
     };
     
