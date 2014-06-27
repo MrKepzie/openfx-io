@@ -353,6 +353,7 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 	// as some versions of LibAV doesn't declare properly all extensions...
 	extensions.push_back("mov");
 	extensions.push_back("avi");
+    extensions.push_back("mp4");
 	extensions.push_back("mpg");
 	extensions.push_back("mkv");
 	extensions.push_back("flv");
