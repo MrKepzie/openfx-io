@@ -261,7 +261,6 @@ private:
     //SequenceParsing::SequenceFromFiles* _sequenceFromFiles;
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     std::string _sequencePattern;
-    int _numKeysForPattern; //< the number of frames the pattern currently have
     const bool _supportsTiles;
 };
 
