@@ -132,7 +132,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
 
     std::fprintf(nfile, "P%c\n%u %u\n%d.0\n", (spectrum == 1 ? 'f' : 'F'), width, height, endianness() ? 1 : -1);
 
-    for (int y = 0; y < height; ++y) {
+    for (int y = height-1; y >= 0; --y) {
 
         // now copy to the dstImg
         if (depth == 1) {
