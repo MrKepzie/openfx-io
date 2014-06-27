@@ -103,7 +103,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 , _settingFrameRange(false)
 , _sequenceFromFiles()
 , _sequencePattern()
-, _numKeysForPattern(-1)
 , _supportsTiles(supportsTiles)
 //, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
@@ -1321,6 +1320,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     fileParam->setLabels("File", "File", "File");
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The input image sequence/video stream file(s).");
+#pragma message ("GenericReader: should the filename still be animatable?") 
     fileParam->setAnimates(!isVideoStreamPlugin);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     fileParam->setScriptName(kReaderFileParamName);

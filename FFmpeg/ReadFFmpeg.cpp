@@ -43,6 +43,7 @@
 
 #include <cmath>
 #include <sstream>
+#include <algorithm>
 
 #include "IOUtility.h"
 
@@ -80,8 +81,7 @@ void ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const 
 void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
     
     if (_ffmpegFile) {
-        
-        if (_ffmpegFile->filename() == filename) {
+        if (_ffmpegFile->getFilename() == filename) {
             return;
         } else {
             delete _ffmpegFile;
@@ -89,17 +89,19 @@ void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
     }
     
     _ffmpegFile = new FFmpeg::File(filename);
-    if(_ffmpegFile->invalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
-        return;
+    if (!_ffmpegFile->isValid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+        delete _ffmpegFile;
+        _ffmpegFile = NULL;
     }
 }
 
+#pragma message ("ReadFFmpeg: please explain why syncPrivateData is necessary and why it does this")
 void ReadFFmpegPlugin::syncPrivateData() {
     std::string filename;
     getCurrentFileName(filename);
     if (_ffmpegFile) {
-        if (_ffmpegFile->filename() == filename) {
+        if (_ffmpegFile->getFilename() == filename) {
             return;
         } else {
             delete _ffmpegFile;
@@ -109,9 +111,10 @@ void ReadFFmpegPlugin::syncPrivateData() {
     
     _ffmpegFile = new FFmpeg::File(filename);
     
-    if(_ffmpegFile->invalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
-        return;
+    if (!_ffmpegFile->isValid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+        delete _ffmpegFile;
+        _ffmpegFile = NULL;
     }
 }
 
@@ -121,14 +124,16 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
 
 void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    if (_ffmpegFile && filename != _ffmpegFile->filename()) {
+    if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
         delete _ffmpegFile;
         _ffmpegFile = new FFmpeg::File(filename);
     } else if (!_ffmpegFile) {
         _ffmpegFile = new FFmpeg::File(filename);
     }
-    if(_ffmpegFile->invalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+    if (!_ffmpegFile->isValid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+        delete _ffmpegFile;
+        _ffmpegFile = NULL;
         return;
     }
 
@@ -146,7 +151,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     int width,height,frames;
     double ap;
     
-    _ffmpegFile->info(width, height, ap, frames);
+    _ffmpegFile->getInfo(width, height, ap, frames);
     assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
 
     if((imgBounds.x2 - imgBounds.x1) < width ||
@@ -173,7 +178,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     //< round the time to an int to get a frame number ? Not sure about this
     try{
         if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5),loadNearestFrame())) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->error());
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
         }
     }catch(const std::exception& e){
         int choice;
@@ -214,7 +219,7 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
         
         int width,height,frames;
         double ap;
-        _ffmpegFile->info(width, height, ap, frames);
+        _ffmpegFile->getInfo(width, height, ap, frames);
         range.min = 0;
         range.max = frames - 1;
         return true;
@@ -228,14 +233,17 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod,std::string& error)
 {
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
-    if (_ffmpegFile && filename != _ffmpegFile->filename()) {
+    if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
         delete _ffmpegFile;
         _ffmpegFile = new FFmpeg::File(filename);
     } else if (!_ffmpegFile) {
         _ffmpegFile = new FFmpeg::File(filename);
     }
-    if(_ffmpegFile->invalid()) {
-        error = _ffmpegFile->error();
+    if (!_ffmpegFile->isValid()) {
+        error = _ffmpegFile->getError();
+        //setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+        delete _ffmpegFile;
+        _ffmpegFile = NULL;
         return false;
     }
     
@@ -245,7 +253,7 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
     }
     int width,height,frames;
     double ap;
-    _ffmpegFile->info(width, height, ap, frames);
+    _ffmpegFile->getInfo(width, height, ap, frames);
     rod.x1 = 0;
     rod.x2 = width;
     rod.y1 = 0;
@@ -296,6 +304,18 @@ static std::string ffmpeg_versions()
     return oss.str();
 }
 
+static
+std::vector<std::string> &
+split(const std::string &s, char delim, std::vector<std::string> &elems)
+{
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
@@ -311,7 +331,39 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               ".\n\n" + ffmpeg_versions());
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    av_register_all();
+    std::vector<std::string> extensions;
+	{
+		AVInputFormat* iFormat = av_iformat_next(NULL);
+		while (iFormat != NULL) {
+			if (iFormat->extensions != NULL) {
+				std::string extStr( iFormat->extensions );
+                split(extStr, ',', extensions);
+
+				// name's format defines (in general) extensions
+				// require to fix extension in LibAV/FFMpeg to don't use it.
+				extStr = iFormat->name;
+                split(extStr, ',', extensions);
+			}
+			iFormat = av_iformat_next( iFormat );
+		}
+	}
+
+	// Hack: Add basic video container extensions
+	// as some versions of LibAV doesn't declare properly all extensions...
+	extensions.push_back("mov");
+	extensions.push_back("avi");
+	extensions.push_back("mpg");
+	extensions.push_back("mkv");
+	extensions.push_back("flv");
+	extensions.push_back("m2ts");
+
+	// sort / unique
+	std::sort(extensions.begin(), extensions.end());
+	extensions.erase(std::unique(extensions.begin(), extensions.end()), extensions.end());
+
+
+    //const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(0);
 #endif
