@@ -43,6 +43,7 @@
 
 #include <cmath>
 #include <sstream>
+#include <algorithm>
 
 #include "IOUtility.h"
 
