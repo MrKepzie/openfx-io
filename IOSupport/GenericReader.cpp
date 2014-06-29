@@ -307,7 +307,6 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
             default:
                 break;
         }
-        clearPersistentMessage();
         assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
         ret = GenericReaderPlugin::eGetSequenceTimeBeforeSequence;
     } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
@@ -346,7 +345,6 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
             default:
                 break;
         }
-        clearPersistentMessage();
         assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
         ret = GenericReaderPlugin::eGetSequenceTimeAfterSequence;
     } else {
