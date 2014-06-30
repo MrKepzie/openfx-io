@@ -235,8 +235,7 @@ bool WriteFFmpegPlugin::isImageFile(const std::string& ext) const{
 void WriteFFmpegPlugin::beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args)
 {
     if (!args.sequentialRenderStatus || _formatContext || _stream) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order, the host didn't inform  "
-                             "it could support it.");
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
@@ -457,8 +456,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     }
     
     if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order, the host didn't inform  "
-                             "it could support it.");
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 

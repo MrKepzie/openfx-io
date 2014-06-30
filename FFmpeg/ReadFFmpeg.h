@@ -63,8 +63,6 @@ public:
     
     bool loadNearestFrame() const;
     
-    virtual void syncPrivateData();
-
 private:
     
     virtual bool isVideoStream(const std::string& filename);

@@ -96,27 +96,6 @@ void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
     }
 }
 
-#pragma message ("ReadFFmpeg: please explain why syncPrivateData is necessary and why it does this")
-void ReadFFmpegPlugin::syncPrivateData() {
-    std::string filename;
-    getCurrentFileName(filename);
-    if (_ffmpegFile) {
-        if (_ffmpegFile->getFilename() == filename) {
-            return;
-        } else {
-            delete _ffmpegFile;
-            _ffmpegFile = 0;
-        }
-    }
-    
-    _ffmpegFile = new FFmpeg::File(filename);
-    
-    if (!_ffmpegFile->isValid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
-        delete _ffmpegFile;
-        _ffmpegFile = NULL;
-    }
-}
 
 bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
