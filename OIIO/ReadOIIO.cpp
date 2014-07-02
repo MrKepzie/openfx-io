@@ -43,6 +43,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <cmath>
 
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
@@ -212,18 +213,27 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
     if (colorSpaceStr) {
         if (!strcmp(colorSpaceStr, "GammaCorrected")) {
             float gamma = spec.get_float_attribute("oiio:Gamma");
-            if (gamma == 1.8) {
+            if (std::fabs(gamma-1.8) < 0.01) {
                 if (_ocio->hasColorspace("Gamma1.8")) {
                     // nuke-default
                     _ocio->setInputColorspace("Gamma1.8");
                 }
-            } else if (gamma == 2.2) {
+            } else if (std::fabs(gamma-2.2) < 0.01) {
                 if (_ocio->hasColorspace("Gamma2.2")) {
                     // nuke-default
                     _ocio->setInputColorspace("Gamma2.2");
                 } else if (_ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim and spi-vfx
                     _ocio->setInputColorspace("vd16");
+                } else if (_ocio->hasColorspace("sRGB")) {
+                    // nuke-default
+                    _ocio->setInputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("rrt_srgb")) {
+                    // rrt_srgb in aces
+                    _ocio->setInputColorspace("rrt_srgb");
+                } else if (_ocio->hasColorspace("srgb8")) {
+                    // srgb8 in spi-vfx
+                    _ocio->setInputColorspace("srgb8");
                 }
             }
         } else if(!strcmp(colorSpaceStr, "sRGB")) {
@@ -236,6 +246,12 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
             } else if (_ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
                 _ocio->setInputColorspace("srgb8");
+            } else if (_ocio->hasColorspace("Gamma2.2")) {
+                // nuke-default
+                _ocio->setInputColorspace("Gamma2.2");
+            } else if (_ocio->hasColorspace("vd16")) {
+                // vd16 in spi-anim and spi-vfx
+                _ocio->setInputColorspace("vd16");
             }
         } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
             // ???
