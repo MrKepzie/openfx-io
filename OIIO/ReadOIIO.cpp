@@ -43,6 +43,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <cmath>
 
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
@@ -186,23 +187,53 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
     const ParamValue* colorSpaceValue = spec.find_attribute("oiio:ColorSpace",TypeDesc::STRING);
 
     //we found a color-space hint, use it to do the color-space conversion
-    const char* colorSpaceStr;
+    const char* colorSpaceStr = NULL;
     if (colorSpaceValue) {
         colorSpaceStr = *(const char**)colorSpaceValue->data();
+    } else {
+        // no colorspace... we'll probably have to try something else, then.
+        // we set the following defaults:
+        // sRGB for 8-bit images
+        // Rec709 for 10-bits, 12-bits or 16-bits integer images
+        // Linear for anything else
+        switch (spec.format.basetype) {
+            case TypeDesc::UCHAR:
+            case TypeDesc::CHAR:
+                colorSpaceStr = "sRGB";
+                break;
+            case TypeDesc::USHORT:
+            case TypeDesc::SHORT:
+                colorSpaceStr = "Rec709";
+                break;
+            default:
+                colorSpaceStr = "Linear";
+                break;
+        }
+    }
+    if (colorSpaceStr) {
         if (!strcmp(colorSpaceStr, "GammaCorrected")) {
             float gamma = spec.get_float_attribute("oiio:Gamma");
-            if (gamma == 1.8) {
+            if (std::fabs(gamma-1.8) < 0.01) {
                 if (_ocio->hasColorspace("Gamma1.8")) {
                     // nuke-default
                     _ocio->setInputColorspace("Gamma1.8");
                 }
-            } else if (gamma == 2.2) {
+            } else if (std::fabs(gamma-2.2) < 0.01) {
                 if (_ocio->hasColorspace("Gamma2.2")) {
                     // nuke-default
                     _ocio->setInputColorspace("Gamma2.2");
                 } else if (_ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim and spi-vfx
                     _ocio->setInputColorspace("vd16");
+                } else if (_ocio->hasColorspace("sRGB")) {
+                    // nuke-default
+                    _ocio->setInputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("rrt_srgb")) {
+                    // rrt_srgb in aces
+                    _ocio->setInputColorspace("rrt_srgb");
+                } else if (_ocio->hasColorspace("srgb8")) {
+                    // srgb8 in spi-vfx
+                    _ocio->setInputColorspace("srgb8");
                 }
             }
         } else if(!strcmp(colorSpaceStr, "sRGB")) {
@@ -215,6 +246,12 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
             } else if (_ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
                 _ocio->setInputColorspace("srgb8");
+            } else if (_ocio->hasColorspace("Gamma2.2")) {
+                // nuke-default
+                _ocio->setInputColorspace("Gamma2.2");
+            } else if (_ocio->hasColorspace("vd16")) {
+                // vd16 in spi-anim and spi-vfx
+                _ocio->setInputColorspace("vd16");
             }
         } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
             // ???

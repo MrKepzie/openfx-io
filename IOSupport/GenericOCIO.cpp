@@ -702,6 +702,53 @@ GenericOCIO::purgeCaches()
 #endif
 }
 
+#ifdef OFX_IO_USING_OCIO
+static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const char* colorSpaceNameDefault)
+{
+    OpenColorIO::ConstColorSpaceRcPtr cs;
+    if (!strcmp(colorSpaceNameDefault, "sRGB") || !strcmp(colorSpaceNameDefault, "srgb")) {
+        if ((cs = config->getColorSpace("sRGB"))) {
+            // nuke-default
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("rrt_srgb"))) {
+            // rrt_srgb in aces
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("srgb8"))) {
+            // srgb8 in spi-vfx
+            return cs->getName();
+        }
+    //} else if(!strcmp(inputSpaceNameDefault, "AdobeRGB") || !strcmp(inputSpaceNameDefault, "adobergb")) {
+        // ???
+    } else if (!strcmp(colorSpaceNameDefault, "Rec709") || !strcmp(colorSpaceNameDefault, "rec709")) {
+        if ((cs = config->getColorSpace("Rec709"))) {
+            // nuke-default
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("rrt_rec709"))) {
+            // rrt_rec709 in aces
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("hd10"))) {
+            // hd10 in spi-anim and spi-vfx
+            return cs->getName();
+        }
+    } else if (!strcmp(colorSpaceNameDefault, "KodakLog") || !strcmp(colorSpaceNameDefault, "kodaklog")) {
+        if ((cs = config->getColorSpace("Cineon"))) {
+            // Cineon in nuke-default
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("lg10"))) {
+            // lg10 in spi-vfx
+            return cs->getName();
+        }
+    } else if (!strcmp(colorSpaceNameDefault, "Linear") || !strcmp(colorSpaceNameDefault, "linear")) {
+        return "scene_linear";
+        // lnf in spi-vfx
+    } else if ((cs = config->getColorSpace(colorSpaceNameDefault))) {
+        // maybe we're lucky
+        return cs->getName();
+    }
+    // unlucky
+    return colorSpaceNameDefault;
+}
+#endif
 
 void
 GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
@@ -778,9 +825,9 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
         }
     }
     if (config) {
-        std::string inputSpaceName = config->getColorSpace(inputSpaceNameDefault)->getName();
+        std::string inputSpaceName = colorSpaceName(config, inputSpaceNameDefault);
         inputSpace->setDefault(inputSpaceName);
-        std::string outputSpaceName = config->getColorSpace(outputSpaceNameDefault)->getName();
+        std::string outputSpaceName = colorSpaceName(config, outputSpaceNameDefault);
         outputSpace->setDefault(outputSpaceName);
 #ifdef OFX_OCIO_CHOICE
         buildChoiceMenus(config, inputSpaceChoice, outputSpaceChoice, inputSpaceName, outputSpaceName);
