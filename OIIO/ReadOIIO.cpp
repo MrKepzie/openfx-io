@@ -60,15 +60,33 @@ OIIO_NAMESPACE_USING
 #define kMetadataButtonName "showMetadata"
 #define kMetadataButtonLabel "Image Info..."
 #define kMetadataButtonHint "Shows information and metadata from the image at current time."
+
 #define kParamUnassociatedAlphaName "unassociatedAlpha"
 #define kParamUnassociatedAlphaLabel "Keep Unassoc. Alpha"
 #define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata. Images which have associated alpha (i.e. are already premultiplied) are unaffected."
+
+#define kOutputComponentsParamName "outputComponents"
+#define kOutputComponentsParamLabel "Output Components"
+#define kOutputComponentsParamHint "Components in the output"
+#define kOutputComponentsRGBAOption "RGBA"
+#define kOutputComponentsRGBOption "RGB"
+#define kOutputComponentsAlphaOption "Alpha"
+
+#define kFirstChannelParamName "firstChannel"
+#define kFirstChannelParamLabel "First Channel"
+#define kFirstChannelParamHint "Channel from the input file corresponding to the first component. See \"Image Info...\" for a list of image channels."
 
 #ifdef OFX_READ_OIIO_USES_CACHE
 static const bool kSupportsTiles = true;
 #else
 static const bool kSupportsTiles = false;
 #endif
+
+static bool gSupportsRGBA   = false;
+static bool gSupportsRGB    = false;
+static bool gSupportsAlpha  = false;
+
+static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
 class ReadOIIOPlugin : public GenericReaderPlugin {
 
@@ -101,6 +119,8 @@ private:
     ImageCache* _cache;
 #endif
     OFX::BooleanParam* _unassociatedAlpha;
+    OFX::ChoiceParam *_outputComponents;
+    OFX::IntParam *_firstChannel;
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
@@ -112,7 +132,9 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _cache(ImageCache::create(false)) // non-shared cache
 #  endif
 #endif
-, _unassociatedAlpha(false)
+, _unassociatedAlpha(0)
+, _outputComponents(0)
+, _firstChannel(0)
 {
     _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlphaName);
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -120,6 +142,8 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _unassociatedAlpha->getValue(unassociatedAlpha);
     _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 #endif
+    _outputComponents = fetchChoiceParam(kOutputComponentsParamName);
+    _firstChannel = fetchIntParam(kFirstChannelParamName);
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
@@ -156,7 +180,17 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
     }
 #endif
-    else {
+    else if (paramName == kOutputComponentsParamName) {
+        // set the first channel to the alpha channel if output is alpha
+        int outputComponents_i;
+        _outputComponents->getValue(outputComponents_i);
+        OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+        if (outputComponents == OFX::ePixelComponentAlpha) {
+            std::string filename;
+            _fileParam->getValueAtTime(args.time, filename);
+            onInputFileChanged(filename);
+        }
+    } else {
         GenericReaderPlugin::changedParam(args,paramName);
     }
 }
@@ -289,6 +323,15 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
     img->close();
 #endif
 #endif
+    _firstChannel->setDisplayRange(0, spec.nchannels);
+
+    // set the first channel to the alpha channel if output is alpha
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+    if (spec.alpha_channel != -1 && outputComponents == OFX::ePixelComponentAlpha) {
+        _firstChannel->setValue(spec.alpha_channel);
+    }
 }
 
 void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
@@ -315,6 +358,16 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     }
     const ImageSpec &spec = img->spec();
 #endif
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+    if (pixelComponents != outputComponents) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "ReadOIIO: OFX Host dit not take into account output components");
+        OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+    }
+
+    int firstChannel;
+    _firstChannel->getValueAtTime(time, firstChannel);
 
     // we only support RGBA, RGB or Alpha output clip
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
@@ -325,6 +378,13 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height);
     assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
+    int chcount = spec.nchannels - firstChannel; // number of available channels
+    if (chcount <= 0) {
+        std::ostringstream oss;
+        oss << "ReadOIIO: Cannot read, first channel is " << firstChannel << ", but image has only " << spec.nchannels << " channels";
+        setPersistentMessage(OFX::Message::eMessageError, "", oss.str());
+        OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+    }
     int numChannels = 0;
     int outputChannelBegin = 0;
     int chbegin; // start channel for reading
@@ -336,49 +396,46 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     switch(pixelComponents) {
         case OFX::ePixelComponentRGBA:
             numChannels = 4;
-            if (spec.nchannels == 1) {
-                if (spec.alpha_channel == -1) {
+            if (chcount == 1) {
+                // only one channel to read from input
+                chbegin = firstChannel;
+                chend = firstChannel + 1;
+                if (spec.alpha_channel == -1 || spec.alpha_channel != firstChannel) {
+                    // Most probably a luminance image.
                     // fill alpha with 0, duplicate the single channel to r,g,b
-                    chbegin = 0;
-                    chend = 1;
                     fillAlpha = true;
                     copyRtoGB = true;
                 } else {
+                    // An alpha image.
                     fillRGB = true;
-                    chbegin = spec.alpha_channel;
-                    chend = spec.alpha_channel + 1;
                     fillAlpha = false;
                     outputChannelBegin = 3;
                 }
             } else {
-                chbegin = 0;
-                chend = std::min(spec.nchannels, numChannels);
-                // TODO: after reading, if spec.alpha_channel != 3 and -1,
+                chbegin = firstChannel;
+                chend = std::min(spec.nchannels, firstChannel + numChannels);
+                // After reading, if spec.alpha_channel != 3 and -1,
                 // move the channel spec.alpha_channel to channel 3 and fill it
                 // with zeroes
-                moveAlpha = (0 <= spec.alpha_channel && spec.alpha_channel < 3);
-                fillAlpha = (spec.nchannels < 4); //(spec.alpha_channel == -1);
+                moveAlpha = (firstChannel <= spec.alpha_channel && spec.alpha_channel < firstChannel+3);
+                fillAlpha = (chcount < 4); //(spec.alpha_channel == -1);
 
-                fillRGB = (spec.nchannels < 3); // need to fill B with black
+                fillRGB = (chcount < 3); // need to fill B with black
             }
             break;
         case OFX::ePixelComponentRGB:
             numChannels = 3;
             fillRGB = (spec.nchannels == 1) || (spec.nchannels == 2);
-            if (spec.nchannels == 1) {
+            if (chcount == 1) {
                 chbegin = chend = -1;
             } else {
-                chbegin = 0;
-                chend = std::min(spec.nchannels, numChannels);
+                chbegin = firstChannel;
+                chend = std::min(spec.nchannels, firstChannel + numChannels);
             }
             break;
         case OFX::ePixelComponentAlpha:
             numChannels = 1;
-            if (spec.alpha_channel != -1) {
-                chbegin = spec.alpha_channel;
-            } else {
-                chbegin = 0; // read the first channel, whatever it is
-            }
+            chbegin = firstChannel;
             chend = chbegin + numChannels;
             break;
         default:
@@ -554,6 +611,7 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
     ss << "file: " << filename << std::endl;
     ss << "    channel list: ";
     for (int i = 0;  i < spec.nchannels;  ++i) {
+        ss << i << ":";
         if (i < (int)spec.channelnames.size()) {
             ss << spec.channelnames[i];
         } else {
@@ -620,7 +678,7 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 void
 ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-    // set the premultiplication of dstClip_
+    // set the premultiplication of _outputClip
     // OIIO always outputs premultiplied images, except if it's tol
     bool unassociatedAlpha = false;
 
@@ -632,6 +690,11 @@ ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     // probably because it was not associated/premultiplied.
     _unassociatedAlpha->getValue(unassociatedAlpha);
     clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
+    // set the components of _outputClip
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+    clipPreferences.setClipComponents(*_outputClip, outputComponents);
 }
 
 using namespace OFX;
@@ -714,13 +777,48 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(50);
 #endif
+
+    for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
+         it != getImageEffectHostDescription()->_supportedComponents.end();
+         ++it) {
+        switch (*it) {
+            case ePixelComponentRGBA:
+                gSupportsRGBA  = true;
+                break;
+            case ePixelComponentRGB:
+                gSupportsRGB = true;
+                break;
+            case ePixelComponentAlpha:
+                gSupportsAlpha = true;
+                break;
+            default:
+                // other components are not supported by this plugin
+                break;
+        }
+    }
+    {
+        int i = 0;
+        if (gSupportsRGBA) {
+            gOutputComponentsMap[i] = ePixelComponentRGBA;
+            ++i;
+        }
+        if (gSupportsRGB) {
+            gOutputComponentsMap[i] = ePixelComponentRGB;
+            ++i;
+        }
+        if (gSupportsAlpha) {
+            gOutputComponentsMap[i] = ePixelComponentAlpha;
+            ++i;
+        }
+        gOutputComponentsMap[i] = ePixelComponentNone;
+    }
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ true, /*supportsAlpha =*/ true, /*supportsTiles =*/ kSupportsTiles);
 
     OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlphaName);
     unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
@@ -735,6 +833,32 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     pb->setLabels(kMetadataButtonLabel, kMetadataButtonLabel, kMetadataButtonLabel);
     pb->setHint(kMetadataButtonHint);
     page->addChild(*pb);
+
+    IntParamDescriptor *firstChannel = desc.defineIntParam(kFirstChannelParamName);
+    firstChannel->setLabels(kFirstChannelParamLabel, kFirstChannelParamLabel, kFirstChannelParamLabel);
+    firstChannel->setHint(kFirstChannelParamHint);
+    page->addChild(*firstChannel);
+
+    ChoiceParamDescriptor *outputComponents = desc.defineChoiceParam(kOutputComponentsParamName);
+    outputComponents->setLabels(kOutputComponentsParamLabel, kOutputComponentsParamLabel, kOutputComponentsParamLabel);
+    outputComponents->setHint(kOutputComponentsParamHint);
+    // the following must be in the same order as in describe(), so that the map works
+    if (gSupportsRGBA) {
+        assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentRGBA);
+        outputComponents->appendOption(kOutputComponentsRGBAOption);
+    }
+    if (gSupportsRGB) {
+        assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentRGB);
+        outputComponents->appendOption(kOutputComponentsRGBOption);
+    }
+    if (gSupportsAlpha) {
+        assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentAlpha);
+        outputComponents->appendOption(kOutputComponentsAlphaOption);
+    }
+    outputComponents->setDefault(0);
+    outputComponents->setAnimates(false);
+    page->addChild(*outputComponents);
+    desc.addClipPreferencesSlaveParam(*outputComponents);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
