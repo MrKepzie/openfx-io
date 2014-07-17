@@ -46,12 +46,13 @@
 #include <ofxsParam.h>
 #include <ofxsImageEffect.h>
 #include <ofxsLog.h>
+#include <ofxNatron.h>
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
 namespace OCIO = OCIO_NAMESPACE;
-static bool global_wasOCIOVarFund;
-static bool global_hostIsNatron;
+static bool gWasOCIOEnvVarFound = false;
+static bool gHostIsNatron   = false;
 #endif
 
 GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
@@ -223,7 +224,7 @@ GenericOCIO::loadConfig(double time)
     }
 #ifdef OFX_OCIO_CHOICE
     if (_config) {
-        if (global_hostIsNatron) {
+        if (gHostIsNatron) {
             // the choice menu can only be modified in Natron
             // Natron supports changing the entries in a choiceparam
             // Nuke (at least up to 8.0v3) does not
@@ -754,7 +755,7 @@ void
 GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
 #ifdef OFX_IO_USING_OCIO
-    global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "fr.inria.Natron");
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     ////////// OCIO config file
     OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
     ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
@@ -816,7 +817,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     char* file = std::getenv("OCIO");
     OCIO::ConstConfigRcPtr config;
     if (file != NULL) {
-        global_wasOCIOVarFund = true;
+        gWasOCIOEnvVarFound = true;
         ocioConfigFileParam->setDefault(file);
         //Add choices
         try {
@@ -849,7 +850,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
         outputSpaceChoice->setEnabled(false);
         outputSpaceChoice->setIsSecret(true);
 #endif
-        global_wasOCIOVarFund = false;
+        gWasOCIOEnvVarFound = false;
     }
 #endif
 }

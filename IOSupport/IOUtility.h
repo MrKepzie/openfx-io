@@ -115,6 +115,7 @@ int getPixelBytes(OFX::PixelComponentEnum pixelComponents,
         case OFX::eBitDepthNone   : pixelBytes *= 0; break;
         case OFX::eBitDepthUByte  : pixelBytes *= 1; break;
         case OFX::eBitDepthUShort : pixelBytes *= 2; break;
+        case OFX::eBitDepthHalf   : pixelBytes *= 2; break;
         case OFX::eBitDepthFloat  : pixelBytes *= 4; break;
 #ifdef OFX_EXTENSIONS_VEGAS
         case OFX::eBitDepthUByteBGRA  : pixelBytes *= 1; break;

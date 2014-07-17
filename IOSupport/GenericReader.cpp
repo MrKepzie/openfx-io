@@ -51,6 +51,7 @@
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
 #endif
+#include <ofxNatron.h>
 
 #include "SequenceParsing/SequenceParsing.h"
 #include "GenericOCIO.h"
@@ -80,7 +81,7 @@
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
-static bool global_hostIsNatron;
+static bool gHostIsNatron   = false;
 
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles)
@@ -1188,7 +1189,7 @@ void GenericReaderPlugin::purgeCaches() {
 
 bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
 {
-    if (!global_hostIsNatron) {
+    if (!gHostIsNatron) {
         return false;
     }
     double sequenceTime;
@@ -1281,7 +1282,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
 
 OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
 {
-    global_hostIsNatron = (OFX::getImageEffectHostDescription()->hostName == "fr.inria.Natron");
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
@@ -1318,7 +1319,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     fileParam->setLabels("File", "File", "File");
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The input image sequence/video stream file(s).");
-#pragma message ("GenericReader: should the filename still be animatable?") 
+#pragma message ("GenericReader: should the filename still be animatable? Remember that Nuke strings are not animatable") 
     fileParam->setAnimates(!isVideoStreamPlugin);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     fileParam->setScriptName(kReaderFileParamName);
