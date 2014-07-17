@@ -56,6 +56,7 @@
 OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
+//#define OFX_READ_OIIO_NEWMENU
 
 ///This has been disabled because shared caches won't work if several instances do not have the same value for
 ///the unassociated alpha parameter.
@@ -143,7 +144,7 @@ private:
 
     void updateSpec(const std::string &filename);
 
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
     void updateComponents(OFX::PixelComponentEnum outputComponents);
 
     void buildChannelMenus();
@@ -159,7 +160,7 @@ private:
 #endif
     OFX::BooleanParam* _unassociatedAlpha;
     OFX::ChoiceParam *_outputComponents;
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
     OFX::ChoiceParam *_rChannel;
     OFX::ChoiceParam *_gChannel;
     OFX::ChoiceParam *_bChannel;
@@ -182,7 +183,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 #endif
 , _unassociatedAlpha(0)
 , _outputComponents(0)
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
 , _rChannel(0)
 , _gChannel(0)
 , _bChannel(0)
@@ -200,7 +201,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 #endif
     _outputComponents = fetchChoiceParam(kOutputComponentsParamName);
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
     _rChannel = fetchChoiceParam(kRChannelParamName);
     _gChannel = fetchChoiceParam(kGChannelParamName);
     _bChannel = fetchChoiceParam(kBChannelParamName);
@@ -211,7 +212,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     assert(_outputComponents && _firstChannel);
 #endif
 
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
     std::string filename;
     _fileParam->getValue(filename);
     if (!filename.empty()) {
@@ -241,7 +242,7 @@ void ReadOIIOPlugin::clearAnyCache()
 #endif
 }
 
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
 void ReadOIIOPlugin::updateComponents(OFX::PixelComponentEnum outputComponents)
 {
     switch (outputComponents) {
@@ -290,7 +291,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         int outputComponents_i;
         _outputComponents->getValue(outputComponents_i);
         OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
         updateComponents(outputComponents);
 #else
         // set the first channel to the alpha channel if output is alpha
@@ -301,7 +302,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         }
 #endif
     } else if (paramName == kRChannelParamName) {
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
         if (rChannelIdx >= kXChannelFirst) {
@@ -313,7 +314,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     }
 }
 
-#ifdef NEWMENU
+#ifdef OFX_READ_OIIO_NEWMENU
 void
 ReadOIIOPlugin::buildChannelMenus()
 {
@@ -488,7 +489,7 @@ ReadOIIOPlugin::setDefaultChannels()
         _aChannel->setValue(1);
     }
 }
-#endif // NEWMENU
+#endif // OFX_READ_OIIO_NEWMENU
 
 void
 ReadOIIOPlugin::updateSpec(const std::string &filename)
@@ -622,6 +623,13 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
     img->close();
 #  endif
 # endif // OFX_IO_USING_OCIO
+
+#ifdef OFX_READ_OIIO_NEWMENU
+    // rebuild the channel choices
+    buildChannelMenus();
+    // set the default values for R, G, B, A channels
+    setDefaultChannels();
+#else
     _firstChannel->setDisplayRange(0, _spec.nchannels);
 
     // set the first channel to the alpha channel if output is alpha
@@ -631,12 +639,6 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
     if (_spec.alpha_channel != -1 && outputComponents == OFX::ePixelComponentAlpha) {
         _firstChannel->setValue(_spec.alpha_channel);
     }
-
-#ifdef NEWMENU
-    // rebuild the channel choices
-    buildChannelMenus();
-    // set the default values for R, G, B, A channels
-    setDefaultChannels();
 #endif
 }
 
@@ -672,9 +674,6 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
     }
 
-    int firstChannel;
-    _firstChannel->getValueAtTime(time, firstChannel);
-
     // we only support RGBA, RGB or Alpha output clip
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
@@ -684,6 +683,14 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height);
     assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
+#ifdef OFX_READ_OIIO_NEWMENU
+
+#warning TODO
+
+#else // !OFX_READ_OIIO_NEWMENU
+    int firstChannel;
+    _firstChannel->getValueAtTime(time, firstChannel);
+
     int chcount = spec.nchannels - firstChannel; // number of available channels
     if (chcount <= 0) {
         std::ostringstream oss;
@@ -861,7 +868,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
             }
         }
     }
-    
+#endif // !OFX_READ_OIIO_NEWMENU
+
 #ifndef OFX_READ_OIIO_USES_CACHE
     img->close();
 #endif
