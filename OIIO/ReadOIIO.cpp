@@ -57,7 +57,7 @@
 OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
-//#define OFX_READ_OIIO_NEWMENU
+#define OFX_READ_OIIO_NEWMENU
 
 #ifdef OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SHARED_CACHE
@@ -88,10 +88,13 @@ OIIO_NAMESPACE_USING
 #define kOutputComponentsRGBOption "RGB"
 #define kOutputComponentsAlphaOption "Alpha"
 
+#ifndef OFX_READ_OIIO_NEWMENU
 #define kFirstChannelParamName "firstChannel"
 #define kFirstChannelParamLabel "First Channel"
 #define kFirstChannelParamHint "Channel from the input file corresponding to the first component. See \"Image Info...\" for a list of image channels."
+#endif
 
+#ifdef OFX_READ_OIIO_NEWMENU
 
 #define kRChannelParamName "rChannel"
 #define kRChannelParamLabel "R Channel"
@@ -114,6 +117,8 @@ OIIO_NAMESPACE_USING
 
 // Channels 0 and 1 are reserved for 0 and 1 constants
 #define kXChannelFirst 2
+
+#endif // OFX_READ_OIIO_NEWMENU
 
 #ifdef OFX_READ_OIIO_USES_CACHE
 static const bool kSupportsTiles = true;
@@ -711,16 +716,16 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     _bChannel->getValueAtTime(time, bChannel);
     _aChannel->getValueAtTime(time, aChannel);
     // test if channels are valid
-    if (rChannel > spec.nchannels) {
+    if (rChannel > spec.nchannels + kXChannelFirst) {
         rChannel = 0;
     }
-    if (gChannel > spec.nchannels) {
+    if (gChannel > spec.nchannels + kXChannelFirst) {
         gChannel = 0;
     }
-    if (bChannel > spec.nchannels) {
+    if (bChannel > spec.nchannels + kXChannelFirst) {
         bChannel = 0;
     }
-    if (aChannel > spec.nchannels) {
+    if (aChannel > spec.nchannels + kXChannelFirst) {
         aChannel = 1; // opaque by default
     }
     int numChannels = 0;
@@ -738,8 +743,8 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
             channels[3] = aChannel;
             break;
         case OFX::ePixelComponentRGB:
-            channels.resize(numChannels);
             numChannels = 3;
+            channels.resize(numChannels);
             channels[0] = rChannel;
             channels[1] = gChannel;
             channels[2] = bChannel;
@@ -772,7 +777,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
                 ++incr;
             }
             const int outputChannelBegin = i;
-            const int chbegin = channels[i]; // start channel for reading
+            const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
             size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -833,8 +838,6 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
 #endif
     }
     // read
-
-#warning TODO
 
 #else // !OFX_READ_OIIO_NEWMENU
     int firstChannel;
@@ -1326,10 +1329,12 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     pb->setHint(kMetadataButtonHint);
     page->addChild(*pb);
 
+#ifndef OFX_READ_OIIO_NEWMENU
     IntParamDescriptor *firstChannel = desc.defineIntParam(kFirstChannelParamName);
     firstChannel->setLabels(kFirstChannelParamLabel, kFirstChannelParamLabel, kFirstChannelParamLabel);
     firstChannel->setHint(kFirstChannelParamHint);
     page->addChild(*firstChannel);
+#endif
 
     ChoiceParamDescriptor *outputComponents = desc.defineChoiceParam(kOutputComponentsParamName);
     outputComponents->setLabels(kOutputComponentsParamLabel, kOutputComponentsParamLabel, kOutputComponentsParamLabel);
@@ -1352,6 +1357,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     page->addChild(*outputComponents);
     desc.addClipPreferencesSlaveParam(*outputComponents);
 
+#ifdef OFX_READ_OIIO_NEWMENU
     ChoiceParamDescriptor *rChannel = desc.defineChoiceParam(kRChannelParamName);
     rChannel->setLabels(kRChannelParamLabel, kRChannelParamLabel, kRChannelParamLabel);
     rChannel->setHint(kRChannelParamHint);
@@ -1380,6 +1386,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     aChannel->setAnimates(true);
     aChannel->setDefault(1); // opaque by default
     page->addChild(*aChannel);
+#endif
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
