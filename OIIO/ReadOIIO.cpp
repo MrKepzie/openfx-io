@@ -695,7 +695,136 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height);
     assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
+
 #ifdef OFX_READ_OIIO_NEWMENU
+    int rChannel, gChannel, bChannel, aChannel;
+    _rChannel->getValueAtTime(time, rChannel);
+    _gChannel->getValueAtTime(time, gChannel);
+    _bChannel->getValueAtTime(time, bChannel);
+    _aChannel->getValueAtTime(time, aChannel);
+    // test if channels are valid
+    if (rChannel > spec.nchannels) {
+        rChannel = 0;
+    }
+    if (gChannel > spec.nchannels) {
+        gChannel = 0;
+    }
+    if (bChannel > spec.nchannels) {
+        bChannel = 0;
+    }
+    if (aChannel > spec.nchannels) {
+        aChannel = 1; // opaque by default
+    }
+    int numChannels = 0;
+    int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+    size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+
+    std::vector<int> channels;
+    switch (pixelComponents) {
+        case OFX::ePixelComponentRGBA:
+            numChannels = 4;
+            channels.resize(numChannels);
+            channels[0] = rChannel;
+            channels[1] = gChannel;
+            channels[2] = bChannel;
+            channels[3] = aChannel;
+            break;
+        case OFX::ePixelComponentRGB:
+            channels.resize(numChannels);
+            numChannels = 3;
+            channels[0] = rChannel;
+            channels[1] = gChannel;
+            channels[2] = bChannel;
+            break;
+        case OFX::ePixelComponentAlpha:
+            numChannels = 1;
+            channels.resize(numChannels);
+            channels[0] = aChannel;
+            break;
+        default:
+            assert(false);
+            break;
+    }
+    std::size_t incr; // number of channels processed
+    for (std::size_t i = 0; i < channels.size(); i+=incr) {
+        incr = 1;
+        if (channels[i] < kXChannelFirst) {
+            // fill channel with constant value
+            char* lineStart = (char*)pixelData + pixelDataOffset; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+            for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
+                float *cur = (float*)lineStart;
+                for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
+                    cur[i] = float(channels[i]);
+                }
+            }
+        } else {
+            // read as many contiguous channels as we can
+            while ((i+incr) < channels.size() &&
+                   channels[i+incr] == channels[i+incr-1]+1) {
+                ++incr;
+            }
+            const int outputChannelBegin = i;
+            const int chbegin = channels[i]; // start channel for reading
+            const int chend = chbegin + incr; // last channel + 1
+            size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
+#ifdef OFX_READ_OIIO_USES_CACHE
+            if (!_cache->get_pixels(ustring(filename),
+                                    0, //subimage
+                                    0, //miplevel
+                                    renderWindow.x1, //x begin
+                                    renderWindow.x2, //x end
+                                    spec.height - renderWindow.y2, //y begin
+                                    spec.height - renderWindow.y1, //y end
+                                    0, //z begin
+                                    1, //z end
+                                    chbegin, //chan begin
+                                    chend, // chan end
+                                    TypeDesc::FLOAT, // data type
+                                    //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                                    (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,// output buffer
+                                    numChannels * sizeof(float), //x stride
+                                    -rowBytes, //y stride < make it invert Y
+                                    AutoStride //z stride
+                                    )) {
+                setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
+                return;
+            }
+#else
+            assert(!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height);
+            if (spec.tile_width == 0) {
+                ///read by scanlines
+                img->read_scanlines(spec.height - renderWindow.y2, //y begin
+                                    spec.height - renderWindow.y1, //y end
+                                    0, // z
+                                    chbegin, // chan begin
+                                    chend, // chan end
+                                    TypeDesc::FLOAT, // data type
+                                    (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                    numChannels * sizeof(float), //x stride
+                                    -rowBytes); //y stride < make it invert Y;
+            } else {
+                img->read_tiles(renderWindow.x1, //x begin
+                                renderWindow.x2,//x end
+                                spec.height - renderWindow.y2,//y begin
+                                spec.height - renderWindow.y1,//y end
+                                0, // z begin
+                                1, // z end
+                                chbegin, // chan begin
+                                chend, // chan end
+                                TypeDesc::FLOAT,  // data type
+                                (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                numChannels * sizeof(float), //x stride
+                                -rowBytes, //y stride < make it invert Y
+                                AutoStride); //z stride
+            }
+#endif
+        }
+#ifdef OFX_READ_OIIO_USES_CACHE
+#else
+        img->close();
+#endif
+    }
+    // read
 
 #warning TODO
 
@@ -718,7 +847,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     bool fillAlpha = false;
     bool moveAlpha = false;
     bool copyRtoGB = false;
-    switch(pixelComponents) {
+    switch (pixelComponents) {
         case OFX::ePixelComponentRGBA:
             numChannels = 4;
             if (chcount == 1) {
