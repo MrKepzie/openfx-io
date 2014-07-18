@@ -40,6 +40,7 @@
 
 #include "ReadOIIO.h"
 #include "GenericOCIO.h"
+#include "GenericReader.h"
 
 #include <iostream>
 #include <sstream>
@@ -61,6 +62,13 @@ OIIO_NAMESPACE_USING
 #ifdef OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SHARED_CACHE
 #endif
+
+#define kPluginName "ReadOIIOOFX"
+#define kPluginGrouping "Image/Readers"
+#define kPluginDescription "Read images using OpenImageIO."
+#define kPluginIdentifier "fr.inria.openfx:ReadOIIO"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
 #define kMetadataButtonName "showMetadata"
 #define kMetadataButtonLabel "Image Info..."
@@ -1159,6 +1167,8 @@ ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 
 using namespace OFX;
 
+mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false);
+
 void ReadOIIOPluginFactory::load() {
 }
 
@@ -1193,7 +1203,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     }
     
     // basic labels
-    desc.setLabels("ReadOIIOOFX", "ReadOIIOOFX", "ReadOIIOOFX");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription("Read images using OpenImageIO.\n\n"
                               "OpenImageIO supports reading/writing the following file formats:\n"
                               "BMP (*.bmp)\n"
@@ -1222,6 +1232,12 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Targa (*.tga *.tpic)\n"
                               "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
                               "Zfile (*.zfile)\n\n"
+#if defined(OFX_READ_OIIO_USES_CACHE) && !defined(OFX_READ_OIIO_SHARED_CACHE)
+                              "Note that the output is always premultiplied. "
+                              "If the file was wrongly tagged as unpremultiplied, "
+                              "this will result in darker colors than expected. "
+                              "To fix this, use the Unpremult plugin.\n\n"
+#endif
                               + oiio_versions());
 
 
@@ -1372,4 +1388,10 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 ImageEffect* ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadOIIOPlugin(handle);
+}
+
+void getReadOIIOPluginID(OFX::PluginFactoryArray &ids)
+{
+    static ReadOIIOPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }

@@ -39,35 +39,8 @@
 #ifndef __Io__oiioWriter__
 #define __Io__oiioWriter__
 
-#include "GenericWriter.h"
+#include "ofxsImageEffect.h"
 
-class WriteOIIOPlugin : public GenericWriterPlugin {
-    
-public:
-    
-    WriteOIIOPlugin(OfxImageEffectHandle handle);
-    
-    
-    virtual ~WriteOIIOPlugin();
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
-    
-private:
-
-    virtual void onOutputFileChanged(const std::string& filename);
-
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
-    
-    virtual bool isImageFile(const std::string& fileExtension) const;
-
-private:
-    OFX::ChoiceParam* _bitDepth;
-    OFX::BooleanParam* _premult;
-    OFX::IntParam* _quality;
-    OFX::ChoiceParam* _orientation;
-    OFX::ChoiceParam* _compression;
-};
-
-mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
+void getWriteOIIOPluginID(OFX::PluginFactoryArray &ids);
 
 #endif /* defined(__Io__oiioWriter__) */

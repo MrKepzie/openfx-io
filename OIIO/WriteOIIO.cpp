@@ -39,11 +39,19 @@
 
 #include "WriteOIIO.h"
 #include "GenericOCIO.h"
+#include "GenericWriter.h"
 
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/filesystem.h>
 
 OIIO_NAMESPACE_USING
+
+#define kPluginName "WriteOIIOOFX"
+#define kPluginGrouping "Image/Writers"
+#define kPluginDescription "Write images using OpenImageIO."
+#define kPluginIdentifier "fr.inria.openfx:WriteOIIO"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
 #define kParamPremultipliedName "premultiplied"
 #define kParamPremultipliedLabel "Premultiplied"
@@ -166,6 +174,30 @@ enum EParamCompression
     eParamCompressionLZW,
     eParamCompressionCCITTRLE,
     eParamCompressionPACKBITS
+};
+
+class WriteOIIOPlugin : public GenericWriterPlugin
+{
+public:
+    WriteOIIOPlugin(OfxImageEffectHandle handle);
+
+    virtual ~WriteOIIOPlugin();
+
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+
+private:
+    virtual void onOutputFileChanged(const std::string& filename);
+
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+
+    virtual bool isImageFile(const std::string& fileExtension) const;
+
+private:
+    OFX::ChoiceParam* _bitDepth;
+    OFX::BooleanParam* _premult;
+    OFX::IntParam* _quality;
+    OFX::ChoiceParam* _orientation;
+    OFX::ChoiceParam* _compression;
 };
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
@@ -506,13 +538,15 @@ static std::string oiio_versions()
     return oss.str();
 }
 
+mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
+
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc);
     // basic labels
-    desc.setLabels("WriteOIIOOFX", "WriteOIIOOFX", "WriteOIIOOFX");
-    desc.setPluginDescription("Write images file using the OpenImageIO library.\n\n"
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setPluginDescription("Write images using OpenImageIO.\n\n"
                               "OpenImageIO supports writing the following file formats:\n"
                               "BMP (*.bmp)\n"
                               "Cineon (*.cin)\n"
@@ -616,4 +650,11 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteOIIOPlugin(handle);
+}
+
+
+void getWriteOIIOPluginID(OFX::PluginFactoryArray &ids)
+{
+    static WriteOIIOPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }

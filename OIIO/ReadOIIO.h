@@ -39,8 +39,8 @@
 #ifndef __Io__oiioReader__
 #define __Io__oiioReader__
 
-#include "GenericReader.h"
+#include "ofxsImageEffect.h"
 
-mDeclareReaderPluginFactory(ReadOIIOPluginFactory, ;, ;,false);
+void getReadOIIOPluginID(OFX::PluginFactoryArray &ids);
 
 #endif /* defined(__Io__oiioReader__) */
