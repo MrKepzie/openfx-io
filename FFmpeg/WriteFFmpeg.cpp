@@ -461,7 +461,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     }
 
     
-    int numChannels;
+    int numChannels = 0;
     switch(pixelComponents)
     {
         case OFX::ePixelComponentRGBA:
@@ -470,14 +470,14 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         case OFX::ePixelComponentRGB:
             numChannels = 3;
             break;
-        case OFX::ePixelComponentAlpha:
-            numChannels = 1;
-            break;
+        //case OFX::ePixelComponentAlpha:
+        //    numChannels = 1;
+        //    break;
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+    assert(numChannels);
 
-    
     snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
     
 

@@ -168,7 +168,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
         std::fwrite(buffer, sizeof(float), buf_size, nfile);
     }
     std::fclose(nfile);
-    delete buffer;
+    delete [] buffer;
 }
 
 bool WritePFMPlugin::isImageFile(const std::string& /*fileExtension*/) const {
