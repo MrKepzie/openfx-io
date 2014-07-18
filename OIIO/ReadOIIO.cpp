@@ -58,16 +58,20 @@ OIIO_NAMESPACE_USING
 #define OFX_READ_OIIO_USES_CACHE
 //#define OFX_READ_OIIO_NEWMENU
 
-///This has been disabled because shared caches won't work if several instances do not have the same value for
-///the unassociated alpha parameter.
-//#define OFX_READ_OIIO_SHARED_CACHE
+#ifdef OFX_READ_OIIO_USES_CACHE
+#define OFX_READ_OIIO_SHARED_CACHE
+#endif
+
 #define kMetadataButtonName "showMetadata"
 #define kMetadataButtonLabel "Image Info..."
 #define kMetadataButtonHint "Shows information and metadata from the image at current time."
 
+#ifndef OFX_READ_OIIO_SHARED_CACHE
+// unassociatedAlpha is a cache parameter, so it can't be set separately for each instance
 #define kParamUnassociatedAlphaName "unassociatedAlpha"
 #define kParamUnassociatedAlphaLabel "Keep Unassoc. Alpha"
 #define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata. Images which have associated alpha (i.e. are already premultiplied) are unaffected."
+#endif
 
 #define kOutputComponentsParamName "outputComponents"
 #define kOutputComponentsParamLabel "Output Components"
@@ -158,7 +162,9 @@ private:
     //// OIIO image cache
     ImageCache* _cache;
 #endif
+#ifndef OFX_READ_OIIO_SHARED_CACHE
     OFX::BooleanParam* _unassociatedAlpha;
+#endif
     OFX::ChoiceParam *_outputComponents;
 #ifdef OFX_READ_OIIO_NEWMENU
     OFX::ChoiceParam *_rChannel;
@@ -181,7 +187,9 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _cache(ImageCache::create(false)) // non-shared cache
 #  endif
 #endif
+#ifndef OFX_READ_OIIO_SHARED_CACHE
 , _unassociatedAlpha(0)
+#endif
 , _outputComponents(0)
 #ifdef OFX_READ_OIIO_NEWMENU
 , _rChannel(0)
@@ -194,11 +202,13 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _spec()
 , _specValid(false)
 {
+#ifndef OFX_READ_OIIO_SHARED_CACHE
     _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlphaName);
-#ifdef OFX_READ_OIIO_USES_CACHE
+# ifdef OFX_READ_OIIO_USES_CACHE
     bool unassociatedAlpha;
     _unassociatedAlpha->getValue(unassociatedAlpha);
     _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
+# endif
 #endif
     _outputComponents = fetchChoiceParam(kOutputComponentsParamName);
 #ifdef OFX_READ_OIIO_NEWMENU
@@ -279,7 +289,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         getCurrentFileName(filename);
         sendMessage(OFX::Message::eMessageMessage, "", metadata(filename));
     }
-#ifdef OFX_READ_OIIO_USES_CACHE
+#if defined(OFX_READ_OIIO_USES_CACHE) && !defined(OFX_READ_OIIO_SHARED_CACHE)
     ///This cannot be done elsewhere as the Cache::attribute function is not thread safe!
     else if (paramName == kParamUnassociatedAlphaName) {
         bool unassociatedAlpha;
@@ -652,12 +662,14 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else
+#ifndef OFX_READ_OIIO_SHARED_CACHE
     bool unassociatedAlpha;
     _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
     ImageSpec config;
     if (unassociatedAlpha) {
         config.attribute("oiio:UnassociatedAlpha",1);
     }
+#endif
 
     std::auto_ptr<ImageInput> img(ImageInput::open(filename, &config));
     if (!img.get()) {
@@ -992,6 +1004,7 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 void
 ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
+#ifndef OFX_READ_OIIO_SHARED_CACHE
     // set the premultiplication of _outputClip
     // OIIO always outputs premultiplied images, except if it's tol
     bool unassociatedAlpha = false;
@@ -1004,6 +1017,7 @@ ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     // probably because it was not associated/premultiplied.
     _unassociatedAlpha->getValue(unassociatedAlpha);
     clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
+#endif
     // set the components of _outputClip
     int outputComponents_i;
     _outputComponents->getValue(outputComponents_i);
@@ -1148,6 +1162,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ true, /*supportsAlpha =*/ true, /*supportsTiles =*/ kSupportsTiles);
 
+#ifndef OFX_READ_OIIO_SHARED_CACHE
     OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlphaName);
     unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
     unassociatedAlpha->setHint(kParamUnassociatedAlphaHint);
@@ -1156,6 +1171,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 #endif
     page->addChild(*unassociatedAlpha);
     desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
+#endif
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButtonName);
     pb->setLabels(kMetadataButtonLabel, kMetadataButtonLabel, kMetadataButtonLabel);
