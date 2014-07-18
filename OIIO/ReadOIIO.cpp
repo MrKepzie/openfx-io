@@ -1133,9 +1133,12 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 void
 ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-#ifndef OFX_READ_OIIO_SHARED_CACHE
+#ifdef OFX_READ_OIIO_SHARED_CACHE
+    // output is always premultiplied
+    clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
+#else
     // set the premultiplication of _outputClip
-    // OIIO always outputs premultiplied images, except if it's tol
+    // OIIO always outputs premultiplied images, except if it's told not to do so
     bool unassociatedAlpha = false;
 
     // We assume that if "unassociatedAlpha" is checked, output is UnPremultiplied,
