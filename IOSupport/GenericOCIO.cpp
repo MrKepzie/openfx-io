@@ -810,7 +810,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #endif
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
-    pb->setLabels("OCIO config help", "OCIO config help", "OCIO config help");
+    pb->setLabels("OCIO config help...", "OCIO config help...", "OCIO config help...");
     pb->setHint("Help about the OpenColorIO configuration.");
     page->addChild(*pb);
 

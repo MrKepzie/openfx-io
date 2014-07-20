@@ -78,7 +78,7 @@ OIIO_NAMESPACE_USING
 // unassociatedAlpha is a cache parameter, so it can't be set separately for each instance
 #define kParamUnassociatedAlphaName "unassociatedAlpha"
 #define kParamUnassociatedAlphaLabel "Keep Unassoc. Alpha"
-#define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata. Images which have associated alpha (i.e. are already premultiplied) are unaffected."
+#define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata.\nImages which have associated alpha (i.e. are already premultiplied) are unaffected."
 #endif
 
 #define kOutputComponentsParamName "outputComponents"
@@ -91,26 +91,26 @@ OIIO_NAMESPACE_USING
 #ifndef OFX_READ_OIIO_NEWMENU
 #define kFirstChannelParamName "firstChannel"
 #define kFirstChannelParamLabel "First Channel"
-#define kFirstChannelParamHint "Channel from the input file corresponding to the first component. See \"Image Info...\" for a list of image channels."
+#define kFirstChannelParamHint "Channel from the input file corresponding to the first component.\nSee \"Image Info...\" for a list of image channels."
 #endif
 
 #ifdef OFX_READ_OIIO_NEWMENU
 
 #define kRChannelParamName "rChannel"
 #define kRChannelParamLabel "R Channel"
-#define kRChannelParamHint "Channel from the input file corresponding to the red component. See \"Image Info...\" for a list of image channels."
+#define kRChannelParamHint "Channel from the input file corresponding to the red component.\nSee \"Image Info...\" for a list of image channels."
 
 #define kGChannelParamName "gChannel"
 #define kGChannelParamLabel "G Channel"
-#define kGChannelParamHint "Channel from the input file corresponding to the green component. See \"Image Info...\" for a list of image channels."
+#define kGChannelParamHint "Channel from the input file corresponding to the green component.\nSee \"Image Info...\" for a list of image channels."
 
 #define kBChannelParamName "bChannel"
 #define kBChannelParamLabel "B Channel"
-#define kBChannelParamHint "Channel from the input file corresponding to the blue component. See \"Image Info...\" for a list of image channels."
+#define kBChannelParamHint "Channel from the input file corresponding to the blue component.\nSee \"Image Info...\" for a list of image channels."
 
 #define kAChannelParamName "aChannel"
 #define kAChannelParamLabel "A Channel"
-#define kAChannelParamHint "Channel from the input file corresponding to the alpha component. See \"Image Info...\" for a list of image channels."
+#define kAChannelParamHint "Channel from the input file corresponding to the alpha component.\nSee \"Image Info...\" for a list of image channels."
 
 // number of channels for hosts that don't support modifying choice menus (e.g. Nuke)
 #define kDefaultChannelCount 16
@@ -1296,12 +1296,12 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 static void
 appendDefaultChannelList(ChoiceParamDescriptor *channel)
 {
-    channel->appendOption("0","bla");
-    channel->appendOption("1","bla");
+    channel->appendOption("0");
+    channel->appendOption("1");
     for (int i = 0; i < kDefaultChannelCount; ++i) {
         std::ostringstream oss;
         oss << "channel " << i;
-        channel->appendOption(oss.str(),"bla");
+        channel->appendOption(oss.str());
     }
 }
 
