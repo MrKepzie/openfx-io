@@ -48,6 +48,118 @@
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 
+#define kPluginName "OCIOColorSpaceOFX"
+#define kPluginGrouping "Color"
+#define kPluginDescription "ColorSpace transformation using OpenColorIO configuration file."
+#define kPluginIdentifier "fr.inria.openfx:OCIOColorSpace"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
+class OCIOColorSpacePlugin : public OFX::ImageEffect 
+{
+public:
+    
+    OCIOColorSpacePlugin(OfxImageEffectHandle handle);
+    
+    virtual ~OCIOColorSpacePlugin();
+    
+  /* Override the render */
+  virtual void render(const OFX::RenderArguments &args);
+
+  /* override is identity */
+  virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
+
+  /* override changedParam */
+  virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+
+  /* override changed clip */
+  //virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName);
+
+  // override the rod call
+  //virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+
+  // override the roi call
+  //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
+
+private :
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const OFX::Image* srcImg,
+                       OFX::Image* dstImg)
+    {
+        const void* srcPixelData;
+        OfxRectI srcBounds;
+        OFX::PixelComponentEnum srcPixelComponents;
+        OFX::BitDepthEnum srcBitDepth;
+        int srcRowBytes;
+        getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+        void* dstPixelData;
+        OfxRectI dstBounds;
+        OFX::PixelComponentEnum dstPixelComponents;
+        OFX::BitDepthEnum dstBitDepth;
+        int dstRowBytes;
+        getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+        copyPixelData(renderWindow,
+                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcBitDepth,
+                       int srcRowBytes,
+                       OFX::Image* dstImg)
+    {
+        void* dstPixelData;
+        OfxRectI dstBounds;
+        OFX::PixelComponentEnum dstPixelComponents;
+        OFX::BitDepthEnum dstBitDepth;
+        int dstRowBytes;
+        getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+        copyPixelData(renderWindow,
+                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const OFX::Image* srcImg,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes)
+    {
+        const void* srcPixelData;
+        OfxRectI srcBounds;
+        OFX::PixelComponentEnum srcPixelComponents;
+        OFX::BitDepthEnum srcBitDepth;
+        int srcRowBytes;
+        getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+        copyPixelData(renderWindow,
+                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    }
+
+    void copyPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes);
+
+  // do not need to delete these, the ImageEffect is managing them for us
+  OFX::Clip *dstClip_;
+  OFX::Clip *srcClip_;
+
+  GenericOCIO* _ocio;
+};
+
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , dstClip_(0)
@@ -219,14 +331,15 @@ OCIOColorSpacePlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
 
 using namespace OFX;
 
+mDeclarePluginFactory(OCIOColorSpacePluginFactory, {}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void OCIOColorSpacePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels("OCIOColorSpaceOFX", "OCIOColorSpaceOFX", "OCIOColorSpaceOFX");
-    desc.setPluginGrouping("Color");
-    desc.setPluginDescription("ColorSpace transformation using OpenColorIO configuration file.");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setPluginGrouping(kPluginGrouping);
+    desc.setPluginDescription(kPluginDescription);
 
     // add the supported contexts
     desc.addSupportedContext(eContextGeneral);
@@ -269,4 +382,11 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new OCIOColorSpacePlugin(handle);
+}
+
+
+void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
+{
+    static OCIOColorSpacePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }

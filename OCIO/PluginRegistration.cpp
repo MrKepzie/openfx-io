@@ -1,14 +1,15 @@
 #include "ofxsImageEffect.h"
 #include "OCIOColorSpace.h"
+#include "OCIOFileTransform.h"
 
 namespace OFX 
 {
-  namespace Plugin 
-  {
-    void getPluginIDs(OFX::PluginFactoryArray &ids)
+    namespace Plugin 
     {
-      static OCIOColorSpacePluginFactory p1("fr.inria.openfx:OCIOColorSpace", 1, 0);
-      ids.push_back(&p1);
+        void getPluginIDs(OFX::PluginFactoryArray &ids)
+        {
+          getOCIOColorSpacePluginId(ids);
+          //getOCIOFileTransformPluginId(ids);
+        }
     }
-  }
 }
