@@ -77,6 +77,6 @@
 
 #include "ofxsImageEffect.h"
 
-mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
+void getRunScriptPluginID(OFX::PluginFactoryArray &ids);
 
 #endif

@@ -9,8 +9,8 @@ namespace OFX
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
 #ifdef OFX_IO_USING_OCIO
-          getOCIOColorSpacePluginId(ids);
-          getOCIOFileTransformPluginId(ids);
+          getOCIOColorSpacePluginID(ids);
+          getOCIOFileTransformPluginID(ids);
 #endif
         }
     }

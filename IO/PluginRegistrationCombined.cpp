@@ -37,9 +37,8 @@ namespace OFX
             getOCIOColorSpacePluginID(ids);
             getOCIOFileTransformPluginID(ids);
 #endif
-#ifndef _WIN32
-            static RunScriptPluginFactory p10("fr.inria.openfx:RunScript", 1, 0);
-            ids.push_back(&p10);
+#ifndef _WINDOWS
+            getRunScriptPluginID(ids);
 #endif
         }
     }

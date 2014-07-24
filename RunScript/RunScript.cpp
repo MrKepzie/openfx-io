@@ -92,6 +92,23 @@
 
 #include "pstream.h"
 
+#define kPluginName "RunScriptOFX"
+#define kPluginGrouping "Image"
+#define kPluginDescription \
+"Run a script with the given arguments.\n" \
+"Each argument may be:\n" \
+"- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n" \
+"- A floating-point value (which can be linked to any plugin)\n" \
+"- An integer\n" \
+"- A string\n" \
+"Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
+"The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces).\n" \
+"This plugin uses pstream <http://pstreams.sourceforge.net>, which is distributed under the GNU LGPLv3.\n"
+
+#define kPluginIdentifier "fr.inria.openfx:RunScript"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
 #define kRunScriptPluginSourceClipCount 10
 #define kRunScriptPluginArgumentsCount 10
 
@@ -494,21 +511,15 @@ RunScriptPlugin::beginEdit(void)
 
 using namespace OFX;
 
+mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
+
 void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     DBG(std::cout << "describing!\n");
     // basic labels
-    desc.setLabels("RunScriptOFX", "RunScriptOFX", "RunScriptOFX");
-    desc.setPluginGrouping("Image");
-    desc.setPluginDescription("Run a script with the given arguments.\n"
-                              "Each argument may be:\n"
-                              "- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n"
-                              "- A floating-point value (which can be linked to any plugin)\n"
-                              "- An integer\n"
-                              "- A string\n"
-                              "Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n"
-                              "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces).\n"
-                              "This plugin uses pstream <http://pstreams.sourceforge.net>, which is distributed under the GNU LGPLv3.\n");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setPluginGrouping(kPluginGrouping);
+    desc.setPluginDescription(kPluginDescription);
 
     // add the supported contexts
     desc.addSupportedContext(eContextFilter);
@@ -691,6 +702,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum /*context*/)
 {
     return new RunScriptPlugin(handle);
+}
+
+
+
+void getRunScriptPluginID(OFX::PluginFactoryArray &ids)
+{
+    static RunScriptPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }
 
 #endif // _WINDOWS

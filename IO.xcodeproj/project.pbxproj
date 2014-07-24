@@ -617,11 +617,11 @@
 		1EDECBAA18B9F6BB0093B6FC /* RunScript */ = {
 			isa = PBXGroup;
 			children = (
+				1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */,
+				1EDECBAF18B9F7F10093B6FC /* RunScript.h */,
 				1EDECBAB18B9F7F10093B6FC /* Info.plist */,
 				1EDECBAC18B9F7F10093B6FC /* Makefile */,
 				1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */,
-				1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */,
-				1EDECBAF18B9F7F10093B6FC /* RunScript.h */,
 			);
 			path = RunScript;
 			sourceTree = "<group>";
