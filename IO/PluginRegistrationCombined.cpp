@@ -6,7 +6,7 @@
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
 #include "OCIOColorSpace.h"
-//#include "OCIOFileTransform.h"
+#include "OCIOFileTransform.h"
 #include "ReadPFM.h"
 #include "WritePFM.h"
 #ifndef _WIN32
@@ -33,8 +33,10 @@ namespace OFX
             ids.push_back(&p7);
             static WritePFMPluginFactory p8("fr.inria.openfx:WritePFM", 1, 0);
             ids.push_back(&p8);
+#ifdef OFX_IO_USING_OCIO
             getOCIOColorSpacePluginID(ids);
-            //getOCIOFileTransformPluginId(ids);
+            getOCIOFileTransformPluginID(ids);
+#endif
 #ifndef _WIN32
             static RunScriptPluginFactory p10("fr.inria.openfx:RunScript", 1, 0);
             ids.push_back(&p10);
