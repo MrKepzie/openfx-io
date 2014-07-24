@@ -358,28 +358,20 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 }
 
 
-class OCIOProcessor : public OFX::PixelProcessor {
-    public :
-    // ctor
-    OCIOProcessor(OFX::ImageEffect &instance)
-    : OFX::PixelProcessor(instance)
-    , _proc()
-    , _instance(&instance)
-    {}
+void
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const std::string& inputSpace, const std::string& outputSpace)
+{
+    OCIO::ConstContextRcPtr context = config->getCurrentContext();
+    _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
 
-    // and do some processing
-    void multiThreadProcessImages(OfxRectI procWindow);
+}
 
-    void setValues(OCIO_NAMESPACE::ConstConfigRcPtr config, const std::string& inputSpace, const std::string& outputSpace)
-    {
-        OCIO::ConstContextRcPtr context = config->getCurrentContext();
-        _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
-        
-    }
-private:
-    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
-    OFX::ImageEffect* _instance;
-};
+void
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction)
+{
+    _proc = config->getProcessor(transform, direction);
+
+}
 
 void
 OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)

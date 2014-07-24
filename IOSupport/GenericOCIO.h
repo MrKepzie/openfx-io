@@ -100,4 +100,24 @@ private:
 #endif
 };
 
+class OCIOProcessor : public OFX::PixelProcessor {
+    public :
+    // ctor
+    OCIOProcessor(OFX::ImageEffect &instance)
+    : OFX::PixelProcessor(instance)
+    , _proc()
+    , _instance(&instance)
+    {}
+
+    // and do some processing
+    void multiThreadProcessImages(OfxRectI procWindow);
+
+    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const std::string& inputSpace, const std::string& outputSpace);
+    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
+
+private:
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OFX::ImageEffect* _instance;
+};
+
 #endif
