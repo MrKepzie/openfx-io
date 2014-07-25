@@ -99,7 +99,7 @@ static void copyLine(PIX *image, int W, int /*H*/, int C, int /*y*/, PIX *dstPix
 {
     assert(srcC == C);
 
-    PIX *srcPix = image;
+    const PIX *srcPix = image;
 
     for(int x = 0; x < W; ++x) {
         if(srcC == 1) {

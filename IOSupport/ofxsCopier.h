@@ -11,13 +11,14 @@
 
 #include <cstring>
 #include "ofxsPixelProcessor.h"
+#include "ofxsMaskMix.h"
 
 // Base class for the RGBA and the Alpha processor
 
 // template to do the RGBA processing
-template <class PIX, int nComponents>
+template <class PIX, int nComponents, int maxValue, bool masked>
 class PixelCopier : public OFX::PixelProcessorFilterBase {
-    public :
+public:
     // ctor
     PixelCopier(OFX::ImageEffect &instance)
     : OFX::PixelProcessorFilterBase(instance)
@@ -27,21 +28,40 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
     void multiThreadProcessImages(OfxRectI procWindow)
     {
         int rowBytes = sizeof(PIX) * nComponents * (procWindow.x2 - procWindow.x1);
+        float tmpPix[nComponents];
         for(int y = procWindow.y1; y < procWindow.y2; ++y) {
-            if(_effect.abort()) break;
+            if(_effect.abort()) {
+                break;
+            }
 
             PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
-            const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, y);
-            assert(srcPix && dstPix);
-            std::memcpy(dstPix, srcPix, rowBytes);
+            assert(dstPix);
+
+            if (!masked) {
+                const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, y);
+                assert(srcPix);
+                std::memcpy(dstPix, srcPix, rowBytes);
+            } else {
+                for (int x = procWindow.x1; x < procWindow.x2; x++) {
+                    const PIX *origPix = (const PIX *)  (_origImg ? _origImg->getPixelAddress(x, y) : 0);
+                    const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, y);
+                    if (srcPix) {
+                        std::copy(srcPix, srcPix + nComponents, tmpPix);
+                    } else {
+                        std::fill(tmpPix, tmpPix + nComponents, 0.); // no src pixel here, be black and transparent
+                    }
+                    ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, origPix, _doMasking, _maskImg, _mix, _maskInvert, dstPix);
+                    // increment the dst pixel
+                    dstPix += nComponents;
+                }
+            }
         }
     }
 };
 
-
 template <class PIX, int nComponents>
 class BlackFiller : public OFX::PixelProcessorFilterBase {
-    public :
+public:
     // ctor
     BlackFiller(OFX::ImageEffect &instance)
     : OFX::PixelProcessorFilterBase(instance)
@@ -52,8 +72,10 @@ class BlackFiller : public OFX::PixelProcessorFilterBase {
     {
         int rowSize =  nComponents * (procWindow.x2 - procWindow.x1);
         for(int y = procWindow.y1; y < procWindow.y2; ++y) {
-            if(_effect.abort()) break;
-            
+            if(_effect.abort()) {
+                break;
+            }
+
             PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
             assert(dstPix);
             std::fill(dstPix, dstPix + rowSize,0);
