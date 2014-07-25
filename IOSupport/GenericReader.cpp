@@ -74,8 +74,7 @@
 #define kReaderBeforeParamName "before"
 #define kReaderAfterParamName "after"
 
-// if a hole in the sequence is larger than 2000 frames inside the sequence's time domain, this will output black frames.
-#define MAX_SEARCH_RANGE 400000
+#define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
 
@@ -105,7 +104,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 , _sequenceFromFiles()
 , _sequencePattern()
 , _supportsTiles(supportsTiles)
-//, _sequenceFromFiles(new SequenceParsing::SequenceFromFiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
@@ -373,26 +371,29 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
     }
     
     
-   
-    
+    std::ifstream fs(filename.c_str());
+
     ///if the frame is missing, do smthing according to the missing frame param
-    if (filename.empty()) {
+    if (!fs.is_open()) {
         int missingChoice;
         _missingFrameParam->getValue(missingChoice);
         switch (missingChoice) {
             case 0: // Load nearest
             {
                 int offset = -1;
-                int maxOffset = MAX_SEARCH_RANGE;
-                while (filename.empty() && offset <= maxOffset) {
+                while (!fs.is_open() && offset <= MISSING_FRAME_NEAREST_RANGE) {
                     _fileParam->getValueAtTime(sequenceTime + offset, filename);
                     if (!filename.empty() && proxyFiles) {
-                        std::string proxyFileName;
-                        _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
-                        if (!proxyFileName.empty()) {
-                            filename = proxyFileName;
-                            ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
+                        fs.open(filename.c_str());
+                        if (fs.is_open()) {
+                            std::string proxyFileName;
+                            _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
+                            if (!proxyFileName.empty()) {
+                                filename = proxyFileName;
+                                ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
+                            }
                         }
+                        
                     }
                     if (offset < 0) {
                         offset = -offset;
@@ -400,7 +401,7 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
                         ++offset;
                     }
                 }
-                if(filename.empty()){
+                if (!fs.is_open()) {
                     setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
                     ret = GenericReaderPlugin::eGetFileNameFailed;
                     // return a black image
@@ -829,14 +830,7 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     bool success = getFrameRegionOfDefinition(filename, sequenceTime, rod,error);
     
     if (!success) {
-        int missingChoice;
-        _missingFrameParam->getValue(missingChoice);
-        if (missingChoice != 2) {
-            setPersistentMessage(OFX::Message::eMessageError, "", error);
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-        } else {
-            return false;
-        }
+        return false;
     }
     
     if (ret == GenericReaderPlugin::eGetFileNameReturnedProxy) {
@@ -1059,15 +1053,10 @@ void GenericReaderPlugin::inputFileChanged() {
         SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
     }
     
-    
-    
     clearPersistentMessage();
     //reset the original range param
     _originalFrameRange->setValue(INT_MIN, INT_MAX);
     
-    
-    ///let the derive class a chance to initialize any data structure it may need
-    onInputFileChanged(filename);
     
     if (patternChanged) {
         ///we don't pass the _frameRange range as we don't want to store the time domain too
@@ -1075,9 +1064,17 @@ void GenericReaderPlugin::inputFileChanged() {
         if (getSequenceTimeDomainInternal(tmp,true)) {
             timeDomainFromSequenceTimeDomain(tmp, true);
             _startingFrame->setValue(tmp.min);
+
+            ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
+            ///unless the user did a mistake. We are also safe to assume that images specs are the same for
+            ///all the sequence
+            _fileParam->getValueAtTime(tmp.min,filename);
+            ///let the derive class a chance to initialize any data structure it may need
+            onInputFileChanged(filename);
         }
     }
-    
+
+   
 }
 
 void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
@@ -1319,8 +1316,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     fileParam->setLabels("File", "File", "File");
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setHint("The input image sequence/video stream file(s).");
-#pragma message ("GenericReader: should the filename still be animatable? Remember that Nuke strings are not animatable") 
-    fileParam->setAnimates(!isVideoStreamPlugin);
+    fileParam->setAnimates(false);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     fileParam->setScriptName(kReaderFileParamName);
     desc.addClipPreferencesSlaveParam(*fileParam);
