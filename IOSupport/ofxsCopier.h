@@ -17,7 +17,7 @@
 // template to do the RGBA processing
 template <class PIX, int nComponents>
 class PixelCopier : public OFX::PixelProcessorFilterBase {
-    public :
+public:
     // ctor
     PixelCopier(OFX::ImageEffect &instance)
     : OFX::PixelProcessorFilterBase(instance)
@@ -28,7 +28,9 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
     {
         int rowBytes = sizeof(PIX) * nComponents * (procWindow.x2 - procWindow.x1);
         for(int y = procWindow.y1; y < procWindow.y2; ++y) {
-            if(_effect.abort()) break;
+            if(_effect.abort()) {
+                break;
+            }
 
             PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
             const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, y);
@@ -41,7 +43,7 @@ class PixelCopier : public OFX::PixelProcessorFilterBase {
 
 template <class PIX, int nComponents>
 class BlackFiller : public OFX::PixelProcessorFilterBase {
-    public :
+public:
     // ctor
     BlackFiller(OFX::ImageEffect &instance)
     : OFX::PixelProcessorFilterBase(instance)
@@ -52,8 +54,10 @@ class BlackFiller : public OFX::PixelProcessorFilterBase {
     {
         int rowSize =  nComponents * (procWindow.x2 - procWindow.x1);
         for(int y = procWindow.y1; y < procWindow.y2; ++y) {
-            if(_effect.abort()) break;
-            
+            if(_effect.abort()) {
+                break;
+            }
+
             PIX *dstPix = (PIX *) getDstPixelAddress(procWindow.x1, y);
             assert(dstPix);
             std::fill(dstPix, dstPix + rowSize,0);

@@ -57,7 +57,7 @@ namespace OFX {
     ////////////////////////////////////////////////////////////////////////////////
     // base class to process images with
     class PixelProcessor : public OFX::MultiThread::Processor {
-    protected :
+    protected:
         OFX::ImageEffect &_effect;      /**< @brief effect to render with */
         //OFX::Image       *_dstImg;        /**< @brief image to process into */
         void* _dstPixelData;
@@ -68,7 +68,7 @@ namespace OFX {
         int _dstRowBytes;
         OfxRectI          _renderWindow;  /**< @brief render window to use */
 
-    public :
+    public:
         /** @brief ctor */
         PixelProcessor(OFX::ImageEffect &effect)
           : _effect(effect)
@@ -182,15 +182,19 @@ namespace OFX {
     
     // base class for a processor with a single source image
     class PixelProcessorFilterBase : public OFX::PixelProcessor {
-        protected :
+    protected:
         const void *_srcPixelData;
         OfxRectI _srcBounds;
         OFX::PixelComponentEnum _srcPixelComponents;
         OFX::BitDepthEnum _srcBitDepth;
         int _srcPixelBytes;
         int _srcRowBytes;
+        const OFX::Image *_maskImg;
+        bool   _doMasking;
+        double _mix;
+        bool _maskInvert;
 
-        public :
+    public:
         /** @brief no arg ctor */
         PixelProcessorFilterBase(OFX::ImageEffect &instance)
         : OFX::PixelProcessor(instance)
@@ -200,6 +204,10 @@ namespace OFX {
         , _srcBitDepth(OFX::eBitDepthNone)
         , _srcPixelBytes(0)
         , _srcRowBytes(0)
+        , _maskImg(0)
+        , _doMasking(false)
+        , _mix(1.)
+        , _maskInvert(false)
         {
         }
 
@@ -227,6 +235,15 @@ namespace OFX {
             _srcBitDepth = srcPixelDepth;
             _srcPixelBytes = getPixelBytes(_srcPixelComponents, _srcBitDepth);
             _srcRowBytes = srcRowBytes;
+        }
+
+        void setMaskImg(const OFX::Image *v)
+        {
+            _maskImg = v;
+        }
+
+        void doMasking(bool v) {
+            _doMasking = v;
         }
 
     protected:

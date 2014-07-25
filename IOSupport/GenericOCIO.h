@@ -101,7 +101,7 @@ private:
 };
 
 class OCIOProcessor : public OFX::PixelProcessor {
-    public :
+public:
     // ctor
     OCIOProcessor(OFX::ImageEffect &instance)
     : OFX::PixelProcessor(instance)
