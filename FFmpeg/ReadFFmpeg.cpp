@@ -123,7 +123,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+        setPersistentMessage(OFX::Message::eMessageError, "",filename +  ": Missing frame");
         return;
     }
     
@@ -189,7 +189,7 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
     
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+        setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
         return true;
     }
 

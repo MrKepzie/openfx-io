@@ -402,7 +402,7 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
                     }
                 }
                 if (!fs.is_open()) {
-                    setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                    setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
                     ret = GenericReaderPlugin::eGetFileNameFailed;
                     // return a black image
                 } else {
@@ -418,7 +418,7 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
             case 1: // Error
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
-                setPersistentMessage(OFX::Message::eMessageError, "", "Missing frame");
+                setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
                 ret = GenericReaderPlugin::eGetFileNameFailed;
                 break;
             case 2: // Black image
