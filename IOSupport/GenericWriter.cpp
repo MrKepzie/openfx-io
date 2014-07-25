@@ -417,13 +417,13 @@ void GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     if(dstPixelComponents == OFX::ePixelComponentRGBA) {
-        PixelCopier<float, 4> fred(*this);
+        PixelCopier<float, 4, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
-        PixelCopier<float, 3> fred(*this);
+        PixelCopier<float, 3, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
-        PixelCopier<float, 1> fred(*this);
+        PixelCopier<float, 1, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 }

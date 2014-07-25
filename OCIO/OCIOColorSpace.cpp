@@ -82,7 +82,9 @@ public:
     //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
 
 private:
-    void copyPixelData(const OfxRectI &renderWindow,
+    template<bool masked>
+    void copyPixelData(double time,
+                       const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
                        OFX::Image* dstImg)
     {
@@ -98,12 +100,15 @@ private:
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
-        copyPixelData(renderWindow,
-                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        copyPixelData<masked>(time,
+                              renderWindow,
+                              srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                              dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 
-    void copyPixelData(const OfxRectI &renderWindow,
+    template<bool masked>
+    void copyPixelData(double time,
+                       const OfxRectI &renderWindow,
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
@@ -117,12 +122,15 @@ private:
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
-        copyPixelData(renderWindow,
-                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        copyPixelData<masked>(time,
+                              renderWindow,
+                              srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                              dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 
-    void copyPixelData(const OfxRectI &renderWindow,
+    template<bool masked>
+    void copyPixelData(double time,
+                       const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
@@ -136,12 +144,15 @@ private:
         OFX::BitDepthEnum srcBitDepth;
         int srcRowBytes;
         getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
-        copyPixelData(renderWindow,
-                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        copyPixelData<masked>(time,
+                              renderWindow,
+                              srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                              dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 
-    void copyPixelData(const OfxRectI &renderWindow,
+    template<bool masked>
+    void copyPixelData(double time,
+                       const OfxRectI &renderWindow,
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
@@ -153,9 +164,27 @@ private:
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
 
+    void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                      double time,
+                      const OfxRectI &renderWindow,
+                      const void *srcPixelData,
+                      const OfxRectI& srcBounds,
+                      OFX::PixelComponentEnum srcPixelComponents,
+                      OFX::BitDepthEnum srcPixelDepth,
+                      int srcRowBytes,
+                      void *dstPixelData,
+                      const OfxRectI& dstBounds,
+                      OFX::PixelComponentEnum dstPixelComponents,
+                      OFX::BitDepthEnum dstPixelDepth,
+                      int dstRowBytes);
+
     // do not need to delete these, the ImageEffect is managing them for us
     OFX::Clip *dstClip_;
     OFX::Clip *srcClip_;
+    OFX::Clip *maskClip_;
+
+    OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskInvert;
 
     GenericOCIO* _ocio;
 };
@@ -164,10 +193,18 @@ OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , dstClip_(0)
 , srcClip_(0)
+, maskClip_(0)
 , _ocio(new GenericOCIO(this))
 {
     dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
+    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA || dstClip_->getPixelComponents() == OFX::ePixelComponentRGB));
     srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
+    maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
+    _mix = fetchDoubleParam(kMixParamName);
+    _maskInvert = fetchBooleanParam(kMaskInvertParamName);
+    assert(_mix && _maskInvert);
 }
 
 OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
@@ -175,24 +212,32 @@ OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
 }
 
 /* set up and run a copy processor */
-static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-                         const OfxRectI &renderWindow,
-                         const void *srcPixelData,
-                         const OfxRectI& srcBounds,
-                         OFX::PixelComponentEnum srcPixelComponents,
-                         OFX::BitDepthEnum srcPixelDepth,
-                         int srcRowBytes,
-                         void *dstPixelData,
-                         const OfxRectI& dstBounds,
-                         OFX::PixelComponentEnum dstPixelComponents,
-                         OFX::BitDepthEnum dstPixelDepth,
-                         int dstRowBytes)
+void
+OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+                                   double time,
+                                   const OfxRectI &renderWindow,
+                                   const void *srcPixelData,
+                                   const OfxRectI& srcBounds,
+                                   OFX::PixelComponentEnum srcPixelComponents,
+                                   OFX::BitDepthEnum srcPixelDepth,
+                                   int srcRowBytes,
+                                   void *dstPixelData,
+                                   const OfxRectI& dstBounds,
+                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   OFX::BitDepthEnum dstPixelDepth,
+                                   int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
 
     // make sure bit depths are sane
     if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+
+    std::auto_ptr<OFX::Image> mask(getContext() != OFX::eContextFilter ? maskClip_->fetchImage(time) : 0);
+    if (getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
+        processor.doMasking(true);
+        processor.setMaskImg(mask.get());
     }
 
     // set the images
@@ -202,12 +247,20 @@ static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     // set the render window
     processor.setRenderWindow(renderWindow);
 
+    double mix;
+    _mix->getValueAtTime(time, mix);
+    bool maskInvert;
+    _maskInvert->getValueAtTime(time, maskInvert);
+    processor.setMaskMix(mix, maskInvert);
+
     // Call the base class process member, this will call the derived templated process code
     processor.process();
 }
 
+template<bool masked>
 void
-OCIOColorSpacePlugin::copyPixelData(const OfxRectI& renderWindow,
+OCIOColorSpacePlugin::copyPixelData(double time,
+                                    const OfxRectI& renderWindow,
                                     const void *srcPixelData,
                                     const OfxRectI& srcBounds,
                                     OFX::PixelComponentEnum srcPixelComponents,
@@ -225,16 +278,29 @@ OCIOColorSpacePlugin::copyPixelData(const OfxRectI& renderWindow,
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
-        PixelCopier<float, 4> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
-        PixelCopier<float, 3> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
-        PixelCopier<float, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } // switch
+    if (masked && getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
+        if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+            PixelCopier<float, 4, 1, true> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
+            PixelCopier<float, 3, 1, true> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
+            PixelCopier<float, 1, 1, true> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        } // switch
+    } else {
+        if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+            PixelCopier<float, 4, 1, false> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+            PixelCopier<float, 3, 1, false> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+            PixelCopier<float, 1, 1, false> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        } // switch
+    }
 }
 
 /* Override the render */
@@ -308,13 +374,13 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     float *tmpPixelData = (float*)mem.lock();
 
     // copy renderWindow to the temporary image
-    copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+    copyPixelData<false>(args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
 
     ///do the color-space conversion
     _ocio->apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
 
-    // copy the color-converted window
-    copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+    // copy the color-converted window and apply masking
+    copyPixelData<true>(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
 }
 
 bool
@@ -369,12 +435,25 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(true);
 
+    if (context == eContextGeneral || context == eContextPaint) {
+        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
+        maskClip->addSupportedComponent(ePixelComponentAlpha);
+        maskClip->setTemporalClipAccess(false);
+        if (context == eContextGeneral) {
+            maskClip->setOptional(true);
+        }
+        maskClip->setSupportsTiles(true);
+        maskClip->setIsMask(true);
+    }
+
 #ifdef OFX_IO_USING_OCIO
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE, OCIO_NAMESPACE::ROLE_REFERENCE);
 #endif
+
+    ofxsMaskMixDescribeParams(desc, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

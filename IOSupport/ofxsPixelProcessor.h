@@ -189,6 +189,7 @@ namespace OFX {
         OFX::BitDepthEnum _srcBitDepth;
         int _srcPixelBytes;
         int _srcRowBytes;
+        const OFX::Image *_origImg;
         const OFX::Image *_maskImg;
         bool   _doMasking;
         double _mix;
@@ -237,6 +238,11 @@ namespace OFX {
             _srcRowBytes = srcRowBytes;
         }
 
+        void setOrigImg(const OFX::Image *v)
+        {
+            _origImg = v;
+        }
+
         void setMaskImg(const OFX::Image *v)
         {
             _maskImg = v;
@@ -244,6 +250,13 @@ namespace OFX {
 
         void doMasking(bool v) {
             _doMasking = v;
+        }
+
+        void setMaskMix(double mix,
+                        bool maskInvert)
+        {
+             _mix = mix;
+            _maskInvert = maskInvert;
         }
 
     protected:
