@@ -1001,7 +1001,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     assert(downscaleLevels >= 0);
 
 #if 1
-    if (_ocio->isIdentity(args.time) && (renderMipmapLevel == 0 || !kSupportsMultiResolution)) {
+    if ((_ocio->isIdentity(args.time) && (renderMipmapLevel == 0 || !kSupportsMultiResolution))) {
         // no colorspace conversion, just read file
         decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
     } else
@@ -1022,7 +1022,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
         }
 
         ///do the color-space conversion
-        if (!_ocio->isIdentity(args.time)) {
+        if (!_ocio->isIdentity(args.time) && pixelComponents != OFX::ePixelComponentAlpha) {
             _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
