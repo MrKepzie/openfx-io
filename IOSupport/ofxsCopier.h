@@ -44,7 +44,7 @@ public:
             } else {
                 for (int x = procWindow.x1; x < procWindow.x2; x++) {
                     const PIX *origPix = (const PIX *)  (_origImg ? _origImg->getPixelAddress(x, y) : 0);
-                    const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, y);
+                    const PIX *srcPix = (const PIX *) getSrcPixelAddress(x, y);
                     if (srcPix) {
                         std::copy(srcPix, srcPix + nComponents, tmpPix);
                     } else {
