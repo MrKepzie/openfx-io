@@ -258,9 +258,7 @@ protected:
 private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
-    //SequenceParsing::SequenceFromFiles* _sequenceFromFiles;
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
-    std::string _sequencePattern;
     const bool _supportsTiles;
 };
 

@@ -102,7 +102,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceFromFiles()
-, _sequencePattern()
 , _supportsTiles(supportsTiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -133,8 +132,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
             ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
             ///everything as it would take too much time.
             indexes[0] = content.getPotentialFrameNumbersCount() - 1;
-            content.generatePatternWithFrameNumberAtIndexes(indexes, &_sequencePattern);
-            SequenceParsing::filesListFromPattern(_sequencePattern, &_sequenceFromFiles);
+            std::string sequencePattern;
+            content.generatePatternWithFrameNumberAtIndexes(indexes, &sequencePattern);
+            SequenceParsing::filesListFromPattern(sequencePattern, &_sequenceFromFiles);
             
             if (_sequenceFromFiles.size() == 1) {
                 _originalFrameRange->setValue(0, 0);
@@ -1046,33 +1046,29 @@ void GenericReaderPlugin::inputFileChanged() {
     indexes[0] = content.getPotentialFrameNumbersCount() - 1;
     content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
     
-    bool patternChanged = pattern != _sequencePattern;
-    if (patternChanged) {
-        _sequencePattern = pattern;
-        _sequenceFromFiles.clear();
-        SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
-    }
+    
+    _sequenceFromFiles.clear();
+    SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
     
     clearPersistentMessage();
     //reset the original range param
     _originalFrameRange->setValue(INT_MIN, INT_MAX);
     
     
-    if (patternChanged) {
-        ///we don't pass the _frameRange range as we don't want to store the time domain too
-        OfxRangeD tmp;
-        if (getSequenceTimeDomainInternal(tmp,true)) {
-            timeDomainFromSequenceTimeDomain(tmp, true);
-            _startingFrame->setValue(tmp.min);
-
-            ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
-            ///unless the user did a mistake. We are also safe to assume that images specs are the same for
-            ///all the sequence
-            _fileParam->getValueAtTime(tmp.min,filename);
-            ///let the derive class a chance to initialize any data structure it may need
-            onInputFileChanged(filename);
-        }
+    ///we don't pass the _frameRange range as we don't want to store the time domain too
+    OfxRangeD tmp;
+    if (getSequenceTimeDomainInternal(tmp,true)) {
+        timeDomainFromSequenceTimeDomain(tmp, true);
+        _startingFrame->setValue(tmp.min);
+        
+        ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
+        ///unless the user did a mistake. We are also safe to assume that images specs are the same for
+        ///all the sequence
+        _fileParam->getValueAtTime(tmp.min,filename);
+        ///let the derive class a chance to initialize any data structure it may need
+        onInputFileChanged(filename);
     }
+    
 
    
 }
