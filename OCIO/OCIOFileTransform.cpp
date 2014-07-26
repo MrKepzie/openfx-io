@@ -51,7 +51,7 @@
 namespace OCIO = OCIO_NAMESPACE;
 
 #define kPluginName "OCIOFileTransformOFX"
-#define kPluginGrouping "Color"
+#define kPluginGrouping "Color/OCIO"
 #define kPluginDescription  "Use OpenColorIO to apply a transform loaded from the given " \
 "file.\n\n" \
 "This is usually a 1D or 3D LUT file, but can be other file-based " \

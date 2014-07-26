@@ -52,7 +52,7 @@ namespace OCIO = OCIO_NAMESPACE;
 static bool gWasOCIOEnvVarFound = false;
 
 #define kPluginName "OCIOLogConvertOFX"
-#define kPluginGrouping "Color"
+#define kPluginGrouping "Color/OCIO"
 #define kPluginDescription  "Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back)."
 
 #define kPluginIdentifier "fr.inria.openfx:OCIOLogConvert"
