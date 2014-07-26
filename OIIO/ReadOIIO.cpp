@@ -567,7 +567,13 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
                 break;
             case TypeDesc::USHORT:
             case TypeDesc::SHORT:
-                colorSpaceStr = "Rec709";
+                if (has_suffix(filename, ".cin") || has_suffix(filename, ".dpx") ||
+                    has_suffix(filename, ".CIN") || has_suffix(filename, ".DPX")) {
+                    // Cineon or DPX file
+                    colorSpaceStr = "KodakLog";
+                } else {
+                    colorSpaceStr = "Rec709";
+                }
                 break;
             default:
                 colorSpaceStr = "Linear";
