@@ -750,8 +750,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     ////////// OCIO config file
     OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
-    ocioConfigFileParam->setLabels("OCIO config file", "OCIO config file", "OCIO config file");
-    ocioConfigFileParam->setHint("OpenColorIO configuration file");
+    ocioConfigFileParam->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
+    ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
     ocioConfigFileParam->setAnimates(true);
     desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
@@ -765,8 +765,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 
     ///////////Input Color-space
     OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpaceName);
-    inputSpace->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
-    inputSpace->setHint("Input data is taken to be in this colorspace.");
+    inputSpace->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
+    inputSpace->setHint(kOCIOParamInputSpaceHint);
     inputSpace->setAnimates(true);
     inputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
     inputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
@@ -774,8 +774,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 
 #ifdef OFX_OCIO_CHOICE
     OFX::ChoiceParamDescriptor* inputSpaceChoice = desc.defineChoiceParam(kOCIOParamInputSpaceChoiceName);
-    inputSpaceChoice->setLabels("Input colorspace", "Input colorspace", "Input colorspace");
-    inputSpaceChoice->setHint("Input data is taken to be in this colorspace.");
+    inputSpaceChoice->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
+    inputSpaceChoice->setHint(kOCIOParamInputSpaceHint);
     inputSpaceChoice->setAnimates(true);
     inputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
     inputSpaceChoice->setIsPersistant(false); // don't save/serialize
@@ -784,8 +784,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 
     ///////////Output Color-space
     OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpaceName);
-    outputSpace->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
-    outputSpace->setHint("Output data is taken to be in this colorspace.");
+    outputSpace->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
+    outputSpace->setHint(kOCIOParamOutputSpaceHint);
     outputSpace->setAnimates(true);
     outputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
     outputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
@@ -793,8 +793,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 
 #ifdef OFX_OCIO_CHOICE
     OFX::ChoiceParamDescriptor* outputSpaceChoice = desc.defineChoiceParam(kOCIOParamOutputSpaceChoiceName);
-    outputSpaceChoice->setLabels("Output colorspace", "Output colorspace", "Output colorspace");
-    outputSpaceChoice->setHint("Output data is taken to be in this colorspace.");
+    outputSpaceChoice->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
+    outputSpaceChoice->setHint(kOCIOParamOutputSpaceHint);
     outputSpaceChoice->setAnimates(true);
     outputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
     outputSpaceChoice->setIsPersistant(false); // don't save/serialize
@@ -802,8 +802,8 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #endif
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
-    pb->setLabels("OCIO config help...", "OCIO config help...", "OCIO config help...");
-    pb->setHint("Help about the OpenColorIO configuration.");
+    pb->setLabels(kOCIOHelpButtonLabel, kOCIOHelpButtonLabel, kOCIOHelpButtonLabel);
+    pb->setHint(kOCIOHelpButtonHint);
     page->addChild(*pb);
 
     char* file = std::getenv("OCIO");

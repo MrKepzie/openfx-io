@@ -1,6 +1,6 @@
 /*
- OCIOFileTransform plugin.
- Apply a LUT conversion loaded from file.
+ OCIOLogConvert plugin.
+ Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back).
 
  Copyright (C) 2014 INRIA
  Author: Frederic Devernay <frederic.devernay@inria.fr>
@@ -38,7 +38,7 @@
  */
 
 
-#include "OCIOFileTransform.h"
+#include "OCIOLogConvert.h"
 
 #include <OpenColorIO/OpenColorIO.h>
 
@@ -49,67 +49,35 @@
 #include "GenericOCIO.h"
 
 namespace OCIO = OCIO_NAMESPACE;
+static bool gWasOCIOEnvVarFound = false;
 
-#define kPluginName "OCIOFileTransformOFX"
+#define kPluginName "OCIOLogConvertOFX"
 #define kPluginGrouping "Color"
-#define kPluginDescription  "Use OpenColorIO to apply a transform loaded from the given " \
-"file.\n\n" \
-"This is usually a 1D or 3D LUT file, but can be other file-based " \
-"transform, for example an ASC ColorCorrection XML file.\n\n" \
-"Note that the file's transform is applied with no special " \
-"input/output colorspace handling - so if the file expects " \
-"log-encoded pixels, but you apply the node to a linear " \
-"image, you will get incorrect results."
+#define kPluginDescription  "Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back)."
 
-#define kPluginIdentifier "fr.inria.openfx:OCIOFileTransform"
+#define kPluginIdentifier "fr.inria.openfx:OCIOLogConvert"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kFileParamName "file"
-#define kFileParamLabel "File"
-#define kFileParamHint "File containing the transform."
+#define kModeParamName "operation"
+#define kModeParamLabel "Operation"
+#define kModeParamHint "Operation to perform. Lin is the SCENE_LINEAR profile and Log is the COMPOSITING_LOG profile of the OCIO configuration."
+#define kModeParamChoiceLogToLin "Log to Lin"
+#define kModeParamChoiceLinToLog "Lin to Log"
 
-// Reload button, and hidden "version" knob to invalidate cache on reload
-#define kReloadParamName "reload"
-#define kReloadParamLabel "Reload"
-#define kReloadParamHint "Reloads specified files"
-#define kVersionParamName "version"
-
-#define kCCCIDParamName "cccId"
-#define kCCCIDParamLabel "CCC Id"
-#define kCCCIDParamHint "If the source file is an ASC CDL CCC (color correction collection), " \
-"this specifies the id to lookup. OpenColorIO::Contexts (envvars) are obeyed."
-#define kCCCIDChoiceParamName "cccIdIndex"
-
-#define kDirectionParamName "direction"
-#define kDirectionParamLabel "Direction"
-#define kDirectionParamHint "Transform direction."
-#define kDirectionParamChoiceForward "Forward"
-#define kDirectionParamChoiceInverse "Inverse"
-
-#define kInterpolationParamName "interpolation"
-#define kInterpolationParamLabel "Interpolation"
-#define kInterpolationParamHint "Interpolation method. For files that are not LUTs (mtx, etc) this is ignored."
-#define kInterpolationParamChoiceNearest "Nearest"
-#define kInterpolationParamChoiceLinear "Linear"
-#define kInterpolationParamChoiceTetrahedral "Tetrahedral"
-#define kInterpolationParamChoiceBest "Best"
-
-static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kCCCIDChoiceParamName from available IDs
-
-class OCIOFileTransformPlugin : public OFX::ImageEffect
+class OCIOLogConvertPlugin : public OFX::ImageEffect
 {
 public:
 
-    OCIOFileTransformPlugin(OfxImageEffectHandle handle);
+    OCIOLogConvertPlugin(OfxImageEffectHandle handle);
 
-    virtual ~OCIOFileTransformPlugin();
+    virtual ~OCIOLogConvertPlugin();
 
     /* Override the render */
     virtual void render(const OFX::RenderArguments &args);
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
+    //virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
 
     /* override changedParam */
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
@@ -124,8 +92,6 @@ public:
     //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
 
 private:
-    void updateCCCId();
-
     template<bool masked>
     void copyPixelData(double time,
                        const OfxRectI &renderWindow,
@@ -224,22 +190,23 @@ private:
                       OFX::BitDepthEnum dstPixelDepth,
                       int dstRowBytes);
 
+    void loadConfig(double time);
+
 private:
     // do not need to delete these, the ImageEffect is managing them for us
     OFX::Clip *dstClip_;
     OFX::Clip *srcClip_;
     OFX::Clip *maskClip_;
 
-    OFX::StringParam *file_;
-    OFX::IntParam *version_;
-    OFX::StringParam *cccid_;
-    OFX::ChoiceParam *direction_;
-    OFX::ChoiceParam *interpolation_;
+    std::string _ocioConfigFileName;
+    OFX::StringParam *_ocioConfigFile; //< filepath of the OCIO config file
+    OFX::ChoiceParam *_mode;
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskInvert;
+    OCIO_NAMESPACE::ConstConfigRcPtr _config;
 };
 
-OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
+OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , dstClip_(0)
 , srcClip_(0)
@@ -251,26 +218,47 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
     maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
-    file_ = fetchStringParam(kFileParamName);
-    version_ = fetchIntParam(kVersionParamName);
-    cccid_ = fetchStringParam(kCCCIDParamName);
-    direction_ = fetchChoiceParam(kDirectionParamName);
-    interpolation_ = fetchChoiceParam(kInterpolationParamName);
-    assert(file_ && version_ && cccid_ && direction_ && interpolation_);
+    _ocioConfigFile = fetchStringParam(kOCIOParamConfigFileName);
+    assert(_ocioConfigFile);
+    _mode = fetchChoiceParam(kModeParamName);
+    assert(_mode);
     _mix = fetchDoubleParam(kMixParamName);
     _maskInvert = fetchBooleanParam(kMaskInvertParamName);
     assert(_mix && _maskInvert);
-    updateCCCId();
+    loadConfig(0.);
 }
 
-OCIOFileTransformPlugin::~OCIOFileTransformPlugin()
+OCIOLogConvertPlugin::~OCIOLogConvertPlugin()
 {
+}
 
+void
+OCIOLogConvertPlugin::loadConfig(double time)
+{
+    std::string filename;
+    _ocioConfigFile->getValueAtTime(time, filename);
+
+    if (filename == _ocioConfigFileName) {
+        return;
+    }
+
+    _config.reset();
+    try {
+        _ocioConfigFileName = filename;
+        _config = OCIO::Config::CreateFromFile(_ocioConfigFileName.c_str());
+        _mode->setEnabled(true);
+        clearPersistentMessage();
+    } catch (OCIO::Exception &e) {
+        _ocioConfigFileName.clear();
+        _mode->setEnabled(false);
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("OpenColorIO error: ") + e.what());
+        _config = OCIO::GetCurrentConfig();
+    }
 }
 
 /* set up and run a copy processor */
 void
-OCIOFileTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+OCIOLogConvertPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
                                       double time,
                                       const OfxRectI &renderWindow,
                                       const void *srcPixelData,
@@ -318,7 +306,7 @@ OCIOFileTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
 
 template<bool masked>
 void
-OCIOFileTransformPlugin::copyPixelData(double time,
+OCIOLogConvertPlugin::copyPixelData(double time,
                                        const OfxRectI& renderWindow,
                                        const void *srcPixelData,
                                        const OfxRectI& srcBounds,
@@ -363,7 +351,7 @@ OCIOFileTransformPlugin::copyPixelData(double time,
 }
 
 void
-OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
@@ -378,46 +366,24 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
 
-    std::string file;
-    file_->getValueAtTime(time, file);
-    std::string cccid;
-    cccid_->getValueAtTime(time, cccid);
+    int mode_i;
+    _mode->getValueAtTime(time, mode_i);
 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        assert(config);
-        OCIO::FileTransformRcPtr transform = OCIO::FileTransform::Create();
-        transform->setSrc(file.c_str());
 
-        transform->setCCCId(cccid.c_str());
+        const char * src = 0;
+        const char * dst = 0;
 
-        int direction_i;
-        direction_->getValueAtTime(time, direction_i);
-
-        if (direction_i == 0) {
-            transform->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
+        if (mode_i == 0) {
+            src = OCIO::ROLE_COMPOSITING_LOG;
+            dst = OCIO::ROLE_SCENE_LINEAR;
         } else {
-            transform->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            src = OCIO::ROLE_SCENE_LINEAR;
+            dst = OCIO::ROLE_COMPOSITING_LOG;
         }
 
-        int interpolation_i;
-        interpolation_->getValueAtTime(time, interpolation_i);
-
-        if (interpolation_i == 0) {
-            transform->setInterpolation(OCIO::INTERP_NEAREST);
-        } else if(interpolation_i == 1) {
-            transform->setInterpolation(OCIO::INTERP_LINEAR);
-        } else if(interpolation_i == 2) {
-            transform->setInterpolation(OCIO::INTERP_TETRAHEDRAL);
-        } else if(interpolation_i == 3) {
-            transform->setInterpolation(OCIO::INTERP_BEST);
-        } else {
-            // Should never happen
-            setPersistentMessage(OFX::Message::eMessageError, "", "OCIO Interpolation value out of bounds");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-        }
-
-        processor.setValues(config, transform, OCIO::TRANSFORM_DIR_FORWARD);
+        processor.setValues(config, src, dst);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -431,7 +397,7 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
 
 /* Override the render */
 void
-OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
+OCIOLogConvertPlugin::render(const OFX::RenderArguments &args)
 {
     if (!srcClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -509,74 +475,85 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
     copyPixelData<true>(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
 }
 
-bool
-OCIOFileTransformPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
-{
-    std::string file;
-    file_->getValue(file);
-    return file.empty();
-}
-
 void
-OCIOFileTransformPlugin::updateCCCId()
+OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    // Convoluted equiv to pysting::endswith(m_file, ".ccc")
-    // TODO: Could this be queried from the processor?
-    std::string srcstring;
-    file_->getValue(srcstring);
-    const std::string cccext = "ccc";
-    const std::string ccext = "cc";
-    if(std::equal(cccext.rbegin(), cccext.rend(), srcstring.rbegin()) ||
-       std::equal(ccext.rbegin(), ccext.rend(), srcstring.rbegin())) {
-        cccid_->setIsSecret(false);
-    } else {
-        cccid_->setIsSecret(true);
-    }
-}
+    if (paramName == kOCIOParamConfigFileName) {
+        loadConfig(args.time); // re-load the new OCIO config
+        if (!_config && args.reason == OFX::eChangeUserEdit) {
+            std::string filename;
+            _ocioConfigFile->getValueAtTime(args.time, filename);
+            sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
+        }
+    } else if (paramName == kOCIOHelpButtonName) {
+        std::string msg = "OpenColorIO Help\n"
+        "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
+        "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
+        msg += OCIO_NAMESPACE::GetVersion();
+        msg += '\n';
+        if (_config) {
+            const char* configdesc = _config->getDescription();
+            int configdesclen = std::strlen(configdesc);
+            if ( configdesclen > 0 ) {
+                msg += "\nThis OCIO configuration is ";
+                msg += configdesc;
+                if (configdesc[configdesclen-1] != '\n') {
+                    msg += '\n';
+                }
+            }
+            msg += '\n';
 
-void
-OCIOFileTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
-{
-    clearPersistentMessage();
-    // Only show the cccid knob when loading a .cc/.ccc file. Set
-    // hidden state when the src is changed, or the node properties
-    // are shown
-    if (paramName == kFileParamName) {
-        updateCCCId();
-    } else if (paramName == kReloadParamName) {
-        version_->setValue(version_->getValue()+1); // invalidate the node cache
-        OCIO::ClearAllCaches();
+            {
+                int csidx = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                const char* csname = _config->getColorSpaceNameByIndex(csidx);;
+                msg += "SCENE_LINEAR colorspace: ";
+                msg += csname;
+                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
+                std::string csdesc = cs->getDescription();
+                csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+                int csdesclen = csdesc.size();
+                if ( csdesclen > 0 ) {
+                    msg += " (";
+                    msg += csdesc;
+                    msg += ")\n";
+                } else {
+                    msg += '\n';
+                }
+            }
+            msg += '\n';
+            {
+                int csidx = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                const char* csname = _config->getColorSpaceNameByIndex(csidx);;
+                msg += "COMPOSITING_LOG colorspace: ";
+                msg += csname;
+                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
+                std::string csdesc = cs->getDescription();
+                csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+                int csdesclen = csdesc.size();
+                if ( csdesclen > 0 ) {
+                    msg += " (";
+                    msg += csdesc;
+                    msg += ")\n";
+                } else {
+                    msg += '\n';
+                }
+            }
+        }
+        sendMessage(OFX::Message::eMessageMessage, "", msg);
     }
-
 }
 
 using namespace OFX;
 
-mDeclarePluginFactory(OCIOFileTransformPluginFactory, {}, {});
-
-static std::string
-supportedFormats()
-{
-    std::ostringstream os;
-
-    os << "Supported formats:\n";
-    for(int i=0; i<OCIO::FileTransform::getNumFormats(); ++i)
-    {
-        const char* name = OCIO::FileTransform::getFormatNameByIndex(i);
-        const char* exten = OCIO::FileTransform::getFormatExtensionByIndex(i);
-        os << "\n." << exten << " (" << name << ")";
-    }
-    
-    return os.str();
-}
+mDeclarePluginFactory(OCIOLogConvertPluginFactory, {}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void OCIOFileTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void OCIOLogConvertPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
-    desc.setPluginDescription(std::string(kPluginDescription) + "\n\n" + supportedFormats());
+    desc.setPluginDescription(kPluginDescription);
 
     // add the supported contexts
     desc.addSupportedContext(eContextGeneral);
@@ -590,9 +567,8 @@ void OCIOFileTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     // Source clip only in the filter context
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -622,56 +598,69 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    StringParamDescriptor *file = desc.defineStringParam(kFileParamName);
-    file->setLabels(kFileParamLabel, kFileParamLabel, kFileParamLabel);
-    file->setHint(std::string(kFileParamHint) + "\n\n" + supportedFormats());
-    file->setStringType(eStringTypeFilePath);
-    page->addChild(*file);
+    ////////// OCIO config file
+    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
+    ocioConfigFileParam->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
+    ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
+    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    ocioConfigFileParam->setAnimates(true);
+    desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
+    // the OCIO config can only be set in a portable fashion using the environment variable.
+    // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
+    // disable it, and set the default from the env variable.
+    assert(OFX::getImageEffectHostDescription());
+    ocioConfigFileParam->setEnabled(true);
+    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    page->addChild(*ocioConfigFileParam);
 
-    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kReloadParamName);
-    reload->setLabels(kReloadParamLabel, kReloadParamLabel, kReloadParamLabel);
-    reload->setHint(kReloadParamHint);
-    page->addChild(*reload);
+    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
+    pb->setLabels(kOCIOHelpButtonLabel, kOCIOHelpButtonLabel, kOCIOHelpButtonLabel);
+    pb->setHint(kOCIOHelpButtonHint);
+    page->addChild(*pb);
 
-    IntParamDescriptor *version = desc.defineIntParam(kVersionParamName);
-    version->setIsSecret(true);
-    version->setDefault(1);
-    page->addChild(*version);
+    ChoiceParamDescriptor *mode = desc.defineChoiceParam(kModeParamName);
+    mode->setLabels(kModeParamLabel, kModeParamLabel, kModeParamLabel);
+    mode->setHint(kModeParamHint);
+    mode->appendOption(kModeParamChoiceLogToLin);
+    mode->appendOption(kModeParamChoiceLinToLog);
+    page->addChild(*mode);
 
-    StringParamDescriptor *cccid = desc.defineStringParam(kCCCIDParamName);
-    cccid->setLabels(kCCCIDParamLabel, kCCCIDParamLabel, kCCCIDParamLabel);
-    cccid->setHint(kCCCIDParamHint);
-    page->addChild(*cccid);
-
-    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kDirectionParamName);
-    direction->setLabels(kDirectionParamLabel, kDirectionParamLabel, kDirectionParamLabel);
-    direction->setHint(kDirectionParamHint);
-    direction->appendOption(kDirectionParamChoiceForward);
-    direction->appendOption(kDirectionParamChoiceInverse);
-    page->addChild(*direction);
-
-    ChoiceParamDescriptor *interpolation = desc.defineChoiceParam(kInterpolationParamName);
-    interpolation->setLabels(kInterpolationParamLabel, kInterpolationParamLabel, kInterpolationParamLabel);
-    interpolation->setHint(kInterpolationParamHint);
-    interpolation->appendOption(kInterpolationParamChoiceNearest);
-    interpolation->appendOption(kInterpolationParamChoiceLinear);
-    interpolation->appendOption(kInterpolationParamChoiceTetrahedral);
-    interpolation->appendOption(kInterpolationParamChoiceBest);
-    interpolation->setDefault(1);
-    page->addChild(*interpolation);
+    char* file = std::getenv("OCIO");
+    OCIO::ConstConfigRcPtr config;
+    if (file != NULL) {
+        gWasOCIOEnvVarFound = true;
+        ocioConfigFileParam->setDefault(file);
+        //Add choices
+        try {
+            config = OCIO::Config::CreateFromFile(file);
+        } catch (OCIO::Exception &e) {
+        }
+    }
+    if (!config) {
+        if (file == NULL) {
+            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set an OCIO environnement variable");
+        } else {
+            std::string s("ERROR: Invalid OCIO configuration '");
+            s += file;
+            s += '\'';
+            ocioConfigFileParam->setDefault(s);
+        }
+        mode->setEnabled(false);
+        gWasOCIOEnvVarFound = false;
+    }
 
     ofxsMaskMixDescribeParams(desc, page);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OCIOFileTransformPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+ImageEffect* OCIOLogConvertPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new OCIOFileTransformPlugin(handle);
+    return new OCIOLogConvertPlugin(handle);
 }
 
 
-void getOCIOFileTransformPluginID(OFX::PluginFactoryArray &ids)
+void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
 {
-    static OCIOFileTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
