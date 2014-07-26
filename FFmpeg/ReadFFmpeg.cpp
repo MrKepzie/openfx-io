@@ -187,14 +187,17 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
 
 bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
     
-    ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
+    ///The ffmpegFile might not have been created so far because the instance changed action was still not called
     if(!_ffmpegFile) {
-        setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
-        return true;
+        _ffmpegFile = new FFmpeg::File(filename);
+        if (!_ffmpegFile->isValid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+            return false;
+        }
     }
 
     
-    if(!FFmpeg::isImageFile(filename)){
+    if (!FFmpeg::isImageFile(filename)) {
         
         int width,height,frames;
         double ap;
@@ -202,7 +205,7 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
         range.min = 0;
         range.max = frames - 1;
         return true;
-    }else{
+    } else {
         return false;
     }
     
