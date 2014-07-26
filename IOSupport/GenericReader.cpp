@@ -57,22 +57,91 @@
 #include "GenericOCIO.h"
 #include "IOUtility.h"
 
+#define kReaderGrouping "Image/Readers"
+
 // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
 #define kReaderFileParamName "filename"
-#define kReaderProxyFileParamName "proxy"
-#define kReaderProxyScaleFileParamName "proxyScale"
-#define kReaderCustomScaleParamName "customScale"
-#define kReaderMissingFrameParamName "onMissingFrame"
-#define kReaderFrameModeParamName "frameMode"
-#define kReaderTimeOffsetParamName "timeOffset"
-#define kReaderStartingFrameParamName "startingFrame"
-#define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
+#define kReaderFileParamLabel "File"
+#define kReaderFileParamHint "The input image sequence/video stream file(s)."
 
+#define kReaderProxyFileParamName "proxy"
+#define kReaderProxyFileParamLabel "Proxy file"
+#define kReaderProxyFileParamHint \
+"Filename of the proxy images. They will be used instead of the images read from the File parameter " \
+"when the proxy mode (downscaling of the images) is activated."
+
+#define kReaderProxyScaleFileParamName "proxyScale"
+#define kReaderProxyScaleFileParamLabel "Proxy scale"
+#define kReaderProxyScaleFileParamHint \
+"The scale of the proxy images. By default it will be automatically computed out of the " \
+"images headers when you set the proxy file(s) path. When the render scale (proxy) is set to " \
+"a scale lower or equal to this value then the proxy image files will be used instead of the " \
+"original images. You can change this parameter by checking the \"Custom scale\" checkbox " \
+"so that you can change the scale at which the proxy images should be used instead of the original images."
+
+#define kReaderCustomScaleParamName "customScale"
+#define kReaderCustomScaleParamLabel "Custom scale"
+#define kReaderCustomScaleParamHint \
+"Check to enable the Proxy scale edition."
+
+#define kReaderMissingFrameParamName "onMissingFrame"
+#define kReaderMissingFrameParamLabel "On Missing Frame"
+#define kReaderMissingFrameParamHint \
+"What to do when a frame is missing from the sequence/stream."
+
+#define kReaderFrameModeParamName "frameMode"
+#define kReaderFrameModeParamOptionStartingFrame "Starting frame"
+#define kReaderFrameModeParamOptionTimeOffset "Time offset"
+
+#define kReaderTimeOffsetParamName "timeOffset"
+#define kReaderTimeOffsetParamLabel "Time offset"
+#define kReaderTimeOffsetParamHint \
+"Offset applied to the sequence in frames."
+
+#define kReaderStartingFrameParamName "startingFrame"
+#define kReaderStartingFrameParamLabel "Starting time"
+#define kReaderStartingFrameParamHint \
+"At what time (on the timeline) should this sequence/video start."
+
+#define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
+#define kReaderOriginalFrameRangeParamLabel "Original range"
 
 #define kReaderFirstFrameParamName "firstFrame"
+#define kReaderFirstFrameParamLabel "First frame"
+#define kReaderFirstFrameParamHint \
+"The first frame this sequence/video should start at. This cannot be less " \
+" than the first frame of the sequence and cannot be greater than the last" \
+" frame of the sequence."
+
 #define kReaderLastFrameParamName "lastFrame"
+#define kReaderLastFrameParamLabel "Last frame"
+#define kReaderLastFrameParamHint \
+"The frame this sequence/video should end at. This cannot be lesser " \
+"than the first frame of the sequence and cannot be greater than the last " \
+"frame of the sequence."
+
 #define kReaderBeforeParamName "before"
+#define kReaderBeforeParamLabel "Before"
+#define kReaderBeforeParamHint \
+"What to do before the first frame of the sequence."
+
 #define kReaderAfterParamName "after"
+#define kReaderAfterParamLabel "After"
+#define kReaderAfterParamHint \
+"What to do after the last frame of the sequence."
+
+#define kReaderOptionHold "Hold"
+#define kReaderOptionHoldHint "While before the sequence, load the first frame."
+#define kReaderOptionLoop "Loop"
+#define kReaderOptionLoopHint "Repeat the sequence before the first frame"
+#define kReaderOptionBounce "Bounce"
+#define kReaderOptionBounceHint "Repeat the sequence in reverse before the first frame"
+#define kReaderOptionBlack "Black"
+#define kReaderOptionBlackHint "Render a black image"
+#define kReaderOptionError "Error"
+#define kReaderOptionErrorHint "Report an error"
+#define kReaderOptionNearest "Load nearest"
+#define kReaderOptionNearestHint "Try to load the nearest frame in the sequence/stream, if any."
 
 #define MISSING_FRAME_NEAREST_RANGE 100
 
@@ -149,14 +218,16 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
     }
 }
 
-GenericReaderPlugin::~GenericReaderPlugin(){
+GenericReaderPlugin::~GenericReaderPlugin()
+{
     delete _ocio;
 }
 
 
 
-bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range) {
-
+bool
+GenericReaderPlugin::getTimeDomain(OfxRangeD &range)
+{
     bool ret = getSequenceTimeDomainInternal(range,false);
     if (ret) {
         timeDomainFromSequenceTimeDomain(range, false);
@@ -164,8 +235,9 @@ bool GenericReaderPlugin::getTimeDomain(OfxRangeD &range) {
     return ret;
 }
 
-bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetOriginalFrameRange) {
-    
+bool
+GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetOriginalFrameRange)
+{
     ////first-off check if the original frame range param has valid values, in which
     ///case we don't bother calculating the frame range
     int originalMin,originalMax;
@@ -183,7 +255,7 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool ca
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
-    if(!getSequenceTimeDomain(filename,range)){
+    if (!getSequenceTimeDomain(filename,range)){
         if (_sequenceFromFiles.size() == 1) {
             range.min = range.max = 0;
         } else if (_sequenceFromFiles.size() > 1) {
@@ -210,7 +282,8 @@ bool GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool ca
 }
 
 
-void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange)
+void
+GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange)
 {
     ///the values held by GUI parameters
     int frameRangeFirst,frameRangeLast;
@@ -241,7 +314,8 @@ void GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool
 }
 
 
-static bool fileExists(const std::string& filename)
+static bool
+fileExists(const std::string& filename)
 {
     std::ifstream f(filename.c_str());
     bool ret = f.good();
@@ -249,7 +323,8 @@ static bool fileExists(const std::string& filename)
     return ret;
 }
 
-GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime)
+GenericReaderPlugin::eGetSequenceTimeRet
+GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime)
 {
     GenericReaderPlugin::eGetSequenceTimeRet ret;
     
@@ -272,7 +347,7 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
     int timeOffsetFromStart = t -  sequenceTimeDomain.min;
     
     ///if the time given is before the sequence
-    if( sequenceTime < sequenceTimeDomain.min) {
+    if (sequenceTime < sequenceTimeDomain.min) {
         /////if we're before the first frame
         int beforeChoice;
         _beforeFirst->getValue(beforeChoice);
@@ -284,8 +359,7 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                 sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 break;
-            case 2: //bounce
-            {
+            case 2: { //bounce
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
@@ -295,8 +369,7 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                     sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 }
-            }
-                break;
+            }   break;
             case 3: //black
                 break;
             case 4: //error
@@ -308,7 +381,7 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
         }
         assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
         ret = GenericReaderPlugin::eGetSequenceTimeBeforeSequence;
-    } else if( sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
+    } else if (sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
                                              /////if we're after the last frame
         int afterChoice;
         _afterLast->getValue(afterChoice);
@@ -321,8 +394,7 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                 sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
                 break;
-            case 2: //bounce
-            {
+            case 2: { //bounce
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
@@ -332,9 +404,7 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                     sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
                 }
-            }
-                
-                break;
+            }   break;
             case 3: //black
                 break;
             case 4: //error
@@ -352,8 +422,10 @@ GenericReaderPlugin::eGetSequenceTimeRet GenericReaderPlugin::getSequenceTime(do
     return ret;
 }
 
-GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
-                                                                                        std::string &filename,bool proxyFiles)
+GenericReaderPlugin::eGetFilenameRetCode
+GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
+                                               std::string &filename,
+                                               bool proxyFiles)
 {
 
     GenericReaderPlugin::eGetFilenameRetCode ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
@@ -375,11 +447,10 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
 
     ///if the frame is missing, do smthing according to the missing frame param
     if (!fs.is_open()) {
-        int missingChoice;
-        _missingFrameParam->getValue(missingChoice);
-        switch (missingChoice) {
-            case 0: // Load nearest
-            {
+        int missingFrame_i;
+        _missingFrameParam->getValue(missingFrame_i);
+        switch (missingFrame_i) {
+            case 0: { // Load nearest
                 int offset = -1;
                 while (!fs.is_open() && offset <= MISSING_FRAME_NEAREST_RANGE) {
                     _fileParam->getValueAtTime(sequenceTime + offset, filename);
@@ -415,18 +486,18 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
                 }
             }
                 break;
-            case 1: // Error
+            case 1: { // Error
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
                 ret = GenericReaderPlugin::eGetFileNameFailed;
-                break;
-            case 2: // Black image
+            }   break;
+            case 2: { // Black image
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 clearPersistentMessage();
                 ret = GenericReaderPlugin::eGetFileNameFailed;
-                break;
+            }   break;
         }
 
     }
@@ -435,30 +506,33 @@ GenericReaderPlugin::eGetFilenameRetCode GenericReaderPlugin::getFilenameAtSeque
     
 }
 
-void GenericReaderPlugin::getCurrentFileName(std::string& filename) {
+void
+GenericReaderPlugin::getCurrentFileName(std::string& filename)
+{
     _fileParam->getValue(filename);
 }
 
 /* set up and run a copy processor */
-static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-                         const OfxRectI &renderWindow,
-                         const void *srcPixelData,
-                         const OfxRectI& srcBounds,
-                         OFX::PixelComponentEnum srcPixelComponents,
-                         OFX::BitDepthEnum srcPixelDepth,
-                         int srcRowBytes,
-                         void *dstPixelData,
-                         const OfxRectI& dstBounds,
-                         OFX::PixelComponentEnum dstPixelComponents,
-                         OFX::BitDepthEnum dstPixelDepth,
-                         int dstRowBytes)
+static void
+setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+             const OfxRectI &renderWindow,
+             const void *srcPixelData,
+             const OfxRectI& srcBounds,
+             OFX::PixelComponentEnum srcPixelComponents,
+             OFX::BitDepthEnum srcPixelDepth,
+             int srcRowBytes,
+             void *dstPixelData,
+             const OfxRectI& dstBounds,
+             OFX::PixelComponentEnum dstPixelComponents,
+             OFX::BitDepthEnum dstPixelDepth,
+             int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     assert(srcBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= srcBounds.y2);
     assert(srcBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= srcBounds.x2);
 
     // make sure bit depths are sane
-    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+    if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -473,17 +547,18 @@ static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     processor.process();
 }
 
-void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
-                                        const void *srcPixelData,
-                                        const OfxRectI& srcBounds,
-                                        OFX::PixelComponentEnum srcPixelComponents,
-                                        OFX::BitDepthEnum srcPixelDepth,
-                                        int srcRowBytes,
-                                        void *dstPixelData,
-                                        const OfxRectI& dstBounds,
-                                        OFX::PixelComponentEnum dstPixelComponents,
-                                        OFX::BitDepthEnum dstBitDepth,
-                                        int dstRowBytes)
+void
+GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
+                                   const void *srcPixelData,
+                                   const OfxRectI& srcBounds,
+                                   OFX::PixelComponentEnum srcPixelComponents,
+                                   OFX::BitDepthEnum srcPixelDepth,
+                                   int srcRowBytes,
+                                   void *dstPixelData,
+                                   const OfxRectI& dstBounds,
+                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   OFX::BitDepthEnum dstBitDepth,
+                                   int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     assert(srcBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= srcBounds.y2);
@@ -495,22 +570,22 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         PixelCopier<float, 4, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         PixelCopier<float, 3, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         PixelCopier<float, 1, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 #else
-    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         copyPixels<float,4>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         copyPixels<float,3>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         copyPixels<float,1>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 #endif
@@ -519,13 +594,14 @@ void GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
 //halveImage<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, dstPixels, dstBounds, dstRowBytes
 
 template <typename PIX,int nComponents>
-void halve1DImage(const OfxRectI& nextRenderWindow,
-                  const PIX* srcPixels,
-                  const OfxRectI& srcBounds,
-                  int srcRowBytes,
-                  PIX* dstPixels,
-                  const OfxRectI& dstBounds,
-                  int dstRowBytes)
+static void
+halve1DImage(const OfxRectI& nextRenderWindow,
+             const PIX* srcPixels,
+             const OfxRectI& srcBounds,
+             int srcRowBytes,
+             PIX* dstPixels,
+             const OfxRectI& dstBounds,
+             int dstRowBytes)
 {
     int width = srcBounds.x2 - srcBounds.x1;
     int height = srcBounds.y2 - srcBounds.y1;
@@ -598,13 +674,14 @@ void halve1DImage(const OfxRectI& nextRenderWindow,
 
 
 template <typename PIX,int nComponents>
-void halveImage(const OfxRectI& nextRenderWindow,
-                const PIX* srcPixels,
-                const OfxRectI& srcBounds,
-                int srcRowBytes,
-                PIX* dstPixels,
-                const OfxRectI& dstBounds,
-                int dstRowBytes)
+static void
+halveImage(const OfxRectI& nextRenderWindow,
+           const PIX* srcPixels,
+           const OfxRectI& srcBounds,
+           int srcRowBytes,
+           PIX* dstPixels,
+           const OfxRectI& dstBounds,
+           int dstRowBytes)
 {
     int width = srcBounds.x2 - srcBounds.x1;
     int height = srcBounds.y2 - srcBounds.y1;
@@ -657,20 +734,21 @@ void halveImage(const OfxRectI& nextRenderWindow,
 }
 
 template <typename PIX,int nComponents>
-void buildMipMapLevel(OFX::ImageEffect* instance,
-                      const OfxRectI& originalRenderWindow,
-                      const OfxRectI& renderWindowFullRes,
-                      unsigned int level,
-                      const PIX* srcPixels,
-                      const OfxRectI& srcBounds,
-                      int srcRowBytes,
-                      PIX* dstPixels,
-                      const OfxRectI& dstBounds,
-                      int dstRowBytes)
+static void
+buildMipMapLevel(OFX::ImageEffect* instance,
+                 const OfxRectI& originalRenderWindow,
+                 const OfxRectI& renderWindowFullRes,
+                 unsigned int level,
+                 const PIX* srcPixels,
+                 const OfxRectI& srcBounds,
+                 int srcRowBytes,
+                 PIX* dstPixels,
+                 const OfxRectI& dstBounds,
+                 int dstRowBytes)
 {
     assert(level > 0);
-    
-    
+
+
     const PIX* previousImg = srcPixels;
     OFX::ImageMemory* mem = NULL;
     PIX* nextImg = NULL;
@@ -732,21 +810,22 @@ void buildMipMapLevel(OFX::ImageEffect* instance,
 
 
 
-void GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
-                                         const OfxRectI& renderWindow,
-                                         unsigned int levels,
-                                         const void* srcPixelData,
-                                         OFX::PixelComponentEnum srcPixelComponents,
-                                         OFX::BitDepthEnum srcPixelDepth,
-                                         const OfxRectI& srcBounds,
-                                         int srcRowBytes,
-                                         void* dstPixelData,
-                                         OFX::PixelComponentEnum dstPixelComponents,
-                                         OFX::BitDepthEnum dstPixelDepth,
-                                         const OfxRectI& dstBounds,
-                                         int dstRowBytes)
+void
+GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
+                                    const OfxRectI& renderWindow,
+                                    unsigned int levels,
+                                    const void* srcPixelData,
+                                    OFX::PixelComponentEnum srcPixelComponents,
+                                    OFX::BitDepthEnum srcPixelDepth,
+                                    const OfxRectI& srcBounds,
+                                    int srcRowBytes,
+                                    void* dstPixelData,
+                                    OFX::PixelComponentEnum dstPixelComponents,
+                                    OFX::BitDepthEnum dstPixelDepth,
+                                    const OfxRectI& dstBounds,
+                                    int dstRowBytes)
 {
-    
+
     assert(srcPixelData && dstPixelData);
     
     // do the rendering
@@ -754,13 +833,13 @@ void GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     
-    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         buildMipMapLevel<float, 4>(this,originalRenderWindow,renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds,srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
-    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         buildMipMapLevel<float, 3>(this,originalRenderWindow,renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds,srcRowBytes, (float*)dstPixelData, dstBounds,dstRowBytes);
-    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         buildMipMapLevel<float, 1>(this,originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
     } // switch
@@ -769,13 +848,14 @@ void GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
 }
 
 /* set up and run a copy processor */
-static void setupAndFillWithBlack(OFX::PixelProcessorFilterBase & processor,
-                         const OfxRectI &renderWindow,
-                         void *dstPixelData,
-                         const OfxRectI& dstBounds,
-                         OFX::PixelComponentEnum dstPixelComponents,
-                         OFX::BitDepthEnum dstPixelDepth,
-                         int dstRowBytes)
+static void
+setupAndFillWithBlack(OFX::PixelProcessorFilterBase & processor,
+                      const OfxRectI &renderWindow,
+                      void *dstPixelData,
+                      const OfxRectI& dstBounds,
+                      OFX::PixelComponentEnum dstPixelComponents,
+                      OFX::BitDepthEnum dstPixelDepth,
+                      int dstRowBytes)
 {
 
     // set the images
@@ -789,20 +869,21 @@ static void setupAndFillWithBlack(OFX::PixelProcessorFilterBase & processor,
 }
 
 
-void GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
-                   void *dstPixelData,
-                   const OfxRectI& dstBounds,
-                   OFX::PixelComponentEnum dstPixelComponents,
-                   OFX::BitDepthEnum dstBitDepth,
-                   int dstRowBytes)
+void
+GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
+                                   void *dstPixelData,
+                                   const OfxRectI& dstBounds,
+                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   OFX::BitDepthEnum dstBitDepth,
+                                   int dstRowBytes)
 {
-    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         BlackFiller<float, 4> fred(*this);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         BlackFiller<float, 3> fred(*this);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         BlackFiller<float, 1> fred(*this);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
@@ -810,8 +891,10 @@ void GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
 }
 
 
-bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
-    
+bool
+GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
+                                           OfxRectD &rod)
+{
     double sequenceTime;
     try {
         getSequenceTime(args.time,false,sequenceTime);
@@ -842,7 +925,8 @@ bool GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArg
     return true;
 }
 
-void GenericReaderPlugin::render(const OFX::RenderArguments &args)
+void
+GenericReaderPlugin::render(const OFX::RenderArguments &args)
 {
     if (!_outputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -922,7 +1006,7 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     // are we in the image bounds
-    if(args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
+    if (args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
        args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
@@ -1033,7 +1117,9 @@ void GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 }
 
-void GenericReaderPlugin::inputFileChanged() {
+void
+GenericReaderPlugin::inputFileChanged()
+{
     std::string filename;
     _fileParam->getValue(filename);
     
@@ -1073,8 +1159,11 @@ void GenericReaderPlugin::inputFileChanged() {
    
 }
 
-void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    if(paramName == kReaderFileParamName) {
+void
+GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
+                                  const std::string &paramName)
+{
+    if (paramName == kReaderFileParamName) {
         if (args.reason != OFX::eChangeTime) {
             inputFileChanged();
         }
@@ -1106,7 +1195,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         bool enabled;
         _enableCustomScale->getValue(enabled);
         _proxyScale->setEnabled(enabled);
-    } else if( paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
+    } else if (paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
@@ -1118,13 +1207,13 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
          _settingFrameRange = true,
         _startingFrame->setValue(first + offset);
         _settingFrameRange = false;
-    } else if( paramName == kReaderLastFrameParamName && !_settingFrameRange) {
+    } else if (paramName == kReaderLastFrameParamName && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _firstFrame->setDisplayRange(first, last);
-    } else if( paramName == kReaderFrameModeParamName ) {
+    } else if (paramName == kReaderFrameModeParamName) {
         int mode;
         _frameMode->getValue(mode);
         switch (mode) {
@@ -1141,7 +1230,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
                 assert(false);
                 break;
         }
-    } else if( paramName == kReaderStartingFrameParamName && !_settingFrameRange) {
+    } else if (paramName == kReaderStartingFrameParamName && !_settingFrameRange) {
         
         ///recompute the timedomain
         OfxRangeD sequenceTimeDomain;
@@ -1159,7 +1248,7 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
         _timeOffset->setValue(startingFrame - firstFrame);
         _settingFrameRange = false;
         
-    } else if( paramName == kReaderTimeOffsetParamName && !_settingFrameRange) {
+    } else if (paramName == kReaderTimeOffsetParamName && !_settingFrameRange) {
         //also update the starting frame
         int offset;
         _timeOffset->getValue(offset);
@@ -1175,12 +1264,17 @@ void GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
     }
 }
 
-void GenericReaderPlugin::purgeCaches() {
+void
+GenericReaderPlugin::purgeCaches()
+{
     clearAnyCache();
     _ocio->purgeCaches();
 }
 
-bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime)
+bool
+GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args,
+                                OFX::Clip * &identityClip,
+                                double &identityTime)
 {
     if (!gHostIsNatron) {
         return false;
@@ -1223,7 +1317,10 @@ bool GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip
     }
 }
 
-OfxPointD GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time)
+OfxPointD
+GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
+                                      const std::string& proxyFileName,
+                                      OfxTime time)
 {
     OfxRectD originalRoD,proxyRoD;
     std::string error;
@@ -1244,9 +1341,11 @@ OfxPointD GenericReaderPlugin::detectProxyScale(const std::string& originalFileN
 
 using namespace OFX;
 
-void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
+void
+GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
+                      bool supportsTiles)
 {
-    desc.setPluginGrouping("Image/Readers");
+    desc.setPluginGrouping(kReaderGrouping);
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextReader);
@@ -1273,7 +1372,14 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles)
     desc.setRenderThreadSafety(OFX::eRenderFullySafe);
 }
 
-OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles)
+OFX::PageParamDescriptor *
+GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
+                                    OFX::ContextEnum /*context*/,
+                                    bool isVideoStreamPlugin,
+                                    bool supportsRGBA,
+                                    bool supportsRGB,
+                                    bool supportsAlpha,
+                                    bool supportsTiles)
 {
     gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     // make some pages and to things in
@@ -1309,9 +1415,9 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
 
     //////////Input file
     OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
-    fileParam->setLabels("File", "File", "File");
+    fileParam->setLabels(kReaderFileParamLabel, kReaderFileParamLabel, kReaderFileParamLabel);
     fileParam->setStringType(OFX::eStringTypeFilePath);
-    fileParam->setHint("The input image sequence/video stream file(s).");
+    fileParam->setHint(kReaderFileParamHint);
     fileParam->setAnimates(false);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     fileParam->setScriptName(kReaderFileParamName);
@@ -1320,10 +1426,8 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     //////////First-frame
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
-    firstFrameParam->setLabels("First frame", "First frame", "First frame");
-    firstFrameParam->setHint("The first frame this sequence/video should start at. This cannot be lesser "
-                             " than the first frame of the sequence and cannot be greater than the last"
-                             " frame of the sequence.");
+    firstFrameParam->setLabels(kReaderFirstFrameParamLabel, kReaderFirstFrameParamLabel, kReaderFirstFrameParamLabel);
+    firstFrameParam->setHint(kReaderFirstFrameParamHint);
     firstFrameParam->setDefault(0);
     firstFrameParam->setAnimates(true);
     firstFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
@@ -1331,23 +1435,21 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ///////////Before first
     OFX::ChoiceParamDescriptor* beforeFirstParam = desc.defineChoiceParam(kReaderBeforeParamName);
-    beforeFirstParam->setLabels("Before", "Before", "Before");
-    beforeFirstParam->setHint("What to do before the first frame of the sequence.");
-    beforeFirstParam->appendOption("hold","While before the sequence, load the first frame.");
-    beforeFirstParam->appendOption("loop","Repeat the sequence before the first frame");
-    beforeFirstParam->appendOption("bounce","Repeat the sequence in reverse before the first frame");
-    beforeFirstParam->appendOption("black","Render a black image");
-    beforeFirstParam->appendOption("error","Report an error");
+    beforeFirstParam->setLabels(kReaderBeforeParamLabel, kReaderBeforeParamLabel, kReaderBeforeParamLabel);
+    beforeFirstParam->setHint(kReaderBeforeParamHint);
+    beforeFirstParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+    beforeFirstParam->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+    beforeFirstParam->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+    beforeFirstParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+    beforeFirstParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
     beforeFirstParam->setAnimates(true);
     beforeFirstParam->setDefault(0);
     page->addChild(*beforeFirstParam);
     
     //////////Last-frame
     OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kReaderLastFrameParamName);
-    lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
-    lastFrameParam->setHint("The frame this sequence/video should end at. This cannot be lesser "
-                            " than the first frame of the sequence and cannot be greater than the last"
-                            " frame of the sequence.");
+    lastFrameParam->setLabels(kReaderLastFrameParamLabel, kReaderLastFrameParamLabel, kReaderLastFrameParamLabel);
+    lastFrameParam->setHint(kReaderLastFrameParamHint);
     lastFrameParam->setDefault(0);
     lastFrameParam->setAnimates(true);
     lastFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
@@ -1355,24 +1457,24 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ///////////After first
     OFX::ChoiceParamDescriptor* afterLastParam = desc.defineChoiceParam(kReaderAfterParamName);
-    afterLastParam->setLabels("After", "After", "After");
-    afterLastParam->setHint("What to do after the last frame of the sequence.");
-    afterLastParam->appendOption("hold","While after the sequence, load the last frame.");
-    afterLastParam->appendOption("loop","Repeat the sequence after the last frame");
-    afterLastParam->appendOption("bounce","Repeat the sequence in reverse after the last frame");
-    afterLastParam->appendOption("black","Render a black image");
-    afterLastParam->appendOption("error","Report an error");
+    afterLastParam->setLabels(kReaderAfterParamLabel, kReaderAfterParamLabel, kReaderAfterParamLabel);
+    afterLastParam->setHint(kReaderAfterParamHint);
+    afterLastParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+    afterLastParam->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+    afterLastParam->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+    afterLastParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+    afterLastParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
     afterLastParam->setAnimates(true);
     afterLastParam->setDefault(0);
     page->addChild(*afterLastParam);
     
     ///////////Missing frame choice
     OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
-    missingFrameParam->setLabels("On Missing Frame", "On Missing Frame", "On Missing Frame");
-    missingFrameParam->setHint("What to do when a frame is missing from the sequence/stream.");
-    missingFrameParam->appendOption("Load nearest","Tries to load the nearest frame in the sequence/stream if any.");
-    missingFrameParam->appendOption("Error","An error is reported.");
-    missingFrameParam->appendOption("Black image","A black image is rendered.");
+    missingFrameParam->setLabels(kReaderMissingFrameParamLabel, kReaderMissingFrameParamLabel, kReaderMissingFrameParamLabel);
+    missingFrameParam->setHint(kReaderMissingFrameParamHint);
+    missingFrameParam->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
+    missingFrameParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+    missingFrameParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
     missingFrameParam->setAnimates(true);
     missingFrameParam->setDefault(0); //< default to nearest frame.
     page->addChild(*missingFrameParam);
@@ -1380,8 +1482,8 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ///////////Frame-mode
     OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kReaderFrameModeParamName);
-    frameModeParam->appendOption("Starting frame");
-    frameModeParam->appendOption("Time offset");
+    frameModeParam->appendOption(kReaderFrameModeParamOptionStartingFrame);
+    frameModeParam->appendOption(kReaderFrameModeParamOptionTimeOffset);
     frameModeParam->setAnimates(true);
     frameModeParam->setDefault(0);
     frameModeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
@@ -1389,8 +1491,8 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ///////////Starting frame
     OFX::IntParamDescriptor* startingFrameParam = desc.defineIntParam(kReaderStartingFrameParamName);
-    startingFrameParam->setLabels("Starting time", "Starting time", "Starting time");
-    startingFrameParam->setHint("At what time (on the timeline) should this sequence/video start.");
+    startingFrameParam->setLabels(kReaderStartingFrameParamLabel, kReaderStartingFrameParamLabel, kReaderStartingFrameParamLabel);
+    startingFrameParam->setHint(kReaderStartingFrameParamHint);
     startingFrameParam->setDefault(0);
     startingFrameParam->setAnimates(true);
     startingFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
@@ -1398,8 +1500,8 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ///////////Time offset
     OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
-    timeOffsetParam->setLabels("Time offset", "Time offset", "Time offset");
-    timeOffsetParam->setHint("Offset applied to the sequence in frames.");
+    timeOffsetParam->setLabels(kReaderTimeOffsetParamLabel, kReaderTimeOffsetParamLabel, kReaderTimeOffsetParamLabel);
+    timeOffsetParam->setHint(kReaderTimeOffsetParamHint);
     timeOffsetParam->setDefault(0);
     timeOffsetParam->setAnimates(true);
     timeOffsetParam->setIsSecret(true);
@@ -1407,7 +1509,7 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ///////////Original frame range
     OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kReaderOriginalFrameRangeParamName);
-    originalFrameRangeParam->setLabels("Original range", "Original range", "Original range");
+    originalFrameRangeParam->setLabels(kReaderOriginalFrameRangeParamLabel, kReaderOriginalFrameRangeParamLabel, kReaderOriginalFrameRangeParamLabel);
     originalFrameRangeParam->setDefault(INT_MIN, INT_MAX);
     originalFrameRangeParam->setAnimates(true);
     originalFrameRangeParam->setIsSecret(true);
@@ -1417,10 +1519,9 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     //////////Input proxy file
     OFX::StringParamDescriptor* proxyFileParam = desc.defineStringParam(kReaderProxyFileParamName);
-    proxyFileParam->setLabels("Proxy file", "Proxy file", "Proxy file");
+    proxyFileParam->setLabels(kReaderProxyFileParamLabel, kReaderProxyFileParamLabel, kReaderProxyFileParamLabel);
     proxyFileParam->setStringType(OFX::eStringTypeFilePath);
-    proxyFileParam->setHint("Filename of the proxy images. They will be used instead of the images read from the File parameter "
-                       "when the proxy mode (downscaling of the images) is activated.");
+    proxyFileParam->setHint(kReaderProxyFileParamHint);
     proxyFileParam->setAnimates(!isVideoStreamPlugin);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
     proxyFileParam->setScriptName(kReaderProxyFileParamName);
@@ -1429,25 +1530,21 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
     
     ////Proxy file scale
     OFX::Double2DParamDescriptor* proxyScaleParam = desc.defineDouble2DParam(kReaderProxyScaleFileParamName);
-    proxyScaleParam->setLabels("Proxy scale", "Proxy scale", "Proxy scale");
+    proxyScaleParam->setLabels(kReaderProxyScaleFileParamLabel, kReaderProxyScaleFileParamLabel, kReaderProxyScaleFileParamLabel);
     proxyScaleParam->setDefault(1., 1.);
     proxyScaleParam->setIsSecret(true);
     proxyScaleParam->setEnabled(false);
-    proxyScaleParam->setHint("The scale of the proxy images. By default it will be automatically computed out of the "
-                             "images headers when you set the proxy file(s) path. When the render scale (proxy) is set to "
-                             "a scale lower or equal to this value then the proxy image files will be used instead of the "
-                             "original images. You can change this parameter by checking the \"Custom scale\" checkbox "
-                             "so that you can change the scale at which the proxy images should be used instead of the original images.");
+    proxyScaleParam->setHint(kReaderProxyScaleFileParamHint);
     proxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     proxyScaleParam->setAnimates(true);
     page->addChild(*proxyScaleParam);
     
     ///Enable custom proxy scale
     OFX::BooleanParamDescriptor* enableCustomScale = desc.defineBooleanParam(kReaderCustomScaleParamName);
-    enableCustomScale->setLabels("Custom scale", "Custom scale", "Custom scale");
+    enableCustomScale->setLabels(kReaderCustomScaleParamLabel, kReaderCustomScaleParamLabel, kReaderCustomScaleParamLabel);
     enableCustomScale->setIsSecret(true);
     enableCustomScale->setDefault(false);
-    enableCustomScale->setHint("Check to enable the Proxy scale edition.");
+    enableCustomScale->setHint(kReaderCustomScaleParamHint);
     enableCustomScale->setAnimates(true);
     enableCustomScale->setEvaluateOnChange(false);
     page->addChild(*enableCustomScale);
@@ -1456,7 +1553,13 @@ OFX::PageParamDescriptor * GenericReaderDescribeInContextBegin(OFX::ImageEffectD
 }
 
 
-void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault) {
+void
+GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
+                                  OFX::ContextEnum context,
+                                  OFX::PageParamDescriptor* page,
+                                  const char* inputSpaceNameDefault,
+                                  const char* outputSpaceNameDefault)
+{
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 }

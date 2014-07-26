@@ -89,11 +89,36 @@
 
 #include "GenericOCIO.h"
 
+#define kWriterGrouping "Image/Writers"
+
 // in the Writer context, the script name must be "filename", @see kOfxImageEffectContextWriter
 #define kWriterFileParamName "filename"
+#define kWriterFileParamLabel "File"
+#define kWriterFileParamHint \
+"The output image sequence/video stream file(s). " \
+"The string must match the following format: " \
+"path/sequenceName###.ext where the number of " \
+"# (hashes) will define the number of digits to append to each " \
+"file. For example path/mySequence###.jpg will be translated to " \
+"path/mySequence000.jpg, path/mySequence001.jpg, etc. " \
+"By default the plugin will append as many digits as necessary (if you have 11 frames, " \
+"there will be at least 2 digits). The file name may not contain any # (hash)."
+
 #define kWriterFrameRangeChoiceParamName "frameRange"
+#define kWriterFrameRangeChoiceParamLabel "Frame range"
+#define kWriterFrameRangeChoiceParamHint "What frame range should be rendered."
+#define kWriterFrameRangeChoiceParamOptionUnion "Union of input ranges"
+#define kWriterFrameRangeChoiceParamOptionUnionHint "The union of all inputs frame ranges will be rendered."
+#define kWriterFrameRangeChoiceParamOptionBounds "Timeline bounds"
+#define kWriterFrameRangeChoiceParamOptionBoundsHint "The frame range delimited by the timeline bounds will be rendered."
+#define kWriterFrameRangeChoiceParamOptionManual "Manual"
+#define kWriterFrameRangeChoiceParamOptionManualHint "The frame range will be the one defined by the first frame and last frame parameters."
+
 #define kWriterFirstFrameParamName "firstFrame"
+#define kWriterFirstFrameParamLabel "First frame"
+
 #define kWriterLastFrameParamName "lastFrame"
+#define kWriterLastFrameParamLabel "Last frame"
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -131,10 +156,13 @@ GenericWriterPlugin::~GenericWriterPlugin()
     delete _ocio;
 }
 
-static std::string filenameFromPattern(const std::string& pattern,int frameIndex) {
+static std::string
+filenameFromPattern(const std::string& pattern,
+                    int frameIndex)
+{
     std::string ret = pattern;
     size_t lastDot = pattern.find_last_of('.');
-    if(lastDot == std::string::npos){
+    if (lastDot == std::string::npos){
         ///the filename has not extension, return an empty str
         return "";
     }
@@ -177,14 +205,15 @@ static std::string filenameFromPattern(const std::string& pattern,int frameIndex
     return ret;
 }
 
-void GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string& filename)
+void
+GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string& filename)
 {
     _fileParam->getValue(filename);
     filename = filenameFromPattern(filename, time);
     
     ///find out whether we support this extension...
     size_t sepPos = filename.find_last_of('.');
-    if(sepPos == std::string::npos){ //we reached the start of the file, return false because we can't determine from the extension
+    if (sepPos == std::string::npos){ //we reached the start of the file, return false because we can't determine from the extension
         setPersistentMessage(OFX::Message::eMessageError, "", "Invalid file name");
         return;
     }
@@ -221,7 +250,7 @@ void GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string
     
     ////if the file extension corresponds to a video file, remove file digits that were
     ////added to the file path in order to write into the same file.
-    if(!isImageFile(ext)){
+    if (!isImageFile(ext)) {
         ///find the position of the first digit
         size_t firstDigitPos = sepPos;
         --firstDigitPos;
@@ -235,7 +264,8 @@ void GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string
 
 }
 
-void GenericWriterPlugin::render(const OFX::RenderArguments &args)
+void
+GenericWriterPlugin::render(const OFX::RenderArguments &args)
 {
     if (!_inputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -336,7 +366,8 @@ void GenericWriterPlugin::render(const OFX::RenderArguments &args)
 }
 
 
-void GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments &args)
+void
+GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments &args)
 {
     std::string filename;
     getOutputFileNameAndExtension(args.frameRange.min, filename);
@@ -355,7 +386,8 @@ void GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArgu
 }
 
 
-void GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &args)
+void
+GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &args)
 {
     endEncode(args);
 }
@@ -367,23 +399,24 @@ void GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArgument
 // basic plugin render function, just a skelington to instantiate templates from
 
 /* set up and run a copy processor */
-static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-                         const OfxRectI &renderWindow,
-                         const void *srcPixelData,
-                         const OfxRectI& srcBounds,
-                         OFX::PixelComponentEnum srcPixelComponents,
-                         OFX::BitDepthEnum srcPixelDepth,
-                         int srcRowBytes,
-                         void *dstPixelData,
-                         const OfxRectI& dstBounds,
-                         OFX::PixelComponentEnum dstPixelComponents,
-                         OFX::BitDepthEnum dstPixelDepth,
-                         int dstRowBytes)
+static void
+setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+             const OfxRectI &renderWindow,
+             const void *srcPixelData,
+             const OfxRectI& srcBounds,
+             OFX::PixelComponentEnum srcPixelComponents,
+             OFX::BitDepthEnum srcPixelDepth,
+             int srcRowBytes,
+             void *dstPixelData,
+             const OfxRectI& dstBounds,
+             OFX::PixelComponentEnum dstPixelComponents,
+             OFX::BitDepthEnum dstPixelDepth,
+             int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
 
     // make sure bit depths are sane
-    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+    if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -398,17 +431,18 @@ static void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     processor.process();
 }
 
-void GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
-                                        const void *srcPixelData,
-                                        const OfxRectI& srcBounds,
-                                        OFX::PixelComponentEnum srcPixelComponents,
-                                        OFX::BitDepthEnum srcPixelDepth,
-                                        int srcRowBytes,
-                                        void *dstPixelData,
-                                        const OfxRectI& dstBounds,
-                                        OFX::PixelComponentEnum dstPixelComponents,
-                                        OFX::BitDepthEnum dstBitDepth,
-                                        int dstRowBytes)
+void
+GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
+                                   const void *srcPixelData,
+                                   const OfxRectI& srcBounds,
+                                   OFX::PixelComponentEnum srcPixelComponents,
+                                   OFX::BitDepthEnum srcPixelDepth,
+                                   int srcRowBytes,
+                                   void *dstPixelData,
+                                   const OfxRectI& dstBounds,
+                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   OFX::BitDepthEnum dstBitDepth,
+                                   int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
 
@@ -416,33 +450,36 @@ void GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    if(dstPixelComponents == OFX::ePixelComponentRGBA) {
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         PixelCopier<float, 4, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if(dstPixelComponents == OFX::ePixelComponentRGB) {
+    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         PixelCopier<float, 3, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if(dstPixelComponents == OFX::ePixelComponentAlpha) {
+    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         PixelCopier<float, 1, 1, false> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 }
 
-bool GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod){
-    
+bool
+GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod)
+{
     ///get the RoD of the input clip
     rod = _inputClip->getRegionOfDefinition(args.time);
     return true;
 }
 
 
-bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
+bool
+GenericWriterPlugin::getTimeDomain(OfxRangeD &range)
+{
     int choice;
     _frameRange->getValue(choice);
     if (choice == 0) {
         ///let the default be applied
         return false;
-    } else if(choice == 1) {
+    } else if (choice == 1) {
         timeLineGetBounds(range.min, range.max);
         return true;
     } else {
@@ -457,18 +494,20 @@ bool GenericWriterPlugin::getTimeDomain(OfxRangeD &range){
     }
 }
 
-void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
-    if(paramName == kWriterFrameRangeChoiceParamName){
+void
+GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
+{
+    if (paramName == kWriterFrameRangeChoiceParamName) {
         int choice;
         double first,last;
         timeLineGetBounds(first,last);
         _frameRange->getValue(choice);
-        if(choice == 2){
+        if (choice == 2) {
             _firstFrame->setIsSecret(false);
             _firstFrame->setValue(first);
             _lastFrame->setIsSecret(false);
             _lastFrame->setValue(last);
-        }else{
+        } else {
             _firstFrame->setIsSecret(true);
             _lastFrame->setIsSecret(true);
         }
@@ -484,7 +523,9 @@ void GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, con
 }
 
 
-void GenericWriterPlugin::purgeCaches() {
+void
+GenericWriterPlugin::purgeCaches()
+{
     clearAnyCache();
     _ocio->purgeCaches();
 }
@@ -498,8 +539,10 @@ using namespace OFX;
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
-void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
-    desc.setPluginGrouping("Image/Writers");
+void
+GenericWriterDescribe(OFX::ImageEffectDescriptor &desc)
+{
+    desc.setPluginGrouping(kWriterGrouping);
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextWriter);
@@ -527,7 +570,8 @@ void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc){
  * You should call the base-class version at the end like this:
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
-PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
+PageParamDescriptor*
+GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
 {
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -560,16 +604,9 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
 
     //////////Output file
     OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kWriterFileParamName);
-    fileParam->setLabels("File", "File", "File");
+    fileParam->setLabels(kWriterFileParamLabel, kWriterFileParamLabel, kWriterFileParamLabel);
     fileParam->setStringType(OFX::eStringTypeFilePath);
-    fileParam->setHint("The output image sequence/video stream file(s)."
-                       "The string must match the following format: "
-                       "path/sequenceName###.ext where the number of"
-                       " # characters will define the number of digits to append to each"
-                       " file. For example path/mySequence###.jpg will be translated to"
-                       " path/mySequence000.jpg, path/mySequence001.jpg, etc..."
-                       " By default the plugin will append digits on demand (i.e: if you have 11 frames"
-                       " there will be 2 digits). You don't even need to provide the # character.");
+    fileParam->setHint(kWriterFileParamHint);
     // in the Writer context, the script name should be "filename", for consistency with the reader nodes @see kOfxImageEffectContextReader
     fileParam->setScriptName(kWriterFileParamName);
     fileParam->setAnimates(!isVideoStreamPlugin);
@@ -583,25 +620,25 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
 
     ///////////Frame range choosal
     OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
-    frameRangeChoiceParam->setLabels("Frame range", "Frame range", "Frame range");
-    frameRangeChoiceParam->appendOption("Union of input ranges","The union of all inputs frame ranges will be rendered.");
-    frameRangeChoiceParam->appendOption("Timeline bounds","The frame range delimited by the timeline bounds will be rendered.");
-    frameRangeChoiceParam->appendOption("Manual","The frame range will be the one defined by the first frame and last frame parameters.");
+    frameRangeChoiceParam->setLabels(kWriterFrameRangeChoiceParamLabel, kWriterFrameRangeChoiceParamLabel, kWriterFrameRangeChoiceParamLabel);
+    frameRangeChoiceParam->setHint(kWriterFrameRangeChoiceParamHint);
+    frameRangeChoiceParam->appendOption(kWriterFrameRangeChoiceParamOptionUnion, kWriterFrameRangeChoiceParamOptionUnionHint);
+    frameRangeChoiceParam->appendOption(kWriterFrameRangeChoiceParamOptionBounds, kWriterFrameRangeChoiceParamOptionBoundsHint);
+    frameRangeChoiceParam->appendOption(kWriterFrameRangeChoiceParamOptionManual, kWriterFrameRangeChoiceParamOptionManualHint);
     frameRangeChoiceParam->setAnimates(true);
-    frameRangeChoiceParam->setHint("What frame range should be rendered.");
     frameRangeChoiceParam->setDefault(0);
     page->addChild(*frameRangeChoiceParam);
     
     /////////////First frame
     OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kWriterFirstFrameParamName);
-    firstFrameParam->setLabels("First frame", "First frame", "First frame");
+    firstFrameParam->setLabels(kWriterFirstFrameParamLabel, kWriterFirstFrameParamLabel, kWriterFirstFrameParamLabel);
     firstFrameParam->setIsSecret(true);
     firstFrameParam->setAnimates(true);
     page->addChild(*firstFrameParam);
 
     ////////////Last frame
     OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kWriterLastFrameParamName);
-    lastFrameParam->setLabels("Last frame", "Last frame", "Last frame");
+    lastFrameParam->setLabels(kWriterLastFrameParamLabel, kWriterLastFrameParamLabel, kWriterLastFrameParamLabel);
     lastFrameParam->setIsSecret(true);
     lastFrameParam->setAnimates(true);
     page->addChild(*lastFrameParam);
@@ -610,7 +647,8 @@ PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescrip
     return page;
 }
 
-void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &/*desc*/, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor* /*page*/)
+void
+GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &/*desc*/, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor* /*page*/)
 {
 }
 
