@@ -1394,7 +1394,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     ChoiceParamDescriptor *aChannel = desc.defineChoiceParam(kAChannelParamName);
     aChannel->setLabels(kAChannelParamLabel, kAChannelParamLabel, kAChannelParamLabel);
-    aChannel->setHint(kBChannelParamHint);
+    aChannel->setHint(kAChannelParamHint);
     appendDefaultChannelList(aChannel);
     aChannel->setAnimates(true);
     aChannel->setDefault(1); // opaque by default
