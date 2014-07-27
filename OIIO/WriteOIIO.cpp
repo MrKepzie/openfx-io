@@ -296,7 +296,8 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (!output.get()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
+        // output is NULL
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot create output file ")+filename);
         return;
     }
     
