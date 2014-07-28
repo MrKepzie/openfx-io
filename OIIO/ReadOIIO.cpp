@@ -47,7 +47,7 @@
 #include <fstream>
 #include <cmath>
 #include <cstddef>
-
+#include <climits>
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
 
