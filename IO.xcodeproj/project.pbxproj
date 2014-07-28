@@ -172,6 +172,10 @@
 		1E90F4181982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E90F4151982C04B00BB8B6D /* OCIOLogConvert.cpp */; };
 		1E90F4191982C04B00BB8B6D /* OCIOLogConvert.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E90F4161982C04B00BB8B6D /* OCIOLogConvert.h */; };
 		1E90F41A1982C04B00BB8B6D /* OCIOLogConvert.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E90F4161982C04B00BB8B6D /* OCIOLogConvert.h */; };
+		1E9B5EA81986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EA61986406A0095C8AA /* OCIOCDLTransform.cpp */; };
+		1E9B5EA91986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EA61986406A0095C8AA /* OCIOCDLTransform.cpp */; };
+		1E9B5EAA1986406A0095C8AA /* OCIOCDLTransform.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E9B5EA71986406A0095C8AA /* OCIOCDLTransform.h */; };
+		1E9B5EAB1986406A0095C8AA /* OCIOCDLTransform.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E9B5EA71986406A0095C8AA /* OCIOCDLTransform.h */; };
 		1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
 		1ED1A80E18BB4FC200E095DD /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */; };
 		1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
@@ -381,6 +385,8 @@
 		1E90F3FE1982A0E800BB8B6D /* ofxsMaskMix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsMaskMix.h; sourceTree = "<group>"; };
 		1E90F4151982C04B00BB8B6D /* OCIOLogConvert.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOLogConvert.cpp; sourceTree = "<group>"; };
 		1E90F4161982C04B00BB8B6D /* OCIOLogConvert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIOLogConvert.h; sourceTree = "<group>"; };
+		1E9B5EA61986406A0095C8AA /* OCIOCDLTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOCDLTransform.cpp; sourceTree = "<group>"; };
+		1E9B5EA71986406A0095C8AA /* OCIOCDLTransform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIOCDLTransform.h; sourceTree = "<group>"; };
 		1EA1571C18A642C30054B814 /* IOUtility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOUtility.h; sourceTree = "<group>"; };
 		1EC04CAF193C8E4100E47D42 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
@@ -611,6 +617,8 @@
 		1ED4999D18A00B49008A2D91 /* OCIO */ = {
 			isa = PBXGroup;
 			children = (
+				1E9B5EA61986406A0095C8AA /* OCIOCDLTransform.cpp */,
+				1E9B5EA71986406A0095C8AA /* OCIOCDLTransform.h */,
 				1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */,
 				1ED499D418A00BE1008A2D91 /* OCIOColorSpace.h */,
 				1E0524AB19813C5B00260F03 /* OCIOFileTransform.cpp */,
@@ -749,6 +757,7 @@
 				1E2F4DB1189295F600F4CE25 /* ofxDialog.h in Headers */,
 				1E2F4DB2189295F600F4CE25 /* GenericWriter.h in Headers */,
 				1E2F4DB3189295F600F4CE25 /* FFmpegHandler.h in Headers */,
+				1E9B5EAA1986406A0095C8AA /* OCIOCDLTransform.h in Headers */,
 				1E0524AF19813C5B00260F03 /* OCIOFileTransform.h in Headers */,
 				1E2F4DB4189295F600F4CE25 /* ofxProgress.h in Headers */,
 				1E2F4DB5189295F600F4CE25 /* GenericReader.h in Headers */,
@@ -811,6 +820,7 @@
 				1E0524B019813C5B00260F03 /* OCIOFileTransform.h in Headers */,
 				1ED499B918A00B66008A2D91 /* ofxKeySyms.h in Headers */,
 				1ED499BA18A00B66008A2D91 /* ofxMemory.h in Headers */,
+				1E9B5EAB1986406A0095C8AA /* OCIOCDLTransform.h in Headers */,
 				1ED499BB18A00B66008A2D91 /* ofxMessage.h in Headers */,
 				1ED499BC18A00B66008A2D91 /* WriteOIIO.h in Headers */,
 				1ED499BD18A00B66008A2D91 /* ofxMultiThread.h in Headers */,
@@ -1109,15 +1119,16 @@
 				1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */,
 				1E2F4D9C189295F600F4CE25 /* FFmpegHandler.cpp in Sources */,
 				1E2F4DA7189295F600F4CE25 /* WriteFFmpeg.cpp in Sources */,
+				1E9B5EA81986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
+				1E0524AD19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
+				1E90F4171982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,
 				1E2F4DDE1892977800F4CE25 /* ReadOIIO.cpp in Sources */,
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,
-				1E90F4171982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,
 				1E2F4DA0189295F600F4CE25 /* GenericOCIO.cpp in Sources */,
-				1E0524AD19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
 				D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */,
 				1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */,
 				1E2F4D9D189295F600F4CE25 /* ofxsCore.cpp in Sources */,
@@ -1156,6 +1167,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E9B5EA91986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E0524AE19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
 				1E90F4181982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,

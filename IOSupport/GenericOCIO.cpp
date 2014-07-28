@@ -374,6 +374,13 @@ OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const O
 }
 
 void
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform)
+{
+    _proc = config->getProcessor(transform);
+
+}
+
+void
 OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
 {
     assert(_dstBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= _dstBounds.x2);

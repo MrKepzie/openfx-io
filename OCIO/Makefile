@@ -1,4 +1,4 @@
-PLUGINOBJECTS = OCIOColorSpace.o OCIOFileTransform.o OCIOLogConvert.o PluginRegistration.o
+PLUGINOBJECTS = OCIOCDLTransform.o OCIOColorSpace.o OCIOFileTransform.o OCIOLogConvert.o PluginRegistration.o
 PLUGINNAME = OCIO
 VPATH += ../IOSupport
 

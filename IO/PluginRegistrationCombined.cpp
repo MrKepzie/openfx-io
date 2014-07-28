@@ -5,6 +5,7 @@
 #include "WriteFFmpeg.h"
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
+#include "OCIOCDLTransform.h"
 #include "OCIOColorSpace.h"
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
@@ -35,6 +36,7 @@ namespace OFX
             static WritePFMPluginFactory p8("fr.inria.openfx:WritePFM", 1, 0);
             ids.push_back(&p8);
 #ifdef OFX_IO_USING_OCIO
+            getOCIOCDLTransformPluginID(ids);
             getOCIOColorSpacePluginID(ids);
             getOCIOFileTransformPluginID(ids);
             getOCIOLogConvertPluginID(ids);
