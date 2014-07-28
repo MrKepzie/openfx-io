@@ -323,10 +323,10 @@ fileExists(const std::string& filename)
     return ret;
 }
 
-GenericReaderPlugin::eGetSequenceTimeRet
+GenericReaderPlugin::GetSequenceTimeRetEnum
 GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime)
 {
-    GenericReaderPlugin::eGetSequenceTimeRet ret;
+    GenericReaderPlugin::GetSequenceTimeRetEnum ret;
     
     int timeOffset;
     _timeOffset->getValue(timeOffset);
@@ -422,13 +422,13 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
     return ret;
 }
 
-GenericReaderPlugin::eGetFilenameRetCode
+GenericReaderPlugin::GetFilenameRetCodeEnum
 GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                std::string &filename,
                                                bool proxyFiles)
 {
 
-    GenericReaderPlugin::eGetFilenameRetCode ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
+    GenericReaderPlugin::GetFilenameRetCodeEnum ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
     
@@ -903,7 +903,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     }
     std::string filename;
  
-    GenericReaderPlugin::eGetFilenameRetCode ret = getFilenameAtSequenceTime(sequenceTime, filename,true);
+    GenericReaderPlugin::GetFilenameRetCodeEnum ret = getFilenameAtSequenceTime(sequenceTime, filename,true);
     
     if (ret == GenericReaderPlugin::eGetFileNameFailed) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -946,7 +946,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     double sequenceTime;
-    GenericReaderPlugin::eGetSequenceTimeRet sequenceTimeRet;
+    GenericReaderPlugin::GetSequenceTimeRetEnum sequenceTimeRet;
     try {
         sequenceTimeRet = getSequenceTime(args.time,false,sequenceTime);
     } catch (const std::exception& e) {
@@ -1280,7 +1280,7 @@ GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args,
         return false;
     }
     double sequenceTime;
-    GenericReaderPlugin::eGetSequenceTimeRet ret;
+    GenericReaderPlugin::GetSequenceTimeRetEnum ret;
     try {
         ret = getSequenceTime(args.time,false,sequenceTime);
     } catch (const std::exception& e) {

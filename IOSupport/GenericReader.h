@@ -172,7 +172,7 @@ private:
      **/
     virtual bool isVideoStream(const std::string& filename) = 0;
     
-    enum eGetSequenceTimeRet {
+    enum GetSequenceTimeRetEnum {
         eGetSequenceTimeWithinSequence = 0,
         eGetSequenceTimeBeforeSequence,
         eGetSequenceTimeAfterSequence
@@ -182,10 +182,9 @@ private:
      * @param canSetOriginalFrameRange If false, the underlying call
      * cannot set the _originalFrameRange param values.
      */
-    eGetSequenceTimeRet getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTime(double t, bool canSetOriginalFrameRange, double &sequenceTime);
 
-    enum eGetFilenameRetCode
-    {
+    enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
         eGetFileNameReturnedFullRes,
         eGetFileNameReturnedProxy
@@ -194,7 +193,7 @@ private:
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    eGetFilenameRetCode getFilenameAtSequenceTime(double t, std::string &filename,bool proxyFiles);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, std::string &filename, bool proxyFiles);
     
     /**
      * @brief Initializes the params depending on the input file.
