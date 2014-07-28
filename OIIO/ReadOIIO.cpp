@@ -44,6 +44,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cmath>
 #include <cstddef>
 
@@ -234,21 +235,25 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _firstChannel = fetchIntParam(kFirstChannelParamName);
     assert(_outputComponents && _firstChannel);
 #endif
-
+    
 #ifdef OFX_READ_OIIO_NEWMENU
     std::string filename;
     int first,last;
     _originalFrameRange->getValue(first, last);
     
     ///Make sure to get a valid file name
-    _fileParam->getValueAtTime(first,filename);
-    if (!filename.empty()) {
-        updateSpec(filename);
-        buildChannelMenus();
-        setDefaultChannels();
-        // the channel values may be out of the menu range, but we don't care (we can't setValue() here)
-        ///Edit: Sure you can set Value : http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
-        ///The Create instance action is in the list of actions where you can set param values
+    if (first != INT_MIN) {
+        _fileParam->getValueAtTime(first,filename);
+        std::ifstream file(filename.c_str());
+        if (file.is_open()) {
+            file.close();
+            updateSpec(filename);
+            buildChannelMenus();
+            setDefaultChannels();
+            // the channel values may be out of the menu range, but we don't care (we can't setValue() here)
+            ///Edit: Sure you can set Value : http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
+            ///The Create instance action is in the list of actions where you can set param values
+        }
     }
 #endif
 }
