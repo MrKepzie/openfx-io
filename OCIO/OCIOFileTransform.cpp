@@ -265,7 +265,6 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
 
 OCIOFileTransformPlugin::~OCIOFileTransformPlugin()
 {
-
 }
 
 /* set up and run a copy processor */
@@ -510,11 +509,15 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 }
 
 bool
-OCIOFileTransformPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
+OCIOFileTransformPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
     std::string file;
     file_->getValue(file);
-    return file.empty();
+    if (file.empty()) {
+        identityClip = srcClip_;
+        return true;
+    }
+    return false;
 }
 
 void
@@ -626,6 +629,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     file->setLabels(kFileParamLabel, kFileParamLabel, kFileParamLabel);
     file->setHint(std::string(kFileParamHint) + "\n\n" + supportedFormats());
     file->setStringType(eStringTypeFilePath);
+    file->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*file);
 
     PushButtonParamDescriptor *reload = desc.definePushButtonParam(kReloadParamName);

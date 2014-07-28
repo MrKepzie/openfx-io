@@ -386,9 +386,13 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
 }
 
 bool
-OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &/*identityClip*/, double &/*identityTime*/)
+OCIOColorSpacePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
-    return _ocio->isIdentity(args.time);
+    if (_ocio->isIdentity(args.time)) {
+        identityClip = srcClip_;
+        return true;
+    }
+    return false;
 }
 
 void
