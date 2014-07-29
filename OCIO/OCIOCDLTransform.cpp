@@ -901,6 +901,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     file->setLabels(kFileParamLabel, kFileParamLabel, kFileParamLabel);
     file->setHint(kFileParamHint);
     file->setStringType(eStringTypeFilePath);
+    file->setFilePathExists(true);
     file->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*file);
 
@@ -923,6 +924,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     export_->setLabels(kExportParamLabel, kExportParamLabel, kExportParamLabel);
     export_->setHint(kExportParamHint);
     export_->setStringType(eStringTypeFilePath);
+    export_->setFilePathExists(false);
     export_->setEvaluateOnChange(false);
     export_->setIsPersistant(false);
     export_->setAnimates(false);

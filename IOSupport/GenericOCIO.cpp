@@ -760,6 +760,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     ocioConfigFileParam->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
     ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    ocioConfigFileParam->setFilePathExists(true);
     ocioConfigFileParam->setAnimates(true);
     desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
     // the OCIO config can only be set in a portable fashion using the environment variable.
@@ -767,7 +768,6 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     // disable it, and set the default from the env variable.
     assert(OFX::getImageEffectHostDescription());
     ocioConfigFileParam->setEnabled(true);
-    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
     page->addChild(*ocioConfigFileParam);
 
     ///////////Input Color-space

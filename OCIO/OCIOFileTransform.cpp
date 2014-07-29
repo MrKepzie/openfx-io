@@ -629,6 +629,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     file->setLabels(kFileParamLabel, kFileParamLabel, kFileParamLabel);
     file->setHint(std::string(kFileParamHint) + "\n\n" + supportedFormats());
     file->setStringType(eStringTypeFilePath);
+    file->setFilePathExists(true);
     file->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*file);
 

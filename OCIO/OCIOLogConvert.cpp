@@ -603,6 +603,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     ocioConfigFileParam->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
     ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
     ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
+    ocioConfigFileParam->setFilePathExists(true);
     ocioConfigFileParam->setAnimates(true);
     desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
     // the OCIO config can only be set in a portable fashion using the environment variable.
@@ -610,7 +611,6 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     // disable it, and set the default from the env variable.
     assert(OFX::getImageEffectHostDescription());
     ocioConfigFileParam->setEnabled(true);
-    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
     page->addChild(*ocioConfigFileParam);
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);

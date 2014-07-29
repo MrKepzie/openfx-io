@@ -1417,6 +1417,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
     fileParam->setLabels(kReaderFileParamLabel, kReaderFileParamLabel, kReaderFileParamLabel);
     fileParam->setStringType(OFX::eStringTypeFilePath);
+    fileParam->setFilePathExists(true);
     fileParam->setHint(kReaderFileParamHint);
     fileParam->setAnimates(false);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
@@ -1521,6 +1522,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     OFX::StringParamDescriptor* proxyFileParam = desc.defineStringParam(kReaderProxyFileParamName);
     proxyFileParam->setLabels(kReaderProxyFileParamLabel, kReaderProxyFileParamLabel, kReaderProxyFileParamLabel);
     proxyFileParam->setStringType(OFX::eStringTypeFilePath);
+    proxyFileParam->setFilePathExists(true);
     proxyFileParam->setHint(kReaderProxyFileParamHint);
     proxyFileParam->setAnimates(!isVideoStreamPlugin);
     // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader

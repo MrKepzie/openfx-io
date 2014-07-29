@@ -606,11 +606,11 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kWriterFileParamName);
     fileParam->setLabels(kWriterFileParamLabel, kWriterFileParamLabel, kWriterFileParamLabel);
     fileParam->setStringType(OFX::eStringTypeFilePath);
+    fileParam->setFilePathExists(false);
     fileParam->setHint(kWriterFileParamHint);
     // in the Writer context, the script name should be "filename", for consistency with the reader nodes @see kOfxImageEffectContextReader
     fileParam->setScriptName(kWriterFileParamName);
     fileParam->setAnimates(!isVideoStreamPlugin);
-    fileParam->setFilePathExists(false);
     desc.addClipPreferencesSlaveParam(*fileParam);
 
     page->addChild(*fileParam);
