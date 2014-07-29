@@ -389,7 +389,7 @@
 		1E9B5EA71986406A0095C8AA /* OCIOCDLTransform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIOCDLTransform.h; sourceTree = "<group>"; };
 		1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OIIOResize.cpp; sourceTree = "<group>"; };
 		1E9B5EAD19869F200095C8AA /* OIIOResize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OIIOResize.h; sourceTree = "<group>"; };
-		1E9B5EAE19869FAE0095C8AA /* ofxsResolution.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsResolution.h; sourceTree = "<group>"; };
+		1E9B5EAE19869FAE0095C8AA /* ofxsFormatResolution.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsFormatResolution.h; sourceTree = "<group>"; };
 		1EA1571C18A642C30054B814 /* IOUtility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOUtility.h; sourceTree = "<group>"; };
 		1EC04CAF193C8E4100E47D42 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
@@ -505,7 +505,7 @@
 				1E90F3FE1982A0E800BB8B6D /* ofxsMaskMix.h */,
 				1E82A75318C0CA160008C633 /* ofxsPixelProcessor.h */,
 				1EA1571C18A642C30054B814 /* IOUtility.h */,
-				1E9B5EAE19869FAE0095C8AA /* ofxsResolution.h */,
+				1E9B5EAE19869FAE0095C8AA /* ofxsFormatResolution.h */,
 			);
 			path = IOSupport;
 			sourceTree = "<group>";
