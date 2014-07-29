@@ -925,7 +925,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     export_->setLabels(kExportParamLabel, kExportParamLabel, kExportParamLabel);
     export_->setHint(kExportParamHint);
     export_->setStringType(eStringTypeFilePath);
-    export_->setFilePathExists(false);
+    export_->setFilePathExists(false); // necessary for output files
     export_->setEvaluateOnChange(false);
     export_->setIsPersistant(false);
     export_->setAnimates(false);

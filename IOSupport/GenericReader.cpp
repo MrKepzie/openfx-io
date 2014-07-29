@@ -242,7 +242,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
     ///case we don't bother calculating the frame range
     int originalMin,originalMax;
     _originalFrameRange->getValue(originalMin, originalMax);
-    if (originalMin != INT_MIN && originalMax != INT_MAX) {
+    if (originalMin != kOfxFlagInfiniteMin && originalMax != kOfxFlagInfiniteMax) {
         range.min = originalMin;
         range.max = originalMax;
         return true;
@@ -1138,7 +1138,7 @@ GenericReaderPlugin::inputFileChanged()
     
     clearPersistentMessage();
     //reset the original range param
-    _originalFrameRange->setValue(INT_MIN, INT_MAX);
+    _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     
     
     ///we don't pass the _frameRange range as we don't want to store the time domain too
@@ -1511,7 +1511,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Original frame range
     OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kReaderOriginalFrameRangeParamName);
     originalFrameRangeParam->setLabels(kReaderOriginalFrameRangeParamLabel, kReaderOriginalFrameRangeParamLabel, kReaderOriginalFrameRangeParamLabel);
-    originalFrameRangeParam->setDefault(INT_MIN, INT_MAX);
+    originalFrameRangeParam->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     originalFrameRangeParam->setAnimates(true);
     originalFrameRangeParam->setIsSecret(true);
     originalFrameRangeParam->setIsPersistant(false);
