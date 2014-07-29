@@ -584,6 +584,7 @@ void OCIOFileTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // add the supported contexts
     desc.addSupportedContext(eContextGeneral);
     desc.addSupportedContext(eContextFilter);
+    desc.addSupportedContext(eContextPaint);
 
     // add supported pixel depths
     desc.addSupportedBitDepth(OFX::eBitDepthFloat);
