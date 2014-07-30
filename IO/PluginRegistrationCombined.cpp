@@ -9,6 +9,7 @@
 #include "OCIOColorSpace.h"
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
+#include "OIIOText.h"
 #include "ReadPFM.h"
 #include "WritePFM.h"
 #ifndef _WIN32
@@ -41,6 +42,7 @@ namespace OFX
             getOCIOFileTransformPluginID(ids);
             getOCIOLogConvertPluginID(ids);
 #endif
+            // getOIIOTextPluginID(ids); //< not ready
 #ifndef _WINDOWS
             getRunScriptPluginID(ids);
 #endif
