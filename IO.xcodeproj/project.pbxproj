@@ -296,7 +296,6 @@
 		D74E62901875AAB500D8FA13 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D74E62911875AAB500D8FA13 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D74E62921875AAB500D8FA13 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
-		D780C41719898038002470C9 /* OIIOText.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D780C41519897F0E002470C9 /* OIIOText.cpp */; };
 		D780C41819898045002470C9 /* OIIOText.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D780C41519897F0E002470C9 /* OIIOText.cpp */; };
 		D780C44819899153002470C9 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
 		D780C44919899153002470C9 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -464,10 +463,8 @@
 		D74E62811875AAB500D8FA13 /* ofxTimeLine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxTimeLine.h; path = ../openfx/include/ofxTimeLine.h; sourceTree = "<group>"; };
 		D780C41519897F0E002470C9 /* OIIOText.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OIIOText.cpp; sourceTree = "<group>"; };
 		D780C41619897F0E002470C9 /* OIIOText.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OIIOText.h; sourceTree = "<group>"; };
-		D780C44119898E54002470C9 /* RunScript.ofx copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "RunScript.ofx copy-Info.plist"; path = "/Users/Lex/Development/openfx_stuff/openfx-io/RunScript.ofx copy-Info.plist"; sourceTree = "<absolute>"; };
 		D780C4431989913C002470C9 /* OIIOTextPluginRegistration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = OIIOTextPluginRegistration.cpp; sourceTree = "<group>"; };
 		D780C46B19899153002470C9 /* OIIOText.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIOText.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		D780C46C19899153002470C9 /* RunScript.ofx copy2-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "RunScript.ofx copy2-Info.plist"; path = "/Users/Lex/Development/openfx_stuff/openfx-io/RunScript.ofx copy2-Info.plist"; sourceTree = "<absolute>"; };
 		D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SequenceParsing.cpp; path = SequenceParsing/SequenceParsing.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -716,8 +713,6 @@
 				D74E62931875AABD00D8FA13 /* OpenFX */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
-				D780C44119898E54002470C9 /* RunScript.ofx copy-Info.plist */,
-				D780C46C19899153002470C9 /* RunScript.ofx copy2-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1229,7 +1224,6 @@
 				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E0524AD19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
 				1E90F4171982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,
-				D780C41719898038002470C9 /* OIIOText.cpp in Sources */,
 				1E2F4DDE1892977800F4CE25 /* ReadOIIO.cpp in Sources */,
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
