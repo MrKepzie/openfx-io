@@ -38,7 +38,7 @@
  */
 
 #include "OCIOCDLTransform.h"
-
+#include <cstdio>
 #include <OpenColorIO/OpenColorIO.h>
 
 #include "ofxsProcessing.H"
