@@ -195,6 +195,10 @@
 		1E9B5EF7198A2B9A0095C8AA /* OIIOText.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D780C41519897F0E002470C9 /* OIIOText.cpp */; };
 		1E9B5EFB198A3D040095C8AA /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E9B5EFA198A3D040095C8AA /* OpenGL.framework */; };
 		1E9B5EFC198A3D040095C8AA /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E9B5EFA198A3D040095C8AA /* OpenGL.framework */; };
+		1E9B5F70198A5A490095C8AA /* ofxsOGLTextRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */; };
+		1E9B5F71198A5A4B0095C8AA /* ofxsOGLTextRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */; };
+		1E9B5F72198A5A4F0095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
+		1E9B5F73198A5A510095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
 		1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
 		1ED1A80E18BB4FC200E095DD /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */; };
 		1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
@@ -470,6 +474,9 @@
 		1E9B5F33198A505E0095C8AA /* ofxsTransform3x3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsTransform3x3.h; sourceTree = "<group>"; };
 		1E9B5F34198A505E0095C8AA /* ofxsTransform3x3Processor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsTransform3x3Processor.h; sourceTree = "<group>"; };
 		1E9B5F35198A505E0095C8AA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+		1E9B5F6D198A557A0095C8AA /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		1E9B5F6E198A557A0095C8AA /* Makefile.master */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Makefile.master; sourceTree = "<group>"; };
+		1E9B5F6F198A557A0095C8AA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		1EA1571C18A642C30054B814 /* IOUtility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOUtility.h; sourceTree = "<group>"; };
 		1EC04CAF193C8E4100E47D42 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
@@ -761,7 +768,10 @@
 		D74E623B1875A79700D8FA13 = {
 			isa = PBXGroup;
 			children = (
+				1E9B5F6D198A557A0095C8AA /* LICENSE */,
+				1E9B5F6E198A557A0095C8AA /* Makefile.master */,
 				1EC04CAF193C8E4100E47D42 /* Makefile */,
+				1E9B5F6F198A557A0095C8AA /* README.md */,
 				1EDECBAA18B9F6BB0093B6FC /* RunScript */,
 				1E8B5D9C18B79E5700C31FDC /* PFM */,
 				1ED4999D18A00B49008A2D91 /* OCIO */,
@@ -1228,6 +1238,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E9B5F71198A5A4B0095C8AA /* ofxsOGLTextRenderer.cpp in Sources */,
 				1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */,
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
@@ -1248,6 +1259,7 @@
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,
 				1E2F4DA0189295F600F4CE25 /* GenericOCIO.cpp in Sources */,
 				D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */,
+				1E9B5F73198A5A510095C8AA /* ofxsOGLFontData.cpp in Sources */,
 				1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */,
 				1E2F4D9D189295F600F4CE25 /* ofxsCore.cpp in Sources */,
 				1E2F4D9E189295F600F4CE25 /* ofxsParams.cpp in Sources */,
@@ -1345,6 +1357,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E9B5F70198A5A490095C8AA /* ofxsOGLTextRenderer.cpp in Sources */,
 				1E00B3ED188EEBC5003BC7F3 /* ReadOIIO.cpp in Sources */,
 				1E00B3EF188EEBC5003BC7F3 /* WriteOIIO.cpp in Sources */,
 				D780C41819898045002470C9 /* OIIOText.cpp in Sources */,
@@ -1353,6 +1366,7 @@
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */,
+				1E9B5F72198A5A4F0095C8AA /* ofxsOGLFontData.cpp in Sources */,
 				1E74D8451891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8421891074000E9034B /* ofxsParams.cpp in Sources */,
@@ -1801,6 +1815,7 @@
 				1E9B5F39198A50980095C8AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		1ED499C918A00B66008A2D91 /* Build configuration list for PBXNativeTarget "OCIO.ofx" */ = {
 			isa = XCConfigurationList;

@@ -327,24 +327,24 @@ OCIOLogConvertPlugin::copyPixelData(double time,
     }
     if (masked && getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-            PixelCopier<float, 4, 1, true> fred(*this);
+            OFX::PixelCopier<float, 4, 1, true> fred(*this);
             setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-            PixelCopier<float, 3, 1, true> fred(*this);
+            OFX::PixelCopier<float, 3, 1, true> fred(*this);
             setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-            PixelCopier<float, 1, 1, true> fred(*this);
+            OFX::PixelCopier<float, 1, 1, true> fred(*this);
             setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         } // switch
     } else {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-            PixelCopier<float, 4, 1, false> fred(*this);
+            OFX::PixelCopier<float, 4, 1, false> fred(*this);
             setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-            PixelCopier<float, 3, 1, false> fred(*this);
+            OFX::PixelCopier<float, 3, 1, false> fred(*this);
             setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-            PixelCopier<float, 1, 1, false> fred(*this);
+            OFX::PixelCopier<float, 1, 1, false> fred(*this);
             setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         } // switch
     }

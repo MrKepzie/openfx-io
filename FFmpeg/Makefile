@@ -1,9 +1,8 @@
 PLUGINOBJECTS = \
 	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
 	PluginRegistration.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
 PLUGINNAME = FFmpeg
-VPATH += ../IOSupport
 
 include ../Makefile.master
 
