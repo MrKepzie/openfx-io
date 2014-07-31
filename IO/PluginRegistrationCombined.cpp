@@ -32,6 +32,9 @@ namespace OFX
             ids.push_back(&p4);
             getReadOIIOPluginID(ids);
             getWriteOIIOPluginID(ids);
+#ifdef DEBUG
+            getOIIOTextPluginID(ids); //< not ready
+#endif
             static ReadPFMPluginFactory p7("fr.inria.openfx:ReadPFM", 1, 1);
             ids.push_back(&p7);
             static WritePFMPluginFactory p8("fr.inria.openfx:WritePFM", 1, 0);
@@ -42,7 +45,6 @@ namespace OFX
             getOCIOFileTransformPluginID(ids);
             getOCIOLogConvertPluginID(ids);
 #endif
-            // getOIIOTextPluginID(ids); //< not ready
 #ifndef _WINDOWS
             getRunScriptPluginID(ids);
 #endif

@@ -34,17 +34,20 @@
 
  */
 
+#ifdef DEBUG
 
 #include "OIIOText.h"
 
 
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
+#include "ofxsPositionInteract.h"
+
 #include "IOUtility.h"
 #include "ofxNatron.h"
 #include <OpenImageIO/imageio.h>
 
-#define kPluginName "TextOFX"
+#define kPluginName "OIIOText"
 #define kPluginGrouping "Draw"
 #define kPluginDescription  "Use OpenImageIO to write text on images."
 
@@ -52,57 +55,25 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kOutputComponentsParamName "outputComponents"
-#define kOutputComponentsParamLabel "Output Components"
-#define kOutputComponentsHint "The output components where the text will be written to"
-
-#define kEnableClippingParamName "enableClipping"
-#define kEnableClippingParamLabel "Enable clipping"
-#define kEnableClippingHint "When enabled the text will be clipped to the source image if there's any"
-
-#define kOpacityParamName "opacity"
-#define kOpacityParamLabel "Opacity"
-#define kOpacityHint "Controls the opacity of the text, works only if output components is set to Alpha or RGBA"
+#define kPositionParamName "position"
+#define kPositionParamLabel "Position"
+#define kPositionParamHint "The position where starts the baseline of the first character."
 
 #define kTextParamName "text"
 #define kTextParamLabel "Text"
-#define kTextHint "The text that will be drawn on the image"
-
-#define kTextPositionParamName "position"
-#define kTextPositionParamLabel "Position"
-#define kTextPositionHint "The bottom left corner position of the bounding box"
-
-#define kTextRectangleSizeParamName "bboxSize"
-#define kTextRectangleSizeParamLabel "Bounding box size"
-#define kTextRectangleSizeHint "The width and height of the bounding box"
-
-#define kFontParamName "font"
-#define kFontParamLabel "Font"
-#define kFontHint "The font used to render the text"
+#define kTextParamHint "The text that will be drawn on the image"
 
 #define kFontSizeParamName "fontSize"
-#define kFontSizeParamLabel "Font size"
-#define kFontSizeHint "The height of the characters to render in pixels"
+#define kFontSizeParamLabel "Size"
+#define kFontSizeParamHint "The height of the characters to render in pixels"
 
-#define kFontColorParamName "fontColor"
-#define kFontColorParamLabel "Color"
-#define kFontColorHint "The color of the text to render"
+#define kFontNameParamName "fontName"
+#define kFontNameParamLabel "Font"
+#define kFontNameParamHint "The name of the font to be used. Defaults to some reasonable system font."
 
-#define kBoldParamName "bold"
-#define kBoldParamLabel "Bold"
-#define kBoldHint "Enable bold ?"
-
-#define kItalicParamName "italic"
-#define kItalicParamLabel "Italic"
-#define kItalicHint "Enable italic ?"
-
-#define kVerticalAlignParamName "vAlign"
-#define kVerticalAlignParamLabel "Vertical align"
-#define kVericalAlignHint "Controls where the text will be rendered in the bounding box vertically"
-
-#define kHorizontalAlignParamName "hAlign"
-#define kHorizontalAlignParamLabel "Horizontal align"
-#define kHorizontalAlignHint "Controls where the text will be rendered in the bounding box horizontally"
+#define kTextColorParamName "textColor"
+#define kTextColorParamLabel "Color"
+#define kTextColorParamHint "The color of the text to render"
 
 using namespace OFX;
 
@@ -127,10 +98,10 @@ public:
     //virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName);
 
     // override the rod call
-    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+    //virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
 
     // override the roi call
-    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
+    //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
 
 private:
 
@@ -140,6 +111,11 @@ private:
     OFX::Clip *dstClip_;
     OFX::Clip *srcClip_;
 
+    OFX::Double2DParam *position_;
+    OFX::StringParam *text_;
+    OFX::IntParam *fontSize_;
+    OFX::StringParam *fontName_;
+    OFX::RGBAParam *textColor_;
 };
 
 OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
@@ -152,8 +128,12 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
 
-    //interpolation_ = fetchChoiceParam(kInterpolationParamName);
-    //assert(interpolation_);
+    position_ = fetchDouble2DParam(kPositionParamName);
+    text_ = fetchStringParam(kTextParamName);
+    fontSize_ = fetchIntParam(kFontSizeParamName);
+    fontName_ = fetchStringParam(kFontNameParamName);
+    textColor_ = fetchRGBAParam(kTextColorParamName);
+    assert(position_ && text_ && fontSize_ && fontName_ && textColor_);
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()
@@ -230,7 +210,21 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
 bool
 OIIOTextPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
-    
+    std::string text;
+    text_->getValueAtTime(args.time, text);
+    if (text.empty()) {
+        identityClip = srcClip_;
+        return true;
+    }
+
+    double r, g, b, a;
+    textColor_->getValueAtTime(args.time, r, g, b, a);
+    if (a == 0.) {
+        identityClip = srcClip_;
+        return true;
+    }
+
+    return false;
 }
 
 void
@@ -241,6 +235,12 @@ OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::st
 
 
 mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
+
+namespace {
+struct PositionInteractParam {
+    static const char *name() { return kPositionParamName; }
+};
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
@@ -260,9 +260,11 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedBitDepth(eBitDepthUShort);
     desc.addSupportedBitDepth(eBitDepthFloat);
 
-    desc.setSupportsTiles(true);
-    desc.setSupportsMultiResolution(true);
+    desc.setSupportsTiles(false); // may be switched to true later?
+    desc.setSupportsMultiResolution(false); // may be switch to true later? don't forget to reduce font size too
     desc.setRenderThreadSafety(eRenderFullySafe);
+
+    desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -288,57 +290,41 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Text");
 
-    ChoiceParamDescriptor* outputComps = desc.defineChoiceParam(kOutputComponentsParamName);
-    outputComps->setLabels(kOutputComponentsParamLabel, kOutputComponentsParamLabel, kOutputComponentsParamLabel);
-    outputComps->setHint(kOutputComponentsHint);
-    outputComps->appendOption("RGBA");
-    outputComps->appendOption("RGB");
-    outputComps->appendOption("Alpha");
-    page->addChild(*outputComps);
-    
-    BooleanParamDescriptor* clipping = desc.defineBooleanParam(kEnableClippingParamName);
-    clipping->setLabels(kEnableClippingParamLabel, kEnableClippingParamLabel, kEnableClippingParamLabel);
-    clipping->setDefault(false);
-    clipping->setHint(kEnableClippingHint);
-    page->addChild(*clipping);
-    
-    DoubleParamDescriptor* opacity = desc.defineDoubleParam(kOpacityParamName);
-    opacity->setLabels(kOpacityParamLabel, kOpacityParamLabel, kOpacityParamLabel);
-    opacity->setHint(kOpacityHint);
-    opacity->setAnimates(true);
-    opacity->setDefault(1.);
-    opacity->setRange(0., 1.);
-    opacity->setDisplayRange(0., 1.);
-    page->addChild(*opacity);
-    
+    Double2DParamDescriptor* position = desc.defineDouble2DParam(kPositionParamName);
+    position->setLabels(kPositionParamLabel, kPositionParamLabel, kPositionParamLabel);
+    position->setHint(kPositionParamHint);
+    position->setDoubleType(eDoubleTypeXYAbsolute);
+    position->setDefaultCoordinateSystem(eCoordinatesNormalised);
+    position->setDefault(0.5, 0.5);
+    position->setAnimates(true);
+    page->addChild(*position);
+
     StringParamDescriptor* text = desc.defineStringParam(kTextParamName);
     text->setLabels(kTextParamLabel, kTextParamLabel, kTextParamLabel);
-    text->setHint(kTextHint);
+    text->setHint(kTextParamHint);
     text->setStringType(eStringTypeMultiLine);
     text->setAnimates(true);
     page->addChild(*text);
-    
-    Double2DParamDescriptor* position = desc.defineDouble2DParam(kTextPositionParamName);
-    position->setLabels(kTextPositionParamLabel,kTextPositionParamLabel,kTextPositionParamLabel);
-    position->setHint(kTextPositionHint);
-    position->setAnimates(true);
-    position->setDimensionLabels("x", "y");
-    position->setDoubleType(eDoubleTypeXYAbsolute);
-    page->addChild(*position);
-    
-    Double2DParamDescriptor* size = desc.defineDouble2DParam(kTextRectangleSizeParamName);
-    size->setHint(kTextRectangleSizeHint);
-    size->setLabels(kTextRectangleSizeParamLabel, kTextRectangleSizeParamLabel, kTextRectangleSizeParamLabel);
-    size->setAnimates(true);
-    size->setDimensionLabels("width", "height");
-    size->setDoubleType(eDoubleTypeXYAbsolute);
-    page->addChild(*size);
-    
-    ChoiceParamDescriptor* font = desc.defineChoiceParam(kFontParamName);
-    font->setLabels(kFontParamLabel, kFontParamLabel, kFontParamLabel);
-    font->setHint(kFontHint);
-    
-    
+
+    IntParamDescriptor* fontSize = desc.defineIntParam(kFontSizeParamName);
+    fontSize->setLabels(kFontSizeParamLabel, kFontSizeParamLabel, kFontSizeParamLabel);
+    fontSize->setHint(kFontSizeParamHint);
+    fontSize->setDefault(16);
+    fontSize->setAnimates(true);
+    page->addChild(*fontSize);
+
+    StringParamDescriptor* fontName = desc.defineStringParam(kFontNameParamName);
+    fontName->setLabels(kFontNameParamLabel, kFontNameParamLabel, kFontNameParamLabel);
+    fontName->setHint(kFontNameParamHint);
+    fontName->setAnimates(true);
+    page->addChild(*fontName);
+
+    RGBAParamDescriptor* textColor = desc.defineRGBAParam(kTextColorParamName);
+    textColor->setLabels(kTextColorParamLabel, kTextColorParamLabel, kTextColorParamLabel);
+    textColor->setHint(kTextColorParamHint);
+    textColor->setDefault(1., 1., 1., 1.);
+    textColor->setAnimates(true);
+    page->addChild(*textColor);
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
@@ -353,3 +339,5 @@ void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
     static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
+
+#endif // DEBUG

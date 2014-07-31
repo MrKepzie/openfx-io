@@ -1,6 +1,9 @@
 #include "ofxsImageEffect.h"
 #include "ReadOIIO.h"
 #include "WriteOIIO.h"
+#ifdef DEBUG
+#include "OIIOText.h"
+#endif
 
 namespace OFX 
 {
@@ -9,8 +12,10 @@ namespace OFX
     void getPluginIDs(OFX::PluginFactoryArray &ids)
     {
         getReadOIIOPluginID(OFX::PluginFactoryArray &ids);
-        static WriteOIIOPluginFactory p2("fr.inria.openfx:WriteOIIO", 1, 0);
-      ids.push_back(&p2);
+        getWriteOIIOPluginID(&ids);
+#ifdef DEBUG
+        getOIIOTextPluginID(ids);
+#endif
     }
   }
 }
