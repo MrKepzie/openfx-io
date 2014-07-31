@@ -13,7 +13,7 @@ all: subdirs
 .PHONY: nomulti subdirs clean $(SUBDIRS)
 
 nomulti:
-	$(MAKE) SUBDIRS=$(SUBDIRS_NOMULTI)
+	$(MAKE) SUBDIRS="$(SUBDIRS_NOMULTI)"
 
 subdirs: $(SUBDIRS)
 

@@ -1,9 +1,8 @@
 PLUGINOBJECTS = \
 	ReadEXR.o WriteEXR.o \
 	PluginRegistration.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
 PLUGINNAME = EXR
-VPATH += ../IOSupport
 
 include ../Makefile.master
 

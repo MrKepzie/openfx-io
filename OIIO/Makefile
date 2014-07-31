@@ -1,10 +1,9 @@
 PLUGINOBJECTS = \
 	ReadOIIO.o WriteOIIO.o \
 	PluginRegistration.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParser.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
 
 PLUGINNAME = OIIO
-VPATH += ../IOSupport
 
 include ../Makefile.master
 

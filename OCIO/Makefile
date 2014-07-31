@@ -1,6 +1,5 @@
-PLUGINOBJECTS = OCIOCDLTransform.o OCIOColorSpace.o OCIOFileTransform.o OCIOLogConvert.o PluginRegistration.o
+PLUGINOBJECTS = OCIOCDLTransform.o OCIOColorSpace.o OCIOFileTransform.o OCIOLogConvert.o GenericOCIO.o PluginRegistration.o
 PLUGINNAME = OCIO
-VPATH += ../IOSupport
 
 include ../Makefile.master
 
