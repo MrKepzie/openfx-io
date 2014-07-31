@@ -11,8 +11,8 @@ namespace OFX
   {
     void getPluginIDs(OFX::PluginFactoryArray &ids)
     {
-        getReadOIIOPluginID(OFX::PluginFactoryArray &ids);
-        getWriteOIIOPluginID(&ids);
+        getReadOIIOPluginID(ids);
+        getWriteOIIOPluginID(ids);
 #ifdef DEBUG
         getOIIOTextPluginID(ids);
 #endif

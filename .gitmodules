@@ -4,3 +4,6 @@
 [submodule "IOSupport/SequenceParsing"]
 	path = IOSupport/SequenceParsing
 	url = https://github.com/MrKepzie/SequenceParsing
+[submodule "SupportExt"]
+	path = SupportExt
+	url = https://github.com/devernay/openfx-supportext.git
