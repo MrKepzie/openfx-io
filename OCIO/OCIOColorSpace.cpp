@@ -238,11 +238,12 @@ OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     std::auto_ptr<OFX::Image> orig(srcClip_->fetchImage(time));
     if (getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
         processor.doMasking(true);
-        processor.setOrigImg(orig.get());
         processor.setMaskImg(mask.get());
     }
 
     // set the images
+    assert(orig.get() && dstPixelData && srcPixelData);
+    processor.setOrigImg(orig.get());
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
     processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
 
