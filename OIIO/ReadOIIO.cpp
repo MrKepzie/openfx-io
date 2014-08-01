@@ -603,20 +603,29 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
                 } else if (_ocio->hasColorspace("sRGB")) {
                     // nuke-default
                     _ocio->setInputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
+                    // rrt_Gamma2.2 in aces 0.7.1
+                    _ocio->setInputColorspace("rrt_Gamma2.2");
                 } else if (_ocio->hasColorspace("rrt_srgb")) {
-                    // rrt_srgb in aces
+                    // rrt_srgb in aces 0.1.1
                     _ocio->setInputColorspace("rrt_srgb");
                 } else if (_ocio->hasColorspace("srgb8")) {
                     // srgb8 in spi-vfx
                     _ocio->setInputColorspace("srgb8");
+                } else if (_ocio->hasColorspace("vd16")) {
+                    // vd16 in spi-anim
+                    _ocio->setInputColorspace("vd16");
                 }
             }
         } else if(!strcmp(colorSpaceStr, "sRGB")) {
             if (_ocio->hasColorspace("sRGB")) {
                 // nuke-default
                 _ocio->setInputColorspace("sRGB");
+            } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
+                // rrt_Gamma2.2 in aces 0.7.1
+                _ocio->setInputColorspace("rrt_Gamma2.2");
             } else if (_ocio->hasColorspace("rrt_srgb")) {
-                // rrt_srgb in aces
+                // rrt_srgb in aces 0.1.1
                 _ocio->setInputColorspace("rrt_srgb");
             } else if (_ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
@@ -624,8 +633,11 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
             } else if (_ocio->hasColorspace("Gamma2.2")) {
                 // nuke-default
                 _ocio->setInputColorspace("Gamma2.2");
+            } else if (_ocio->hasColorspace("srgb8")) {
+                // srgb8 in spi-vfx
+                _ocio->setInputColorspace("srgb8");
             } else if (_ocio->hasColorspace("vd16")) {
-                // vd16 in spi-anim and spi-vfx
+                // vd16 in spi-anim
                 _ocio->setInputColorspace("vd16");
             }
         } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
@@ -634,8 +646,11 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
             if (_ocio->hasColorspace("Rec709")) {
                 // nuke-default
                 _ocio->setInputColorspace("Rec709");
+            } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+                // rrt_rec709_full_100nits in aces 0.7.1
+                _ocio->setInputColorspace("rrt_rec709_full_100nits");
             } else if (_ocio->hasColorspace("rrt_rec709")) {
-                // rrt_rec709 in aces
+                // rrt_rec709 in aces 0.1.1
                 _ocio->setInputColorspace("rrt_rec709");
             } else if (_ocio->hasColorspace("hd10")) {
                 // hd10 in spi-anim and spi-vfx
@@ -645,9 +660,20 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
             if (_ocio->hasColorspace("Cineon")) {
                 // Cineon in nuke-default
                 _ocio->setInputColorspace("Cineon");
+            } else if (_ocio->hasColorspace("cineon")) {
+                // cineon in aces 0.7.1
+                _ocio->setInputColorspace("cineon");
+            } else if (_ocio->hasColorspace("adx10")) {
+                // adx10 in aces 0.1.1
+                _ocio->setInputColorspace("adx10");
             } else if (_ocio->hasColorspace("lg10")) {
                 // lg10 in spi-vfx
                 _ocio->setInputColorspace("lg10");
+            } else if (_ocio->hasColorspace("lm10")) {
+                // lm10 in spi-anim
+                _ocio->setInputColorspace("lm10");
+            } else {
+                _ocio->setInputColorspace("compositing_log");
             }
         } else if(!strcmp(colorSpaceStr, "Linear")) {
             _ocio->setInputColorspace("scene_linear");
