@@ -710,11 +710,17 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         if ((cs = config->getColorSpace("sRGB"))) {
             // nuke-default
             return cs->getName();
+        } else if ((cs = config->getColorSpace("rrt_Gamma2.2"))) {
+            // rrt_Gamma2.2 in aces 0.7.1
+            return cs->getName();
         } else if ((cs = config->getColorSpace("rrt_srgb"))) {
-            // rrt_srgb in aces
+            // rrt_srgb in aces 0.1.1
             return cs->getName();
         } else if ((cs = config->getColorSpace("srgb8"))) {
             // srgb8 in spi-vfx
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("vd16"))) {
+            // vd16 in spi-anim
             return cs->getName();
         }
     //} else if(!strcmp(inputSpaceNameDefault, "AdobeRGB") || !strcmp(inputSpaceNameDefault, "adobergb")) {
@@ -723,8 +729,11 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         if ((cs = config->getColorSpace("Rec709"))) {
             // nuke-default
             return cs->getName();
+        } else if ((cs = config->getColorSpace("rrt_rec709_full_100nits"))) {
+            // rrt_rec709_full_100nits in aces 0.7.1
+            return cs->getName();
         } else if ((cs = config->getColorSpace("rrt_rec709"))) {
-            // rrt_rec709 in aces
+            // rrt_rec709 in aces 0.1.1
             return cs->getName();
         } else if ((cs = config->getColorSpace("hd10"))) {
             // hd10 in spi-anim and spi-vfx
@@ -734,9 +743,20 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         if ((cs = config->getColorSpace("Cineon"))) {
             // Cineon in nuke-default
             return cs->getName();
+        } else if ((cs = config->getColorSpace("cineon"))) {
+            // cineon in aces 0.7.1
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("adx10"))) {
+            // adx10 in aces 0.1.1
+            return cs->getName();
         } else if ((cs = config->getColorSpace("lg10"))) {
             // lg10 in spi-vfx
             return cs->getName();
+        } else if ((cs = config->getColorSpace("lm10"))) {
+            // lm10 in spi-anim
+            return cs->getName();
+        } else {
+            return "compositing_log"; // reasonable default
         }
     } else if (!strcmp(colorSpaceNameDefault, "Linear") || !strcmp(colorSpaceNameDefault, "linear")) {
         return "scene_linear";
