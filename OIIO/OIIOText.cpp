@@ -86,6 +86,9 @@
 #define kTextColorParamLabel "Color"
 #define kTextColorParamHint "The color of the text to render"
 
+#define kSupportsTiles 0
+#define kSupportsMultiResolution 0
+
 using namespace OFX;
 
 class OIIOTextPlugin : public OFX::ImageEffect
@@ -267,6 +270,38 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OIIO::ImageSpec srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
     OIIO::ImageBuf srcBuf(srcSpec, srcImg->getPixelData());
 
+    OfxRectI dstRod = dstImg->getRegionOfDefinition();
+    if (!kSupportsTiles) {
+        // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
+        //  If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one.
+        assert(srcRod.x1 == srcBounds.x1);
+        assert(srcRod.x2 == srcBounds.x2);
+        assert(srcRod.y1 == srcBounds.y1);
+        assert(srcRod.y2 == srcBounds.y2);
+        assert(dstRod.x1 == dstBounds.x1);
+        assert(dstRod.x2 == dstBounds.x2);
+        assert(dstRod.y1 == dstBounds.y1);
+        assert(dstRod.y2 == dstBounds.y2);
+        // renderWindow can be anything
+        //assert(srcRod.x1 == args.renderWindow.x1);
+        //assert(srcRod.x2 == args.renderWindow.x2);
+        //assert(srcRod.y1 == args.renderWindow.y1);
+        //assert(srcRod.y2 == args.renderWindow.y2);
+    }
+    if (!kSupportsMultiResolution) {
+        // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsMultiResolution
+        //   Multiple resolution images mean...
+        //    input and output images can be of any size
+        //    input and output images can be offset from the origin
+        assert(args.renderScale.x == 1. && args.renderScale.y == 1.);
+        assert(srcRod.x1 == 0);
+        assert(srcRod.y1 == 0);
+        assert(srcRod.x1 == dstRod.x1);
+        assert(srcRod.x2 == dstRod.x2);
+        assert(srcRod.y1 == dstRod.y1);
+        assert(srcRod.y2 == dstRod.y2);
+    }
+
     // allocate temporary image
     int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
     int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
@@ -280,10 +315,32 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     //tmpBuf.copy_pixels(srcBuf);
     // do we have to flip the image instead?
     bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf);
-    assert(ok);
-    // TODO: render text in the temp buffer
+    if (!ok) {
+        setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+        throwSuiteStatusException(kOfxStatFailed);
+    }
 
-    OfxRectI dstRod = dstImg->getRegionOfDefinition();
+    // render text in the temp buffer
+    double x, y;
+    position_->getValueAtTime(args.time, x, y);
+    std::string text;
+    text_->getValueAtTime(args.time, text);
+    int fontSize;
+    fontSize_->getValueAtTime(args.time, fontSize);
+    std::string fontName;
+    fontName_->getValueAtTime(args.time, fontName);
+    double r, g, b, a;
+    textColor_->getValueAtTime(args.time, r, g, b, a);
+    float textColor[4];
+    textColor[0] = r;
+    textColor[1] = g;
+    textColor[2] = b;
+    textColor[3] = a;
+    ok = OIIO::ImageBufAlgo::render_text(tmpBuf, int(x), int(y), text, fontSize, fontName, textColor);
+    if (!ok) {
+        setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+        //throwSuiteStatusException(kOfxStatFailed);
+    }
     OIIO::ImageSpec dstSpec = imageSpecFromOFXImage(dstRod, dstBounds, pixelComponents, bitDepth);
     OIIO::ImageBuf dstBuf(dstSpec, dstImg->getPixelData());
 
@@ -291,10 +348,13 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     //dstBuf.copy_pixels(tmpBuf);
     // do we have to flip the image ?
     ok = OIIO::ImageBufAlgo::flip(dstBuf, tmpBuf);
-    assert(ok);
+    if (!ok) {
+        setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+        throwSuiteStatusException(kOfxStatFailed);
+    }
 
     // TODO: answer questions:
-    // - do we support tiling?
+    // - can we support tiling?
     // - can we support multiresolution by just scaling the coordinates and the font size?
 }
 
@@ -321,7 +381,7 @@ OIIOTextPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identi
 void
 OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-   
+    clearPersistentMessage();
 }
 
 
@@ -352,8 +412,8 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedBitDepth(eBitDepthHalf);
     desc.addSupportedBitDepth(eBitDepthFloat);
 
-    desc.setSupportsTiles(false); // may be switched to true later?
-    desc.setSupportsMultiResolution(false); // may be switch to true later? don't forget to reduce font size too
+    desc.setSupportsTiles(kSupportsTiles); // may be switched to true later?
+    desc.setSupportsMultiResolution(kSupportsMultiResolution); // may be switch to true later? don't forget to reduce font size too
     desc.setRenderThreadSafety(eRenderFullySafe);
 
     desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
@@ -370,14 +430,14 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     srcClip->addSupportedComponent(ePixelComponentRGBA);
     srcClip->addSupportedComponent(ePixelComponentRGB);
     srcClip->setTemporalClipAccess(false);
-    srcClip->setSupportsTiles(true);
+    srcClip->setSupportsTiles(kSupportsTiles);
     srcClip->setIsMask(false);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->addSupportedComponent(ePixelComponentRGB);
-    dstClip->setSupportsTiles(true);
+    dstClip->setSupportsTiles(kSupportsTiles);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Text");
