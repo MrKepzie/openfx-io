@@ -46,6 +46,17 @@
 #include "IOUtility.h"
 #include "ofxNatron.h"
 #include <OpenImageIO/imageio.h>
+/*
+ unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
+ which includes boost/thread.hpp,
+ which includes boost/system/error_code.hpp,
+ which requires the library boost_system to get the symbol boost::system::system_category().
+
+ the following define prevents including error_code.hpp, which is not used anyway.
+ */
+#define OPENIMAGEIO_THREAD_H
+#include <OpenImageIO/imagebuf.h>
+#include <OpenImageIO/imagebufalgo.h>
 
 #define kPluginName "OIIOText"
 #define kPluginGrouping "Draw"
@@ -139,6 +150,56 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
 OIIOTextPlugin::~OIIOTextPlugin()
 {
 }
+
+static OIIO::ImageSpec
+imageSpecFromOFXImage(const OfxRectI &rod, const OfxRectI &bounds, OFX::PixelComponentEnum pixelComponents, OFX::BitDepthEnum bitDepth)
+{
+    OIIO::TypeDesc format;
+ 	switch (bitDepth) {
+		case OFX::eBitDepthUByte:
+			format = OIIO::TypeDesc::UINT8;
+			break;
+		case OFX::eBitDepthUShort:
+			format = OIIO::TypeDesc::UINT16;
+			break;
+		case OFX::eBitDepthHalf:
+			format = OIIO::TypeDesc::HALF;
+			break;
+		case OFX::eBitDepthFloat:
+			format = OIIO::TypeDesc::FLOAT;
+			break;
+		default:
+            throwSuiteStatusException(kOfxStatErrFormat);
+			break;
+	}
+    int nchannels = 0, alpha_channel = -1;
+    switch (pixelComponents) {
+        case OFX::ePixelComponentAlpha:
+            nchannels = 1;
+            alpha_channel = 0;
+            break;
+        case OFX::ePixelComponentRGB:
+            nchannels = 3;
+            break;
+        case OFX::ePixelComponentRGBA:
+            nchannels = 4;
+            alpha_channel = 3;
+            break;
+        default:
+            throwSuiteStatusException(kOfxStatErrFormat);
+            break;
+    }
+    OIIO::ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, nchannels, format);
+    spec.x = bounds.x1;
+    spec.y = bounds.y1;
+    spec.full_x = rod.x1;
+    spec.full_y = rod.y1;
+    spec.full_width = rod.x2 - rod.x1;
+    spec.full_height = rod.y2 - rod.y1;
+    return spec;
+}
+
+
 /* Override the render */
 void
 OIIOTextPlugin::render(const OFX::RenderArguments &args)
@@ -195,16 +256,46 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    const void* srcPixelData = NULL;
-    OfxRectI bounds;
-    OFX::PixelComponentEnum pixelComponents;
-    OFX::BitDepthEnum bitDepth;
-    int srcRowBytes;
-    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+    // NOTE THAT ALL ROIs ARE PROBABLY WRONG IN THE FOLLOWING.
+    // THIS CODE WAS NEVER TESTED
 
- 
+    OfxRectI srcRod = srcImg->getRegionOfDefinition();
+    OfxRectI srcBounds = srcImg->getBounds();
+    OFX::PixelComponentEnum pixelComponents = srcImg->getPixelComponents();
+    OFX::BitDepthEnum bitDepth = srcImg->getPixelDepth();
+    //int rowBytes = img->getRowBytes();
+    OIIO::ImageSpec srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
+    OIIO::ImageBuf srcBuf(srcSpec, srcImg->getPixelData());
 
-   
+    // allocate temporary image
+    int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
+    OFX::ImageMemory mem(memSize,this);
+    float *tmpPixelData = (float*)mem.lock();
+    OIIO::ImageSpec tmpSpec = imageSpecFromOFXImage(srcRod, args.renderWindow, pixelComponents, bitDepth);
+    OIIO::ImageBuf tmpBuf(tmpSpec, tmpPixelData);
+
+    // copy the renderWindow from src to a temp buffer
+    //tmpBuf.copy_pixels(srcBuf);
+    // do we have to flip the image instead?
+    bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf);
+    assert(ok);
+    // TODO: render text in the temp buffer
+
+    OfxRectI dstRod = dstImg->getRegionOfDefinition();
+    OIIO::ImageSpec dstSpec = imageSpecFromOFXImage(dstRod, dstBounds, pixelComponents, bitDepth);
+    OIIO::ImageBuf dstBuf(dstSpec, dstImg->getPixelData());
+
+    // copy the temp buffer to dstImg
+    //dstBuf.copy_pixels(tmpBuf);
+    // do we have to flip the image ?
+    ok = OIIO::ImageBufAlgo::flip(dstBuf, tmpBuf);
+    assert(ok);
+
+    // TODO: answer questions:
+    // - do we support tiling?
+    // - can we support multiresolution by just scaling the coordinates and the font size?
 }
 
 bool
@@ -258,6 +349,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // add supported pixel depths
     desc.addSupportedBitDepth(eBitDepthUByte);
     desc.addSupportedBitDepth(eBitDepthUShort);
+    desc.addSupportedBitDepth(eBitDepthHalf);
     desc.addSupportedBitDepth(eBitDepthFloat);
 
     desc.setSupportsTiles(false); // may be switched to true later?
@@ -304,6 +396,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     text->setHint(kTextParamHint);
     text->setStringType(eStringTypeMultiLine);
     text->setAnimates(true);
+    text->setDefault("Enter text");
     page->addChild(*text);
 
     IntParamDescriptor* fontSize = desc.defineIntParam(kFontSizeParamName);
