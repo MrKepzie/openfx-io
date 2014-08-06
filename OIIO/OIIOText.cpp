@@ -88,6 +88,7 @@
 
 #define kSupportsTiles 0
 #define kSupportsMultiResolution 0
+#define kRenderThreadSafety eRenderInstanceSafe
 
 using namespace OFX;
 
@@ -192,13 +193,16 @@ imageSpecFromOFXImage(const OfxRectI &rod, const OfxRectI &bounds, OFX::PixelCom
             throwSuiteStatusException(kOfxStatErrFormat);
             break;
     }
-    OIIO::ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, nchannels, format);
+    OIIO::ImageSpec spec (format);
     spec.x = bounds.x1;
-    spec.y = bounds.y1;
+    spec.y = rod.y2 - bounds.y2;
+    spec.width = bounds.x2 - bounds.x1;
+    spec.height = bounds.y2 - bounds.y1;
     spec.full_x = rod.x1;
-    spec.full_y = rod.y1;
+    spec.full_y = 0;
     spec.full_width = rod.x2 - rod.x1;
     spec.full_height = rod.y2 - rod.y1;
+    spec.nchannels = nchannels;
     return spec;
 }
 
@@ -277,16 +281,11 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         assert(srcRod.x1 == srcBounds.x1);
         assert(srcRod.x2 == srcBounds.x2);
         assert(srcRod.y1 == srcBounds.y1);
-        assert(srcRod.y2 == srcBounds.y2);
+        //assert(srcRod.y2 == srcBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
         assert(dstRod.x1 == dstBounds.x1);
         assert(dstRod.x2 == dstBounds.x2);
         assert(dstRod.y1 == dstBounds.y1);
-        assert(dstRod.y2 == dstBounds.y2);
-        // renderWindow can be anything
-        //assert(srcRod.x1 == args.renderWindow.x1);
-        //assert(srcRod.x2 == args.renderWindow.x2);
-        //assert(srcRod.y1 == args.renderWindow.y1);
-        //assert(srcRod.y2 == args.renderWindow.y2);
+        //assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
     }
     if (!kSupportsMultiResolution) {
         // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsMultiResolution
@@ -299,7 +298,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         assert(srcRod.x1 == dstRod.x1);
         assert(srcRod.x2 == dstRod.x2);
         assert(srcRod.y1 == dstRod.y1);
-        assert(srcRod.y2 == dstRod.y2);
+        //assert(srcRod.y2 == dstRod.y2); // crashes on Natron if kSupportsMultiResolution=0
     }
 
     // allocate temporary image
@@ -308,16 +307,30 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
     OFX::ImageMemory mem(memSize,this);
     float *tmpPixelData = (float*)mem.lock();
+    const bool flip = true;
     OIIO::ImageSpec tmpSpec = imageSpecFromOFXImage(srcRod, args.renderWindow, pixelComponents, bitDepth);
+    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
+    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
+    assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
+    if (flip) {
+        // can't figure out how to flip...
+        tmpSpec.y = ((tmpSpec.full_y+tmpSpec.full_height-1) - tmpSpec.y) - (tmpSpec.height-1);
+        tmpSpec.full_y = 0;
+    }
+    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
+    assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
     OIIO::ImageBuf tmpBuf(tmpSpec, tmpPixelData);
 
-    // copy the renderWindow from src to a temp buffer
-    //tmpBuf.copy_pixels(srcBuf);
-    // do we have to flip the image instead?
-    bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf);
-    if (!ok) {
-        setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
-        throwSuiteStatusException(kOfxStatFailed);
+    // do we have to flip the image?
+    if (flip) {
+        bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf);
+        if (!ok) {
+            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+            throwSuiteStatusException(kOfxStatFailed);
+        }
+    } else {
+        // copy the renderWindow from src to a temp buffer
+        tmpBuf.copy_pixels(srcBuf);
     }
 
     // render text in the temp buffer
@@ -336,21 +349,32 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     textColor[1] = g;
     textColor[2] = b;
     textColor[3] = a;
-    ok = OIIO::ImageBufAlgo::render_text(tmpBuf, int(x), int(y), text, fontSize, fontName, textColor);
-    if (!ok) {
-        setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
-        //throwSuiteStatusException(kOfxStatFailed);
+    {
+        int ytext = flip ? (srcRod.y2-1 - int(y*args.renderScale.y)) : int(y*args.renderScale.y);
+        bool ok = OIIO::ImageBufAlgo::render_text(tmpBuf, int(x*args.renderScale.x), ytext, text, int(fontSize*args.renderScale.y), fontName, textColor);
+        if (!ok) {
+            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+            //throwSuiteStatusException(kOfxStatFailed);
+        }
     }
     OIIO::ImageSpec dstSpec = imageSpecFromOFXImage(dstRod, dstBounds, pixelComponents, bitDepth);
     OIIO::ImageBuf dstBuf(dstSpec, dstImg->getPixelData());
-
-    // copy the temp buffer to dstImg
-    //dstBuf.copy_pixels(tmpBuf);
-    // do we have to flip the image ?
-    ok = OIIO::ImageBufAlgo::flip(dstBuf, tmpBuf);
-    if (!ok) {
-        setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
-        throwSuiteStatusException(kOfxStatFailed);
+    
+    // do we have to flip the image?
+    if (flip) {
+        bool ok = OIIO::ImageBufAlgo::flip(dstBuf, tmpBuf);
+        if (!ok) {
+            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+            throwSuiteStatusException(kOfxStatFailed);
+        }
+    } else {
+        // copy the temp buffer to dstImg
+        //dstBuf.copy_pixels(tmpBuf); // erases everything out of tmpBuf!
+        bool ok = OIIO::ImageBufAlgo::paste(dstBuf, args.renderWindow.x1, srcRod.y2 - args.renderWindow.y2, 0, 0, tmpBuf);
+        if (!ok) {
+            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+            throwSuiteStatusException(kOfxStatFailed);
+        }
     }
 
     // TODO: answer questions:
@@ -414,7 +438,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
     desc.setSupportsTiles(kSupportsTiles); // may be switched to true later?
     desc.setSupportsMultiResolution(kSupportsMultiResolution); // may be switch to true later? don't forget to reduce font size too
-    desc.setRenderThreadSafety(eRenderFullySafe);
+    desc.setRenderThreadSafety(kRenderThreadSafety);
 
     desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
 }
