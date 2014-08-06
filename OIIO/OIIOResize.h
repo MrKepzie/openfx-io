@@ -36,11 +36,11 @@
  78153 Le Chesnay Cedex - France
 
  */
-#ifndef __Io__OCIOFileTransform__
-#define __Io__OCIOFileTransform__
+#ifndef __Io__OIIO_RESIZE_H
+#define __Io__OIIO_RESIZE_H
 
 #include "ofxsImageEffect.h"
 
 void getOIIOResizePluginID(OFX::PluginFactoryArray &ids);
 
-#endif /* defined(__Io__OCIOFileTransform__) */
+#endif /* defined(__Io__OIIO_RESIZE_H) */

@@ -10,6 +10,7 @@
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
 #include "OIIOText.h"
+#include "OIIOResize.h"
 #include "ReadPFM.h"
 #include "WritePFM.h"
 #ifndef _WIN32
@@ -34,6 +35,7 @@ namespace OFX
             getWriteOIIOPluginID(ids);
 #ifdef DEBUG
             getOIIOTextPluginID(ids); //< not ready
+            getOIIOResizePluginID(ids);
 #endif
             static ReadPFMPluginFactory p7("fr.inria.openfx:ReadPFM", 1, 1);
             ids.push_back(&p7);
