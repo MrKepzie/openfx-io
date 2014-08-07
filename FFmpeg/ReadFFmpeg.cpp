@@ -124,6 +124,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if(!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "",filename +  ": Missing frame");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
@@ -136,6 +137,7 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     if((imgBounds.x2 - imgBounds.x1) < width ||
        (imgBounds.y2 - imgBounds.y1) < height){
         setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
     ///set the pixel aspect ratio
@@ -158,12 +160,14 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     try{
         if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5),loadNearestFrame())) {
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
         }
     }catch(const std::exception& e){
         int choice;
         _missingFrameParam->getValue(choice);
         if(choice == 1){ //error
             setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
         }
         return;
     }
