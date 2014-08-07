@@ -92,7 +92,7 @@
 
 #define kFilterParamName "filter"
 #define kFilterParamLabel "Filter"
-#define kFilterParamHint "The filter used to resize."
+#define kFilterParamHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
 
 using namespace OFX;
 using namespace OpenImageIO;
