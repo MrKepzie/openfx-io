@@ -304,7 +304,6 @@
 		D7330E0218867C1E004A6199 /* ofxProperty.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E627F1875AAB500D8FA13 /* ofxProperty.h */; };
 		D7330E0318867C1E004A6199 /* ofxSonyVegas.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62801875AAB500D8FA13 /* ofxSonyVegas.h */; };
 		D7330E0418867C1E004A6199 /* ofxTimeLine.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62811875AAB500D8FA13 /* ofxTimeLine.h */; };
-		D742C6DD1991E30500966B36 /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
 		D74E624A1875A7A400D8FA13 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D74E62831875AAB500D8FA13 /* ofxCore.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62721875AAB500D8FA13 /* ofxCore.h */; };
 		D74E62841875AAB500D8FA13 /* ofxDialog.h in Headers */ = {isa = PBXBuildFile; fileRef = D74E62731875AAB500D8FA13 /* ofxDialog.h */; };
@@ -1668,7 +1667,6 @@
 		D74E62401875A79700D8FA13 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LIBRARY = "libstdc++";
 				COPY_PHASE_STRIP = NO;
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				EXR_PATH = /opt/local;
@@ -1700,7 +1698,6 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
-				SDKROOT = macosx10.8;
 				WARNING_CFLAGS = "-Wall";
 			};
 			name = Debug;
@@ -1708,7 +1705,6 @@
 		D74E62411875A79700D8FA13 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LIBRARY = "libstdc++";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				EXR_PATH = /opt/local;
@@ -1737,7 +1733,6 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
-				SDKROOT = macosx10.8;
 				WARNING_CFLAGS = "-Wall";
 			};
 			name = Release;
