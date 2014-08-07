@@ -200,6 +200,7 @@
 		1E9B5F72198A5A4F0095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
 		1E9B5F73198A5A510095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
 		1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
+		1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
 		1ED1A80E18BB4FC200E095DD /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */; };
 		1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
 		1ED499A018A00B66008A2D91 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
@@ -1254,6 +1255,7 @@
 				1E2F4DDE1892977800F4CE25 /* ReadOIIO.cpp in Sources */,
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E9B5EF7198A2B9A0095C8AA /* OIIOText.cpp in Sources */,
+				1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,

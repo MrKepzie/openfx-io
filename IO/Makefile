@@ -1,11 +1,13 @@
 PLUGINOBJECTS = \
 	ReadEXR.o WriteEXR.o \
 	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
-	ReadOIIO.o WriteOIIO.o \
 	OCIOColorSpace.o \
 	OCIOCDLTransform.o \
 	OCIOFileTransform.o \
 	OCIOLogConvert.o \
+	ReadOIIO.o WriteOIIO.o \
+    OIIOText.o \
+    OIIOResize.o \
 	ReadPFM.o WritePFM.o \
 	RunScript.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \

@@ -9,8 +9,10 @@
 #include "OCIOColorSpace.h"
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
+#ifdef DEBUG
 #include "OIIOText.h"
 #include "OIIOResize.h"
+#endif
 #include "ReadPFM.h"
 #include "WritePFM.h"
 #ifndef _WIN32
