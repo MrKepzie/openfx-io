@@ -60,7 +60,7 @@
 #include <OpenImageIO/imagebufalgo.h>
 #include <OpenImageIO/filter.h>
 
-#define kPluginName "OIIOResizeOFX"
+#define kPluginName "ResizeOIIO"
 #define kPluginGrouping "Transform/OIIOResize"
 #define kPluginDescription  "Use OpenImageIO to resize images."
 

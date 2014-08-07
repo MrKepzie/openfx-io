@@ -58,7 +58,7 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
-#define kPluginName "OIIOText"
+#define kPluginName "TextOIIO"
 #define kPluginGrouping "Draw"
 #define kPluginDescription  "Use OpenImageIO to write text on images."
 
