@@ -62,7 +62,7 @@
 #include <OpenImageIO/filter.h>
 
 #define kPluginName "ResizeOIIO"
-#define kPluginGrouping "Transform/OIIOResize"
+#define kPluginGrouping "Transform"
 #define kPluginDescription  "Use OpenImageIO to resize images."
 
 #define kPluginIdentifier "fr.inria.openfx:OIIOResize"
