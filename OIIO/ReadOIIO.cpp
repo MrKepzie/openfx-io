@@ -311,8 +311,14 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 {
     if (paramName == kMetadataButtonName) {
         std::string filename;
-        getCurrentFileName(filename);
-        sendMessage(OFX::Message::eMessageMessage, "", metadata(filename));
+        OfxStatus st = getFilenameAtTime(args.time, filename);
+        std::stringstream ss;
+        if (st == kOfxStatOK) {
+            ss << metadata(filename);
+        } else {
+            ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
+        }
+        sendMessage(OFX::Message::eMessageMessage, "", ss.str());
     }
 #if defined(OFX_READ_OIIO_USES_CACHE) && !defined(OFX_READ_OIIO_SHARED_CACHE)
     ///This cannot be done elsewhere as the Cache::attribute function is not thread safe!

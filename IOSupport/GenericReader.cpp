@@ -424,8 +424,8 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
 
 GenericReaderPlugin::GetFilenameRetCodeEnum
 GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
-                                               std::string &filename,
-                                               bool proxyFiles)
+                                               bool proxyFiles,
+                                               std::string &filename)
 {
 
     GenericReaderPlugin::GetFilenameRetCodeEnum ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
@@ -506,10 +506,17 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     
 }
 
-void
-GenericReaderPlugin::getCurrentFileName(std::string& filename)
+OfxStatus
+GenericReaderPlugin::getFilenameAtTime(double t, std::string& filename)
 {
-    _fileParam->getValue(filename);
+    double sequenceTime;
+    GetSequenceTimeRetEnum st1 = getSequenceTime(t, false, sequenceTime);
+    (void)st1;
+    GetFilenameRetCodeEnum st2 = getFilenameAtSequenceTime(sequenceTime, false, filename);
+    if (st2 == eGetFileNameFailed) {
+        return kOfxStatFailed;
+    }
+    return kOfxStatOK;
 }
 
 /* set up and run a copy processor */
@@ -903,7 +910,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     }
     std::string filename;
  
-    GenericReaderPlugin::GetFilenameRetCodeEnum ret = getFilenameAtSequenceTime(sequenceTime, filename,true);
+    GenericReaderPlugin::GetFilenameRetCodeEnum ret = getFilenameAtSequenceTime(sequenceTime, true, filename);
     
     if (ret == GenericReaderPlugin::eGetFileNameFailed) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -963,7 +970,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     
     std::string filename;
-    getFilenameAtSequenceTime(sequenceTime, filename,false);
+    getFilenameAtSequenceTime(sequenceTime, false, filename);
     
     if (sequenceTimeRet == eGetSequenceTimeBeforeSequence) {
         int beforeChoice;
@@ -983,7 +990,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     std::string proxyFile;
     if (useProxy) {
-        getFilenameAtSequenceTime(sequenceTime, proxyFile, true);
+        getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
         assert(!proxyFile.empty());
         
         ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
@@ -1176,8 +1183,8 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         } catch (const std::exception& e) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
-        getFilenameAtSequenceTime(sequenceTime, originalFileName,false);
-        getFilenameAtSequenceTime(sequenceTime, proxyFile, true);
+        getFilenameAtSequenceTime(sequenceTime, false, originalFileName);
+        getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
         
         if (!proxyFile.empty() && proxyFile != originalFileName) {
             ///show the scale param

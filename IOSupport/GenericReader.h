@@ -115,8 +115,8 @@ public:
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
-    void getCurrentFileName(std::string& filename);
-    
+    OfxStatus getFilenameAtTime(double t, std::string& filename);
+
 private:
     
     /**
@@ -193,7 +193,7 @@ private:
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, std::string &filename, bool proxyFiles);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string &filename);
     
     /**
      * @brief Initializes the params depending on the input file.
