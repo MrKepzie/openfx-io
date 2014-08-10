@@ -46,6 +46,7 @@
 #include "IOUtility.h"
 #include "ofxNatron.h"
 #include <OpenImageIO/imageio.h>
+
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
  which includes boost/thread.hpp,
@@ -86,9 +87,11 @@
 #define kTextColorParamLabel "Color"
 #define kTextColorParamHint "The color of the text to render"
 
-#define kSupportsTiles 0
-#define kSupportsMultiResolution 0
+#define kSupportsTiles 1
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderInstanceSafe
+
 
 using namespace OFX;
 
@@ -211,6 +214,10 @@ imageSpecFromOFXImage(const OfxRectI &rod, const OfxRectI &bounds, OFX::PixelCom
 void
 OIIOTextPlugin::render(const OFX::RenderArguments &args)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     if (!srcClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -281,59 +288,25 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         assert(srcRod.x1 == srcBounds.x1);
         assert(srcRod.x2 == srcBounds.x2);
         assert(srcRod.y1 == srcBounds.y1);
-        //assert(srcRod.y2 == srcBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
+        assert(srcRod.y2 == srcBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
         assert(dstRod.x1 == dstBounds.x1);
         assert(dstRod.x2 == dstBounds.x2);
         assert(dstRod.y1 == dstBounds.y1);
-        //assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
+        assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
     }
     if (!kSupportsMultiResolution) {
         // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsMultiResolution
         //   Multiple resolution images mean...
         //    input and output images can be of any size
         //    input and output images can be offset from the origin
-        assert(args.renderScale.x == 1. && args.renderScale.y == 1.);
         assert(srcRod.x1 == 0);
         assert(srcRod.y1 == 0);
         assert(srcRod.x1 == dstRod.x1);
         assert(srcRod.x2 == dstRod.x2);
         assert(srcRod.y1 == dstRod.y1);
-        //assert(srcRod.y2 == dstRod.y2); // crashes on Natron if kSupportsMultiResolution=0
+        assert(srcRod.y2 == dstRod.y2); // crashes on Natron if kSupportsMultiResolution=0
     }
 
-    // allocate temporary image
-    int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
-    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
-    OFX::ImageMemory mem(memSize,this);
-    float *tmpPixelData = (float*)mem.lock();
-    const bool flip = true;
-    OIIO::ImageSpec tmpSpec = imageSpecFromOFXImage(srcRod, args.renderWindow, pixelComponents, bitDepth);
-    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
-    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
-    assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
-    if (flip) {
-        // can't figure out how to flip...
-        tmpSpec.y = ((tmpSpec.full_y+tmpSpec.full_height-1) - tmpSpec.y) - (tmpSpec.height-1);
-        tmpSpec.full_y = 0;
-    }
-    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
-    assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
-    OIIO::ImageBuf tmpBuf(tmpSpec, tmpPixelData);
-
-    // do we have to flip the image?
-    if (flip) {
-        bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf);
-        if (!ok) {
-            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
-            throwSuiteStatusException(kOfxStatFailed);
-        }
-    } else {
-        // copy the renderWindow from src to a temp buffer
-        tmpBuf.copy_pixels(srcBuf);
-    }
-
-    // render text in the temp buffer
     double x, y;
     position_->getValueAtTime(args.time, x, y);
     std::string text;
@@ -349,8 +322,56 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     textColor[1] = g;
     textColor[2] = b;
     textColor[3] = a;
+
+    // allocate temporary image
+    int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
+    OFX::ImageMemory mem(memSize,this);
+    float *tmpPixelData = (float*)mem.lock();
+    const bool flipit = true;
+    OIIO::ImageSpec tmpSpec = imageSpecFromOFXImage(srcRod, args.renderWindow, pixelComponents, bitDepth);
+    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
+    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
+    assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
+    OIIO::ROI srcRoi(tmpSpec.x, tmpSpec.x + tmpSpec.width, tmpSpec.y, tmpSpec.y+tmpSpec.height);
+    int ytext = int(y*args.renderScale.y);
+    if (flipit) {
+        // from the OIIO 1.5 release notes:
+        // Fixes, minor enhancements, and performance improvements:
+        // * ImageBufAlgo:
+        //   * flip(), flop(), flipflop() have been rewritten to work more
+        //     sensibly for cropped images. In particular, the transformation now
+        //     happens with respect to the display (full) window, rather than
+        //     simply flipping or flopping within the data window. (1.5.2)
+#if OIIO_VERSION >= 10502
+        // the transformation happens with respect to the display (full) window
+        tmpSpec.y = ((tmpSpec.full_y+tmpSpec.full_height-1) - tmpSpec.y) - (tmpSpec.height-1);
+        tmpSpec.full_y = 0;
+        ytext = (tmpSpec.full_y+tmpSpec.full_height-1) - ytext;
+#else
+        // only the data window is flipped
+        ytext = tmpSpec.y + ((tmpSpec.y+tmpSpec.height-1) - ytext);
+#endif
+    }
+    assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
+    assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
+    OIIO::ImageBuf tmpBuf(tmpSpec, tmpPixelData);
+
+    // do we have to flip the image?
+    if (flipit) {
+        bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf, srcRoi);
+        if (!ok) {
+            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+            throwSuiteStatusException(kOfxStatFailed);
+        }
+    } else {
+        // copy the renderWindow from src to a temp buffer
+        tmpBuf.copy_pixels(srcBuf);
+    }
+
+    // render text in the temp buffer
     {
-        int ytext = flip ? (srcRod.y2-1 - int(y*args.renderScale.y)) : int(y*args.renderScale.y);
         bool ok = OIIO::ImageBufAlgo::render_text(tmpBuf, int(x*args.renderScale.x), ytext, text, int(fontSize*args.renderScale.y), fontName, textColor);
         if (!ok) {
             setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
@@ -360,9 +381,10 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OIIO::ImageSpec dstSpec = imageSpecFromOFXImage(dstRod, dstBounds, pixelComponents, bitDepth);
     OIIO::ImageBuf dstBuf(dstSpec, dstImg->getPixelData());
     
+    OIIO::ROI tmpRoi(tmpSpec.x, tmpSpec.x + tmpSpec.width, tmpSpec.y, tmpSpec.y+tmpSpec.height);
     // do we have to flip the image?
-    if (flip) {
-        bool ok = OIIO::ImageBufAlgo::flip(dstBuf, tmpBuf);
+    if (flipit) {
+        bool ok = OIIO::ImageBufAlgo::flip(dstBuf, tmpBuf, tmpRoi);
         if (!ok) {
             setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
             throwSuiteStatusException(kOfxStatFailed);
@@ -370,7 +392,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     } else {
         // copy the temp buffer to dstImg
         //dstBuf.copy_pixels(tmpBuf); // erases everything out of tmpBuf!
-        bool ok = OIIO::ImageBufAlgo::paste(dstBuf, args.renderWindow.x1, srcRod.y2 - args.renderWindow.y2, 0, 0, tmpBuf);
+        bool ok = OIIO::ImageBufAlgo::paste(dstBuf, args.renderWindow.x1, srcRod.y2 - args.renderWindow.y2, 0, 0, tmpBuf, tmpRoi);
         if (!ok) {
             setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
             throwSuiteStatusException(kOfxStatFailed);
@@ -385,6 +407,10 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
 bool
 OIIOTextPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     std::string text;
     text_->getValueAtTime(args.time, text);
     if (text.empty()) {
@@ -405,6 +431,10 @@ OIIOTextPlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identi
 void
 OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     clearPersistentMessage();
 }
 
