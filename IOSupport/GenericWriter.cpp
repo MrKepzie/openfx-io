@@ -120,6 +120,9 @@
 #define kWriterLastFrameParamName "lastFrame"
 #define kWriterLastFrameParamLabel "Last frame"
 
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 1
+
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
@@ -206,7 +209,7 @@ filenameFromPattern(const std::string& pattern,
 }
 
 void
-GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string& filename)
+GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& filename)
 {
     _fileParam->getValue(filename);
     filename = filenameFromPattern(filename, time);
@@ -264,9 +267,24 @@ GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time,std::string& fil
 
 }
 
+bool
+GenericWriterPlugin::isIdentity(const OFX::RenderArguments &args,
+                                OFX::Clip * &identityClip,
+                                double &identityTime)
+{
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    return false;
+}
+
 void
 GenericWriterPlugin::render(const OFX::RenderArguments &args)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     if (!_inputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -369,6 +387,10 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
 void
 GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments &args)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     std::string filename;
     getOutputFileNameAndExtension(args.frameRange.min, filename);
     
@@ -389,6 +411,10 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
 void
 GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &args)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     endEncode(args);
 }
 
@@ -465,6 +491,10 @@ GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
 bool
 GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     ///get the RoD of the input clip
     rod = _inputClip->getRegionOfDefinition(args.time);
     return true;
@@ -557,7 +587,7 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc)
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
-    desc.setSupportsMultiResolution(false);
+    desc.setSupportsMultiResolution(kSupportsMultiResolution);
     desc.setSupportsTiles(false);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);

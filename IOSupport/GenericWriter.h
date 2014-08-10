@@ -69,7 +69,9 @@ public:
      **/
     void render(const OFX::RenderArguments &args);
     
-    
+    /* override is identity */
+    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
+
     /** @brief client begin sequence render function */
     void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args);
     
