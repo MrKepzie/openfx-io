@@ -146,7 +146,7 @@
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
-#define kSupportsRenderScale 1
+#define kSupportsRenderScale 1 // GenericReader supports render scale: it scales images and uses proxy image when applicable
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
