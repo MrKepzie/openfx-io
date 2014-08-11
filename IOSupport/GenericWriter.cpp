@@ -121,7 +121,7 @@
 #define kWriterLastFrameParamLabel "Last frame"
 
 #define kSupportsMultiResolution 1
-#define kSupportsRenderScale 1
+#define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
