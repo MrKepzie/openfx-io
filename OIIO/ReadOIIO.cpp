@@ -360,7 +360,6 @@ void
 ReadOIIOPlugin::buildChannelMenus()
 {
     if (gHostIsNatron) {
-        assert(_specValid);
         // the choice menu can only be modified in Natron
         // Natron supports changing the entries in a choiceparam
         // Nuke (at least up to 8.0v3) does not
@@ -380,19 +379,21 @@ ReadOIIOPlugin::buildChannelMenus()
         assert(_gChannel->getNOptions() == kXChannelFirst);
         assert(_bChannel->getNOptions() == kXChannelFirst);
         assert(_aChannel->getNOptions() == kXChannelFirst);
-        for (std::size_t i = 0; i < _spec.nchannels; ++i) {
-            if (i < _spec.channelnames.size()) {
-                _rChannel->appendOption(_spec.channelnames[i]);
-                _bChannel->appendOption(_spec.channelnames[i]);
-                _gChannel->appendOption(_spec.channelnames[i]);
-                _aChannel->appendOption(_spec.channelnames[i]);
-            } else {
-                std::ostringstream oss;
-                oss << "channel " << i;
-                _rChannel->appendOption(oss.str());
-                _gChannel->appendOption(oss.str());
-                _bChannel->appendOption(oss.str());
-                _aChannel->appendOption(oss.str());
+        if (_specValid) {
+            for (std::size_t i = 0; i < _spec.nchannels; ++i) {
+                if (i < _spec.channelnames.size()) {
+                    _rChannel->appendOption(_spec.channelnames[i]);
+                    _bChannel->appendOption(_spec.channelnames[i]);
+                    _gChannel->appendOption(_spec.channelnames[i]);
+                    _aChannel->appendOption(_spec.channelnames[i]);
+                } else {
+                    std::ostringstream oss;
+                    oss << "channel " << i;
+                    _rChannel->appendOption(oss.str());
+                    _gChannel->appendOption(oss.str());
+                    _bChannel->appendOption(oss.str());
+                    _aChannel->appendOption(oss.str());
+                }
             }
         }
     }

@@ -146,6 +146,7 @@
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
+#define kSupportsRenderScale 1
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
@@ -902,6 +903,10 @@ bool
 GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
                                            OfxRectD &rod)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     double sequenceTime;
     try {
         getSequenceTime(args.time,false,sequenceTime);
@@ -939,7 +944,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    assert(kSupportsMultiResolution || (args.renderScale.x == 1. && args.renderScale.y == 1.));
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    assert(kSupportsRenderScale || (args.renderScale.x == 1. && args.renderScale.y == 1.));
     ///The image will have the appropriate size since we support the render scale (multi-resolution)
     std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
     if (!dstImg.get()) {
@@ -964,7 +973,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     _proxyScale->getValue(proxyScaleThreshold.x, proxyScaleThreshold.y);
     
     bool useProxy = false;
-    if ((args.renderScale.x <= proxyScaleThreshold.x || args.renderScale.y <= proxyScaleThreshold.y) && kSupportsMultiResolution) {
+    if (kSupportsRenderScale && (args.renderScale.x <= proxyScaleThreshold.x || args.renderScale.y <= proxyScaleThreshold.y)) {
         useProxy = true;
     }
 
@@ -1040,7 +1049,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (_supportsTiles) {
         if (useProxy) {
             renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - proxyMipMapLevel);
-        } else if ((args.renderScale.x != 1. || args.renderScale.y != 1.) && kSupportsMultiResolution) {
+        } else if (kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.
             renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel);
@@ -1086,7 +1095,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     assert(downscaleLevels >= 0);
 
 #if 1
-    if ((_ocio->isIdentity(args.time) && (renderMipmapLevel == 0 || !kSupportsMultiResolution))) {
+    if ((_ocio->isIdentity(args.time) && (!kSupportsRenderScale || renderMipmapLevel == 0))) {
         // no colorspace conversion, just read file
         decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
     } else
@@ -1111,7 +1120,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
-        if (kSupportsMultiResolution && downscaleLevels > 0) {
+        if (kSupportsRenderScale && downscaleLevels > 0) {
             /// adjust the scale to match the given output image
             scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
                            bitDepth, renderWindowFullRes, tmpRowBytes, dstPixelData,
@@ -1170,6 +1179,10 @@ void
 GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
                                   const std::string &paramName)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     if (paramName == kReaderFileParamName) {
         if (args.reason != OFX::eChangeTime) {
             inputFileChanged();
@@ -1283,6 +1296,10 @@ GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args,
                                 OFX::Clip * &identityClip,
                                 double &identityTime)
 {
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     if (!gHostIsNatron) {
         return false;
     }
