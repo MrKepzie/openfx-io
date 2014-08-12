@@ -116,7 +116,7 @@ public:
     //virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName);
 
     // override the rod call
-    //virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
 
     // override the roi call
     //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
@@ -223,18 +223,14 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     }
     assert(srcClip_);
     std::auto_ptr<OFX::Image> srcImg(srcClip_->fetchImage(args.time));
-    if (!srcImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    if (srcImg.get()) {
+        if (srcImg->getRenderScale().x != args.renderScale.x ||
+            srcImg->getRenderScale().y != args.renderScale.y ||
+            srcImg->getField() != args.fieldToRender) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
     }
-    if (srcImg->getRenderScale().x != args.renderScale.x ||
-        srcImg->getRenderScale().y != args.renderScale.y ||
-        srcImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
-
-    OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
-    OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
     if (!dstClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -252,13 +248,13 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     }
 
     OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
-    if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
+    if (dstBitDepth != OFX::eBitDepthFloat || (srcImg.get() && dstBitDepth != srcImg->getPixelDepth())) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
     if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
-        dstComponents != srcComponents) {
+        (srcImg.get() && (dstComponents != srcImg->getPixelComponents()))) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
@@ -270,41 +266,47 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    // NOTE THAT ALL ROIs ARE PROBABLY WRONG IN THE FOLLOWING.
-    // THIS CODE WAS NEVER TESTED
-
-    OfxRectI srcRod = srcImg->getRegionOfDefinition();
-    OfxRectI srcBounds = srcImg->getBounds();
-    OFX::PixelComponentEnum pixelComponents = srcImg->getPixelComponents();
-    OFX::BitDepthEnum bitDepth = srcImg->getPixelDepth();
-    //int rowBytes = img->getRowBytes();
-    OIIO::ImageSpec srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
-    OIIO::ImageBuf srcBuf(srcSpec, srcImg->getPixelData());
+    OfxRectI srcRod;
+    OfxRectI srcBounds;
+    OFX::PixelComponentEnum pixelComponents = ePixelComponentNone;
+    OFX::BitDepthEnum bitDepth = eBitDepthNone;
+    OIIO::ImageSpec srcSpec;
+    std::auto_ptr<OIIO::ImageBuf> srcBuf;
+    if (srcImg.get()) {
+        srcRod = srcImg->getRegionOfDefinition();
+        srcBounds = srcImg->getBounds();
+        pixelComponents = srcImg->getPixelComponents();
+        bitDepth = srcImg->getPixelDepth();
+        srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
+        srcBuf.reset(new OIIO::ImageBuf(srcSpec, srcImg->getPixelData()));
+    }
 
     OfxRectI dstRod = dstImg->getRegionOfDefinition();
-    if (!kSupportsTiles) {
-        // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
-        //  If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one.
-        assert(srcRod.x1 == srcBounds.x1);
-        assert(srcRod.x2 == srcBounds.x2);
-        assert(srcRod.y1 == srcBounds.y1);
-        assert(srcRod.y2 == srcBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
-        assert(dstRod.x1 == dstBounds.x1);
-        assert(dstRod.x2 == dstBounds.x2);
-        assert(dstRod.y1 == dstBounds.y1);
-        assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
-    }
-    if (!kSupportsMultiResolution) {
-        // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsMultiResolution
-        //   Multiple resolution images mean...
-        //    input and output images can be of any size
-        //    input and output images can be offset from the origin
-        assert(srcRod.x1 == 0);
-        assert(srcRod.y1 == 0);
-        assert(srcRod.x1 == dstRod.x1);
-        assert(srcRod.x2 == dstRod.x2);
-        assert(srcRod.y1 == dstRod.y1);
-        assert(srcRod.y2 == dstRod.y2); // crashes on Natron if kSupportsMultiResolution=0
+    if (srcImg.get()) {
+        if (!kSupportsTiles) {
+            // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
+            //  If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one.
+            assert(srcRod.x1 == srcBounds.x1);
+            assert(srcRod.x2 == srcBounds.x2);
+            assert(srcRod.y1 == srcBounds.y1);
+            assert(srcRod.y2 == srcBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
+            assert(dstRod.x1 == dstBounds.x1);
+            assert(dstRod.x2 == dstBounds.x2);
+            assert(dstRod.y1 == dstBounds.y1);
+            assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
+        }
+        if (!kSupportsMultiResolution) {
+            // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsMultiResolution
+            //   Multiple resolution images mean...
+            //    input and output images can be of any size
+            //    input and output images can be offset from the origin
+            assert(srcRod.x1 == 0);
+            assert(srcRod.y1 == 0);
+            assert(srcRod.x1 == dstRod.x1);
+            assert(srcRod.x2 == dstRod.x2);
+            assert(srcRod.y1 == dstRod.y1);
+            assert(srcRod.y2 == dstRod.y2); // crashes on Natron if kSupportsMultiResolution=0
+        }
     }
 
     double x, y;
@@ -330,7 +332,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OFX::ImageMemory mem(memSize,this);
     float *tmpPixelData = (float*)mem.lock();
     const bool flipit = true;
-    OIIO::ImageSpec tmpSpec = imageSpecFromOFXImage(srcRod, args.renderWindow, pixelComponents, bitDepth);
+    OIIO::ImageSpec tmpSpec = imageSpecFromOFXImage(srcImg.get() ? srcRod : args.renderWindow, args.renderWindow, pixelComponents, bitDepth);
     assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
     assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
     assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
@@ -359,15 +361,19 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OIIO::ImageBuf tmpBuf(tmpSpec, tmpPixelData);
 
     // do we have to flip the image?
-    if (flipit) {
-        bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, srcBuf, srcRoi);
-        if (!ok) {
-            setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
-            throwSuiteStatusException(kOfxStatFailed);
-        }
+    if (!srcImg.get()) {
+        OIIO::ImageBufAlgo::zero(tmpBuf);
     } else {
-        // copy the renderWindow from src to a temp buffer
-        tmpBuf.copy_pixels(srcBuf);
+        if (flipit) {
+            bool ok = OIIO::ImageBufAlgo::flip(tmpBuf, *srcBuf, srcRoi);
+            if (!ok) {
+                setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
+                throwSuiteStatusException(kOfxStatFailed);
+            }
+        } else {
+            // copy the renderWindow from src to a temp buffer
+            tmpBuf.copy_pixels(*srcBuf);
+        }
     }
 
     // render text in the temp buffer
@@ -438,6 +444,20 @@ OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::st
     clearPersistentMessage();
 }
 
+bool
+OIIOTextPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod)
+{
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    if (srcClip_ && srcClip_->isConnected()) {
+        rod = srcClip_->getRegionOfDefinition(args.time);
+    } else {
+        rod.x1 = rod.y1 = kOfxFlagInfiniteMin;
+        rod.x2 = rod.y2 = kOfxFlagInfiniteMax;
+    }
+    return true;
+}
 
 mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
 
