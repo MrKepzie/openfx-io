@@ -272,6 +272,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum bitDepth = eBitDepthNone;
     OIIO::ImageSpec srcSpec;
     std::auto_ptr<OIIO::ImageBuf> srcBuf;
+    OfxRectI dstRod = dstImg->getRegionOfDefinition();
     if (srcImg.get()) {
         srcRod = srcImg->getRegionOfDefinition();
         srcBounds = srcImg->getBounds();
@@ -279,10 +280,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         bitDepth = srcImg->getPixelDepth();
         srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
         srcBuf.reset(new OIIO::ImageBuf(srcSpec, srcImg->getPixelData()));
-    }
 
-    OfxRectI dstRod = dstImg->getRegionOfDefinition();
-    if (srcImg.get()) {
         if (!kSupportsTiles) {
             // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
             //  If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one.
