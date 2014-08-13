@@ -132,7 +132,7 @@ public:
 private:
     
     template <typename PIX,int nComps>
-    void renderInternal(const OFX::RenderArguments &args,TypeDesc srcType,const OFX::Image* srcImg,TypeDesc dstType,OFX::Image* dstImg);
+    void renderInternal(const OFX::RenderArguments &args, TypeDesc srcType, const OFX::Image* srcImg, TypeDesc dstType, OFX::Image* dstImg);
     
     void fillWithBlack(OFX::PixelProcessorFilterBase & processor,
                        const OfxRectI &renderWindow,
@@ -172,27 +172,18 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
 
     type_ = fetchChoiceParam(kTypeParamName);
-    assert(type_);
-    
     format_ = fetchChoiceParam(kFormatParamName);
-    assert(format_);
-    
     filter_ = fetchChoiceParam(kFilterParamName);
-    assert(filter_);
-    
     size_ = fetchInt2DParam(kSizeParamName);
-    assert(size_);
-    
     scale_ = fetchDouble2DParam(kScaleParamName);
-    assert(scale_);
-    
     preservePAR_ = fetchBooleanParam(kPreserveParParamName);
-    assert(preservePAR_);
+    assert(type_ && format_ &&  filter_ && size_ && scale_ && preservePAR_);
 }
 
 OIIOResizePlugin::~OIIOResizePlugin()
 {
 }
+
 /* Override the render */
 void
 OIIOResizePlugin::render(const OFX::RenderArguments &args)
@@ -208,12 +199,8 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-
-    
-    
     std::auto_ptr<OFX::Image> src(srcClip_->fetchImage(args.time));
     if (src.get()) {
-        
         OFX::BitDepthEnum dstBitDepth       = dst->getPixelDepth();
         OFX::PixelComponentEnum dstComponents  = dst->getPixelComponents();
         assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA ||
@@ -224,84 +211,51 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         if (srcBitDepth != dstBitDepth || srcComponents != dstComponents) {
             OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
         }
-        
-        
-        
-       
-        if (dstComponents == OFX::ePixelComponentRGBA)
-        {
-            
-            switch (dstBitDepth)
-            {
-                case OFX::eBitDepthUByte :
-                {
-                    renderInternal<unsigned char, 4>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
-                    break;
-                }
-                case OFX::eBitDepthUShort :
-                {
-                    renderInternal<unsigned short, 4>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
-                    break;
-                }
-                case OFX::eBitDepthFloat :
-                {
-                    renderInternal<float, 4>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
-                    break;
-                }
-                default :
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-            }
-        }
-        else if (dstComponents == OFX::ePixelComponentRGB)
-        {
-            switch (dstBitDepth)
-            {
-                case OFX::eBitDepthUByte :
-                {
-                    renderInternal<unsigned char, 3>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
-                    break;
-                }
-                case OFX::eBitDepthUShort :
-                {
-                    renderInternal<unsigned short, 3>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
-                    break;
-                }
-                case OFX::eBitDepthFloat :
-                {
-                    renderInternal<float, 3>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
-                    break;
-                }
-                    
-                default :
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-            }
-        }
-        else
-        {
-            assert(dstComponents == OFX::ePixelComponentAlpha);
-            switch (dstBitDepth)
-            {
-                case OFX::eBitDepthUByte :
-                {
-                    renderInternal<unsigned char, 1>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
-                    break;
-                }
-                case OFX::eBitDepthUShort :
-                {
-                    renderInternal<unsigned short, 1>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
-                    break;
-                }
-                case OFX::eBitDepthFloat :
-                {
-                    renderInternal<float, 1>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
-                    break;
-                }
-                    
-                default :
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-            }
-        }
 
+        if (dstComponents == OFX::ePixelComponentRGBA) {
+            switch (dstBitDepth) {
+                case OFX::eBitDepthUByte: {
+                    renderInternal<unsigned char, 4>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
+                }   break;
+                case OFX::eBitDepthUShort: {
+                    renderInternal<unsigned short, 4>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
+                }   break;
+                case OFX::eBitDepthFloat: {
+                    renderInternal<float, 4>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
+                }   break;
+                default:
+                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+            }
+        } else if (dstComponents == OFX::ePixelComponentRGB) {
+            switch (dstBitDepth) {
+                case OFX::eBitDepthUByte: {
+                    renderInternal<unsigned char, 3>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
+                }   break;
+                case OFX::eBitDepthUShort: {
+                    renderInternal<unsigned short, 3>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
+                }   break;
+                case OFX::eBitDepthFloat: {
+                    renderInternal<float, 3>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
+                }   break;
+                default:
+                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+            }
+        } else {
+            assert(dstComponents == OFX::ePixelComponentAlpha);
+            switch (dstBitDepth) {
+                case OFX::eBitDepthUByte: {
+                    renderInternal<unsigned char, 1>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
+                }   break;
+                case OFX::eBitDepthUShort: {
+                    renderInternal<unsigned short, 1>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
+                }   break;
+                case OFX::eBitDepthFloat: {
+                    renderInternal<float, 1>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
+                }   break;
+                default :
+                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+            }
+        }
     } else { //!src.get()
         void* dstPixelData;
         OfxRectI dstBounds;
@@ -313,96 +267,69 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA ||
                dstComponents == OFX::ePixelComponentAlpha);
         
-        if (dstComponents == OFX::ePixelComponentRGBA)
-        {
-            
-            switch (dstBitDepth)
-            {
-                case OFX::eBitDepthUByte :
-                {
+        if (dstComponents == OFX::ePixelComponentRGBA) {
+            switch (dstBitDepth) {
+                case OFX::eBitDepthUByte: {
                     BlackFiller<unsigned char, 4> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                case OFX::eBitDepthUShort :
-                {
+                }   break;
+                case OFX::eBitDepthUShort: {
                     BlackFiller<unsigned short, 4> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                case OFX::eBitDepthFloat :
-                {
+                }   break;
+                case OFX::eBitDepthFloat: {
                     BlackFiller<float, 4> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
+                }   break;
                 default :
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
-        }
-        else if (dstComponents == OFX::ePixelComponentRGB)
-        {
-            switch (dstBitDepth)
-            {
-                case OFX::eBitDepthUByte :
-                {
+        } else if (dstComponents == OFX::ePixelComponentRGB) {
+            switch (dstBitDepth) {
+                case OFX::eBitDepthUByte: {
                     BlackFiller<unsigned char, 3> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                case OFX::eBitDepthUShort :
-                {
+                }   break;
+                case OFX::eBitDepthUShort: {
                     BlackFiller<unsigned short, 3> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                case OFX::eBitDepthFloat :
-                {
+                }   break;
+                case OFX::eBitDepthFloat: {
                     BlackFiller<float, 3> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                    
+                }   break;
                 default :
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
-        }
-        else
-        {
+        } else {
             assert(dstComponents == OFX::ePixelComponentAlpha);
-            switch (dstBitDepth)
-            {
-                case OFX::eBitDepthUByte :
-                {
+            switch (dstBitDepth) {
+                case OFX::eBitDepthUByte: {
                     BlackFiller<unsigned char, 1> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                case OFX::eBitDepthUShort :
-                {
+                }   break;
+                case OFX::eBitDepthUShort: {
                     BlackFiller<unsigned short, 1> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                case OFX::eBitDepthFloat :
-                {
+                }   break;
+                case OFX::eBitDepthFloat: {
                     BlackFiller<float, 1> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
-                    break;
-                }
-                    
+                }   break;
                 default :
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
         }
     }
-    
-
 }
 
 template <typename PIX,int nComps>
 void
-OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,TypeDesc srcType,const OFX::Image* srcImg,TypeDesc dstType,OFX::Image* dstImg)
+OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,
+                                 TypeDesc srcType,
+                                 const OFX::Image* srcImg,
+                                 TypeDesc dstType,
+                                 OFX::Image* dstImg)
 {
     ImageSpec srcSpec(srcType);
     const OfxRectI srcBounds = srcImg->getBounds();
@@ -456,12 +383,12 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,TypeDesc srcTy
 
 void
 OIIOResizePlugin::fillWithBlack(OFX::PixelProcessorFilterBase & processor,
-                   const OfxRectI &renderWindow,
-                   void *dstPixelData,
-                   const OfxRectI& dstBounds,
-                   OFX::PixelComponentEnum dstPixelComponents,
-                   OFX::BitDepthEnum dstPixelDepth,
-                   int dstRowBytes)
+                                const OfxRectI &renderWindow,
+                                void *dstPixelData,
+                                const OfxRectI& dstBounds,
+                                OFX::PixelComponentEnum dstPixelComponents,
+                                OFX::BitDepthEnum dstPixelDepth,
+                                int dstRowBytes)
 {
     // set the images
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
@@ -476,7 +403,9 @@ OIIOResizePlugin::fillWithBlack(OFX::PixelProcessorFilterBase & processor,
 
 
 bool
-OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
+OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args,
+                             OFX::Clip * &identityClip,
+                             double &/*identityTime*/)
 {
     int type;
     type_->getValue(type);
@@ -492,7 +421,7 @@ OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &iden
                 return true;
             }
             return false;
-        }
+        }   break;
         case 1: {
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
             int w,h;
@@ -501,7 +430,7 @@ OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &iden
                 return true;
             }
             return false;
-        }
+        }   break;
         case 2: {
             double sx,sy;
             scale_->getValue(sx, sy);
@@ -509,7 +438,7 @@ OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &iden
                 return true;
             }
             return false;
-        } break;
+        }   break;
 
         default:
             break;
@@ -519,7 +448,8 @@ OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args, OFX::Clip * &iden
 
 
 void
-OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
+OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &args,
+                               const std::string &paramName)
 {
     if (paramName == kTypeParamName) {
         int type;
@@ -551,7 +481,8 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::
 }
 
 bool
-OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod)
+OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
+                                        OfxRectD &rod)
 {
     int type;
     type_->getValue(type);
