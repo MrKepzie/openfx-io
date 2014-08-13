@@ -47,6 +47,7 @@
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
+#include "ofxsMacros.h"
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
@@ -90,6 +91,11 @@
 "What to do when a frame is missing from the sequence/stream."
 
 #define kReaderFrameModeParamName "frameMode"
+enum FrameModeEnum
+{
+    eFrameModeStartingFrame,
+    eFrameModeTimeOffset,
+};
 #define kReaderFrameModeParamOptionStartingFrame "Starting frame"
 #define kReaderFrameModeParamOptionTimeOffset "Time offset"
 
@@ -129,6 +135,22 @@
 #define kReaderAfterParamLabel "After"
 #define kReaderAfterParamHint \
 "What to do after the last frame of the sequence."
+
+enum BeforeAfterEnum
+{
+    eBeforeAfterHold,
+    eBeforeAfterLoop,
+    eBeforeAfterBounce,
+    eBeforeAfterBlack,
+    eBeforeAfterError,
+};
+
+enum MissingEnum
+{
+    eMissingNearest,
+    eMissingError,
+    eMissingBlack,
+};
 
 #define kReaderOptionHold "Hold"
 #define kReaderOptionHoldHint "While before the sequence, load the first frame."
@@ -212,7 +234,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
                 _originalFrameRange->setValue(_sequenceFromFiles.begin()->first, _sequenceFromFiles.rbegin()->first);
             }
         }
-
     } catch(const std::exception& e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         return;
@@ -266,8 +287,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
             return false;
         }
     }
-    
-    
+
     //// From http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
 //    Plugins are free to set parameters in limited set of circumstances, typically relating to user interaction. You can only set parameters in the following actions passed to the plug-in's main entry function...
 //    
@@ -311,7 +331,6 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
     
     range.min = startingFrame;
     range.max = startingFrame + frameRangeLast - frameRangeFirst;
-    
 }
 
 
@@ -350,17 +369,18 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
     ///if the time given is before the sequence
     if (sequenceTime < sequenceTimeDomain.min) {
         /////if we're before the first frame
-        int beforeChoice;
-        _beforeFirst->getValue(beforeChoice);
+        int beforeChoice_i;
+        _beforeFirst->getValue(beforeChoice_i);
+        BeforeAfterEnum beforeChoice = BeforeAfterEnum(beforeChoice_i);
         switch (beforeChoice) {
-            case 0: //hold
+            case eBeforeAfterHold: //hold
                 sequenceTime = sequenceTimeDomain.min;
                 break;
-            case 1: //loop
+            case eBeforeAfterLoop: //loop
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                 sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 break;
-            case 2: { //bounce
+            case eBeforeAfterBounce: { //bounce
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
@@ -371,31 +391,30 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
                     sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 }
             }   break;
-            case 3: //black
+            case eBeforeAfterBlack: //black
                 break;
-            case 4: //error
+            case eBeforeAfterError: //error
                 setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
                 throw std::invalid_argument("Out of frame range.");
-                break;
-            default:
                 break;
         }
         assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
         ret = GenericReaderPlugin::eGetSequenceTimeBeforeSequence;
     } else if (sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
                                              /////if we're after the last frame
-        int afterChoice;
-        _afterLast->getValue(afterChoice);
-        
+        int afterChoice_i;
+        _afterLast->getValue(afterChoice_i);
+        BeforeAfterEnum afterChoice = BeforeAfterEnum(afterChoice_i);
+
         switch (afterChoice) {
-            case 0: //hold
+            case eBeforeAfterHold: //hold
                 sequenceTime = sequenceTimeDomain.max;
                 break;
-            case 1: //loop
+            case eBeforeAfterLoop: //loop
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                 sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
                 break;
-            case 2: { //bounce
+            case eBeforeAfterBounce: { //bounce
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
@@ -406,13 +425,11 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
                     sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
                 }
             }   break;
-            case 3: //black
+            case eBeforeAfterBlack: //black
                 break;
-            case 4: //error
+            case eBeforeAfterError: //error
                 setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
                 throw std::invalid_argument("Out of frame range.");
-                break;
-            default:
                 break;
         }
         assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
@@ -428,7 +445,6 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                bool proxyFiles,
                                                std::string &filename)
 {
-
     GenericReaderPlugin::GetFilenameRetCodeEnum ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
@@ -442,16 +458,16 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
             ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
         }
     }
-    
-    
+
     std::ifstream fs(filename.c_str());
 
     ///if the frame is missing, do smthing according to the missing frame param
     if (!fs.is_open()) {
         int missingFrame_i;
         _missingFrameParam->getValue(missingFrame_i);
-        switch (missingFrame_i) {
-            case 0: { // Load nearest
+        MissingEnum missingFrame = MissingEnum(missingFrame_i);
+        switch (missingFrame) {
+            case eMissingNearest: { // Load nearest
                 int offset = -1;
                 while (!fs.is_open() && offset <= MISSING_FRAME_NEAREST_RANGE) {
                     _fileParam->getValueAtTime(sequenceTime + offset, filename);
@@ -487,13 +503,13 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                 }
             }
                 break;
-            case 1: { // Error
+            case eMissingError: { // Error
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
                 ret = GenericReaderPlugin::eGetFileNameFailed;
             }   break;
-            case 2: { // Black image
+            case eMissingBlack: { // Black image
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 clearPersistentMessage();
@@ -504,7 +520,6 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     }
     
     return ret;
-    
 }
 
 OfxStatus
@@ -614,7 +629,6 @@ halve1DImage(const OfxRectI& nextRenderWindow,
     int width = srcBounds.x2 - srcBounds.x1;
     int height = srcBounds.y2 - srcBounds.y1;
 
-    
     int halfWidth = width / 2;
     int halfHeight = height / 2;
    
@@ -626,8 +640,7 @@ halve1DImage(const OfxRectI& nextRenderWindow,
            dstBounds.x2 >= nextRenderWindow.x2 &&
            dstBounds.y1 <= nextRenderWindow.y1 &&
            dstBounds.y2 >= nextRenderWindow.y2);
-    
-    
+
     if (height == 1) { //1 row
         assert(width != 1);	/// widthxheight can't be 1x1
         assert(srcBounds.x1 % 2 == 0); // only works for even x1
@@ -676,7 +689,6 @@ halve1DImage(const OfxRectI& nextRenderWindow,
             srcPixels += srcRowSize - nComponents;
             dstPixels += dstRowSize - nComponents;
         }
-
     }
 }
 
@@ -738,7 +750,6 @@ halveImage(const OfxRectI& nextRenderWindow,
             }
         }
     }
-
 }
 
 template <typename PIX,int nComponents>
@@ -756,7 +767,6 @@ buildMipMapLevel(OFX::ImageEffect* instance,
 {
     assert(level > 0);
 
-
     const PIX* previousImg = srcPixels;
     OFX::ImageMemory* mem = NULL;
     PIX* nextImg = NULL;
@@ -766,15 +776,12 @@ buildMipMapLevel(OFX::ImageEffect* instance,
     int previousRowBytes = srcRowBytes;
     ///Build all the mipmap levels until we reach the one we are interested in
     for (unsigned int i = 1; i <= level; ++i) {
-        
         ///Halve the smallest enclosing po2 rect as we need to render a minimum of the renderWindow
         OfxRectI nextBounds = downscalePowerOfTwoSmallestEnclosing(previousBounds,1); // should be the same as (srcBounds,i)
         OfxRectI nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
-    
 
         ///On the last iteration halve directly into the dstPixels
         if (i == level) {
-            
             ///The nextRenderWindow equal to the original render window.
             assert(originalRenderWindow.x1 == nextRenderWindow.x1 && originalRenderWindow.x2 == nextRenderWindow.x2 &&
                  originalRenderWindow.y1 == nextRenderWindow.y1 && originalRenderWindow.y2 == nextRenderWindow.y2);
@@ -833,7 +840,6 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
                                     const OfxRectI& dstBounds,
                                     int dstRowBytes)
 {
-
     assert(srcPixelData && dstPixelData);
     
     // do the rendering
@@ -851,8 +857,6 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
         buildMipMapLevel<float, 1>(this, originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } // switch
-
-
 }
 
 /* set up and run a copy processor */
@@ -865,7 +869,6 @@ setupAndFillWithBlack(OFX::PixelProcessorFilterBase & processor,
                       OFX::BitDepthEnum dstPixelDepth,
                       int dstRowBytes)
 {
-
     // set the images
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
     
@@ -977,7 +980,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         useProxy = true;
     }
 
-    
     std::string filename;
     getFilenameAtSequenceTime(sequenceTime, false, filename);
     
@@ -995,8 +997,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         }
     }
 
-    
-    
     std::string proxyFile;
     if (useProxy) {
         getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
@@ -1028,7 +1028,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    
     ///The args.renderWindow is already in pixels coordinate (render scale is already taken into account ).
     ///If the filename IS NOT a proxy file we have to make sure the renderWindow is
     ///upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
@@ -1147,8 +1146,7 @@ GenericReaderPlugin::inputFileChanged()
     ///everything as it would take too much time.
     indexes[0] = content.getPotentialFrameNumbersCount() - 1;
     content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
-    
-    
+
     _sequenceFromFiles.clear();
     SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
     
@@ -1170,9 +1168,6 @@ GenericReaderPlugin::inputFileChanged()
         ///let the derive class a chance to initialize any data structure it may need
         onInputFileChanged(filename);
     }
-    
-
-   
 }
 
 void
@@ -1234,20 +1229,17 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _lastFrame->getValue(last);
         _firstFrame->setDisplayRange(first, last);
     } else if (paramName == kReaderFrameModeParamName) {
-        int mode;
-        _frameMode->getValue(mode);
-        switch (mode) {
-            case 0: //starting frame
+        int frameMode_i;
+        _frameMode->getValue(frameMode_i);
+        FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
+        switch (frameMode) {
+            case eFrameModeStartingFrame: //starting frame
                 _startingFrame->setIsSecret(false);
                 _timeOffset->setIsSecret(true);
                 break;
-            case 1: //time offset
+            case eFrameModeTimeOffset: //time offset
                 _startingFrame->setIsSecret(true);
                 _timeOffset->setIsSecret(false);
-                break;
-            default:
-                //no such case
-                assert(false);
                 break;
         }
     } else if (paramName == kReaderStartingFrameParamName && !_settingFrameRange) {
@@ -1462,10 +1454,15 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     OFX::ChoiceParamDescriptor* beforeFirstParam = desc.defineChoiceParam(kReaderBeforeParamName);
     beforeFirstParam->setLabels(kReaderBeforeParamLabel, kReaderBeforeParamLabel, kReaderBeforeParamLabel);
     beforeFirstParam->setHint(kReaderBeforeParamHint);
+    assert(beforeFirstParam->getNOptions() == eBeforeAfterHold);
     beforeFirstParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+    assert(beforeFirstParam->getNOptions() == eBeforeAfterLoop);
     beforeFirstParam->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+    assert(beforeFirstParam->getNOptions() == eBeforeAfterBounce);
     beforeFirstParam->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+    assert(beforeFirstParam->getNOptions() == eBeforeAfterBlack);
     beforeFirstParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+    assert(beforeFirstParam->getNOptions() == eBeforeAfterError);
     beforeFirstParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
     beforeFirstParam->setAnimates(true);
     beforeFirstParam->setDefault(0);
@@ -1484,10 +1481,15 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     OFX::ChoiceParamDescriptor* afterLastParam = desc.defineChoiceParam(kReaderAfterParamName);
     afterLastParam->setLabels(kReaderAfterParamLabel, kReaderAfterParamLabel, kReaderAfterParamLabel);
     afterLastParam->setHint(kReaderAfterParamHint);
+    assert(afterLastParam->getNOptions() == eBeforeAfterHold);
     afterLastParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+    assert(afterLastParam->getNOptions() == eBeforeAfterLoop);
     afterLastParam->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+    assert(afterLastParam->getNOptions() == eBeforeAfterBounce);
     afterLastParam->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+    assert(afterLastParam->getNOptions() == eBeforeAfterBlack);
     afterLastParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+    assert(afterLastParam->getNOptions() == eBeforeAfterError);
     afterLastParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
     afterLastParam->setAnimates(true);
     afterLastParam->setDefault(0);
@@ -1497,8 +1499,11 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
     missingFrameParam->setLabels(kReaderMissingFrameParamLabel, kReaderMissingFrameParamLabel, kReaderMissingFrameParamLabel);
     missingFrameParam->setHint(kReaderMissingFrameParamHint);
+    assert(missingFrameParam->getNOptions() == eMissingNearest);
     missingFrameParam->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
+    assert(missingFrameParam->getNOptions() == eMissingError);
     missingFrameParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+    assert(missingFrameParam->getNOptions() == eMissingBlack);
     missingFrameParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
     missingFrameParam->setAnimates(true);
     missingFrameParam->setDefault(0); //< default to nearest frame.
@@ -1507,7 +1512,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
     ///////////Frame-mode
     OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kReaderFrameModeParamName);
+    assert(frameModeParam->getNOptions() == eFrameModeStartingFrame);
     frameModeParam->appendOption(kReaderFrameModeParamOptionStartingFrame);
+    assert(frameModeParam->getNOptions() == eFrameModeTimeOffset);
     frameModeParam->appendOption(kReaderFrameModeParamOptionTimeOffset);
     frameModeParam->setAnimates(true);
     frameModeParam->setDefault(0);
