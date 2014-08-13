@@ -132,7 +132,12 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     double ap;
     
     _ffmpegFile->getInfo(width, height, ap, frames);
-    assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
+
+    // wrong assert:
+    // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
+    //  "If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one."
+    //  The renderWindow itself may or may not be the full image...
+    //assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
 
     if((imgBounds.x2 - imgBounds.x1) < width ||
        (imgBounds.y2 - imgBounds.y1) < height){
@@ -172,13 +177,13 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
         return;
     }
 
-    ///fill the dstImg with the buffer freshly decoded.
-    for (int y = imgBounds.y1; y < imgBounds.y2; ++y) {
-        int srcY = imgBounds.y2 - y - 1;
+    ///fill the renderWindow in dstImg with the buffer freshly decoded.
+    for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
+        int srcY = renderWindow.y2 - y - 1;
         float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
         const unsigned char* src_pixels = _buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
         
-        for (int x = imgBounds.x1; x < imgBounds.x2; ++x) {
+        for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
             int srcCol = x * 3;
             int dstCol = x * 4;
             dst_pixels[dstCol + 0] = intToFloat<256>(src_pixels[srcCol + 0]);
