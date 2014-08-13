@@ -55,6 +55,11 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsTiles 1
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 1
+#define kRenderThreadSafety eRenderFullySafe
+
 class OCIOColorSpacePlugin : public OFX::ImageEffect
 {
 public:
@@ -421,8 +426,9 @@ void OCIOColorSpacePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // add supported pixel depths
     desc.addSupportedBitDepth(OFX::eBitDepthFloat);
 
-    desc.setSupportsTiles(true);
-    desc.setRenderThreadSafety(eRenderFullySafe);
+    desc.setSupportsTiles(kSupportsTiles);
+    desc.setSupportsMultiResolution(kSupportsMultiResolution);
+    desc.setRenderThreadSafety(kRenderThreadSafety);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -434,14 +440,14 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     srcClip->addSupportedComponent(ePixelComponentRGBA);
     srcClip->addSupportedComponent(ePixelComponentRGB);
     srcClip->setTemporalClipAccess(false);
-    srcClip->setSupportsTiles(true);
+    srcClip->setSupportsTiles(kSupportsTiles);
     srcClip->setIsMask(false);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->addSupportedComponent(ePixelComponentRGB);
-    dstClip->setSupportsTiles(true);
+    dstClip->setSupportsTiles(kSupportsTiles);
 
     if (context == eContextGeneral || context == eContextPaint) {
         ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
@@ -450,7 +456,7 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         if (context == eContextGeneral) {
             maskClip->setOptional(true);
         }
-        maskClip->setSupportsTiles(true);
+        maskClip->setSupportsTiles(kSupportsTiles);
         maskClip->setIsMask(true);
     }
 
