@@ -109,6 +109,11 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsTiles 0
+#define kSupportsMultiResolution 0
+#define kSupportsRenderScale 0
+#define kRenderThreadSafety eRenderInstanceSafe
+
 #define kRunScriptPluginSourceClipCount 10
 #define kRunScriptPluginArgumentsCount 10
 
@@ -171,6 +176,12 @@ public:
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
     virtual void beginEdit(void);
 
+    // override the rod call
+    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+
+    // override the roi call
+    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
+
 private:
     OFX::Clip *srcClip_[kRunScriptPluginSourceClipCount];
     OFX::Clip *dstClip_;
@@ -232,6 +243,10 @@ void
 RunScriptPlugin::render(const OFX::RenderArguments &args)
 {
     DBG(std::cout << "rendering time " << args.time << " scale " << args.renderScale.x << ',' << args.renderScale.y << " window " << args.renderWindow.x1 << ',' << args.renderWindow.y1 << " - " << args.renderWindow.x2 << ',' << args.renderWindow.y2 << " field " << (int)args.fieldToRender << " view " << args.renderView << std::endl);
+
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
 
     bool validated;
     validate_->getValue(validated);
@@ -374,6 +389,10 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
 {
     DBG(std::cout << "changed param " << paramName << " at time " << args.time << " reason = " << (int)args.reason <<  std::endl);
 
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
     int param_count;
     param_count_->getValue(param_count);
 
@@ -469,6 +488,7 @@ RunScriptPlugin::beginEdit(void)
     DBG(std::cout << "beginEdit" << std::endl);
     // Due to a bug in Nuke, all visibility changes have to be done after instance creation.
     // It is not possible in Nuke to show a parameter that was set as secret/hidden in describeInContext()
+
     int param_count;
     param_count_->getValue(param_count);
 
@@ -509,6 +529,40 @@ RunScriptPlugin::beginEdit(void)
     script_->setEvaluateOnChange(validated);
 }
 
+// override the roi call
+void
+RunScriptPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
+                                      OFX::RegionOfInterestSetter &rois)
+{
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    if (!kSupportsTiles) {
+        // The effect requires full images to render any region
+        for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
+            OfxRectD srcRoI;
+
+            if (srcClip_[i] && srcClip_[i]->isConnected()) {
+                srcRoI = srcClip_[i]->getRegionOfDefinition(args.time);
+                rois.setRegionOfInterest(*srcClip_[i], srcRoI);
+            }
+        }
+    }
+}
+
+bool
+RunScriptPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
+                                       OfxRectD &rod)
+{
+    if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    // use the default RoD
+    return false;
+}
+
 using namespace OFX;
 
 mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
@@ -535,8 +589,9 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
-    desc.setSupportsMultiResolution(false);
-    desc.setSupportsTiles(false);
+    desc.setSupportsTiles(kSupportsTiles);
+    desc.setSupportsMultiResolution(kSupportsMultiResolution);
+    desc.setRenderThreadSafety(kRenderThreadSafety);
     desc.setTemporalClipAccess(false);
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
