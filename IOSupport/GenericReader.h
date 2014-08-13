@@ -176,25 +176,28 @@ private:
     enum GetSequenceTimeRetEnum {
         eGetSequenceTimeWithinSequence = 0,
         eGetSequenceTimeBeforeSequence,
-        eGetSequenceTimeAfterSequence
+        eGetSequenceTimeAfterSequence,
+        eGetSequenceTimeBlack,
+        eGetSequenceTimeError,
     };
     /**
      * @brief compute the sequence/file time from time
      * @param canSetOriginalFrameRange If false, the underlying call
      * cannot set the _originalFrameRange param values.
      */
-    GetSequenceTimeRetEnum getSequenceTime(double t, bool canSetOriginalFrameRange, double &sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTime(double t, bool canSetOriginalFrameRange, double &sequenceTime) WARN_UNUSED_RETURN;
 
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
         eGetFileNameReturnedFullRes,
-        eGetFileNameReturnedProxy
+        eGetFileNameReturnedProxy,
+        eGetFileNameBlack,
     };
     
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string &filename);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string &filename) WARN_UNUSED_RETURN;
     
     /**
      * @brief Initializes the params depending on the input file.

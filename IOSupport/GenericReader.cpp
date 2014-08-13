@@ -344,10 +344,8 @@ fileExists(const std::string& filename)
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
-GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,double &sequenceTime)
+GenericReaderPlugin::getSequenceTime(double t, bool canSetOriginalFrameRange, double &sequenceTime)
 {
-    GenericReaderPlugin::GetSequenceTimeRetEnum ret;
-    
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
@@ -367,7 +365,9 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
     int timeOffsetFromStart = t -  sequenceTimeDomain.min;
     
     ///if the time given is before the sequence
-    if (sequenceTime < sequenceTimeDomain.min) {
+    if (sequenceTimeDomain.min <= sequenceTime && sequenceTime <= sequenceTimeDomain.max) {
+        return eGetSequenceTimeWithinSequence;
+    } else if (sequenceTime < sequenceTimeDomain.min) {
         /////if we're before the first frame
         int beforeChoice_i;
         _beforeFirst->getValue(beforeChoice_i);
@@ -375,11 +375,13 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
         switch (beforeChoice) {
             case eBeforeAfterHold: //hold
                 sequenceTime = sequenceTimeDomain.min;
-                break;
+                return eGetSequenceTimeBeforeSequence;
+
             case eBeforeAfterLoop: //loop
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                 sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
-                break;
+                return eGetSequenceTimeBeforeSequence;
+
             case eBeforeAfterBounce: { //bounce
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
@@ -390,18 +392,19 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                     sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 }
-            }   break;
+                return eGetSequenceTimeBeforeSequence;
+            }
             case eBeforeAfterBlack: //black
-                break;
+                return eGetSequenceTimeBlack;
+
             case eBeforeAfterError: //error
                 setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
-                throw std::invalid_argument("Out of frame range.");
-                break;
+                return eGetSequenceTimeError;
         }
-        assert(beforeChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
-        ret = GenericReaderPlugin::eGetSequenceTimeBeforeSequence;
-    } else if (sequenceTime > sequenceTimeDomain.max) { ///the time given is after the sequence
-                                             /////if we're after the last frame
+
+    } else {
+        assert(sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
+        /////if we're after the last frame
         int afterChoice_i;
         _afterLast->getValue(afterChoice_i);
         BeforeAfterEnum afterChoice = BeforeAfterEnum(afterChoice_i);
@@ -409,11 +412,13 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
         switch (afterChoice) {
             case eBeforeAfterHold: //hold
                 sequenceTime = sequenceTimeDomain.max;
-                break;
+                return eGetSequenceTimeAfterSequence;
+
             case eBeforeAfterLoop: //loop
                 timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                 sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
-                break;
+                return eGetSequenceTimeAfterSequence;
+
             case eBeforeAfterBounce: { //bounce
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
@@ -424,20 +429,17 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
                     timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
                     sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
                 }
-            }   break;
+                return eGetSequenceTimeAfterSequence;
+            }
             case eBeforeAfterBlack: //black
+                return eGetSequenceTimeBlack;
                 break;
+
             case eBeforeAfterError: //error
                 setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
-                throw std::invalid_argument("Out of frame range.");
-                break;
+                return eGetSequenceTimeError;
         }
-        assert(afterChoice == 3 || (sequenceTime >= sequenceTimeDomain.min && sequenceTime <= sequenceTimeDomain.max));
-        ret = GenericReaderPlugin::eGetSequenceTimeAfterSequence;
-    } else {
-        ret = GenericReaderPlugin::eGetSequenceTimeWithinSequence;
     }
-    return ret;
 }
 
 GenericReaderPlugin::GetFilenameRetCodeEnum
@@ -445,17 +447,20 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                bool proxyFiles,
                                                std::string &filename)
 {
-    GenericReaderPlugin::GetFilenameRetCodeEnum ret = GenericReaderPlugin::eGetFileNameReturnedFullRes;
+    GetFilenameRetCodeEnum ret = eGetFileNameReturnedFullRes;
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
-    
+
+    if (sequenceTime < sequenceTimeDomain.min) {
+
+    }
     _fileParam->getValueAtTime(sequenceTime, filename);
     if (proxyFiles) {
         std::string proxyFileName;
         _proxyFileParam->getValueAtTime(sequenceTime, proxyFileName);
         if (!proxyFileName.empty() && !filename.empty()) {
             filename = proxyFileName;
-            ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
+            ret = eGetFileNameReturnedProxy;
         }
     }
 
@@ -478,7 +483,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                             _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
                             if (!proxyFileName.empty()) {
                                 filename = proxyFileName;
-                                ret = GenericReaderPlugin::eGetFileNameReturnedProxy;
+                                ret = eGetFileNameReturnedProxy;
                             }
                         }
                         
@@ -491,12 +496,12 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                 }
                 if (!fs.is_open()) {
                     setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
-                    ret = GenericReaderPlugin::eGetFileNameFailed;
+                    ret = eGetFileNameFailed;
                     // return a black image
                 } else {
                     if (!fileExists(filename)) {
                         setPersistentMessage(OFX::Message::eMessageError, "", filename + " : File does not exist.");
-                        ret = GenericReaderPlugin::eGetFileNameFailed;
+                        ret = eGetFileNameFailed;
                     } else {
                         clearPersistentMessage();
                     }
@@ -507,13 +512,13 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
-                ret = GenericReaderPlugin::eGetFileNameFailed;
+                ret = eGetFileNameFailed;
             }   break;
             case eMissingBlack: { // Black image
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
                 // will have to handle the case itself.
                 clearPersistentMessage();
-                ret = GenericReaderPlugin::eGetFileNameFailed;
+                ret = eGetFileNameBlack;
             }   break;
         }
 
@@ -526,11 +531,30 @@ OfxStatus
 GenericReaderPlugin::getFilenameAtTime(double t, std::string& filename)
 {
     double sequenceTime;
-    GetSequenceTimeRetEnum st1 = getSequenceTime(t, false, sequenceTime);
-    (void)st1;
-    GetFilenameRetCodeEnum st2 = getFilenameAtSequenceTime(sequenceTime, false, filename);
-    if (st2 == eGetFileNameFailed) {
-        return kOfxStatFailed;
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(t, false, sequenceTime);
+    switch (getSequenceTimeRet) {
+        case eGetSequenceTimeBlack:
+            return kOfxStatReplyDefault;
+
+        case eGetSequenceTimeError:
+            return kOfxStatFailed;
+
+        case eGetSequenceTimeBeforeSequence:
+        case eGetSequenceTimeWithinSequence:
+        case eGetSequenceTimeAfterSequence:
+            break;
+    }
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, filename);
+    switch (getFilenameAtSequenceTimeRet) {
+        case eGetFileNameFailed:
+            return kOfxStatFailed;
+
+        case eGetFileNameBlack:
+            return kOfxStatReplyDefault;
+
+        case eGetFileNameReturnedFullRes:
+        case eGetFileNameReturnedProxy:
+            break;
     }
     return kOfxStatOK;
 }
@@ -911,27 +935,42 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     }
 
     double sequenceTime;
-    try {
-        getSequenceTime(args.time, false, sequenceTime);
-    } catch (const std::exception& e) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, sequenceTime);
+    switch (getSequenceTimeRet) {
+        case eGetSequenceTimeBlack:
+            return false;
+
+        case eGetSequenceTimeError:
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+
+        case eGetSequenceTimeBeforeSequence:
+        case eGetSequenceTimeWithinSequence:
+        case eGetSequenceTimeAfterSequence:
+            break;
     }
+
     std::string filename;
- 
-    GenericReaderPlugin::GetFilenameRetCodeEnum ret = getFilenameAtSequenceTime(sequenceTime, true, filename);
-    
-    if (ret == GenericReaderPlugin::eGetFileNameFailed) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, true, filename);
+    switch (getFilenameAtSequenceTimeRet) {
+        case eGetFileNameFailed:
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+
+        case eGetFileNameBlack:
+            return false;
+
+        case eGetFileNameReturnedFullRes:
+        case eGetFileNameReturnedProxy:
+            break;
     }
-    
+
     std::string error;
     bool success = getFrameRegionOfDefinition(filename, sequenceTime, rod,error);
     
     if (!success) {
-        return false;
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    if (ret == GenericReaderPlugin::eGetFileNameReturnedProxy) {
+    if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedProxy) {
         ///upscale the proxy RoD to be in canonical coords.
         unsigned int mipmapLvl = getLevelFromScale(args.renderScale.x);
         rod = upscalePowerOfTwo(rod, (double)mipmapLvl);
@@ -964,48 +1003,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    double sequenceTime;
-    GenericReaderPlugin::GetSequenceTimeRetEnum sequenceTimeRet;
-    try {
-        sequenceTimeRet = getSequenceTime(args.time,false,sequenceTime);
-    } catch (const std::exception& e) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
-    
-    OfxPointD proxyScaleThreshold;
-    _proxyScale->getValue(proxyScaleThreshold.x, proxyScaleThreshold.y);
-    
-    bool useProxy = false;
-    if (kSupportsRenderScale && (args.renderScale.x <= proxyScaleThreshold.x || args.renderScale.y <= proxyScaleThreshold.y)) {
-        useProxy = true;
-    }
-
-    std::string filename;
-    getFilenameAtSequenceTime(sequenceTime, false, filename);
-    
-    if (sequenceTimeRet == eGetSequenceTimeBeforeSequence) {
-        int beforeChoice;
-        _beforeFirst->getValue(beforeChoice);
-        if (beforeChoice == 3 || beforeChoice == 4) {
-            filename.clear();
-        }
-    } else if (sequenceTimeRet == eGetSequenceTimeAfterSequence) {
-        int afterChoice;
-        _afterLast->getValue(afterChoice);
-        if (afterChoice == 3 || afterChoice == 4) {
-            filename.clear();
-        }
-    }
-
-    std::string proxyFile;
-    if (useProxy) {
-        getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
-        assert(!proxyFile.empty());
-        
-        ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
-        useProxy &= proxyFile != filename;
-    }
-
     void* dstPixelData = NULL;
     OfxRectI bounds;
     OFX::PixelComponentEnum pixelComponents;
@@ -1023,10 +1020,77 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     // are we in the image bounds
     if (args.renderWindow.x1 < bounds.x1 || args.renderWindow.x1 >= bounds.x2 || args.renderWindow.y1 < bounds.y1 || args.renderWindow.y1 >= bounds.y2 ||
-       args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
+        args.renderWindow.x2 <= bounds.x1 || args.renderWindow.x2 > bounds.x2 || args.renderWindow.y2 <= bounds.y1 || args.renderWindow.y2 > bounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
     }
+
+    double sequenceTime;
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time,false,sequenceTime);
+    switch (getSequenceTimeRet) {
+        case eGetSequenceTimeBlack:
+            fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
+            return;
+
+        case eGetSequenceTimeError:
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+
+        case eGetSequenceTimeBeforeSequence:
+        case eGetSequenceTimeWithinSequence:
+        case eGetSequenceTimeAfterSequence:
+            break;
+    }
+
+    bool useProxy = false;
+    OfxPointD proxyScaleThreshold;
+    _proxyScale->getValue(proxyScaleThreshold.x, proxyScaleThreshold.y);
+
+    if (kSupportsRenderScale && (args.renderScale.x <= proxyScaleThreshold.x || args.renderScale.y <= proxyScaleThreshold.y)) {
+        useProxy = true;
+    }
+
+    std::string filename;
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, filename);
+    switch (getFilenameAtSequenceTimeRet) {
+        case eGetFileNameFailed:
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+
+        case eGetFileNameBlack:
+            fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
+            return;
+
+        case eGetFileNameReturnedFullRes:
+            break;
+
+        case eGetFileNameReturnedProxy:
+            // we didn't ask for proxy!
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+
+    std::string proxyFile;
+    if (useProxy) {
+        ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
+        GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
+        switch (getFilenameAtSequenceTimeRet) {
+            case eGetFileNameFailed:
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+
+            case eGetFileNameBlack:
+                fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
+                return;
+
+            case eGetFileNameReturnedFullRes:
+                assert(proxyFile == filename);
+                useProxy = false;
+                break;
+
+            case eGetFileNameReturnedProxy:
+                assert(!proxyFile.empty());
+                useProxy = (proxyFile != filename);
+                break;
+        }
+    }
+
 
     ///The args.renderWindow is already in pixels coordinate (render scale is already taken into account ).
     ///If the filename IS NOT a proxy file we have to make sure the renderWindow is
@@ -1093,13 +1157,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     assert(downscaleLevels >= 0);
 
-#if 1
     if ((_ocio->isIdentity(args.time) && (!kSupportsRenderScale || renderMipmapLevel == 0))) {
         // no colorspace conversion, just read file
         decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
-    } else
-#endif
-    {
+    } else {
 
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
         int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
@@ -1186,26 +1247,34 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         ///Detect the scale of the proxy.
         std::string proxyFile,originalFileName;
         double sequenceTime;
-        try {
-            getSequenceTime(args.time,false,sequenceTime);
-        } catch (const std::exception& e) {
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+        GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time,false,sequenceTime);
+        switch (getSequenceTimeRet) {
+            case eGetSequenceTimeBlack:
+            case eGetSequenceTimeError:
+                break;
+
+            case eGetSequenceTimeBeforeSequence:
+            case eGetSequenceTimeWithinSequence:
+            case eGetSequenceTimeAfterSequence: {
+                GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet   = getFilenameAtSequenceTime(sequenceTime, false, originalFileName);
+                GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
+
+                if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedFullRes &&
+                    getFilenameAtSequenceTimeRetPx ==  eGetFileNameReturnedProxy &&
+                    proxyFile != originalFileName) {
+                    assert(!proxyFile.empty());
+                    ///show the scale param
+                    _proxyScale->setIsSecret(false);
+                    _enableCustomScale->setIsSecret(false);
+
+                    OfxPointD scale = detectProxyScale(originalFileName,proxyFile,args.time);
+                    _proxyScale->setValue(scale.x, scale.y);
+                } else {
+                    _proxyScale->setIsSecret(true);
+                    _enableCustomScale->setIsSecret(true);
+                }
+            }   break;
         }
-        getFilenameAtSequenceTime(sequenceTime, false, originalFileName);
-        getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
-        
-        if (!proxyFile.empty() && proxyFile != originalFileName) {
-            ///show the scale param
-            _proxyScale->setIsSecret(false);
-            _enableCustomScale->setIsSecret(false);
-            
-            OfxPointD scale = detectProxyScale(originalFileName,proxyFile,args.time);
-            _proxyScale->setValue(scale.x, scale.y);
-        } else {
-            _proxyScale->setIsSecret(true);
-            _enableCustomScale->setIsSecret(true);
-        }
-        
     } else if (paramName == kReaderCustomScaleParamName) {
         bool enabled;
         _enableCustomScale->getValue(enabled);
@@ -1293,44 +1362,32 @@ GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args,
     }
 
     if (!gHostIsNatron) {
+        // only Natron supports setting the identityClip to the output clip
         return false;
     }
+
     double sequenceTime;
-    GenericReaderPlugin::GetSequenceTimeRetEnum ret;
-    try {
-        ret = getSequenceTime(args.time,false,sequenceTime);
-    } catch (const std::exception& e) {
-        return false;
-    }
-    
-    if (ret == GenericReaderPlugin::eGetSequenceTimeBeforeSequence) {
-        ///If before choice is set to black or error, just don't say we're identity
-        int beforeChoice;
-        _beforeFirst->getValue(beforeChoice);
-        if (beforeChoice == 3 || beforeChoice == 4) {
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time,false,sequenceTime);
+    switch (getSequenceTimeRet) {
+        case eGetSequenceTimeBlack:
             return false;
-        }
-    }
-    
-    if (ret == GenericReaderPlugin::eGetSequenceTimeAfterSequence) {
-        ///If after choice is set to black or error, just don't say we're identity
-        int afterChoice;
-        _afterLast->getValue(afterChoice);
-        if (afterChoice == 3 || afterChoice == 4) {
+
+        case eGetSequenceTimeError:
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+
+        case eGetSequenceTimeBeforeSequence:
+        case eGetSequenceTimeAfterSequence:
+            ///Transform the sequence time to "real" time
+            int timeOffset;
+            _timeOffset->getValue(timeOffset);
+            identityTime = sequenceTime + timeOffset;
+            identityClip = _outputClip;
+            return true;
+
+        case eGetSequenceTimeWithinSequence:
             return false;
-        }
     }
-    
-    if (ret == GenericReaderPlugin::eGetSequenceTimeAfterSequence || ret == GenericReaderPlugin::eGetSequenceTimeBeforeSequence) {
-        ///Transform the sequence time to "real" time
-        int timeOffset;
-        _timeOffset->getValue(timeOffset);
-        identityTime = sequenceTime + timeOffset;
-        identityClip = _outputClip;
-        return true;
-    } else {
-        return false;
-    }
+    return false;
 }
 
 OfxPointD
