@@ -550,16 +550,15 @@ void
 OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
                                        OFX::RegionOfInterestSetter &rois)
 {
-    // The effect requires full images to render any region
-    OfxRectD srcRoI;
+    if (!kSupportsTiles) {
+        // The effect requires full images to render any region
+        OfxRectD srcRoI;
 
-    if (srcClip_ && srcClip_->isConnected()) {
-        srcRoI = srcClip_->getRegionOfDefinition(args.time);
-    } else {
-        srcRoI.x1 = srcRoI.y1 = kOfxFlagInfiniteMin;
-        srcRoI.x2 = srcRoI.y2 = kOfxFlagInfiniteMax;
+        if (srcClip_ && srcClip_->isConnected()) {
+            srcRoI = srcClip_->getRegionOfDefinition(args.time);
+            rois.setRegionOfInterest(*srcClip_, srcRoI);
+        }
     }
-    rois.setRegionOfInterest(*srcClip_, srcRoI);
 }
 
 
