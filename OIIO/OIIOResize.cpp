@@ -69,6 +69,11 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsTiles 0
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 1
+#define kRenderThreadSafety eRenderFullySafe
+
 #define kTypeParamName "type"
 #define kTypeParamLabel "Type"
 #define kTypeParamHint "Format: Converts between formats, the image is resized to fit in the target format. " \
@@ -120,6 +125,9 @@ public:
 
     // override the rod call
     virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+
+    // override the roi call
+    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
 
 private:
     
@@ -602,6 +610,23 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
     return true;
 }
 
+// override the roi call
+void
+OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
+                                       OFX::RegionOfInterestSetter &rois)
+{
+    // The effect requires full images to render any region
+    OfxRectD srcRoI;
+
+    if (srcClip_ && srcClip_->isConnected()) {
+        srcRoI = srcClip_->getRegionOfDefinition(args.time);
+    } else {
+        srcRoI.x1 = srcRoI.y1 = kOfxFlagInfiniteMin;
+        srcRoI.x2 = srcRoI.y2 = kOfxFlagInfiniteMax;
+    }
+    rois.setRegionOfInterest(*srcClip_, srcRoI);
+}
+
 
 using namespace OFX;
 
@@ -633,12 +658,12 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedBitDepth(OFX::eBitDepthFloat);
     
     ///We don't support tiles: we can only resize the whole RoD at once
-    desc.setSupportsTiles(false);
+    desc.setSupportsTiles(kSupportsTiles);
     
     ///We do support multiresolution
-    desc.setSupportsMultiResolution(true);
+    desc.setSupportsMultiResolution(kSupportsMultiResolution);
     
-    desc.setRenderThreadSafety(eRenderFullySafe);
+    desc.setRenderThreadSafety(kRenderThreadSafety);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
