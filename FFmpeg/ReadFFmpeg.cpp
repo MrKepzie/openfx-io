@@ -47,7 +47,7 @@
 
 #include "IOUtility.h"
 
-static const bool kSupportsTiles = false;
+#define kSupportsTiles 0
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, kSupportsTiles)

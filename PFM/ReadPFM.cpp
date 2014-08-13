@@ -43,7 +43,7 @@
 
 #include <cstdio>
 
-static const bool kSupportsTiles = false;
+#define kSupportsTiles 0
 
 /**
  \return \c false for "Little Endian", \c true for "Big Endian".
@@ -95,13 +95,14 @@ ReadPFMPlugin::~ReadPFMPlugin()
 }
 
 template <class PIX, int srcC, int dstC>
-static void copyLine(PIX *image, int W, int /*H*/, int C, int /*y*/, PIX *dstPix)
+static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
 {
     assert(srcC == C);
 
-    const PIX *srcPix = image;
+    const PIX *srcPix = image + x1 * C;
+    dstPix += x1 * dstC;
 
-    for(int x = 0; x < W; ++x) {
+    for(int x = x1; x < x2; ++x) {
         if(srcC == 1) {
             // alpha/grayscale image
             for (int c = 0; c < std::min(dstC,3); ++c) {
@@ -120,7 +121,6 @@ static void copyLine(PIX *image, int W, int /*H*/, int C, int /*y*/, PIX *dstPix
         srcPix += srcC;
         dstPix += dstC;
     }
-    
 }
 
 void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
@@ -165,8 +165,6 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         }
     }
 
-    assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == W && renderWindow.y1 == 0 && renderWindow.y2 == H));
-
     std::fgetc(nfile);
 
     const bool is_inverted = (scale > 0) != endianness();
@@ -179,7 +177,12 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
     int numpixels = W * C;
     float *image = new float[numpixels];
 
-    for (int y = 0; y < H; ++y) {
+    assert(0 <= renderWindow.x1 && renderWindow.x2 <= W &&
+           0 <= renderWindow.y1 && renderWindow.y2 <= H);
+    const int x1 = renderWindow.x1;
+    const int x2 = renderWindow.x2;
+
+    for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
         int numread = std::fread(image, 4, numpixels, nfile);
         if (numread < numpixels) {
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
@@ -195,13 +198,13 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         if (C == 1) {
             switch (pixelComponents) {
                 case OFX::ePixelComponentAlpha:
-                    copyLine<float,1,1>(image, W, H, C, y, dstPix);
+                    copyLine<float,1,1>(image, x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGB:
-                    copyLine<float,1,3>(image, W, H, C, y, dstPix);
+                    copyLine<float,1,3>(image, x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,1,4>(image, W, H, C, y, dstPix);
+                    copyLine<float,1,4>(image, x1, x2, C, dstPix);
                     break;
                 default:
                     break;
@@ -209,13 +212,13 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         } else if (C == 3) {
             switch (pixelComponents) {
                 case OFX::ePixelComponentAlpha:
-                    copyLine<float,3,1>(image, W, H, C, y, dstPix);
+                    copyLine<float,3,1>(image, x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGB:
-                    copyLine<float,3,3>(image, W, H, C, y, dstPix);
+                    copyLine<float,3,3>(image, x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,3,4>(image, W, H, C, y, dstPix);
+                    copyLine<float,3,4>(image, x1, x2, C, dstPix);
                     break;
                 default:
                     break;
