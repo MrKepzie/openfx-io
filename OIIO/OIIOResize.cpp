@@ -167,9 +167,13 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
 , preservePAR_(0)
 {
     dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
-    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA || dstClip_->getPixelComponents() == OFX::ePixelComponentRGB));
+    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        dstClip_->getPixelComponents() == OFX::ePixelComponentRGB ||
+                        dstClip_->getPixelComponents() == OFX::ePixelComponentAlpha));
     srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
+    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        srcClip_->getPixelComponents() == OFX::ePixelComponentRGB ||
+                        srcClip_->getPixelComponents() == OFX::ePixelComponentAlpha));
 
     type_ = fetchChoiceParam(kTypeParamName);
     format_ = fetchChoiceParam(kFormatParamName);
@@ -605,6 +609,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
     srcClip->addSupportedComponent(ePixelComponentRGBA);
     srcClip->addSupportedComponent(ePixelComponentRGB);
+    srcClip->addSupportedComponent(ePixelComponentAlpha);
     srcClip->setTemporalClipAccess(false);
     srcClip->setSupportsTiles(true);
     srcClip->setIsMask(false);
@@ -613,6 +618,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->addSupportedComponent(ePixelComponentRGB);
+    dstClip->addSupportedComponent(ePixelComponentAlpha);
     dstClip->setSupportsTiles(true);
 
     // make some pages and to things in
