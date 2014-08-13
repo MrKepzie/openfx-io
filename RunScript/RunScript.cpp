@@ -75,6 +75,7 @@
 #ifndef _WINDOWS // Sorry, MS Windows users, this plugin won't work for you
 
 #include "RunScript.h"
+#include "ofxsMacros.h"
 
 #undef DEBUG
 #ifdef DEBUG
@@ -167,20 +168,20 @@ public:
     RunScriptPlugin(OfxImageEffectHandle handle);
 
     /* Override the render */
-    virtual void render(const OFX::RenderArguments &args);
+    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
 
     /* override changedParam */
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
 
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
-    virtual void beginEdit(void);
+    virtual void beginEdit(void) OVERRIDE FINAL;
 
     // override the rod call
-    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
 
     // override the roi call
-    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois);
+    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
 private:
     OFX::Clip *srcClip_[kRunScriptPluginSourceClipCount];

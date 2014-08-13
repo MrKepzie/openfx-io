@@ -142,23 +142,23 @@ public:
 
     virtual ~ReadOIIOPlugin();
 
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
-    virtual void clearAnyCache();
+    virtual void clearAnyCache() OVERRIDE FINAL;
 private:
 
-    virtual void onInputFileChanged(const std::string& filename);
+    virtual void onInputFileChanged(const std::string& filename) OVERRIDE FINAL;
 
-    virtual bool isVideoStream(const std::string& /*filename*/) { return false; }
+    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error);
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
 
     std::string metadata(const std::string& filename);
 
     /** @brief get the clip preferences */
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) /* OVERRIDE FINAL */;
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 
     void updateSpec(const std::string &filename);
 

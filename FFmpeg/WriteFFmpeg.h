@@ -53,20 +53,20 @@ public:
     
     virtual ~WriteFFmpegPlugin();
     
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
     
 
     
 private:
     
-    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args);
+    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
     
-    virtual void endEncode(const OFX::EndSequenceRenderArguments& args);
+    virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
     
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
     
     
-    virtual bool isImageFile(const std::string& fileExtension) const;
+    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
     
     void freeFormat();
     

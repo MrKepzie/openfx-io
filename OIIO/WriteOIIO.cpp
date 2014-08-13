@@ -183,14 +183,14 @@ public:
 
     virtual ~WriteOIIOPlugin();
 
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
 private:
-    virtual void onOutputFileChanged(const std::string& filename);
+    virtual void onOutputFileChanged(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool isImageFile(const std::string& fileExtension) const;
+    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
 private:
     OFX::ChoiceParam* _bitDepth;

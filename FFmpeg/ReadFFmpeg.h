@@ -59,21 +59,21 @@ public:
     
     virtual ~ReadFFmpegPlugin();
     
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
     
     bool loadNearestFrame() const;
     
 private:
     
-    virtual bool isVideoStream(const std::string& filename);
+    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& filename);
+    virtual void onInputFileChanged(const std::string& filename) OVERRIDE FINAL;
     
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
         
-    virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range);
+    virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
         
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error);
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
 };
 
 mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true);

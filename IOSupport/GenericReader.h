@@ -41,6 +41,7 @@
 #define Io_GenericReader_h
 
 #include <ofxsImageEffect.h>
+#include <ofxsMacros.h>
 
 class SequenceParser;
 class GenericOCIO;
@@ -66,7 +67,7 @@ public:
      * @brief Don't override this function, the GenericReaderPlugin class already does the rendering. The "decoding" of the frame
      * must be done by the pure virtual function decode(...) instead.
      **/
-    void render(const OFX::RenderArguments &args);
+    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
     
     /**
      * @brief Don't override this. Basically this function will call getTimeDomainForVideoStream(...),
@@ -74,7 +75,7 @@ public:
      * If the file is not a video stream, the function getTimeDomainForVideoStream() should return false, indicating that
      * we're reading a sequence of images and that the host should get the time domain for us.
      **/
-    bool getTimeDomain(OfxRangeD &range);
+    virtual bool getTimeDomain(OfxRangeD &range) OVERRIDE FINAL;
     
     /**
      * @brief Don't override this. If the pure virtual function areHeaderAndDataTied() returns true, this
@@ -84,7 +85,7 @@ public:
      * getFrameRegionOfDefinition() which should read the header of the image to only extract the region of
      * definition of the image.
      **/
-    bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
+    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
     
     
     /**
@@ -101,16 +102,16 @@ public:
      *      }
      * }
      **/
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE;
     
     /* override is identity */
-    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
+    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE;
     
     /**
      * @brief Overriden to clear any OCIO cache. 
      * This function calls clearAnyCache() if you have any cache to clear.
      **/
-    void purgeCaches(void);
+    virtual void purgeCaches(void) OVERRIDE;
     
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame

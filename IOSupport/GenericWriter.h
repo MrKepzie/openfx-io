@@ -41,6 +41,7 @@
 
 #include <ofxsImageEffect.h>
 #include "IOUtility.h"
+#include "ofxsMacros.h"
 
 namespace OFX {
     class PixelProcessorFilterBase;
@@ -67,31 +68,31 @@ public:
      * The render function also copies the image from the input clip to the output clip (only if the effect is connected downstream)
      * in order to be able to branch this effect in the middle of an effect tree.
      **/
-    void render(const OFX::RenderArguments &args);
+    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
     
     /* override is identity */
-    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
+    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE;
 
     /** @brief client begin sequence render function */
-    virtual void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args);
+    virtual void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args) OVERRIDE;
     
     /** @brief client end sequence render function */
-    virtual void endSequenceRender(const OFX::EndSequenceRenderArguments &args);
+    virtual void endSequenceRender(const OFX::EndSequenceRenderArguments &args) OVERRIDE;
     
     /**
      * @brief Don't override this. It returns the projects region of definition.
      **/
-    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) /*FINAL*/;
+    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
 
     /**
      * @brief Don't override this. It returns the source region of definition.
      **/
-    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) /*FINAL*/;
+    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
     /**
      * @brief Don't override this. It returns the frame range to render.
      **/
-    virtual bool getTimeDomain(OfxRangeD &range) /*FINAL*/;
+    virtual bool getTimeDomain(OfxRangeD &range) OVERRIDE FINAL;
 
     /**
      * @brief You can override this to take actions in response to a param change.
@@ -107,13 +108,13 @@ public:
      *      }
      * }
      **/
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE;
     
     /**
      * @brief Overriden to clear any OCIO cache.
      * This function calls clearAnyCache() if you have any cache to clear.
      **/
-    void purgeCaches(void);
+    void purgeCaches(void) OVERRIDE FINAL;
 
     
     

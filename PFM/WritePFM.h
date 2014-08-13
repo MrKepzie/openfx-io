@@ -40,6 +40,7 @@
 #define __Io__WritePFM__
 
 #include "GenericWriter.h"
+#include "ofxsMacros.h"
 
 class WritePFMPlugin : public GenericWriterPlugin {
     
@@ -51,9 +52,9 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
     
-    virtual bool isImageFile(const std::string& fileExtension) const;
+    virtual bool isImageFile(const std::string& fileExtension) OVERRIDE FINAL const;
 };
 
 mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
