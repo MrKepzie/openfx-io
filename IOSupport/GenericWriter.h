@@ -73,20 +73,25 @@ public:
     virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime);
 
     /** @brief client begin sequence render function */
-    void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args);
+    virtual void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args);
     
     /** @brief client end sequence render function */
-    void endSequenceRender(const OFX::EndSequenceRenderArguments &args);
+    virtual void endSequenceRender(const OFX::EndSequenceRenderArguments &args);
     
     /**
      * @brief Don't override this. It returns the projects region of definition.
      **/
-    bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod);
-    
+    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) /*FINAL*/;
+
+    /**
+     * @brief Don't override this. It returns the source region of definition.
+     **/
+    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) /*FINAL*/;
+
     /**
      * @brief Don't override this. It returns the frame range to render.
      **/
-    bool getTimeDomain(OfxRangeD &range);
+    virtual bool getTimeDomain(OfxRangeD &range) /*FINAL*/;
 
     /**
      * @brief You can override this to take actions in response to a param change.

@@ -104,6 +104,12 @@
 "By default the plugin will append as many digits as necessary (if you have 11 frames, " \
 "there will be at least 2 digits). The file name may not contain any # (hash)."
 
+#define kSupportsTiles 0
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
+#define kRenderThreadSafety eRenderInstanceSafe
+
+
 #define kWriterFrameRangeChoiceParamName "frameRange"
 #define kWriterFrameRangeChoiceParamLabel "Frame range"
 #define kWriterFrameRangeChoiceParamHint "What frame range should be rendered."
@@ -119,9 +125,6 @@
 
 #define kWriterLastFrameParamName "lastFrame"
 #define kWriterLastFrameParamLabel "Last frame"
-
-#define kSupportsMultiResolution 1
-#define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -495,9 +498,24 @@ GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    ///get the RoD of the input clip
-    rod = _inputClip->getRegionOfDefinition(args.time);
-    return true;
+    // use the default RoD
+    return false;
+}
+
+// override the roi call
+void
+GenericWriterPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
+                                       OFX::RegionOfInterestSetter &rois)
+{
+    if (!kSupportsTiles) {
+        // The effect requires full images to render any region
+        OfxRectD srcRoI;
+
+        if (_inputClip && _inputClip->isConnected()) {
+            srcRoI = _inputClip->getRegionOfDefinition(args.time);
+            rois.setRegionOfInterest(*_inputClip, srcRoI);
+        }
+    }
 }
 
 
@@ -588,11 +606,11 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc)
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
-    desc.setSupportsTiles(false);
+    desc.setSupportsTiles(kSupportsTiles);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
-    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    desc.setRenderThreadSafety(kRenderThreadSafety);
 }
 
 /**
@@ -614,7 +632,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     if (supportsAlpha) {
         srcClip->addSupportedComponent(ePixelComponentAlpha);
     }
-    srcClip->setSupportsTiles(false);
+    srcClip->setSupportsTiles(kSupportsTiles);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
@@ -627,7 +645,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     if (supportsAlpha) {
         dstClip->addSupportedComponent(ePixelComponentAlpha);
     }
-    dstClip->setSupportsTiles(false);//< we don't support tiles in output!
+    dstClip->setSupportsTiles(kSupportsTiles);//< we don't support tiles in output!
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
