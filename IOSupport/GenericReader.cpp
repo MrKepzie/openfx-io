@@ -256,7 +256,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
-    if (!getSequenceTimeDomain(filename,range)){
+    if (!getSequenceTimeDomain(filename, range)){
         if (_sequenceFromFiles.size() == 1) {
             range.min = range.max = 0;
         } else if (_sequenceFromFiles.size() > 1) {
@@ -338,7 +338,7 @@ GenericReaderPlugin::getSequenceTime(double t,bool canSetOriginalFrameRange,doub
     _lastFrame->getValue(sequenceTimeDomain.max);
     
     OfxRangeD originalTimeDomain;
-    getSequenceTimeDomainInternal(originalTimeDomain,canSetOriginalFrameRange);
+    getSequenceTimeDomainInternal(originalTimeDomain, canSetOriginalFrameRange);
     
     ///the return value
     sequenceTime =  t - timeOffset ;
@@ -433,7 +433,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
     
-    _fileParam->getValueAtTime(sequenceTime,filename);
+    _fileParam->getValueAtTime(sequenceTime, filename);
     if (proxyFiles) {
         std::string proxyFileName;
         _proxyFileParam->getValueAtTime(sequenceTime, proxyFileName);
@@ -788,7 +788,7 @@ buildMipMapLevel(OFX::ImageEffect* instance,
             OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
             nextImg = (float*)tmpMem->lock();
             
-            halveImage<PIX, nComponents>(nextRenderWindow,previousImg, previousBounds, previousRowBytes, nextImg, nextBounds,nextRowBytes);
+            halveImage<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, nextImg, nextBounds,nextRowBytes);
             
             ///Clean-up, we should use shared_ptrs for safety
             if (mustFreeSrc) {
@@ -842,14 +842,14 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        buildMipMapLevel<float, 4>(this,originalRenderWindow,renderWindow, levels, (const float*)srcPixelData,
-                                   srcBounds,srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
+        buildMipMapLevel<float, 4>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
+                                   srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-        buildMipMapLevel<float, 3>(this,originalRenderWindow,renderWindow, levels, (const float*)srcPixelData,
-                                   srcBounds,srcRowBytes, (float*)dstPixelData, dstBounds,dstRowBytes);
+        buildMipMapLevel<float, 3>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
+                                   srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-        buildMipMapLevel<float, 1>(this,originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
-                                   srcBounds, srcRowBytes,(float*)dstPixelData, dstBounds,dstRowBytes);
+        buildMipMapLevel<float, 1>(this, originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
+                                   srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } // switch
 
 
@@ -909,7 +909,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
 
     double sequenceTime;
     try {
-        getSequenceTime(args.time,false,sequenceTime);
+        getSequenceTime(args.time, false, sequenceTime);
     } catch (const std::exception& e) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -1067,7 +1067,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     if (filename.empty() || !fileExists(filename)) {
-        fillWithBlack(args.renderWindow,dstPixelDataF,bounds,pixelComponents,dstImg->getPixelDepth(),dstRowBytes);
+        fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
         return;
     }
     
