@@ -447,83 +447,81 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                bool proxyFiles,
                                                std::string &filename)
 {
-    GetFilenameRetCodeEnum ret = eGetFileNameReturnedFullRes;
+    GetFilenameRetCodeEnum ret;
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
-
     if (sequenceTime < sequenceTimeDomain.min) {
 
     }
-    _fileParam->getValueAtTime(sequenceTime, filename);
-    if (proxyFiles) {
-        std::string proxyFileName;
-        _proxyFileParam->getValueAtTime(sequenceTime, proxyFileName);
-        if (!proxyFileName.empty() && !filename.empty()) {
-            filename = proxyFileName;
-            ret = eGetFileNameReturnedProxy;
+
+    int missingFrame_i;
+    _missingFrameParam->getValue(missingFrame_i);
+    const MissingEnum missingFrame = MissingEnum(missingFrame_i);
+
+    std::string filename0;
+
+    bool filenameGood;
+    int offset = 0;
+
+    do {
+        _fileParam->getValueAtTime(sequenceTime + offset, filename);
+        if (offset == 0) {
+            filename0 = filename; // for error reporting
         }
-    }
-
-    std::ifstream fs(filename.c_str());
-
-    ///if the frame is missing, do smthing according to the missing frame param
-    if (!fs.is_open()) {
-        int missingFrame_i;
-        _missingFrameParam->getValue(missingFrame_i);
-        MissingEnum missingFrame = MissingEnum(missingFrame_i);
-        switch (missingFrame) {
-            case eMissingNearest: { // Load nearest
-                int offset = -1;
-                while (!fs.is_open() && offset <= MISSING_FRAME_NEAREST_RANGE) {
-                    _fileParam->getValueAtTime(sequenceTime + offset, filename);
-                    if (!filename.empty() && proxyFiles) {
-                        fs.open(filename.c_str());
-                        if (fs.is_open()) {
-                            std::string proxyFileName;
-                            _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
-                            if (!proxyFileName.empty()) {
-                                filename = proxyFileName;
-                                ret = eGetFileNameReturnedProxy;
-                            }
-                        }
-                        
-                    }
-                    if (offset < 0) {
-                        offset = -offset;
-                    } else {
-                        ++offset;
-                    }
-                }
-                if (!fs.is_open()) {
-                    setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
-                    ret = eGetFileNameFailed;
-                    // return a black image
+        if (filename.empty()) {
+            filenameGood = false;
+        } else {
+            std::ifstream fs(filename.c_str());
+            filenameGood = fs.is_open() && fs.good();
+        }
+        if (filenameGood) {
+            ret = eGetFileNameReturnedFullRes;
+            // now, try the proxy file
+            if (proxyFiles) {
+                std::string proxyFileName;
+                bool proxyGood;
+                _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
+                if (proxyFileName.empty()) {
+                    proxyGood = false;
                 } else {
-                    if (!fileExists(filename)) {
-                        setPersistentMessage(OFX::Message::eMessageError, "", filename + " : File does not exist.");
-                        ret = eGetFileNameFailed;
-                    } else {
-                        clearPersistentMessage();
-                    }
+                    std::ifstream fs(proxyFileName.c_str());
+                    proxyGood = fs.is_open() && fs.good();
+                }
+                if (proxyGood) {
+                    // proxy file exists, replace the filename with the proxy name
+                    filename = proxyFileName;
+                    ret = eGetFileNameReturnedProxy;
                 }
             }
-                break;
-            case eMissingError: { // Error
-                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                // will have to handle the case itself.
-                setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Missing frame");
-                ret = eGetFileNameFailed;
-            }   break;
-            case eMissingBlack: { // Black image
-                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
-                // will have to handle the case itself.
-                clearPersistentMessage();
-                ret = eGetFileNameBlack;
-            }   break;
         }
+        if (offset <= 0) {
+            offset = -offset + 1;
+        } else {
+            offset = -offset;
+        }
+    } while (missingFrame == eMissingNearest &&      // only loop if eMissingNearest
+             !filenameGood &&                        // and no valid file was found
+             offset <= MISSING_FRAME_NEAREST_RANGE); // and we are within range
 
+    if (filenameGood) {
+        // ret is already set (see above)
+    } else {
+        filename = filename0; // reset to the original frame name;
+        switch (missingFrame) {
+            case eMissingNearest: // Load nearest
+            case eMissingError:   // Error
+                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                // will have to handle the case itself.
+                ret = eGetFileNameFailed;
+                // return a black image
+                break;
+            case eMissingBlack:  // Black image
+                /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
+                // will have to handle the case itself.
+                ret = eGetFileNameBlack;
+                break;
+        }
     }
-    
     return ret;
 }
 
@@ -547,6 +545,7 @@ GenericReaderPlugin::getFilenameAtTime(double t, std::string& filename)
     GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
+            // do not setPersistentMessage()!
             return kOfxStatFailed;
 
         case eGetFileNameBlack:
@@ -953,13 +952,16 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, true, filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
+            setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
             OFX::throwSuiteStatusException(kOfxStatFailed);
 
         case eGetFileNameBlack:
+            clearPersistentMessage();
             return false;
 
         case eGetFileNameReturnedFullRes:
         case eGetFileNameReturnedProxy:
+            clearPersistentMessage();
             break;
     }
 
@@ -1053,17 +1055,21 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
+            setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
             OFX::throwSuiteStatusException(kOfxStatFailed);
 
         case eGetFileNameBlack:
+            clearPersistentMessage();
             fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
             return;
 
         case eGetFileNameReturnedFullRes:
+            clearPersistentMessage();
             break;
 
         case eGetFileNameReturnedProxy:
             // we didn't ask for proxy!
+            assert(false);
             OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -1071,11 +1077,15 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (useProxy) {
         ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
         GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, proxyFile);
-        switch (getFilenameAtSequenceTimeRet) {
+        switch (getFilenameAtSequenceTimeRetPx) {
             case eGetFileNameFailed:
+                // should never happen: it should return at least the full res frame
+                assert(false);
                 OFX::throwSuiteStatusException(kOfxStatFailed);
 
             case eGetFileNameBlack:
+                // should never happen: it should return at least the full res frame
+                assert(false);
                 fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
                 return;
 
