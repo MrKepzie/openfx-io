@@ -207,6 +207,7 @@ imageSpecFromOFXImage(const OfxRectI &rod, const OfxRectI &bounds, OFX::PixelCom
     spec.full_width = rod.x2 - rod.x1;
     spec.full_height = rod.y2 - rod.y1;
     spec.nchannels = nchannels;
+    spec.alpha_channel = alpha_channel;
     return spec;
 }
 
