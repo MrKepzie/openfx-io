@@ -38,6 +38,7 @@
  */
 #include "WriteEXR.h"
 
+#include <memory>
 #include <ImfChannelList.h>
 #include <ImfArray.h>
 #include <ImfOutputFile.h>
@@ -190,25 +191,23 @@ void WriteEXRPlugin::encode(const std::string& filename,
             
             /*we create the frame buffer*/
             Imf_::FrameBuffer fbuf;
-            Imf_::Array2D<half>* halfwriterow = 0 ;
             if (depth == 32) {
                 for (int chan = 0; chan < numChannels; ++chan) {
                     fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * numChannels, 0));
                 }
             } else {
-                halfwriterow = new Imf_::Array2D<half>(numChannels ,bounds.x2 - bounds.x1);
+                Imf_::Array2D<half> halfwriterow(numChannels ,bounds.x2 - bounds.x1);
                 
                 for (int chan = 0; chan < numChannels; ++chan) {
                     fbuf.insert(chanNames[chan],
                                 Imf_::Slice(Imf_::HALF,
-                                            (char*)(&(*halfwriterow)[chan][0] - exrDataW.min.x),
-                                            sizeof((*halfwriterow)[chan][0]), 0));
+                                            (char*)(&halfwriterow[chan][0] - exrDataW.min.x),
+                                            sizeof(halfwriterow[chan][0]), 0));
                     const float* from = src_pixels + chan;
                     for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += numChannels) {
-                        (*halfwriterow)[chan][i - exrDataW.min.x] = from[f];
+                        halfwriterow[chan][i - exrDataW.min.x] = from[f];
                     }
                 }
-                delete halfwriterow;
             }
             outputFile.setFrameBuffer(fbuf);
             outputFile.writePixels(1);

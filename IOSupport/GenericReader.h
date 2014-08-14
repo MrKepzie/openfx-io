@@ -40,6 +40,7 @@
 #ifndef Io_GenericReader_h
 #define Io_GenericReader_h
 
+#include <memory>
 #include <ofxsImageEffect.h>
 #include <ofxsMacros.h>
 
@@ -257,7 +258,7 @@ protected:
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
-    GenericOCIO* _ocio;
+    std::auto_ptr<GenericOCIO> _ocio;
 private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     

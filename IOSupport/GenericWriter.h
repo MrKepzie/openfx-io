@@ -39,6 +39,7 @@
 #ifndef Io_GenericWriter_h
 #define Io_GenericWriter_h
 
+#include <memory>
 #include <ofxsImageEffect.h>
 #include "IOUtility.h"
 #include "ofxsMacros.h"
@@ -153,7 +154,7 @@ protected:
     OFX::IntParam* _firstFrame; //< the first frame if the frame range type is "Manual"
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
 
-    GenericOCIO* _ocio;
+    std::auto_ptr<GenericOCIO> _ocio;
 
 private:
     

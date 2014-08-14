@@ -41,6 +41,7 @@
 #include "OCIOColorSpace.h"
 
 //#include <iostream>
+#include <memory>
 
 #include <GenericOCIO.h>
 
@@ -192,7 +193,7 @@ private:
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskInvert;
 
-    GenericOCIO* _ocio;
+    std::auto_ptr<GenericOCIO> _ocio;
 };
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)

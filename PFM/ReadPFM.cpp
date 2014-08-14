@@ -175,7 +175,7 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
     }
 
     int numpixels = W * C;
-    float *image = new float[numpixels];
+    std::vector<float> image(numpixels);
 
     assert(0 <= renderWindow.x1 && renderWindow.x2 <= W &&
            0 <= renderWindow.y1 && renderWindow.y2 <= H);
@@ -183,14 +183,14 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
     const int x2 = renderWindow.x2;
 
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
-        int numread = std::fread(image, 4, numpixels, nfile);
+        int numread = std::fread(image.data(), 4, numpixels, nfile);
         if (numread < numpixels) {
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
 
         if (is_inverted) {
-            invert_endianness(image, numpixels);
+            invert_endianness(image.data(), numpixels);
         }
 
         // now copy to the dstImg
@@ -198,13 +198,13 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         if (C == 1) {
             switch (pixelComponents) {
                 case OFX::ePixelComponentAlpha:
-                    copyLine<float,1,1>(image, x1, x2, C, dstPix);
+                    copyLine<float,1,1>(image.data(), x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGB:
-                    copyLine<float,1,3>(image, x1, x2, C, dstPix);
+                    copyLine<float,1,3>(image.data(), x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,1,4>(image, x1, x2, C, dstPix);
+                    copyLine<float,1,4>(image.data(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;
@@ -212,13 +212,13 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         } else if (C == 3) {
             switch (pixelComponents) {
                 case OFX::ePixelComponentAlpha:
-                    copyLine<float,3,1>(image, x1, x2, C, dstPix);
+                    copyLine<float,3,1>(image.data(), x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGB:
-                    copyLine<float,3,3>(image, x1, x2, C, dstPix);
+                    copyLine<float,3,3>(image.data(), x1, x2, C, dstPix);
                     break;
                 case OFX::ePixelComponentRGBA:
-                    copyLine<float,3,4>(image, x1, x2, C, dstPix);
+                    copyLine<float,3,4>(image.data(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;
@@ -226,7 +226,6 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
         }
     }
     std::fclose(nfile);
-    delete [] image;
 }
 
 bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error)

@@ -159,7 +159,6 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 
 GenericWriterPlugin::~GenericWriterPlugin()
 {
-    delete _ocio;
 }
 
 static std::string

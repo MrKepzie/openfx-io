@@ -242,7 +242,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 
 GenericReaderPlugin::~GenericReaderPlugin()
 {
-    delete _ocio;
 }
 
 
@@ -791,10 +790,10 @@ buildMipMapLevel(OFX::ImageEffect* instance,
     assert(level > 0);
 
     const PIX* previousImg = srcPixels;
-    OFX::ImageMemory* mem = NULL;
+    std::auto_ptr<OFX::ImageMemory> mem;
+    std::auto_ptr<OFX::ImageMemory> tmpMem;
     PIX* nextImg = NULL;
-    bool mustFreeSrc = false;
-    
+
     OfxRectI previousBounds = srcBounds;
     int previousRowBytes = srcRowBytes;
     ///Build all the mipmap levels until we reach the one we are interested in
@@ -815,35 +814,19 @@ buildMipMapLevel(OFX::ImageEffect* instance,
             ///Allocate an image with half the size of the source image
             int nextRowBytes =  (nextBounds.x2 - nextBounds.x1)  * nComponents * sizeof(PIX);
             size_t memSize =  (nextBounds.y2 - nextBounds.y1) * nextRowBytes;
-            OFX::ImageMemory* tmpMem = new OFX::ImageMemory(memSize,instance);
+            tmpMem.reset(new OFX::ImageMemory(memSize,instance)); // frees the old tmpMem
             nextImg = (float*)tmpMem->lock();
             
             halveImage<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, nextImg, nextBounds,nextRowBytes);
-            
-            ///Clean-up, we should use shared_ptrs for safety
-            if (mustFreeSrc) {
-                assert(mem);
-                mem->unlock();
-                delete mem;
-                mem = NULL;
-            }
             
             ///Switch for next pass
             previousBounds = nextBounds;
             previousRowBytes = nextRowBytes;
             previousImg = nextImg;
             mem = tmpMem;
-            mustFreeSrc = true;
         }
     }
-    
-    ///Clean-up, we should use shared_ptrs for safety
-    if (mustFreeSrc) {
-        assert(mem);
-        mem->unlock();
-        delete mem;
-        mem = NULL;
-    }
+    // mem and tmpMem are freed at destruction
 }
 
 
