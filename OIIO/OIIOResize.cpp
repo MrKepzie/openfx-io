@@ -41,7 +41,7 @@
 
 #include "OIIOResize.h"
 
-
+#include <limits>
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
 #include "ofxsProcessing.h"
@@ -535,10 +535,14 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
             double sx,sy;
             scale_->getValue(sx, sy);
-            rod.x1 = srcRoD.x1 * sx;
-            rod.y1 = srcRoD.y1 * sy;
-            rod.x2 = srcRoD.x2 * sx;
-            rod.y2 = srcRoD.y2 * sy;
+            srcRoD.x1 *= sx;
+            srcRoD.y1 *= sy;
+            srcRoD.x2 *= sx;
+            srcRoD.y2 *= sy;
+            rod.x1 = std::min(srcRoD.x1, srcRoD.x2 - 1);
+            rod.x2 = std::max(srcRoD.x1 + 1, srcRoD.x2);
+            rod.y1 = std::min(srcRoD.y1, srcRoD.y2 - 1);
+            rod.y2 = std::max(srcRoD.y1 + 1, srcRoD.y2);
         }   break;
         default:
             return false;
@@ -663,6 +667,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     size->setDefault(200, 200);
     size->setAnimates(false);
     size->setIsSecret(true);
+    size->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
     size->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*size);
     
@@ -681,6 +686,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     scale->setAnimates(true);
     scale->setIsSecret(true);
     scale->setDefault(1., 1.);
+    scale->setRange(0., 0., std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
     scale->setIncrement(0.05);
     page->addChild(*scale);
     
