@@ -1346,7 +1346,7 @@ GenericReaderPlugin::purgeCaches()
 }
 
 bool
-GenericReaderPlugin::isIdentity(const OFX::RenderArguments &args,
+GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
                                 OFX::Clip * &identityClip,
                                 double &identityTime)
 {

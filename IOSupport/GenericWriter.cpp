@@ -270,7 +270,7 @@ GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& fi
 }
 
 bool
-GenericWriterPlugin::isIdentity(const OFX::RenderArguments &args,
+GenericWriterPlugin::isIdentity(const OFX::IsIdentityArguments &args,
                                 OFX::Clip * &identityClip,
                                 double &identityTime)
 {

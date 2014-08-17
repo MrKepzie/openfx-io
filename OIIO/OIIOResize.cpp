@@ -116,7 +116,7 @@ public:
     virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
 
     /* override changedParam */
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
@@ -408,7 +408,7 @@ OIIOResizePlugin::fillWithBlack(OFX::PixelProcessorFilterBase & processor,
 
 
 bool
-OIIOResizePlugin::isIdentity(const OFX::RenderArguments &args,
+OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
                              OFX::Clip * &identityClip,
                              double &/*identityTime*/)
 {
