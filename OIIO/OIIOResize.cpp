@@ -44,7 +44,6 @@
 #include <limits>
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
-#include "ofxsProcessing.h"
 #include "ofxsFormatResolution.h"
 #include "ofxsMerging.h"
 #include "ofxsMacros.h"
