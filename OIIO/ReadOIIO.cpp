@@ -380,8 +380,8 @@ ReadOIIOPlugin::buildChannelMenus()
         assert(_bChannel->getNOptions() == kXChannelFirst);
         assert(_aChannel->getNOptions() == kXChannelFirst);
         if (_specValid) {
-            for (std::size_t i = 0; i < _spec.nchannels; ++i) {
-                if (i < _spec.channelnames.size()) {
+            for (int i = 0; i < _spec.nchannels; ++i) {
+                if (i < (int)_spec.channelnames.size()) {
                     _rChannel->appendOption(_spec.channelnames[i]);
                     _bChannel->appendOption(_spec.channelnames[i]);
                     _gChannel->appendOption(_spec.channelnames[i]);
@@ -1127,14 +1127,14 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 #endif
     ss << "file: " << filename << std::endl;
     ss << "    channel list: ";
-    for (std::size_t i = 0;  i < spec.nchannels;  ++i) {
+    for (int i = 0;  i < spec.nchannels;  ++i) {
         ss << i << ":";
-        if (i < spec.channelnames.size()) {
+        if (i < (int)spec.channelnames.size()) {
             ss << spec.channelnames[i];
         } else {
             ss << "unknown";
         }
-        if (i < spec.channelformats.size()) {
+        if (i < (int)spec.channelformats.size()) {
             ss << " (" << spec.channelformats[i].c_str() << ")";
         }
         if (i < spec.nchannels-1) {
