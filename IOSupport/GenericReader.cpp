@@ -219,13 +219,11 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
     try {
         if (!filename.empty()) {
             SequenceParsing::FileNameContent content(filename);
-            std::vector<int> indexes(1);
             ///We try to match all the files in the same directory that match the pattern with the frame number
             ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
             ///everything as it would take too much time.
-            indexes[0] = content.getPotentialFrameNumbersCount() - 1;
             std::string sequencePattern;
-            content.generatePatternWithFrameNumberAtIndexes(indexes, &sequencePattern);
+            content.generatePatternWithFrameNumberAtIndex(content.getPotentialFrameNumbersCount() - 1, &sequencePattern);
             SequenceParsing::filesListFromPattern(sequencePattern, &_sequenceFromFiles);
             
             if (_sequenceFromFiles.size() == 1) {
@@ -1194,12 +1192,10 @@ GenericReaderPlugin::inputFileChanged()
     
     SequenceParsing::FileNameContent content(filename);
     std::string pattern;
-    std::vector<int> indexes(1);
     ///We try to match all the files in the same directory that match the pattern with the frame number
     ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
     ///everything as it would take too much time.
-    indexes[0] = content.getPotentialFrameNumbersCount() - 1;
-    content.generatePatternWithFrameNumberAtIndexes(indexes, &pattern);
+    content.generatePatternWithFrameNumberAtIndex(content.getPotentialFrameNumbersCount() - 1, &pattern);
 
     _sequenceFromFiles.clear();
     SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
