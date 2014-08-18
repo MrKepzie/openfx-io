@@ -281,7 +281,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         pixelComponents = srcImg->getPixelComponents();
         bitDepth = srcImg->getPixelDepth();
         srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
-        srcBuf.reset(new OIIO::ImageBuf(srcSpec, srcImg->getPixelData()));
+        srcBuf.reset(new OIIO::ImageBuf("src", srcSpec, srcImg->getPixelData()));
 
         if (!kSupportsTiles) {
             // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
@@ -358,7 +358,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     }
     assert(tmpSpec.width == args.renderWindow.x2 - args.renderWindow.x1);
     assert(tmpSpec.height == args.renderWindow.y2 - args.renderWindow.y1);
-    OIIO::ImageBuf tmpBuf(tmpSpec, tmpPixelData);
+    OIIO::ImageBuf tmpBuf("tmp", tmpSpec, tmpPixelData);
 
     // do we have to flip the image?
     if (!srcImg.get()) {
@@ -385,7 +385,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         }
     }
     OIIO::ImageSpec dstSpec = imageSpecFromOFXImage(dstRod, dstBounds, pixelComponents, bitDepth);
-    OIIO::ImageBuf dstBuf(dstSpec, dstImg->getPixelData());
+    OIIO::ImageBuf dstBuf("dst", dstSpec, dstImg->getPixelData());
     
     OIIO::ROI tmpRoi(tmpSpec.x, tmpSpec.x + tmpSpec.width, tmpSpec.y, tmpSpec.y+tmpSpec.height);
     // do we have to flip the image?

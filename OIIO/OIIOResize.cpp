@@ -349,7 +349,7 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,
     srcSpec.full_height = srcSpec.height;
     srcSpec.default_channel_names();
     
-    ImageBuf srcBuf(srcSpec,srcImg->getPixelAddress(srcBounds.x1, srcBounds.y1));
+    ImageBuf srcBuf("src", srcSpec, srcImg->getPixelAddress(srcBounds.x1, srcBounds.y1));
     
     
     ///This code assumes that the dstImg has the target size hence that we don't support tiles
@@ -366,21 +366,21 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,
     dstSpec.full_height = dstSpec.height;
     dstSpec.default_channel_names();
     
-    ImageBuf dstBuf(dstSpec,dstImg->getPixelAddress(dstBounds.x1, dstBounds.y1));
+    ImageBuf dstBuf("dst", dstSpec, dstImg->getPixelAddress(dstBounds.x1, dstBounds.y1));
     
     int filter;
     filter_->getValue(filter);
 
     if (filter == 0) {
         ///Use nearest neighboor
-        if (!ImageBufAlgo::resample(dstBuf, srcBuf,/*interpolate*/false)) {
+        if (!ImageBufAlgo::resample(dstBuf, srcBuf, /*interpolate*/false)) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     } else {
         ///interpolate using the selected filter
         FilterDesc f;
         Filter2D::get_filterdesc(filter - 1, &f);
-        if (!ImageBufAlgo::resize(dstBuf, srcBuf, f.name,f.width)) {
+        if (!ImageBufAlgo::resize(dstBuf, srcBuf, f.name, f.width)) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     }
