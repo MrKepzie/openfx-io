@@ -49,4 +49,4 @@ install:
   - sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
 
 script:
-  - make BITS=64 OIIO_HOME=/opt/oiio
+  - make CONFIG=debug OIIO_HOME=/opt/oiio
