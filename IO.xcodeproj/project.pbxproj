@@ -1673,11 +1673,12 @@
 				FFMPEG_PATH = /opt/local;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
 					OFX_IO_USING_OCIO,
-					"DEBUG=1",
 					OFX_IO_MT_FFMPEG,
 				);
 				HEADER_SEARCH_PATHS = (
@@ -1710,6 +1711,8 @@
 				EXR_PATH = /opt/local;
 				FFMPEG_PATH = /opt/local;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					"NDEBUG=1",
+					"$(inherited)",
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
