@@ -100,6 +100,8 @@
 #define kFilterParamLabel "Filter"
 #define kFilterParamHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
 
+// TODO: make an enum for the filter type, check that the OIIO filters are the right ones in the right order!
+
 using namespace OFX;
 using namespace OpenImageIO;
 
@@ -377,9 +379,15 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,
         }
     } else {
         ///interpolate using the selected filter
-        FilterDesc f;
-        Filter2D::get_filterdesc(filter - 1, &f);
-        if (!ImageBufAlgo::resize(dstBuf, srcBuf, f.name, f.width)) {
+        FilterDesc fd;
+        Filter2D::get_filterdesc(filter - 1, &fd);
+        // older versions of OIIO 1.2 don't have ImageBufAlgo::resize(dstBuf, srcBuf, fd.name, fd.width)
+        float wratio = float(dstSpec.full_width) / float(srcSpec.full_width);
+        float hratio = float(dstSpec.full_height) / float(srcSpec.full_height);
+        float w = fd.width * std::max(1.0f, wratio);
+        float h = fd.width * std::max(1.0f, hratio);
+        std::auto_ptr<Filter2D> filter(Filter2D::create(fd.name, w, h));
+        if (!ImageBufAlgo::resize(dstBuf, srcBuf, filter.get())) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     }
