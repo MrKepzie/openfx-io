@@ -449,7 +449,7 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &args)
 
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    
+#pragma message WARN("TODO: check that 'time' is consistent with the frame being encoded!")
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -540,7 +540,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         if (ret > 0) {
             AVPacket pkt;
             av_init_packet(&pkt);
-            if (_codecContext->coded_frame && _codecContext->coded_frame->pts != AV_NOPTS_VALUE)
+            if (_codecContext->coded_frame && _codecContext->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
                 pkt.pts = av_rescale_q(_codecContext->coded_frame->pts, _codecContext->time_base, _stream->time_base);
             if (_codecContext->coded_frame && _codecContext->coded_frame->key_frame)
                 pkt.flags |= AV_PKT_FLAG_KEY;

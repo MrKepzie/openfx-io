@@ -435,7 +435,7 @@ OIIOTextPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &id
 }
 
 void
-OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
+OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &/*paramName*/)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -494,7 +494,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum /*context*/)
 {
     //gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     

@@ -80,6 +80,8 @@
 "Size: Scales to fit into a box of a given width and height. " \
 "Scale: Scales the image."
 
+#pragma message WARN("TODO: make an enum for the resize type!")
+
 #define kFormatParamName "format"
 #define kFormatParamLabel "Format"
 #define kFormatParamHint "The output format"
@@ -100,7 +102,7 @@
 #define kFilterParamLabel "Filter"
 #define kFilterParamHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
 
-// TODO: make an enum for the filter type, check that the OIIO filters are the right ones in the right order!
+#pragma message WARN("TODO: make an enum for the filter type, check that the OIIO filters are the right ones in the right order!")
 
 using namespace OFX;
 using namespace OpenImageIO;
@@ -331,7 +333,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
 
 template <typename PIX,int nComps>
 void
-OIIOResizePlugin::renderInternal(const OFX::RenderArguments &args,
+OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
                                  TypeDesc srcType,
                                  const OFX::Image* srcImg,
                                  TypeDesc dstType,
@@ -430,6 +432,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             size_t w,h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             if (srcRoD.x1 == 0 && srcRoD.y1 == 0 && srcRoD.x2 == w && srcRoD.y2 == h) {
+                identityClip = srcClip_;
                 return true;
             }
             return false;
@@ -439,6 +442,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             int w,h;
             size_->getValue(w, h);
             if (srcRoD.x1 == 0 && srcRoD.y1 == 0 && srcRoD.x2 == w && srcRoD.y2 == h) {
+                identityClip = srcClip_;
                 return true;
             }
             return false;
@@ -447,6 +451,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             double sx,sy;
             scale_->getValue(sx, sy);
             if (sx == 1. && sy == 1.) {
+                identityClip = srcClip_;
                 return true;
             }
             return false;
@@ -460,7 +465,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
 
 
 void
-OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &args,
+OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
                                const std::string &paramName)
 {
     if (paramName == kTypeParamName) {
@@ -613,7 +618,7 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum /*context*/)
 {
     // Source clip only in the filter context
     // create the mandated source clip

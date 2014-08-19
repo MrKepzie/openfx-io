@@ -271,8 +271,8 @@ GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& fi
 
 bool
 GenericWriterPlugin::isIdentity(const OFX::IsIdentityArguments &args,
-                                OFX::Clip * &identityClip,
-                                double &identityTime)
+                                OFX::Clip * &/*identityClip*/,
+                                double &/*identityTime*/)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -491,7 +491,7 @@ GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
 }
 
 bool
-GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod)
+GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &/*rod*/)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);

@@ -516,7 +516,7 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 }
 
 bool
-OCIOFileTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
+OCIOFileTransformPlugin::isIdentity(const OFX::IsIdentityArguments &/*args*/, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
     std::string file;
     file_->getValue(file);
@@ -553,7 +553,7 @@ OCIOFileTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
     // are shown
     if (paramName == kFileParamName) {
         updateCCCId();
-    } else if (paramName == kReloadParamName) {
+    } else if (paramName == kReloadParamName && args.reason == OFX::eChangeUserEdit) {
         version_->setValue(version_->getValue()+1); // invalidate the node cache
         OCIO::ClearAllCaches();
     }

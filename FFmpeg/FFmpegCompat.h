@@ -98,7 +98,9 @@
 #       define avcodec_thread_init(c,n) (0)
 #   endif
 #   if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 54, 28, 0, 54, 59, 100)
-static void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
+namespace {
+inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
+};
 #   endif
 #   ifndef AVCODEC_MAX_AUDIO_FRAME_SIZE
 #       define AVCODEC_MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
@@ -139,14 +141,14 @@ static void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 #           define AVPixelFormat PixelFormat
 #           define AV_PIX_FMT_NB PIX_FMT_NB
 #       endif
-
-static const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
+namespace {
+inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
     if (pix_fmt < 0 || pix_fmt >= AV_PIX_FMT_NB)
         return NULL;
 
     return &av_pix_fmt_descriptors[pix_fmt];
 }
-
+};
 #   endif
 #   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 52, 9, 0, 52, 20, 100)
 #       define av_frame_alloc avcodec_alloc_frame

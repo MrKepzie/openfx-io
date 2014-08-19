@@ -847,7 +847,12 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
     assert(srcPixelData && dstPixelData);
     
     // do the rendering
-    if (dstPixelDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+    if (dstPixelDepth != OFX::eBitDepthFloat ||
+        (dstPixelComponents != OFX::ePixelComponentRGBA &&
+         dstPixelComponents != OFX::ePixelComponentRGB &&
+         dstPixelComponents != OFX::ePixelComponentAlpha) ||
+        dstPixelDepth != srcPixelDepth ||
+        dstPixelComponents != srcPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     
