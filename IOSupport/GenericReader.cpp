@@ -437,6 +437,7 @@ GenericReaderPlugin::getSequenceTime(double t, bool canSetOriginalFrameRange, do
                 return eGetSequenceTimeError;
         }
     }
+    return eGetSequenceTimeError;
 }
 
 GenericReaderPlugin::GetFilenameRetCodeEnum
