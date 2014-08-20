@@ -615,6 +615,9 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
     
     desc.setRenderThreadSafety(kRenderThreadSafety);
+    
+    ///Don't let the host multi-thread
+    desc.setHostFrameThreading(false);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
