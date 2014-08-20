@@ -96,6 +96,7 @@
 "What to do when a frame is missing from the sequence/stream."
 
 #define kReaderFrameModeParamName "frameMode"
+#define kReaderFrameModeParamLabel "Frame mode"
 enum FrameModeEnum
 {
     eFrameModeStartingFrame,
@@ -1586,6 +1587,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
     ///////////Frame-mode
     OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kReaderFrameModeParamName);
+    frameModeParam->setLabels(kReaderFrameModeParamLabel, kReaderFrameModeParamLabel, kReaderFrameModeParamLabel);
     assert(frameModeParam->getNOptions() == eFrameModeStartingFrame);
     frameModeParam->appendOption(kReaderFrameModeParamOptionStartingFrame);
     assert(frameModeParam->getNOptions() == eFrameModeTimeOffset);
