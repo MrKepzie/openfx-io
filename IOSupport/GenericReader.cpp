@@ -71,14 +71,19 @@
 "Filename of the proxy images. They will be used instead of the images read from the File parameter " \
 "when the proxy mode (downscaling of the images) is activated."
 
-#define kReaderProxyScaleFileParamName "proxyScale"
-#define kReaderProxyScaleFileParamLabel "Proxy scale"
-#define kReaderProxyScaleFileParamHint \
+#define kReaderProxyScaleThresholdParamName "proxyThreshold"
+#define kReaderProxyScaleThresholdParamLabel "Proxy threshold"
+#define kReaderProxyScaleThresholdParamHint \
 "The scale of the proxy images. By default it will be automatically computed out of the " \
 "images headers when you set the proxy file(s) path. When the render scale (proxy) is set to " \
 "a scale lower or equal to this value then the proxy image files will be used instead of the " \
 "original images. You can change this parameter by checking the \"Custom scale\" checkbox " \
 "so that you can change the scale at which the proxy images should be used instead of the original images."
+
+#define kReaderOriginalProxyScaleParamName "originalProxyScale"
+#define kReaderOriginalProxyScaleParamLabel "Original Proxy scale"
+#define kReaderOriginalProxyScaleParamHint \
+"The original scale of the proxy image."
 
 #define kReaderCustomScaleParamName "customScale"
 #define kReaderCustomScaleParamLabel "Custom scale"
@@ -181,7 +186,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 , _outputClip(0)
 , _fileParam(0)
 , _proxyFileParam(0)
-, _proxyScale(0)
+, _proxyThreshold(0)
+, _originalProxyScale(0)
 , _enableCustomScale(0)
 , _firstFrame(0)
 , _beforeFirst(0)
@@ -200,7 +206,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
     
     _fileParam = fetchStringParam(kReaderFileParamName);
     _proxyFileParam = fetchStringParam(kReaderProxyFileParamName);
-    _proxyScale = fetchDouble2DParam(kReaderProxyScaleFileParamName);
+    _proxyThreshold = fetchDouble2DParam(kReaderProxyScaleThresholdParamName);
+    _originalProxyScale = fetchDouble2DParam(kReaderOriginalProxyScaleParamName);
     _enableCustomScale = fetchBooleanParam(kReaderCustomScaleParamName);
     _missingFrameParam = fetchChoiceParam(kReaderMissingFrameParamName);
     _firstFrame = fetchIntParam(kReaderFirstFrameParamName);
@@ -1030,9 +1037,17 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     bool useProxy = false;
     OfxPointD proxyScaleThreshold;
-    _proxyScale->getValue(proxyScaleThreshold.x, proxyScaleThreshold.y);
+    _proxyThreshold->getValue(proxyScaleThreshold.x, proxyScaleThreshold.y);
 
-    if (kSupportsRenderScale && (args.renderScale.x <= proxyScaleThreshold.x || args.renderScale.y <= proxyScaleThreshold.y)) {
+    OfxPointD proxyOriginalScale;
+    _originalProxyScale->getValue(proxyOriginalScale.x, proxyOriginalScale.y);
+    
+    ///We only support downscaling at a power of two.
+    unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
+    unsigned int proxyMipMapThresholdLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
+    unsigned int originalProxyMipMapLevel = getLevelFromScale(std::min(proxyOriginalScale.x, proxyOriginalScale.y));
+    
+    if (kSupportsRenderScale && (renderMipmapLevel >= proxyMipMapThresholdLevel)) {
         useProxy = true;
     }
 
@@ -1094,9 +1109,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     // allocate
     OfxRectI renderWindowFullRes = args.renderWindow;
     
-    ///We only support downscaling at a power of two.
-    unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
-    unsigned int proxyMipMapLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
+
     
     OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
     OfxRectI rodI;
@@ -1106,7 +1119,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     rodI.y2 = rod.y2;
     if (_supportsTiles) {
         if (useProxy) {
-            renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - proxyMipMapLevel);
+            renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - originalProxyMipMapLevel);
             
             ///Get the RoD of the proxy to intersect the render window against it
             std::string error;
@@ -1156,7 +1169,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     int downscaleLevels;
     
     if (useProxy) {
-        downscaleLevels = renderMipmapLevel - proxyMipMapLevel;
+        downscaleLevels = renderMipmapLevel - originalProxyMipMapLevel;
     } else {
         downscaleLevels = renderMipmapLevel;
     }
@@ -1267,13 +1280,14 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
                     proxyFile != originalFileName) {
                     assert(!proxyFile.empty());
                     ///show the scale param
-                    _proxyScale->setIsSecret(false);
+                    _proxyThreshold->setIsSecret(false);
                     _enableCustomScale->setIsSecret(false);
 
                     OfxPointD scale = detectProxyScale(originalFileName,proxyFile,args.time);
-                    _proxyScale->setValue(scale.x, scale.y);
+                    _proxyThreshold->setValue(scale.x, scale.y);
+                    _originalProxyScale->setValue(scale.x, scale.y);
                 } else {
-                    _proxyScale->setIsSecret(true);
+                    _proxyThreshold->setIsSecret(true);
                     _enableCustomScale->setIsSecret(true);
                 }
             }   break;
@@ -1281,7 +1295,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
     } else if (paramName == kReaderCustomScaleParamName) {
         bool enabled;
         _enableCustomScale->getValue(enabled);
-        _proxyScale->setEnabled(enabled);
+        _proxyThreshold->setEnabled(enabled);
     } else if (paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
         int first;
         int last;
@@ -1621,16 +1635,29 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     desc.addClipPreferencesSlaveParam(*proxyFileParam);
     page->addChild(*proxyFileParam);
     
-    ////Proxy file scale
-    OFX::Double2DParamDescriptor* proxyScaleParam = desc.defineDouble2DParam(kReaderProxyScaleFileParamName);
-    proxyScaleParam->setLabels(kReaderProxyScaleFileParamLabel, kReaderProxyScaleFileParamLabel, kReaderProxyScaleFileParamLabel);
-    proxyScaleParam->setDefault(1., 1.);
-    proxyScaleParam->setIsSecret(true);
-    proxyScaleParam->setEnabled(false);
-    proxyScaleParam->setHint(kReaderProxyScaleFileParamHint);
-    proxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    proxyScaleParam->setAnimates(true);
-    page->addChild(*proxyScaleParam);
+    ////Proxy original scale
+    OFX::Double2DParamDescriptor* originalProxyScaleParam = desc.defineDouble2DParam(kReaderOriginalProxyScaleParamName);
+    originalProxyScaleParam->setLabels(kReaderOriginalProxyScaleParamLabel,
+                                       kReaderOriginalProxyScaleParamLabel, kReaderOriginalProxyScaleParamLabel);
+    originalProxyScaleParam->setDefault(1., 1.);
+    originalProxyScaleParam->setIsSecret(true);
+    originalProxyScaleParam->setEnabled(false);
+    originalProxyScaleParam->setHint(kReaderOriginalProxyScaleParamHint);
+    // originalProxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    originalProxyScaleParam->setAnimates(true);
+    page->addChild(*originalProxyScaleParam);
+    
+    ////Proxy  scale threshold
+    OFX::Double2DParamDescriptor* proxyScaleThresholdParam = desc.defineDouble2DParam(kReaderProxyScaleThresholdParamName);
+    proxyScaleThresholdParam->setLabels(kReaderProxyScaleThresholdParamLabel,
+                                       kReaderProxyScaleThresholdParamLabel, kReaderProxyScaleThresholdParamLabel);
+    proxyScaleThresholdParam->setDefault(1., 1.);
+    proxyScaleThresholdParam->setIsSecret(true);
+    proxyScaleThresholdParam->setEnabled(false);
+    proxyScaleThresholdParam->setHint(kReaderOriginalProxyScaleParamHint);
+    proxyScaleThresholdParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    proxyScaleThresholdParam->setAnimates(true);
+    page->addChild(*proxyScaleThresholdParam);
     
     ///Enable custom proxy scale
     OFX::BooleanParamDescriptor* enableCustomScale = desc.defineBooleanParam(kReaderCustomScaleParamName);

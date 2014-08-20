@@ -245,7 +245,8 @@ protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
     OFX::StringParam  *_proxyFileParam; //< the proxy input files
-    OFX::Double2DParam *_proxyScale; //< the proxy images scale
+    OFX::Double2DParam *_proxyThreshold; //< the proxy  images scale threshold
+    OFX::Double2DParam *_originalProxyScale; //< the original proxy image scale
     OFX::BooleanParam *_enableCustomScale; //< is custom proxy scale enabled
     
     OFX::IntParam* _firstFrame; //< the first frame in the sequence (clamped to the time domain)
