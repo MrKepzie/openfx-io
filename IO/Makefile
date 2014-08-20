@@ -5,6 +5,8 @@ PLUGINOBJECTS = \
 	OCIOCDLTransform.o \
 	OCIOFileTransform.o \
 	OCIOLogConvert.o \
+	ofxsOGLTextRenderer.o \
+	ofxsOGLFontData.o \
 	ReadOIIO.o WriteOIIO.o \
     OIIOText.o \
     OIIOResize.o \
