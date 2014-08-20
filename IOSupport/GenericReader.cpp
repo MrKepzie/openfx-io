@@ -448,9 +448,6 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     GetFilenameRetCodeEnum ret;
     OfxRangeD sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
-    if (sequenceTime < sequenceTimeDomain.min) {
-
-    }
 
     int missingFrame_i;
     _missingFrameParam->getValue(missingFrame_i);
@@ -935,8 +932,9 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
             break;
     }
 
+    /*We don't want to use the proxy image for the region of definition*/
     std::string filename;
-    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, true, filename);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
             setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
@@ -959,11 +957,11 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedProxy) {
-        ///upscale the proxy RoD to be in canonical coords.
-        unsigned int mipmapLvl = getLevelFromScale(args.renderScale.x);
-        rod = upscalePowerOfTwo(rod, (double)mipmapLvl);
-    }
+//    if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedProxy) {
+//        ///upscale the proxy RoD to be in canonical coords.
+//        unsigned int mipmapLvl = getLevelFromScale(args.renderScale.x);
+//        rod = upscalePowerOfTwo(rod, (double)mipmapLvl);
+//    }
     
     return true;
 }
@@ -1109,6 +1107,16 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (_supportsTiles) {
         if (useProxy) {
             renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - proxyMipMapLevel);
+            
+            ///Get the RoD of the proxy to intersect the render window against it
+            std::string error;
+            bool success = getFrameRegionOfDefinition(proxyFile, sequenceTime, rod,error);
+            ///We shouldve checked above for any failure, now this is too late.
+            assert(success);
+            rodI.x1 = rod.x1;
+            rodI.x2 = rod.x2;
+            rodI.y1 = rod.y1;
+            rodI.y2 = rod.y2;
         } else if (kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.

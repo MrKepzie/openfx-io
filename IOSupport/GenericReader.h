@@ -140,6 +140,7 @@ private:
      **/
     virtual bool getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod,std::string& error) = 0;
     
+    
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
      * If the file is a video-stream then you should decode the frame at the time given in parameters.
