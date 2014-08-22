@@ -229,8 +229,8 @@ OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
     assert(_ocioConfigFile);
     _mode = fetchChoiceParam(kModeParamName);
     assert(_mode);
-    _mix = fetchDoubleParam(kMixParamName);
-    _maskInvert = fetchBooleanParam(kMaskInvertParamName);
+    _mix = fetchDoubleParam(kParamMix);
+    _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     loadConfig(0.);
 }

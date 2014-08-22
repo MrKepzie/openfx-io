@@ -209,8 +209,8 @@ OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
     maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
-    _mix = fetchDoubleParam(kMixParamName);
-    _maskInvert = fetchBooleanParam(kMaskInvertParamName);
+    _mix = fetchDoubleParam(kParamMix);
+    _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 }
 

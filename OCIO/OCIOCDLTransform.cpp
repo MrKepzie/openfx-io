@@ -311,8 +311,8 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     cccid_ = fetchStringParam(kCCCIDParamName);
     export_ = fetchStringParam(kExportParamName);
     assert(slope_ && offset_ && power_ && saturation_ && direction_ && readFromFile_ && file_ && version_ && cccid_ && export_);
-    _mix = fetchDoubleParam(kMixParamName);
-    _maskInvert = fetchBooleanParam(kMaskInvertParamName);
+    _mix = fetchDoubleParam(kParamMix);
+    _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     updateCCCId();
     bool readFromFile;

@@ -263,8 +263,8 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
     direction_ = fetchChoiceParam(kDirectionParamName);
     interpolation_ = fetchChoiceParam(kInterpolationParamName);
     assert(file_ && version_ && cccid_ && direction_ && interpolation_);
-    _mix = fetchDoubleParam(kMixParamName);
-    _maskInvert = fetchBooleanParam(kMaskInvertParamName);
+    _mix = fetchDoubleParam(kParamMix);
+    _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     updateCCCId();
 }
