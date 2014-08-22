@@ -1195,28 +1195,33 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
 void
 ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-#ifdef OFX_READ_OIIO_SHARED_CACHE
-    // output is always premultiplied
-    clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
-#else
-    // set the premultiplication of _outputClip
-    // OIIO always outputs premultiplied images, except if it's told not to do so
-    bool unassociatedAlpha = false;
-
-    // We assume that if "unassociatedAlpha" is checked, output is UnPremultiplied,
-    // but its only true if the image had originally unassociated alpha
-    // (OIIO metadata "oiio:UnassociatedAlpha").
-    // However, it is not possible to check here if the alpha in the
-    // images is associated or not. If the user checked the option, it's
-    // probably because it was not associated/premultiplied.
-    _unassociatedAlpha->getValue(unassociatedAlpha);
-    clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
-#endif
     // set the components of _outputClip
     int outputComponents_i;
     _outputComponents->getValue(outputComponents_i);
     OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
+    if (outputComponents != OFX::ePixelComponentRGBA) {
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+    } else {
+#     ifdef OFX_READ_OIIO_SHARED_CACHE
+        // output is always premultiplied
+        clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
+#     else
+
+        // set the premultiplication of _outputClip
+        // OIIO always outputs premultiplied images, except if it's told not to do so
+        bool unassociatedAlpha = false;
+
+        // We assume that if "unassociatedAlpha" is checked, output is UnPremultiplied,
+        // but its only true if the image had originally unassociated alpha
+        // (OIIO metadata "oiio:UnassociatedAlpha").
+        // However, it is not possible to check here if the alpha in the
+        // images is associated or not. If the user checked the option, it's
+        // probably because it was not associated/premultiplied.
+        _unassociatedAlpha->getValue(unassociatedAlpha);
+        clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
+#     endif
+    }
 }
 
 using namespace OFX;
