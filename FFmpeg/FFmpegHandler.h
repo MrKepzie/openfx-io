@@ -77,6 +77,7 @@ extern "C" {
   int error = (x);\
   if (error < 0) {\
     setInternalError(error);\
+    close();\
     return;\
   }\
 }
@@ -86,6 +87,7 @@ extern "C" {
   int error = (x);\
   if (error < 0) {\
     setError((msg),"");\
+    close();\
     return;\
   }\
 }
@@ -200,7 +202,7 @@ namespace FFmpeg {
         
 #ifdef OFX_IO_MT_FFMPEG
         // internal lock for multithread access
-        OFX::MultiThread::Mutex _lock;
+        mutable OFX::MultiThread::Mutex _lock;
 #endif
 
         // set reader error
@@ -217,29 +219,29 @@ namespace FFmpeg {
         
     public:
         
+        File();
+        
         File(const std::string& filename);
         
         ~File();
         
-        const std::string& getFilename() const { return _filename; }
+        void open(const std::string& filename);
+        
+        // Returns whether the file is opened, though it may be in an error state.
+        bool isOpened() const;
+        
+        void close();
+        
+        const std::string& getFilename() const;
         
         // get the internal error string
-        const std::string& getError() const
-        {
-            return _errorMsg;
-        }
+        const std::string& getError() const;
         
         // return true if the reader can't decode the frame
-        bool isValid() const
-        {
-            return !_invalidState;
-        }
+        bool isValid() const;
         
         // return the numbers of streams supported by the reader
-        unsigned int getNbStreams() const
-        {
-            return (unsigned int)_streams.size();
-        }
+        unsigned int getNbStreams() const;
         
         // decode a single frame into the buffer thread safe
         bool decode(unsigned char* buffer, int frame,bool loadNearest, unsigned streamIdx = 0);

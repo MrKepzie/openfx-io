@@ -168,13 +168,51 @@ namespace FFmpeg {
         return ((_videoCodec->capabilities & CODEC_CAP_DELAY) ? _codecContext->delay : 0) + _codecContext->has_b_frames;
     }
 
+    File::File()
+    : _filename()
+    , _context(NULL)
+    , _format(NULL)
+    , _streams()
+    , _errorMsg()
+    , _invalidState(false)
+    , _avPacket()
+#ifdef OFX_IO_MT_FFMPEG
+    , _lock(0)
+#endif
+    {
+        
+    }
     
     File::File(const std::string& filename)
     : _filename(filename)
     , _context(NULL)
     , _format(NULL)
+    , _streams()
+    , _errorMsg()
     , _invalidState(false)
+    , _avPacket()
+#ifdef OFX_IO_MT_FFMPEG
+    , _lock(0)
+#endif
     {
+        open(filename);
+    }
+    
+    File::~File()
+    {
+        close();
+    }
+
+    void File::open(const std::string& filename)
+    {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        if (!_filename.empty()) {
+            close();
+        }
+        
+        _filename = filename;
         
         CHECKMSG(avformat_open_input(&_context, filename.c_str(), _format, NULL), "Cannot open file");
         CHECKMSG(avformat_find_stream_info(_context, NULL),"Could not find codec parameters");
@@ -202,15 +240,9 @@ namespace FFmpeg {
                 continue;
             }
             
-            //            // skip codec from the black list
-            //            if (Foundry::Nuke::isCodecBlacklistedForReading(videoCodec->name)) {
-            //                unsuported_codec = true;
-            //                continue;
-            //            }
-            
             if (avstream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
                 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
-
+                
                 // Activate multithreaded decoding. This must be done before opening the codec; see
                 // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
                 avstream->codec->thread_count = video_decoding_threads();
@@ -266,17 +298,61 @@ namespace FFmpeg {
         }
     }
     
-    File::~File()
+    void File::close()
     {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        
         // force to close all resources needed for all streams
         for(unsigned int i = 0; i < _streams.size();++i){
             delete _streams[i];
         }
+        _streams.clear();
         
         if (_context)
             avformat_close_input(&_context);
+        _filename.clear();
+        _errorMsg.clear();
+        _invalidState = false;
     }
-
+    
+    bool File::isOpened() const
+    {
+        return !getFilename().empty();
+    }
+    
+    const std::string& File::getFilename() const
+    {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        return _filename;
+    }
+    
+    const std::string& File::getError() const
+    {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        return _errorMsg;
+    }
+    
+    bool File::isValid() const
+    {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        return !_invalidState;
+    }
+    
+    unsigned int File::getNbStreams() const
+    {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        return (unsigned int)_streams.size();
+    }
     
     // set reader error
     void File::setError(const char* msg, const char* prefix)

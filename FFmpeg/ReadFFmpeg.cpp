@@ -84,15 +84,15 @@ void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
         if (_ffmpegFile->getFilename() == filename) {
             return;
         } else {
-            delete _ffmpegFile;
+             _ffmpegFile->open(filename);
         }
+    } else {
+        
+        _ffmpegFile = new FFmpeg::File(filename);
+        
     }
-    
-    _ffmpegFile = new FFmpeg::File(filename);
     if (!_ffmpegFile->isValid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
-        delete _ffmpegFile;
-        _ffmpegFile = NULL;
     }
 }
 
@@ -104,15 +104,12 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
 void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpeg::File(filename);
+        _ffmpegFile->open(filename);
     } else if (!_ffmpegFile) {
-        _ffmpegFile = new FFmpeg::File(filename);
+        return;
     }
     if (!_ffmpegFile->isValid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
-        delete _ffmpegFile;
-        _ffmpegFile = NULL;
         return;
     }
 
@@ -225,16 +222,13 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
 {
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpeg::File(filename);
+        _ffmpegFile->open(filename);
     } else if (!_ffmpegFile) {
-        _ffmpegFile = new FFmpeg::File(filename);
+        return false;
     }
     if (!_ffmpegFile->isValid()) {
         error = _ffmpegFile->getError();
         //setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
-        delete _ffmpegFile;
-        _ffmpegFile = NULL;
         return false;
     }
     
@@ -358,6 +352,10 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     //const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(0);
+#endif
+    
+#ifndef OFX_IO_MT_FFMPEG
+    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 #endif
 }
 
