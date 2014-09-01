@@ -56,6 +56,9 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 , _bufferWidth(0)
 , _bufferHeight(0)
 {
+    std::string filename;
+    _fileParam->getValue(filename);
+    _ffmpegFile = new FFmpeg::File(filename);
 }
 
 ReadFFmpegPlugin::~ReadFFmpegPlugin() {
