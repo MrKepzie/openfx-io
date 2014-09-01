@@ -804,8 +804,8 @@ buildMipMapLevel(OFX::ImageEffect* instance,
     for (unsigned int i = 1; i <= level; ++i) {
         ///Halve the smallest enclosing po2 rect as we need to render a minimum of the renderWindow
         OfxRectI nextBounds = downscalePowerOfTwoSmallestEnclosing(previousBounds,1); // should be the same as (srcBounds,i)
-        OfxRectI nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
-
+       // OfxRectI nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
+        OfxRectI nextRenderWindow = toPixelEnclosing<OfxRectI>(renderWindowFullRes, i);
         ///On the last iteration halve directly into the dstPixels
         if (i == level) {
             ///The nextRenderWindow equal to the original render window.
