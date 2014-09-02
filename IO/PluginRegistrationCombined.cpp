@@ -37,8 +37,9 @@ namespace OFX
             getWriteOIIOPluginID(ids);
 #ifdef DEBUG
             getOIIOTextPluginID(ids); //< not ready
-            getOIIOResizePluginID(ids);
 #endif
+            getOIIOResizePluginID(ids);
+
             static ReadPFMPluginFactory p7("fr.inria.openfx:ReadPFM", 1, 1);
             ids.push_back(&p7);
             static WritePFMPluginFactory p8("fr.inria.openfx:WritePFM", 1, 0);
