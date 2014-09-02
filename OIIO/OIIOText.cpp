@@ -34,8 +34,6 @@
 
  */
 
-#ifdef DEBUG
-
 #include "OIIOText.h"
 
 
@@ -566,5 +564,3 @@ void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
     static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
-
-#endif // DEBUG

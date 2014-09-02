@@ -8,8 +8,8 @@ PLUGINOBJECTS = \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
 	ReadOIIO.o WriteOIIO.o \
-    OIIOText.o \
-    OIIOResize.o \
+	OIIOText.o \
+	OIIOResize.o \
 	ReadPFM.o WritePFM.o \
 	RunScript.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
