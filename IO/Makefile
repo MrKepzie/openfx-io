@@ -1,17 +1,17 @@
 PLUGINOBJECTS = \
 	ReadEXR.o WriteEXR.o \
 	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
-	OCIOColorSpace.o \
-	OCIOCDLTransform.o \
-	OCIOFileTransform.o \
-	OCIOLogConvert.o \
-	ofxsOGLTextRenderer.o \
-	ofxsOGLFontData.o \
 	ReadOIIO.o WriteOIIO.o \
 	OIIOText.o \
 	OIIOResize.o \
 	ReadPFM.o WritePFM.o \
+	OCIOColorSpace.o \
+	OCIOCDLTransform.o \
+	OCIOFileTransform.o \
+	OCIOLogConvert.o \
 	RunScript.o \
+	ofxsOGLTextRenderer.o \
+	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
 	PluginRegistrationCombined.o
 

@@ -37,8 +37,6 @@
 
  */
 
-#ifdef DEBUG
-
 #include "OIIOResize.h"
 
 #include <limits>
@@ -736,5 +734,3 @@ void getOIIOResizePluginID(OFX::PluginFactoryArray &ids)
     static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
-
-#endif // DEBUG
