@@ -64,6 +64,7 @@ private:
     
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
     
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImagePreMultiplied; }
     
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _bitDepth;

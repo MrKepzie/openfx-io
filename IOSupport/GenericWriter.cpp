@@ -133,6 +133,16 @@
 #define kWriterLastFrameParamName "lastFrame"
 #define kWriterLastFrameParamLabel "Last frame"
 
+#define kWriterPremultipliedParamName "premultiplied"
+#define kWriterPremultipliedParamLabel "Premultiplied"
+#define kWriterPremultipliedParamHint "If checked red,green and blue channels will be divided by the alpha channel "\
+"beforing applying the colorspace conversion. "\
+"Usually this is set automatically set using the input stream information but it maybe wrong and you can use this parameter to adjust it."
+
+#define kParamClipInfo "clipInfo"
+#define kParamClipInfoLabel "Clip Info..."
+#define kParamClipInfoHint "Display information about the inputs"
+
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
@@ -143,6 +153,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _lastFrame(0)
 , _outputFormatType(0)
 , _outputFormat(0)
+, _premult(0)
 , _ocio(new GenericOCIO(this))
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
@@ -155,6 +166,8 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     
     _outputFormatType = fetchChoiceParam(kWriterOutputTypeParamName);
     _outputFormat = fetchChoiceParam(kWriterOutputFormatParamName);
+    
+    _premult = fetchBooleanParam(kWriterPremultipliedParamName);
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -280,6 +293,23 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     
+    
+    
+    ///This is automatically the same generally as inputClip premultiplication but can differ is the user changed it.
+    bool userExpectedPremultBoolean;
+    _premult->getValueAtTime(args.time, userExpectedPremultBoolean);
+    OFX::PreMultiplicationEnum userPremult;
+    if (userExpectedPremultBoolean) {
+        userPremult = OFX::eImagePreMultiplied;
+    } else {
+        userPremult = OFX::eImageUnPreMultiplied;
+    }
+    
+    ///This is what the plug-in expects to be passed to the encode function.
+    OFX::PreMultiplicationEnum pluginExpectedPremult = getExpectedInputPremultiplication();
+
+    
+    
     // The following (commented out) code is not fully-safe, because the same instance may be have
     // two threads running on the same area of the same frame, and the apply()
     // calls both read and write dstImg.
@@ -295,50 +325,127 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     // The only viable solution (below) is to do the conversion in a temporary space,
     // and finally copy the result.
     //
-    // allocate
-    int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-    int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
-    size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
-    OFX::ImageMemory mem(memSize,this);
-    float *tmpPixelData = (float*)mem.lock();
     
-    ///Set to black and transparant so that outside the portion defined by the image there's nothing
-    std::memset(tmpPixelData, 0, memSize);
+    bool renderWindowIsBounds = args.renderWindow.x1 == bounds.x1 &&
+    args.renderWindow.y1 == bounds.y1 &&
+    args.renderWindow.x2 == bounds.x2 &&
+    args.renderWindow.y2 == bounds.y2;
     
-    ///Clip the render window to the bounds of the source image!
-    OfxRectI renderWindowClipped;
-    intersect(args.renderWindow, bounds, &renderWindowClipped);
+    bool isOCIOIdentity = _ocio->isIdentity(args.time);
     
-    // copy the whole src image
-    copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
-    
-    if (!_ocio->isIdentity(args.time)) {
+    if (renderWindowIsBounds && isOCIOIdentity) {
+        ///Render window is of the same size as the input image and we don't need to apply colorspace conversion, just
+        ///encode in the same buffer EXCEPT if the premultiplication differs from what the output expects.
+        const float* srcPixelDataToEncode;
         
-        // do the color-space conversion
-        _ocio->apply(args.time, renderWindowClipped, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
-        
-    }
-    // write theimage file
-    encode(filename, args.time, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
-    // copy to dstImg if necessary
-    if (_outputClip && _outputClip->isConnected()) {
-        std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-        if (!dstImg.get()) {
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+        OFX::ImageMemory *mem = 0;
+        if (userPremult != pluginExpectedPremult) {
+            size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * srcRowBytes;
+            mem = new OFX::ImageMemory(memSize,this);
+            float *tmpPixelData = (float*)mem->lock();
+            
+            if (userPremult) {
+                unPremultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+            } else {
+                premultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+            }
+            
+            srcPixelDataToEncode = tmpPixelData;
+        } else {
+            srcPixelDataToEncode = (const float*)srcPixelData;
         }
-        if (dstImg->getRenderScale().x != args.renderScale.x ||
-            dstImg->getRenderScale().y != args.renderScale.y ||
-            dstImg->getField() != args.fieldToRender) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+            
+        encode(filename, args.time, srcPixelDataToEncode, args.renderWindow, pixelComponents, srcRowBytes);
+        // copy to dstImg if necessary
+        if (_outputClip && _outputClip->isConnected()) {
+            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+            if (!dstImg.get()) {
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            if (dstImg->getRenderScale().x != args.renderScale.x ||
+                dstImg->getRenderScale().y != args.renderScale.y ||
+                dstImg->getField() != args.fieldToRender) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            
+            
+            copyPixelData(args.renderWindow, srcPixelDataToEncode, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
+        }
+
+        ///Don't forget to free memory
+        if (mem) {
+            // unlock (the OFX::ImageMemory destructor frees the memory)
+            mem->unlock();
+            delete mem;
         }
         
+    } else {
+        // allocate
+        int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+        int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
+        size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
+        OFX::ImageMemory mem(memSize,this);
+        float *tmpPixelData = (float*)mem.lock();
         
-        copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+        ///Set to black and transparant so that outside the portion defined by the image there's nothing
+        if (!renderWindowIsBounds) {
+            std::memset(tmpPixelData, 0, memSize);
+        }
+        
+        ///Clip the render window to the bounds of the source image!
+        OfxRectI renderWindowClipped;
+        intersect(args.renderWindow, bounds, &renderWindowClipped);
+        
+        
+        
+        if (userPremult && !isOCIOIdentity) {
+            // The input premultiplied and we need to unpremultiply it to give it to OCIO
+            unPremultPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents
+                               , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+        } else {
+            // copy the whole raw src image
+            copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+            
+        }
+        
+        if (!isOCIOIdentity) {
+            
+            // do the color-space conversion
+            _ocio->apply(args.time, renderWindowClipped, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+            
+        }
+        
+        ///If needed, re-premult the image for the plugin to work correctly
+        if (pluginExpectedPremult == OFX::eImagePreMultiplied) {
+            premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents
+                               , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+        }
+        
+        // write theimage file
+        encode(filename, args.time, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+        // copy to dstImg if necessary
+        if (_outputClip && _outputClip->isConnected()) {
+            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+            if (!dstImg.get()) {
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            if (dstImg->getRenderScale().x != args.renderScale.x ||
+                dstImg->getRenderScale().y != args.renderScale.y ||
+                dstImg->getField() != args.fieldToRender) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            
+            
+            copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+        }
+        
+        // unlock (the OFX::ImageMemory destructor frees the memory)
+        mem.unlock();
     }
-    
-    // unlock (the OFX::ImageMemory destructor frees the memory)
-    mem.unlock();
     
     clearPersistentMessage();
 }
@@ -449,6 +556,101 @@ GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
     } // switch
 }
 
+static void
+setupAndPremult(OFX::PixelProcessorFilterBase & processor,
+                bool premult,
+                int premultChannel,
+             const OfxRectI &renderWindow,
+             const void *srcPixelData,
+             const OfxRectI& srcBounds,
+             OFX::PixelComponentEnum srcPixelComponents,
+             OFX::BitDepthEnum srcPixelDepth,
+             int srcRowBytes,
+             void *dstPixelData,
+             const OfxRectI& dstBounds,
+             OFX::PixelComponentEnum dstPixelComponents,
+             OFX::BitDepthEnum dstPixelDepth,
+             int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // make sure bit depths are sane
+    if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+    
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+    
+    processor.setPremultMaskMix(premult, premultChannel, 1., false);
+    
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+
+void
+GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
+                        const void *srcPixelData,
+                        const OfxRectI& srcBounds,
+                        OFX::PixelComponentEnum srcPixelComponents,
+                        OFX::BitDepthEnum srcPixelDepth,
+                        int srcRowBytes,
+                        void *dstPixelData,
+                        const OfxRectI& dstBounds,
+                        OFX::PixelComponentEnum dstPixelComponents,
+                        OFX::BitDepthEnum dstBitDepth,
+                        int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
+        setupAndPremult(fred, false, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else {
+        ///other pixel components means you want to copy only...
+        assert(false);
+    }
+}
+
+void
+GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
+                      const void *srcPixelData,
+                      const OfxRectI& srcBounds,
+                      OFX::PixelComponentEnum srcPixelComponents,
+                      OFX::BitDepthEnum srcPixelDepth,
+                      int srcRowBytes,
+                      void *dstPixelData,
+                      const OfxRectI& dstBounds,
+                      OFX::PixelComponentEnum dstPixelComponents,
+                      OFX::BitDepthEnum dstBitDepth,
+                      int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
+        setupAndPremult(fred, true, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+
+    } else {
+        ///other pixel components means you want to copy only...
+        assert(false);
+    }
+}
+
 void
 GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
 {
@@ -521,6 +723,68 @@ GenericWriterPlugin::getTimeDomain(OfxRangeD &range)
     }
 }
 
+static std::string
+imageFormatString(OFX::PixelComponentEnum components, OFX::BitDepthEnum bitDepth)
+{
+    std::string s;
+    switch (components) {
+        case OFX::ePixelComponentRGBA:
+            s += "RGBA";
+            break;
+        case OFX::ePixelComponentRGB:
+            s += "RGB";
+            break;
+        case OFX::ePixelComponentAlpha:
+            s += "Alpha";
+            break;
+        case OFX::ePixelComponentCustom:
+            s += "Custom";
+            break;
+        case OFX::ePixelComponentNone:
+            s += "None";
+            break;
+        default:
+            s += "[unknown components]";
+            break;
+    }
+    switch (bitDepth) {
+        case OFX::eBitDepthUByte:
+            s += "8u";
+            break;
+        case OFX::eBitDepthUShort:
+            s += "16u";
+            break;
+        case OFX::eBitDepthFloat:
+            s += "32f";
+            break;
+        case OFX::eBitDepthCustom:
+            s += "x";
+            break;
+        case OFX::ePixelComponentNone:
+            s += "0";
+            break;
+        default:
+            s += "[unknown bit depth]";
+            break;
+    }
+    return s;
+}
+
+static std::string
+premultString(OFX::PreMultiplicationEnum e)
+{
+    switch (e) {
+        case OFX::eImageOpaque:
+            return "Opaque";
+        case OFX::eImagePreMultiplied:
+            return "PreMultiplied";
+        case OFX::eImageUnPreMultiplied:
+            return "UnPreMultiplied";
+    }
+    return "Unknown";
+}
+
+
 void
 GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
@@ -552,11 +816,57 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         } else {
             _outputFormat->setIsSecret(false);
         }
+    } else if (paramName == kParamClipInfo && args.reason == OFX::eChangeUserEdit) {
+        std::string msg;
+        msg += "Input: ";
+        if (!_inputClip) {
+            msg += "N/A";
+        } else {
+            msg += imageFormatString(_inputClip->getPixelComponents(), _inputClip->getPixelDepth());
+            msg += " ";
+            msg += premultString(_inputClip->getPreMultiplication());
+        }
+        msg += "\n";
+        msg += "Output: ";
+        if (!_outputClip) {
+            msg += "N/A";
+        } else {
+            msg += imageFormatString(_outputClip->getPixelComponents(), _outputClip->getPixelDepth());
+            msg += " ";
+            msg += premultString(_outputClip->getPreMultiplication());
+
+        }
+        msg += "\n";
+        sendMessage(OFX::Message::eMessageMessage, "", msg);
     }
+
 
     _ocio->changedParam(args, paramName);
 }
 
+void
+GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
+{
+    if (clipName == kOfxImageEffectSimpleSourceClipName && _inputClip && args.reason == OFX::eChangeUserEdit) {
+        switch (_inputClip->getPreMultiplication()) {
+            case OFX::eImageOpaque:
+                break;
+            case OFX::eImagePreMultiplied:
+                _premult->setValue(true);
+                break;
+            case OFX::eImageUnPreMultiplied:
+                _premult->setValue(false);
+                break;
+        }
+    }
+}
+
+
+void
+GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    clipPreferences.setOutputPremultiplication(getExpectedInputPremultiplication());
+}
 
 void
 GenericWriterPlugin::purgeCaches()
@@ -688,6 +998,19 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 
+    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kWriterPremultipliedParamName);
+    premult->setLabels(kWriterPremultipliedParamLabel, kWriterPremultipliedParamLabel, kWriterPremultipliedParamLabel);
+    premult->setAnimates(true);
+    premult->setHint(kWriterPremultipliedParamHint);
+    premult->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    desc.addClipPreferencesSlaveParam(*premult);
+    page->addChild(*premult);
+    
+    PushButtonParamDescriptor *clipInfo = desc.definePushButtonParam(kParamClipInfo);
+    clipInfo->setLabels(kParamClipInfoLabel, kParamClipInfoLabel, kParamClipInfoLabel);
+    clipInfo->setHint(kParamClipInfoHint);
+    page->addChild(*clipInfo);
+    
     ///////////Frame range choosal
     OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
     frameRangeChoiceParam->setLabels(kWriterFrameRangeChoiceParamLabel, kWriterFrameRangeChoiceParamLabel, kWriterFrameRangeChoiceParamLabel);

@@ -68,6 +68,8 @@ private:
     
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
     
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
+    
     void freeFormat();
     
     AVCodecContext*   _codecContext;

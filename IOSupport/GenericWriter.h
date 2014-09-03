@@ -112,6 +112,17 @@ public:
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE;
     
     /**
+     * @brief Overriden to handle premultiplication parameter given the input clip.
+     * Make sure you call the base class implementation if you override it.
+     **/
+    virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE;
+    
+    /**
+     * @brief Overriden to set the clips premultiplication according to the user and plug-ins wishes.
+     **/
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
+    
+    /**
      * @brief Overriden to clear any OCIO cache.
      * This function calls clearAnyCache() if you have any cache to clear.
      **/
@@ -150,6 +161,12 @@ protected:
      * true if this is an image file extension.
      **/
     virtual bool isImageFile(const std::string& fileExtension) const = 0;
+    
+    /**
+     * @brief Must return whether your plug-in expects an input stream to be premultiplied or unpremultiplied to encode
+     * properly into the file.
+     **/
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const = 0;
 
     
     OFX::Clip* _inputClip; //< Mantated input clip
@@ -160,6 +177,7 @@ protected:
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
     OFX::ChoiceParam* _outputFormatType; //< the type of output format
     OFX::ChoiceParam* _outputFormat; //< the output format to render
+    OFX::BooleanParam* _premult;
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
@@ -253,6 +271,30 @@ private:
                        OFX::PixelComponentEnum dstPixelComponents,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
+    
+    void unPremultPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes);
+    
+    void premultPixelData(const OfxRectI &renderWindow,
+                          const void *srcPixelData,
+                          const OfxRectI& srcBounds,
+                          OFX::PixelComponentEnum srcPixelComponents,
+                          OFX::BitDepthEnum srcPixelDepth,
+                          int srcRowBytes,
+                          void *dstPixelData,
+                          const OfxRectI& dstBounds,
+                          OFX::PixelComponentEnum dstPixelComponents,
+                          OFX::BitDepthEnum dstBitDepth,
+                          int dstRowBytes);
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc);

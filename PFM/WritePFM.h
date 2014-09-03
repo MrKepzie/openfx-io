@@ -55,6 +55,8 @@ private:
     virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
     
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
+    
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
 };
 
 mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
