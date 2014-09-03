@@ -86,7 +86,7 @@
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
 #endif
-
+#include "../SupportExt/ofxsFormatResolution.h"
 #include "GenericOCIO.h"
 
 #define kWriterGrouping "Image/Writers"
@@ -109,6 +109,13 @@
 #define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
 #define kRenderThreadSafety eRenderInstanceSafe
 
+#define kWriterOutputFormatParamName "outputFormat"
+#define kWriterOutputFormatParamLabel "Format"
+#define kWriterOutputFormatHint "The output format to render"
+
+#define kWriterOutputTypeParamName "formatType"
+#define kWriterOutputTypeParamLabel "Format type"
+#define kWriterOutputTypeParamHint "Whether to choose the input stream's format as output format or one from the drop-down menu"
 
 #define kWriterFrameRangeChoiceParamName "frameRange"
 #define kWriterFrameRangeChoiceParamLabel "Frame range"
@@ -134,6 +141,8 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _frameRange(0)
 , _firstFrame(0)
 , _lastFrame(0)
+, _outputFormatType(0)
+, _outputFormat(0)
 , _ocio(new GenericOCIO(this))
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
@@ -143,6 +152,9 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _frameRange = fetchChoiceParam(kWriterFrameRangeChoiceParamName);
     _firstFrame = fetchIntParam(kWriterFirstFrameParamName);
     _lastFrame = fetchIntParam(kWriterLastFrameParamName);
+    
+    _outputFormatType = fetchChoiceParam(kWriterOutputTypeParamName);
+    _outputFormat = fetchChoiceParam(kWriterOutputFormatParamName);
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -161,60 +173,12 @@ GenericWriterPlugin::~GenericWriterPlugin()
 {
 }
 
-static std::string
-filenameFromPattern(const std::string& pattern,
-                    int frameIndex)
-{
-    std::string ret = pattern;
-    size_t lastDot = pattern.find_last_of('.');
-    if (lastDot == std::string::npos){
-        ///the filename has not extension, return an empty str
-        return "";
-    }
-    
-    std::stringstream fStr;
-    fStr << frameIndex;
-    std::string frameIndexStr = fStr.str();
-    size_t lastPos = pattern.find_last_of('#');
-    
-    if (lastPos == std::string::npos) {
-        ///the filename has no #, just put the digits between etxension and path
-        ret.insert(lastDot, frameIndexStr);
-        return pattern;
-    }
-    
-    size_t nSharpChar = 0;
-    int i = lastDot;
-    --i; //< char before '.'
-    while (i >= 0 && pattern[i] == '#') {
-        --i;
-        ++nSharpChar;
-    }
-    
-    int prepending0s = nSharpChar > frameIndexStr.size() ? nSharpChar - frameIndexStr.size() : 0;
-    
-    //remove all ocurrences of the # char
-    ret.erase(std::remove(ret.begin(), ret.end(), '#'),ret.end());
-    
-    //insert prepending zeroes
-    std::string zeroesStr;
-    for (int j = 0; j < prepending0s; ++j) {
-        zeroesStr.push_back('0');
-    }
-    frameIndexStr.insert(0,zeroesStr);
-
-    //refresh the last '.' position
-    lastDot = ret.find_last_of('.');
-    
-    ret.insert(lastDot, frameIndexStr);
-    return ret;
-}
 
 void
 GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& filename)
 {
-    _fileParam->getValue(filename);
-    filename = filenameFromPattern(filename, time);
+    _fileParam->getValueAtTime(time,filename);
+    // filename = filenameFromPattern(filename, time);
     
     ///find out whether we support this extension...
     size_t sepPos = filename.find_last_of('.');
@@ -315,73 +279,67 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     if (bitDepth != OFX::eBitDepthFloat) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
-    const float* srcPixelDataF = (const float*)srcPixelData;
-    if (_ocio->isIdentity(args.time)) {
-        // no colorspace conversion, just encode the source image
-        // we ealways encode the whole input image, regardless of args.renderWindow
-        encode(filename, args.time, srcPixelDataF, bounds, pixelComponents, srcRowBytes);
-        // copy to dstImg if necessary
-        if (_outputClip && _outputClip->isConnected()) {
-            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-            if (!dstImg.get()) {
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-            }
-            if (dstImg->getRenderScale().x != args.renderScale.x ||
-                dstImg->getRenderScale().y != args.renderScale.y ||
-                dstImg->getField() != args.fieldToRender) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-            }
-            copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
-        }
-    } else {
-        // The following (commented out) code is not fully-safe, because the same instance may be have
-        // two threads running on the same area of the same frame, and the apply()
-        // calls both read and write dstImg.
-        // This results in colorspace conversion being applied several times.
-        //
-        //if (dstImg.get()) {
-        //// do the color-space conversion on dstImg
-        //getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
-        //_ocio->apply(args.time, args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
-        //encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
-        //}
-        //
-        // The only viable solution (below) is to do the conversion in a temporary space,
-        // and finally copy the result.
-        //
-        // allocate
-        int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
-        int tmpRowBytes = (bounds.x2-bounds.x1) * pixelBytes;
-        size_t memSize = (bounds.y2-bounds.y1) * tmpRowBytes;
-        OFX::ImageMemory mem(memSize,this);
-        float *tmpPixelData = (float*)mem.lock();
-
-        // copy the whole image
-        copyPixelData(bounds, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes);
-
+    
+    // The following (commented out) code is not fully-safe, because the same instance may be have
+    // two threads running on the same area of the same frame, and the apply()
+    // calls both read and write dstImg.
+    // This results in colorspace conversion being applied several times.
+    //
+    //if (dstImg.get()) {
+    //// do the color-space conversion on dstImg
+    //getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
+    //_ocio->apply(args.time, args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
+    //encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+    //}
+    //
+    // The only viable solution (below) is to do the conversion in a temporary space,
+    // and finally copy the result.
+    //
+    // allocate
+    int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+    int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
+    OFX::ImageMemory mem(memSize,this);
+    float *tmpPixelData = (float*)mem.lock();
+    
+    ///Set to black and transparant so that outside the portion defined by the image there's nothing
+    std::memset(tmpPixelData, 0, memSize);
+    
+    ///Clip the render window to the bounds of the source image!
+    OfxRectI renderWindowClipped;
+    intersect(args.renderWindow, bounds, &renderWindowClipped);
+    
+    // copy the whole src image
+    copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+    
+    if (!_ocio->isIdentity(args.time)) {
+        
         // do the color-space conversion
-        _ocio->apply(args.time, args.renderWindow, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
-        // write theimage file
-        encode(filename, args.time, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
-        // copy to dstImg if necessary
-        if (_outputClip && _outputClip->isConnected()) {
-            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-            if (!dstImg.get()) {
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-            }
-            if (dstImg->getRenderScale().x != args.renderScale.x ||
-                dstImg->getRenderScale().y != args.renderScale.y ||
-                dstImg->getField() != args.fieldToRender) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-            }
-            copyPixelData(args.renderWindow, tmpPixelData, bounds, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
-        }
-
-        // unlock (the OFX::ImageMemory destructor frees the memory)
-        mem.unlock();
+        _ocio->apply(args.time, renderWindowClipped, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+        
     }
+    // write theimage file
+    encode(filename, args.time, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+    // copy to dstImg if necessary
+    if (_outputClip && _outputClip->isConnected()) {
+        std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
+        if (!dstImg.get()) {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        if (dstImg->getRenderScale().x != args.renderScale.x ||
+            dstImg->getRenderScale().y != args.renderScale.y ||
+            dstImg->getField() != args.fieldToRender) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        
+        
+        copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+    }
+    
+    // unlock (the OFX::ImageMemory destructor frees the memory)
+    mem.unlock();
+    
     clearPersistentMessage();
 }
 
@@ -396,15 +354,16 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     std::string filename;
     getOutputFileNameAndExtension(args.frameRange.min, filename);
     
-    OfxRectD rod = _inputClip->getRegionOfDefinition(args.frameRange.min);
+    OfxRectD rod;
+    getRegionOfDefinitionInternal(args.frameRange.min, rod);
     
     ////Since the generic writer doesn't support tiles and multi-resolution, the RoD is necesserarily the
     ////output image size.
     OfxRectI rodI;
-    rodI.x1 = rod.x1;
-    rodI.y1 = rod.y1;
-    rodI.x2 = rod.x2;
-    rodI.y2 = rod.y2;
+    rodI.x1 = std::floor(rod.x1);
+    rodI.y1 = std::floor(rod.y1);
+    rodI.x2 = std::ceil(rod.x2);
+    rodI.y2 = std::ceil(rod.y2);
     
     beginEncode(filename, rodI, args);
 }
@@ -490,15 +449,36 @@ GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
     } // switch
 }
 
+void
+GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
+{
+    
+    int formatType;
+    _outputFormatType->getValue(formatType);
+    
+    if (formatType == 0) {
+        // use the default RoD
+        rod = _inputClip->getRegionOfDefinition(time);
+    } else {
+        int formatIndex;
+        _outputFormat->getValueAtTime(time, formatIndex);
+        std::size_t w,h;
+        double par;
+        getFormatResolution((OFX::EParamFormat)formatIndex, &w, &h, &par);
+        rod.x1 = rod.y1 = 0.;
+        rod.x2 = w;
+        rod.y2 = h;
+    }
+}
+
 bool
-GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &/*rod*/)
+GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-
-    // use the default RoD
-    return false;
+    getRegionOfDefinitionInternal(args.time, rod);
+    return true;
 }
 
 // override the roi call
@@ -564,6 +544,14 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 
         ///let the derive class a chance to initialize any data structure it may need
         onOutputFileChanged(filename);
+    } else if (paramName == kWriterOutputTypeParamName) {
+        int type;
+        _outputFormatType->getValue(type);
+        if (type == 0) {
+            _outputFormat->setIsSecret(true);
+        } else {
+            _outputFormat->setIsSecret(false);
+        }
     }
 
     _ocio->changedParam(args, paramName);
@@ -662,6 +650,41 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
 
     page->addChild(*fileParam);
 
+    //////////// Output type
+    OFX::ChoiceParamDescriptor* outputType = desc.defineChoiceParam(kWriterOutputTypeParamName);
+    outputType->setLabels(kWriterOutputTypeParamLabel, kWriterOutputTypeParamLabel, kWriterOutputTypeParamLabel);
+    outputType->appendOption("Input stream format","Renders using for format the input stream's format.");
+    outputType->appendOption("Fixed format","Renders using for format the format indicated by the " kWriterOutputFormatParamLabel " parameter.");
+    outputType->setDefault(1);
+    outputType->setAnimates(false);
+    outputType->setHint(kWriterOutputTypeParamHint);
+    outputType->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    page->addChild(*outputType);
+    
+    //////////// Output format
+    OFX::ChoiceParamDescriptor* outputFormat = desc.defineChoiceParam(kWriterOutputFormatParamName);
+    outputFormat->setLabels(kWriterOutputFormatParamLabel, kWriterOutputFormatParamLabel, kWriterOutputFormatParamLabel);
+    outputFormat->setAnimates(true);
+    outputFormat->setHint(kWriterOutputFormatHint);
+    outputFormat->appendOption(kParamFormatPCVideoLabel);
+    outputFormat->appendOption(kParamFormatNTSCLabel);
+    outputFormat->appendOption(kParamFormatPALLabel);
+    outputFormat->appendOption(kParamFormatHDLabel);
+    outputFormat->appendOption(kParamFormatNTSC169Label);
+    outputFormat->appendOption(kParamFormatPAL169Label);
+    outputFormat->appendOption(kParamFormat1kSuper35Label);
+    outputFormat->appendOption(kParamFormat1kCinemascopeLabel);
+    outputFormat->appendOption(kParamFormat2kSuper35Label);
+    outputFormat->appendOption(kParamFormat2kCinemascopeLabel);
+    outputFormat->appendOption(kParamFormat4kSuper35Label);
+    outputFormat->appendOption(kParamFormat4kCinemascopeLabel);
+    outputFormat->appendOption(kParamFormatSquare256Label);
+    outputFormat->appendOption(kParamFormatSquare512Label);
+    outputFormat->appendOption(kParamFormatSquare1kLabel);
+    outputFormat->appendOption(kParamFormatSquare2kLabel);
+    outputFormat->setDefault(3);
+    page->addChild(*outputFormat);
+    
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 

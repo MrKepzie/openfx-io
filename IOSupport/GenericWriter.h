@@ -134,7 +134,12 @@ protected:
      * @pre The filename has been validated against the supported file extensions.
      * You don't need to check this yourself.
      **/
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) = 0;
+    virtual void encode(const std::string& filename,
+                        OfxTime time,
+                        const float *pixelData,
+                        const OfxRectI& bounds,
+                        OFX::PixelComponentEnum pixelComponents,
+                        int rowBytes) = 0;
     
     virtual void beginEncode(const std::string& /*filename*/,const OfxRectI& /*rod*/,const OFX::BeginSequenceRenderArguments &/*args*/) {}
     
@@ -153,7 +158,8 @@ protected:
     OFX::ChoiceParam *_frameRange; //<The frame range type
     OFX::IntParam* _firstFrame; //< the first frame if the frame range type is "Manual"
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
-
+    OFX::ChoiceParam* _outputFormatType; //< the type of output format
+    OFX::ChoiceParam* _outputFormat; //< the output format to render
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
@@ -174,6 +180,8 @@ private:
      * @brief Override to clear any cache you may have.
      **/
     virtual void clearAnyCache() {}
+    
+    void getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
