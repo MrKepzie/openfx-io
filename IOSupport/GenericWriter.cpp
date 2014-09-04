@@ -89,12 +89,17 @@
 #include "../SupportExt/ofxsFormatResolution.h"
 #include "GenericOCIO.h"
 
-#define kWriterGrouping "Image/Writers"
+#define kPluginGrouping "Image/Writers"
 
-// in the Writer context, the script name must be "filename", @see kOfxImageEffectContextWriter
-#define kWriterFileParamName "filename"
-#define kWriterFileParamLabel "File"
-#define kWriterFileParamHint \
+#define kSupportsTiles 0
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
+#define kRenderThreadSafety eRenderInstanceSafe
+
+// in the Writer context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextWriter
+#define kParamFilename kOfxImageEffectFileParamName
+#define kParamFilenameLabel "File"
+#define kParamFilenameHint \
 "The output image sequence/video stream file(s). " \
 "The string must match the following format: " \
 "path/sequenceName###.ext where the number of " \
@@ -104,40 +109,39 @@
 "By default the plugin will append as many digits as necessary (if you have 11 frames, " \
 "there will be at least 2 digits). The file name may not contain any # (hash)."
 
-#define kSupportsTiles 0
-#define kSupportsMultiResolution 1
-#define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
-#define kRenderThreadSafety eRenderInstanceSafe
+#define kParamOutputFormat "outputFormat"
+#define kParamOutputFormatLabel "Format"
+#define kParamOutputFormatHint \
+"The output format to render"
 
-#define kWriterOutputFormatParamName "outputFormat"
-#define kWriterOutputFormatParamLabel "Format"
-#define kWriterOutputFormatHint "The output format to render"
+#define kParamFormatType "formatType"
+#define kParamFormatTypeLabel "Format Type"
+#define kParamFormatTypeHint \
+"Whether to choose the input stream's format as output format or one from the drop-down menu"
 
-#define kWriterOutputTypeParamName "formatType"
-#define kWriterOutputTypeParamLabel "Format type"
-#define kWriterOutputTypeParamHint "Whether to choose the input stream's format as output format or one from the drop-down menu"
+#define kParamFrameRange "frameRange"
+#define kParamFrameRangeLabel "Frame Range"
+#define kParamFrameRangeHint \
+"What frame range should be rendered."
+#define kParamFrameRangeOptionUnion "Union of input ranges"
+#define kParamFrameRangeOptionUnionHint "The union of all inputs frame ranges will be rendered."
+#define kParamFrameRangeOptionBounds "Timeline bounds"
+#define kParamFrameRangeOptionBoundsHint "The frame range delimited by the timeline bounds will be rendered."
+#define kParamFrameRangeOptionManual "Manual"
+#define kParamFrameRangeOptionManualHint "The frame range will be the one defined by the first frame and last frame parameters."
 
-#define kWriterFrameRangeChoiceParamName "frameRange"
-#define kWriterFrameRangeChoiceParamLabel "Frame range"
-#define kWriterFrameRangeChoiceParamHint "What frame range should be rendered."
-#define kWriterFrameRangeChoiceParamOptionUnion "Union of input ranges"
-#define kWriterFrameRangeChoiceParamOptionUnionHint "The union of all inputs frame ranges will be rendered."
-#define kWriterFrameRangeChoiceParamOptionBounds "Timeline bounds"
-#define kWriterFrameRangeChoiceParamOptionBoundsHint "The frame range delimited by the timeline bounds will be rendered."
-#define kWriterFrameRangeChoiceParamOptionManual "Manual"
-#define kWriterFrameRangeChoiceParamOptionManualHint "The frame range will be the one defined by the first frame and last frame parameters."
+#define kParamFirstFrame "firstFrame"
+#define kParamFirstFrameLabel "First Frame"
 
-#define kWriterFirstFrameParamName "firstFrame"
-#define kWriterFirstFrameParamLabel "First frame"
+#define kParamLastFrame "lastFrame"
+#define kParamLastFrameLabel "Last Frame"
 
-#define kWriterLastFrameParamName "lastFrame"
-#define kWriterLastFrameParamLabel "Last frame"
-
-#define kWriterPremultipliedParamName "premultiplied"
-#define kWriterPremultipliedParamLabel "Premultiplied"
-#define kWriterPremultipliedParamHint "If checked red,green and blue channels will be divided by the alpha channel "\
-"beforing applying the colorspace conversion. "\
-"Usually this is set automatically set using the input stream information but it maybe wrong and you can use this parameter to adjust it."
+#define kParamPremultiplied "premultiplied"
+#define kParamPremultipliedLabel "Premultiplied"
+#define kParamPremultipliedHint \
+"If checked red, green and blue channels are divided by the alpha channel "\
+"beforing applying the colorspace conversion.\n"\
+"This is set automatically from the input stream information, but can be adjusted if this information is wrong."
 
 #define kParamClipInfo "clipInfo"
 #define kParamClipInfoLabel "Clip Info..."
@@ -159,15 +163,15 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
-    _fileParam = fetchStringParam(kWriterFileParamName);
-    _frameRange = fetchChoiceParam(kWriterFrameRangeChoiceParamName);
-    _firstFrame = fetchIntParam(kWriterFirstFrameParamName);
-    _lastFrame = fetchIntParam(kWriterLastFrameParamName);
+    _fileParam = fetchStringParam(kParamFilename);
+    _frameRange = fetchChoiceParam(kParamFrameRange);
+    _firstFrame = fetchIntParam(kParamFirstFrame);
+    _lastFrame = fetchIntParam(kParamLastFrame);
     
-    _outputFormatType = fetchChoiceParam(kWriterOutputTypeParamName);
-    _outputFormat = fetchChoiceParam(kWriterOutputFormatParamName);
+    _outputFormatType = fetchChoiceParam(kParamFormatType);
+    _outputFormat = fetchChoiceParam(kParamOutputFormat);
     
-    _premult = fetchBooleanParam(kWriterPremultipliedParamName);
+    _premult = fetchBooleanParam(kParamPremultiplied);
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -788,7 +792,7 @@ premultString(OFX::PreMultiplicationEnum e)
 void
 GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    if (paramName == kWriterFrameRangeChoiceParamName) {
+    if (paramName == kParamFrameRange) {
         int choice;
         double first,last;
         timeLineGetBounds(first,last);
@@ -802,13 +806,13 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             _firstFrame->setIsSecret(true);
             _lastFrame->setIsSecret(true);
         }
-    } else if (paramName == kWriterFileParamName) {
+    } else if (paramName == kParamFilename) {
         std::string filename;
         _fileParam->getValue(filename);
 
         ///let the derive class a chance to initialize any data structure it may need
         onOutputFileChanged(filename);
-    } else if (paramName == kWriterOutputTypeParamName) {
+    } else if (paramName == kParamFormatType) {
         int type;
         _outputFormatType->getValue(type);
         if (type == 0) {
@@ -887,7 +891,7 @@ using namespace OFX;
 void
 GenericWriterDescribe(OFX::ImageEffectDescriptor &desc)
 {
-    desc.setPluginGrouping(kWriterGrouping);
+    desc.setPluginGrouping(kPluginGrouping);
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextWriter);
@@ -948,34 +952,34 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     //////////Output file
-    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kWriterFileParamName);
-    fileParam->setLabels(kWriterFileParamLabel, kWriterFileParamLabel, kWriterFileParamLabel);
+    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kParamFilename);
+    fileParam->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setFilePathExists(false);
-    fileParam->setHint(kWriterFileParamHint);
-    // in the Writer context, the script name should be "filename", for consistency with the reader nodes @see kOfxImageEffectContextReader
-    fileParam->setScriptName(kWriterFileParamName);
+    fileParam->setHint(kParamFilenameHint);
+    // in the Writer context, the script name should be kOfxImageEffectFileParamName, for consistency with the reader nodes @see kOfxImageEffectContextReader
+    fileParam->setScriptName(kParamFilename);
     fileParam->setAnimates(!isVideoStreamPlugin);
     desc.addClipPreferencesSlaveParam(*fileParam);
 
     page->addChild(*fileParam);
 
     //////////// Output type
-    OFX::ChoiceParamDescriptor* outputType = desc.defineChoiceParam(kWriterOutputTypeParamName);
-    outputType->setLabels(kWriterOutputTypeParamLabel, kWriterOutputTypeParamLabel, kWriterOutputTypeParamLabel);
+    OFX::ChoiceParamDescriptor* outputType = desc.defineChoiceParam(kParamFormatType);
+    outputType->setLabels(kParamFormatTypeLabel, kParamFormatTypeLabel, kParamFormatTypeLabel);
     outputType->appendOption("Input stream format","Renders using for format the input stream's format.");
-    outputType->appendOption("Fixed format","Renders using for format the format indicated by the " kWriterOutputFormatParamLabel " parameter.");
+    outputType->appendOption("Fixed format","Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter.");
     outputType->setDefault(1);
     outputType->setAnimates(false);
-    outputType->setHint(kWriterOutputTypeParamHint);
+    outputType->setHint(kParamFormatTypeHint);
     outputType->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*outputType);
     
     //////////// Output format
-    OFX::ChoiceParamDescriptor* outputFormat = desc.defineChoiceParam(kWriterOutputFormatParamName);
-    outputFormat->setLabels(kWriterOutputFormatParamLabel, kWriterOutputFormatParamLabel, kWriterOutputFormatParamLabel);
+    OFX::ChoiceParamDescriptor* outputFormat = desc.defineChoiceParam(kParamOutputFormat);
+    outputFormat->setLabels(kParamOutputFormatLabel, kParamOutputFormatLabel, kParamOutputFormatLabel);
     outputFormat->setAnimates(true);
-    outputFormat->setHint(kWriterOutputFormatHint);
+    outputFormat->setHint(kParamOutputFormatHint);
     outputFormat->appendOption(kParamFormatPCVideoLabel);
     outputFormat->appendOption(kParamFormatNTSCLabel);
     outputFormat->appendOption(kParamFormatPALLabel);
@@ -998,10 +1002,10 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 
-    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kWriterPremultipliedParamName);
-    premult->setLabels(kWriterPremultipliedParamLabel, kWriterPremultipliedParamLabel, kWriterPremultipliedParamLabel);
+    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultiplied);
+    premult->setLabels(kParamPremultipliedLabel, kParamPremultipliedLabel, kParamPremultipliedLabel);
     premult->setAnimates(true);
-    premult->setHint(kWriterPremultipliedParamHint);
+    premult->setHint(kParamPremultipliedHint);
     premult->setLayoutHint(OFX::eLayoutHintNoNewLine);
     desc.addClipPreferencesSlaveParam(*premult);
     page->addChild(*premult);
@@ -1012,26 +1016,26 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     page->addChild(*clipInfo);
     
     ///////////Frame range choosal
-    OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kWriterFrameRangeChoiceParamName);
-    frameRangeChoiceParam->setLabels(kWriterFrameRangeChoiceParamLabel, kWriterFrameRangeChoiceParamLabel, kWriterFrameRangeChoiceParamLabel);
-    frameRangeChoiceParam->setHint(kWriterFrameRangeChoiceParamHint);
-    frameRangeChoiceParam->appendOption(kWriterFrameRangeChoiceParamOptionUnion, kWriterFrameRangeChoiceParamOptionUnionHint);
-    frameRangeChoiceParam->appendOption(kWriterFrameRangeChoiceParamOptionBounds, kWriterFrameRangeChoiceParamOptionBoundsHint);
-    frameRangeChoiceParam->appendOption(kWriterFrameRangeChoiceParamOptionManual, kWriterFrameRangeChoiceParamOptionManualHint);
+    OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kParamFrameRange);
+    frameRangeChoiceParam->setLabels(kParamFrameRangeLabel, kParamFrameRangeLabel, kParamFrameRangeLabel);
+    frameRangeChoiceParam->setHint(kParamFrameRangeHint);
+    frameRangeChoiceParam->appendOption(kParamFrameRangeOptionUnion, kParamFrameRangeOptionUnionHint);
+    frameRangeChoiceParam->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
+    frameRangeChoiceParam->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
     frameRangeChoiceParam->setAnimates(true);
     frameRangeChoiceParam->setDefault(0);
     page->addChild(*frameRangeChoiceParam);
     
     /////////////First frame
-    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kWriterFirstFrameParamName);
-    firstFrameParam->setLabels(kWriterFirstFrameParamLabel, kWriterFirstFrameParamLabel, kWriterFirstFrameParamLabel);
+    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kParamFirstFrame);
+    firstFrameParam->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
     firstFrameParam->setIsSecret(true);
     firstFrameParam->setAnimates(true);
     page->addChild(*firstFrameParam);
 
     ////////////Last frame
-    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kWriterLastFrameParamName);
-    lastFrameParam->setLabels(kWriterLastFrameParamLabel, kWriterLastFrameParamLabel, kWriterLastFrameParamLabel);
+    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kParamLastFrame);
+    lastFrameParam->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
     lastFrameParam->setIsSecret(true);
     lastFrameParam->setAnimates(true);
     page->addChild(*lastFrameParam);

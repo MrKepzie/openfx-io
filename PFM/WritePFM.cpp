@@ -44,6 +44,16 @@
 
 #include "GenericOCIO.h"
 
+#include "GenericWriter.h"
+#include "ofxsMacros.h"
+
+#define kPluginName "WritePFMOFX"
+#define kPluginGrouping "Image/Writers"
+#define kPluginDescription "Write PFM (Portable Float Map) files."
+#define kPluginIdentifier "fr.inria.openfx:WritePFM"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
 /**
  \return \c false for "Little Endian", \c true for "Big Endian".
  **/
@@ -52,6 +62,23 @@ static inline bool endianness()
     const int x = 1;
     return ((unsigned char *)&x)[0] ? false : true;
 }
+
+class WritePFMPlugin : public GenericWriterPlugin
+{
+public:
+
+    WritePFMPlugin(OfxImageEffectHandle handle);
+
+    virtual ~WritePFMPlugin();
+
+private:
+
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+
+    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
+
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
+};
 
 WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
@@ -178,13 +205,15 @@ bool WritePFMPlugin::isImageFile(const std::string& /*fileExtension*/) const {
 
 using namespace OFX;
 
+mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
+
 /** @brief The basic describe function, passed a plugin descriptor */
 void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc);
     // basic labels
-    desc.setLabels("WritePFMOFX", "WritePFMOFX", "WritePFMOFX");
-    desc.setPluginDescription("Write PFM (Portable Float Map) files.");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setPluginDescription(kPluginDescription);
 
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "pfm", NULL };
@@ -206,4 +235,11 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WritePFMPlugin(handle);
+}
+
+
+void getWritePFMPluginID(OFX::PluginFactoryArray &ids)
+{
+    static WritePFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }

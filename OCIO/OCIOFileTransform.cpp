@@ -71,35 +71,35 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderFullySafe
 
-#define kFileParamName "file"
-#define kFileParamLabel "File"
-#define kFileParamHint "File containing the transform."
+#define kParamFile "file"
+#define kParamFileLabel "File"
+#define kParamFileHint "File containing the transform."
 
 // Reload button, and hidden "version" knob to invalidate cache on reload
-#define kReloadParamName "reload"
-#define kReloadParamLabel "Reload"
-#define kReloadParamHint "Reloads specified files"
+#define kParamReload "reload"
+#define kParamReloadLabel "Reload"
+#define kParamReloadHint "Reloads specified files"
 #define kVersionParamName "version"
 
-#define kCCCIDParamName "cccId"
-#define kCCCIDParamLabel "CCC Id"
-#define kCCCIDParamHint "If the source file is an ASC CDL CCC (color correction collection), " \
+#define kParamCCCID "cccId"
+#define kParamCCCIDLabel "CCC Id"
+#define kParamCCCIDHint "If the source file is an ASC CDL CCC (color correction collection), " \
 "this specifies the id to lookup. OpenColorIO::Contexts (envvars) are obeyed."
 #define kCCCIDChoiceParamName "cccIdIndex"
 
-#define kDirectionParamName "direction"
-#define kDirectionParamLabel "Direction"
-#define kDirectionParamHint "Transform direction."
-#define kDirectionParamChoiceForward "Forward"
-#define kDirectionParamChoiceInverse "Inverse"
+#define kParamDirection "direction"
+#define kParamDirectionLabel "Direction"
+#define kParamDirectionHint "Transform direction."
+#define kParamDirectionOptionForward "Forward"
+#define kParamDirectionOptionInverse "Inverse"
 
-#define kInterpolationParamName "interpolation"
-#define kInterpolationParamLabel "Interpolation"
-#define kInterpolationParamHint "Interpolation method. For files that are not LUTs (mtx, etc) this is ignored."
-#define kInterpolationParamChoiceNearest "Nearest"
-#define kInterpolationParamChoiceLinear "Linear"
-#define kInterpolationParamChoiceTetrahedral "Tetrahedral"
-#define kInterpolationParamChoiceBest "Best"
+#define kParamInterpolation "interpolation"
+#define kParamInterpolationLabel "Interpolation"
+#define kParamInterpolationHint "Interpolation method. For files that are not LUTs (mtx, etc) this is ignored."
+#define kParamInterpolationOptionNearest "Nearest"
+#define kParamInterpolationOptionLinear "Linear"
+#define kParamInterpolationOptionTetrahedral "Tetrahedral"
+#define kParamInterpolationOptionBest "Best"
 
 static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kCCCIDChoiceParamName from available IDs
 
@@ -276,11 +276,11 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
     maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
-    file_ = fetchStringParam(kFileParamName);
+    file_ = fetchStringParam(kParamFile);
     version_ = fetchIntParam(kVersionParamName);
-    cccid_ = fetchStringParam(kCCCIDParamName);
-    direction_ = fetchChoiceParam(kDirectionParamName);
-    interpolation_ = fetchChoiceParam(kInterpolationParamName);
+    cccid_ = fetchStringParam(kParamCCCID);
+    direction_ = fetchChoiceParam(kParamDirection);
+    interpolation_ = fetchChoiceParam(kParamInterpolation);
     assert(file_ && version_ && cccid_ && direction_ && interpolation_);
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
@@ -608,9 +608,9 @@ OCIOFileTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
     // Only show the cccid knob when loading a .cc/.ccc file. Set
     // hidden state when the src is changed, or the node properties
     // are shown
-    if (paramName == kFileParamName) {
+    if (paramName == kParamFile) {
         updateCCCId();
-    } else if (paramName == kReloadParamName && args.reason == OFX::eChangeUserEdit) {
+    } else if (paramName == kParamReload && args.reason == OFX::eChangeUserEdit) {
         version_->setValue(version_->getValue()+1); // invalidate the node cache
         OCIO::ClearAllCaches();
     }
@@ -708,17 +708,17 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    StringParamDescriptor *file = desc.defineStringParam(kFileParamName);
-    file->setLabels(kFileParamLabel, kFileParamLabel, kFileParamLabel);
-    file->setHint(std::string(kFileParamHint) + "\n\n" + supportedFormats());
+    StringParamDescriptor *file = desc.defineStringParam(kParamFile);
+    file->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
+    file->setHint(std::string(kParamFileHint) + "\n\n" + supportedFormats());
     file->setStringType(eStringTypeFilePath);
     file->setFilePathExists(true);
     file->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*file);
 
-    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kReloadParamName);
-    reload->setLabels(kReloadParamLabel, kReloadParamLabel, kReloadParamLabel);
-    reload->setHint(kReloadParamHint);
+    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kParamReload);
+    reload->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
+    reload->setHint(kParamReloadHint);
     page->addChild(*reload);
 
     IntParamDescriptor *version = desc.defineIntParam(kVersionParamName);
@@ -726,25 +726,25 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     version->setDefault(1);
     page->addChild(*version);
 
-    StringParamDescriptor *cccid = desc.defineStringParam(kCCCIDParamName);
-    cccid->setLabels(kCCCIDParamLabel, kCCCIDParamLabel, kCCCIDParamLabel);
-    cccid->setHint(kCCCIDParamHint);
+    StringParamDescriptor *cccid = desc.defineStringParam(kParamCCCID);
+    cccid->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
+    cccid->setHint(kParamCCCIDHint);
     page->addChild(*cccid);
 
-    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kDirectionParamName);
-    direction->setLabels(kDirectionParamLabel, kDirectionParamLabel, kDirectionParamLabel);
-    direction->setHint(kDirectionParamHint);
-    direction->appendOption(kDirectionParamChoiceForward);
-    direction->appendOption(kDirectionParamChoiceInverse);
+    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kParamDirection);
+    direction->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+    direction->setHint(kParamDirectionHint);
+    direction->appendOption(kParamDirectionOptionForward);
+    direction->appendOption(kParamDirectionOptionInverse);
     page->addChild(*direction);
 
-    ChoiceParamDescriptor *interpolation = desc.defineChoiceParam(kInterpolationParamName);
-    interpolation->setLabels(kInterpolationParamLabel, kInterpolationParamLabel, kInterpolationParamLabel);
-    interpolation->setHint(kInterpolationParamHint);
-    interpolation->appendOption(kInterpolationParamChoiceNearest);
-    interpolation->appendOption(kInterpolationParamChoiceLinear);
-    interpolation->appendOption(kInterpolationParamChoiceTetrahedral);
-    interpolation->appendOption(kInterpolationParamChoiceBest);
+    ChoiceParamDescriptor *interpolation = desc.defineChoiceParam(kParamInterpolation);
+    interpolation->setLabels(kParamInterpolationLabel, kParamInterpolationLabel, kParamInterpolationLabel);
+    interpolation->setHint(kParamInterpolationHint);
+    interpolation->appendOption(kParamInterpolationOptionNearest);
+    interpolation->appendOption(kParamInterpolationOptionLinear);
+    interpolation->appendOption(kParamInterpolationOptionTetrahedral);
+    interpolation->appendOption(kParamInterpolationOptionBest);
     interpolation->setDefault(1);
     page->addChild(*interpolation);
 

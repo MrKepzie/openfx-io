@@ -256,7 +256,7 @@ protected:
     
     OFX::ChoiceParam* _frameMode;//< do we use a time offset or an absolute starting frame
     OFX::IntParam* _timeOffset; //< the time offset applied to the sequence
-    OFX::IntParam* _startingFrame; //< the starting frame of the sequence
+    OFX::IntParam* _startingTime; //< the starting frame of the sequence
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     

@@ -36,41 +36,12 @@
  78153 Le Chesnay Cedex - France
  
  */
+
 #ifndef __Io__exrWriter__
 #define __Io__exrWriter__
 
+#include "ofxsImageEffect.h"
 
-#include <ImfChannelList.h>
-#include <ImfArray.h>
-#include <ImfOutputFile.h>
-#include <half.h>
-
-#include "GenericWriter.h"
-
-class WriteEXRPlugin : public GenericWriterPlugin {
-    
-public:
-    
-    WriteEXRPlugin(OfxImageEffectHandle handle);
-    
-    
-    virtual ~WriteEXRPlugin();
-    
-    //virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
-    
-private:
-    
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
-    
-    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
-    
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImagePreMultiplied; }
-    
-    OFX::ChoiceParam* _compression;
-    OFX::ChoiceParam* _bitDepth;
-
-};
-
-mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
+void getWriteEXRPluginID(OFX::PluginFactoryArray &ids);
 
 #endif /* defined(__Io__exrWriter__) */

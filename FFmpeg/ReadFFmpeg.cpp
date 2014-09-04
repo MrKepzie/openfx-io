@@ -37,8 +37,6 @@
  
  */
 
-#include "FFmpegHandler.h"
-
 #include "ReadFFmpeg.h"
 
 #include <cmath>
@@ -47,7 +45,48 @@
 
 #include "IOUtility.h"
 
+#include "GenericReader.h"
+#include "FFmpegHandler.h"
+
+#define kPluginName "ReadFFmpegOFX"
+#define kPluginGrouping "Image/Readers"
+#define kPluginDescription "Read video using FFmpeg."
+#define kPluginIdentifier "fr.inria.openfx:ReadFFmpeg"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
 #define kSupportsTiles 0
+
+class ReadFFmpegPlugin : public GenericReaderPlugin
+{
+    FFmpeg::File* _ffmpegFile; //< a ptr to the ffmpeg file, don't delete it the FFmpegFileManager handles their allocation/deallocation
+
+    unsigned char* _buffer;
+    int _bufferWidth;
+    int _bufferHeight;
+
+public:
+
+    ReadFFmpegPlugin(OfxImageEffectHandle handle);
+
+    virtual ~ReadFFmpegPlugin();
+
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+
+    bool loadNearestFrame() const;
+
+private:
+
+    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
+
+    virtual void onInputFileChanged(const std::string& filename) OVERRIDE FINAL;
+
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+
+    virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
+
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+};
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, kSupportsTiles)
@@ -251,19 +290,7 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
 
 using namespace OFX;
 
-#if 0
-namespace OFX
-{
-    namespace Plugin
-    {
-        void getPluginIDs(OFX::PluginFactoryArray &ids)
-        {
-            static ReadFFmpegPluginFactory p("fr.inria.openfx:ReadFFmpeg", 1, 0);
-            ids.push_back(&p);
-        }
-    };
-};
-#endif
+mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true);
 
 static std::string ffmpeg_versions()
 {
@@ -309,7 +336,7 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
-    desc.setLabels("ReadFFmpegOFX", "ReadFFmpegOFX", "ReadFFmpegOFX");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription("Read images or video using "
 #                             ifdef FFMS_USE_FFMPEG_COMPAT
                               "FFmpeg"
@@ -376,5 +403,13 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
 ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadFFmpegPlugin(handle);
+}
+
+
+
+void getReadFFmpegPluginID(OFX::PluginFactoryArray &ids)
+{
+    static ReadFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }
 

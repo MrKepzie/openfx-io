@@ -72,63 +72,63 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderFullySafe
 
-#define kSlopeParamName "slope"
-#define kSlopeParamLabel "Slope"
-#define kSlopeParamHint "ASC CDL slope"
-#define kSlopeParamMin 0.
-#define kSlopeParamMax 4.
+#define kParamSlope "slope"
+#define kParamSlopeLabel "Slope"
+#define kParamSlopeHint "ASC CDL slope"
+#define kParamSlopeMin 0.
+#define kParamSlopeMax 4.
 
-#define kOffsetParamName "offset"
-#define kOffsetParamLabel "Offset"
-#define kOffsetParamHint "ASC CDL offset"
-#define kOffsetParamMin -0.2
-#define kOffsetParamMax 0.2
+#define kParamOffset "offset"
+#define kParamOffsetLabel "Offset"
+#define kParamOffsetHint "ASC CDL offset"
+#define kParamOffsetMin -0.2
+#define kParamOffsetMax 0.2
 
-#define kPowerParamName "power"
-#define kPowerParamLabel "Power"
-#define kPowerParamHint "ASC CDL power"
-#define kPowerParamMin 0.
-#define kPowerParamMax 4.
+#define kParamPower "power"
+#define kParamPowerLabel "Power"
+#define kParamPowerHint "ASC CDL power"
+#define kParamPowerMin 0.
+#define kParamPowerMax 4.
 
-#define kSaturationParamName "saturation"
-#define kSaturationParamLabel "Saturation"
-#define kSaturationParamHint "ASC CDL saturation"
-#define kSaturationParamMin 0.
-#define kSaturationParamMax 4.
+#define kParamSaturation "saturation"
+#define kParamSaturationLabel "Saturation"
+#define kParamSaturationHint "ASC CDL saturation"
+#define kParamSaturationMin 0.
+#define kParamSaturationMax 4.
 
-#define kDirectionParamName "direction"
-#define kDirectionParamLabel "Direction"
-#define kDirectionParamHint "Transform direction."
-#define kDirectionParamChoiceForward "Forward"
-#define kDirectionParamChoiceInverse "Inverse"
+#define kParamDirection "direction"
+#define kParamDirectionLabel "Direction"
+#define kParamDirectionHint "Transform direction."
+#define kParamDirectionOptionForward "Forward"
+#define kParamDirectionOptionInverse "Inverse"
 
-#define kReadFromFileParamName "readFromFile"
-#define kReadFromFileParamLabel "Read from file"
-#define kReadFromFileParamHint \
+#define kParamReadFromFile "readFromFile"
+#define kParamReadFromFileLabel "Read from file"
+#define kParamReadFromFileHint \
 "Load color correction information from the .cc or .ccc file."
 
-#define kFileParamName "file"
-#define kFileParamLabel "File"
-#define kFileParamHint \
+#define kParamFile "file"
+#define kParamFileLabel "File"
+#define kParamFileHint \
 "Specify the src ASC CDL file, on disk, to use for this transform. " \
 "This can be either a .cc or .ccc file. If .ccc is specified, the cccid is required."
 
 // Reload button, and hidden "version" knob to invalidate cache on reload
-#define kReloadParamName "reload"
-#define kReloadParamLabel "Reload"
-#define kReloadParamHint "Reloads specified files"
+#define kParamReload "reload"
+#define kParamReloadLabel "Reload"
+#define kParamReloadHint "Reloads specified files"
 #define kVersionParamName "version"
 
-#define kCCCIDParamName "cccId"
-#define kCCCIDParamLabel "CCC Id"
-#define kCCCIDParamHint "If the source file is an ASC CDL CCC (color correction collection), " \
+#define kParamCCCID "cccId"
+#define kParamCCCIDLabel "CCC Id"
+#define kParamCCCIDHint "If the source file is an ASC CDL CCC (color correction collection), " \
 "this specifies the id to lookup. OpenColorIO::Contexts (envvars) are obeyed."
 #define kCCCIDChoiceParamName "cccIdIndex"
 
-#define kExportParamName "export"
-#define kExportParamLabel "Export"
-#define kExportParamHint "Export this grade as a ColorCorrection XML file (.cc), which can be loaded with the OCIOFileTransform, or using a FileTransform in an OCIO config. The file must not already exist."
-#define kExportParamDefault "Set filename to export this grade as .cc"
+#define kParamExport "export"
+#define kParamExportLabel "Export"
+#define kParamExportHint "Export this grade as a ColorCorrection XML file (.cc), which can be loaded with the OCIOFileTransform, or using a FileTransform in an OCIO config. The file must not already exist."
+#define kParamExportDefault "Set filename to export this grade as .cc"
 
 static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kCCCIDChoiceParamName from available IDs
 
@@ -319,16 +319,16 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
     maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
-    slope_ = fetchRGBParam(kSlopeParamName);
-    offset_ = fetchRGBParam(kOffsetParamName);
-    power_ = fetchRGBParam(kPowerParamName);
-    saturation_ = fetchDoubleParam(kSaturationParamName);
-    direction_ = fetchChoiceParam(kDirectionParamName);
-    readFromFile_ = fetchBooleanParam(kReadFromFileParamName);
-    file_ = fetchStringParam(kFileParamName);
+    slope_ = fetchRGBParam(kParamSlope);
+    offset_ = fetchRGBParam(kParamOffset);
+    power_ = fetchRGBParam(kParamPower);
+    saturation_ = fetchDoubleParam(kParamSaturation);
+    direction_ = fetchChoiceParam(kParamDirection);
+    readFromFile_ = fetchBooleanParam(kParamReadFromFile);
+    file_ = fetchStringParam(kParamFile);
     version_ = fetchIntParam(kVersionParamName);
-    cccid_ = fetchStringParam(kCCCIDParamName);
-    export_ = fetchStringParam(kExportParamName);
+    cccid_ = fetchStringParam(kParamCCCID);
+    export_ = fetchStringParam(kParamExport);
     assert(slope_ && offset_ && power_ && saturation_ && direction_ && readFromFile_ && file_ && version_ && cccid_ && export_);
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
@@ -774,7 +774,7 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
 {
     clearPersistentMessage();
 
-    if (firstLoad_ || paramName == kReadFromFileParamName || paramName == kFileParamName || paramName == kCCCIDParamName) {
+    if (firstLoad_ || paramName == kParamReadFromFile || paramName == kParamFile || paramName == kParamCCCID) {
         firstLoad_ = false;
         bool readFromFile;
         readFromFile_->getValue(readFromFile);
@@ -787,12 +787,12 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
     // Only show the cccid knob when loading a .cc/.ccc file. Set
     // hidden state when the src is changed, or the node properties
     // are shown
-    if (paramName == kFileParamName) {
+    if (paramName == kParamFile) {
         updateCCCId();
-    } else if (paramName == kReloadParamName) {
+    } else if (paramName == kParamReload) {
         version_->setValue(version_->getValue()+1); // invalidate the node cache
         OCIO::ClearAllCaches();
-    } else if (paramName == kExportParamName && args.reason == OFX::eChangeUserEdit) {
+    } else if (paramName == kParamExport && args.reason == OFX::eChangeUserEdit) {
         std::string exportName;
         export_->getValueAtTime(args.time, exportName);
         // if file already exists, don't overwrite it
@@ -852,7 +852,7 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
         }
 
         // reset back to default
-        export_->setValue(kExportParamDefault);
+        export_->setValue(kParamExportDefault);
     }
 }
 
@@ -932,64 +932,64 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     // ASC CDL grade numbers
-    RGBParamDescriptor *slope = desc.defineRGBParam(kSlopeParamName);
-    slope->setLabels(kSlopeParamLabel, kSlopeParamLabel, kSlopeParamLabel);
-    slope->setHint(kSlopeParamHint);
-    slope->setRange(kSlopeParamMin, kSlopeParamMin, kSlopeParamMin, kSlopeParamMax, kSlopeParamMax, kSlopeParamMax);
-    slope->setDisplayRange(kSlopeParamMin, kSlopeParamMin, kSlopeParamMin, kSlopeParamMax, kSlopeParamMax, kSlopeParamMax);
+    RGBParamDescriptor *slope = desc.defineRGBParam(kParamSlope);
+    slope->setLabels(kParamSlopeLabel, kParamSlopeLabel, kParamSlopeLabel);
+    slope->setHint(kParamSlopeHint);
+    slope->setRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
+    slope->setDisplayRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
     slope->setDefault(1., 1., 1.);
     page->addChild(*slope);
 
-    RGBParamDescriptor *offset = desc.defineRGBParam(kOffsetParamName);
-    offset->setLabels(kOffsetParamLabel, kOffsetParamLabel, kOffsetParamLabel);
-    offset->setHint(kOffsetParamHint);
-    offset->setRange(kOffsetParamMin, kOffsetParamMin, kOffsetParamMin, kOffsetParamMax, kOffsetParamMax, kOffsetParamMax);
-    offset->setDisplayRange(kOffsetParamMin, kOffsetParamMin, kOffsetParamMin, kOffsetParamMax, kOffsetParamMax, kOffsetParamMax);
+    RGBParamDescriptor *offset = desc.defineRGBParam(kParamOffset);
+    offset->setLabels(kParamOffsetLabel, kParamOffsetLabel, kParamOffsetLabel);
+    offset->setHint(kParamOffsetHint);
+    offset->setRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
+    offset->setDisplayRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
     offset->setDefault(0., 0., 0.);
     page->addChild(*offset);
 
-    RGBParamDescriptor *power = desc.defineRGBParam(kPowerParamName);
-    power->setLabels(kPowerParamLabel, kPowerParamLabel, kPowerParamLabel);
-    power->setHint(kPowerParamHint);
-    power->setRange(kPowerParamMin, kPowerParamMin, kPowerParamMin, kPowerParamMax, kPowerParamMax, kPowerParamMax);
-    power->setDisplayRange(kPowerParamMin, kPowerParamMin, kPowerParamMin, kPowerParamMax, kPowerParamMax, kPowerParamMax);
+    RGBParamDescriptor *power = desc.defineRGBParam(kParamPower);
+    power->setLabels(kParamPowerLabel, kParamPowerLabel, kParamPowerLabel);
+    power->setHint(kParamPowerHint);
+    power->setRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
+    power->setDisplayRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
     power->setDefault(1., 1., 1.);
     page->addChild(*power);
 
-    DoubleParamDescriptor *saturation = desc.defineDoubleParam(kSaturationParamName);
-    saturation->setLabels(kSaturationParamLabel, kSaturationParamLabel, kSaturationParamLabel);
-    saturation->setHint(kSaturationParamHint);
-    saturation->setRange(kSaturationParamMin, kSaturationParamMax);
-    saturation->setDisplayRange(kSaturationParamMin, kSaturationParamMax);
+    DoubleParamDescriptor *saturation = desc.defineDoubleParam(kParamSaturation);
+    saturation->setLabels(kParamSaturationLabel, kParamSaturationLabel, kParamSaturationLabel);
+    saturation->setHint(kParamSaturationHint);
+    saturation->setRange(kParamSaturationMin, kParamSaturationMax);
+    saturation->setDisplayRange(kParamSaturationMin, kParamSaturationMax);
     saturation->setDefault(1.);
     page->addChild(*saturation);
 
-    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kDirectionParamName);
-    direction->setLabels(kDirectionParamLabel, kDirectionParamLabel, kDirectionParamLabel);
-    direction->setHint(kDirectionParamHint);
-    direction->appendOption(kDirectionParamChoiceForward);
-    direction->appendOption(kDirectionParamChoiceInverse);
+    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kParamDirection);
+    direction->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+    direction->setHint(kParamDirectionHint);
+    direction->appendOption(kParamDirectionOptionForward);
+    direction->appendOption(kParamDirectionOptionInverse);
     direction->setDefault(0);
     page->addChild(*direction);
 
-    BooleanParamDescriptor *readFromFile = desc.defineBooleanParam(kReadFromFileParamName);
-    readFromFile->setLabels(kReadFromFileParamLabel, kReadFromFileParamLabel, kReadFromFileParamLabel);
-    readFromFile->setHint(kReadFromFileParamHint);
+    BooleanParamDescriptor *readFromFile = desc.defineBooleanParam(kParamReadFromFile);
+    readFromFile->setLabels(kParamReadFromFileLabel, kParamReadFromFileLabel, kParamReadFromFileLabel);
+    readFromFile->setHint(kParamReadFromFileHint);
     readFromFile->setAnimates(false);
     readFromFile->setDefault(false);
     page->addChild(*readFromFile);
 
-    StringParamDescriptor *file = desc.defineStringParam(kFileParamName);
-    file->setLabels(kFileParamLabel, kFileParamLabel, kFileParamLabel);
-    file->setHint(kFileParamHint);
+    StringParamDescriptor *file = desc.defineStringParam(kParamFile);
+    file->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
+    file->setHint(kParamFileHint);
     file->setStringType(eStringTypeFilePath);
     file->setFilePathExists(true);
     file->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*file);
 
-    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kReloadParamName);
-    reload->setLabels(kReloadParamLabel, kReloadParamLabel, kReloadParamLabel);
-    reload->setHint(kReloadParamHint);
+    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kParamReload);
+    reload->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
+    reload->setHint(kParamReloadHint);
     page->addChild(*reload);
 
     IntParamDescriptor *version = desc.defineIntParam(kVersionParamName);
@@ -997,20 +997,20 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     version->setDefault(1);
     page->addChild(*version);
 
-    StringParamDescriptor *cccid = desc.defineStringParam(kCCCIDParamName);
-    cccid->setLabels(kCCCIDParamLabel, kCCCIDParamLabel, kCCCIDParamLabel);
-    cccid->setHint(kCCCIDParamHint);
+    StringParamDescriptor *cccid = desc.defineStringParam(kParamCCCID);
+    cccid->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
+    cccid->setHint(kParamCCCIDHint);
     page->addChild(*cccid);
 
-    StringParamDescriptor *export_ = desc.defineStringParam(kExportParamName);
-    export_->setLabels(kExportParamLabel, kExportParamLabel, kExportParamLabel);
-    export_->setHint(kExportParamHint);
+    StringParamDescriptor *export_ = desc.defineStringParam(kParamExport);
+    export_->setLabels(kParamExportLabel, kParamExportLabel, kParamExportLabel);
+    export_->setHint(kParamExportHint);
     export_->setStringType(eStringTypeFilePath);
     export_->setFilePathExists(false); // necessary for output files
     export_->setEvaluateOnChange(false);
     export_->setIsPersistant(false);
     export_->setAnimates(false);
-    export_->setDefault(kExportParamDefault);
+    export_->setDefault(kParamExportDefault);
     page->addChild(*export_);
 
     ofxsPremultDescribeParams(desc, page);

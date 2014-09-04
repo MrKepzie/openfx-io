@@ -66,30 +66,36 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kPositionParamName "position"
-#define kPositionParamLabel "Position"
-#define kPositionParamHint "The position where starts the baseline of the first character."
-
-#define kTextParamName "text"
-#define kTextParamLabel "Text"
-#define kTextParamHint "The text that will be drawn on the image"
-
-#define kFontSizeParamName "fontSize"
-#define kFontSizeParamLabel "Size"
-#define kFontSizeParamHint "The height of the characters to render in pixels"
-
-#define kFontNameParamName "fontName"
-#define kFontNameParamLabel "Font"
-#define kFontNameParamHint "The name of the font to be used. Defaults to some reasonable system font."
-
-#define kTextColorParamName "textColor"
-#define kTextColorParamLabel "Color"
-#define kTextColorParamHint "The color of the text to render"
-
 #define kSupportsTiles 1
 #define kSupportsMultiResolution 1
 #define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderInstanceSafe
+
+
+#define kParamPosition "position"
+#define kParamPositionLabel "Position"
+#define kParamPositionHint \
+"The position where starts the baseline of the first character."
+
+#define kParamText "text"
+#define kParamTextLabel "Text"
+#define kParamTextHint \
+"The text that will be drawn on the image"
+
+#define kParamFontSize "fontSize"
+#define kParamFontSizeLabel "Size"
+#define kParamFontSizeHint \
+"The height of the characters to render in pixels"
+
+#define kParamFontName "fontName"
+#define kParamFontNameLabel "Font"
+#define kParamFontNameHint \
+"The name of the font to be used. Defaults to some reasonable system font."
+
+#define kParamTextColor "textColor"
+#define kParamTextColorLabel "Color"
+#define kParamTextColorHint \
+"The color of the text to render"
 
 
 using namespace OFX;
@@ -145,11 +151,11 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
     assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
 
-    position_ = fetchDouble2DParam(kPositionParamName);
-    text_ = fetchStringParam(kTextParamName);
-    fontSize_ = fetchIntParam(kFontSizeParamName);
-    fontName_ = fetchStringParam(kFontNameParamName);
-    textColor_ = fetchRGBAParam(kTextColorParamName);
+    position_ = fetchDouble2DParam(kParamPosition);
+    text_ = fetchStringParam(kParamText);
+    fontSize_ = fetchIntParam(kParamFontSize);
+    fontName_ = fetchStringParam(kParamFontName);
+    textColor_ = fetchRGBAParam(kParamTextColor);
     assert(position_ && text_ && fontSize_ && fontName_ && textColor_);
 }
 
@@ -461,7 +467,7 @@ mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
 
 namespace {
 struct PositionInteractParam {
-    static const char *name() { return kPositionParamName; }
+    static const char *name() { return kParamPosition; }
 };
 }
 
@@ -514,39 +520,39 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Text");
 
-    Double2DParamDescriptor* position = desc.defineDouble2DParam(kPositionParamName);
-    position->setLabels(kPositionParamLabel, kPositionParamLabel, kPositionParamLabel);
-    position->setHint(kPositionParamHint);
+    Double2DParamDescriptor* position = desc.defineDouble2DParam(kParamPosition);
+    position->setLabels(kParamPositionLabel, kParamPositionLabel, kParamPositionLabel);
+    position->setHint(kParamPositionHint);
     position->setDoubleType(eDoubleTypeXYAbsolute);
     position->setDefaultCoordinateSystem(eCoordinatesNormalised);
     position->setDefault(0.5, 0.5);
     position->setAnimates(true);
     page->addChild(*position);
 
-    StringParamDescriptor* text = desc.defineStringParam(kTextParamName);
-    text->setLabels(kTextParamLabel, kTextParamLabel, kTextParamLabel);
-    text->setHint(kTextParamHint);
+    StringParamDescriptor* text = desc.defineStringParam(kParamText);
+    text->setLabels(kParamTextLabel, kParamTextLabel, kParamTextLabel);
+    text->setHint(kParamTextHint);
     text->setStringType(eStringTypeMultiLine);
     text->setAnimates(true);
     text->setDefault("Enter text");
     page->addChild(*text);
 
-    IntParamDescriptor* fontSize = desc.defineIntParam(kFontSizeParamName);
-    fontSize->setLabels(kFontSizeParamLabel, kFontSizeParamLabel, kFontSizeParamLabel);
-    fontSize->setHint(kFontSizeParamHint);
+    IntParamDescriptor* fontSize = desc.defineIntParam(kParamFontSize);
+    fontSize->setLabels(kParamFontSizeLabel, kParamFontSizeLabel, kParamFontSizeLabel);
+    fontSize->setHint(kParamFontSizeHint);
     fontSize->setDefault(16);
     fontSize->setAnimates(true);
     page->addChild(*fontSize);
 
-    StringParamDescriptor* fontName = desc.defineStringParam(kFontNameParamName);
-    fontName->setLabels(kFontNameParamLabel, kFontNameParamLabel, kFontNameParamLabel);
-    fontName->setHint(kFontNameParamHint);
+    StringParamDescriptor* fontName = desc.defineStringParam(kParamFontName);
+    fontName->setLabels(kParamFontNameLabel, kParamFontNameLabel, kParamFontNameLabel);
+    fontName->setHint(kParamFontNameHint);
     fontName->setAnimates(true);
     page->addChild(*fontName);
 
-    RGBAParamDescriptor* textColor = desc.defineRGBAParam(kTextColorParamName);
-    textColor->setLabels(kTextColorParamLabel, kTextColorParamLabel, kTextColorParamLabel);
-    textColor->setHint(kTextColorParamHint);
+    RGBAParamDescriptor* textColor = desc.defineRGBAParam(kParamTextColor);
+    textColor->setLabels(kParamTextColorLabel, kParamTextColorLabel, kParamTextColorLabel);
+    textColor->setHint(kParamTextColorHint);
     textColor->setDefault(1., 1., 1., 1.);
     textColor->setAnimates(true);
     page->addChild(*textColor);

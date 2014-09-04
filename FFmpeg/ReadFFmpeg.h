@@ -36,46 +36,12 @@
  78153 Le Chesnay Cedex - France
  
  */
+
 #ifndef Io_ffmpegReader_h
 #define Io_ffmpegReader_h
 
-#include "GenericReader.h"
+#include "ofxsImageEffect.h"
 
-namespace FFmpeg {
-    class File;
-}
-
-class ReadFFmpegPlugin : public GenericReaderPlugin {
-    
-    FFmpeg::File* _ffmpegFile; //< a ptr to the ffmpeg file, don't delete it the FFmpegFileManager handles their allocation/deallocation
-    
-    unsigned char* _buffer;
-    int _bufferWidth;
-    int _bufferHeight;
-    
-public:
-    
-    ReadFFmpegPlugin(OfxImageEffectHandle handle);
-    
-    virtual ~ReadFFmpegPlugin();
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
-    
-    bool loadNearestFrame() const;
-    
-private:
-    
-    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
-    
-    virtual void onInputFileChanged(const std::string& filename) OVERRIDE FINAL;
-    
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
-        
-    virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
-        
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
-};
-
-mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true);
+void getReadFFmpegPluginID(OFX::PluginFactoryArray &ids);
 
 #endif

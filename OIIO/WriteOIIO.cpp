@@ -53,33 +53,33 @@ OIIO_NAMESPACE_USING
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kParamPremultipliedName "premultiplied"
+#define kParamPremultiplied "premultiplied"
 #define kParamPremultipliedLabel "Premultiplied"
 
-#define kParamBitDepthName    "bitDepth"
+#define kParamBitDepth    "bitDepth"
 #define kParamBitDepthLabel   "Bit depth"
 
-#define kParamBitDepthAuto     "auto"
-#define kParamBitDepthAutoLabel "Guess from the output format"
+#define kParamBitDepthOptionAuto     "auto"
+#define kParamBitDepthOptionAutoHint "Guess from the output format"
 //#define kParamBitDepthNone     "none"
-#define kParamBitDepth8      "8i"
-#define kParamBitDepth8Label   "8  bits integer"
-#define kParamBitDepth10     "10i"
-#define kParamBitDepth10Label  "10 bits integer"
-#define kParamBitDepth12     "12i"
-#define kParamBitDepth12Label  "12 bits integer"
-#define kParamBitDepth16     "16i"
-#define kParamBitDepth16Label  "16 bits integer"
-#define kParamBitDepth16f    "16f"
-#define kParamBitDepth16fLabel "16 bits floating point"
-#define kParamBitDepth32     "32i"
-#define kParamBitDepth32Label  "32 bits integer"
-#define kParamBitDepth32f    "32f"
-#define kParamBitDepth32fLabel "32 bits floating point"
-#define kParamBitDepth64     "64i"
-#define kParamBitDepth64Label  "64 bits integer"
-#define kParamBitDepth64f    "64f"
-#define kParamBitDepth64fLabel "64 bits floating point"
+#define kParamBitDepthOption8      "8i"
+#define kParamBitDepthOption8Hint   "8  bits integer"
+#define kParamBitDepthOption10     "10i"
+#define kParamBitDepthOption10Hint  "10 bits integer"
+#define kParamBitDepthOption12     "12i"
+#define kParamBitDepthOption12Hint  "12 bits integer"
+#define kParamBitDepthOption16     "16i"
+#define kParamBitDepthOption16Hint  "16 bits integer"
+#define kParamBitDepthOption16f    "16f"
+#define kParamBitDepthOption16fLabel "16 bits floating point"
+#define kParamBitDepthOption32     "32i"
+#define kParamBitDepthOption32Hint  "32 bits integer"
+#define kParamBitDepthOption32f    "32f"
+#define kParamBitDepthOption32fHint "32 bits floating point"
+#define kParamBitDepthOption64     "64i"
+#define kParamBitDepthOption64Hint  "64 bits integer"
+#define kParamBitDepthOption64f    "64f"
+#define kParamBitDepthOption64fHint "64 bits floating point"
 
 enum ETuttlePluginBitDepth
 {
@@ -205,8 +205,8 @@ private:
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 {
-  _bitDepth = fetchChoiceParam(kParamBitDepthName);
-  _premult = fetchBooleanParam(kParamPremultipliedName);
+  _bitDepth = fetchChoiceParam(kParamBitDepth);
+  _premult = fetchBooleanParam(kParamPremultiplied);
   _quality     = fetchIntParam(kParamOutputQualityName);
   _orientation = fetchChoiceParam(kParamOutputOrientationName);
   _compression = fetchChoiceParam(kParamOutputCompressionName);
@@ -588,22 +588,22 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/false, /*supportsAlpha=*/false, "reference", "reference");
 
-    OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kParamBitDepthName);
+    OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kParamBitDepth);
     bitDepth->setLabels(kParamBitDepthLabel, kParamBitDepthLabel, kParamBitDepthLabel);
-    bitDepth->appendOption(kParamBitDepthAuto, kParamBitDepthAutoLabel);
-    bitDepth->appendOption(kParamBitDepth8, kParamBitDepth8Label);
-    bitDepth->appendOption(kParamBitDepth10, kParamBitDepth10Label);
-    bitDepth->appendOption(kParamBitDepth12, kParamBitDepth12Label);
-    bitDepth->appendOption(kParamBitDepth16, kParamBitDepth16Label);
-    bitDepth->appendOption(kParamBitDepth16f, kParamBitDepth16fLabel);
-    bitDepth->appendOption(kParamBitDepth32, kParamBitDepth32Label);
-    bitDepth->appendOption(kParamBitDepth32f, kParamBitDepth32fLabel);
-    bitDepth->appendOption(kParamBitDepth64, kParamBitDepth64Label);
-    bitDepth->appendOption(kParamBitDepth64f, kParamBitDepth64fLabel);
+    bitDepth->appendOption(kParamBitDepthOptionAuto, kParamBitDepthOptionAutoHint);
+    bitDepth->appendOption(kParamBitDepthOption8, kParamBitDepthOption8Hint);
+    bitDepth->appendOption(kParamBitDepthOption10, kParamBitDepthOption10Hint);
+    bitDepth->appendOption(kParamBitDepthOption12, kParamBitDepthOption12Hint);
+    bitDepth->appendOption(kParamBitDepthOption16, kParamBitDepthOption16Hint);
+    bitDepth->appendOption(kParamBitDepthOption16f, kParamBitDepthOption16fLabel);
+    bitDepth->appendOption(kParamBitDepthOption32, kParamBitDepthOption32Hint);
+    bitDepth->appendOption(kParamBitDepthOption32f, kParamBitDepthOption32fHint);
+    bitDepth->appendOption(kParamBitDepthOption64, kParamBitDepthOption64Hint);
+    bitDepth->appendOption(kParamBitDepthOption64f, kParamBitDepthOption64fHint);
     bitDepth->setDefault(eTuttlePluginBitDepthAuto);
     page->addChild(*bitDepth);
 
-    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultipliedName);
+    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultiplied);
     premult->setLabels(kParamPremultipliedLabel, kParamPremultipliedLabel, kParamPremultipliedLabel);
     premult->setDefault(false);
     page->addChild(*premult);

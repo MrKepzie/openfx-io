@@ -36,33 +36,12 @@
  78153 Le Chesnay Cedex - France
  
  */
+
 #ifndef __Io__ReadPFM__
 #define __Io__ReadPFM__
 
-#ifdef OFX_IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-#endif
+#include "ofxsImageEffect.h"
 
-#include "GenericReader.h"
-#include "ofxsMacros.h"
-
-class ReadPFMPlugin : public GenericReaderPlugin {
-    
-public:
-    
-    ReadPFMPlugin(OfxImageEffectHandle handle);
-    
-    virtual ~ReadPFMPlugin();
-
-private:
-    
-    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
-        
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
-    
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
-};
-
-mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
+void getReadPFMPluginID(OFX::PluginFactoryArray &ids);
 
 #endif /* defined(__Io__ReadPFM__) */

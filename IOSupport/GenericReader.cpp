@@ -58,88 +58,88 @@
 #include "GenericOCIO.h"
 #include "IOUtility.h"
 
-#define kReaderGrouping "Image/Readers"
+#define kPluginGrouping "Image/Readers"
 
-// in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
-#define kReaderFileParamName "filename"
-#define kReaderFileParamLabel "File"
-#define kReaderFileParamHint "The input image sequence/video stream file(s)."
+// in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
+#define kParamFilename kOfxImageEffectFileParamName
+#define kParamFilenameLabel "File"
+#define kParamFilenameHint "The input image sequence/video stream file(s)."
 
-#define kReaderProxyFileParamName "proxy"
-#define kReaderProxyFileParamLabel "Proxy file"
-#define kReaderProxyFileParamHint \
+#define kParamProxy kOfxImageEffectProxyParamName
+#define kParamProxyLabel "Proxy file"
+#define kParamProxyHint \
 "Filename of the proxy images. They will be used instead of the images read from the File parameter " \
 "when the proxy mode (downscaling of the images) is activated."
 
-#define kReaderProxyScaleThresholdParamName "proxyThreshold"
-#define kReaderProxyScaleThresholdParamLabel "Proxy threshold"
-#define kReaderProxyScaleThresholdParamHint \
+#define kParamProxyThreshold "proxyThreshold"
+#define kParamProxyThresholdLabel "Proxy threshold"
+#define kParamProxyThresholdHint \
 "The scale of the proxy images. By default it will be automatically computed out of the " \
 "images headers when you set the proxy file(s) path. When the render scale (proxy) is set to " \
 "a scale lower or equal to this value then the proxy image files will be used instead of the " \
 "original images. You can change this parameter by checking the \"Custom scale\" checkbox " \
 "so that you can change the scale at which the proxy images should be used instead of the original images."
 
-#define kReaderOriginalProxyScaleParamName "originalProxyScale"
-#define kReaderOriginalProxyScaleParamLabel "Original Proxy scale"
-#define kReaderOriginalProxyScaleParamHint \
+#define kParamOriginalProxyScale "originalProxyScale"
+#define kParamOriginalProxyScaleLabel "Original Proxy scale"
+#define kParamOriginalProxyScaleHint \
 "The original scale of the proxy image."
 
-#define kReaderCustomScaleParamName "customScale"
-#define kReaderCustomScaleParamLabel "Custom scale"
-#define kReaderCustomScaleParamHint \
+#define kParamCustomProxyScale "customProxyScale"
+#define kParamCustomProxyScaleLabel "Custom Proxy Scale"
+#define kParamCustomProxyScaleHint \
 "Check to enable the Proxy scale edition."
 
-#define kReaderMissingFrameParamName "onMissingFrame"
-#define kReaderMissingFrameParamLabel "On Missing Frame"
-#define kReaderMissingFrameParamHint \
+#define kParamOnMissingFrame "onMissingFrame"
+#define kParamOnMissingFrameLabel "On Missing Frame"
+#define kParamOnMissingFrameHint \
 "What to do when a frame is missing from the sequence/stream."
 
-#define kReaderFrameModeParamName "frameMode"
-#define kReaderFrameModeParamLabel "Frame mode"
+#define kParamFrameMode "frameMode"
+#define kParamFrameModeLabel "Frame mode"
 enum FrameModeEnum
 {
-    eFrameModeStartingFrame,
+    eFrameModeStartingTime,
     eFrameModeTimeOffset,
 };
-#define kReaderFrameModeParamOptionStartingFrame "Starting frame"
-#define kReaderFrameModeParamOptionTimeOffset "Time offset"
+#define kParamFrameModeOptionStartingTime "Starting Time"
+#define kParamFrameModeOptionTimeOffset "Time Offset"
 
-#define kReaderTimeOffsetParamName "timeOffset"
-#define kReaderTimeOffsetParamLabel "Time offset"
-#define kReaderTimeOffsetParamHint \
-"Offset applied to the sequence in frames."
+#define kParamTimeOffset "timeOffset"
+#define kParamTimeOffsetLabel "Time Offset"
+#define kParamTimeOffsetHint \
+"Offset applied to the sequence in time units (i.e. frames)."
 
-#define kReaderStartingFrameParamName "startingFrame"
-#define kReaderStartingFrameParamLabel "Starting time"
-#define kReaderStartingFrameParamHint \
+#define kParamStartingTime "startingTime"
+#define kParamStartingTimeLabel "Starting Time"
+#define kParamStartingTimeHint \
 "At what time (on the timeline) should this sequence/video start."
 
-#define kReaderOriginalFrameRangeParamName "ReaderOriginalFrameRangeParamName"
-#define kReaderOriginalFrameRangeParamLabel "Original range"
+#define kParamOriginalFrameRange "originalFrameRange"
+#define kParamOriginalFrameRangeLabel "Original Range"
 
-#define kReaderFirstFrameParamName "firstFrame"
-#define kReaderFirstFrameParamLabel "First frame"
-#define kReaderFirstFrameParamHint \
+#define kParamFirstFrame "firstFrame"
+#define kParamFirstFrameLabel "First Frame"
+#define kParamFirstFrameHint \
 "The first frame this sequence/video should start at. This cannot be less " \
 " than the first frame of the sequence and cannot be greater than the last" \
 " frame of the sequence."
 
-#define kReaderLastFrameParamName "lastFrame"
-#define kReaderLastFrameParamLabel "Last frame"
-#define kReaderLastFrameParamHint \
+#define kParamLastFrame "lastFrame"
+#define kParamLastFrameLabel "Last Frame"
+#define kParamLastFrameHint \
 "The frame this sequence/video should end at. This cannot be lesser " \
 "than the first frame of the sequence and cannot be greater than the last " \
 "frame of the sequence."
 
-#define kReaderBeforeParamName "before"
-#define kReaderBeforeParamLabel "Before"
-#define kReaderBeforeParamHint \
+#define kParamBefore "before"
+#define kParamBeforeLabel "Before"
+#define kParamBeforeHint \
 "What to do before the first frame of the sequence."
 
-#define kReaderAfterParamName "after"
-#define kReaderAfterParamLabel "After"
-#define kReaderAfterParamHint \
+#define kParamAfter "after"
+#define kParamAfterLabel "After"
+#define kParamAfterHint \
 "What to do after the last frame of the sequence."
 
 enum BeforeAfterEnum
@@ -196,7 +196,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 , _afterLast(0)
 , _frameMode(0)
 , _timeOffset(0)
-, _startingFrame(0)
+, _startingTime(0)
 , _originalFrameRange(0)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
@@ -205,20 +205,20 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
     
-    _fileParam = fetchStringParam(kReaderFileParamName);
-    _proxyFileParam = fetchStringParam(kReaderProxyFileParamName);
-    _proxyThreshold = fetchDouble2DParam(kReaderProxyScaleThresholdParamName);
-    _originalProxyScale = fetchDouble2DParam(kReaderOriginalProxyScaleParamName);
-    _enableCustomScale = fetchBooleanParam(kReaderCustomScaleParamName);
-    _missingFrameParam = fetchChoiceParam(kReaderMissingFrameParamName);
-    _firstFrame = fetchIntParam(kReaderFirstFrameParamName);
-    _beforeFirst = fetchChoiceParam(kReaderBeforeParamName);
-    _lastFrame = fetchIntParam(kReaderLastFrameParamName);
-    _afterLast = fetchChoiceParam(kReaderAfterParamName);
-    _frameMode = fetchChoiceParam(kReaderFrameModeParamName);
-    _timeOffset = fetchIntParam(kReaderTimeOffsetParamName);
-    _startingFrame = fetchIntParam(kReaderStartingFrameParamName);
-    _originalFrameRange = fetchInt2DParam(kReaderOriginalFrameRangeParamName);
+    _fileParam = fetchStringParam(kParamFilename);
+    _proxyFileParam = fetchStringParam(kParamProxy);
+    _proxyThreshold = fetchDouble2DParam(kParamProxyThreshold);
+    _originalProxyScale = fetchDouble2DParam(kParamOriginalProxyScale);
+    _enableCustomScale = fetchBooleanParam(kParamCustomProxyScale);
+    _missingFrameParam = fetchChoiceParam(kParamOnMissingFrame);
+    _firstFrame = fetchIntParam(kParamFirstFrame);
+    _beforeFirst = fetchChoiceParam(kParamBefore);
+    _lastFrame = fetchIntParam(kParamLastFrame);
+    _afterLast = fetchChoiceParam(kParamAfter);
+    _frameMode = fetchChoiceParam(kParamFrameMode);
+    _timeOffset = fetchIntParam(kParamTimeOffset);
+    _startingTime = fetchIntParam(kParamStartingTime);
+    _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
     
     ///set the values of the original range and the file param (and reparse the sequence)
     std::string filename;
@@ -313,11 +313,11 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
 {
     ///the values held by GUI parameters
     int frameRangeFirst,frameRangeLast;
-    int startingFrame;
+    int startingTime;
     if (mustSetFrameRange) {
         frameRangeFirst = range.min;
         frameRangeLast = range.max;
-        startingFrame = frameRangeFirst;
+        startingTime = frameRangeFirst;
         _settingFrameRange = true;
         _firstFrame->setDisplayRange(range.min, range.max);
         _lastFrame->setDisplayRange(range.min, range.max);
@@ -331,11 +331,11 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
         ///these are the value held by the "First frame" and "Last frame" param
         _firstFrame->getValue(frameRangeFirst);
         _lastFrame->getValue(frameRangeLast);
-        _startingFrame->getValue(startingFrame);
+        _startingTime->getValue(startingTime);
     }
     
-    range.min = startingFrame;
-    range.max = startingFrame + frameRangeLast - frameRangeFirst;
+    range.min = startingTime;
+    range.max = startingTime + frameRangeLast - frameRangeFirst;
 }
 
 
@@ -1237,7 +1237,7 @@ GenericReaderPlugin::inputFileChanged()
     OfxRangeD tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
         timeDomainFromSequenceTimeDomain(tmp, true);
-        _startingFrame->setValue(tmp.min);
+        _startingTime->setValue(tmp.min);
         
         ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
         ///unless the user did a mistake. We are also safe to assume that images specs are the same for
@@ -1256,11 +1256,11 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    if (paramName == kReaderFileParamName) {
+    if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
             inputFileChanged();
         }
-    } else if ( paramName == kReaderProxyFileParamName) {
+    } else if ( paramName == kParamProxy) {
         ///Detect the scale of the proxy.
         std::string proxyFile,originalFileName;
         double sequenceTime;
@@ -1293,11 +1293,11 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
                 }
             }   break;
         }
-    } else if (paramName == kReaderCustomScaleParamName) {
+    } else if (paramName == kParamCustomProxyScale) {
         bool enabled;
         _enableCustomScale->getValue(enabled);
         _proxyThreshold->setEnabled(enabled);
-    } else if (paramName == kReaderFirstFrameParamName && !_settingFrameRange) {
+    } else if (paramName == kParamFirstFrame && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
@@ -1307,47 +1307,47 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int offset;
         _timeOffset->getValue(offset);
          _settingFrameRange = true,
-        _startingFrame->setValue(first + offset);
+        _startingTime->setValue(first + offset);
         _settingFrameRange = false;
-    } else if (paramName == kReaderLastFrameParamName && !_settingFrameRange) {
+    } else if (paramName == kParamLastFrame && !_settingFrameRange) {
         int first;
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _firstFrame->setDisplayRange(first, last);
-    } else if (paramName == kReaderFrameModeParamName) {
+    } else if (paramName == kParamFrameMode) {
         int frameMode_i;
         _frameMode->getValue(frameMode_i);
         FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
         switch (frameMode) {
-            case eFrameModeStartingFrame: //starting frame
-                _startingFrame->setIsSecret(false);
+            case eFrameModeStartingTime: //starting frame
+                _startingTime->setIsSecret(false);
                 _timeOffset->setIsSecret(true);
                 break;
             case eFrameModeTimeOffset: //time offset
-                _startingFrame->setIsSecret(true);
+                _startingTime->setIsSecret(true);
                 _timeOffset->setIsSecret(false);
                 break;
         }
-    } else if (paramName == kReaderStartingFrameParamName && !_settingFrameRange) {
+    } else if (paramName == kParamStartingTime && !_settingFrameRange) {
         
         ///recompute the timedomain
         OfxRangeD sequenceTimeDomain;
         getSequenceTimeDomainInternal(sequenceTimeDomain,true);
         
         //also update the time offset
-        int startingFrame;
-        _startingFrame->getValue(startingFrame);
+        int startingTime;
+        _startingTime->getValue(startingTime);
         
         int firstFrame;
         _firstFrame->getValue(firstFrame);
         
         ///prevent recursive calls of setValue(...)
         _settingFrameRange = true;
-        _timeOffset->setValue(startingFrame - firstFrame);
+        _timeOffset->setValue(startingTime - firstFrame);
         _settingFrameRange = false;
         
-    } else if (paramName == kReaderTimeOffsetParamName && !_settingFrameRange) {
+    } else if (paramName == kParamTimeOffset && !_settingFrameRange) {
         //also update the starting frame
         int offset;
         _timeOffset->getValue(offset);
@@ -1356,7 +1356,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         
         ///prevent recursive calls of setValue(...)
         _settingFrameRange = true;
-        _startingFrame->setValue(offset + first);
+        _startingTime->setValue(offset + first);
         _settingFrameRange = false;
     } else {
         _ocio->changedParam(args, paramName);
@@ -1436,7 +1436,7 @@ void
 GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
                       bool supportsTiles)
 {
-    desc.setPluginGrouping(kReaderGrouping);
+    desc.setPluginGrouping(kPluginGrouping);
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextReader);
@@ -1505,30 +1505,30 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
 
     //////////Input file
-    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kReaderFileParamName);
-    fileParam->setLabels(kReaderFileParamLabel, kReaderFileParamLabel, kReaderFileParamLabel);
+    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kParamFilename);
+    fileParam->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
     fileParam->setStringType(OFX::eStringTypeFilePath);
     fileParam->setFilePathExists(true);
-    fileParam->setHint(kReaderFileParamHint);
+    fileParam->setHint(kParamFilenameHint);
     fileParam->setAnimates(false);
-    // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
-    fileParam->setScriptName(kReaderFileParamName);
+    // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
+    fileParam->setScriptName(kParamFilename);
     desc.addClipPreferencesSlaveParam(*fileParam);
     page->addChild(*fileParam);
     
     //////////First-frame
-    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kReaderFirstFrameParamName);
-    firstFrameParam->setLabels(kReaderFirstFrameParamLabel, kReaderFirstFrameParamLabel, kReaderFirstFrameParamLabel);
-    firstFrameParam->setHint(kReaderFirstFrameParamHint);
+    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kParamFirstFrame);
+    firstFrameParam->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
+    firstFrameParam->setHint(kParamFirstFrameHint);
     firstFrameParam->setDefault(0);
     firstFrameParam->setAnimates(true);
     firstFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*firstFrameParam);
     
     ///////////Before first
-    OFX::ChoiceParamDescriptor* beforeFirstParam = desc.defineChoiceParam(kReaderBeforeParamName);
-    beforeFirstParam->setLabels(kReaderBeforeParamLabel, kReaderBeforeParamLabel, kReaderBeforeParamLabel);
-    beforeFirstParam->setHint(kReaderBeforeParamHint);
+    OFX::ChoiceParamDescriptor* beforeFirstParam = desc.defineChoiceParam(kParamBefore);
+    beforeFirstParam->setLabels(kParamBeforeLabel, kParamBeforeLabel, kParamBeforeLabel);
+    beforeFirstParam->setHint(kParamBeforeHint);
     assert(beforeFirstParam->getNOptions() == eBeforeAfterHold);
     beforeFirstParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
     assert(beforeFirstParam->getNOptions() == eBeforeAfterLoop);
@@ -1544,18 +1544,18 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     page->addChild(*beforeFirstParam);
     
     //////////Last-frame
-    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kReaderLastFrameParamName);
-    lastFrameParam->setLabels(kReaderLastFrameParamLabel, kReaderLastFrameParamLabel, kReaderLastFrameParamLabel);
-    lastFrameParam->setHint(kReaderLastFrameParamHint);
+    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kParamLastFrame);
+    lastFrameParam->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
+    lastFrameParam->setHint(kParamLastFrameHint);
     lastFrameParam->setDefault(0);
     lastFrameParam->setAnimates(true);
     lastFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*lastFrameParam);
     
     ///////////After first
-    OFX::ChoiceParamDescriptor* afterLastParam = desc.defineChoiceParam(kReaderAfterParamName);
-    afterLastParam->setLabels(kReaderAfterParamLabel, kReaderAfterParamLabel, kReaderAfterParamLabel);
-    afterLastParam->setHint(kReaderAfterParamHint);
+    OFX::ChoiceParamDescriptor* afterLastParam = desc.defineChoiceParam(kParamAfter);
+    afterLastParam->setLabels(kParamAfterLabel, kParamAfterLabel, kParamAfterLabel);
+    afterLastParam->setHint(kParamAfterHint);
     assert(afterLastParam->getNOptions() == eBeforeAfterHold);
     afterLastParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
     assert(afterLastParam->getNOptions() == eBeforeAfterLoop);
@@ -1571,9 +1571,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     page->addChild(*afterLastParam);
     
     ///////////Missing frame choice
-    OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kReaderMissingFrameParamName);
-    missingFrameParam->setLabels(kReaderMissingFrameParamLabel, kReaderMissingFrameParamLabel, kReaderMissingFrameParamLabel);
-    missingFrameParam->setHint(kReaderMissingFrameParamHint);
+    OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kParamOnMissingFrame);
+    missingFrameParam->setLabels(kParamOnMissingFrameLabel, kParamOnMissingFrameLabel, kParamOnMissingFrameLabel);
+    missingFrameParam->setHint(kParamOnMissingFrameHint);
     assert(missingFrameParam->getNOptions() == eMissingNearest);
     missingFrameParam->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
     assert(missingFrameParam->getNOptions() == eMissingError);
@@ -1586,38 +1586,38 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
     
     ///////////Frame-mode
-    OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kReaderFrameModeParamName);
-    frameModeParam->setLabels(kReaderFrameModeParamLabel, kReaderFrameModeParamLabel, kReaderFrameModeParamLabel);
-    assert(frameModeParam->getNOptions() == eFrameModeStartingFrame);
-    frameModeParam->appendOption(kReaderFrameModeParamOptionStartingFrame);
+    OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kParamFrameMode);
+    frameModeParam->setLabels(kParamFrameModeLabel, kParamFrameModeLabel, kParamFrameModeLabel);
+    assert(frameModeParam->getNOptions() == eFrameModeStartingTime);
+    frameModeParam->appendOption(kParamFrameModeOptionStartingTime);
     assert(frameModeParam->getNOptions() == eFrameModeTimeOffset);
-    frameModeParam->appendOption(kReaderFrameModeParamOptionTimeOffset);
+    frameModeParam->appendOption(kParamFrameModeOptionTimeOffset);
     frameModeParam->setAnimates(true);
     frameModeParam->setDefault(0);
     frameModeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     page->addChild(*frameModeParam);
     
     ///////////Starting frame
-    OFX::IntParamDescriptor* startingFrameParam = desc.defineIntParam(kReaderStartingFrameParamName);
-    startingFrameParam->setLabels(kReaderStartingFrameParamLabel, kReaderStartingFrameParamLabel, kReaderStartingFrameParamLabel);
-    startingFrameParam->setHint(kReaderStartingFrameParamHint);
-    startingFrameParam->setDefault(0);
-    startingFrameParam->setAnimates(true);
-    startingFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    page->addChild(*startingFrameParam);
+    OFX::IntParamDescriptor* startingTimeParam = desc.defineIntParam(kParamStartingTime);
+    startingTimeParam->setLabels(kParamStartingTimeLabel, kParamStartingTimeLabel, kParamStartingTimeLabel);
+    startingTimeParam->setHint(kParamStartingTimeHint);
+    startingTimeParam->setDefault(0);
+    startingTimeParam->setAnimates(true);
+    startingTimeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
+    page->addChild(*startingTimeParam);
     
     ///////////Time offset
-    OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kReaderTimeOffsetParamName);
-    timeOffsetParam->setLabels(kReaderTimeOffsetParamLabel, kReaderTimeOffsetParamLabel, kReaderTimeOffsetParamLabel);
-    timeOffsetParam->setHint(kReaderTimeOffsetParamHint);
+    OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kParamTimeOffset);
+    timeOffsetParam->setLabels(kParamTimeOffsetLabel, kParamTimeOffsetLabel, kParamTimeOffsetLabel);
+    timeOffsetParam->setHint(kParamTimeOffsetHint);
     timeOffsetParam->setDefault(0);
     timeOffsetParam->setAnimates(true);
     timeOffsetParam->setIsSecret(true);
     page->addChild(*timeOffsetParam);
     
     ///////////Original frame range
-    OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kReaderOriginalFrameRangeParamName);
-    originalFrameRangeParam->setLabels(kReaderOriginalFrameRangeParamLabel, kReaderOriginalFrameRangeParamLabel, kReaderOriginalFrameRangeParamLabel);
+    OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kParamOriginalFrameRange);
+    originalFrameRangeParam->setLabels(kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel);
     originalFrameRangeParam->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     originalFrameRangeParam->setAnimates(true);
     originalFrameRangeParam->setIsSecret(true);
@@ -1626,47 +1626,47 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
     
     //////////Input proxy file
-    OFX::StringParamDescriptor* proxyFileParam = desc.defineStringParam(kReaderProxyFileParamName);
-    proxyFileParam->setLabels(kReaderProxyFileParamLabel, kReaderProxyFileParamLabel, kReaderProxyFileParamLabel);
+    OFX::StringParamDescriptor* proxyFileParam = desc.defineStringParam(kParamProxy);
+    proxyFileParam->setLabels(kParamProxyLabel, kParamProxyLabel, kParamProxyLabel);
     proxyFileParam->setStringType(OFX::eStringTypeFilePath);
     proxyFileParam->setFilePathExists(true);
-    proxyFileParam->setHint(kReaderProxyFileParamHint);
+    proxyFileParam->setHint(kParamProxyHint);
     proxyFileParam->setAnimates(!isVideoStreamPlugin);
-    // in the Reader context, the script name must be "filename", @see kOfxImageEffectContextReader
-    proxyFileParam->setScriptName(kReaderProxyFileParamName);
+    // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
+    proxyFileParam->setScriptName(kParamProxy);
     desc.addClipPreferencesSlaveParam(*proxyFileParam);
     page->addChild(*proxyFileParam);
     
     ////Proxy original scale
-    OFX::Double2DParamDescriptor* originalProxyScaleParam = desc.defineDouble2DParam(kReaderOriginalProxyScaleParamName);
-    originalProxyScaleParam->setLabels(kReaderOriginalProxyScaleParamLabel,
-                                       kReaderOriginalProxyScaleParamLabel, kReaderOriginalProxyScaleParamLabel);
+    OFX::Double2DParamDescriptor* originalProxyScaleParam = desc.defineDouble2DParam(kParamOriginalProxyScale);
+    originalProxyScaleParam->setLabels(kParamOriginalProxyScaleLabel,
+                                       kParamOriginalProxyScaleLabel, kParamOriginalProxyScaleLabel);
     originalProxyScaleParam->setDefault(1., 1.);
     originalProxyScaleParam->setIsSecret(true);
     originalProxyScaleParam->setEnabled(false);
-    originalProxyScaleParam->setHint(kReaderOriginalProxyScaleParamHint);
+    originalProxyScaleParam->setHint(kParamOriginalProxyScaleHint);
     // originalProxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     originalProxyScaleParam->setAnimates(true);
     page->addChild(*originalProxyScaleParam);
     
     ////Proxy  scale threshold
-    OFX::Double2DParamDescriptor* proxyScaleThresholdParam = desc.defineDouble2DParam(kReaderProxyScaleThresholdParamName);
-    proxyScaleThresholdParam->setLabels(kReaderProxyScaleThresholdParamLabel,
-                                       kReaderProxyScaleThresholdParamLabel, kReaderProxyScaleThresholdParamLabel);
+    OFX::Double2DParamDescriptor* proxyScaleThresholdParam = desc.defineDouble2DParam(kParamProxyThreshold);
+    proxyScaleThresholdParam->setLabels(kParamProxyThresholdLabel,
+                                       kParamProxyThresholdLabel, kParamProxyThresholdLabel);
     proxyScaleThresholdParam->setDefault(1., 1.);
     proxyScaleThresholdParam->setIsSecret(true);
     proxyScaleThresholdParam->setEnabled(false);
-    proxyScaleThresholdParam->setHint(kReaderOriginalProxyScaleParamHint);
+    proxyScaleThresholdParam->setHint(kParamOriginalProxyScaleHint);
     proxyScaleThresholdParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
     proxyScaleThresholdParam->setAnimates(true);
     page->addChild(*proxyScaleThresholdParam);
     
     ///Enable custom proxy scale
-    OFX::BooleanParamDescriptor* enableCustomScale = desc.defineBooleanParam(kReaderCustomScaleParamName);
-    enableCustomScale->setLabels(kReaderCustomScaleParamLabel, kReaderCustomScaleParamLabel, kReaderCustomScaleParamLabel);
+    OFX::BooleanParamDescriptor* enableCustomScale = desc.defineBooleanParam(kParamCustomProxyScale);
+    enableCustomScale->setLabels(kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel);
     enableCustomScale->setIsSecret(true);
     enableCustomScale->setDefault(false);
-    enableCustomScale->setHint(kReaderCustomScaleParamHint);
+    enableCustomScale->setHint(kParamCustomProxyScaleHint);
     enableCustomScale->setAnimates(true);
     enableCustomScale->setEvaluateOnChange(false);
     page->addChild(*enableCustomScale);

@@ -29,31 +29,13 @@ namespace OFX
         {
 #ifdef OFX_IO_USE_DEPRECATED_EXR
             // EXR plugins are deprecated and should be revised/rewritten
-            {
-                static ReadEXRPluginFactory p("fr.inria.openfx:ReadEXR", 1, 1);
-                ids.push_back(&p);
-            }
-            {
-                static WriteEXRPluginFactory p("fr.inria.openfx:WriteEXR", 1, 0);
-                ids.push_back(&p);
-            }
+            getReadEXRPluginID(ids);
+            getWriteEXRPluginID(ids);
 #endif
-            {
-                static ReadFFmpegPluginFactory p("fr.inria.openfx:ReadFFmpeg", 1, 1);
-                ids.push_back(&p);
-            }
-            {
-                static WriteFFmpegPluginFactory p("fr.inria.openfx:WriteFFmpeg", 1, 0);
-                ids.push_back(&p);
-            }
-            {
-                static ReadPFMPluginFactory p("fr.inria.openfx:ReadPFM", 1, 1);
-                ids.push_back(&p);
-            }
-            {
-                static WritePFMPluginFactory p("fr.inria.openfx:WritePFM", 1, 0);
-                ids.push_back(&p);
-            }
+            getReadFFmpegPluginID(ids);
+            getWriteFFmpegPluginID(ids);
+            getReadPFMPluginID(ids);
+            getWritePFMPluginID(ids);
             getReadOIIOPluginID(ids);
             getWriteOIIOPluginID(ids);
             getOIIOTextPluginID(ids);

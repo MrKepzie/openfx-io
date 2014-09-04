@@ -36,29 +36,12 @@
  78153 Le Chesnay Cedex - France
  
  */
+
 #ifndef __Io__WritePFM__
 #define __Io__WritePFM__
 
-#include "GenericWriter.h"
-#include "ofxsMacros.h"
+#include "ofxsImageEffect.h"
 
-class WritePFMPlugin : public GenericWriterPlugin {
-    
-public:
-    
-    WritePFMPlugin(OfxImageEffectHandle handle);
-
-    virtual ~WritePFMPlugin();
-
-private:
-
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
-    
-    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
-    
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
-};
-
-mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
+void getWritePFMPluginID(OFX::PluginFactoryArray &ids);
 
 #endif /* defined(__Io__WritePFM__) */

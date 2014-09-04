@@ -74,6 +74,63 @@ extern "C" {
 #include "FFmpegCompat.h"
 #include "IOUtility.h"
 
+#include "GenericWriter.h"
+
+#define kPluginName "WriteFFmpeg"
+#define kPluginGrouping "Image/Writers"
+#define kPluginDescription "Write images using FFmpeg."
+#define kPluginIdentifier "fr.inria.openfx:WriteFFmpeg"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
+struct AVCodecContext;
+struct AVFormatContext;
+struct AVStream;
+
+class WriteFFmpegPlugin : public GenericWriterPlugin
+{
+public:
+
+    WriteFFmpegPlugin(OfxImageEffectHandle handle);
+
+    virtual ~WriteFFmpegPlugin();
+
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+
+
+
+private:
+
+    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
+
+    virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
+
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+
+
+    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
+
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
+
+    void freeFormat();
+
+    AVCodecContext*   _codecContext;
+    AVFormatContext*  _formatContext;
+    AVStream* _stream;
+
+    OFX::ChoiceParam* _format;
+    OFX::DoubleParam* _fps;
+
+    OFX::ChoiceParam* _codec;
+    OFX::IntParam* _bitRate;
+    OFX::IntParam* _bitRateTolerance;
+    OFX::IntParam* _gopSize;
+    OFX::IntParam* _bFrames;
+    OFX::ChoiceParam* _macroBlockDecision;
+
+};
+
+
 #define kWriteFFmpegFormatParamName "format"
 #define kWriteFFmpegFPSParamName "fps"
 #define kWriteFFmpegAdvancedGroupParamName "advanced"
@@ -616,19 +673,7 @@ void WriteFFmpegPlugin::freeFormat() {
 
 using namespace OFX;
 
-#if 0
-namespace OFX
-{
-    namespace Plugin
-    {
-        void getPluginIDs(OFX::PluginFactoryArray &ids)
-        {
-            static WriteFFmpegPluginFactory p("fr.inria.openfx:WriteFFmpeg", 1, 0);
-            ids.push_back(&p);
-        }
-    };
-};
-#endif
+mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, {}, true);
 
 static std::string ffmpeg_versions()
 {
@@ -662,7 +707,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc);
     // basic labels
-    desc.setLabels("WriteFFmpegOFX", "WriteFFmpegOFX", "WriteFFmpegOFX");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription("Write images or video file using "
 #                             ifdef FFMS_USE_FFMPEG_COMPAT
                               "FFmpeg"
@@ -798,3 +843,11 @@ ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handl
 {
     return new WriteFFmpegPlugin(handle);
 }
+
+
+void getWriteFFmpegPluginID(OFX::PluginFactoryArray &ids)
+{
+    static WriteFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
+}
+

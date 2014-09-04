@@ -72,35 +72,37 @@
 #define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderFullySafe
 
-#define kTypeParamName "type"
-#define kTypeParamLabel "Type"
-#define kTypeParamHint "Format: Converts between formats, the image is resized to fit in the target format. " \
+#define kParamType "type"
+#define kParamTypeLabel "Type"
+#define kParamTypeHint "Format: Converts between formats, the image is resized to fit in the target format. " \
 "Size: Scales to fit into a box of a given width and height. " \
 "Scale: Scales the image."
+#define kParamTypeOptionFormat "Format"
+#define kParamTypeOptionSize "Size"
+#define kParamTypeOptionScale "Scale"
 
 #pragma message WARN("TODO: make an enum for the resize type!")
 
-#define kFormatParamName "format"
-#define kFormatParamLabel "Format"
-#define kFormatParamHint "The output format"
+#define kParamFormat "format"
+#define kParamFormatLabel "Format"
+#define kParamFormatHint "The output format"
 
-#define kSizeParamName "size"
-#define kSizeParamLabel "Size"
-#define kSizeParamHint "The output size"
+#define kParamSize "size"
+#define kParamSizeLabel "Size"
+#define kParamSizeHint "The output size"
 
-#define kPreserveParParamName "keepPAR"
-#define kPreserveParParamLabel "Preserve aspect ratio"
-#define kPreserveParParamHint "When checked, one direction will be clipped."
+#define kParamPreservePAR "preservePAR"
+#define kParamPreservePARLabel "Preserve PAR"
+#define kParamPreservePARHint "Preserve Pixel Aspect Ratio (PAR). When checked, one direction will be clipped."
 
-#define kScaleParamName "scale"
-#define kScaleParamLabel "Scale"
-#define kScaleParamHint "The scale factor to apply to the image."
+#define kParamScale "scale"
+#define kParamScaleLabel "Scale"
+#define kParamScaleHint "The scale factor to apply to the image."
 
-#define kFilterParamName "filter"
-#define kFilterParamLabel "Filter"
-#define kFilterParamHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
-
-#pragma message WARN("TODO: make an enum for the filter type, check that the OIIO filters are the right ones in the right order!")
+#define kParamFilter "filter"
+#define kParamFilterLabel "Filter"
+#define kParamFilterHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
+#define kParamFilterOptionImpulse "Impulse (no interpolation)"
 
 using namespace OFX;
 using namespace OpenImageIO;
@@ -177,12 +179,12 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
                         srcClip_->getPixelComponents() == OFX::ePixelComponentRGB ||
                         srcClip_->getPixelComponents() == OFX::ePixelComponentAlpha));
 
-    type_ = fetchChoiceParam(kTypeParamName);
-    format_ = fetchChoiceParam(kFormatParamName);
-    filter_ = fetchChoiceParam(kFilterParamName);
-    size_ = fetchInt2DParam(kSizeParamName);
-    scale_ = fetchDouble2DParam(kScaleParamName);
-    preservePAR_ = fetchBooleanParam(kPreserveParParamName);
+    type_ = fetchChoiceParam(kParamType);
+    format_ = fetchChoiceParam(kParamFormat);
+    filter_ = fetchChoiceParam(kParamFilter);
+    size_ = fetchInt2DParam(kParamSize);
+    scale_ = fetchDouble2DParam(kParamScale);
+    preservePAR_ = fetchBooleanParam(kParamPreservePAR);
     assert(type_ && format_ &&  filter_ && size_ && scale_ && preservePAR_);
 }
 
@@ -466,7 +468,7 @@ void
 OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
                                const std::string &paramName)
 {
-    if (paramName == kTypeParamName) {
+    if (paramName == kParamType) {
         int type;
         type_->getValue(type);
         switch (type) {
@@ -641,42 +643,58 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    ChoiceParamDescriptor* type = desc.defineChoiceParam(kTypeParamName);
-    type->setLabels(kTypeParamLabel, kTypeParamLabel, kTypeParamLabel);
-    type->setHint(kTypeParamHint);
-    type->appendOption("Format");
-    type->appendOption("Size");
-    type->appendOption("Scale");
+    ChoiceParamDescriptor* type = desc.defineChoiceParam(kParamType);
+    type->setLabels(kParamTypeLabel, kParamTypeLabel, kParamTypeLabel);
+    type->setHint(kParamTypeHint);
+    type->appendOption(kParamTypeOptionFormat);
+    type->appendOption(kParamTypeOptionSize);
+    type->appendOption(kParamTypeOptionScale);
     type->setAnimates(false);
     type->setDefault(0);
     page->addChild(*type);
     
-    ChoiceParamDescriptor* format = desc.defineChoiceParam(kFormatParamName);
-    format->setLabels(kFormatParamLabel, kFormatParamLabel, kFormatParamLabel);
+    ChoiceParamDescriptor* format = desc.defineChoiceParam(kParamFormat);
+    format->setLabels(kParamFormatLabel, kParamFormatLabel, kParamFormatLabel);
     format->setAnimates(false);
+    assert(format->getNOptions() == eParamFormatPCVideo);
     format->appendOption(kParamFormatPCVideoLabel);
+    assert(format->getNOptions() == eParamFormatNTSC);
     format->appendOption(kParamFormatNTSCLabel);
+    assert(format->getNOptions() == eParamFormatPAL);
     format->appendOption(kParamFormatPALLabel);
+    assert(format->getNOptions() == eParamFormatHD);
     format->appendOption(kParamFormatHDLabel);
+    assert(format->getNOptions() == eParamFormatNTSC169);
     format->appendOption(kParamFormatNTSC169Label);
+    assert(format->getNOptions() == eParamFormatPAL169);
     format->appendOption(kParamFormatPAL169Label);
+    assert(format->getNOptions() == eParamFormat1kSuper35);
     format->appendOption(kParamFormat1kSuper35Label);
+    assert(format->getNOptions() == eParamFormat1kCinemascope);
     format->appendOption(kParamFormat1kCinemascopeLabel);
+    assert(format->getNOptions() == eParamFormat2kSuper35);
     format->appendOption(kParamFormat2kSuper35Label);
+    assert(format->getNOptions() == eParamFormat2kCinemascope);
     format->appendOption(kParamFormat2kCinemascopeLabel);
+    assert(format->getNOptions() == eParamFormat4kSuper35);
     format->appendOption(kParamFormat4kSuper35Label);
+    assert(format->getNOptions() == eParamFormat4kCinemascope);
     format->appendOption(kParamFormat4kCinemascopeLabel);
+    assert(format->getNOptions() == eParamFormatSquare256);
     format->appendOption(kParamFormatSquare256Label);
+    assert(format->getNOptions() == eParamFormatSquare512);
     format->appendOption(kParamFormatSquare512Label);
+    assert(format->getNOptions() == eParamFormatSquare1k);
     format->appendOption(kParamFormatSquare1kLabel);
+    assert(format->getNOptions() == eParamFormatSquare2k);
     format->appendOption(kParamFormatSquare2kLabel);
     format->setDefault(0);
-    format->setHint(kFormatParamHint);
+    format->setHint(kParamFormatHint);
     page->addChild(*format);
     
-    Int2DParamDescriptor* size = desc.defineInt2DParam(kSizeParamName);
-    size->setLabels(kSizeParamLabel, kSizeParamLabel, kSizeParamLabel);
-    size->setHint(kSizeParamHint);
+    Int2DParamDescriptor* size = desc.defineInt2DParam(kParamSize);
+    size->setLabels(kParamSizeLabel, kParamSizeLabel, kParamSizeLabel);
+    size->setHint(kParamSizeHint);
     size->setDefault(200, 200);
     size->setAnimates(false);
     size->setIsSecret(true);
@@ -684,18 +702,18 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     size->setLayoutHint(eLayoutHintNoNewLine);
     page->addChild(*size);
     
-    BooleanParamDescriptor* preservePAR = desc.defineBooleanParam(kPreserveParParamName);
-    preservePAR->setLabels(kPreserveParParamLabel, kPreserveParParamLabel, kPreserveParParamLabel);
-    preservePAR->setHint(kPreserveParParamHint);
+    BooleanParamDescriptor* preservePAR = desc.defineBooleanParam(kParamPreservePAR);
+    preservePAR->setLabels(kParamPreservePARLabel, kParamPreservePARLabel, kParamPreservePARLabel);
+    preservePAR->setHint(kParamPreservePARHint);
     preservePAR->setAnimates(false);
     preservePAR->setDefault(false);
     preservePAR->setIsSecret(true);
     preservePAR->setDefault(true);
     page->addChild(*preservePAR);
     
-    Double2DParamDescriptor* scale = desc.defineDouble2DParam(kScaleParamName);
-    scale->setHint(kScaleParamHint);
-    scale->setLabels(kScaleParamLabel, kScaleParamLabel, kScaleParamLabel);
+    Double2DParamDescriptor* scale = desc.defineDouble2DParam(kParamScale);
+    scale->setHint(kParamScaleHint);
+    scale->setLabels(kParamScaleLabel, kParamScaleLabel, kParamScaleLabel);
     scale->setAnimates(true);
     scale->setIsSecret(true);
     scale->setDefault(1., 1.);
@@ -703,11 +721,11 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     scale->setIncrement(0.05);
     page->addChild(*scale);
     
-    ChoiceParamDescriptor *filter = desc.defineChoiceParam(kFilterParamName);
-    filter->setLabels(kFilterParamLabel, kFilterParamLabel, kFilterParamLabel);
-    filter->setHint(kFilterParamHint);
+    ChoiceParamDescriptor *filter = desc.defineChoiceParam(kParamFilter);
+    filter->setLabels(kParamFilterLabel, kParamFilterLabel, kParamFilterLabel);
+    filter->setHint(kParamFilterHint);
     filter->setAnimates(false);
-    filter->appendOption("Impulse (no interpolation)");
+    filter->appendOption(kParamFilterOptionImpulse);
     int nFilters = Filter2D::num_filters();
     int defIndex = 0;
     for (int i = 0; i < nFilters; ++i) {

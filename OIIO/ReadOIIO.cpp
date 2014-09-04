@@ -71,47 +71,47 @@ OIIO_NAMESPACE_USING
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kMetadataButtonName "showMetadata"
-#define kMetadataButtonLabel "Image Info..."
-#define kMetadataButtonHint "Shows information and metadata from the image at current time."
+#define kParamShowMetadata "showMetadata"
+#define kParamShowMetadataLabel "Image Info..."
+#define kParamShowMetadataHint "Shows information and metadata from the image at current time."
 
 #ifndef OFX_READ_OIIO_SHARED_CACHE
 // unassociatedAlpha is a cache parameter, so it can't be set separately for each instance
-#define kParamUnassociatedAlphaName "unassociatedAlpha"
+#define kParamUnassociatedAlpha "unassociatedAlpha"
 #define kParamUnassociatedAlphaLabel "Keep Unassoc. Alpha"
 #define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata.\nImages which have associated alpha (i.e. are already premultiplied) are unaffected."
 #endif
 
-#define kOutputComponentsParamName "outputComponents"
-#define kOutputComponentsParamLabel "Output Components"
-#define kOutputComponentsParamHint "Components in the output"
-#define kOutputComponentsRGBAOption "RGBA"
-#define kOutputComponentsRGBOption "RGB"
-#define kOutputComponentsAlphaOption "Alpha"
+#define kParamOutputComponents "outputComponents"
+#define kParamOutputComponentsLabel "Output Components"
+#define kParamOutputComponentsHint "Components in the output"
+#define kParamOutputComponentsOptionRGBA "RGBA"
+#define kParamOutputComponentsOptionRGB "RGB"
+#define kParamOutputComponentsOptionAlpha "Alpha"
 
 #ifndef OFX_READ_OIIO_NEWMENU
-#define kFirstChannelParamName "firstChannel"
-#define kFirstChannelParamLabel "First Channel"
-#define kFirstChannelParamHint "Channel from the input file corresponding to the first component.\nSee \"Image Info...\" for a list of image channels."
+#define kParamFirstChannel "firstChannel"
+#define kParamFirstChannelLabel "First Channel"
+#define kParamFirstChannelHint "Channel from the input file corresponding to the first component.\nSee \"Image Info...\" for a list of image channels."
 #endif
 
 #ifdef OFX_READ_OIIO_NEWMENU
 
-#define kRChannelParamName "rChannel"
-#define kRChannelParamLabel "R Channel"
-#define kRChannelParamHint "Channel from the input file corresponding to the red component.\nSee \"Image Info...\" for a list of image channels."
+#define kParamRChannel "rChannel"
+#define kParamRChannelLabel "R Channel"
+#define kParamRChannelHint "Channel from the input file corresponding to the red component.\nSee \"Image Info...\" for a list of image channels."
 
-#define kGChannelParamName "gChannel"
-#define kGChannelParamLabel "G Channel"
-#define kGChannelParamHint "Channel from the input file corresponding to the green component.\nSee \"Image Info...\" for a list of image channels."
+#define kParamGChannel "gChannel"
+#define kParamGChannelLabel "G Channel"
+#define kParamGChannelHint "Channel from the input file corresponding to the green component.\nSee \"Image Info...\" for a list of image channels."
 
-#define kBChannelParamName "bChannel"
-#define kBChannelParamLabel "B Channel"
-#define kBChannelParamHint "Channel from the input file corresponding to the blue component.\nSee \"Image Info...\" for a list of image channels."
+#define kParamBChannel "bChannel"
+#define kParamBChannelLabel "B Channel"
+#define kParamBChannelHint "Channel from the input file corresponding to the blue component.\nSee \"Image Info...\" for a list of image channels."
 
-#define kAChannelParamName "aChannel"
-#define kAChannelParamLabel "A Channel"
-#define kAChannelParamHint "Channel from the input file corresponding to the alpha component.\nSee \"Image Info...\" for a list of image channels."
+#define kParamAChannel "aChannel"
+#define kParamAChannelLabel "A Channel"
+#define kParamAChannelHint "Channel from the input file corresponding to the alpha component.\nSee \"Image Info...\" for a list of image channels."
 
 // number of channels for hosts that don't support modifying choice menus (e.g. Nuke)
 #define kDefaultChannelCount 16
@@ -217,22 +217,22 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _specValid(false)
 {
 #ifndef OFX_READ_OIIO_SHARED_CACHE
-    _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlphaName);
+    _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlpha);
 # ifdef OFX_READ_OIIO_USES_CACHE
     bool unassociatedAlpha;
     _unassociatedAlpha->getValue(unassociatedAlpha);
     _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 # endif
 #endif
-    _outputComponents = fetchChoiceParam(kOutputComponentsParamName);
+    _outputComponents = fetchChoiceParam(kParamOutputComponents);
 #ifdef OFX_READ_OIIO_NEWMENU
-    _rChannel = fetchChoiceParam(kRChannelParamName);
-    _gChannel = fetchChoiceParam(kGChannelParamName);
-    _bChannel = fetchChoiceParam(kBChannelParamName);
-    _aChannel = fetchChoiceParam(kAChannelParamName);
+    _rChannel = fetchChoiceParam(kParamRChannel);
+    _gChannel = fetchChoiceParam(kParamGChannel);
+    _bChannel = fetchChoiceParam(kParamBChannel);
+    _aChannel = fetchChoiceParam(kParamAChannel);
     assert(_outputComponents && _rChannel && _gChannel && _bChannel && _aChannel);
 #else
-    _firstChannel = fetchIntParam(kFirstChannelParamName);
+    _firstChannel = fetchIntParam(kParamFirstChannel);
     assert(_outputComponents && _firstChannel);
 #endif
     
@@ -309,7 +309,7 @@ void ReadOIIOPlugin::updateComponents(OFX::PixelComponentEnum outputComponents)
 
 void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    if (paramName == kMetadataButtonName) {
+    if (paramName == kParamShowMetadata) {
         std::string filename;
         OfxStatus st = getFilenameAtTime(args.time, filename);
         std::stringstream ss;
@@ -322,13 +322,13 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     }
 #if defined(OFX_READ_OIIO_USES_CACHE) && !defined(OFX_READ_OIIO_SHARED_CACHE)
     ///This cannot be done elsewhere as the Cache::attribute function is not thread safe!
-    else if (paramName == kParamUnassociatedAlphaName) {
+    else if (paramName == kParamUnassociatedAlpha) {
         bool unassociatedAlpha;
         _unassociatedAlpha->getValue(unassociatedAlpha); // non-animatable
         _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
     }
 #endif
-    else if (paramName == kOutputComponentsParamName) {
+    else if (paramName == kParamOutputComponents) {
         int outputComponents_i;
         _outputComponents->getValue(outputComponents_i);
         OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
@@ -342,7 +342,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             onInputFileChanged(filename);
         }
 #endif
-    } else if (paramName == kRChannelParamName) {
+    } else if (paramName == kParamRChannel) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
@@ -1370,7 +1370,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ true, /*supportsAlpha =*/ true, /*supportsTiles =*/ kSupportsTiles);
 
 #ifndef OFX_READ_OIIO_SHARED_CACHE
-    OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlphaName);
+    OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlpha);
     unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
     unassociatedAlpha->setHint(kParamUnassociatedAlphaHint);
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -1380,33 +1380,33 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
 #endif
 
-    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kMetadataButtonName);
-    pb->setLabels(kMetadataButtonLabel, kMetadataButtonLabel, kMetadataButtonLabel);
-    pb->setHint(kMetadataButtonHint);
+    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kParamShowMetadata);
+    pb->setLabels(kParamShowMetadataLabel, kParamShowMetadataLabel, kParamShowMetadataLabel);
+    pb->setHint(kParamShowMetadataHint);
     page->addChild(*pb);
 
 #ifndef OFX_READ_OIIO_NEWMENU
-    IntParamDescriptor *firstChannel = desc.defineIntParam(kFirstChannelParamName);
-    firstChannel->setLabels(kFirstChannelParamLabel, kFirstChannelParamLabel, kFirstChannelParamLabel);
-    firstChannel->setHint(kFirstChannelParamHint);
+    IntParamDescriptor *firstChannel = desc.defineIntParam(kParamFirstChannel);
+    firstChannel->setLabels(kParamFirstChannelLabel, kParamFirstChannelLabel, kParamFirstChannelLabel);
+    firstChannel->setHint(kParamFirstChannelHint);
     page->addChild(*firstChannel);
 #endif
 
-    ChoiceParamDescriptor *outputComponents = desc.defineChoiceParam(kOutputComponentsParamName);
-    outputComponents->setLabels(kOutputComponentsParamLabel, kOutputComponentsParamLabel, kOutputComponentsParamLabel);
-    outputComponents->setHint(kOutputComponentsParamHint);
+    ChoiceParamDescriptor *outputComponents = desc.defineChoiceParam(kParamOutputComponents);
+    outputComponents->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
+    outputComponents->setHint(kParamOutputComponentsHint);
     // the following must be in the same order as in describe(), so that the map works
     if (gSupportsRGBA) {
         assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentRGBA);
-        outputComponents->appendOption(kOutputComponentsRGBAOption);
+        outputComponents->appendOption(kParamOutputComponentsOptionRGBA);
     }
     if (gSupportsRGB) {
         assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentRGB);
-        outputComponents->appendOption(kOutputComponentsRGBOption);
+        outputComponents->appendOption(kParamOutputComponentsOptionRGB);
     }
     if (gSupportsAlpha) {
         assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentAlpha);
-        outputComponents->appendOption(kOutputComponentsAlphaOption);
+        outputComponents->appendOption(kParamOutputComponentsOptionAlpha);
     }
     outputComponents->setDefault(0);
     outputComponents->setAnimates(false);
@@ -1414,30 +1414,30 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     desc.addClipPreferencesSlaveParam(*outputComponents);
 
 #ifdef OFX_READ_OIIO_NEWMENU
-    ChoiceParamDescriptor *rChannel = desc.defineChoiceParam(kRChannelParamName);
-    rChannel->setLabels(kRChannelParamLabel, kRChannelParamLabel, kRChannelParamLabel);
-    rChannel->setHint(kRChannelParamHint);
+    ChoiceParamDescriptor *rChannel = desc.defineChoiceParam(kParamRChannel);
+    rChannel->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
+    rChannel->setHint(kParamRChannelHint);
     appendDefaultChannelList(rChannel);
     rChannel->setAnimates(true);
     page->addChild(*rChannel);
 
-    ChoiceParamDescriptor *gChannel = desc.defineChoiceParam(kGChannelParamName);
-    gChannel->setLabels(kGChannelParamLabel, kGChannelParamLabel, kGChannelParamLabel);
-    gChannel->setHint(kGChannelParamHint);
+    ChoiceParamDescriptor *gChannel = desc.defineChoiceParam(kParamGChannel);
+    gChannel->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
+    gChannel->setHint(kParamGChannelHint);
     appendDefaultChannelList(gChannel);
     gChannel->setAnimates(true);
     page->addChild(*gChannel);
 
-    ChoiceParamDescriptor *bChannel = desc.defineChoiceParam(kBChannelParamName);
-    bChannel->setLabels(kBChannelParamLabel, kBChannelParamLabel, kBChannelParamLabel);
-    bChannel->setHint(kBChannelParamHint);
+    ChoiceParamDescriptor *bChannel = desc.defineChoiceParam(kParamBChannel);
+    bChannel->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
+    bChannel->setHint(kParamBChannelHint);
     appendDefaultChannelList(bChannel);
     bChannel->setAnimates(true);
     page->addChild(*bChannel);
 
-    ChoiceParamDescriptor *aChannel = desc.defineChoiceParam(kAChannelParamName);
-    aChannel->setLabels(kAChannelParamLabel, kAChannelParamLabel, kAChannelParamLabel);
-    aChannel->setHint(kAChannelParamHint);
+    ChoiceParamDescriptor *aChannel = desc.defineChoiceParam(kParamAChannel);
+    aChannel->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
+    aChannel->setHint(kParamAChannelHint);
     appendDefaultChannelList(aChannel);
     aChannel->setAnimates(true);
     aChannel->setDefault(1); // opaque by default

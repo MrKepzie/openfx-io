@@ -39,11 +39,43 @@
 
 
 #include "ReadPFM.h"
-#include "GenericOCIO.h"
 
 #include <cstdio>
 
+#ifdef OFX_IO_USING_OCIO
+#include <OpenColorIO/OpenColorIO.h>
+#endif
+
+#include "GenericReader.h"
+#include "GenericOCIO.h"
+#include "ofxsMacros.h"
+
+#define kPluginName "ReadPFMOFX"
+#define kPluginGrouping "Image/Readers"
+#define kPluginDescription "Read PFM (Portable Float Map) files."
+#define kPluginIdentifier "fr.inria.openfx:ReadPFM"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
 #define kSupportsTiles 0
+
+class ReadPFMPlugin : public GenericReaderPlugin
+{
+public:
+
+    ReadPFMPlugin(OfxImageEffectHandle handle);
+
+    virtual ~ReadPFMPlugin();
+
+private:
+
+    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
+
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+};
+
 
 /**
  \return \c false for "Little Endian", \c true for "Big Endian".
@@ -275,6 +307,7 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
 
 using namespace OFX;
 
+mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
@@ -282,8 +315,8 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     GenericReaderDescribe(desc, kSupportsTiles);
     
     // basic labels
-    desc.setLabels("ReadPFMOFX", "ReadPFMOFX", "ReadPFMOFX");
-    desc.setPluginDescription("Read PFM (Portable Float Map) files.");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setPluginDescription(kPluginDescription);
 
 
 #ifdef OFX_EXTENSIONS_TUTTLE
@@ -308,3 +341,11 @@ ImageEffect* ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle, C
 {
     return new ReadPFMPlugin(handle);
 }
+
+
+void getReadPFMPluginID(OFX::PluginFactoryArray &ids)
+{
+    static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
+}
+

@@ -55,6 +55,18 @@
 #include <ofxsMultiThread.h>
 #endif
 
+
+#include "GenericReader.h"
+
+
+#define kPluginName "ReadEXR"
+#define kPluginGrouping "Image/Readers"
+#define kPluginDescription "Read images using OpenEXR."
+#define kPluginIdentifier "fr.inria.openfx:ReadEXR"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
+
 #ifndef OPENEXR_IMF_NAMESPACE
 #define OPENEXR_IMF_NAMESPACE Imf
 #endif
@@ -63,6 +75,26 @@ namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 using std::cout; using std::endl;
 
 static const bool kSupportsTiles = false;
+
+class ReadEXRPlugin : public GenericReaderPlugin
+{
+public:
+
+    ReadEXRPlugin(OfxImageEffectHandle handle);
+
+    virtual ~ReadEXRPlugin();
+
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+
+private:
+
+    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
+
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+    
+};
 
 namespace Exr {
     
@@ -375,7 +407,6 @@ namespace Exr {
             inputfile = 0;
             throw e;
         }
-        
     }
     
     File::~File(){
@@ -400,8 +431,6 @@ namespace Exr {
         OFX::MultiThread::Mutex *_lock;
 #endif
         
-
-        
     public:
         
         // singleton
@@ -416,8 +445,6 @@ namespace Exr {
         
         // get a specific reader
         File* get(const std::string& filename);
-        
-        
     };
     
     FileManager FileManager::s_readerManager;
@@ -482,7 +509,10 @@ ReadEXRPlugin::~ReadEXRPlugin(){
     
 }
 
-void ReadEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName){
+void
+ReadEXRPlugin::changedParam(const OFX::InstanceChangedArgs &args,
+                            const std::string &paramName)
+{
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
@@ -492,7 +522,14 @@ struct DecodingChannelsMap {
     std::string channelName;
 };
 
-void ReadEXRPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void
+ReadEXRPlugin::decode(const std::string& filename,
+                      OfxTime /*time*/,
+                      const OfxRectI& renderWindow,
+                      float *pixelData,
+                      const OfxRectI& bounds,
+                      OFX::PixelComponentEnum pixelComponents,
+                      int rowBytes)
 {
     /// we only support RGBA output clip
     if (pixelComponents != OFX::ePixelComponentRGBA) {
@@ -561,7 +598,11 @@ void ReadEXRPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
 }
 
 
-bool ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error) {
+bool
+ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,
+                                          OfxTime /*time*/,OfxRectD& rod,
+                                          std::string& error)
+{
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     if (!file) {
         error = "No such file";
@@ -576,22 +617,11 @@ bool ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
 
 using namespace OFX;
 
-#if 0
-namespace OFX
-{
-    namespace Plugin
-    {
-        void getPluginIDs(OFX::PluginFactoryArray &ids)
-        {
-            static ReadEXRPluginFactory p("fr.inria.openfx:ReadEXR", 1, 0);
-            ids.push_back(&p);
-        }
-    };
-};
-#endif
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
@@ -609,7 +639,9 @@ void ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void
+ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+                                        ContextEnum context)
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
@@ -618,9 +650,15 @@ void ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, C
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+ImageEffect*
+ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new ReadEXRPlugin(handle);
 }
 
 
+void getReadEXRPluginID(OFX::PluginFactoryArray &ids)
+{
+    static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
+}

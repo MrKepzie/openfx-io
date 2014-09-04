@@ -66,11 +66,11 @@ static bool gWasOCIOEnvVarFound = false;
 #define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderFullySafe
 
-#define kModeParamName "operation"
-#define kModeParamLabel "Operation"
-#define kModeParamHint "Operation to perform. Lin is the SCENE_LINEAR profile and Log is the COMPOSITING_LOG profile of the OCIO configuration."
-#define kModeParamChoiceLogToLin "Log to Lin"
-#define kModeParamChoiceLinToLog "Lin to Log"
+#define kParamOperation "operation"
+#define kParamOperationLabel "Operation"
+#define kParamOperationHint "Operation to perform. Lin is the SCENE_LINEAR profile and Log is the COMPOSITING_LOG profile of the OCIO configuration."
+#define kParamOperationOptionLogToLin "Log to Lin"
+#define kParamOperationOptionLinToLog "Lin to Log"
 
 class OCIOLogConvertPlugin : public OFX::ImageEffect
 {
@@ -246,7 +246,7 @@ OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
     assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
     _ocioConfigFile = fetchStringParam(kOCIOParamConfigFileName);
     assert(_ocioConfigFile);
-    _mode = fetchChoiceParam(kModeParamName);
+    _mode = fetchChoiceParam(kParamOperation);
     assert(_mode);
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
@@ -701,11 +701,11 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     pb->setHint(kOCIOHelpButtonHint);
     page->addChild(*pb);
 
-    ChoiceParamDescriptor *mode = desc.defineChoiceParam(kModeParamName);
-    mode->setLabels(kModeParamLabel, kModeParamLabel, kModeParamLabel);
-    mode->setHint(kModeParamHint);
-    mode->appendOption(kModeParamChoiceLogToLin);
-    mode->appendOption(kModeParamChoiceLinToLog);
+    ChoiceParamDescriptor *mode = desc.defineChoiceParam(kParamOperation);
+    mode->setLabels(kParamOperationLabel, kParamOperationLabel, kParamOperationLabel);
+    mode->setHint(kParamOperationHint);
+    mode->appendOption(kParamOperationOptionLogToLin);
+    mode->appendOption(kParamOperationOptionLinToLog);
     page->addChild(*mode);
 
     char* file = std::getenv("OCIO");

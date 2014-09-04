@@ -40,54 +40,8 @@
 #ifndef Io_ffmpegWriter_h
 #define Io_ffmpegWriter_h
 
-#include "GenericWriter.h"
+#include "ofxsImageEffect.h"
 
-struct AVCodecContext;
-struct AVFormatContext;
-struct AVStream;
-class WriteFFmpegPlugin : public GenericWriterPlugin {
-    
-public:
-    
-    WriteFFmpegPlugin(OfxImageEffectHandle handle);
-    
-    virtual ~WriteFFmpegPlugin();
-    
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
-    
-
-    
-private:
-    
-    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
-    
-    virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
-    
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
-    
-    
-    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
-    
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
-    
-    void freeFormat();
-    
-    AVCodecContext*   _codecContext;
-    AVFormatContext*  _formatContext;
-    AVStream* _stream;
-    
-    OFX::ChoiceParam* _format;
-    OFX::DoubleParam* _fps;
-    
-    OFX::ChoiceParam* _codec;
-    OFX::IntParam* _bitRate;
-    OFX::IntParam* _bitRateTolerance;
-    OFX::IntParam* _gopSize;
-    OFX::IntParam* _bFrames;
-    OFX::ChoiceParam* _macroBlockDecision;
-    
-};
-
-mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, {}, true);
+void getWriteFFmpegPluginID(OFX::PluginFactoryArray &ids);
 
 #endif

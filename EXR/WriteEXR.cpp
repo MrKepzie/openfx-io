@@ -44,6 +44,21 @@
 #include <ImfOutputFile.h>
 #include <half.h>
 
+
+#include <ImfChannelList.h>
+#include <ImfArray.h>
+#include <ImfOutputFile.h>
+#include <half.h>
+
+#include "GenericWriter.h"
+
+#define kPluginName "WriteEXR"
+#define kPluginGrouping "Image/Writers"
+#define kPluginDescription "Write images using OpenEXR."
+#define kPluginIdentifier "fr.inria.openfx:WriteEXR"
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
 #define kWriteEXRCompressionParamName "compression"
 #define kWriteEXRDataTypeParamName "dataType"
 
@@ -95,6 +110,30 @@ namespace Exr {
     
     
 }
+
+class WriteEXRPlugin : public GenericWriterPlugin
+{
+public:
+
+    WriteEXRPlugin(OfxImageEffectHandle handle);
+
+
+    virtual ~WriteEXRPlugin();
+
+    //virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+
+private:
+
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+
+    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
+
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImagePreMultiplied; }
+
+    OFX::ChoiceParam* _compression;
+    OFX::ChoiceParam* _bitDepth;
+    
+};
 
 WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
@@ -228,19 +267,7 @@ bool WriteEXRPlugin::isImageFile(const std::string& /*fileExtension*/) const{
 
 using namespace OFX;
 
-#if 0
-namespace OFX
-{
-    namespace Plugin
-    {
-        void getPluginIDs(OFX::PluginFactoryArray &ids)
-        {
-            static WriteEXRPluginFactory p("fr.inria.openfx:WriteEXR", 1, 0);
-            ids.push_back(&p);
-        }
-    };
-};
-#endif
+mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -248,8 +275,8 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc);
     // basic labels
-    desc.setLabels("WriteEXROFX", "WriteEXROFX", "WriteEXROFX");
-    desc.setPluginDescription("Write EXR images file using OpenEXR.");
+    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setPluginDescription(kPluginDescription);
 
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "exr", NULL };
@@ -289,4 +316,10 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     return new WriteEXRPlugin(handle);
+}
+
+void getWriteEXRPluginID(OFX::PluginFactoryArray &ids)
+{
+    static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
 }
