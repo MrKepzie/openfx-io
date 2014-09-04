@@ -53,9 +53,6 @@ OIIO_NAMESPACE_USING
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kParamPremultiplied "premultiplied"
-#define kParamPremultipliedLabel "Premultiplied"
-
 #define kParamBitDepth    "bitDepth"
 #define kParamBitDepthLabel   "Bit depth"
 
@@ -196,7 +193,6 @@ private:
 
 private:
     OFX::ChoiceParam* _bitDepth;
-    OFX::BooleanParam* _premult;
     OFX::IntParam* _quality;
     OFX::ChoiceParam* _orientation;
     OFX::ChoiceParam* _compression;
@@ -206,7 +202,6 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 {
   _bitDepth = fetchChoiceParam(kParamBitDepth);
-  _premult = fetchBooleanParam(kParamPremultiplied);
   _quality     = fetchIntParam(kParamOutputQualityName);
   _orientation = fetchChoiceParam(kParamOutputOrientationName);
   _compression = fetchChoiceParam(kParamOutputCompressionName);
@@ -363,8 +358,6 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth);
 
 
-    bool premultiply;
-    _premult->getValue(premultiply);
     int quality;
     _quality->getValue(quality);
     int orientation;
@@ -411,7 +404,10 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     }
 
 	spec.attribute("oiio:BitsPerSample", bitsPerSample);
-	spec.attribute("oiio:UnassociatedAlpha", premultiply);
+    // oiio:UnassociatedAlpha should be set if the data buffer in unassociated/unpremultiplied.
+    // However, WriteOIIO::getExpectedInputPremultiplication() stated that input to the encode()
+    // function should always be premultiplied/associated
+	//spec.attribute("oiio:UnassociatedAlpha", premultiply);
 #ifdef OFX_IO_USING_OCIO
     std::string ocioColorspace = _ocio->getOutputColorspace(time);
     float gamma = 0.;
@@ -602,11 +598,6 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     bitDepth->appendOption(kParamBitDepthOption64f, kParamBitDepthOption64fHint);
     bitDepth->setDefault(eTuttlePluginBitDepthAuto);
     page->addChild(*bitDepth);
-
-    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultiplied);
-    premult->setLabels(kParamPremultipliedLabel, kParamPremultipliedLabel, kParamPremultipliedLabel);
-    premult->setDefault(false);
-    page->addChild(*premult);
 
     OFX::IntParamDescriptor* quality = desc.defineIntParam(kParamOutputQualityName);
     quality->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
