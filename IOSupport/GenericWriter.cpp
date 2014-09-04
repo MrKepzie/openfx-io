@@ -136,12 +136,16 @@
 #define kParamLastFrame "lastFrame"
 #define kParamLastFrameLabel "Last Frame"
 
-#define kParamPremultiplied "premultiplied"
-#define kParamPremultipliedLabel "Premultiplied"
-#define kParamPremultipliedHint \
-"If checked red, green and blue channels are divided by the alpha channel "\
+#define kParamInputPremult "inputPremult"
+#define kParamInputPremultLabel "Input Premult"
+#define kParamInputPremultHint \
+"Input is considered to have this premultiplication state.\n"\
+"If is is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
 "This is set automatically from the input stream information, but can be adjusted if this information is wrong."
+#define kParamInputPremultOptionOpaqueHint "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
+#define kParamInputPremultOptionPreMultipliedHint "The image is premultiplied by its alpha (also called \"associated alpha\")."
+#define kParamInputPremultOptionUnPreMultipliedHint "The image is unpremultiplied (also called \"unassociated alpha\")."
 
 #define kParamClipInfo "clipInfo"
 #define kParamClipInfoLabel "Clip Info..."
@@ -171,7 +175,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _outputFormatType = fetchChoiceParam(kParamFormatType);
     _outputFormat = fetchChoiceParam(kParamOutputFormat);
     
-    _premult = fetchBooleanParam(kParamPremultiplied);
+    _premult = fetchBooleanParam(kParamInputPremult);
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -336,32 +340,17 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     args.renderWindow.y2 == bounds.y2;
     
     bool isOCIOIdentity = _ocio->isIdentity(args.time);
-    
-    if (renderWindowIsBounds && isOCIOIdentity) {
-        ///Render window is of the same size as the input image and we don't need to apply colorspace conversion, just
-        ///encode in the same buffer EXCEPT if the premultiplication differs from what the output expects.
-        const float* srcPixelDataToEncode;
-        
-        OFX::ImageMemory *mem = 0;
-        if (userPremult != pluginExpectedPremult) {
-            size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * srcRowBytes;
-            mem = new OFX::ImageMemory(memSize,this);
-            float *tmpPixelData = (float*)mem->lock();
-            
-            if (userPremult) {
-                unPremultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
-            } else {
-                premultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
-            }
-            
-            srcPixelDataToEncode = tmpPixelData;
-        } else {
-            srcPixelDataToEncode = (const float*)srcPixelData;
-        }
-            
-        encode(filename, args.time, srcPixelDataToEncode, args.renderWindow, pixelComponents, srcRowBytes);
+
+    // premultiplication/unpremultiplication is only useful for RGBA data
+    bool noPremult = (pixelComponents != OFX::ePixelComponentRGBA) || (userPremult == OFX::eImageOpaque);
+
+    if (renderWindowIsBounds &&
+        isOCIOIdentity &&
+        (noPremult || userPremult == pluginExpectedPremult)) {
+        // Render window is of the same size as the input image and we don't need to apply colorspace conversion
+        // or premultiplication operations.
+
+        encode(filename, args.time, (const float*)srcPixelData, args.renderWindow, pixelComponents, srcRowBytes);
         // copy to dstImg if necessary
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
@@ -375,18 +364,11 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
             
-            
-            copyPixelData(args.renderWindow, srcPixelDataToEncode, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
+            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
         }
-
-        ///Don't forget to free memory
-        if (mem) {
-            // unlock (the OFX::ImageMemory destructor frees the memory)
-            mem->unlock();
-            delete mem;
-        }
-        
     } else {
+        // generic case: some conversions are needed.
+
         // allocate
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
         int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
@@ -394,40 +376,51 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         OFX::ImageMemory mem(memSize,this);
         float *tmpPixelData = (float*)mem.lock();
         
-        ///Set to black and transparant so that outside the portion defined by the image there's nothing
+        // Set to black and transparant so that outside the portion defined by the image there's nothing.
         if (!renderWindowIsBounds) {
             std::memset(tmpPixelData, 0, memSize);
         }
         
-        ///Clip the render window to the bounds of the source image!
+        // Clip the render window to the bounds of the source image.
         OfxRectI renderWindowClipped;
         intersect(args.renderWindow, bounds, &renderWindowClipped);
         
-        
-        
-        if (userPremult && !isOCIOIdentity) {
-            // The input premultiplied and we need to unpremultiply it to give it to OCIO
-            unPremultPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents
-                               , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+        if (isOCIOIdentity) {
+            // bypass OCIO
+
+            if (noPremult || userPremult == pluginExpectedPremult) {
+                // copy the whole raw src image
+                copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+            } else if (userPremult == OFX::eImagePreMultiplied) {
+                assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
+                unPremultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+            } else {
+                assert(userPremult == OFX::eImageUnPreMultiplied);
+                assert(pluginExpectedPremult == OFX::eImagePreMultiplied);
+                premultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
+                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+            }
         } else {
-            // copy the whole raw src image
-            copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
-            
-        }
-        
-        if (!isOCIOIdentity) {
-            
+            assert(!isOCIOIdentity);
+            // OCIO expects unpremultiplied input
+            if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
+                // copy the whole raw src image
+                copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+            } else {
+                assert(userPremult == OFX::eImagePreMultiplied);
+                unPremultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+            }
             // do the color-space conversion
             _ocio->apply(args.time, renderWindowClipped, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
-            
+
+            ///If needed, re-premult the image for the plugin to work correctly
+            if (pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
+                premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents
+                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+            }
         }
-        
-        ///If needed, re-premult the image for the plugin to work correctly
-        if (pluginExpectedPremult == OFX::eImagePreMultiplied) {
-            premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents
-                               , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
-        }
-        
         // write theimage file
         encode(filename, args.time, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
         // copy to dstImg if necessary
@@ -447,8 +440,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
         }
         
-        // unlock (the OFX::ImageMemory destructor frees the memory)
-        mem.unlock();
+        // mem is freed at destruction
     }
     
     clearPersistentMessage();
@@ -852,16 +844,14 @@ void
 GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && _inputClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_inputClip->getPreMultiplication()) {
-            case OFX::eImageOpaque:
-                break;
-            case OFX::eImagePreMultiplied:
-                _premult->setValue(true);
-                break;
-            case OFX::eImageUnPreMultiplied:
-                _premult->setValue(false);
-                break;
-        }
+        OFX::PreMultiplicationEnum premult = _inputClip->getPreMultiplication();
+#     ifdef DEBUG
+        OFX::PixelComponentEnum components = _inputClip->getPixelComponents();
+        assert((components == OFX::ePixelComponentAlpha && premult != OFX::eImageOpaque) ||
+               (components == OFX::ePixelComponentRGB && premult == OFX::eImageOpaque) ||
+               (components == OFX::ePixelComponentRGBA));
+#      endif
+        _premult->setValue(premult);
     }
 }
 
@@ -952,95 +942,133 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     //////////Output file
-    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kParamFilename);
-    fileParam->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
-    fileParam->setStringType(OFX::eStringTypeFilePath);
-    fileParam->setFilePathExists(false);
-    fileParam->setHint(kParamFilenameHint);
-    // in the Writer context, the script name should be kOfxImageEffectFileParamName, for consistency with the reader nodes @see kOfxImageEffectContextReader
-    fileParam->setScriptName(kParamFilename);
-    fileParam->setAnimates(!isVideoStreamPlugin);
-    desc.addClipPreferencesSlaveParam(*fileParam);
-
-    page->addChild(*fileParam);
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kParamFilename);
+        param->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
+        param->setStringType(OFX::eStringTypeFilePath);
+        param->setFilePathExists(false);
+        param->setHint(kParamFilenameHint);
+        // in the Writer context, the script name should be kOfxImageEffectFileParamName, for consistency with the reader nodes @see kOfxImageEffectContextReader
+        param->setScriptName(kParamFilename);
+        param->setAnimates(!isVideoStreamPlugin);
+        desc.addClipPreferencesSlaveParam(*param);
+        
+        page->addChild(*param);
+    }
 
     //////////// Output type
-    OFX::ChoiceParamDescriptor* outputType = desc.defineChoiceParam(kParamFormatType);
-    outputType->setLabels(kParamFormatTypeLabel, kParamFormatTypeLabel, kParamFormatTypeLabel);
-    outputType->appendOption("Input stream format","Renders using for format the input stream's format.");
-    outputType->appendOption("Fixed format","Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter.");
-    outputType->setDefault(1);
-    outputType->setAnimates(false);
-    outputType->setHint(kParamFormatTypeHint);
-    outputType->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    page->addChild(*outputType);
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormatType);
+        param->setLabels(kParamFormatTypeLabel, kParamFormatTypeLabel, kParamFormatTypeLabel);
+        param->appendOption("Input stream format","Renders using for format the input stream's format.");
+        param->appendOption("Fixed format","Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter.");
+        param->setDefault(1);
+        param->setAnimates(false);
+        param->setHint(kParamFormatTypeHint);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
     
     //////////// Output format
-    OFX::ChoiceParamDescriptor* outputFormat = desc.defineChoiceParam(kParamOutputFormat);
-    outputFormat->setLabels(kParamOutputFormatLabel, kParamOutputFormatLabel, kParamOutputFormatLabel);
-    outputFormat->setAnimates(true);
-    outputFormat->setHint(kParamOutputFormatHint);
-    outputFormat->appendOption(kParamFormatPCVideoLabel);
-    outputFormat->appendOption(kParamFormatNTSCLabel);
-    outputFormat->appendOption(kParamFormatPALLabel);
-    outputFormat->appendOption(kParamFormatHDLabel);
-    outputFormat->appendOption(kParamFormatNTSC169Label);
-    outputFormat->appendOption(kParamFormatPAL169Label);
-    outputFormat->appendOption(kParamFormat1kSuper35Label);
-    outputFormat->appendOption(kParamFormat1kCinemascopeLabel);
-    outputFormat->appendOption(kParamFormat2kSuper35Label);
-    outputFormat->appendOption(kParamFormat2kCinemascopeLabel);
-    outputFormat->appendOption(kParamFormat4kSuper35Label);
-    outputFormat->appendOption(kParamFormat4kCinemascopeLabel);
-    outputFormat->appendOption(kParamFormatSquare256Label);
-    outputFormat->appendOption(kParamFormatSquare512Label);
-    outputFormat->appendOption(kParamFormatSquare1kLabel);
-    outputFormat->appendOption(kParamFormatSquare2kLabel);
-    outputFormat->setDefault(3);
-    page->addChild(*outputFormat);
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
+        param->setLabels(kParamOutputFormatLabel, kParamOutputFormatLabel, kParamOutputFormatLabel);
+        param->setAnimates(true);
+        param->setHint(kParamOutputFormatHint);
+        assert(param->getNOptions() == eParamFormatPCVideo);
+        param->appendOption(kParamFormatPCVideoLabel);
+        assert(param->getNOptions() == eParamFormatNTSC);
+        param->appendOption(kParamFormatNTSCLabel);
+        assert(param->getNOptions() == eParamFormatPAL);
+        param->appendOption(kParamFormatPALLabel);
+        assert(param->getNOptions() == eParamFormatHD);
+        param->appendOption(kParamFormatHDLabel);
+        assert(param->getNOptions() == eParamFormatNTSC169);
+        param->appendOption(kParamFormatNTSC169Label);
+        assert(param->getNOptions() == eParamFormatPAL169);
+        param->appendOption(kParamFormatPAL169Label);
+        assert(param->getNOptions() == eParamFormat1kSuper35);
+        param->appendOption(kParamFormat1kSuper35Label);
+        assert(param->getNOptions() == eParamFormat1kCinemascope);
+        param->appendOption(kParamFormat1kCinemascopeLabel);
+        assert(param->getNOptions() == eParamFormat2kSuper35);
+        param->appendOption(kParamFormat2kSuper35Label);
+        assert(param->getNOptions() == eParamFormat2kCinemascope);
+        param->appendOption(kParamFormat2kCinemascopeLabel);
+        assert(param->getNOptions() == eParamFormat4kSuper35);
+        param->appendOption(kParamFormat4kSuper35Label);
+        assert(param->getNOptions() == eParamFormat4kCinemascope);
+        param->appendOption(kParamFormat4kCinemascopeLabel);
+        assert(param->getNOptions() == eParamFormatSquare256);
+        param->appendOption(kParamFormatSquare256Label);
+        assert(param->getNOptions() == eParamFormatSquare512);
+        param->appendOption(kParamFormatSquare512Label);
+        assert(param->getNOptions() == eParamFormatSquare1k);
+        param->appendOption(kParamFormatSquare1kLabel);
+        assert(param->getNOptions() == eParamFormatSquare2k);
+        param->appendOption(kParamFormatSquare2kLabel);
+        param->setDefault(eParamFormatHD);
+        page->addChild(*param);
+    }
+
     // insert OCIO parameters
     GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
 
-    OFX::BooleanParamDescriptor* premult = desc.defineBooleanParam(kParamPremultiplied);
-    premult->setLabels(kParamPremultipliedLabel, kParamPremultipliedLabel, kParamPremultipliedLabel);
-    premult->setAnimates(true);
-    premult->setHint(kParamPremultipliedHint);
-    premult->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    desc.addClipPreferencesSlaveParam(*premult);
-    page->addChild(*premult);
-    
-    PushButtonParamDescriptor *clipInfo = desc.definePushButtonParam(kParamClipInfo);
-    clipInfo->setLabels(kParamClipInfoLabel, kParamClipInfoLabel, kParamClipInfoLabel);
-    clipInfo->setHint(kParamClipInfoHint);
-    page->addChild(*clipInfo);
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamInputPremult);
+        param->setLabels(kParamInputPremultLabel, kParamInputPremultLabel, kParamInputPremultLabel);
+        param->setAnimates(true);
+        param->setHint(kParamInputPremultHint);
+        assert(param->getNOptions() == eImageOpaque);
+        param->appendOption(premultString(eImageOpaque), kParamInputPremultOptionOpaqueHint);
+        assert(param->getNOptions() == eImagePreMultiplied);
+        param->appendOption(premultString(eImagePreMultiplied), kParamInputPremultOptionPreMultipliedHint);
+        assert(param->getNOptions() == eImageUnPreMultiplied);
+        param->appendOption(premultString(eImageUnPreMultiplied), kParamInputPremultOptionUnPreMultipliedHint);
+        param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
+    }
+
+    {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamClipInfo);
+        param->setLabels(kParamClipInfoLabel, kParamClipInfoLabel, kParamClipInfoLabel);
+        param->setHint(kParamClipInfoHint);
+        page->addChild(*param);
+    }
+
     ///////////Frame range choosal
-    OFX::ChoiceParamDescriptor* frameRangeChoiceParam = desc.defineChoiceParam(kParamFrameRange);
-    frameRangeChoiceParam->setLabels(kParamFrameRangeLabel, kParamFrameRangeLabel, kParamFrameRangeLabel);
-    frameRangeChoiceParam->setHint(kParamFrameRangeHint);
-    frameRangeChoiceParam->appendOption(kParamFrameRangeOptionUnion, kParamFrameRangeOptionUnionHint);
-    frameRangeChoiceParam->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
-    frameRangeChoiceParam->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
-    frameRangeChoiceParam->setAnimates(true);
-    frameRangeChoiceParam->setDefault(0);
-    page->addChild(*frameRangeChoiceParam);
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFrameRange);
+        param->setLabels(kParamFrameRangeLabel, kParamFrameRangeLabel, kParamFrameRangeLabel);
+        param->setHint(kParamFrameRangeHint);
+        param->appendOption(kParamFrameRangeOptionUnion, kParamFrameRangeOptionUnionHint);
+        param->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
+        param->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
+        param->setAnimates(true);
+        param->setDefault(0);
+        page->addChild(*param);
+    }
+
     /////////////First frame
-    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kParamFirstFrame);
-    firstFrameParam->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
-    firstFrameParam->setIsSecret(true);
-    firstFrameParam->setAnimates(true);
-    page->addChild(*firstFrameParam);
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
+        param->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
+        param->setIsSecret(true);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
 
     ////////////Last frame
-    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kParamLastFrame);
-    lastFrameParam->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
-    lastFrameParam->setIsSecret(true);
-    lastFrameParam->setAnimates(true);
-    page->addChild(*lastFrameParam);
-
-
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
+        param->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
+        param->setIsSecret(true);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    
     return page;
 }
 
