@@ -140,7 +140,7 @@
 #define kParamPremultipliedLabel "Premultiplied"
 #define kParamPremultipliedHint \
 "If checked red, green and blue channels are divided by the alpha channel "\
-"beforing applying the colorspace conversion.\n"\
+"before applying the colorspace conversion.\n"\
 "This is set automatically from the input stream information, but can be adjusted if this information is wrong."
 
 #define kParamClipInfo "clipInfo"
