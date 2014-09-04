@@ -175,7 +175,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _outputFormatType = fetchChoiceParam(kParamFormatType);
     _outputFormat = fetchChoiceParam(kParamOutputFormat);
     
-    _premult = fetchBooleanParam(kParamInputPremult);
+    _premult = fetchChoiceParam(kParamInputPremult);
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -304,15 +304,10 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     
     
     ///This is automatically the same generally as inputClip premultiplication but can differ is the user changed it.
-    bool userExpectedPremultBoolean;
-    _premult->getValueAtTime(args.time, userExpectedPremultBoolean);
-    OFX::PreMultiplicationEnum userPremult;
-    if (userExpectedPremultBoolean) {
-        userPremult = OFX::eImagePreMultiplied;
-    } else {
-        userPremult = OFX::eImageUnPreMultiplied;
-    }
-    
+    int userPremult_i;
+    _premult->getValueAtTime(args.time, userPremult_i);
+    OFX::PreMultiplicationEnum userPremult = (OFX::PreMultiplicationEnum)userPremult_i;
+
     ///This is what the plug-in expects to be passed to the encode function.
     OFX::PreMultiplicationEnum pluginExpectedPremult = getExpectedInputPremultiplication();
 

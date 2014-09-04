@@ -177,7 +177,7 @@ protected:
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
     OFX::ChoiceParam* _outputFormatType; //< the type of output format
     OFX::ChoiceParam* _outputFormat; //< the output format to render
-    OFX::BooleanParam* _premult;
+    OFX::ChoiceParam* _premult;
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
