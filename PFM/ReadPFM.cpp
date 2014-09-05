@@ -57,7 +57,10 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kSupportsTiles 0
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha true
+#define kSupportsTiles false
 
 class ReadPFMPlugin : public GenericReaderPlugin
 {
@@ -74,6 +77,9 @@ private:
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+
+    /** @brief get the clip preferences */
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 };
 
 
@@ -118,7 +124,7 @@ static void invert_endianness(T *const buffer, const unsigned int size)
 }
 
 ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
 {
 }
 
@@ -304,6 +310,57 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     return true;
 }
 
+/* Override the clip preferences */
+void
+ReadPFMPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    int startingTime = getStartingTime();
+    std::string filename;
+    OfxStatus st = getFilenameAtTime(startingTime, filename);
+    if (st != kOfxStatOK) {
+        return;
+    }
+    std::stringstream ss;
+
+    // read PFM header
+    std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
+
+    char pfm_type = 0;
+    char item[1024] = { 0 };
+    int err = 0;
+    while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+        std::fgetc(nfile);
+    }
+    if (std::sscanf(item, " P%c", &pfm_type) != 1) {
+        std::fclose(nfile);
+        setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
+    }
+
+    // set the components of _outputClip
+    OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
+    if (pfm_type == 'F') {
+        if (_supportsRGB) {
+            outputComponents = OFX::ePixelComponentRGB;
+        } else if (_supportsRGBA) {
+            outputComponents = OFX::ePixelComponentRGBA;
+        }
+    } else if (pfm_type == 'f') {
+        if (_supportsAlpha) {
+            outputComponents = OFX::ePixelComponentAlpha;
+        } else if (_supportsRGBA) {
+            outputComponents = OFX::ePixelComponentRGBA;
+        }
+    } else {
+        return;
+    }
+    clipPreferences.setClipComponents(*_outputClip, outputComponents);
+    if (outputComponents != OFX::ePixelComponentRGBA && outputComponents != OFX::ePixelComponentAlpha) {
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+    } else {
+        // output is always premultiplied
+        clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
+    }
+}
 
 using namespace OFX;
 
@@ -320,10 +377,9 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-
     const char* extensions[] = { "pfm", NULL };
     desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(40);
+    desc.setPluginEvaluation(60); // better than ReadOIIO
 #endif
 }
 
@@ -331,7 +387,8 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ true, /*supportsAlpha =*/ true, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }

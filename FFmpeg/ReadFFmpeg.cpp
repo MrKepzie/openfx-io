@@ -55,7 +55,10 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kSupportsTiles 0
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha false
+#define kSupportsTiles false
 
 class ReadFFmpegPlugin : public GenericReaderPlugin
 {
@@ -73,6 +76,9 @@ public:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
+    /** @brief get the clip preferences */
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
+
     bool loadNearestFrame() const;
 
 private:
@@ -89,7 +95,7 @@ private:
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
 , _ffmpegFile(0)
 , _buffer(0)
 , _bufferWidth(0)
@@ -143,7 +149,44 @@ bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
     return !FFmpeg::isImageFile(filename);
 }
 
-void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& imgBounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+template<int nComponents>
+static void
+fillWindow(const unsigned char* buffer,
+           const OfxRectI& renderWindow,
+           float *pixelData,
+           const OfxRectI& imgBounds,
+           OFX::PixelComponentEnum pixelComponents,
+           int rowBytes)
+{
+    assert((nComponents == 3 && pixelComponents == OFX::ePixelComponentRGB) ||
+           (nComponents == 4 && pixelComponents == OFX::ePixelComponentRGBA));
+    ///fill the renderWindow in dstImg with the buffer freshly decoded.
+    for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
+        int srcY = renderWindow.y2 - y - 1;
+        float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
+        const unsigned char* src_pixels = buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
+
+        for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
+            int srcCol = x * 3;
+            int dstCol = x * nComponents;
+            dst_pixels[dstCol + 0] = intToFloat<256>(src_pixels[srcCol + 0]);
+            dst_pixels[dstCol + 1] = intToFloat<256>(src_pixels[srcCol + 1]);
+            dst_pixels[dstCol + 2] = intToFloat<256>(src_pixels[srcCol + 2]);
+            if (nComponents == 4) {
+                dst_pixels[dstCol + 3] = 1.f;
+            }
+        }
+    }
+}
+
+void
+ReadFFmpegPlugin::decode(const std::string& filename,
+                         OfxTime time,
+                         const OfxRectI& renderWindow,
+                         float *pixelData,
+                         const OfxRectI& imgBounds,
+                         OFX::PixelComponentEnum pixelComponents,
+                         int rowBytes)
 {
     if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
         _ffmpegFile->open(filename);
@@ -155,13 +198,14 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
         return;
     }
 
-    /// we only support RGBA output clip
-    if(pixelComponents != OFX::ePixelComponentRGBA) {
+    /// we only support RGB or RGBA output clip
+    if ((pixelComponents != OFX::ePixelComponentRGB) &&
+        (pixelComponents != OFX::ePixelComponentRGBA)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
-    if(!_ffmpegFile) {
+    if (!_ffmpegFile) {
         setPersistentMessage(OFX::Message::eMessageError, "",filename +  ": Missing frame");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -189,24 +233,24 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     // see http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImagePropPixelAspectRatio
     //dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
     
-    if(_bufferWidth != width || _bufferHeight != height){
+    if (_bufferWidth != width || _bufferHeight != height){
         delete [] _buffer;
         _buffer = 0;
     }
     
-    if(!_buffer){
+    if (!_buffer){
         _buffer = new unsigned char[width * height * 3];
         _bufferHeight = height;
         _bufferWidth = width;
     }
     
     //< round the time to an int to get a frame number ? Not sure about this
-    try{
+    try {
         if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5),loadNearestFrame())) {
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
-    }catch(const std::exception& e){
+    } catch (const std::exception& e) {
         int choice;
         _missingFrameParam->getValue(choice);
         if(choice == 1){ //error
@@ -217,19 +261,10 @@ void ReadFFmpegPlugin::decode(const std::string& filename, OfxTime time, const O
     }
 
     ///fill the renderWindow in dstImg with the buffer freshly decoded.
-    for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
-        int srcY = renderWindow.y2 - y - 1;
-        float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
-        const unsigned char* src_pixels = _buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
-        
-        for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
-            int srcCol = x * 3;
-            int dstCol = x * 4;
-            dst_pixels[dstCol + 0] = intToFloat<256>(src_pixels[srcCol + 0]);
-            dst_pixels[dstCol + 1] = intToFloat<256>(src_pixels[srcCol + 1]);
-            dst_pixels[dstCol + 2] = intToFloat<256>(src_pixels[srcCol + 2]);
-            dst_pixels[dstCol + 3] = 1.f;
-        }
+    if (pixelComponents == OFX::ePixelComponentRGB) {
+        fillWindow<3>(_buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+    } else if (pixelComponents == OFX::ePixelComponentRGBA) {
+        fillWindow<4>(_buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
     }
 }
 
@@ -286,6 +321,22 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
     rod.y1 = 0;
     rod.y2 = height;
     return true;
+}
+
+
+/* Override the clip preferences */
+void
+ReadFFmpegPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
+    if (_supportsRGB) {
+        outputComponents = OFX::ePixelComponentRGB;
+    } else if (_supportsRGBA) {
+        outputComponents = OFX::ePixelComponentRGBA;
+    }
+    clipPreferences.setClipComponents(*_outputClip, outputComponents);
+    // FFmpeg videos are always opaque, even when output is RGBA
+    clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
 }
 
 using namespace OFX;
@@ -394,7 +445,8 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
                                                         ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "reference");
 }

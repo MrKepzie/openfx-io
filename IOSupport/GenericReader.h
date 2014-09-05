@@ -60,7 +60,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles);
+    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha);
     
     virtual ~GenericReaderPlugin();
 
@@ -109,6 +109,13 @@ public:
     virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE;
     
     /**
+     * @brief Override to set the output clip components and premultiplication.
+     * The default implementation sets it to the most chromatic components supported by the host and premultiplied.
+     * By convention, the output of readers is either premultiplied or opaque.
+     **/
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
+
+    /**
      * @brief Overriden to clear any OCIO cache. 
      * This function calls clearAnyCache() if you have any cache to clear.
      **/
@@ -118,6 +125,8 @@ protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
     OfxStatus getFilenameAtTime(double t, std::string& filename);
+
+    int getStartingTime();
 
 private:
     
@@ -261,6 +270,11 @@ protected:
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
     std::auto_ptr<GenericOCIO> _ocio;
+
+    bool _supportsRGBA;
+    bool _supportsRGB;
+    bool _supportsAlpha;
+
 private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     

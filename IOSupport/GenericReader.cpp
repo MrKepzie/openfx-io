@@ -181,7 +181,11 @@ enum MissingEnum
 static bool gHostIsNatron   = false;
 
 
-GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles)
+GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
+                                         bool supportsRGBA,
+                                         bool supportsRGB,
+                                         bool supportsAlpha,
+                                         bool supportsTiles)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
 , _outputClip(0)
@@ -201,6 +205,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceFromFiles()
+, _supportsRGBA(false)
+, _supportsRGB(false)
+, _supportsAlpha(false)
 , _supportsTiles(supportsTiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -244,6 +251,27 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle, bool suppo
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         return;
     }
+
+    const OFX::ImageEffectHostDescription::PixelComponentArray& supportedComponents = OFX::getImageEffectHostDescription()->_supportedComponents;
+    for (OFX::ImageEffectHostDescription::PixelComponentArray::const_iterator it = supportedComponents.begin();
+         it != supportedComponents.end();
+         ++it) {
+        switch (*it) {
+            case OFX::ePixelComponentRGBA:
+                _supportsRGBA  = supportsRGBA;
+                break;
+            case OFX::ePixelComponentRGB:
+                _supportsRGBA = supportsRGB;
+                break;
+            case OFX::ePixelComponentAlpha:
+                _supportsRGBA = supportsAlpha;
+                break;
+            default:
+                // other components are not supported by this plugin
+                break;
+        }
+    }
+
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -559,6 +587,14 @@ GenericReaderPlugin::getFilenameAtTime(double t, std::string& filename)
             break;
     }
     return kOfxStatOK;
+}
+
+int
+GenericReaderPlugin::getStartingTime()
+{
+    int startingTime;
+    _startingTime->getValue(startingTime);
+    return startingTime;
 }
 
 /* set up and run a copy processor */
@@ -1360,6 +1396,28 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _settingFrameRange = false;
     } else {
         _ocio->changedParam(args, paramName);
+    }
+}
+
+/* Override the clip preferences */
+void
+GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
+    if (_supportsRGBA) {
+        outputComponents = OFX::ePixelComponentRGBA;
+    } else if (_supportsRGB) {
+        outputComponents = OFX::ePixelComponentRGB;
+    } else if (_supportsAlpha) {
+        outputComponents = OFX::ePixelComponentAlpha;
+    }
+    clipPreferences.setClipComponents(*_outputClip, outputComponents);
+    if (outputComponents == OFX::ePixelComponentRGB) {
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+    } else {
+        // output is always premultiplied
+        assert(outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha);
+        clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
     }
 }
 

@@ -121,15 +121,19 @@ OIIO_NAMESPACE_USING
 
 #endif // OFX_READ_OIIO_NEWMENU
 
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha true
 #ifdef OFX_READ_OIIO_USES_CACHE
-static const bool kSupportsTiles = true;
+#define kSupportsTiles true
 #else
-static const bool kSupportsTiles = false;
+// It is more efficient to read full frames if no cache is used.
+#define kSupportsTiles false
 #endif
 
-static bool gSupportsRGBA   = false;
-static bool gSupportsRGB    = false;
-static bool gSupportsAlpha  = false;
+static bool gHostSupportsRGBA   = false;
+static bool gHostSupportsRGB    = false;
+static bool gHostSupportsAlpha  = false;
 static bool gHostIsNatron   = false;
 
 static OFX::PixelComponentEnum gOutputComponentsMap[4];
@@ -193,7 +197,7 @@ private:
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
 #ifdef OFX_READ_OIIO_USES_CACHE
 #  ifdef OFX_READ_OIIO_SHARED_CACHE
 , _cache(ImageCache::create(true)) // shared cache
@@ -1200,27 +1204,11 @@ ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     _outputComponents->getValue(outputComponents_i);
     OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
-    if (outputComponents != OFX::ePixelComponentRGBA) {
+    if (outputComponents != OFX::ePixelComponentRGBA && outputComponents != OFX::ePixelComponentAlpha) {
         clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
     } else {
-#     ifdef OFX_READ_OIIO_SHARED_CACHE
         // output is always premultiplied
         clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
-#     else
-
-        // set the premultiplication of _outputClip
-        // OIIO always outputs premultiplied images, except if it's told not to do so
-        bool unassociatedAlpha = false;
-
-        // We assume that if "unassociatedAlpha" is checked, output is UnPremultiplied,
-        // but its only true if the image had originally unassociated alpha
-        // (OIIO metadata "oiio:UnassociatedAlpha").
-        // However, it is not possible to check here if the alpha in the
-        // images is associated or not. If the user checked the option, it's
-        // probably because it was not associated/premultiplied.
-        _unassociatedAlpha->getValue(unassociatedAlpha);
-        clipPreferences.setOutputPremultiplication(unassociatedAlpha ? OFX::eImageUnPreMultiplied : OFX::eImagePreMultiplied);
-#     endif
     }
 }
 
@@ -1318,13 +1306,13 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
          ++it) {
         switch (*it) {
             case ePixelComponentRGBA:
-                gSupportsRGBA  = true;
+                gHostSupportsRGBA  = true;
                 break;
             case ePixelComponentRGB:
-                gSupportsRGB = true;
+                gHostSupportsRGB = true;
                 break;
             case ePixelComponentAlpha:
-                gSupportsAlpha = true;
+                gHostSupportsAlpha = true;
                 break;
             default:
                 // other components are not supported by this plugin
@@ -1333,15 +1321,15 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     }
     {
         int i = 0;
-        if (gSupportsRGBA) {
+        if (gHostSupportsRGBA) {
             gOutputComponentsMap[i] = ePixelComponentRGBA;
             ++i;
         }
-        if (gSupportsRGB) {
+        if (gHostSupportsRGB) {
             gOutputComponentsMap[i] = ePixelComponentRGB;
             ++i;
         }
-        if (gSupportsAlpha) {
+        if (gHostSupportsAlpha) {
             gOutputComponentsMap[i] = ePixelComponentAlpha;
             ++i;
         }
@@ -1401,15 +1389,15 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
         // the following must be in the same order as in describe(), so that the map works
-        if (gSupportsRGBA) {
+        if (gHostSupportsRGBA) {
             assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
             param->appendOption(kParamOutputComponentsOptionRGBA);
         }
-        if (gSupportsRGB) {
+        if (gHostSupportsRGB) {
             assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
             param->appendOption(kParamOutputComponentsOptionRGB);
         }
-        if (gSupportsAlpha) {
+        if (gHostSupportsAlpha) {
             assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
             param->appendOption(kParamOutputComponentsOptionAlpha);
         }

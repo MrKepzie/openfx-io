@@ -74,7 +74,10 @@ namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
 using std::cout; using std::endl;
 
-static const bool kSupportsTiles = false;
+#define kSupportsRGBA true
+#define kSupportsRGB false
+#define kSupportsAlpha false
+#define kSupportsTiles false
 
 class ReadEXRPlugin : public GenericReaderPlugin
 {
@@ -500,7 +503,7 @@ namespace Exr {
 
 
 ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
 {
     Exr::FileManager::s_readerManager.initialize();
 }
@@ -644,7 +647,8 @@ ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                                         ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ false, /*supportsAlpha =*/ false, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
