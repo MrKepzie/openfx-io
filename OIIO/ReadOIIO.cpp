@@ -1380,68 +1380,79 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
 #endif
 
-    OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kParamShowMetadata);
-    pb->setLabels(kParamShowMetadataLabel, kParamShowMetadataLabel, kParamShowMetadataLabel);
-    pb->setHint(kParamShowMetadataHint);
-    page->addChild(*pb);
+    {
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
+        param->setLabels(kParamShowMetadataLabel, kParamShowMetadataLabel, kParamShowMetadataLabel);
+        param->setHint(kParamShowMetadataHint);
+        page->addChild(*param);
+    }
 
 #ifndef OFX_READ_OIIO_NEWMENU
-    IntParamDescriptor *firstChannel = desc.defineIntParam(kParamFirstChannel);
-    firstChannel->setLabels(kParamFirstChannelLabel, kParamFirstChannelLabel, kParamFirstChannelLabel);
-    firstChannel->setHint(kParamFirstChannelHint);
-    page->addChild(*firstChannel);
+    {
+        IntParamDescriptor *param = desc.defineIntParam(kParamFirstChannel);
+        param->setLabels(kParamFirstChannelLabel, kParamFirstChannelLabel, kParamFirstChannelLabel);
+        param->setHint(kParamFirstChannelHint);
+        page->addChild(*param);
+    }
 #endif
 
-    ChoiceParamDescriptor *outputComponents = desc.defineChoiceParam(kParamOutputComponents);
-    outputComponents->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
-    outputComponents->setHint(kParamOutputComponentsHint);
-    // the following must be in the same order as in describe(), so that the map works
-    if (gSupportsRGBA) {
-        assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentRGBA);
-        outputComponents->appendOption(kParamOutputComponentsOptionRGBA);
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOutputComponents);
+        param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
+        param->setHint(kParamOutputComponentsHint);
+        // the following must be in the same order as in describe(), so that the map works
+        if (gSupportsRGBA) {
+            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
+            param->appendOption(kParamOutputComponentsOptionRGBA);
+        }
+        if (gSupportsRGB) {
+            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
+            param->appendOption(kParamOutputComponentsOptionRGB);
+        }
+        if (gSupportsAlpha) {
+            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
+            param->appendOption(kParamOutputComponentsOptionAlpha);
+        }
+        param->setDefault(0);
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
     }
-    if (gSupportsRGB) {
-        assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentRGB);
-        outputComponents->appendOption(kParamOutputComponentsOptionRGB);
-    }
-    if (gSupportsAlpha) {
-        assert(gOutputComponentsMap[outputComponents->getNOptions()] == ePixelComponentAlpha);
-        outputComponents->appendOption(kParamOutputComponentsOptionAlpha);
-    }
-    outputComponents->setDefault(0);
-    outputComponents->setAnimates(false);
-    page->addChild(*outputComponents);
-    desc.addClipPreferencesSlaveParam(*outputComponents);
-
+    
 #ifdef OFX_READ_OIIO_NEWMENU
-    ChoiceParamDescriptor *rChannel = desc.defineChoiceParam(kParamRChannel);
-    rChannel->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
-    rChannel->setHint(kParamRChannelHint);
-    appendDefaultChannelList(rChannel);
-    rChannel->setAnimates(true);
-    page->addChild(*rChannel);
-
-    ChoiceParamDescriptor *gChannel = desc.defineChoiceParam(kParamGChannel);
-    gChannel->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
-    gChannel->setHint(kParamGChannelHint);
-    appendDefaultChannelList(gChannel);
-    gChannel->setAnimates(true);
-    page->addChild(*gChannel);
-
-    ChoiceParamDescriptor *bChannel = desc.defineChoiceParam(kParamBChannel);
-    bChannel->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
-    bChannel->setHint(kParamBChannelHint);
-    appendDefaultChannelList(bChannel);
-    bChannel->setAnimates(true);
-    page->addChild(*bChannel);
-
-    ChoiceParamDescriptor *aChannel = desc.defineChoiceParam(kParamAChannel);
-    aChannel->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
-    aChannel->setHint(kParamAChannelHint);
-    appendDefaultChannelList(aChannel);
-    aChannel->setAnimates(true);
-    aChannel->setDefault(1); // opaque by default
-    page->addChild(*aChannel);
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamRChannel);
+        param->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
+        param->setHint(kParamRChannelHint);
+        appendDefaultChannelList(param);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamGChannel);
+        param->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
+        param->setHint(kParamGChannelHint);
+        appendDefaultChannelList(param);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamBChannel);
+        param->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
+        param->setHint(kParamBChannelHint);
+        appendDefaultChannelList(param);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamAChannel);
+        param->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
+        param->setHint(kParamAChannelHint);
+        appendDefaultChannelList(param);
+        param->setAnimates(true);
+        param->setDefault(1); // opaque by default
+        page->addChild(*param);
+    }
 #endif
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");

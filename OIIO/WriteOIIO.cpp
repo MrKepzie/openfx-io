@@ -54,7 +54,7 @@ OIIO_NAMESPACE_USING
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
 #define kParamBitDepth    "bitDepth"
-#define kParamBitDepthLabel   "Bit depth"
+#define kParamBitDepthLabel   "Bit Depth"
 
 #define kParamBitDepthOptionAuto     "auto"
 #define kParamBitDepthOptionAutoHint "Guess from the output format"
@@ -68,7 +68,7 @@ OIIO_NAMESPACE_USING
 #define kParamBitDepthOption16     "16i"
 #define kParamBitDepthOption16Hint  "16 bits integer"
 #define kParamBitDepthOption16f    "16f"
-#define kParamBitDepthOption16fLabel "16 bits floating point"
+#define kParamBitDepthOption16fHint "16 bits floating point"
 #define kParamBitDepthOption32     "32i"
 #define kParamBitDepthOption32Hint  "32 bits integer"
 #define kParamBitDepthOption32f    "32f"
@@ -126,36 +126,46 @@ enum ETuttlePluginComponents
 #define kParamOutputOrientationR90Clockwise          "90clockwise"
 #define kParamOutputOrientationTransverse            "transverse"
 #define kParamOutputOrientationR90CounterClockwise   "90counter-clockwise"
-
+enum EOutputOrientation
+{
+    eOutputOrientationNormal = 0,
+    eOutputOrientationFlop,
+    eOutputOrientationR180,
+    eOutputOrientationFlip,
+    eOutputOrientationTransposed,
+    eOutputOrientationR90Clockwise,
+    eOutputOrientationTransverse,
+    eOutputOrientationR90CounterClockwise,
+};
 
 #define kParamOutputCompressionName    "compression"
 #define kParamOutputCompressionLabel   "Compression"
 #define kParamOutputCompressionHint "Compression quality [JPEG, WEBP]"
 
-#define kParamOutputCompressionAuto        "default"
-#define kParamOutputCompressionAutoLabel     "Guess from the output format"
-#define kParamOutputCompressionNone        "none"
-#define kParamOutputCompressionNoneLabel     "No compression [EXR, TIFF, IFF]"
-#define kParamOutputCompressionZip         "zip"
-#define kParamOutputCompressionZipLabel      "Zlib/Deflate compression (lossless) [EXR, TIFF, Zfile]"
-#define kParamOutputCompressionZips        "zips"
-#define kParamOutputCompressionZipsLabel     "Zlib compression (lossless), one scan line at a time [EXR]"
-#define kParamOutputCompressionRle         "rle"
-#define kParamOutputCompressionRleLabel      "Run Length Encoding (lossless) [DPX, IFF, EXR, TGA, RLA]"
-#define kParamOutputCompressionPiz         "piz"
-#define kParamOutputCompressionPizLabel      "Piz-based wavelet compression [EXR]"
-#define kParamOutputCompressionPxr24       "pxr24"
-#define kParamOutputCompressionPxr24Label    "Lossy 24bit float compression [EXR]"
-#define kParamOutputCompressionB44         "b44"
-#define kParamOutputCompressionB44Label      "Lossy 4-by-4 pixel block compression, fixed compression rate [EXR]"
-#define kParamOutputCompressionB44a        "b44a"
-#define kParamOutputCompressionB44aLabel     "Lossy 4-by-4 pixel block compression, flat fields are compressed more [EXR]"
-#define kParamOutputCompressionLZW         "lzw"
-#define kParamOutputCompressionLZWLabel      "Lempel-Ziv Welsch compression (lossless) [TIFF]"
-#define kParamOutputCompressionCCITTRLE    "ccittrle"
-#define kParamOutputCompressionCCITTRLELabel "CCITT modified Huffman RLE (lossless) [TIFF]"
-#define kParamOutputCompressionPACKBITS    "packbits"
-#define kParamOutputCompressionPACKBITSLabel "Macintosh RLE (lossless) [TIFF]"
+#define kParamOutputCompressionOptionAuto        "default"
+#define kParamOutputCompressionOptionAutoHint     "Guess from the output format"
+#define kParamOutputCompressionOptionNone        "none"
+#define kParamOutputCompressionOptionNoneHint     "No compression [EXR, TIFF, IFF]"
+#define kParamOutputCompressionOptionZip         "zip"
+#define kParamOutputCompressionOptionZipHint      "Zlib/Deflate compression (lossless) [EXR, TIFF, Zfile]"
+#define kParamOutputCompressionOptionZips        "zips"
+#define kParamOutputCompressionOptionZipsHint     "Zlib compression (lossless), one scan line at a time [EXR]"
+#define kParamOutputCompressionOptionRle         "rle"
+#define kParamOutputCompressionOptionRleHint      "Run Length Encoding (lossless) [DPX, IFF, EXR, TGA, RLA]"
+#define kParamOutputCompressionOptionPiz         "piz"
+#define kParamOutputCompressionOptionPizHint      "Piz-based wavelet compression [EXR]"
+#define kParamOutputCompressionOptionPxr24       "pxr24"
+#define kParamOutputCompressionOptionPxr24Hint    "Lossy 24bit float compression [EXR]"
+#define kParamOutputCompressionOptionB44         "b44"
+#define kParamOutputCompressionOptionB44Hint      "Lossy 4-by-4 pixel block compression, fixed compression rate [EXR]"
+#define kParamOutputCompressionOptionB44a        "b44a"
+#define kParamOutputCompressionOptionB44aHint     "Lossy 4-by-4 pixel block compression, flat fields are compressed more [EXR]"
+#define kParamOutputCompressionOptionLZW         "lzw"
+#define kParamOutputCompressionOptionLZWHint      "Lempel-Ziv Welsch compression (lossless) [TIFF]"
+#define kParamOutputCompressionOptionCCITTRLE    "ccittrle"
+#define kParamOutputCompressionOptionCCITTRLEHint "CCITT modified Huffman RLE (lossless) [TIFF]"
+#define kParamOutputCompressionOptionPACKBITS    "packbits"
+#define kParamOutputCompressionOptionPACKBITSHint "Macintosh RLE (lossless) [TIFF]"
 
 enum EParamCompression
 {
@@ -584,59 +594,93 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/false, /*supportsAlpha=*/false, "reference", "reference");
 
-    OFX::ChoiceParamDescriptor* bitDepth = desc.defineChoiceParam(kParamBitDepth);
-    bitDepth->setLabels(kParamBitDepthLabel, kParamBitDepthLabel, kParamBitDepthLabel);
-    bitDepth->appendOption(kParamBitDepthOptionAuto, kParamBitDepthOptionAutoHint);
-    bitDepth->appendOption(kParamBitDepthOption8, kParamBitDepthOption8Hint);
-    bitDepth->appendOption(kParamBitDepthOption10, kParamBitDepthOption10Hint);
-    bitDepth->appendOption(kParamBitDepthOption12, kParamBitDepthOption12Hint);
-    bitDepth->appendOption(kParamBitDepthOption16, kParamBitDepthOption16Hint);
-    bitDepth->appendOption(kParamBitDepthOption16f, kParamBitDepthOption16fLabel);
-    bitDepth->appendOption(kParamBitDepthOption32, kParamBitDepthOption32Hint);
-    bitDepth->appendOption(kParamBitDepthOption32f, kParamBitDepthOption32fHint);
-    bitDepth->appendOption(kParamBitDepthOption64, kParamBitDepthOption64Hint);
-    bitDepth->appendOption(kParamBitDepthOption64f, kParamBitDepthOption64fHint);
-    bitDepth->setDefault(eTuttlePluginBitDepthAuto);
-    page->addChild(*bitDepth);
-
-    OFX::IntParamDescriptor* quality = desc.defineIntParam(kParamOutputQualityName);
-    quality->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
-    quality->setRange(0, 100);
-    quality->setDisplayRange(0, 100);
-    quality->setDefault(80);
-    page->addChild(*quality);
-
-    OFX::ChoiceParamDescriptor* orientation = desc.defineChoiceParam(kParamOutputOrientationName);
-    orientation->setLabels(kParamOutputOrientationLabel, kParamOutputOrientationLabel, kParamOutputOrientationLabel);
-    orientation->appendOption(kParamOutputOrientationNormal);
-    orientation->appendOption(kParamOutputOrientationFlop);
-    orientation->appendOption(kParamOutputOrientationR180);
-    orientation->appendOption(kParamOutputOrientationFlip);
-    orientation->appendOption(kParamOutputOrientationTransposed);
-    orientation->appendOption(kParamOutputOrientationR90Clockwise);
-    orientation->appendOption(kParamOutputOrientationTransverse);
-    orientation->appendOption(kParamOutputOrientationR90CounterClockwise);
-    orientation->setDefault(0);
-    page->addChild(*orientation);
-
-    OFX::ChoiceParamDescriptor* compression = desc.defineChoiceParam(kParamOutputCompressionName);
-    compression->setLabels(kParamOutputCompressionLabel, kParamOutputCompressionLabel, kParamOutputCompressionLabel);
-    compression->setHint(kParamOutputCompressionHint);
-    compression->appendOption(kParamOutputCompressionAuto, kParamOutputCompressionAutoLabel);
-    compression->appendOption(kParamOutputCompressionNone, kParamOutputCompressionNoneLabel);
-    compression->appendOption(kParamOutputCompressionZip, kParamOutputCompressionZipLabel);
-    compression->appendOption(kParamOutputCompressionZips, kParamOutputCompressionZipsLabel);
-    compression->appendOption(kParamOutputCompressionRle, kParamOutputCompressionRleLabel);
-    compression->appendOption(kParamOutputCompressionPiz, kParamOutputCompressionPizLabel);
-    compression->appendOption(kParamOutputCompressionPxr24, kParamOutputCompressionPxr24Label);
-    compression->appendOption(kParamOutputCompressionB44, kParamOutputCompressionB44Label);
-    compression->appendOption(kParamOutputCompressionB44a, kParamOutputCompressionB44aLabel);
-    compression->appendOption(kParamOutputCompressionLZW, kParamOutputCompressionLZWLabel);
-    compression->appendOption(kParamOutputCompressionCCITTRLE, kParamOutputCompressionCCITTRLELabel);
-    compression->appendOption(kParamOutputCompressionPACKBITS, kParamOutputCompressionPACKBITSLabel);
-    compression->setDefault(eParamCompressionAuto);
-    page->addChild(*compression);
-
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBitDepth);
+        param->setLabels(kParamBitDepthLabel, kParamBitDepthLabel, kParamBitDepthLabel);
+        assert(param->getNOptions() == eTuttlePluginBitDepthAuto);
+        param->appendOption(kParamBitDepthOptionAuto, kParamBitDepthOptionAutoHint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth8);
+        param->appendOption(kParamBitDepthOption8, kParamBitDepthOption8Hint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth10);
+        param->appendOption(kParamBitDepthOption10, kParamBitDepthOption10Hint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth12);
+        param->appendOption(kParamBitDepthOption12, kParamBitDepthOption12Hint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth16);
+        param->appendOption(kParamBitDepthOption16, kParamBitDepthOption16Hint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth16f);
+        param->appendOption(kParamBitDepthOption16f, kParamBitDepthOption16fHint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth32);
+        param->appendOption(kParamBitDepthOption32, kParamBitDepthOption32Hint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth32f);
+        param->appendOption(kParamBitDepthOption32f, kParamBitDepthOption32fHint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth64);
+        param->appendOption(kParamBitDepthOption64, kParamBitDepthOption64Hint);
+        assert(param->getNOptions() == eTuttlePluginBitDepth64f);
+        param->appendOption(kParamBitDepthOption64f, kParamBitDepthOption64fHint);
+        param->setDefault(eTuttlePluginBitDepthAuto);
+        page->addChild(*param);
+    }
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOutputQualityName);
+        param->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
+        param->setRange(0, 100);
+        param->setDisplayRange(0, 100);
+        param->setDefault(80);
+        page->addChild(*param);
+    }
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputOrientationName);
+        param->setLabels(kParamOutputOrientationLabel, kParamOutputOrientationLabel, kParamOutputOrientationLabel);
+        assert(param->getNOptions() == eOutputOrientationNormal);
+        param->appendOption(kParamOutputOrientationNormal);
+        assert(param->getNOptions() == eOutputOrientationFlop);
+        param->appendOption(kParamOutputOrientationFlop);
+        assert(param->getNOptions() == eOutputOrientationR180);
+        param->appendOption(kParamOutputOrientationR180);
+        assert(param->getNOptions() == eOutputOrientationFlip);
+        param->appendOption(kParamOutputOrientationFlip);
+        assert(param->getNOptions() == eOutputOrientationTransposed);
+        param->appendOption(kParamOutputOrientationTransposed);
+        assert(param->getNOptions() == eOutputOrientationR90Clockwise);
+        param->appendOption(kParamOutputOrientationR90Clockwise);
+        assert(param->getNOptions() == eOutputOrientationTransverse);
+        param->appendOption(kParamOutputOrientationTransverse);
+        assert(param->getNOptions() == eOutputOrientationR90CounterClockwise);
+        param->appendOption(kParamOutputOrientationR90CounterClockwise);
+        param->setDefault(0);
+        page->addChild(*param);
+    }
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputCompressionName);
+        param->setLabels(kParamOutputCompressionLabel, kParamOutputCompressionLabel, kParamOutputCompressionLabel);
+        param->setHint(kParamOutputCompressionHint);
+        assert(param->getNOptions() == eParamCompressionAuto);
+        param->appendOption(kParamOutputCompressionOptionAuto, kParamOutputCompressionOptionAutoHint);
+        assert(param->getNOptions() == eParamCompressionNone);
+        param->appendOption(kParamOutputCompressionOptionNone, kParamOutputCompressionOptionNoneHint);
+        assert(param->getNOptions() == eParamCompressionZip);
+        param->appendOption(kParamOutputCompressionOptionZip, kParamOutputCompressionOptionZipHint);
+        assert(param->getNOptions() == eParamCompressionZips);
+        param->appendOption(kParamOutputCompressionOptionZips, kParamOutputCompressionOptionZipsHint);
+        assert(param->getNOptions() == eParamCompressionRle);
+        param->appendOption(kParamOutputCompressionOptionRle, kParamOutputCompressionOptionRleHint);
+        assert(param->getNOptions() == eParamCompressionPiz);
+        param->appendOption(kParamOutputCompressionOptionPiz, kParamOutputCompressionOptionPizHint);
+        assert(param->getNOptions() == eParamCompressionPxr24);
+        param->appendOption(kParamOutputCompressionOptionPxr24, kParamOutputCompressionOptionPxr24Hint);
+        assert(param->getNOptions() == eParamCompressionB44);
+        param->appendOption(kParamOutputCompressionOptionB44, kParamOutputCompressionOptionB44Hint);
+        assert(param->getNOptions() == eParamCompressionB44a);
+        param->appendOption(kParamOutputCompressionOptionB44a, kParamOutputCompressionOptionB44aHint);
+        assert(param->getNOptions() == eParamCompressionLZW);
+        param->appendOption(kParamOutputCompressionOptionLZW, kParamOutputCompressionOptionLZWHint);
+        assert(param->getNOptions() == eParamCompressionCCITTRLE);
+        param->appendOption(kParamOutputCompressionOptionCCITTRLE, kParamOutputCompressionOptionCCITTRLEHint);
+        assert(param->getNOptions() == eParamCompressionPACKBITS);
+        param->appendOption(kParamOutputCompressionOptionPACKBITS, kParamOutputCompressionOptionPACKBITSHint);
+        param->setDefault(eParamCompressionAuto);
+        page->addChild(*param);
+    }
     GenericWriterDescribeInContextEnd(desc, context, page);
 }
 

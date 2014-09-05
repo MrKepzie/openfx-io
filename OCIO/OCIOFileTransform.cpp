@@ -708,46 +708,53 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    StringParamDescriptor *file = desc.defineStringParam(kParamFile);
-    file->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
-    file->setHint(std::string(kParamFileHint) + "\n\n" + supportedFormats());
-    file->setStringType(eStringTypeFilePath);
-    file->setFilePathExists(true);
-    file->setLayoutHint(eLayoutHintNoNewLine);
-    page->addChild(*file);
-
-    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kParamReload);
-    reload->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
-    reload->setHint(kParamReloadHint);
-    page->addChild(*reload);
-
-    IntParamDescriptor *version = desc.defineIntParam(kVersionParamName);
-    version->setIsSecret(true);
-    version->setDefault(1);
-    page->addChild(*version);
-
-    StringParamDescriptor *cccid = desc.defineStringParam(kParamCCCID);
-    cccid->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
-    cccid->setHint(kParamCCCIDHint);
-    page->addChild(*cccid);
-
-    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kParamDirection);
-    direction->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
-    direction->setHint(kParamDirectionHint);
-    direction->appendOption(kParamDirectionOptionForward);
-    direction->appendOption(kParamDirectionOptionInverse);
-    page->addChild(*direction);
-
-    ChoiceParamDescriptor *interpolation = desc.defineChoiceParam(kParamInterpolation);
-    interpolation->setLabels(kParamInterpolationLabel, kParamInterpolationLabel, kParamInterpolationLabel);
-    interpolation->setHint(kParamInterpolationHint);
-    interpolation->appendOption(kParamInterpolationOptionNearest);
-    interpolation->appendOption(kParamInterpolationOptionLinear);
-    interpolation->appendOption(kParamInterpolationOptionTetrahedral);
-    interpolation->appendOption(kParamInterpolationOptionBest);
-    interpolation->setDefault(1);
-    page->addChild(*interpolation);
-
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamFile);
+        param->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
+        param->setHint(std::string(kParamFileHint) + "\n\n" + supportedFormats());
+        param->setStringType(eStringTypeFilePath);
+        param->setFilePathExists(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
+        param->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
+        param->setHint(kParamReloadHint);
+        page->addChild(*param);
+    }
+    {
+        IntParamDescriptor *param = desc.defineIntParam(kVersionParamName);
+        param->setIsSecret(true);
+        param->setDefault(1);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
+        param->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
+        param->setHint(kParamCCCIDHint);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
+        param->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+        param->setHint(kParamDirectionHint);
+        param->appendOption(kParamDirectionOptionForward);
+        param->appendOption(kParamDirectionOptionInverse);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamInterpolation);
+        param->setLabels(kParamInterpolationLabel, kParamInterpolationLabel, kParamInterpolationLabel);
+        param->setHint(kParamInterpolationHint);
+        param->appendOption(kParamInterpolationOptionNearest);
+        param->appendOption(kParamInterpolationOptionLinear);
+        param->appendOption(kParamInterpolationOptionTetrahedral);
+        param->appendOption(kParamInterpolationOptionBest);
+        param->setDefault(1);
+        page->addChild(*param);
+    }
+    
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
 }

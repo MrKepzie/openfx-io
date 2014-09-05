@@ -97,14 +97,14 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 // ChoiceParamType may be OFX::ChoiceParamDescriptor or OFX::ChoiceParam
 template <typename ChoiceParamType>
 static void
-buildChoiceMenus(OCIO::ConstConfigRcPtr config,
-                 ChoiceParamType* inputSpaceChoice,
-                 ChoiceParamType* outputSpaceChoice,
-                 const std::string& inputSpaceName = "",
-                 const std::string& outputSpaceName = "")
+buildChoiceMenu(OCIO::ConstConfigRcPtr config,
+                ChoiceParamType* choice,
+                const std::string& name = "")
 {
-    inputSpaceChoice->resetOptions();
-    outputSpaceChoice->resetOptions();
+    choice->resetOptions();
+    if (!config) {
+        return;
+    }
     int defaultcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
     int referencecs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
     int datacs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
@@ -183,15 +183,10 @@ buildChoiceMenus(OCIO::ConstConfigRcPtr config,
         if (roles > 0) {
             msg += ')';
         }
-        inputSpaceChoice->appendOption(csname, msg);
+        choice->appendOption(csname, msg);
         // set the default value, in case the GUI uses it
-        if (!inputSpaceName.empty() && csname == inputSpaceName) {
-            inputSpaceChoice->setDefault(i);
-        }
-        outputSpaceChoice->appendOption(csname, msg);
-        // set the default value, in case the GUI uses it
-        if (!outputSpaceName.empty() && csname == outputSpaceName) {
-            outputSpaceChoice->setDefault(i);
+        if (!name.empty() && csname == name) {
+            choice->setDefault(i);
         }
     }
 }
@@ -228,7 +223,8 @@ GenericOCIO::loadConfig(double time)
             // the choice menu can only be modified in Natron
             // Natron supports changing the entries in a choiceparam
             // Nuke (at least up to 8.0v3) does not
-            buildChoiceMenus(_config, _inputSpaceChoice, _outputSpaceChoice);
+            buildChoiceMenu(_config, _inputSpaceChoice);
+            buildChoiceMenu(_config, _outputSpaceChoice);
             _choiceFileName = _ocioConfigFileName;
         }
         _choiceIsOk = (_ocioConfigFileName == _choiceFileName);
@@ -775,57 +771,110 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 {
 #ifdef OFX_IO_USING_OCIO
     gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
+
+    char* file = std::getenv("OCIO");
+    OCIO::ConstConfigRcPtr config;
+    if (file != NULL) {
+        //Add choices
+        try {
+            config = OCIO::Config::CreateFromFile(file);
+            gWasOCIOEnvVarFound = true;
+        } catch (OCIO::Exception &e) {
+        }
+    }
+    std::string inputSpaceName, outputSpaceName;
+    if (config) {
+        inputSpaceName = colorSpaceName(config, inputSpaceNameDefault);
+        outputSpaceName = colorSpaceName(config, outputSpaceNameDefault);
+    }
+
     ////////// OCIO config file
-    OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
-    ocioConfigFileParam->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
-    ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
-    ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-    ocioConfigFileParam->setFilePathExists(true);
-    ocioConfigFileParam->setAnimates(true);
-    desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
-    // the OCIO config can only be set in a portable fashion using the environment variable.
-    // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
-    // disable it, and set the default from the env variable.
-    assert(OFX::getImageEffectHostDescription());
-    ocioConfigFileParam->setEnabled(true);
-    page->addChild(*ocioConfigFileParam);
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamConfigFileName);
+        param->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
+        param->setHint(kOCIOParamConfigFileHint);
+        param->setStringType(OFX::eStringTypeFilePath);
+        param->setFilePathExists(true);
+        param->setAnimates(true);
+        desc.addClipPreferencesSlaveParam(*param);
+        // the OCIO config can only be set in a portable fashion using the environment variable.
+        // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
+        // disable it, and set the default from the env variable.
+        assert(OFX::getImageEffectHostDescription());
+        param->setEnabled(true);
+        if (file == NULL) {
+            param->setDefault("WARNING: Open an OCIO config file, or set an OCIO environnement variable");
+        } else if (config) {
+            param->setDefault(file);
+        } else {
+            std::string s("ERROR: Invalid OCIO configuration '");
+            s += file;
+            s += '\'';
+            param->setDefault(s);
+        }
+        page->addChild(*param);
+    }
 
     ///////////Input Color-space
-    OFX::StringParamDescriptor* inputSpace = desc.defineStringParam(kOCIOParamInputSpaceName);
-    inputSpace->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
-    inputSpace->setHint(kOCIOParamInputSpaceHint);
-    inputSpace->setAnimates(true);
-    inputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
-    inputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
-    page->addChild(*inputSpace);
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamInputSpaceName);
+        param->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
+        param->setHint(kOCIOParamInputSpaceHint);
+        param->setAnimates(true);
+        if (config) {
+            param->setDefault(inputSpaceName);
+        } else {
+            param->setEnabled(false);
+        }
+        page->addChild(*param);
+    }
 
 #ifdef OFX_OCIO_CHOICE
-    OFX::ChoiceParamDescriptor* inputSpaceChoice = desc.defineChoiceParam(kOCIOParamInputSpaceChoiceName);
-    inputSpaceChoice->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
-    inputSpaceChoice->setHint(kOCIOParamInputSpaceHint);
-    inputSpaceChoice->setAnimates(true);
-    inputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
-    inputSpaceChoice->setIsPersistant(false); // don't save/serialize
-    page->addChild(*inputSpaceChoice);
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamInputSpaceChoiceName);
+        param->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
+        param->setHint(kOCIOParamInputSpaceHint);
+        if (config) {
+            buildChoiceMenu(config, param, inputSpaceName);
+        } else {
+            param->setEnabled(false);
+            param->setIsSecret(true);
+        }
+        param->setAnimates(true);
+        param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
+        param->setIsPersistant(false); // don't save/serialize
+        page->addChild(*param);
+    }
 #endif
 
     ///////////Output Color-space
-    OFX::StringParamDescriptor* outputSpace = desc.defineStringParam(kOCIOParamOutputSpaceName);
-    outputSpace->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
-    outputSpace->setHint(kOCIOParamOutputSpaceHint);
-    outputSpace->setAnimates(true);
-    outputSpace->setEnabled(true); // enabled only if host is not Natron and OCIO Config file is changed
-    outputSpace->setIsSecret(false); // visible only if host is not Natron and OCIO Config file is changed
-    page->addChild(*outputSpace);
-
+    {OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamOutputSpaceName);
+        param->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
+        param->setHint(kOCIOParamOutputSpaceHint);
+        param->setAnimates(true);
+        if (config) {
+            param->setDefault(outputSpaceName);
+        } else {
+            param->setEnabled(false);
+        }
+        page->addChild(*param);
+    }
 #ifdef OFX_OCIO_CHOICE
-    OFX::ChoiceParamDescriptor* outputSpaceChoice = desc.defineChoiceParam(kOCIOParamOutputSpaceChoiceName);
-    outputSpaceChoice->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
-    outputSpaceChoice->setHint(kOCIOParamOutputSpaceHint);
-    outputSpaceChoice->setAnimates(true);
-    outputSpaceChoice->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
-    outputSpaceChoice->setIsPersistant(false); // don't save/serialize
-    page->addChild(*outputSpaceChoice);
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamOutputSpaceChoiceName);
+        param->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
+        param->setHint(kOCIOParamOutputSpaceHint);
+        if (config) {
+            buildChoiceMenu(config, param, outputSpaceName);
+        } else {
+            param->setEnabled(false);
+            param->setIsSecret(true);
+        }
+        param->setAnimates(true);
+        param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
+        param->setIsPersistant(false); // don't save/serialize
+        page->addChild(*param);
+    }
 #endif
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
@@ -833,43 +882,5 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     pb->setHint(kOCIOHelpButtonHint);
     page->addChild(*pb);
 
-    char* file = std::getenv("OCIO");
-    OCIO::ConstConfigRcPtr config;
-    if (file != NULL) {
-        gWasOCIOEnvVarFound = true;
-        ocioConfigFileParam->setDefault(file);
-        //Add choices
-        try {
-            config = OCIO::Config::CreateFromFile(file);
-        } catch (OCIO::Exception &e) {
-        }
-    }
-    if (config) {
-        std::string inputSpaceName = colorSpaceName(config, inputSpaceNameDefault);
-        inputSpace->setDefault(inputSpaceName);
-        std::string outputSpaceName = colorSpaceName(config, outputSpaceNameDefault);
-        outputSpace->setDefault(outputSpaceName);
-#ifdef OFX_OCIO_CHOICE
-        buildChoiceMenus(config, inputSpaceChoice, outputSpaceChoice, inputSpaceName, outputSpaceName);
-#endif
-    } else {
-        if (file == NULL) {
-            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set an OCIO environnement variable");
-        } else {
-            std::string s("ERROR: Invalid OCIO configuration '");
-            s += file;
-            s += '\'';
-            ocioConfigFileParam->setDefault(s);
-        }
-        inputSpace->setEnabled(false);
-        outputSpace->setEnabled(false);
-#ifdef OFX_OCIO_CHOICE
-        inputSpaceChoice->setEnabled(false);
-        inputSpaceChoice->setIsSecret(true);
-        outputSpaceChoice->setEnabled(false);
-        outputSpaceChoice->setIsSecret(true);
-#endif
-        gWasOCIOEnvVarFound = false;
-    }
 #endif
 }

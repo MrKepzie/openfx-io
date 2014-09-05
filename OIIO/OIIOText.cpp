@@ -520,42 +520,48 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Text");
 
-    Double2DParamDescriptor* position = desc.defineDouble2DParam(kParamPosition);
-    position->setLabels(kParamPositionLabel, kParamPositionLabel, kParamPositionLabel);
-    position->setHint(kParamPositionHint);
-    position->setDoubleType(eDoubleTypeXYAbsolute);
-    position->setDefaultCoordinateSystem(eCoordinatesNormalised);
-    position->setDefault(0.5, 0.5);
-    position->setAnimates(true);
-    page->addChild(*position);
-
-    StringParamDescriptor* text = desc.defineStringParam(kParamText);
-    text->setLabels(kParamTextLabel, kParamTextLabel, kParamTextLabel);
-    text->setHint(kParamTextHint);
-    text->setStringType(eStringTypeMultiLine);
-    text->setAnimates(true);
-    text->setDefault("Enter text");
-    page->addChild(*text);
-
-    IntParamDescriptor* fontSize = desc.defineIntParam(kParamFontSize);
-    fontSize->setLabels(kParamFontSizeLabel, kParamFontSizeLabel, kParamFontSizeLabel);
-    fontSize->setHint(kParamFontSizeHint);
-    fontSize->setDefault(16);
-    fontSize->setAnimates(true);
-    page->addChild(*fontSize);
-
-    StringParamDescriptor* fontName = desc.defineStringParam(kParamFontName);
-    fontName->setLabels(kParamFontNameLabel, kParamFontNameLabel, kParamFontNameLabel);
-    fontName->setHint(kParamFontNameHint);
-    fontName->setAnimates(true);
-    page->addChild(*fontName);
-
-    RGBAParamDescriptor* textColor = desc.defineRGBAParam(kParamTextColor);
-    textColor->setLabels(kParamTextColorLabel, kParamTextColorLabel, kParamTextColorLabel);
-    textColor->setHint(kParamTextColorHint);
-    textColor->setDefault(1., 1., 1., 1.);
-    textColor->setAnimates(true);
-    page->addChild(*textColor);
+    {
+        Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamPosition);
+        param->setLabels(kParamPositionLabel, kParamPositionLabel, kParamPositionLabel);
+        param->setHint(kParamPositionHint);
+        param->setDoubleType(eDoubleTypeXYAbsolute);
+        param->setDefaultCoordinateSystem(eCoordinatesNormalised);
+        param->setDefault(0.5, 0.5);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor* param = desc.defineStringParam(kParamText);
+        param->setLabels(kParamTextLabel, kParamTextLabel, kParamTextLabel);
+        param->setHint(kParamTextHint);
+        param->setStringType(eStringTypeMultiLine);
+        param->setAnimates(true);
+        param->setDefault("Enter text");
+        page->addChild(*param);
+    }
+    {
+        IntParamDescriptor* param = desc.defineIntParam(kParamFontSize);
+        param->setLabels(kParamFontSizeLabel, kParamFontSizeLabel, kParamFontSizeLabel);
+        param->setHint(kParamFontSizeHint);
+        param->setDefault(16);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor* param = desc.defineStringParam(kParamFontName);
+        param->setLabels(kParamFontNameLabel, kParamFontNameLabel, kParamFontNameLabel);
+        param->setHint(kParamFontNameHint);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+    {
+        RGBAParamDescriptor* param = desc.defineRGBAParam(kParamTextColor);
+        param->setLabels(kParamTextColorLabel, kParamTextColorLabel, kParamTextColorLabel);
+        param->setHint(kParamTextColorHint);
+        param->setDefault(1., 1., 1., 1.);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

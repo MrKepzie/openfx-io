@@ -131,15 +131,15 @@ private:
 };
 
 
-#define kWriteFFmpegFormatParamName "format"
-#define kWriteFFmpegFPSParamName "fps"
-#define kWriteFFmpegAdvancedGroupParamName "advanced"
-#define kWriteFFmpegCodecParamName "codec"
-#define kWriteFFmpegBitRateParamName "bitRate"
-#define kWriteFFmpegBitRateToleranceParamName "bitRateTolerance"
-#define kWriteFFmpegGopParamName "gop"
-#define kWriteFFmpegBFramesParamName "bframes"
-#define kWriteFFmpegMBDecisionParamName "mbDecision"
+#define kParamFormat "format"
+#define kParamFPS "fps"
+#define kParamAdvanced "advanced"
+#define kParamCodec "codec"
+#define kParamBitRate "bitRate"
+#define kParamBitRateTolerance "bitRateTolerance"
+#define kParamGop "gop"
+#define kParamBFrames "bframes"
+#define kParamMBDecision "mbDecision"
 
 
 
@@ -252,14 +252,14 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 ,_bFrames(0)
 , _macroBlockDecision(0)
 {
-    _format = fetchChoiceParam(kWriteFFmpegFormatParamName);
-    _fps = fetchDoubleParam(kWriteFFmpegFPSParamName);
-    _codec = fetchChoiceParam(kWriteFFmpegCodecParamName);
-    _bitRate = fetchIntParam(kWriteFFmpegBitRateParamName);
-    _bitRateTolerance = fetchIntParam(kWriteFFmpegBitRateToleranceParamName);
-    _gopSize = fetchIntParam(kWriteFFmpegGopParamName);
-    _bFrames = fetchIntParam(kWriteFFmpegBFramesParamName);
-    _macroBlockDecision = fetchChoiceParam(kWriteFFmpegMBDecisionParamName);
+    _format = fetchChoiceParam(kParamFormat);
+    _fps = fetchDoubleParam(kParamFPS);
+    _codec = fetchChoiceParam(kParamCodec);
+    _bitRate = fetchIntParam(kParamBitRate);
+    _bitRateTolerance = fetchIntParam(kParamBitRateTolerance);
+    _gopSize = fetchIntParam(kParamGop);
+    _bFrames = fetchIntParam(kParamBFrames);
+    _macroBlockDecision = fetchChoiceParam(kParamMBDecision);
 }
 
 WriteFFmpegPlugin::~WriteFFmpegPlugin(){
@@ -750,91 +750,108 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 
     
     ///////////Output format
-    const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
-    OFX::ChoiceParamDescriptor* formatParam = desc.defineChoiceParam(kWriteFFmpegFormatParamName);
-    formatParam->setLabels("Format", "Format", "Format");
-    formatParam->setHint("The outputformat");
-    for (unsigned int i = 0; i < formatsV.size(); ++i) {
-        formatParam->appendOption(formatsV[i],"");
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
+        const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
+        param->setLabels("Format", "Format", "Format");
+        param->setHint("The outputformat");
+        for (unsigned int i = 0; i < formatsV.size(); ++i) {
+            param->appendOption(formatsV[i],"");
 
+        }
+        param->setAnimates(false);
+        param->setDefault(0);
+        page->addChild(*param);
     }
-    formatParam->setAnimates(false);
-    formatParam->setDefault(0);
-    page->addChild(*formatParam);
-    
+
     ///////////FPS
-    OFX::DoubleParamDescriptor* fpsParam = desc.defineDoubleParam(kWriteFFmpegFPSParamName);
-    fpsParam->setLabels("fps", "fps", "fps");
-    fpsParam->setRange(0.f, 100.f);
-    fpsParam->setDefault(24.f);
-    fpsParam->setAnimates(false);
-    page->addChild(*fpsParam);
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFPS);
+        param->setLabels("fps", "fps", "fps");
+        param->setRange(0.f, 100.f);
+        param->setDefault(24.f);
+        param->setAnimates(false);
+        page->addChild(*param);
+    }
 
     /////////// Advanced group
-    OFX::GroupParamDescriptor* groupParam = desc.defineGroupParam(kWriteFFmpegAdvancedGroupParamName);
-    groupParam->setLabels("Advanced", "Advanced", "Advanced");
-    groupParam->setOpen(false);
-    page->addChild(*groupParam);
-    
-    ///////////Codec
-    OFX::ChoiceParamDescriptor* codecParam = desc.defineChoiceParam(kWriteFFmpegCodecParamName);
-    codecParam->setLabels("Codec","Codec","Codec");
-    const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
-    for (unsigned int i = 0; i < codecsV.size(); ++i) {
-        codecParam->appendOption(codecsV[i],"");
+    {
+        OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamAdvanced);
+        group->setLabels("Advanced", "Advanced", "Advanced");
+        group->setOpen(false);
+        page->addChild(*group);
+
+        ///////////Codec
+        {
+            OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamCodec);
+            param->setLabels("Codec","Codec","Codec");
+            const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
+            for (unsigned int i = 0; i < codecsV.size(); ++i) {
+                param->appendOption(codecsV[i],"");
+            }
+            param->setAnimates(false);
+            param->setParent(*group);
+            param->setDefault(0);
+            page->addChild(*param);
+        }
+
+        ///////////bit-rate
+        {
+            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitRate);
+            param->setLabels("Bitrate", "Bitrate", "Bitrate");
+            param->setRange(0, 400000);
+            param->setDefault(400000);
+            param->setParent(*group);
+            param->setAnimates(false);
+            page->addChild(*param);
+        }
+
+        ///////////bit-rate tolerance
+        {
+            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitRateTolerance);
+            param->setLabels("Bitrate tolerance", "Bitrate tolerance", "Bitrate tolerance");
+            param->setRange(0, 4000 * 10000);
+            param->setDefault(4000 * 10000);
+            param->setParent(*group);
+            param->setAnimates(false);
+            page->addChild(*param);
+        }
+
+        ///////////Gop size
+        {
+            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamGop);
+            param->setLabels("GOP Size", "GOP Size", "GOP Size");
+            param->setRange(0, 30);
+            param->setDefault(12);
+            param->setParent(*group);
+            param->setAnimates(false);
+            page->addChild(*param);
+        }
+
+        ////////////B Frames
+        {
+            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBFrames);
+            param->setLabels("B Frames", "B Frames", "B Frames");
+            param->setRange(0, 30);
+            param->setDefault(0);
+            param->setParent(*group);
+            param->setAnimates(false);
+            page->addChild(*param);
+        }
+
+        ////////////Macro block decision
+        {
+            OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamMBDecision);
+            param->setLabels("Macro block decision mode", "Macro block decision mode", "Macro block decision mode");
+            param->appendOption("FF_MB_DECISION_SIMPLE");
+            param->appendOption("FF_MB_DECISION_BITS");
+            param->appendOption("FF_MB_DECISION_RD");
+            param->setDefault(FF_MB_DECISION_SIMPLE);
+            param->setParent(*group);
+            param->setAnimates(false);
+            page->addChild(*param);
+        }
     }
-    codecParam->setAnimates(false);
-    codecParam->setParent(*groupParam);
-    codecParam->setDefault(0);
-    page->addChild(*codecParam);
-
-    ///////////bit-rate
-    OFX::IntParamDescriptor* bitRateParam = desc.defineIntParam(kWriteFFmpegBitRateParamName);
-    bitRateParam->setLabels("Bitrate", "Bitrate", "Bitrate");
-    bitRateParam->setRange(0, 400000);
-    bitRateParam->setDefault(400000);
-    bitRateParam->setParent(*groupParam);
-    bitRateParam->setAnimates(false);
-    page->addChild(*bitRateParam);
-
-    ///////////bit-rate tolerance
-    OFX::IntParamDescriptor* bitRateTolParam = desc.defineIntParam(kWriteFFmpegBitRateToleranceParamName);
-    bitRateTolParam->setLabels("Bitrate tolerance", "Bitrate tolerance", "Bitrate tolerance");
-    bitRateTolParam->setRange(0, 4000 * 10000);
-    bitRateTolParam->setDefault(4000 * 10000);
-    bitRateTolParam->setParent(*groupParam);
-    bitRateTolParam->setAnimates(false);
-    page->addChild(*bitRateTolParam);
-
-    ///////////Gop size
-    OFX::IntParamDescriptor* gopSizeParam = desc.defineIntParam(kWriteFFmpegGopParamName);
-    gopSizeParam->setLabels("GOP Size", "GOP Size", "GOP Size");
-    gopSizeParam->setRange(0, 30);
-    gopSizeParam->setDefault(12);
-    gopSizeParam->setParent(*groupParam);
-    gopSizeParam->setAnimates(false);
-    page->addChild(*gopSizeParam);
-
-    ////////////B Frames
-    OFX::IntParamDescriptor* bFramesParam = desc.defineIntParam(kWriteFFmpegBFramesParamName);
-    bFramesParam->setLabels("B Frames", "B Frames", "B Frames");
-    bFramesParam->setRange(0, 30);
-    bFramesParam->setDefault(0);
-    bFramesParam->setParent(*groupParam);
-    bFramesParam->setAnimates(false);
-    page->addChild(*bFramesParam);
-
-    ////////////Macro block decision
-    OFX::ChoiceParamDescriptor* mbDecisionParam = desc.defineChoiceParam(kWriteFFmpegMBDecisionParamName);
-    mbDecisionParam->setLabels("Macro block decision mode", "Macro block decision mode", "Macro block decision mode");
-    mbDecisionParam->appendOption("FF_MB_DECISION_SIMPLE");
-    mbDecisionParam->appendOption("FF_MB_DECISION_BITS");
-    mbDecisionParam->appendOption("FF_MB_DECISION_RD");
-    mbDecisionParam->setDefault(FF_MB_DECISION_SIMPLE);
-    mbDecisionParam->setParent(*groupParam);
-    mbDecisionParam->setAnimates(false);
-    page->addChild(*mbDecisionParam);
-
     GenericWriterDescribeInContextEnd(desc, context, page);
 }
 

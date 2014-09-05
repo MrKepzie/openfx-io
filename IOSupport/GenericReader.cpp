@@ -66,7 +66,7 @@
 #define kParamFilenameHint "The input image sequence/video stream file(s)."
 
 #define kParamProxy kOfxImageEffectProxyParamName
-#define kParamProxyLabel "Proxy file"
+#define kParamProxyLabel "Proxy File"
 #define kParamProxyHint \
 "Filename of the proxy images. They will be used instead of the images read from the File parameter " \
 "when the proxy mode (downscaling of the images) is activated."
@@ -81,7 +81,7 @@
 "so that you can change the scale at which the proxy images should be used instead of the original images."
 
 #define kParamOriginalProxyScale "originalProxyScale"
-#define kParamOriginalProxyScaleLabel "Original Proxy scale"
+#define kParamOriginalProxyScaleLabel "Original Proxy Scale"
 #define kParamOriginalProxyScaleHint \
 "The original scale of the proxy image."
 
@@ -96,7 +96,7 @@
 "What to do when a frame is missing from the sequence/stream."
 
 #define kParamFrameMode "frameMode"
-#define kParamFrameModeLabel "Frame mode"
+#define kParamFrameModeLabel "Frame Mode"
 enum FrameModeEnum
 {
     eFrameModeStartingTime,
@@ -1505,171 +1505,197 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
 
     //////////Input file
-    OFX::StringParamDescriptor* fileParam = desc.defineStringParam(kParamFilename);
-    fileParam->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
-    fileParam->setStringType(OFX::eStringTypeFilePath);
-    fileParam->setFilePathExists(true);
-    fileParam->setHint(kParamFilenameHint);
-    fileParam->setAnimates(false);
-    // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
-    fileParam->setScriptName(kParamFilename);
-    desc.addClipPreferencesSlaveParam(*fileParam);
-    page->addChild(*fileParam);
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kParamFilename);
+        param->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
+        param->setStringType(OFX::eStringTypeFilePath);
+        param->setFilePathExists(true);
+        param->setHint(kParamFilenameHint);
+        param->setAnimates(false);
+        // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
+        param->setScriptName(kParamFilename);
+        desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
+    }
     
     //////////First-frame
-    OFX::IntParamDescriptor* firstFrameParam = desc.defineIntParam(kParamFirstFrame);
-    firstFrameParam->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
-    firstFrameParam->setHint(kParamFirstFrameHint);
-    firstFrameParam->setDefault(0);
-    firstFrameParam->setAnimates(true);
-    firstFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    page->addChild(*firstFrameParam);
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
+        param->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
+        param->setHint(kParamFirstFrameHint);
+        param->setDefault(0);
+        param->setAnimates(true);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
     
     ///////////Before first
-    OFX::ChoiceParamDescriptor* beforeFirstParam = desc.defineChoiceParam(kParamBefore);
-    beforeFirstParam->setLabels(kParamBeforeLabel, kParamBeforeLabel, kParamBeforeLabel);
-    beforeFirstParam->setHint(kParamBeforeHint);
-    assert(beforeFirstParam->getNOptions() == eBeforeAfterHold);
-    beforeFirstParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
-    assert(beforeFirstParam->getNOptions() == eBeforeAfterLoop);
-    beforeFirstParam->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
-    assert(beforeFirstParam->getNOptions() == eBeforeAfterBounce);
-    beforeFirstParam->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
-    assert(beforeFirstParam->getNOptions() == eBeforeAfterBlack);
-    beforeFirstParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-    assert(beforeFirstParam->getNOptions() == eBeforeAfterError);
-    beforeFirstParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
-    beforeFirstParam->setAnimates(true);
-    beforeFirstParam->setDefault(0);
-    page->addChild(*beforeFirstParam);
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBefore);
+        param->setLabels(kParamBeforeLabel, kParamBeforeLabel, kParamBeforeLabel);
+        param->setHint(kParamBeforeHint);
+        assert(param->getNOptions() == eBeforeAfterHold);
+        param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+        assert(param->getNOptions() == eBeforeAfterLoop);
+        param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+        assert(param->getNOptions() == eBeforeAfterBounce);
+        param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+        assert(param->getNOptions() == eBeforeAfterBlack);
+        param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+        assert(param->getNOptions() == eBeforeAfterError);
+        param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+        param->setAnimates(true);
+        param->setDefault(0);
+        page->addChild(*param);
+    }
+
     //////////Last-frame
-    OFX::IntParamDescriptor* lastFrameParam = desc.defineIntParam(kParamLastFrame);
-    lastFrameParam->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
-    lastFrameParam->setHint(kParamLastFrameHint);
-    lastFrameParam->setDefault(0);
-    lastFrameParam->setAnimates(true);
-    lastFrameParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    page->addChild(*lastFrameParam);
-    
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
+        param->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
+        param->setHint(kParamLastFrameHint);
+        param->setDefault(0);
+        param->setAnimates(true);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+
     ///////////After first
-    OFX::ChoiceParamDescriptor* afterLastParam = desc.defineChoiceParam(kParamAfter);
-    afterLastParam->setLabels(kParamAfterLabel, kParamAfterLabel, kParamAfterLabel);
-    afterLastParam->setHint(kParamAfterHint);
-    assert(afterLastParam->getNOptions() == eBeforeAfterHold);
-    afterLastParam->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
-    assert(afterLastParam->getNOptions() == eBeforeAfterLoop);
-    afterLastParam->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
-    assert(afterLastParam->getNOptions() == eBeforeAfterBounce);
-    afterLastParam->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
-    assert(afterLastParam->getNOptions() == eBeforeAfterBlack);
-    afterLastParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-    assert(afterLastParam->getNOptions() == eBeforeAfterError);
-    afterLastParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
-    afterLastParam->setAnimates(true);
-    afterLastParam->setDefault(0);
-    page->addChild(*afterLastParam);
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamAfter);
+        param->setLabels(kParamAfterLabel, kParamAfterLabel, kParamAfterLabel);
+        param->setHint(kParamAfterHint);
+        assert(param->getNOptions() == eBeforeAfterHold);
+        param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+        assert(param->getNOptions() == eBeforeAfterLoop);
+        param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+        assert(param->getNOptions() == eBeforeAfterBounce);
+        param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+        assert(param->getNOptions() == eBeforeAfterBlack);
+        param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+        assert(param->getNOptions() == eBeforeAfterError);
+        param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+        param->setAnimates(true);
+        param->setDefault(0);
+        page->addChild(*param);
+    }
+
     ///////////Missing frame choice
-    OFX::ChoiceParamDescriptor* missingFrameParam = desc.defineChoiceParam(kParamOnMissingFrame);
-    missingFrameParam->setLabels(kParamOnMissingFrameLabel, kParamOnMissingFrameLabel, kParamOnMissingFrameLabel);
-    missingFrameParam->setHint(kParamOnMissingFrameHint);
-    assert(missingFrameParam->getNOptions() == eMissingNearest);
-    missingFrameParam->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
-    assert(missingFrameParam->getNOptions() == eMissingError);
-    missingFrameParam->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
-    assert(missingFrameParam->getNOptions() == eMissingBlack);
-    missingFrameParam->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-    missingFrameParam->setAnimates(true);
-    missingFrameParam->setDefault(0); //< default to nearest frame.
-    page->addChild(*missingFrameParam);
-    
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOnMissingFrame);
+        param->setLabels(kParamOnMissingFrameLabel, kParamOnMissingFrameLabel, kParamOnMissingFrameLabel);
+        param->setHint(kParamOnMissingFrameHint);
+        assert(param->getNOptions() == eMissingNearest);
+        param->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
+        assert(param->getNOptions() == eMissingError);
+        param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+        assert(param->getNOptions() == eMissingBlack);
+        param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+        param->setAnimates(true);
+        param->setDefault(0); //< default to nearest frame.
+        page->addChild(*param);
+    }
+
     ///////////Frame-mode
-    OFX::ChoiceParamDescriptor* frameModeParam = desc.defineChoiceParam(kParamFrameMode);
-    frameModeParam->setLabels(kParamFrameModeLabel, kParamFrameModeLabel, kParamFrameModeLabel);
-    assert(frameModeParam->getNOptions() == eFrameModeStartingTime);
-    frameModeParam->appendOption(kParamFrameModeOptionStartingTime);
-    assert(frameModeParam->getNOptions() == eFrameModeTimeOffset);
-    frameModeParam->appendOption(kParamFrameModeOptionTimeOffset);
-    frameModeParam->setAnimates(true);
-    frameModeParam->setDefault(0);
-    frameModeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    page->addChild(*frameModeParam);
-    
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFrameMode);
+        param->setLabels(kParamFrameModeLabel, kParamFrameModeLabel, kParamFrameModeLabel);
+        assert(param->getNOptions() == eFrameModeStartingTime);
+        param->appendOption(kParamFrameModeOptionStartingTime);
+        assert(param->getNOptions() == eFrameModeTimeOffset);
+        param->appendOption(kParamFrameModeOptionTimeOffset);
+        param->setAnimates(true);
+        param->setDefault(0);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+
     ///////////Starting frame
-    OFX::IntParamDescriptor* startingTimeParam = desc.defineIntParam(kParamStartingTime);
-    startingTimeParam->setLabels(kParamStartingTimeLabel, kParamStartingTimeLabel, kParamStartingTimeLabel);
-    startingTimeParam->setHint(kParamStartingTimeHint);
-    startingTimeParam->setDefault(0);
-    startingTimeParam->setAnimates(true);
-    startingTimeParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    page->addChild(*startingTimeParam);
-    
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamStartingTime);
+        param->setLabels(kParamStartingTimeLabel, kParamStartingTimeLabel, kParamStartingTimeLabel);
+        param->setHint(kParamStartingTimeHint);
+        param->setDefault(0);
+        param->setAnimates(true);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+
     ///////////Time offset
-    OFX::IntParamDescriptor* timeOffsetParam = desc.defineIntParam(kParamTimeOffset);
-    timeOffsetParam->setLabels(kParamTimeOffsetLabel, kParamTimeOffsetLabel, kParamTimeOffsetLabel);
-    timeOffsetParam->setHint(kParamTimeOffsetHint);
-    timeOffsetParam->setDefault(0);
-    timeOffsetParam->setAnimates(true);
-    timeOffsetParam->setIsSecret(true);
-    page->addChild(*timeOffsetParam);
-    
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamTimeOffset);
+        param->setLabels(kParamTimeOffsetLabel, kParamTimeOffsetLabel, kParamTimeOffsetLabel);
+        param->setHint(kParamTimeOffsetHint);
+        param->setDefault(0);
+        param->setAnimates(true);
+        param->setIsSecret(true);
+        page->addChild(*param);
+    }
+
     ///////////Original frame range
-    OFX::Int2DParamDescriptor* originalFrameRangeParam = desc.defineInt2DParam(kParamOriginalFrameRange);
-    originalFrameRangeParam->setLabels(kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel);
-    originalFrameRangeParam->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
-    originalFrameRangeParam->setAnimates(true);
-    originalFrameRangeParam->setIsSecret(true);
-    originalFrameRangeParam->setIsPersistant(false);
-    page->addChild(*originalFrameRangeParam);
-    
-    
+    {
+        OFX::Int2DParamDescriptor* param = desc.defineInt2DParam(kParamOriginalFrameRange);
+        param->setLabels(kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel);
+        param->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+        param->setAnimates(true);
+        param->setIsSecret(true);
+        param->setIsPersistant(false);
+        page->addChild(*param);
+    }
+
     //////////Input proxy file
-    OFX::StringParamDescriptor* proxyFileParam = desc.defineStringParam(kParamProxy);
-    proxyFileParam->setLabels(kParamProxyLabel, kParamProxyLabel, kParamProxyLabel);
-    proxyFileParam->setStringType(OFX::eStringTypeFilePath);
-    proxyFileParam->setFilePathExists(true);
-    proxyFileParam->setHint(kParamProxyHint);
-    proxyFileParam->setAnimates(!isVideoStreamPlugin);
-    // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
-    proxyFileParam->setScriptName(kParamProxy);
-    desc.addClipPreferencesSlaveParam(*proxyFileParam);
-    page->addChild(*proxyFileParam);
-    
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kParamProxy);
+        param->setLabels(kParamProxyLabel, kParamProxyLabel, kParamProxyLabel);
+        param->setStringType(OFX::eStringTypeFilePath);
+        param->setFilePathExists(true);
+        param->setHint(kParamProxyHint);
+        param->setAnimates(!isVideoStreamPlugin);
+        // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
+        param->setScriptName(kParamProxy);
+        desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
+    }
+
     ////Proxy original scale
-    OFX::Double2DParamDescriptor* originalProxyScaleParam = desc.defineDouble2DParam(kParamOriginalProxyScale);
-    originalProxyScaleParam->setLabels(kParamOriginalProxyScaleLabel,
-                                       kParamOriginalProxyScaleLabel, kParamOriginalProxyScaleLabel);
-    originalProxyScaleParam->setDefault(1., 1.);
-    originalProxyScaleParam->setIsSecret(true);
-    originalProxyScaleParam->setEnabled(false);
-    originalProxyScaleParam->setHint(kParamOriginalProxyScaleHint);
-    // originalProxyScaleParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    originalProxyScaleParam->setAnimates(true);
-    page->addChild(*originalProxyScaleParam);
-    
+    {
+        OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamOriginalProxyScale);
+        param->setLabels(kParamOriginalProxyScaleLabel,
+                         kParamOriginalProxyScaleLabel, kParamOriginalProxyScaleLabel);
+        param->setDefault(1., 1.);
+        param->setIsSecret(true);
+        param->setEnabled(false);
+        param->setHint(kParamOriginalProxyScaleHint);
+        // param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+
     ////Proxy  scale threshold
-    OFX::Double2DParamDescriptor* proxyScaleThresholdParam = desc.defineDouble2DParam(kParamProxyThreshold);
-    proxyScaleThresholdParam->setLabels(kParamProxyThresholdLabel,
-                                       kParamProxyThresholdLabel, kParamProxyThresholdLabel);
-    proxyScaleThresholdParam->setDefault(1., 1.);
-    proxyScaleThresholdParam->setIsSecret(true);
-    proxyScaleThresholdParam->setEnabled(false);
-    proxyScaleThresholdParam->setHint(kParamOriginalProxyScaleHint);
-    proxyScaleThresholdParam->setLayoutHint(OFX::eLayoutHintNoNewLine);
-    proxyScaleThresholdParam->setAnimates(true);
-    page->addChild(*proxyScaleThresholdParam);
-    
+    {
+        OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamProxyThreshold);
+        param->setLabels(kParamProxyThresholdLabel,
+                         kParamProxyThresholdLabel, kParamProxyThresholdLabel);
+        param->setDefault(1., 1.);
+        param->setIsSecret(true);
+        param->setEnabled(false);
+        param->setHint(kParamOriginalProxyScaleHint);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setAnimates(true);
+        page->addChild(*param);
+    }
+
     ///Enable custom proxy scale
-    OFX::BooleanParamDescriptor* enableCustomScale = desc.defineBooleanParam(kParamCustomProxyScale);
-    enableCustomScale->setLabels(kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel);
-    enableCustomScale->setIsSecret(true);
-    enableCustomScale->setDefault(false);
-    enableCustomScale->setHint(kParamCustomProxyScaleHint);
-    enableCustomScale->setAnimates(true);
-    enableCustomScale->setEvaluateOnChange(false);
-    page->addChild(*enableCustomScale);
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamCustomProxyScale);
+        param->setLabels(kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel);
+        param->setIsSecret(true);
+        param->setDefault(false);
+        param->setHint(kParamCustomProxyScaleHint);
+        param->setAnimates(true);
+        param->setEvaluateOnChange(false);
+        page->addChild(*param);
+    }
     
     return page;
 }

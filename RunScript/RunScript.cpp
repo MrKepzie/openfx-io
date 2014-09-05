@@ -119,23 +119,23 @@
 #define kRunScriptPluginArgumentsCount 10
 
 #define kGroupRunScriptPlugin                   "scriptParameters"
-#define kGroupRunScriptPluginLabel              "Script parameters"
+#define kGroupRunScriptPluginLabel              "Script Parameters"
 #define kGroupRunScriptPluginHint               "The list of command-line parameters passed to the script."
 
 #define kParamCount                   "paramCount"
-#define kParamCountLabel              "Number of parameters"
+#define kParamCountLabel              "Number of Parameters"
 
 #define kParamType                    "type"
-#define kParamTypeLabel               "Type of parameter"
+#define kParamTypeLabel               "Type of Parameter"
 
 #define kParamTypeFilenameName  "filename"
-#define kParamTypeFilenameLabel "File name"
+#define kParamTypeFilenameLabel "File Name"
 #define kParamTypeFilenameHint  "A constant or animated string containing a filename.\nIf the string contains hashes (like ####) or a printf token (like %04d), they will be replaced by the frame number, and if it contains %v or %V, it will be replaced by the view ID (\"l\" or \"r\" for %v, \"left\" or \"right\" for %V).\nThis is usually linked to the output filename of an upstream Writer node, or to the input filename of a downstream Reader node."
 #define kParamTypeStringName          "string"
 #define kParamTypeStringLabel         "String"
 #define kParamTypeStringHint          "A string (or sequence of characters)."
 #define kParamTypeDoubleName          "double"
-#define kParamTypeDoubleLabel         "Floating point"
+#define kParamTypeDoubleLabel         "Floating Point"
 #define kParamTypeDoubleHint          "A floating point numerical value."
 #define kParamTypeIntName             "integer"
 #define kParamTypeIntLabel            "Integer"
@@ -633,126 +633,120 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    GroupParamDescriptor *script_parameters_ = desc.defineGroupParam(kGroupRunScriptPlugin);
-    script_parameters_->setHint(kGroupRunScriptPluginHint);
-    script_parameters_->setLabels(kGroupRunScriptPluginLabel, kGroupRunScriptPluginLabel, kGroupRunScriptPluginLabel);
-    page->addChild(*script_parameters_);
+    {
+        GroupParamDescriptor *group = desc.defineGroupParam(kGroupRunScriptPlugin);
+        group->setHint(kGroupRunScriptPluginHint);
+        group->setLabels(kGroupRunScriptPluginLabel, kGroupRunScriptPluginLabel, kGroupRunScriptPluginLabel);
+        page->addChild(*group);
 
-    IntParamDescriptor *param_count_ = desc.defineIntParam(kParamCount);
-    param_count_->setLabels(kParamCountLabel, kParamCountLabel, kParamCountLabel);
-    param_count_->setAnimates(true);
-    param_count_->setRange(0, kRunScriptPluginArgumentsCount);
-    param_count_->setDisplayRange(0, kRunScriptPluginArgumentsCount);
-    param_count_->setParent(*script_parameters_);
-    page->addChild(*param_count_);
+        {
+            IntParamDescriptor *param = desc.defineIntParam(kParamCount);
+            param->setLabels(kParamCountLabel, kParamCountLabel, kParamCountLabel);
+            param->setAnimates(true);
+            param->setRange(0, kRunScriptPluginArgumentsCount);
+            param->setDisplayRange(0, kRunScriptPluginArgumentsCount);
+            param->setParent(*group);
+            page->addChild(*param);
+        }
 
-    // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
-    // We thus hide them in beginEdit(), which is called after instance creation
-    for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
-        ChoiceParamDescriptor *type_;
-        {
-            std::stringstream ss;
-            ss << kParamType << i+1;
-            type_ = desc.defineChoiceParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeLabel << ' ' << i+1;
-            type_->setLabels(ss.str(), ss.str(), ss.str());
-        }
-        type_->setAnimates(true);
-        type_->appendOption(kParamTypeFilenameLabel, kParamTypeFilenameHint);
-        type_->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
-        type_->appendOption(kParamTypeDoubleLabel,   kParamTypeDoubleHint);
-        type_->appendOption(kParamTypeIntLabel,      kParamTypeIntHint);
-        //type_->setIsSecret(true);
-        type_->setParent(*script_parameters_);
-        page->addChild(*type_);
+        // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
+        // We thus hide them in beginEdit(), which is called after instance creation
+        std::stringstream ss;
+        for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
+            {
+                ss.clear();
+                ss << kParamType << i+1;
+                ChoiceParamDescriptor* param = desc.defineChoiceParam(ss.str());
+                ss.clear();
+                ss << kParamTypeLabel << ' ' << i+1;
+                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setAnimates(true);
+                param->appendOption(kParamTypeFilenameLabel, kParamTypeFilenameHint);
+                param->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
+                param->appendOption(kParamTypeDoubleLabel,   kParamTypeDoubleHint);
+                param->appendOption(kParamTypeIntLabel,      kParamTypeIntHint);
+                //type_->setIsSecret(true);
+                param->setParent(*group);
+                page->addChild(*param);
+            }
 
-        StringParamDescriptor *filename_;
-        {
-            std::stringstream ss;
-            ss << kParamTypeFilenameName << i+1;
-            filename_ = desc.defineStringParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeFilenameLabel << ' ' << i+1;
-            filename_->setLabels(ss.str(), ss.str(), ss.str());
-        }
-        filename_->setHint(kParamTypeFilenameHint);
-        filename_->setStringType(eStringTypeFilePath);
-        filename_->setFilePathExists(false); // the file may or may not exist
-        filename_->setAnimates(true); // the file name may change with time
-        //filename_->setIsSecret(true);
-        filename_->setParent(*script_parameters_);
-        page->addChild(*filename_);
+            {
+                ss.clear();
+                ss << kParamTypeFilenameName << i+1;
+                StringParamDescriptor* param = desc.defineStringParam(ss.str());
+                ss.clear();
+                ss << kParamTypeFilenameLabel << ' ' << i+1;
+                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setHint(kParamTypeFilenameHint);
+                param->setStringType(eStringTypeFilePath);
+                param->setFilePathExists(false); // the file may or may not exist
+                param->setAnimates(true); // the file name may change with time
+                //param->setIsSecret(true);
+                param->setParent(*group);
+                page->addChild(*param);
+            }
 
-        StringParamDescriptor *string_;
-        {
-            std::stringstream ss;
-            ss << kParamTypeStringName << i+1;
-            string_ = desc.defineStringParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeStringLabel << ' ' << i+1;
-            string_->setLabels(ss.str(), ss.str(), ss.str());
-        }
-        string_->setHint(kParamTypeStringHint);
-        string_->setAnimates(true);
-        //string_->setIsSecret(true);
-        string_->setParent(*script_parameters_);
-        page->addChild(*string_);
+            {
+                ss.clear();
+                ss << kParamTypeStringName << i+1;
+                StringParamDescriptor* param = desc.defineStringParam(ss.str());
+                ss.clear();
+                ss << kParamTypeStringLabel << ' ' << i+1;
+                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setHint(kParamTypeStringHint);
+                param->setAnimates(true);
+                //param->setIsSecret(true);
+                param->setParent(*group);
+                page->addChild(*param);
+            }
 
-        DoubleParamDescriptor *double_;
-        {
-            std::stringstream ss;
-            ss << kParamTypeDoubleName << i+1;
-            double_ = desc.defineDoubleParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeDoubleLabel << ' ' << i+1;
-            double_->setLabels(ss.str(), ss.str(), ss.str());
-        }
-        double_->setHint(kParamTypeDoubleHint);
-        double_->setAnimates(true);
-        //double_->setIsSecret(true);
-        double_->setParent(*script_parameters_);
-        page->addChild(*double_);
+            {
+                ss.clear();
+                ss << kParamTypeDoubleName << i+1;
+                DoubleParamDescriptor* param = desc.defineDoubleParam(ss.str());
+                ss.clear();
+                ss << kParamTypeDoubleLabel << ' ' << i+1;
+                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setHint(kParamTypeDoubleHint);
+                param->setAnimates(true);
+                //param->setIsSecret(true);
+                param->setParent(*group);
+                page->addChild(*param);
+            }
 
-        IntParamDescriptor *int_;
-        {
-            std::stringstream ss;
-            ss << kParamTypeIntName << i+1;
-            int_ = desc.defineIntParam(ss.str());
+            {
+                ss.clear();
+                ss << kParamTypeIntName << i+1;
+                IntParamDescriptor* param = desc.defineIntParam(ss.str());
+                ss.clear();
+                ss << kParamTypeIntLabel << ' ' << i+1;
+                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setHint(kParamTypeIntHint);
+                param->setAnimates(true);
+                //param->setIsSecret(true);
+                param->setParent(*group);
+                page->addChild(*param);
+            }
         }
-        {
-            std::stringstream ss;
-            ss << kParamTypeIntLabel << ' ' << i+1;
-            int_->setLabels(ss.str(), ss.str(), ss.str());
-        }
-        int_->setHint(kParamTypeIntHint);
-        int_->setAnimates(true);
-        //int_->setIsSecret(true);
-        int_->setParent(*script_parameters_);
-        page->addChild(*int_);
     }
 
-    StringParamDescriptor *script_ = desc.defineStringParam(kParamScript);
-    script_->setLabels(kParamScriptLabel, kParamScriptLabel, kParamScriptLabel);
-    script_->setHint(kParamScriptHint);
-    script_->setStringType(eStringTypeMultiLine);
-    script_->setAnimates(true);
-    script_->setDefault("#!/bin/sh\n");
-    page->addChild(*script_);
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamScript);
+        param->setLabels(kParamScriptLabel, kParamScriptLabel, kParamScriptLabel);
+        param->setHint(kParamScriptHint);
+        param->setStringType(eStringTypeMultiLine);
+        param->setAnimates(true);
+        param->setDefault("#!/bin/sh\n");
+        page->addChild(*param);
+    }
 
-    BooleanParamDescriptor *validate_ = desc.defineBooleanParam(kParamValidate);
-    validate_->setLabels(kParamValidateLabel, kParamValidateLabel, kParamValidateLabel);
-    validate_->setHint(kParamValidateHint);
-    validate_->setEvaluateOnChange(true);
-    page->addChild(*validate_);
+    {
+        BooleanParamDescriptor *param = desc.defineBooleanParam(kParamValidate);
+        param->setLabels(kParamValidateLabel, kParamValidateLabel, kParamValidateLabel);
+        param->setHint(kParamValidateHint);
+        param->setEvaluateOnChange(true);
+        page->addChild(*param);
+    }
 }
 
 OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum /*context*/)

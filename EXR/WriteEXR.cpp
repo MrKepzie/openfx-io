@@ -292,22 +292,26 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/true, "reference", "reference");
 
     /////////Compression
-    OFX::ChoiceParamDescriptor* compressionParam = desc.defineChoiceParam(kWriteEXRCompressionParamName);
-    compressionParam->setAnimates(true);
-    for (int i =0; i < 6; ++i) {
-        compressionParam->appendOption(Exr::compressionNames[i]);
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWriteEXRCompressionParamName);
+        param->setAnimates(true);
+        for (int i =0; i < 6; ++i) {
+            param->appendOption(Exr::compressionNames[i]);
+        }
+        param->setDefault(3);
+        page->addChild(*param);
     }
-    compressionParam->setDefault(3);
-    page->addChild(*compressionParam);
-    
+
     ////////Data type
-    OFX::ChoiceParamDescriptor* dataTypeParam = desc.defineChoiceParam(kWriteEXRDataTypeParamName);
-    dataTypeParam->setAnimates(true);
-    for(int i = 0 ; i < 2 ; ++i) {
-        dataTypeParam->appendOption(Exr::depthNames[i]);
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWriteEXRDataTypeParamName);
+        param->setAnimates(true);
+        for(int i = 0 ; i < 2 ; ++i) {
+            param->appendOption(Exr::depthNames[i]);
+        }
+        param->setDefault(1);
+        page->addChild(*param);
     }
-    dataTypeParam->setDefault(1);
-    page->addChild(*dataTypeParam);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

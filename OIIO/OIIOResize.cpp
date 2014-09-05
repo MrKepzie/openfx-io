@@ -643,101 +643,108 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
-    ChoiceParamDescriptor* type = desc.defineChoiceParam(kParamType);
-    type->setLabels(kParamTypeLabel, kParamTypeLabel, kParamTypeLabel);
-    type->setHint(kParamTypeHint);
-    type->appendOption(kParamTypeOptionFormat);
-    type->appendOption(kParamTypeOptionSize);
-    type->appendOption(kParamTypeOptionScale);
-    type->setAnimates(false);
-    type->setDefault(0);
-    page->addChild(*type);
-    
-    ChoiceParamDescriptor* format = desc.defineChoiceParam(kParamFormat);
-    format->setLabels(kParamFormatLabel, kParamFormatLabel, kParamFormatLabel);
-    format->setAnimates(false);
-    assert(format->getNOptions() == eParamFormatPCVideo);
-    format->appendOption(kParamFormatPCVideoLabel);
-    assert(format->getNOptions() == eParamFormatNTSC);
-    format->appendOption(kParamFormatNTSCLabel);
-    assert(format->getNOptions() == eParamFormatPAL);
-    format->appendOption(kParamFormatPALLabel);
-    assert(format->getNOptions() == eParamFormatHD);
-    format->appendOption(kParamFormatHDLabel);
-    assert(format->getNOptions() == eParamFormatNTSC169);
-    format->appendOption(kParamFormatNTSC169Label);
-    assert(format->getNOptions() == eParamFormatPAL169);
-    format->appendOption(kParamFormatPAL169Label);
-    assert(format->getNOptions() == eParamFormat1kSuper35);
-    format->appendOption(kParamFormat1kSuper35Label);
-    assert(format->getNOptions() == eParamFormat1kCinemascope);
-    format->appendOption(kParamFormat1kCinemascopeLabel);
-    assert(format->getNOptions() == eParamFormat2kSuper35);
-    format->appendOption(kParamFormat2kSuper35Label);
-    assert(format->getNOptions() == eParamFormat2kCinemascope);
-    format->appendOption(kParamFormat2kCinemascopeLabel);
-    assert(format->getNOptions() == eParamFormat4kSuper35);
-    format->appendOption(kParamFormat4kSuper35Label);
-    assert(format->getNOptions() == eParamFormat4kCinemascope);
-    format->appendOption(kParamFormat4kCinemascopeLabel);
-    assert(format->getNOptions() == eParamFormatSquare256);
-    format->appendOption(kParamFormatSquare256Label);
-    assert(format->getNOptions() == eParamFormatSquare512);
-    format->appendOption(kParamFormatSquare512Label);
-    assert(format->getNOptions() == eParamFormatSquare1k);
-    format->appendOption(kParamFormatSquare1kLabel);
-    assert(format->getNOptions() == eParamFormatSquare2k);
-    format->appendOption(kParamFormatSquare2kLabel);
-    format->setDefault(0);
-    format->setHint(kParamFormatHint);
-    page->addChild(*format);
-    
-    Int2DParamDescriptor* size = desc.defineInt2DParam(kParamSize);
-    size->setLabels(kParamSizeLabel, kParamSizeLabel, kParamSizeLabel);
-    size->setHint(kParamSizeHint);
-    size->setDefault(200, 200);
-    size->setAnimates(false);
-    size->setIsSecret(true);
-    size->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
-    size->setLayoutHint(eLayoutHintNoNewLine);
-    page->addChild(*size);
-    
-    BooleanParamDescriptor* preservePAR = desc.defineBooleanParam(kParamPreservePAR);
-    preservePAR->setLabels(kParamPreservePARLabel, kParamPreservePARLabel, kParamPreservePARLabel);
-    preservePAR->setHint(kParamPreservePARHint);
-    preservePAR->setAnimates(false);
-    preservePAR->setDefault(false);
-    preservePAR->setIsSecret(true);
-    preservePAR->setDefault(true);
-    page->addChild(*preservePAR);
-    
-    Double2DParamDescriptor* scale = desc.defineDouble2DParam(kParamScale);
-    scale->setHint(kParamScaleHint);
-    scale->setLabels(kParamScaleLabel, kParamScaleLabel, kParamScaleLabel);
-    scale->setAnimates(true);
-    scale->setIsSecret(true);
-    scale->setDefault(1., 1.);
-    scale->setRange(0., 0., std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
-    scale->setIncrement(0.05);
-    page->addChild(*scale);
-    
-    ChoiceParamDescriptor *filter = desc.defineChoiceParam(kParamFilter);
-    filter->setLabels(kParamFilterLabel, kParamFilterLabel, kParamFilterLabel);
-    filter->setHint(kParamFilterHint);
-    filter->setAnimates(false);
-    filter->appendOption(kParamFilterOptionImpulse);
-    int nFilters = Filter2D::num_filters();
-    int defIndex = 0;
-    for (int i = 0; i < nFilters; ++i) {
-        FilterDesc f;
-        Filter2D::get_filterdesc(i, &f);
-        filter->appendOption(f.name);
-        if (!strcmp(f.name , "lanczos3")) {
-            defIndex = i + 1; // +1 because we added the "impulse" option
-        }
+    {
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamType);
+        param->setLabels(kParamTypeLabel, kParamTypeLabel, kParamTypeLabel);
+        param->setHint(kParamTypeHint);
+        param->appendOption(kParamTypeOptionFormat);
+        param->appendOption(kParamTypeOptionSize);
+        param->appendOption(kParamTypeOptionScale);
+        param->setAnimates(false);
+        param->setDefault(0);
+        page->addChild(*param);
     }
-    filter->setDefault(defIndex);
-    page->addChild(*filter);
+    {
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
+        param->setLabels(kParamFormatLabel, kParamFormatLabel, kParamFormatLabel);
+        param->setAnimates(false);
+        assert(param->getNOptions() == eParamFormatPCVideo);
+        param->appendOption(kParamFormatPCVideoLabel);
+        assert(param->getNOptions() == eParamFormatNTSC);
+        param->appendOption(kParamFormatNTSCLabel);
+        assert(param->getNOptions() == eParamFormatPAL);
+        param->appendOption(kParamFormatPALLabel);
+        assert(param->getNOptions() == eParamFormatHD);
+        param->appendOption(kParamFormatHDLabel);
+        assert(param->getNOptions() == eParamFormatNTSC169);
+        param->appendOption(kParamFormatNTSC169Label);
+        assert(param->getNOptions() == eParamFormatPAL169);
+        param->appendOption(kParamFormatPAL169Label);
+        assert(param->getNOptions() == eParamFormat1kSuper35);
+        param->appendOption(kParamFormat1kSuper35Label);
+        assert(param->getNOptions() == eParamFormat1kCinemascope);
+        param->appendOption(kParamFormat1kCinemascopeLabel);
+        assert(param->getNOptions() == eParamFormat2kSuper35);
+        param->appendOption(kParamFormat2kSuper35Label);
+        assert(param->getNOptions() == eParamFormat2kCinemascope);
+        param->appendOption(kParamFormat2kCinemascopeLabel);
+        assert(param->getNOptions() == eParamFormat4kSuper35);
+        param->appendOption(kParamFormat4kSuper35Label);
+        assert(param->getNOptions() == eParamFormat4kCinemascope);
+        param->appendOption(kParamFormat4kCinemascopeLabel);
+        assert(param->getNOptions() == eParamFormatSquare256);
+        param->appendOption(kParamFormatSquare256Label);
+        assert(param->getNOptions() == eParamFormatSquare512);
+        param->appendOption(kParamFormatSquare512Label);
+        assert(param->getNOptions() == eParamFormatSquare1k);
+        param->appendOption(kParamFormatSquare1kLabel);
+        assert(param->getNOptions() == eParamFormatSquare2k);
+        param->appendOption(kParamFormatSquare2kLabel);
+        param->setDefault(0);
+        param->setHint(kParamFormatHint);
+        page->addChild(*param);
+    }
+    {
+        Int2DParamDescriptor* param = desc.defineInt2DParam(kParamSize);
+        param->setLabels(kParamSizeLabel, kParamSizeLabel, kParamSizeLabel);
+        param->setHint(kParamSizeHint);
+        param->setDefault(200, 200);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kParamPreservePAR);
+        param->setLabels(kParamPreservePARLabel, kParamPreservePARLabel, kParamPreservePARLabel);
+        param->setHint(kParamPreservePARHint);
+        param->setAnimates(false);
+        param->setDefault(false);
+        param->setIsSecret(true);
+        param->setDefault(true);
+        page->addChild(*param);
+    }
+    {
+        Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamScale);
+        param->setHint(kParamScaleHint);
+        param->setLabels(kParamScaleLabel, kParamScaleLabel, kParamScaleLabel);
+        param->setAnimates(true);
+        param->setIsSecret(true);
+        param->setDefault(1., 1.);
+        param->setRange(0., 0., std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+        param->setIncrement(0.05);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamFilter);
+        param->setLabels(kParamFilterLabel, kParamFilterLabel, kParamFilterLabel);
+        param->setHint(kParamFilterHint);
+        param->setAnimates(false);
+        param->appendOption(kParamFilterOptionImpulse);
+        int nFilters = Filter2D::num_filters();
+        int defIndex = 0;
+        for (int i = 0; i < nFilters; ++i) {
+            FilterDesc f;
+            Filter2D::get_filterdesc(i, &f);
+            param->appendOption(f.name);
+            if (!strcmp(f.name , "lanczos3")) {
+                defIndex = i + 1; // +1 because we added the "impulse" option
+            }
+        }
+        param->setDefault(defIndex);
+        page->addChild(*param);
+    }
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

@@ -932,87 +932,98 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     // ASC CDL grade numbers
-    RGBParamDescriptor *slope = desc.defineRGBParam(kParamSlope);
-    slope->setLabels(kParamSlopeLabel, kParamSlopeLabel, kParamSlopeLabel);
-    slope->setHint(kParamSlopeHint);
-    slope->setRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
-    slope->setDisplayRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
-    slope->setDefault(1., 1., 1.);
-    page->addChild(*slope);
-
-    RGBParamDescriptor *offset = desc.defineRGBParam(kParamOffset);
-    offset->setLabels(kParamOffsetLabel, kParamOffsetLabel, kParamOffsetLabel);
-    offset->setHint(kParamOffsetHint);
-    offset->setRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
-    offset->setDisplayRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
-    offset->setDefault(0., 0., 0.);
-    page->addChild(*offset);
-
-    RGBParamDescriptor *power = desc.defineRGBParam(kParamPower);
-    power->setLabels(kParamPowerLabel, kParamPowerLabel, kParamPowerLabel);
-    power->setHint(kParamPowerHint);
-    power->setRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
-    power->setDisplayRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
-    power->setDefault(1., 1., 1.);
-    page->addChild(*power);
-
-    DoubleParamDescriptor *saturation = desc.defineDoubleParam(kParamSaturation);
-    saturation->setLabels(kParamSaturationLabel, kParamSaturationLabel, kParamSaturationLabel);
-    saturation->setHint(kParamSaturationHint);
-    saturation->setRange(kParamSaturationMin, kParamSaturationMax);
-    saturation->setDisplayRange(kParamSaturationMin, kParamSaturationMax);
-    saturation->setDefault(1.);
-    page->addChild(*saturation);
-
-    ChoiceParamDescriptor *direction = desc.defineChoiceParam(kParamDirection);
-    direction->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
-    direction->setHint(kParamDirectionHint);
-    direction->appendOption(kParamDirectionOptionForward);
-    direction->appendOption(kParamDirectionOptionInverse);
-    direction->setDefault(0);
-    page->addChild(*direction);
-
-    BooleanParamDescriptor *readFromFile = desc.defineBooleanParam(kParamReadFromFile);
-    readFromFile->setLabels(kParamReadFromFileLabel, kParamReadFromFileLabel, kParamReadFromFileLabel);
-    readFromFile->setHint(kParamReadFromFileHint);
-    readFromFile->setAnimates(false);
-    readFromFile->setDefault(false);
-    page->addChild(*readFromFile);
-
-    StringParamDescriptor *file = desc.defineStringParam(kParamFile);
-    file->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
-    file->setHint(kParamFileHint);
-    file->setStringType(eStringTypeFilePath);
-    file->setFilePathExists(true);
-    file->setLayoutHint(eLayoutHintNoNewLine);
-    page->addChild(*file);
-
-    PushButtonParamDescriptor *reload = desc.definePushButtonParam(kParamReload);
-    reload->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
-    reload->setHint(kParamReloadHint);
-    page->addChild(*reload);
-
-    IntParamDescriptor *version = desc.defineIntParam(kVersionParamName);
-    version->setIsSecret(true);
-    version->setDefault(1);
-    page->addChild(*version);
-
-    StringParamDescriptor *cccid = desc.defineStringParam(kParamCCCID);
-    cccid->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
-    cccid->setHint(kParamCCCIDHint);
-    page->addChild(*cccid);
-
-    StringParamDescriptor *export_ = desc.defineStringParam(kParamExport);
-    export_->setLabels(kParamExportLabel, kParamExportLabel, kParamExportLabel);
-    export_->setHint(kParamExportHint);
-    export_->setStringType(eStringTypeFilePath);
-    export_->setFilePathExists(false); // necessary for output files
-    export_->setEvaluateOnChange(false);
-    export_->setIsPersistant(false);
-    export_->setAnimates(false);
-    export_->setDefault(kParamExportDefault);
-    page->addChild(*export_);
-
+    {
+        RGBParamDescriptor *param = desc.defineRGBParam(kParamSlope);
+        param->setLabels(kParamSlopeLabel, kParamSlopeLabel, kParamSlopeLabel);
+        param->setHint(kParamSlopeHint);
+        param->setRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
+        param->setDisplayRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
+        param->setDefault(1., 1., 1.);
+        page->addChild(*param);
+    }
+    {
+        RGBParamDescriptor *param = desc.defineRGBParam(kParamOffset);
+        param->setLabels(kParamOffsetLabel, kParamOffsetLabel, kParamOffsetLabel);
+        param->setHint(kParamOffsetHint);
+        param->setRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
+        param->setDisplayRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
+        param->setDefault(0., 0., 0.);
+        page->addChild(*param);
+    }
+    {
+        RGBParamDescriptor *param = desc.defineRGBParam(kParamPower);
+        param->setLabels(kParamPowerLabel, kParamPowerLabel, kParamPowerLabel);
+        param->setHint(kParamPowerHint);
+        param->setRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
+        param->setDisplayRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
+        param->setDefault(1., 1., 1.);
+        page->addChild(*param);
+    }
+    {
+        DoubleParamDescriptor *param = desc.defineDoubleParam(kParamSaturation);
+        param->setLabels(kParamSaturationLabel, kParamSaturationLabel, kParamSaturationLabel);
+        param->setHint(kParamSaturationHint);
+        param->setRange(kParamSaturationMin, kParamSaturationMax);
+        param->setDisplayRange(kParamSaturationMin, kParamSaturationMax);
+        param->setDefault(1.);
+        page->addChild(*param);
+    }
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
+        param->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+        param->setHint(kParamDirectionHint);
+        param->appendOption(kParamDirectionOptionForward);
+        param->appendOption(kParamDirectionOptionInverse);
+        param->setDefault(0);
+        page->addChild(*param);
+    }
+    {
+        BooleanParamDescriptor *param = desc.defineBooleanParam(kParamReadFromFile);
+        param->setLabels(kParamReadFromFileLabel, kParamReadFromFileLabel, kParamReadFromFileLabel);
+        param->setHint(kParamReadFromFileHint);
+        param->setAnimates(false);
+        param->setDefault(false);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamFile);
+        param->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
+        param->setHint(kParamFileHint);
+        param->setStringType(eStringTypeFilePath);
+        param->setFilePathExists(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
+        param->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
+        param->setHint(kParamReloadHint);
+        page->addChild(*param);
+    }
+    {
+        IntParamDescriptor *param = desc.defineIntParam(kVersionParamName);
+        param->setIsSecret(true);
+        param->setDefault(1);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
+        param->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
+        param->setHint(kParamCCCIDHint);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamExport);
+        param->setLabels(kParamExportLabel, kParamExportLabel, kParamExportLabel);
+        param->setHint(kParamExportHint);
+        param->setStringType(eStringTypeFilePath);
+        param->setFilePathExists(false); // necessary for output files
+        param->setEvaluateOnChange(false);
+        param->setIsPersistant(false);
+        param->setAnimates(false);
+        param->setDefault(kParamExportDefault);
+        page->addChild(*param);
+    }
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
 }

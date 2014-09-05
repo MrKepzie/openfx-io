@@ -51,13 +51,13 @@
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
 #define kOCIOParamConfigFileName "ocioConfigFile"
-#define kOCIOParamConfigFileLabel "OCIO config file"
+#define kOCIOParamConfigFileLabel "OCIO Config File"
 #define kOCIOParamConfigFileHint "OpenColorIO configuration file"
 #define kOCIOParamInputSpaceName "ocioInputSpace"
-#define kOCIOParamInputSpaceLabel "Input colorspace"
+#define kOCIOParamInputSpaceLabel "Input Colorspace"
 #define kOCIOParamInputSpaceHint "Input data is taken to be in this colorspace."
 #define kOCIOParamOutputSpaceName "ocioOutputSpace"
-#define kOCIOParamOutputSpaceLabel "Output colorspace"
+#define kOCIOParamOutputSpaceLabel "Output Colorspace"
 #define kOCIOParamOutputSpaceHint "Output data is taken to be in this colorspace."
 #ifdef OFX_OCIO_CHOICE
 #define kOCIOParamInputSpaceChoiceName "ocioInputSpaceIndex"
