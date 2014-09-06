@@ -388,13 +388,13 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             } else if (userPremult == OFX::eImagePreMultiplied) {
                 assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
-                unPremultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             } else {
                 assert(userPremult == OFX::eImageUnPreMultiplied);
                 assert(pluginExpectedPremult == OFX::eImagePreMultiplied);
-                premultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
-                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+                premultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
+                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             }
         } else {
             assert(!isOCIOIdentity);
@@ -404,8 +404,8 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             } else {
                 assert(userPremult == OFX::eImagePreMultiplied);
-                unPremultPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             }
             // do the color-space conversion
             _ocio->apply(args.time, renderWindowClipped, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
@@ -413,7 +413,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             ///If needed, re-premult the image for the plugin to work correctly
             if (pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
                 premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents
-                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes);
+                                 , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             }
         }
         // write theimage file
@@ -652,6 +652,13 @@ GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
     if (formatType == 0) {
         // use the default RoD
         rod = _inputClip->getRegionOfDefinition(time);
+    } else if (formatType == 1) {
+        OfxPointD extent = getProjectExtent();
+        OfxPointD offset = getProjectOffset();
+        rod.x1 = offset.x;
+        rod.y1 = offset.y;
+        rod.x2 = extent.x;
+        rod.y2 = extent.y;
     } else {
         int formatIndex;
         _outputFormat->getValueAtTime(time, formatIndex);
@@ -802,7 +809,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else if (paramName == kParamFormatType) {
         int type;
         _outputFormatType->getValue(type);
-        if (type == 0) {
+        if (type == 0 || type == 1) {
             _outputFormat->setIsSecret(true);
         } else {
             _outputFormat->setIsSecret(false);
@@ -956,6 +963,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormatType);
         param->setLabels(kParamFormatTypeLabel, kParamFormatTypeLabel, kParamFormatTypeLabel);
         param->appendOption("Input stream format","Renders using for format the input stream's format.");
+        param->appendOption("Project format","Renders using the format of the current project");
         param->appendOption("Fixed format","Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter.");
         param->setDefault(1);
         param->setAnimates(false);
@@ -969,6 +977,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
         param->setLabels(kParamOutputFormatLabel, kParamOutputFormatLabel, kParamOutputFormatLabel);
         param->setAnimates(true);
+        param->setIsSecret(true);
         param->setHint(kParamOutputFormatHint);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
