@@ -203,11 +203,11 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _startingTime(0)
 , _originalFrameRange(0)
 , _ocio(new GenericOCIO(this))
-, _settingFrameRange(false)
-, _sequenceFromFiles()
 , _supportsRGBA(false)
 , _supportsRGB(false)
 , _supportsAlpha(false)
+, _settingFrameRange(false)
+, _sequenceFromFiles()
 , _supportsTiles(supportsTiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -261,10 +261,10 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
                 _supportsRGBA  = supportsRGBA;
                 break;
             case OFX::ePixelComponentRGB:
-                _supportsRGBA = supportsRGB;
+                _supportsRGB = supportsRGB;
                 break;
             case OFX::ePixelComponentAlpha:
-                _supportsRGBA = supportsAlpha;
+                _supportsAlpha = supportsAlpha;
                 break;
             default:
                 // other components are not supported by this plugin
