@@ -57,7 +57,7 @@ static bool gWasOCIOEnvVarFound = false;
 #define kPluginGrouping "Color/OCIO"
 #define kPluginDescription  "Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back)."
 
-#define kPluginIdentifier "fr.inria.openfx:OCIOLogConvert"
+#define kPluginIdentifier "fr.inria.openfx.OCIOLogConvert"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 

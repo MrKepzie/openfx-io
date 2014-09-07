@@ -67,7 +67,7 @@ OIIO_NAMESPACE_USING
 #define kPluginName "ReadOIIOOFX"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read images using OpenImageIO."
-#define kPluginIdentifier "fr.inria.openfx:ReadOIIO"
+#define kPluginIdentifier "fr.inria.openfx.ReadOIIO"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 

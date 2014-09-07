@@ -62,7 +62,7 @@
 #define kPluginName "ReadEXR"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read images using OpenEXR."
-#define kPluginIdentifier "fr.inria.openfx:ReadEXR"
+#define kPluginIdentifier "fr.inria.openfx.ReadEXR"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 

@@ -53,7 +53,7 @@
 #define kPluginName "ReadPFMOFX"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read PFM (Portable Float Map) files."
-#define kPluginIdentifier "fr.inria.openfx:ReadPFM"
+#define kPluginIdentifier "fr.inria.openfx.ReadPFM"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 

@@ -49,7 +49,7 @@ OIIO_NAMESPACE_USING
 #define kPluginName "WriteOIIOOFX"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription "Write images using OpenImageIO."
-#define kPluginIdentifier "fr.inria.openfx:WriteOIIO"
+#define kPluginIdentifier "fr.inria.openfx.WriteOIIO"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
@@ -522,20 +522,6 @@ bool WriteOIIOPlugin::isImageFile(const std::string& /*fileExtension*/) const {
 
 
 using namespace OFX;
-
-#if 0
-namespace OFX
-{
-    namespace Plugin
-    {
-        void getPluginIDs(OFX::PluginFactoryArray &ids)
-        {
-            static WriteOIIOPluginFactory p("fr.inria.openfx:WriteOIIO", 1, 0);
-            ids.push_back(&p);
-        }
-    };
-};
-#endif
 
 static std::string oiio_versions()
 {

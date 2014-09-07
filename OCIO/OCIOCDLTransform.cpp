@@ -63,7 +63,7 @@ namespace OCIO = OCIO_NAMESPACE;
 "The grade can be loaded from an ASC .ccc (Color Correction Collection) or .cc (Color Correction) file."
 //, and saved to a .cc file."
 
-#define kPluginIdentifier "fr.inria.openfx:OCIOCDLTransform"
+#define kPluginIdentifier "fr.inria.openfx.OCIOCDLTransform"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
