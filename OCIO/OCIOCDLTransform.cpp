@@ -374,8 +374,10 @@ OCIOCDLTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     std::auto_ptr<OFX::Image> mask(getContext() != OFX::eContextFilter ? maskClip_->fetchImage(time) : 0);
     std::auto_ptr<OFX::Image> orig(srcClip_->fetchImage(time));
     if (getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
+        bool maskInvert;
+        _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
-        processor.setMaskImg(mask.get());
+        processor.setMaskImg(mask.get(), maskInvert);
     }
 
     // set the images
@@ -393,9 +395,7 @@ OCIOCDLTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     _premultChannel->getValueAtTime(time, premultChannel);
     double mix;
     _mix->getValueAtTime(time, mix);
-    bool maskInvert;
-    _maskInvert->getValueAtTime(time, maskInvert);
-    processor.setPremultMaskMix(premult, premultChannel, mix, maskInvert);
+    processor.setPremultMaskMix(premult, premultChannel, mix);
 
     // Call the base class process member, this will call the derived templated process code
     processor.process();

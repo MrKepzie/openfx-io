@@ -577,7 +577,7 @@ setupAndPremult(OFX::PixelProcessorFilterBase & processor,
     // set the render window
     processor.setRenderWindow(renderWindow);
     
-    processor.setPremultMaskMix(premult, premultChannel, 1., false);
+    processor.setPremultMaskMix(premult, premultChannel, 1.);
     
     // Call the base class process member, this will call the derived templated process code
     processor.process();
