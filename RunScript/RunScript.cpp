@@ -106,7 +106,7 @@
 "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces).\n" \
 "This plugin uses pstream <http://pstreams.sourceforge.net>, which is distributed under the GNU LGPLv3.\n"
 
-#define kPluginIdentifier "fr.inria.openfx:RunScript"
+#define kPluginIdentifier "fr.inria.openfx.RunScript"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
