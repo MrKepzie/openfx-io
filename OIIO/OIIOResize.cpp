@@ -81,7 +81,12 @@
 #define kParamTypeOptionSize "Size"
 #define kParamTypeOptionScale "Scale"
 
-#pragma message WARN("TODO: make an enum for the resize type!")
+enum ResizeTypeEnum
+{
+    eResizeTypeFormat = 0,
+    eResizeTypeSize,
+    eResizeTypeScale,
+};
 
 #define kParamFormat "format"
 #define kParamFormatLabel "Format"
@@ -421,10 +426,11 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
                              OFX::Clip * &identityClip,
                              double &/*identityTime*/)
 {
-    int type;
-    type_->getValue(type);
+    int type_i;
+    type_->getValue(type_i);
+    ResizeTypeEnum type = (ResizeTypeEnum)type_i;
     switch (type) {
-        case 0: {
+        case eResizeTypeFormat: {
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
             int index;
             format_->getValue(index);
@@ -437,7 +443,8 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             }
             return false;
         }   break;
-        case 1: {
+
+        case eResizeTypeSize: {
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
             int w,h;
             size_->getValue(w, h);
@@ -447,7 +454,8 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             }
             return false;
         }   break;
-        case 2: {
+
+        case eResizeTypeScale: {
             double sx,sy;
             scale_->getValue(sx, sy);
             if (sx == 1. && sy == 1.) {
@@ -469,28 +477,34 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
                                const std::string &paramName)
 {
     if (paramName == kParamType) {
-        int type;
-        type_->getValue(type);
+        int type_i;
+        type_->getValue(type_i);
+        ResizeTypeEnum type = (ResizeTypeEnum)type_i;
         switch (type) {
-            case 0: {//specific output format
+            case eResizeTypeFormat:
+                //specific output format
                 size_->setIsSecret(true);
                 preservePAR_->setIsSecret(true);
                 scale_->setIsSecret(true);
                 format_->setIsSecret(false);
-            }   break;
-            case 1: {//size
+                break;
+
+            case eResizeTypeSize:
+                //size
                 size_->setIsSecret(false);
                 preservePAR_->setIsSecret(false);
                 scale_->setIsSecret(true);
                 format_->setIsSecret(true);
-            }   break;
+                break;
                 
-            case 2:  {//scaled
+            case eResizeTypeScale:
+                //scaled
                 size_->setIsSecret(true);
                 preservePAR_->setIsSecret(true);
                 scale_->setIsSecret(false);
                 format_->setIsSecret(true);
-            }   break;
+                break;
+
             default:
                 break;
         }
@@ -501,10 +515,12 @@ bool
 OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
                                         OfxRectD &rod)
 {
-    int type;
-    type_->getValue(type);
+    int type_i;
+    type_->getValue(type_i);
+    ResizeTypeEnum type = (ResizeTypeEnum)type_i;
     switch (type) {
-        case 0: {//specific output format
+        case eResizeTypeFormat: {
+            //specific output format
             int index;
             format_->getValue(index);
             double par;
@@ -514,7 +530,9 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             rod.x2 = w;
             rod.y2 = h;
         }   break;
-        case 1: {//size
+
+        case eResizeTypeSize: {
+            //size
             int w,h;
             size_->getValue(w, h);
             bool preservePar;
@@ -543,7 +561,8 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             rod.y2 = h;
         }   break;
             
-        case 2:  {//scaled
+        case eResizeTypeScale: {
+            //scaled
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
             double sx,sy;
             scale_->getValue(sx, sy);
@@ -556,6 +575,7 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             rod.y1 = std::min(srcRoD.y1, srcRoD.y2 - 1);
             rod.y2 = std::max(srcRoD.y1 + 1, srcRoD.y2);
         }   break;
+            
         default:
             return false;
     }
@@ -647,8 +667,11 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamType);
         param->setLabels(kParamTypeLabel, kParamTypeLabel, kParamTypeLabel);
         param->setHint(kParamTypeHint);
+        assert(param->getNOptions() == eResizeTypeFormat);
         param->appendOption(kParamTypeOptionFormat);
+        assert(param->getNOptions() == eResizeTypeSize);
         param->appendOption(kParamTypeOptionSize);
+        assert(param->getNOptions() == eResizeTypeScale);
         param->appendOption(kParamTypeOptionScale);
         param->setAnimates(false);
         param->setDefault(0);
