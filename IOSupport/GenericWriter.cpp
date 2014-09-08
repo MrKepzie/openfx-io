@@ -140,7 +140,7 @@
 #define kParamInputPremultLabel "Input Premult"
 #define kParamInputPremultHint \
 "Input is considered to have this premultiplication state.\n"\
-"If is is Premultiplied, red, green and blue channels are divided by the alpha channel "\
+"If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
 "This is set automatically from the input stream information, but can be adjusted if this information is wrong."
 #define kParamInputPremultOptionOpaqueHint "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."

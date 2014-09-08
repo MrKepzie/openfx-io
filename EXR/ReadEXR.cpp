@@ -97,6 +97,8 @@ private:
 
     virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
     
+    virtual void onInputFileChanged(const std::string& newFile,
+                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -600,6 +602,37 @@ ReadEXRPlugin::decode(const std::string& filename,
     
 }
 
+void
+ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
+                        OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components)
+{
+    Exr::File* file = Exr::FileManager::s_readerManager.get(newFile);
+    bool hasRed;
+    bool hasGreen;
+    bool hasBlue;
+    bool hasAlpha;
+    
+    hasRed = file->channel_map.find(Exr::Channel_red) != file->channel_map.end();
+    hasGreen = file->channel_map.find(Exr::Channel_green) != file->channel_map.end();
+    hasBlue = file->channel_map.find(Exr::Channel_blue) != file->channel_map.end();
+    hasAlpha = file->channel_map.find(Exr::Channel_alpha) != file->channel_map.end();
+    
+    if (hasAlpha) {
+        if (hasRed && hasGreen && hasBlue) {
+            components = OFX::ePixelComponentRGBA;
+        } else {
+            components = OFX::ePixelComponentAlpha;
+        }
+    } else {
+        if (hasRed && hasGreen && hasBlue) {
+            components = OFX::ePixelComponentRGB;
+        } else {
+            components = OFX::ePixelComponentNone;
+        }
+    }
+#pragma message WARN("This is probably wrong, I just set it for the sake of making it compile.")
+    premult = OFX::eImagePreMultiplied;
+}
 
 bool
 ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,

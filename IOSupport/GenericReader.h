@@ -109,11 +109,10 @@ public:
     virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE;
     
     /**
-     * @brief Override to set the output clip components and premultiplication.
-     * The default implementation sets it to the most chromatic components supported by the host and premultiplied.
-     * By convention, the output of readers is either premultiplied or opaque.
+     * @brief Set the output components and premultiplication state for the input image automatically.
+     * This is filled from directly the info returned by onInputFileChanged
      **/
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 
     /**
      * @brief Overriden to clear any OCIO cache. 
@@ -127,15 +126,26 @@ protected:
     OfxStatus getFilenameAtTime(double t, std::string& filename);
 
     int getStartingTime();
+    
+    OFX::PixelComponentEnum getOutputComponents() const;
 
 private:
     
     /**
-     * @brief Override if you want to do something when the input image/video file changed.
+     * @brief Called when the input image/video file changed.
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     * 
+     * You must also return the premultiplication state and pixel components of the image.
+     * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual void onInputFileChanged(const std::string& /*newFile*/) {}
+    virtual void onInputFileChanged(const std::string& newFile,
+                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) = 0;
+    
+    /**
+     * @brief Called when the Output Componentns param changes
+     **/
+    virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum /*components*/) {}
     
     /**
      * @brief Override to clear any cache you may have.
@@ -249,6 +259,30 @@ private:
                        int dstRowBytes);
 
     
+    void premultPixelData(const OfxRectI &renderWindow,
+                     const void *srcPixelData,
+                     const OfxRectI& srcBounds,
+                     OFX::PixelComponentEnum srcPixelComponents,
+                     OFX::BitDepthEnum srcPixelDepth,
+                     int srcRowBytes,
+                     void *dstPixelData,
+                     const OfxRectI& dstBounds,
+                     OFX::PixelComponentEnum dstPixelComponents,
+                     OFX::BitDepthEnum dstBitDepth,
+                          int dstRowBytes);
+    
+    void unPremultPixelData(const OfxRectI &renderWindow,
+                       const void *srcPixelData,
+                       const OfxRectI& srcBounds,
+                       OFX::PixelComponentEnum srcPixelComponents,
+                       OFX::BitDepthEnum srcPixelDepth,
+                       int srcRowBytes,
+                       void *dstPixelData,
+                       const OfxRectI& dstBounds,
+                       OFX::PixelComponentEnum dstPixelComponents,
+                       OFX::BitDepthEnum dstBitDepth,
+                       int dstRowBytes);
+    
     OfxPointD detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time);
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
@@ -269,11 +303,10 @@ protected:
     
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
+    OFX::ChoiceParam* _outputComponents;
+    OFX::ChoiceParam* _premult;
+    
     std::auto_ptr<GenericOCIO> _ocio;
-
-    bool _supportsRGBA;
-    bool _supportsRGB;
-    bool _supportsAlpha;
 
 private:
     bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true

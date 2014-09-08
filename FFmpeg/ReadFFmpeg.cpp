@@ -76,16 +76,14 @@ public:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
-    /** @brief get the clip preferences */
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
-
     bool loadNearestFrame() const;
 
 private:
 
     virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& filename) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename,
+                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
@@ -126,7 +124,13 @@ void ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const 
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
-void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename) {
+void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
+                                          OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) {
+    
+    ///Ffmpeg is RGB opaque.
+    ///The GenericReader is responsible for checking if RGB is good enough, otherwise will map it to RGBA
+    components = OFX::ePixelComponentRGB;
+    premult = OFX::eImageOpaque;
     
     if (_ffmpegFile) {
         if (_ffmpegFile->getFilename() == filename) {
@@ -323,21 +327,6 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
     return true;
 }
 
-
-/* Override the clip preferences */
-void
-ReadFFmpegPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
-{
-    OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
-    if (_supportsRGB) {
-        outputComponents = OFX::ePixelComponentRGB;
-    } else if (_supportsRGBA) {
-        outputComponents = OFX::ePixelComponentRGBA;
-    }
-    clipPreferences.setClipComponents(*_outputClip, outputComponents);
-    // FFmpeg videos are always opaque, even when output is RGBA
-    clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-}
 
 using namespace OFX;
 

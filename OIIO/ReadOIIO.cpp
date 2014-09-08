@@ -82,12 +82,6 @@ OIIO_NAMESPACE_USING
 #define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata.\nImages which have associated alpha (i.e. are already premultiplied) are unaffected."
 #endif
 
-#define kParamOutputComponents "outputComponents"
-#define kParamOutputComponentsLabel "Output Components"
-#define kParamOutputComponentsHint "Components in the output"
-#define kParamOutputComponentsOptionRGBA "RGBA"
-#define kParamOutputComponentsOptionRGB "RGB"
-#define kParamOutputComponentsOptionAlpha "Alpha"
 
 #ifndef OFX_READ_OIIO_NEWMENU
 #define kParamFirstChannel "firstChannel"
@@ -131,12 +125,8 @@ OIIO_NAMESPACE_USING
 #define kSupportsTiles false
 #endif
 
-static bool gHostSupportsRGBA   = false;
-static bool gHostSupportsRGB    = false;
-static bool gHostSupportsAlpha  = false;
 static bool gHostIsNatron   = false;
 
-static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
 class ReadOIIOPlugin : public GenericReaderPlugin {
 
@@ -151,7 +141,8 @@ public:
     virtual void clearAnyCache() OVERRIDE FINAL;
 private:
 
-    virtual void onInputFileChanged(const std::string& filename) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename,
+                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
@@ -159,10 +150,9 @@ private:
 
     virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
 
+    virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
+    
     std::string metadata(const std::string& filename);
-
-    /** @brief get the clip preferences */
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 
     void updateSpec(const std::string &filename);
 
@@ -183,7 +173,6 @@ private:
 #ifndef OFX_READ_OIIO_SHARED_CACHE
     OFX::BooleanParam* _unassociatedAlpha;
 #endif
-    OFX::ChoiceParam *_outputComponents;
 #ifdef OFX_READ_OIIO_NEWMENU
     OFX::ChoiceParam *_rChannel;
     OFX::ChoiceParam *_gChannel;
@@ -208,7 +197,6 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 #ifndef OFX_READ_OIIO_SHARED_CACHE
 , _unassociatedAlpha(0)
 #endif
-, _outputComponents(0)
 #ifdef OFX_READ_OIIO_NEWMENU
 , _rChannel(0)
 , _gChannel(0)
@@ -228,7 +216,6 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
 # endif
 #endif
-    _outputComponents = fetchChoiceParam(kParamOutputComponents);
 #ifdef OFX_READ_OIIO_NEWMENU
     _rChannel = fetchChoiceParam(kParamRChannel);
     _gChannel = fetchChoiceParam(kParamGChannel);
@@ -332,21 +319,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
     }
 #endif
-    else if (paramName == kParamOutputComponents) {
-        int outputComponents_i;
-        _outputComponents->getValue(outputComponents_i);
-        OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
-#ifdef OFX_READ_OIIO_NEWMENU
-        updateComponents(outputComponents);
-#else
-        // set the first channel to the alpha channel if output is alpha
-        if (outputComponents == OFX::ePixelComponentAlpha) {
-            std::string filename;
-            _fileParam->getValueAtTime(args.time, filename);
-            onInputFileChanged(filename);
-        }
-#endif
-    } else if (paramName == kParamRChannel) {
+    else if (paramName == kParamRChannel) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
@@ -357,6 +330,21 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else {
         GenericReaderPlugin::changedParam(args,paramName);
     }
+}
+
+void
+ReadOIIOPlugin::onOutputComponentsParamChanged(OFX::PixelComponentEnum components)
+{
+#ifdef OFX_READ_OIIO_NEWMENU
+    updateComponents(components);
+#else
+    // set the first channel to the alpha channel if output is alpha
+    if (components == OFX::ePixelComponentAlpha) {
+        std::string filename;
+        _fileParam->getValueAtTime(args.time, filename);
+        onInputFileChanged(filename);
+    }
+#endif
 }
 
 #ifdef OFX_READ_OIIO_NEWMENU
@@ -555,7 +543,8 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
     _specValid = true;
 }
 
-void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
+void ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
+                                        OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components)
 {
     updateSpec(filename);
     if (!_specValid) {
@@ -702,6 +691,32 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
 #  endif
 # endif // OFX_IO_USING_OCIO
 
+    switch (_spec.nchannels) {
+        case 0:
+            components = OFX::ePixelComponentNone;
+            break;
+        case 1:
+            components = OFX::ePixelComponentAlpha;
+            break;
+        case 3:
+            components = OFX::ePixelComponentRGB;
+            break;
+        case 4:
+            components = OFX::ePixelComponentRGBA;
+            break;
+        default:
+            components = OFX::ePixelComponentRGBA;
+            break;
+    }
+    
+    if (components != OFX::ePixelComponentRGBA && components != OFX::ePixelComponentAlpha) {
+        premult = OFX::eImageOpaque;
+    } else {
+        // output is always premultiplied
+        premult = OFX::eImagePreMultiplied;
+    }
+    
+    
 #ifdef OFX_READ_OIIO_NEWMENU
     // rebuild the channel choices
     buildChannelMenus();
@@ -709,12 +724,8 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename)
     setDefaultChannels();
 #else
     _firstChannel->setDisplayRange(0, _spec.nchannels);
-
     // set the first channel to the alpha channel if output is alpha
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
-    if (_spec.alpha_channel != -1 && outputComponents == OFX::ePixelComponentAlpha) {
+    if (_spec.alpha_channel != -1 && components == OFX::ePixelComponentAlpha) {
         _firstChannel->setValue(_spec.alpha_channel);
     }
 #endif
@@ -746,13 +757,6 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     }
     const ImageSpec &spec = img->spec();
 #endif
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
-    if (pixelComponents != outputComponents) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "ReadOIIO: OFX Host dit not take into account output components");
-        OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
-    }
 
     // we only support RGBA, RGB or Alpha output clip
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
@@ -1195,22 +1199,6 @@ std::string ReadOIIOPlugin::metadata(const std::string& filename)
     return ss.str();
 }
 
-/* Override the clip preferences */
-void
-ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
-{
-    // set the components of _outputClip
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
-    clipPreferences.setClipComponents(*_outputClip, outputComponents);
-    if (outputComponents != OFX::ePixelComponentRGBA && outputComponents != OFX::ePixelComponentAlpha) {
-        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-    } else {
-        // output is always premultiplied
-        clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
-    }
-}
 
 using namespace OFX;
 
@@ -1301,40 +1289,6 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setPluginEvaluation(50);
 #endif
 
-    for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
-         it != getImageEffectHostDescription()->_supportedComponents.end();
-         ++it) {
-        switch (*it) {
-            case ePixelComponentRGBA:
-                gHostSupportsRGBA  = true;
-                break;
-            case ePixelComponentRGB:
-                gHostSupportsRGB = true;
-                break;
-            case ePixelComponentAlpha:
-                gHostSupportsAlpha = true;
-                break;
-            default:
-                // other components are not supported by this plugin
-                break;
-        }
-    }
-    {
-        int i = 0;
-        if (gHostSupportsRGBA) {
-            gOutputComponentsMap[i] = ePixelComponentRGBA;
-            ++i;
-        }
-        if (gHostSupportsRGB) {
-            gOutputComponentsMap[i] = ePixelComponentRGB;
-            ++i;
-        }
-        if (gHostSupportsAlpha) {
-            gOutputComponentsMap[i] = ePixelComponentAlpha;
-            ++i;
-        }
-        gOutputComponentsMap[i] = ePixelComponentNone;
-    }
 }
 
 static void
@@ -1384,29 +1338,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
 #endif
 
-    {
-        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOutputComponents);
-        param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
-        param->setHint(kParamOutputComponentsHint);
-        // the following must be in the same order as in describe(), so that the map works
-        if (gHostSupportsRGBA) {
-            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
-            param->appendOption(kParamOutputComponentsOptionRGBA);
-        }
-        if (gHostSupportsRGB) {
-            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
-            param->appendOption(kParamOutputComponentsOptionRGB);
-        }
-        if (gHostSupportsAlpha) {
-            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
-            param->appendOption(kParamOutputComponentsOptionAlpha);
-        }
-        param->setDefault(0);
-        param->setAnimates(false);
-        desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
-    }
-    
+
 #ifdef OFX_READ_OIIO_NEWMENU
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamRChannel);

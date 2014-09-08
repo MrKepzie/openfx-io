@@ -78,8 +78,9 @@ private:
 
     virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
 
-    /** @brief get the clip preferences */
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile,
+                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
+
 };
 
 
@@ -310,9 +311,9 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     return true;
 }
 
-/* Override the clip preferences */
 void
-ReadPFMPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+ReadPFMPlugin::onInputFileChanged(const std::string& newFile,
+                        OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components)
 {
     int startingTime = getStartingTime();
     std::string filename;
@@ -321,10 +322,10 @@ ReadPFMPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
         return;
     }
     std::stringstream ss;
-
+    
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
-
+    
     char pfm_type = 0;
     char item[1024] = { 0 };
     int err = 0;
@@ -335,30 +336,21 @@ ReadPFMPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
     }
-
+    
     // set the components of _outputClip
     OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
     if (pfm_type == 'F') {
-        if (_supportsRGB) {
-            outputComponents = OFX::ePixelComponentRGB;
-        } else if (_supportsRGBA) {
-            outputComponents = OFX::ePixelComponentRGBA;
-        }
+        outputComponents = OFX::ePixelComponentRGB;
     } else if (pfm_type == 'f') {
-        if (_supportsAlpha) {
-            outputComponents = OFX::ePixelComponentAlpha;
-        } else if (_supportsRGBA) {
-            outputComponents = OFX::ePixelComponentRGBA;
-        }
+        outputComponents = OFX::ePixelComponentAlpha;
     } else {
         return;
     }
-    clipPreferences.setClipComponents(*_outputClip, outputComponents);
     if (outputComponents != OFX::ePixelComponentRGBA && outputComponents != OFX::ePixelComponentAlpha) {
-        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+        premult = OFX::eImageOpaque;
     } else {
         // output is always premultiplied
-        clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
+        premult = OFX::eImagePreMultiplied;
     }
 }
 

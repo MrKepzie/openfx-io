@@ -171,6 +171,26 @@ enum MissingEnum
 #define kReaderOptionNearest "Load nearest"
 #define kReaderOptionNearestHint "Try to load the nearest frame in the sequence/stream, if any."
 
+
+#define kParamOutputComponents "outputComponents"
+#define kParamOutputComponentsLabel "Output Components"
+#define kParamOutputComponentsHint "Components in the output"
+#define kParamOutputComponentsOptionRGBA "RGBA"
+#define kParamOutputComponentsOptionRGB "RGB"
+#define kParamOutputComponentsOptionAlpha "Alpha"
+
+#define kParamOutputPremult "outputPremult"
+#define kParamOutputPremultLabel "Output Premult"
+#define kParamOutputPremultHint \
+"Image being read is considered to have this premultiplication state.\n"\
+"If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
+"before applying the colorspace conversion.\n"\
+"This is set automatically from the image file information, but can be adjusted if this information is wrong (e.g: the file was badly written)"
+#define kParamOutputPremultOptionOpaqueHint "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
+#define kParamOutputPremultOptionPreMultipliedHint "The image is premultiplied by its alpha (also called \"associated alpha\")."
+#define kParamOutputPremultOptionUnPreMultipliedHint "The image is unpremultiplied (also called \"unassociated alpha\")."
+
+
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
@@ -179,7 +199,26 @@ enum MissingEnum
 #define GENERIC_READER_USE_MULTI_THREAD
 
 static bool gHostIsNatron   = false;
+static bool gHostSupportsRGBA   = false;
+static bool gHostSupportsRGB    = false;
+static bool gHostSupportsAlpha  = false;
+static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
+
+
+static std::string
+premultString(OFX::PreMultiplicationEnum e)
+{
+    switch (e) {
+        case OFX::eImageOpaque:
+            return "Opaque";
+        case OFX::eImagePreMultiplied:
+            return "PreMultiplied";
+        case OFX::eImageUnPreMultiplied:
+            return "UnPreMultiplied";
+    }
+    return "Unknown";
+}
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
                                          bool supportsRGBA,
@@ -202,10 +241,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _timeOffset(0)
 , _startingTime(0)
 , _originalFrameRange(0)
+, _outputComponents(0)
+, _premult(0)
 , _ocio(new GenericOCIO(this))
-, _supportsRGBA(false)
-, _supportsRGB(false)
-, _supportsAlpha(false)
 , _settingFrameRange(false)
 , _sequenceFromFiles()
 , _supportsTiles(supportsTiles)
@@ -226,6 +264,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _timeOffset = fetchIntParam(kParamTimeOffset);
     _startingTime = fetchIntParam(kParamStartingTime);
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
+    _outputComponents = fetchChoiceParam(kParamOutputComponents);
+    _premult = fetchChoiceParam(kParamOutputPremult);
     
     ///set the values of the original range and the file param (and reparse the sequence)
     std::string filename;
@@ -251,27 +291,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         return;
     }
-
-    const OFX::ImageEffectHostDescription::PixelComponentArray& supportedComponents = OFX::getImageEffectHostDescription()->_supportedComponents;
-    for (OFX::ImageEffectHostDescription::PixelComponentArray::const_iterator it = supportedComponents.begin();
-         it != supportedComponents.end();
-         ++it) {
-        switch (*it) {
-            case OFX::ePixelComponentRGBA:
-                _supportsRGBA  = supportsRGBA;
-                break;
-            case OFX::ePixelComponentRGB:
-                _supportsRGB = supportsRGB;
-                break;
-            case OFX::ePixelComponentAlpha:
-                _supportsAlpha = supportsAlpha;
-                break;
-            default:
-                // other components are not supported by this plugin
-                break;
-        }
-    }
-
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -953,6 +972,102 @@ GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
 }
 
 
+static void
+setupAndPremult(OFX::PixelProcessorFilterBase & processor,
+                bool premult,
+                int premultChannel,
+                const OfxRectI &renderWindow,
+                const void *srcPixelData,
+                const OfxRectI& srcBounds,
+                OFX::PixelComponentEnum srcPixelComponents,
+                OFX::BitDepthEnum srcPixelDepth,
+                int srcRowBytes,
+                void *dstPixelData,
+                const OfxRectI& dstBounds,
+                OFX::PixelComponentEnum dstPixelComponents,
+                OFX::BitDepthEnum dstPixelDepth,
+                int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // make sure bit depths are sane
+    if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+    
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+    
+    processor.setPremultMaskMix(premult, premultChannel, 1.);
+    
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+
+void
+GenericReaderPlugin::unPremultPixelData(const OfxRectI &renderWindow,
+                                        const void *srcPixelData,
+                                        const OfxRectI& srcBounds,
+                                        OFX::PixelComponentEnum srcPixelComponents,
+                                        OFX::BitDepthEnum srcPixelDepth,
+                                        int srcRowBytes,
+                                        void *dstPixelData,
+                                        const OfxRectI& dstBounds,
+                                        OFX::PixelComponentEnum dstPixelComponents,
+                                        OFX::BitDepthEnum dstBitDepth,
+                                        int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
+        setupAndPremult(fred, false, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+    } else {
+        ///other pixel components means you want to copy only...
+        assert(false);
+    }
+}
+
+void
+GenericReaderPlugin::premultPixelData(const OfxRectI &renderWindow,
+                                      const void *srcPixelData,
+                                      const OfxRectI& srcBounds,
+                                      OFX::PixelComponentEnum srcPixelComponents,
+                                      OFX::BitDepthEnum srcPixelDepth,
+                                      int srcRowBytes,
+                                      void *dstPixelData,
+                                      const OfxRectI& dstBounds,
+                                      OFX::PixelComponentEnum dstPixelComponents,
+                                      OFX::BitDepthEnum dstBitDepth,
+                                      int dstRowBytes)
+{
+    assert(srcPixelData && dstPixelData);
+    
+    // do the rendering
+    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
+    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
+        setupAndPremult(fred, true, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        
+    } else {
+        ///other pixel components means you want to copy only...
+        assert(false);
+    }
+}
+
+
 bool
 GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
                                            OfxRectD &rod)
@@ -1033,6 +1148,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
+   
+
 
     void* dstPixelData = NULL;
     OfxRectI bounds;
@@ -1045,8 +1163,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     float* dstPixelDataF = (float*)dstPixelData;
 
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (pixelComponents != outputComponents) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host dit not take into account output components");
+        OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
     }
 
     // are we in the image bounds
@@ -1216,7 +1337,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         // no colorspace conversion, just read file
         decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
     } else {
-
+        
+        int premult_i;
+        _premult->getValue(premult_i);
+        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+        
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
         int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
         size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * tmpRowBytes;
@@ -1230,8 +1355,13 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             decode(proxyFile, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
 
+        bool mustPremult = false;
         ///do the color-space conversion
         if (!_ocio->isIdentity(args.time) && pixelComponents != OFX::ePixelComponentAlpha) {
+            if (premult == OFX::eImagePreMultiplied) {
+                unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes);
+                mustPremult = true;
+            }
             _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
@@ -1240,9 +1370,17 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
                            bitDepth, renderWindowFullRes, tmpRowBytes, dstPixelData,
                            pixelComponents, bitDepth, bounds, dstRowBytes);
+            
+            if (mustPremult) {
+                premultPixelData(args.renderWindow, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            }
         } else{
             // copy
-            copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            if (mustPremult) {
+                premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            } else {
+                copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            }
         }
         mem.unlock();
     }
@@ -1280,7 +1418,27 @@ GenericReaderPlugin::inputFileChanged()
         ///all the sequence
         _fileParam->getValueAtTime(tmp.min,filename);
         ///let the derive class a chance to initialize any data structure it may need
-        onInputFileChanged(filename);
+        
+        OFX::PixelComponentEnum components;
+        OFX::PreMultiplicationEnum premult;
+        onInputFileChanged(filename,premult,components);
+        if ((components == OFX::ePixelComponentRGB || components == OFX::ePixelComponentAlpha) &&
+            premult == OFX::eImagePreMultiplied) {
+            premult = OFX::eImageUnPreMultiplied;
+        }
+        bool foundComponent = false;
+        for (int i = 0 ; i < 4; ++i) {
+            if (gOutputComponentsMap[i] == components) {
+                _outputComponents->setValue(i);
+                foundComponent = true;
+                break;
+            }
+        }
+        if (!foundComponent) {
+            ///set the first supported component
+            _outputComponents->setValue(0);
+        }
+        _premult->setValue((int)premult);
     }
 }
 
@@ -1394,31 +1552,49 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _settingFrameRange = true;
         _startingTime->setValue(offset + first);
         _settingFrameRange = false;
+    } else if (paramName == kParamOutputComponents) {
+        OFX::PixelComponentEnum comps = getOutputComponents();
+        if (comps == OFX::ePixelComponentRGB) {
+            int premult_i;
+            _premult->getValue(premult_i);
+            OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+            if (premult == OFX::eImagePreMultiplied) {
+                _premult->setValue(OFX::eImageOpaque);
+            }
+        } else if (comps == OFX::ePixelComponentAlpha) {
+            int premult_i;
+            _premult->getValue(premult_i);
+            OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+            if (premult == OFX::eImagePreMultiplied) {
+                _premult->setValue(OFX::eImageUnPreMultiplied);
+            }
+        }
+        onOutputComponentsParamChanged(comps);
     } else {
         _ocio->changedParam(args, paramName);
     }
+}
+
+OFX::PixelComponentEnum
+GenericReaderPlugin::getOutputComponents() const
+{
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    return gOutputComponentsMap[outputComponents_i];
 }
 
 /* Override the clip preferences */
 void
 GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-    OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
-    if (_supportsRGBA) {
-        outputComponents = OFX::ePixelComponentRGBA;
-    } else if (_supportsRGB) {
-        outputComponents = OFX::ePixelComponentRGB;
-    } else if (_supportsAlpha) {
-        outputComponents = OFX::ePixelComponentAlpha;
-    }
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
-    if (outputComponents == OFX::ePixelComponentRGB) {
-        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-    } else {
-        // output is always premultiplied
-        assert(outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha);
-        clipPreferences.setOutputPremultiplication(OFX::eImagePreMultiplied);
-    }
+    
+    int premult_i;
+    _premult->getValue(premult_i);
+    clipPreferences.setOutputPremultiplication((OFX::PreMultiplicationEnum)premult_i);
 }
 
 void
@@ -1519,6 +1695,42 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(OFX::eRenderFullySafe);
+    
+    for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
+         it != getImageEffectHostDescription()->_supportedComponents.end();
+         ++it) {
+        switch (*it) {
+            case ePixelComponentRGBA:
+                gHostSupportsRGBA  = true;
+                break;
+            case ePixelComponentRGB:
+                gHostSupportsRGB = true;
+                break;
+            case ePixelComponentAlpha:
+                gHostSupportsAlpha = true;
+                break;
+            default:
+                // other components are not supported by this plugin
+                break;
+        }
+    }
+    {
+        int i = 0;
+        if (gHostSupportsRGBA) {
+            gOutputComponentsMap[i] = ePixelComponentRGBA;
+            ++i;
+        }
+        if (gHostSupportsRGB) {
+            gOutputComponentsMap[i] = ePixelComponentRGB;
+            ++i;
+        }
+        if (gHostSupportsAlpha) {
+            gOutputComponentsMap[i] = ePixelComponentAlpha;
+            ++i;
+        }
+        gOutputComponentsMap[i] = ePixelComponentNone;
+    }
+
 }
 
 OFX::PageParamDescriptor *
@@ -1752,6 +1964,48 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamCustomProxyScaleHint);
         param->setAnimates(true);
         param->setEvaluateOnChange(false);
+        page->addChild(*param);
+    }
+    
+    //// Output components
+    {
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOutputComponents);
+        param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
+        param->setHint(kParamOutputComponentsHint);
+        // the following must be in the same order as in describe(), so that the map works
+        if (gHostSupportsRGBA) {
+            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
+            param->appendOption(kParamOutputComponentsOptionRGBA);
+        }
+        if (gHostSupportsRGB) {
+            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
+            param->appendOption(kParamOutputComponentsOptionRGB);
+        }
+        if (gHostSupportsAlpha) {
+            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
+            param->appendOption(kParamOutputComponentsOptionAlpha);
+        }
+        param->setDefault(0);
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
+    }
+    
+    //// Output premult
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputPremult);
+        param->setLabels(kParamOutputPremultLabel, kParamOutputPremultLabel, kParamOutputPremultLabel);
+        param->setAnimates(true);
+        param->setHint(kParamOutputPremultHint);
+        assert(param->getNOptions() == eImageOpaque);
+        param->appendOption(premultString(eImageOpaque), kParamOutputPremultOptionOpaqueHint);
+        assert(param->getNOptions() == eImagePreMultiplied);
+        param->appendOption(premultString(eImagePreMultiplied), kParamOutputPremultOptionPreMultipliedHint);
+        assert(param->getNOptions() == eImageUnPreMultiplied);
+        param->appendOption(premultString(eImageUnPreMultiplied), kParamOutputPremultOptionUnPreMultipliedHint);
+        param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
     
