@@ -1596,10 +1596,19 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     _outputComponents->getValue(outputComponents_i);
     OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
-    
-    int premult_i;
-    _outputPremult->getValue(premult_i);
-    clipPreferences.setOutputPremultiplication((OFX::PreMultiplicationEnum)premult_i);
+
+    // the output of the GenericReader plugin is *always* premultiplied (as long as only float is supported)
+    OFX::PreMultiplicationEnum premult;
+    switch (outputComponents) {
+        case OFX::ePixelComponentRGBA:
+        case OFX::ePixelComponentAlpha:
+            premult = OFX::eImagePreMultiplied;
+            break;
+        default:
+            premult = OFX::eImageOpaque;
+            break;
+    }
+    clipPreferences.setOutputPremultiplication(premult);
 }
 
 void
