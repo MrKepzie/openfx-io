@@ -1982,7 +1982,6 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         }
         gOutputComponentsMap[i] = ePixelComponentNone;
 
-
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
