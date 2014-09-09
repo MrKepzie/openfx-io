@@ -716,7 +716,7 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
         *premult = OFX::eImageOpaque;
     } else {
-        // output is always premultiplied
+        // output of OpenImageIO is always premultiplied
         *premult = OFX::eImagePreMultiplied;
     }
     
