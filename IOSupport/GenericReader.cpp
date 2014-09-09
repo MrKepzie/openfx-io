@@ -1368,11 +1368,12 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         // we have to do the final premultiplication if:
         // - pixelComponents is RGBA
         //  AND
-        //   - OCIO is not identity (OCIO works only on unpremultiplied data)
+        //   - buffer is PreMultiplied AND OCIO is not identity (OCIO works only on unpremultiplied data)
         //   OR
         //   - premult is unpremultiplied
         bool mustPremult = ((pixelComponents == OFX::ePixelComponentRGBA) &&
-                            (!_ocio->isIdentity(args.time) || premult == OFX::eImageUnPreMultiplied));
+                            ((premult == OFX::eImagePreMultiplied && !_ocio->isIdentity(args.time)) ||
+                             premult == OFX::eImageUnPreMultiplied));
         ///do the color-space conversion
         if (!_ocio->isIdentity(args.time) && pixelComponents != OFX::ePixelComponentAlpha) {
             if (premult == OFX::eImagePreMultiplied) {
@@ -1621,13 +1622,25 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
 
     // the output of the GenericReader plugin is *always* premultiplied (as long as only float is supported)
-    OFX::PreMultiplicationEnum premult;
+    int premult_i;
+    _premult->getValue(premult_i);
+    OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
     switch (outputComponents) {
         case OFX::ePixelComponentRGBA:
+            // may be Opaque or PreMultiplied (never UnPremultiplied)
+            if (premult == OFX::eImageUnPreMultiplied) {
+                premult = OFX::eImagePreMultiplied;
+            }
+            assert(premult == OFX::eImagePreMultiplied || premult == OFX::eImageOpaque);
+            break;
+
         case OFX::ePixelComponentAlpha:
+            // alpha is always premultiplied
             premult = OFX::eImagePreMultiplied;
             break;
+
         default:
+            // RGB is always Opaque
             premult = OFX::eImageOpaque;
             break;
     }
