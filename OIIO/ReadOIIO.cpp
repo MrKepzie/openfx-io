@@ -71,6 +71,16 @@ OIIO_NAMESPACE_USING
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha true
+#ifdef OFX_READ_OIIO_USES_CACHE
+#define kSupportsTiles true
+#else
+// It is more efficient to read full frames if no cache is used.
+#define kSupportsTiles false
+#endif
+
 #define kParamShowMetadata "showMetadata"
 #define kParamShowMetadataLabel "Image Info..."
 #define kParamShowMetadataHint "Shows information and metadata from the image at current time."
@@ -115,15 +125,6 @@ OIIO_NAMESPACE_USING
 
 #endif // OFX_READ_OIIO_NEWMENU
 
-#define kSupportsRGBA true
-#define kSupportsRGB true
-#define kSupportsAlpha true
-#ifdef OFX_READ_OIIO_USES_CACHE
-#define kSupportsTiles true
-#else
-// It is more efficient to read full frames if no cache is used.
-#define kSupportsTiles false
-#endif
 
 static bool gHostIsNatron   = false;
 
@@ -1322,7 +1323,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
 
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), /*supportsRGBA =*/ true, /*supportsRGB =*/ true, /*supportsAlpha =*/ true, /*supportsTiles =*/ kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
 
 #ifndef OFX_READ_OIIO_SHARED_CACHE
     OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlpha);

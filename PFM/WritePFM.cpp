@@ -54,6 +54,10 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha true
+
 /**
  \return \c false for "Little Endian", \c true for "Big Endian".
  **/
@@ -226,7 +230,9 @@ void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), true, false, false, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+                                                                    "reference", "reference");
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

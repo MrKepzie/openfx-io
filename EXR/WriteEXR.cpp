@@ -66,6 +66,10 @@
 #define OPENEXR_IMF_NAMESPACE Imf
 #endif
 
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha true
+
 namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
 
@@ -289,7 +293,9 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/true, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+                                                                    "reference", "reference");
 
     /////////Compression
     {
