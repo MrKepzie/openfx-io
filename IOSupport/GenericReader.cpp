@@ -1581,7 +1581,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
         if (premult == OFX::eImagePreMultiplied) {
              OFX::PixelComponentEnum comps = getOutputComponents();
-            if (comps == OFX::ePixelComponentRGB || comps == OFX::ePixelComponentAlpha) {
+            if (comps == OFX::ePixelComponentRGB) {
                 ///The user wants premultiplied RGB, switch components to RGBA
                 setOutputComponents(OFX::ePixelComponentRGBA);
             }
