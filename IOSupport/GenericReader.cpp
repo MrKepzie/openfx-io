@@ -174,7 +174,7 @@ enum MissingEnum
 
 #define kParamOutputComponents "outputComponents"
 #define kParamOutputComponentsLabel "Output Components"
-#define kParamOutputComponentsHint "Components in the output"
+#define kParamOutputComponentsHint "Components present in the output. The default value is set from the first frame in the sequence."
 #define kParamOutputComponentsOptionRGBA "RGBA"
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
@@ -185,10 +185,13 @@ enum MissingEnum
 "Image being read is considered to have this premultiplication state.\n"\
 "If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
-"This is set automatically from the image file information, but can be adjusted if this information is wrong (e.g: the file was badly written)"
-#define kParamOutputPremultOptionOpaqueHint "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
-#define kParamOutputPremultOptionPreMultipliedHint "The image is premultiplied by its alpha (also called \"associated alpha\")."
-#define kParamOutputPremultOptionUnPreMultipliedHint "The image is unpremultiplied (also called \"unassociated alpha\")."
+"This is set automatically from the image file, but can be adjusted if this information is wrong in the file."
+#define kParamOutputPremultOptionOpaqueHint \
+"The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
+#define kParamOutputPremultOptionPreMultipliedHint \
+"The image is premultiplied by its alpha (also called \"associated alpha\")."
+#define kParamOutputPremultOptionUnPreMultipliedHint \
+"The image is unpremultiplied (also called \"unassociated alpha\")."
 
 
 #define MISSING_FRAME_NEAREST_RANGE 100
@@ -242,7 +245,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _startingTime(0)
 , _originalFrameRange(0)
 , _outputComponents(0)
-, _premult(0)
+, _outputPremult(0)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceFromFiles()
@@ -265,7 +268,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _startingTime = fetchIntParam(kParamStartingTime);
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
-    _premult = fetchChoiceParam(kParamOutputPremult);
+    _outputPremult = fetchChoiceParam(kParamOutputPremult);
     
     ///set the values of the original range and the file param (and reparse the sequence)
     std::string filename;
@@ -1339,7 +1342,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     } else {
         
         int premult_i;
-        _premult->getValue(premult_i);
+        _outputPremult->getValue(premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
         
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
@@ -1416,29 +1419,27 @@ GenericReaderPlugin::inputFileChanged()
         ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
         ///unless the user did a mistake. We are also safe to assume that images specs are the same for
         ///all the sequence
-        _fileParam->getValueAtTime(tmp.min,filename);
+        _fileParam->getValueAtTime(tmp.min, filename);
         ///let the derive class a chance to initialize any data structure it may need
         
         OFX::PixelComponentEnum components;
         OFX::PreMultiplicationEnum premult;
         onInputFileChanged(filename, &premult, &components);
-        if ((components == OFX::ePixelComponentRGB || components == OFX::ePixelComponentAlpha) &&
-            premult == OFX::eImagePreMultiplied) {
-            premult = OFX::eImageUnPreMultiplied;
+        // RGB is always Opaque, Alpha is always PreMultiplied
+        if (components == OFX::ePixelComponentRGB) {
+            premult = OFX::eImageOpaque;
+        } else if (components == OFX::ePixelComponentAlpha) {
+            premult = OFX::eImagePreMultiplied;
         }
-        bool foundComponent = false;
-        for (int i = 0 ; i < 4; ++i) {
-            if (gOutputComponentsMap[i] == components) {
-                _outputComponents->setValue(i);
-                foundComponent = true;
-                break;
-            }
+        int i;
+        for (i = 0 ; i < 4 && gOutputComponentsMap[i] != components; ++i) {
         }
-        if (!foundComponent) {
+        if (i >= 4) {
             ///set the first supported component
-            _outputComponents->setValue(0);
+            i = 0;
         }
-        _premult->setValue((int)premult);
+        _outputComponents->setValue(i);
+        _outputPremult->setValue((int)premult);
     }
 }
 
@@ -1568,10 +1569,10 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         OFX::PixelComponentEnum comps = getOutputComponents();
         if (comps == OFX::ePixelComponentRGB) {
             // RGB is always opaque
-            _premult->setValue(OFX::eImageOpaque);
+            _outputPremult->setValue(OFX::eImageOpaque);
         } else if (comps == OFX::ePixelComponentAlpha) {
             // Alpha is always premultiplied
-            _premult->setValue(OFX::eImagePreMultiplied);
+            _outputPremult->setValue(OFX::eImagePreMultiplied);
         }
         onOutputComponentsParamChanged(comps);
     } else {
@@ -1597,7 +1598,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
     
     int premult_i;
-    _premult->getValue(premult_i);
+    _outputPremult->getValue(premult_i);
     clipPreferences.setOutputPremultiplication((OFX::PreMultiplicationEnum)premult_i);
 }
 
@@ -1699,7 +1700,19 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(OFX::eRenderFullySafe);
-    
+}
+
+OFX::PageParamDescriptor *
+GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
+                                    OFX::ContextEnum /*context*/,
+                                    bool isVideoStreamPlugin,
+                                    bool supportsRGBA,
+                                    bool supportsRGB,
+                                    bool supportsAlpha,
+                                    bool supportsTiles)
+{
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
+
     for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
          it != getImageEffectHostDescription()->_supportedComponents.end();
          ++it) {
@@ -1720,33 +1733,21 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     }
     {
         int i = 0;
-        if (gHostSupportsRGBA) {
+        if (gHostSupportsRGBA && supportsRGBA) {
             gOutputComponentsMap[i] = ePixelComponentRGBA;
             ++i;
         }
-        if (gHostSupportsRGB) {
+        if (gHostSupportsRGB && supportsRGB) {
             gOutputComponentsMap[i] = ePixelComponentRGB;
             ++i;
         }
-        if (gHostSupportsAlpha) {
+        if (gHostSupportsAlpha && supportsAlpha) {
             gOutputComponentsMap[i] = ePixelComponentAlpha;
             ++i;
         }
         gOutputComponentsMap[i] = ePixelComponentNone;
     }
 
-}
-
-OFX::PageParamDescriptor *
-GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
-                                    OFX::ContextEnum /*context*/,
-                                    bool isVideoStreamPlugin,
-                                    bool supportsRGBA,
-                                    bool supportsRGB,
-                                    bool supportsAlpha,
-                                    bool supportsTiles)
-{
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
@@ -1977,15 +1978,15 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
         // the following must be in the same order as in describe(), so that the map works
-        if (gHostSupportsRGBA) {
+        if (gHostSupportsRGBA && supportsRGBA) {
             assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
             param->appendOption(kParamOutputComponentsOptionRGBA);
         }
-        if (gHostSupportsRGB) {
+        if (gHostSupportsRGB && supportsRGB) {
             assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
             param->appendOption(kParamOutputComponentsOptionRGB);
         }
-        if (gHostSupportsAlpha) {
+        if (gHostSupportsAlpha && supportsAlpha) {
             assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
             param->appendOption(kParamOutputComponentsOptionAlpha);
         }

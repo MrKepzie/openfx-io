@@ -303,7 +303,7 @@ protected:
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
     OFX::ChoiceParam* _outputComponents;
-    OFX::ChoiceParam* _premult;
+    OFX::ChoiceParam* _outputPremult;
     
     std::auto_ptr<GenericOCIO> _ocio;
 
