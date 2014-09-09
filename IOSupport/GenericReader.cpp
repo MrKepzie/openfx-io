@@ -179,18 +179,19 @@ enum MissingEnum
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
 
-#define kParamOutputPremult "outputPremult"
-#define kParamOutputPremultLabel "Output Premult"
-#define kParamOutputPremultHint \
+#define kParamPremult "premult"
+#define kParamPremultLabel "Image Premult"
+#define kParamPremultHint \
 "Image being read is considered to have this premultiplication state.\n"\
 "If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
-"This is set automatically from the image file, but can be adjusted if this information is wrong in the file."
-#define kParamOutputPremultOptionOpaqueHint \
+"This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file.\n"\
+"Note that on output, images are always premultiplied."
+#define kParamPremultOptionOpaqueHint \
 "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
-#define kParamOutputPremultOptionPreMultipliedHint \
+#define kParamPremultOptionPreMultipliedHint \
 "The image is premultiplied by its alpha (also called \"associated alpha\")."
-#define kParamOutputPremultOptionUnPreMultipliedHint \
+#define kParamPremultOptionUnPreMultipliedHint \
 "The image is unpremultiplied (also called \"unassociated alpha\")."
 
 
@@ -209,7 +210,7 @@ static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
 
 
-static std::string
+static const char*
 premultString(OFX::PreMultiplicationEnum e)
 {
     switch (e) {
@@ -245,7 +246,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _startingTime(0)
 , _originalFrameRange(0)
 , _outputComponents(0)
-, _outputPremult(0)
+, _premult(0)
 , _ocio(new GenericOCIO(this))
 , _settingFrameRange(false)
 , _sequenceFromFiles()
@@ -268,7 +269,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _startingTime = fetchIntParam(kParamStartingTime);
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
-    _outputPremult = fetchChoiceParam(kParamOutputPremult);
+    _premult = fetchChoiceParam(kParamPremult);
     
     ///set the values of the original range and the file param (and reparse the sequence)
     std::string filename;
@@ -1342,13 +1343,13 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     } else {
         
         int premult_i;
-        _outputPremult->getValue(premult_i);
+        _premult->getValue(premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
         
         int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
         int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
         size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * tmpRowBytes;
-        OFX::ImageMemory mem(memSize,this);
+        OFX::ImageMemory mem(memSize, this);
         float *tmpPixelData = (float*)mem.lock();
 
         // read file
@@ -1358,26 +1359,48 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             decode(proxyFile, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
 
-        bool mustPremult = false;
+        // force premult for non-RGBA pixelComponents
+        if (pixelComponents == OFX::ePixelComponentRGB) {
+            premult = OFX::eImageOpaque;
+        } else if (pixelComponents == OFX::ePixelComponentAlpha) {
+            premult = OFX::eImagePreMultiplied;
+        }
+        // we have to do the final premultiplication if:
+        // - pixelComponents is RGBA
+        //  AND
+        //   - OCIO is not identity (OCIO works only on unpremultiplied data)
+        //   OR
+        //   - premult is unpremultiplied
+        bool mustPremult = ((pixelComponents == OFX::ePixelComponentRGBA) &&
+                            (!_ocio->isIdentity(args.time) || premult == OFX::eImageUnPreMultiplied));
         ///do the color-space conversion
         if (!_ocio->isIdentity(args.time) && pixelComponents != OFX::ePixelComponentAlpha) {
             if (premult == OFX::eImagePreMultiplied) {
                 unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes);
-                mustPremult = true;
             }
             _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
         if (kSupportsRenderScale && downscaleLevels > 0) {
-            /// adjust the scale to match the given output image
-            scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
-                           bitDepth, renderWindowFullRes, tmpRowBytes, dstPixelData,
-                           pixelComponents, bitDepth, bounds, dstRowBytes);
-            
-            if (mustPremult) {
-                premultPixelData(args.renderWindow, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+            if (!mustPremult) {
+                // we can write directly to dstPixelData
+                /// adjust the scale to match the given output image
+                scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+                               bitDepth, renderWindowFullRes, tmpRowBytes, dstPixelData,
+                               pixelComponents, bitDepth, bounds, dstRowBytes);
+            } else {
+                // allocate a temporary image (we must avoid reading from dstPixelData, in case several threads are rendering the same area)
+                OFX::ImageMemory mem2(memSize, this);
+                void *scaledPixelData = mem2.lock();
+
+                /// adjust the scale to match the given output image
+                scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels,tmpPixelData, pixelComponents,
+                               bitDepth, renderWindowFullRes, tmpRowBytes, scaledPixelData,
+                               pixelComponents, bitDepth, bounds, dstRowBytes);
+                // apply premult
+                premultPixelData(args.renderWindow, scaledPixelData, bounds, pixelComponents, bitDepth, dstRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
             }
-        } else{
+        } else {
             // copy
             if (mustPremult) {
                 premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
@@ -1439,7 +1462,7 @@ GenericReaderPlugin::inputFileChanged()
             i = 0;
         }
         _outputComponents->setValue(i);
-        _outputPremult->setValue((int)premult);
+        _premult->setValue((int)premult);
     }
 }
 
@@ -1569,10 +1592,10 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         OFX::PixelComponentEnum comps = getOutputComponents();
         if (comps == OFX::ePixelComponentRGB) {
             // RGB is always opaque
-            _outputPremult->setValue(OFX::eImageOpaque);
+            _premult->setValue(OFX::eImageOpaque);
         } else if (comps == OFX::ePixelComponentAlpha) {
             // Alpha is always premultiplied
-            _outputPremult->setValue(OFX::eImagePreMultiplied);
+            _premult->setValue(OFX::eImagePreMultiplied);
         }
         onOutputComponentsParamChanged(comps);
     } else {
@@ -2007,16 +2030,16 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     
     //// Output premult
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputPremult);
-        param->setLabels(kParamOutputPremultLabel, kParamOutputPremultLabel, kParamOutputPremultLabel);
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPremult);
+        param->setLabels(kParamPremultLabel, kParamPremultLabel, kParamPremultLabel);
         param->setAnimates(true);
-        param->setHint(kParamOutputPremultHint);
+        param->setHint(kParamPremultHint);
         assert(param->getNOptions() == eImageOpaque);
-        param->appendOption(premultString(eImageOpaque), kParamOutputPremultOptionOpaqueHint);
+        param->appendOption(premultString(eImageOpaque), kParamPremultOptionOpaqueHint);
         assert(param->getNOptions() == eImagePreMultiplied);
-        param->appendOption(premultString(eImagePreMultiplied), kParamOutputPremultOptionPreMultipliedHint);
+        param->appendOption(premultString(eImagePreMultiplied), kParamPremultOptionPreMultipliedHint);
         assert(param->getNOptions() == eImageUnPreMultiplied);
-        param->appendOption(premultString(eImageUnPreMultiplied), kParamOutputPremultOptionUnPreMultipliedHint);
+        param->appendOption(premultString(eImageUnPreMultiplied), kParamPremultOptionUnPreMultipliedHint);
         param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
