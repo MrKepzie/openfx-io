@@ -1575,6 +1575,17 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             _outputPremult->setValue(OFX::eImagePreMultiplied);
         }
         onOutputComponentsParamChanged(comps);
+    } else if (paramName == kParamOutputPremult) {
+        int premult_i;
+        _outputPremult->getValue(premult_i);
+        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+        if (premult == OFX::eImagePreMultiplied) {
+             OFX::PixelComponentEnum comps = getOutputComponents();
+            if (comps == OFX::ePixelComponentRGB || comps == OFX::ePixelComponentAlpha) {
+                ///The user wants premultiplied RGB, switch components to RGBA
+                setOutputComponents(OFX::ePixelComponentRGBA);
+            }
+        }
     } else {
         _ocio->changedParam(args, paramName);
     }
@@ -1586,6 +1597,17 @@ GenericReaderPlugin::getOutputComponents() const
     int outputComponents_i;
     _outputComponents->getValue(outputComponents_i);
     return gOutputComponentsMap[outputComponents_i];
+}
+
+void
+GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
+{
+    for (int i = 0; i < 4; ++i) {
+        if (gOutputComponentsMap[i] == comps) {
+            _outputComponents->setValue(i);
+            break;
+        }
+    }
 }
 
 /* Override the clip preferences */
@@ -1962,6 +1984,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
         int i = 0;
+        
         if (gHostSupportsRGBA && supportsRGBA) {
             gOutputComponentsMap[i] = ePixelComponentRGBA;
             ++i;
@@ -1996,11 +2019,13 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamOutputPremultHint);
         assert(param->getNOptions() == eImageOpaque);
         param->appendOption(premultString(eImageOpaque), kParamOutputPremultOptionOpaqueHint);
-        assert(param->getNOptions() == eImagePreMultiplied);
-        param->appendOption(premultString(eImagePreMultiplied), kParamOutputPremultOptionPreMultipliedHint);
-        assert(param->getNOptions() == eImageUnPreMultiplied);
-        param->appendOption(premultString(eImageUnPreMultiplied), kParamOutputPremultOptionUnPreMultipliedHint);
-        param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
+        if (gHostSupportsRGBA && supportsRGBA) {
+            assert(param->getNOptions() == eImagePreMultiplied);
+            param->appendOption(premultString(eImagePreMultiplied), kParamOutputPremultOptionPreMultipliedHint);
+            assert(param->getNOptions() == eImageUnPreMultiplied);
+            param->appendOption(premultString(eImageUnPreMultiplied), kParamOutputPremultOptionUnPreMultipliedHint);
+            param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
+        }
         desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }

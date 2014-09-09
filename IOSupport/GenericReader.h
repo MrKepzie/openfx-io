@@ -129,6 +129,7 @@ protected:
     
     OFX::PixelComponentEnum getOutputComponents() const;
 
+    void setOutputComponents(OFX::PixelComponentEnum comps);
 private:
     
     /**
