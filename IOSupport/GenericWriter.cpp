@@ -548,20 +548,19 @@ GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
 }
 
 static void
-setupAndPremult(OFX::PixelProcessorFilterBase & processor,
-                bool premult,
+setupAndProcess(OFX::PixelProcessorFilterBase & processor,
                 int premultChannel,
-             const OfxRectI &renderWindow,
-             const void *srcPixelData,
-             const OfxRectI& srcBounds,
-             OFX::PixelComponentEnum srcPixelComponents,
-             OFX::BitDepthEnum srcPixelDepth,
-             int srcRowBytes,
-             void *dstPixelData,
-             const OfxRectI& dstBounds,
-             OFX::PixelComponentEnum dstPixelComponents,
-             OFX::BitDepthEnum dstPixelDepth,
-             int dstRowBytes)
+                const OfxRectI &renderWindow,
+                const void *srcPixelData,
+                const OfxRectI& srcBounds,
+                OFX::PixelComponentEnum srcPixelComponents,
+                OFX::BitDepthEnum srcPixelDepth,
+                int srcRowBytes,
+                void *dstPixelData,
+                const OfxRectI& dstBounds,
+                OFX::PixelComponentEnum dstPixelComponents,
+                OFX::BitDepthEnum dstPixelDepth,
+                int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     
@@ -577,7 +576,7 @@ setupAndPremult(OFX::PixelProcessorFilterBase & processor,
     // set the render window
     processor.setRenderWindow(renderWindow);
     
-    processor.setPremultMaskMix(premult, premultChannel, 1.);
+    processor.setPremultMaskMix(true, premultChannel, 1.);
     
     // Call the base class process member, this will call the derived templated process code
     processor.process();
@@ -605,7 +604,7 @@ GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
-        setupAndPremult(fred, false, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else {
         ///other pixel components means you want to copy only...
         assert(false);
@@ -633,8 +632,8 @@ GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
-        setupAndPremult(fred, true, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        OFX::PixelCopierPremult<float, 4, 1, float, 1> fred(*this);
+        setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
 
     } else {
         ///other pixel components means you want to copy only...
@@ -861,6 +860,7 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
 void
 GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
+    _premult->setValue((int)_inputClip->getPreMultiplication());
     clipPreferences.setOutputPremultiplication(getExpectedInputPremultiplication());
 }
 
@@ -1031,7 +1031,6 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->appendOption(premultString(eImageUnPreMultiplied), kParamInputPremultOptionUnPreMultipliedHint);
         param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
 

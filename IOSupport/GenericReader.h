@@ -130,7 +130,8 @@ protected:
     OFX::PixelComponentEnum getOutputComponents() const;
 
 private:
-    
+    void setOutputComponents(OFX::PixelComponentEnum comps);
+
     /**
      * @brief Called when the input image/video file changed.
      * You shouldn't do any strong processing as this is called on the main thread and
