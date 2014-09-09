@@ -72,14 +72,13 @@ public:
 
 private:
 
-    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
+    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile,
-                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 
 };
 
@@ -162,7 +161,14 @@ static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
     }
 }
 
-void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void
+ReadPFMPlugin::decode(const std::string& filename,
+                      OfxTime /*time*/,
+                      const OfxRectI& renderWindow,
+                      float *pixelData,
+                      const OfxRectI& bounds,
+                      OFX::PixelComponentEnum pixelComponents,
+                      int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only read RGBA, RGB or Alpha components images");
@@ -267,8 +273,13 @@ void ReadPFMPlugin::decode(const std::string& filename, OfxTime /*time*/, const 
     std::fclose(nfile);
 }
 
-bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error)
+bool
+ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,
+                                          OfxTime /*time*/,
+                                          OfxRectD *rod,
+                                          std::string *error)
 {
+    assert(rod);
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
 
@@ -282,7 +293,9 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
-        error = std::string("PFM header not found in file \"") + filename + "\".";
+        if (error) {
+            *error = std::string("PFM header not found in file \"") + filename + "\".";
+        }
         return false;
     }
     while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
@@ -290,7 +303,9 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     }
     if ((err = std::sscanf(item, " %d %d", &W, &H)) < 2) {
         std::fclose(nfile);
-        error =  std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".";
+        if (error) {
+            *error =  std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".";
+        }
         return false;
     }
     if (err == 2) {
@@ -304,20 +319,22 @@ bool ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTi
     }
     std::fclose(nfile);
 
-    rod.x1 = 0;
-    rod.x2 = W;
-    rod.y1 = 0;
-    rod.y2 = H;
+    rod->x1 = 0;
+    rod->x2 = W;
+    rod->y1 = 0;
+    rod->y2 = H;
     return true;
 }
 
 void
 ReadPFMPlugin::onInputFileChanged(const std::string& newFile,
-                        OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components)
+                                  OFX::PreMultiplicationEnum *premult,
+                                  OFX::PixelComponentEnum *components)
 {
+    assert(premult && components);
     int startingTime = getStartingTime();
     std::string filename;
-    OfxStatus st = getFilenameAtTime(startingTime, filename);
+    OfxStatus st = getFilenameAtTime(startingTime, &filename);
     if (st != kOfxStatOK) {
         return;
     }
@@ -338,19 +355,19 @@ ReadPFMPlugin::onInputFileChanged(const std::string& newFile,
     }
     
     // set the components of _outputClip
-    OFX::PixelComponentEnum outputComponents = OFX::ePixelComponentNone;
+    *components = OFX::ePixelComponentNone;
     if (pfm_type == 'F') {
-        outputComponents = OFX::ePixelComponentRGB;
+        *components = OFX::ePixelComponentRGB;
     } else if (pfm_type == 'f') {
-        outputComponents = OFX::ePixelComponentAlpha;
+        *components = OFX::ePixelComponentAlpha;
     } else {
         return;
     }
-    if (outputComponents != OFX::ePixelComponentRGBA && outputComponents != OFX::ePixelComponentAlpha) {
-        premult = OFX::eImageOpaque;
+    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+        *premult = OFX::eImageOpaque;
     } else {
         // output is always premultiplied
-        premult = OFX::eImagePreMultiplied;
+        *premult = OFX::eImagePreMultiplied;
     }
 }
 
@@ -376,7 +393,9 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void
+ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+                                        ContextEnum context)
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
@@ -386,7 +405,9 @@ void ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, C
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+ImageEffect*
+ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
+                                     ContextEnum /*context*/)
 {
     return new ReadPFMPlugin(handle);
 }

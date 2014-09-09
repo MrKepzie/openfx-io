@@ -82,14 +82,13 @@ private:
 
     virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& filename,
-                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
@@ -124,13 +123,16 @@ void ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const 
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
-void ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
-                                          OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) {
-    
+void
+ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
+                                     OFX::PreMultiplicationEnum *premult,
+                                     OFX::PixelComponentEnum *components)
+{
+    assert(premult && components);
     ///Ffmpeg is RGB opaque.
     ///The GenericReader is responsible for checking if RGB is good enough, otherwise will map it to RGBA
-    components = OFX::ePixelComponentRGB;
-    premult = OFX::eImageOpaque;
+    *components = OFX::ePixelComponentRGB;
+    *premult = OFX::eImageOpaque;
     
     if (_ffmpegFile) {
         if (_ffmpegFile->getFilename() == filename) {
@@ -299,8 +301,13 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 }
 
 
-bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, OfxTime /*time*/, OfxRectD& rod,std::string& error)
+bool
+ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,
+                                             OfxTime /*time*/,
+                                             OfxRectD *rod,
+                                             std::string *error)
 {
+    assert(rod);
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
         _ffmpegFile->open(filename);
@@ -308,22 +315,26 @@ bool ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename, O
         return false;
     }
     if (!_ffmpegFile->isValid()) {
-        error = _ffmpegFile->getError();
+        if (error) {
+            *error = _ffmpegFile->getError();
+        }
         //setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
         return false;
     }
     
     if(!_ffmpegFile) {
-        error = filename + ": no such file";
+        if (error) {
+            *error = filename + ": no such file";
+        }
         return false;
     }
     int width,height,frames;
     double ap;
     _ffmpegFile->getInfo(width, height, ap, frames);
-    rod.x1 = 0;
-    rod.x2 = width;
-    rod.y1 = 0;
-    rod.y2 = height;
+    rod->x1 = 0;
+    rod->x2 = width;
+    rod->y1 = 0;
+    rod->y2 = height;
     return true;
 }
 
@@ -372,7 +383,8 @@ split(const std::string &s, char delim, std::vector<std::string> &elems)
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
@@ -430,8 +442,9 @@ void ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
-                                                        ContextEnum context)
+void
+ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+                                           ContextEnum context)
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
@@ -441,7 +454,9 @@ void ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+ImageEffect*
+ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
+                                        ContextEnum /*context*/)
 {
     return new ReadFFmpegPlugin(handle);
 }

@@ -1667,7 +1667,6 @@
 		D74E62401875A79700D8FA13 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LIBRARY = "libstdc++";
 				COPY_PHASE_STRIP = NO;
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				EXR_PATH = /opt/local;
@@ -1701,7 +1700,6 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
-				SDKROOT = macosx10.8;
 				WARNING_CFLAGS = "-Wall";
 			};
 			name = Debug;
@@ -1709,7 +1707,6 @@
 		D74E62411875A79700D8FA13 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CLANG_CXX_LIBRARY = "libstdc++";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
 				EXR_PATH = /opt/local;
@@ -1741,7 +1738,6 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
-				SDKROOT = macosx10.8;
 				WARNING_CFLAGS = "-Wall";
 			};
 			name = Release;

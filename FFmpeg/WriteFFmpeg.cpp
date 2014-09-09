@@ -83,6 +83,10 @@ extern "C" {
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha false
+
 struct AVCodecContext;
 struct AVFormatContext;
 struct AVStream;
@@ -740,7 +744,9 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     
     
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/true, /*supportsAlpha=*/false, "reference", "rec709");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+                                                                    "reference", "rec709");
 
     ///If the host doesn't support sequential render, fail.
     int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;

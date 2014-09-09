@@ -53,6 +53,10 @@ OIIO_NAMESPACE_USING
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kSupportsRGBA true
+#define kSupportsRGB true
+#define kSupportsAlpha true
+
 #define kParamBitDepth    "bitDepth"
 #define kParamBitDepthLabel   "Bit Depth"
 
@@ -578,7 +582,9 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(), /*supportsRGBA =*/true, /*supportsRGB=*/false, /*supportsAlpha=*/false, "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+                                                                    "reference", "reference");
 
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBitDepth);
