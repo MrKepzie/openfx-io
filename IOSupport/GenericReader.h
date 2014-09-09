@@ -123,7 +123,7 @@ public:
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
-    OfxStatus getFilenameAtTime(double t, std::string& filename);
+    OfxStatus getFilenameAtTime(double t, std::string *filename);
 
     int getStartingTime();
     
@@ -139,8 +139,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual void onInputFileChanged(const std::string& newFile,
-                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) = 0;
+    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) = 0;
     
     /**
      * @brief Called when the Output Componentns param changes
@@ -157,7 +156,7 @@ private:
      * @brief Overload this function to extract the region of definition out of the header
      * of the image targeted by the filename.
      **/
-    virtual bool getFrameRegionOfDefinition(const std::string& filename,OfxTime time,OfxRectD& rod,std::string& error) = 0;
+    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) = 0;
     
     
     /**
@@ -176,17 +175,17 @@ private:
      * @brief Override to indicate the time domain. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getSequenceTimeDomain(const std::string& /*filename*/,OfxRangeD &/*range*/){ return false; }
+    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeD &/*range*/){ return false; }
     
     /**
      * @brief Called internally by getTimeDomain(...)
      **/
-    bool getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetOriginalFrameRange);
+    bool getSequenceTimeDomainInternal(OfxRangeD& range, bool canSetOriginalFrameRange);
     
     /**
      * @brief Used internally by the GenericReader.
      **/
-    void timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange);
+    void timeDomainFromSequenceTimeDomain(OfxRangeD& range, bool mustSetFrameRange);
     
     /**
      * @brief Should return true if the file indicated by filename is a video-stream and not 
@@ -206,7 +205,7 @@ private:
      * @param canSetOriginalFrameRange If false, the underlying call
      * cannot set the _originalFrameRange param values.
      */
-    GetSequenceTimeRetEnum getSequenceTime(double t, bool canSetOriginalFrameRange, double &sequenceTime) WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTime(double t, bool canSetOriginalFrameRange, double *sequenceTime) WARN_UNUSED_RETURN;
 
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
@@ -218,7 +217,7 @@ private:
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string &filename) WARN_UNUSED_RETURN;
+    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string *filename) WARN_UNUSED_RETURN;
     
     /**
      * @brief Initializes the params depending on the input file.
@@ -283,7 +282,7 @@ private:
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
     
-    OfxPointD detectProxyScale(const std::string& originalFileName,const std::string& proxyFileName,OfxTime time);
+    OfxPointD detectProxyScale(const std::string& originalFileName, const std::string& proxyFileName, OfxTime time);
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file

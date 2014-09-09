@@ -141,14 +141,13 @@ public:
     virtual void clearAnyCache() OVERRIDE FINAL;
 private:
 
-    virtual void onInputFileChanged(const std::string& filename,
-                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 
-    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
+    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
 
     virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
     
@@ -302,7 +301,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 {
     if (paramName == kParamShowMetadata) {
         std::string filename;
-        OfxStatus st = getFilenameAtTime(args.time, filename);
+        OfxStatus st = getFilenameAtTime(args.time, &filename);
         std::stringstream ss;
         if (st == kOfxStatOK) {
             ss << metadata(filename);
@@ -342,7 +341,9 @@ ReadOIIOPlugin::onOutputComponentsParamChanged(OFX::PixelComponentEnum component
     if (components == OFX::ePixelComponentAlpha) {
         std::string filename;
         _fileParam->getValueAtTime(args.time, filename);
-        onInputFileChanged(filename);
+        OFX::PreMultiplicationEnum premult;
+        OFX::PixelComponentEnum components;
+        onInputFileChanged(filename, &premult, &components);
     }
 #endif
 }
@@ -543,8 +544,10 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
     _specValid = true;
 }
 
-void ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
-                                        OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components)
+void
+ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
+                                   OFX::PreMultiplicationEnum *premult,
+                                   OFX::PixelComponentEnum *components)
 {
     updateSpec(filename);
     if (!_specValid) {
@@ -693,27 +696,27 @@ void ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
 
     switch (_spec.nchannels) {
         case 0:
-            components = OFX::ePixelComponentNone;
+            *components = OFX::ePixelComponentNone;
             break;
         case 1:
-            components = OFX::ePixelComponentAlpha;
+            *components = OFX::ePixelComponentAlpha;
             break;
         case 3:
-            components = OFX::ePixelComponentRGB;
+            *components = OFX::ePixelComponentRGB;
             break;
         case 4:
-            components = OFX::ePixelComponentRGBA;
+            *components = OFX::ePixelComponentRGBA;
             break;
         default:
-            components = OFX::ePixelComponentRGBA;
+            *components = OFX::ePixelComponentRGBA;
             break;
     }
     
-    if (components != OFX::ePixelComponentRGBA && components != OFX::ePixelComponentAlpha) {
-        premult = OFX::eImageOpaque;
+    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+        *premult = OFX::eImageOpaque;
     } else {
         // output is always premultiplied
-        premult = OFX::eImagePreMultiplied;
+        *premult = OFX::eImagePreMultiplied;
     }
     
     
@@ -1086,27 +1089,36 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
 #endif
 }
 
-bool ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxTime /*time*/,OfxRectD& rod,std::string& error)
+bool
+ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,
+                                           OfxTime /*time*/,
+                                           OfxRectD *rod,
+                                           std::string *error)
 {
+    assert(rod);
 #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     if(!_cache->get_imagespec(ustring(filename), spec)) {
-        error = _cache->geterror();
+        if (error) {
+            *error = _cache->geterror();
+        }
         return false;
     }
 #else 
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
+        if (error) {
+            *error = std::string("ReadOIIO: cannot open file ") + filename;
+        }
         return false;
     }
     const ImageSpec &spec = img->spec();
 #endif
-    rod.x1 = spec.x;
-    rod.x2 = spec.x + spec.width;
-    rod.y1 = spec.y;
-    rod.y2 = spec.y + spec.height;
+    rod->x1 = spec.x;
+    rod->x2 = spec.x + spec.width;
+    rod->y1 = spec.y;
+    rod->y2 = spec.y + spec.height;
 #ifdef OFX_READ_OIIO_USES_CACHE
 #else
     img->close();
@@ -1114,7 +1126,8 @@ bool ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,OfxT
     return true;
 }
 
-std::string ReadOIIOPlugin::metadata(const std::string& filename)
+std::string
+ReadOIIOPlugin::metadata(const std::string& filename)
 {
     std::stringstream ss;
 

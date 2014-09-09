@@ -95,10 +95,9 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time,OfxRectD& rod,std::string& error) OVERRIDE FINAL;
+    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& newFile,
-                                    OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -570,16 +569,16 @@ ReadEXRPlugin::decode(const std::string& filename,
         //const int R = std::min(r, datawin.max.x + file->dataOffset + 1);
         
         // if we're below or above the data window
-        if(exrY < datawin.min.y || exrY > datawin.max.y/* || R <= X*/) {
+        if (exrY < datawin.min.y || exrY > datawin.max.y/* || R <= X*/) {
             continue;
         }
         
         Imf_::FrameBuffer fbuf;
-        for(std::map<Exr::Channel,DecodingChannelsMap >::const_iterator z = channels.begin(); z != channels.end();++z){
-            if(!z->second.subsampled){
+        for (std::map<Exr::Channel,DecodingChannelsMap >::const_iterator z = channels.begin(); z != channels.end();++z) {
+            if( !z->second.subsampled) {
                 fbuf.insert(z->second.channelName.c_str(),
                             Imf_::Slice(Imf_::FLOAT,(char*)(z->second.buf /*+ file->dataOffset*/),sizeof(float) * 4, 0));
-            }else{
+            } else {
                 fbuf.insert(z->second.channelName.c_str(),
                             Imf_::Slice(Imf_::FLOAT,(char*)(z->second.buf /*+ file->dataOffset*/),sizeof(float) * 4, 0,2,2));
             }
@@ -604,8 +603,10 @@ ReadEXRPlugin::decode(const std::string& filename,
 
 void
 ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
-                        OFX::PreMultiplicationEnum& premult,OFX::PixelComponentEnum& components)
+                                  OFX::PreMultiplicationEnum *premult,
+                                  OFX::PixelComponentEnum *components)
 {
+    assert(premult && components);
     Exr::File* file = Exr::FileManager::s_readerManager.get(newFile);
     bool hasRed;
     bool hasGreen;
@@ -618,36 +619,43 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
     hasAlpha = file->channel_map.find(Exr::Channel_alpha) != file->channel_map.end();
     
     if (hasAlpha) {
-        if (hasRed && hasGreen && hasBlue) {
-            components = OFX::ePixelComponentRGBA;
+        // if any color channel is present, let it be RGBA
+        if (hasRed || hasGreen || hasBlue) {
+            *components = OFX::ePixelComponentRGBA;
         } else {
-            components = OFX::ePixelComponentAlpha;
+            *components = OFX::ePixelComponentAlpha;
         }
     } else {
-        if (hasRed && hasGreen && hasBlue) {
-            components = OFX::ePixelComponentRGB;
+        // if any color channel is present, let it be RGB
+        if (hasRed || hasGreen || hasBlue) {
+            *components = OFX::ePixelComponentRGB;
         } else {
-            components = OFX::ePixelComponentNone;
+            *components = OFX::ePixelComponentNone;
         }
     }
 #pragma message WARN("This is probably wrong, I just set it for the sake of making it compile.")
-    premult = OFX::eImagePreMultiplied;
+    // where can we get premult information in EXR data?
+    *premult = OFX::eImagePreMultiplied;
 }
 
 bool
 ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,
-                                          OfxTime /*time*/,OfxRectD& rod,
-                                          std::string& error)
+                                          OfxTime /*time*/,
+                                          OfxRectD *rod,
+                                          std::string *error)
 {
+    assert(rod);
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     if (!file) {
-        error = "No such file";
+        if (error) {
+            *error = "No such file";
+        }
         return false;
     }
-    rod.x1 = file->dataWindow.x1;
-    rod.x2 = file->dataWindow.x2;
-    rod.y1 = file->dataWindow.y1;
-    rod.y2 = file->dataWindow.y2;
+    rod->x1 = file->dataWindow.x1;
+    rod->x2 = file->dataWindow.x2;
+    rod->y1 = file->dataWindow.y1;
+    rod->y2 = file->dataWindow.y2;
     return true;
 }
 
