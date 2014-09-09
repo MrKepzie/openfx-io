@@ -2004,7 +2004,6 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eImageUnPreMultiplied);
         param->appendOption(premultString(eImageUnPreMultiplied), kParamOutputPremultOptionUnPreMultipliedHint);
         param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
