@@ -186,7 +186,8 @@ enum MissingEnum
 "If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
 "This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file.\n"\
-"Note that on output, images are always premultiplied."
+"RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter)."\
+"Note that on output, images are always Premultiplied."
 #define kParamPremultOptionOpaqueHint \
 "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
 #define kParamPremultOptionPreMultipliedHint \
@@ -1483,6 +1484,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
 #pragma message WARN("most of these should only be triggered when args.reason == OFX::eChangeUserEdit, and _settingFrameRange may not be required.")
 #pragma message WARN("please add comments to explain why _settingFrameRange is necessary (it shouldn't be)")
+#pragma message WARN("see for example the case for kParamPremult")
     // please check the reason for each parameter when it makes sense!
 
     if (paramName == kParamFilename) {
@@ -1596,25 +1598,30 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _settingFrameRange = false;
 
     } else if (paramName == kParamOutputComponents /*&& args.reason == eChangeUserEdit*/) { // probably only useredit
+        int premult_i;
+        _premult->getValue(premult_i);
+        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
         OFX::PixelComponentEnum comps = getOutputComponents();
-        if (comps == OFX::ePixelComponentRGB) {
+        if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
             // RGB is always opaque
             _premult->setValue(OFX::eImageOpaque);
-        } else if (comps == OFX::ePixelComponentAlpha) {
+        } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
             // Alpha is always premultiplied
             _premult->setValue(OFX::eImagePreMultiplied);
         }
         onOutputComponentsParamChanged(comps);
-    } else if (paramName == kParamPremult) {
+    } else if (paramName == kParamPremult && args.reason == OFX::eChangeUserEdit) {
         int premult_i;
         _premult->getValue(premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
-        if (premult == OFX::eImagePreMultiplied) {
-             OFX::PixelComponentEnum comps = getOutputComponents();
-            if (comps == OFX::ePixelComponentRGB) {
-                ///The user wants premultiplied RGB, switch components to RGBA
-                setOutputComponents(OFX::ePixelComponentRGBA);
-            }
+        OFX::PixelComponentEnum comps = getOutputComponents();
+        // reset to authorized values if necessary
+        if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
+            // RGB is always opaque
+            _premult->setValue((int)OFX::eImageOpaque);
+        } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
+            // Alpha is always premultiplied
+            _premult->setValue((int)OFX::eImagePreMultiplied);
         }
     } else {
         _ocio->changedParam(args, paramName);
@@ -1633,7 +1640,7 @@ void
 GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
 {
     int i;
-    for (int i = 0; i < 4 && gOutputComponentsMap[i] != comps; ++i) {
+    for (i = 0; i < 4 && gOutputComponentsMap[i] != comps; ++i) {
     }
     if (i >= 4) {
         // not found, set the first supported component
