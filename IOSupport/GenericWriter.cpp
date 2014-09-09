@@ -861,6 +861,7 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
 void
 GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
+    _premult->setValue((int)_inputClip->getPreMultiplication());
     clipPreferences.setOutputPremultiplication(getExpectedInputPremultiplication());
 }
 
@@ -1031,7 +1032,6 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->appendOption(premultString(eImageUnPreMultiplied), kParamInputPremultOptionUnPreMultipliedHint);
         param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
 
