@@ -409,7 +409,9 @@ ImageEffect*
 ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
-    return new ReadPFMPlugin(handle);
+    ReadPFMPlugin* ret =  new ReadPFMPlugin(handle);
+    ret->restoreStateFromParameters();
+    return ret;
 }
 
 

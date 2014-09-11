@@ -458,7 +458,9 @@ ImageEffect*
 ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
                                         ContextEnum /*context*/)
 {
-    return new ReadFFmpegPlugin(handle);
+    ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(handle);
+    ret->restoreStateFromParameters();
+    return ret;
 }
 
 

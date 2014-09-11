@@ -120,6 +120,13 @@ public:
      **/
     virtual void purgeCaches(void) OVERRIDE;
     
+    /**
+     * @brief Called right away after the constructor, must restore the state of the Reader. We don't do this in the ctor. of the plug-in
+     * since we can't call virtuals yet
+     **/
+    void restoreStateFromParameters();
+
+    
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
@@ -128,8 +135,11 @@ protected:
     int getStartingTime();
     
     OFX::PixelComponentEnum getOutputComponents() const;
+    
 
 private:
+    
+    
     void setOutputComponents(OFX::PixelComponentEnum comps);
 
     /**
@@ -309,7 +319,6 @@ protected:
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
-    bool _settingFrameRange; //< true when getTimeDomainInternal is called with mustSetFrameRange = true
     
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     const bool _supportsTiles;

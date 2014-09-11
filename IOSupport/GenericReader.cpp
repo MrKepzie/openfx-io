@@ -180,8 +180,8 @@ enum MissingEnum
 #define kParamOutputComponentsOptionAlpha "Alpha"
 
 #define kParamPremult "premult"
-#define kParamPremultLabel "Image Premult"
-#define kParamPremultHint \
+#define kParamInputPremultLabel "Image Premult"
+#define kParamInputPremultHint \
 "Image being read is considered to have this premultiplication state.\n"\
 "If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
@@ -249,7 +249,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _outputComponents(0)
 , _premult(0)
 , _ocio(new GenericOCIO(this))
-, _settingFrameRange(false)
 , _sequenceFromFiles()
 , _supportsTiles(supportsTiles)
 {
@@ -272,30 +271,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     _premult = fetchChoiceParam(kParamPremult);
     
-    ///set the values of the original range and the file param (and reparse the sequence)
-    std::string filename;
-    _fileParam->getValue(filename);
-    
-    try {
-        if (!filename.empty()) {
-            SequenceParsing::FileNameContent content(filename);
-            ///We try to match all the files in the same directory that match the pattern with the frame number
-            ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
-            ///everything as it would take too much time.
-            std::string sequencePattern;
-            content.generatePatternWithFrameNumberAtIndex(content.getPotentialFrameNumbersCount() - 1, &sequencePattern);
-            SequenceParsing::filesListFromPattern(sequencePattern, &_sequenceFromFiles);
-            
-            if (_sequenceFromFiles.size() == 1) {
-                _originalFrameRange->setValue(0, 0);
-            } else if (_sequenceFromFiles.size() > 1) {
-                _originalFrameRange->setValue(_sequenceFromFiles.begin()->first, _sequenceFromFiles.rbegin()->first);
-            }
-        }
-    } catch(const std::exception& e) {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        return;
-    }
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -303,6 +278,12 @@ GenericReaderPlugin::~GenericReaderPlugin()
 }
 
 
+
+void
+GenericReaderPlugin::restoreStateFromParameters()
+{    
+    inputFileChanged();
+}
 
 bool
 GenericReaderPlugin::getTimeDomain(OfxRangeD &range)
@@ -370,7 +351,6 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
         frameRangeFirst = range.min;
         frameRangeLast = range.max;
         startingTime = frameRangeFirst;
-        _settingFrameRange = true;
         _firstFrame->setDisplayRange(range.min, range.max);
         _lastFrame->setDisplayRange(range.min, range.max);
         
@@ -378,7 +358,6 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
         _lastFrame->setValue(range.max);
         
         _originalFrameRange->setValue(range.min, range.max);
-        _settingFrameRange = false;
     } else {
         ///these are the value held by the "First frame" and "Last frame" param
         _firstFrame->getValue(frameRangeFirst);
@@ -1427,6 +1406,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 }
 
+
 void
 GenericReaderPlugin::inputFileChanged()
 {
@@ -1482,9 +1462,6 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-#pragma message WARN("most of these should only be triggered when args.reason == OFX::eChangeUserEdit, and _settingFrameRange may not be required.")
-#pragma message WARN("please add comments to explain why _settingFrameRange is necessary (it shouldn't be)")
-#pragma message WARN("see for example the case for kParamPremult")
     // please check the reason for each parameter when it makes sense!
 
     if (paramName == kParamFilename) {
@@ -1531,7 +1508,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _enableCustomScale->getValue(enabled);
         _proxyThreshold->setEnabled(enabled);
 
-    } else if (paramName == kParamFirstFrame && !_settingFrameRange /*&& args.reason == eChangeUserEdit*/) { // settingFrameRange probably unnecessary, replace with the second test?
+    } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
 
         int first;
         int last;
@@ -1541,18 +1518,16 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
         int offset;
         _timeOffset->getValue(offset);
-        _settingFrameRange = true; // probably not necessary
         _startingTime->setValue(first + offset); // will be called with reason == eChangePluginEdit
-        _settingFrameRange = false;
 
-    } else if (paramName == kParamLastFrame && !_settingFrameRange /*&& args.reason == eChangeUserEdit*/) { // settingFrameRange probably unnecessary, replace with the second test?
+    } else if (paramName == kParamLastFrame && args.reason == OFX::eChangeUserEdit) {
         int first;
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _firstFrame->setDisplayRange(first, last);
 
-    } else if (paramName == kParamFrameMode /*&& args.reason == eChangeUserEdit*/) { // probably only useredit
+    } else if (paramName == kParamFrameMode && args.reason == OFX::eChangeUserEdit) {
         int frameMode_i;
         _frameMode->getValue(frameMode_i);
         FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
@@ -1567,7 +1542,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
                 break;
         }
 
-    } else if (paramName == kParamStartingTime && !_settingFrameRange /*&& args.reason == eChangeUserEdit*/) {  // settingFrameRange probably unnecessary, replace with the second test?
+    } else if (paramName == kParamStartingTime && args.reason == OFX::eChangeUserEdit) {
         ///recompute the timedomain
         OfxRangeD sequenceTimeDomain;
         getSequenceTimeDomainInternal(sequenceTimeDomain,true);
@@ -1579,12 +1554,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int firstFrame;
         _firstFrame->getValue(firstFrame);
         
-        ///prevent recursive calls of setValue(...)
-        _settingFrameRange = true;
         _timeOffset->setValue(startingTime - firstFrame);
-        _settingFrameRange = false;
         
-    } else if (paramName == kParamTimeOffset && !_settingFrameRange /*&& args.reason == eChangeUserEdit*/) {  // settingFrameRange probably unnecessary, replace with the second test?
+    } else if (paramName == kParamTimeOffset && args.reason == OFX::eChangeUserEdit) {
 
         //also update the starting frame
         int offset;
@@ -1592,12 +1564,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int first;
         _firstFrame->getValue(first);
         
-        ///prevent recursive calls of setValue(...)
-        _settingFrameRange = true;
         _startingTime->setValue(offset + first);
-        _settingFrameRange = false;
 
-    } else if (paramName == kParamOutputComponents /*&& args.reason == eChangeUserEdit*/) { // probably only useredit
+    } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) { // probably only useredit
         int premult_i;
         _premult->getValue(premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
@@ -2074,9 +2043,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //// Output premult
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPremult);
-        param->setLabels(kParamPremultLabel, kParamPremultLabel, kParamPremultLabel);
+        param->setLabels(kParamInputPremultLabel, kParamInputPremultLabel, kParamInputPremultLabel);
         param->setAnimates(true);
-        param->setHint(kParamPremultHint);
+        param->setHint(kParamInputPremultHint);
         assert(param->getNOptions() == eImageOpaque);
         param->appendOption(premultString(eImageOpaque), kParamPremultOptionOpaqueHint);
         if (gHostSupportsRGBA && supportsRGBA) {

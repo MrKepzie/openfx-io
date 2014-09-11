@@ -698,7 +698,9 @@ ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 ImageEffect*
 ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new ReadEXRPlugin(handle);
+    ReadEXRPlugin* ret =  new ReadEXRPlugin(handle);
+    ret->restoreStateFromParameters();
+    return ret;
 }
 
 

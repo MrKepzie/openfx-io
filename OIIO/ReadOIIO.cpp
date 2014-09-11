@@ -1405,7 +1405,9 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new ReadOIIOPlugin(handle);
+    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(handle);
+    ret->restoreStateFromParameters();
+    return ret;
 }
 
 void getReadOIIOPluginID(OFX::PluginFactoryArray &ids)
