@@ -311,9 +311,6 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
             assert(srcRod.y1 == dstRod.y1);
             assert(srcRod.y2 == dstRod.y2); // crashes on Natron if kSupportsMultiResolution=0
         }
-    } else {
-        pixelComponents = srcClip_->getPixelComponents();
-        bitDepth = srcClip_->getPixelDepth();
     }
 
     double x, y;
