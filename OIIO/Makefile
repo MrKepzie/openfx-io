@@ -5,6 +5,8 @@ PLUGINOBJECTS = \
 
 PLUGINNAME = OIIO
 
+RESOURCES = fr.inria.openfx.OIIOText.png
+
 include ../Makefile.master
 
 OIIO_HOME ?= /usr

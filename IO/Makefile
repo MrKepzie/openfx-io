@@ -16,7 +16,19 @@ PLUGINOBJECTS = \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO
-VPATH += ../EXR ../FFmpeg ../OIIO ../PFM ../OCIO ../RunScript \
+
+# ls */*png|sed -e 's!^!../!' -e 's!$! \\!'
+RESOURCES = \
+../OIIO/fr.inria.openfx.OIIOText.png \
+../RunScript/fr.inria.openfx.RunScript.png \
+
+VPATH += \
+../EXR \
+../FFmpeg \
+../OCIO \
+../OIIO \
+../PFM \
+../RunScript \
 ../IOSupport/SequenceParsing
 
 include ../Makefile.master
