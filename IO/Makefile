@@ -50,3 +50,7 @@ LINKFLAGS += -L$(OIIO_HOME)/lib -lOpenImageIO
 ifeq ($(OS),Linux)
 LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib
 endif
+
+
+RESOURCES= ../OIIO/fr.inria.openfx.OIIOText.png \
+../RunScript/fr.inria.openfx.RunScript.png
