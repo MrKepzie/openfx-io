@@ -107,6 +107,10 @@
 		1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
+		1E814C8E19C9813600C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */; };
+		1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
+		1E814C9119C9815400C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
+		1E814C9219C9815A00C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */; };
 		1E8B5DA618B7A2F300C31FDC /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
 		1E8B5DA818B7A2F300C31FDC /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E8B5DAA18B7A2F300C31FDC /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -232,6 +236,7 @@
 			dstSubfolderSpec = 7;
 			files = (
 				1EE4A8CA19C6F03900E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */,
+				1E814C9119C9815400C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -242,6 +247,7 @@
 			dstSubfolderSpec = 7;
 			files = (
 				1EE4A8CF19C6F08A00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */,
+				1E814C9219C9815A00C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -252,7 +258,9 @@
 			dstSubfolderSpec = 7;
 			files = (
 				1EE4A8D119C6F0EA00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */,
+				1E814C8E19C9813600C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */,
 				1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */,
+				1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -322,6 +330,8 @@
 		1E74D84E1891137B00E9034B /* GenericOCIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GenericOCIO.h; sourceTree = "<group>"; };
 		1E74D84F189115BC00E9034B /* GenericOCIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIO.cpp; sourceTree = "<group>"; };
 		1E77070D1977D87700E3F68D /* ofxNatron.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxNatron.h; path = include/ofxNatron.h; sourceTree = "<group>"; };
+		1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.RunScript.svg; sourceTree = "<group>"; };
+		1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOText.svg; sourceTree = "<group>"; };
 		1E8B5D9D18B79E8100C31FDC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E8B5D9E18B79E8100C31FDC /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E8B5D9F18B79E8100C31FDC /* PluginRegistration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -526,6 +536,7 @@
 				1E9B5EAD19869F200095C8AA /* OIIOResize.h */,
 				1E00B3E4188EEBC5003BC7F3 /* Info.plist */,
 				1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */,
+				1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */,
 				1E00B3E5188EEBC5003BC7F3 /* Makefile */,
 				1E00B3E6188EEBC5003BC7F3 /* PluginRegistration.cpp */,
 			);
@@ -648,6 +659,7 @@
 				1EE4A8CC19C6F06700E6E3AE /* pstream.h */,
 				1EDECBAB18B9F7F10093B6FC /* Info.plist */,
 				1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */,
+				1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */,
 				1EDECBAC18B9F7F10093B6FC /* Makefile */,
 				1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */,
 			);

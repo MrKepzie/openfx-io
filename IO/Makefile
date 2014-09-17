@@ -52,5 +52,6 @@ LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib
 endif
 
 
-RESOURCES= ../OIIO/fr.inria.openfx.OIIOText.png \
-../RunScript/fr.inria.openfx.RunScript.png
+RESOURCES= \
+../OIIO/fr.inria.openfx.OIIOText.png ../OIIO/fr.inria.openfx.OIIOText.svg \
+../RunScript/fr.inria.openfx.RunScript.png ../RunScript/fr.inria.openfx.RunScript.svg \
