@@ -408,7 +408,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                                    , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             }
             // do the color-space conversion
-            _ocio->apply(args.time, renderWindowClipped, tmpPixelData, bounds, pixelComponents, tmpRowBytes);
+            _ocio->apply(args.time, renderWindowClipped, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
 
             ///If needed, re-premult the image for the plugin to work correctly
             if (pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
