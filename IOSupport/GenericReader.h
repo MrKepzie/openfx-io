@@ -137,6 +137,7 @@ protected:
     OFX::PixelComponentEnum getOutputComponents() const;
     
 
+
 private:
     
     
@@ -161,6 +162,11 @@ private:
      * @brief Override to clear any cache you may have.
      **/
     virtual void clearAnyCache() {}
+    
+    /**
+     * @brief Restore any state from the parameters set
+     **/
+    virtual void restoreState(const std::string& /*filename*/) {}
     
     
     /**
@@ -294,6 +300,8 @@ private:
                        int dstRowBytes);
     
     OfxPointD detectProxyScale(const std::string& originalFileName, const std::string& proxyFileName, OfxTime time);
+    
+    
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
@@ -319,6 +327,8 @@ protected:
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
+    
+    
     
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     const bool _supportsTiles;

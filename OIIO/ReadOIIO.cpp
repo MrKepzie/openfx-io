@@ -152,6 +152,8 @@ private:
 
     virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
     
+    virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
+    
     std::string metadata(const std::string& filename);
 
     void updateSpec(const std::string &filename);
@@ -543,6 +545,18 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
     _spec = img->spec();
 # endif
     _specValid = true;
+}
+
+void
+ReadOIIOPlugin::restoreState(const std::string& filename)
+{
+    updateSpec(filename);
+#ifdef OFX_READ_OIIO_NEWMENU
+    // rebuild the channel choices
+    buildChannelMenus();
+#else
+    _firstChannel->setDisplayRange(0, _spec.nchannels);
+#endif
 }
 
 void

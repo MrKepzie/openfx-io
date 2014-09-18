@@ -281,8 +281,23 @@ GenericReaderPlugin::~GenericReaderPlugin()
 
 void
 GenericReaderPlugin::restoreStateFromParameters()
-{    
-    inputFileChanged();
+{
+    std::string filename;
+    
+    //reset the original range param
+    _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+    
+    
+    OfxRangeD tmp;
+    if (getSequenceTimeDomainInternal(tmp,true)) {
+        timeDomainFromSequenceTimeDomain(tmp, true);
+    }
+    ///We call restoreState with the first frame of the sequence so we're almost sure it will work
+    ///unless the user did a mistake. We are also safe to assume that images specs are the same for
+    ///all the sequence
+    _fileParam->getValueAtTime(tmp.min, filename);
+    
+    restoreState(filename);
 }
 
 bool
@@ -1428,7 +1443,6 @@ GenericReaderPlugin::inputFileChanged()
     _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     
     
-    ///we don't pass the _frameRange range as we don't want to store the time domain too
     OfxRangeD tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
         timeDomainFromSequenceTimeDomain(tmp, true);
