@@ -200,17 +200,26 @@ Make a new file called INRIA.IO.manifest right next to IO.ofx in the bundle (i.e
 In this file copy the following lines:
 
     <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-    <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-    <assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
-    <file name="avcodec-55.dll">
-    </file>
-    <file name="avformat-55.dll">
-    </file>
-    <file name="avutil-52.dll">
-    </file>
-    <file name="swscale-2.dll">
-    </file>
-    </assembly>
+	<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+
+	<assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
+
+	<file name="avcodec-56.dll">
+	</file>
+
+	<file name="avformat-56.dll">
+	</file>
+
+	<file name="avutil-54.dll">
+	</file>
+
+	<file name="swscale-3.dll">
+	</file>
+
+	<file name="swresample-1.dll">
+	</file>
+
+	</assembly>
 
 Now open the command line tool and navigate to `IO.ofx.bundle/Content/Win64/`
 Execute the following command:
