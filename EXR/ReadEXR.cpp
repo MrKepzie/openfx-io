@@ -39,6 +39,9 @@
 #include "ReadEXR.h"
 
 #include <algorithm>
+#ifdef DEBUG
+#include <iostream>
+#endif
 
 #ifdef _WIN32
 #include <string>
@@ -71,8 +74,6 @@
 #define OPENEXR_IMF_NAMESPACE Imf
 #endif
 namespace Imf_ = OPENEXR_IMF_NAMESPACE;
-
-using std::cout; using std::endl;
 
 #define kSupportsRGBA true
 #define kSupportsRGB false
@@ -271,7 +272,9 @@ namespace Exr {
             try {
                 _mappedChannel = Exr::fromExrChannel(_chan);
             } catch (const std::exception& e) {
+#              ifdef DEBUG
                 std::cout << "Error while reading EXR file" << ": " << e.what() << std::endl;
+#              endif
                 return false;
             }
             return true;
@@ -361,8 +364,10 @@ namespace Exr {
                 if (exrExctractor.isValid()) {
                     ///register the extracted channel
                     channel_map.insert(std::make_pair(exrExctractor._mappedChannel,exrExctractor._chan));
-                }else {
+                } else {
+#                 ifdef DEBUG
                     std::cout << "Cannot decode channel " << chan.name() << std::endl;
+#                 endif
                 }
                 
             }

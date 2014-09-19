@@ -39,7 +39,7 @@
 
 #include "WritePFM.h"
 
-#include <cstdio>
+#include <cstdio> // fopen, fwrite...
 #include <vector>
 
 #include "GenericOCIO.h"

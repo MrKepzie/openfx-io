@@ -38,12 +38,17 @@
  */
 #include "GenericReader.h"
 
-#include <iostream>
 #include <memory>
 #include <algorithm>
 #include <climits>
 #include <cmath>
 #include <fstream>
+#ifdef DEBUG
+#include <cstdio>
+#define DBG(x) x
+#else
+#define DBG(x) (void)0
+#endif
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
@@ -1350,7 +1355,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     if (!mustPremult && _ocio->isIdentity(args.time) && (!kSupportsRenderScale || renderMipmapLevel == 0)) {
         // no colorspace conversion, no premultiplication, no proxy, just read file
-        //printf("decode\n");
+        DBG(std::printf("decode (to dst)\n"));
         decode(filename, sequenceTime, args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstRowBytes);
 
     } else {
@@ -1361,7 +1366,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         float *tmpPixelData = (float*)mem.lock();
 
         // read file
-        //printf("decode\n");
+        DBG(std::printf("decode (to tmp)\n"));
         if (!useProxy) {
             decode(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         } else {
@@ -1372,12 +1377,12 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         if (!_ocio->isIdentity(args.time) && pixelComponents != OFX::ePixelComponentAlpha) {
             if (premult == OFX::eImagePreMultiplied) {
                 assert(pixelComponents == OFX::ePixelComponentRGBA);
-                //printf("unpremult\n");
+                DBG(std::printf("unpremult (tmp in-place)\n"));
                 //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
                 unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes);
                 //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
             }
-            //printf("OCIO\n");
+            DBG(std::printf("OCIO (tmp in-place)\n"));
             _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
         }
         
@@ -1385,7 +1390,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             if (!mustPremult) {
                 // we can write directly to dstPixelData
                 /// adjust the scale to match the given output image
-                //printf("scale (no premult)\n");
+                DBG(std::printf("scale (no premult, tmp to dst)\n"));
                 scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, pixelComponents,
                                bitDepth, renderWindowFullRes, tmpRowBytes, dstPixelData,
                                pixelComponents, bitDepth, bounds, dstRowBytes);
@@ -1395,12 +1400,12 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 float *scaledPixelData = (float*)mem2.lock();
 
                 /// adjust the scale to match the given output image
-                //printf("scale\n");
+                DBG(std::printf("scale (tmp to scaled)\n"));
                 scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, pixelComponents,
                                bitDepth, renderWindowFullRes, tmpRowBytes, scaledPixelData,
                                pixelComponents, bitDepth, bounds, dstRowBytes);
                 // apply premult
-                //printf("premult\n");
+                DBG(std::printf("premult (scaled to dst)\n"));
                 //scaledPixelData[0] = scaledPixelData[1] = scaledPixelData[2] = 1.; scaledPixelData[3] = 0.5;
                 premultPixelData(args.renderWindow, scaledPixelData, bounds, pixelComponents, bitDepth, dstRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
                 //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
@@ -1408,12 +1413,12 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         } else {
             // copy
             if (mustPremult) {
-                //printf("premult (no scale)\n");
+                DBG(std::printf("premult (no scale, tmp to dst)\n"));
                 //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = 1.; tmpPixelData[3] = 0.5;
                 premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
                 //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
             } else {
-                //printf("copy (no premult no scale)\n");
+                DBG(std::printf("copy (no premult no scale, tmp to dst)\n"));
                 copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, pixelComponents, bitDepth, tmpRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
             }
         }
