@@ -431,18 +431,24 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx)
     bool gSet = false;
     bool bSet = false;
     bool aSet = false;
+    int layerViewChannels = 0;
     for (size_t i = 0; i < _spec.channelnames.size(); ++i) {
-        if (_spec.channelnames[i] == gFullName) {
-            _gChannel->setValue(kXChannelFirst + i);
-            gSet = true;
-        }
-        if (_spec.channelnames[i] == bFullName) {
-            _bChannel->setValue(kXChannelFirst + i);
-            bSet = true;
-        }
-        if (_spec.channelnames[i] == aFullName) {
-            _aChannel->setValue(kXChannelFirst + i);
-            aSet = true;
+        // check if the channel is within the layer/view, and count number of channels
+        if (lastdot == std::string::npos ||
+            _spec.channelnames[i].compare(0, layerDotViewDot.length(), layerDotViewDot) == 0) {
+            ++layerViewChannels;
+            if (_spec.channelnames[i] == gFullName) {
+                _gChannel->setValue(kXChannelFirst + i);
+                gSet = true;
+            }
+            if (_spec.channelnames[i] == bFullName) {
+                _bChannel->setValue(kXChannelFirst + i);
+                bSet = true;
+            }
+            if (_spec.channelnames[i] == aFullName) {
+                _aChannel->setValue(kXChannelFirst + i);
+                aSet = true;
+            }
         }
     }
     if (!gSet) {
@@ -454,8 +460,22 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx)
     if (!aSet) {
         if (_spec.alpha_channel >= 0) {
             _aChannel->setValue(kXChannelFirst + _spec.alpha_channel);
-        } else {
+        } else if (layerViewChannels != 4) {
             _aChannel->setValue(1); // opaque by default
+        } else {
+            // if there are exactly 4 channels in this layer/view, then the
+            // remaining one should be Alpha
+            for (size_t i = 0; i < _spec.channelnames.size(); ++i) {
+                // check if the channel is within the layer/view
+                if (lastdot == std::string::npos ||
+                    _spec.channelnames[i].compare(0, layerDotViewDot.length(), layerDotViewDot) == 0) {
+                    if (_spec.channelnames[i] != rFullName &&
+                        _spec.channelnames[i] != gFullName &&
+                        _spec.channelnames[i] != bFullName) {
+                        _aChannel->setValue(kXChannelFirst + i);
+                    }
+                }
+            }
         }
     }
 }
