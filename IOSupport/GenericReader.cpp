@@ -187,12 +187,14 @@ enum MissingEnum
 #define kParamPremult "premult"
 #define kParamInputPremultLabel "Image Premult"
 #define kParamInputPremultHint \
-"Image being read is considered to have this premultiplication state.\n"\
+"On output, RGB images are always Opaque, Alpha and RGBA images are always Premultiplied.\n"\
+"To get UnPremultiplied images, use the \"Unpremult\" plugin.\n\n"\
+"Image file being read is considered to have this premultiplication state.\n"\
 "If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion.\n"\
-"This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file.\n"\
-"RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter).\n"\
-"Note that on output, images are always Premultiplied."
+"This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file metadata.\n"\
+"RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter).\n"
+
 #define kParamPremultOptionOpaqueHint \
 "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
 #define kParamPremultOptionPreMultipliedHint \
