@@ -66,7 +66,11 @@ OIIO_NAMESPACE_USING
 
 #define kPluginName "ReadOIIOOFX"
 #define kPluginGrouping "Image/Readers"
-#define kPluginDescription "Read images using OpenImageIO."
+#define kPluginDescription \
+"Read images using OpenImageIO.\n\n" \
+"Ouput is always Premultiplied (alpha is associated).\n\n" \
+"The \"Image Premult\" parameter controls the file premultiplication state, " \
+"and can be used to fix wrong file metadata (see the help for that parameter).\n"
 #define kPluginIdentifier "fr.inria.openfx.ReadOIIO"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
@@ -84,14 +88,6 @@ OIIO_NAMESPACE_USING
 #define kParamShowMetadata "showMetadata"
 #define kParamShowMetadataLabel "Image Info..."
 #define kParamShowMetadataHint "Shows information and metadata from the image at current time."
-
-#ifndef OFX_READ_OIIO_SHARED_CACHE
-// unassociatedAlpha is a cache parameter, so it can't be set separately for each instance
-#define kParamUnassociatedAlpha "unassociatedAlpha"
-#define kParamUnassociatedAlphaLabel "Keep Unassoc. Alpha"
-#define kParamUnassociatedAlphaHint "When checked, don't associate alpha (i.e. don't premultiply) if alpha is marked as unassociated in the metadata.\nImages which have associated alpha (i.e. are already premultiplied) are unaffected."
-#endif
-
 
 #ifndef OFX_READ_OIIO_NEWMENU
 #define kParamFirstChannel "firstChannel"
@@ -172,9 +168,6 @@ private:
     //// OIIO image cache
     ImageCache* _cache;
 #endif
-#ifndef OFX_READ_OIIO_SHARED_CACHE
-    OFX::BooleanParam* _unassociatedAlpha;
-#endif
 #ifdef OFX_READ_OIIO_NEWMENU
     OFX::ChoiceParam *_rChannel;
     OFX::ChoiceParam *_gChannel;
@@ -196,9 +189,6 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _cache(ImageCache::create(false)) // non-shared cache
 #  endif
 #endif
-#ifndef OFX_READ_OIIO_SHARED_CACHE
-, _unassociatedAlpha(0)
-#endif
 #ifdef OFX_READ_OIIO_NEWMENU
 , _rChannel(0)
 , _gChannel(0)
@@ -210,13 +200,13 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 , _spec()
 , _specValid(false)
 {
-#ifndef OFX_READ_OIIO_SHARED_CACHE
-    _unassociatedAlpha = fetchBooleanParam(kParamUnassociatedAlpha);
-# ifdef OFX_READ_OIIO_USES_CACHE
-    bool unassociatedAlpha;
-    _unassociatedAlpha->getValue(unassociatedAlpha);
-    _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
-# endif
+#ifdef OFX_READ_OIIO_USES_CACHE
+    // Always keep unassociated alpha.
+    // Don't let OIIO premultiply, because if the image is 8bits,
+    // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
+    // which causes a lot of precision loss.
+    // see also https://github.com/OpenImageIO/oiio/issues/960
+    _cache->attribute("unassociatedalpha", 1);
 #endif
 #ifdef OFX_READ_OIIO_NEWMENU
     _rChannel = fetchChoiceParam(kParamRChannel);
@@ -312,16 +302,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
         }
         sendMessage(OFX::Message::eMessageMessage, "", ss.str());
-    }
-#if defined(OFX_READ_OIIO_USES_CACHE) && !defined(OFX_READ_OIIO_SHARED_CACHE)
-    ///This cannot be done elsewhere as the Cache::attribute function is not thread safe!
-    else if (paramName == kParamUnassociatedAlpha) {
-        bool unassociatedAlpha;
-        _unassociatedAlpha->getValue(unassociatedAlpha); // non-animatable
-        _cache->attribute("unassociatedalpha", (int)unassociatedAlpha);
-    }
-#endif
-    else if (paramName == kParamRChannel) {
+    } else if (paramName == kParamRChannel) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
@@ -730,18 +711,12 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
         *premult = OFX::eImageOpaque;
     } else {
-        // output of OpenImageIO is always premultiplied (but if the file is wrong, the user can fix this)
-#ifdef OFX_READ_OIIO_SHARED_CACHE
-        *premult = OFX::eImagePreMultiplied;
-#else
-        bool unassociatedAlpha;
-        _unassociatedAlpha->getValue(unassociatedAlpha);
+        bool unassociatedAlpha = _spec.get_int_attribute("oiio:UnassociatedAlpha", 0);
         if (unassociatedAlpha) {
             *premult = OFX::eImageUnPreMultiplied;
         } else {
             *premult = OFX::eImagePreMultiplied;
         }
-#endif
     }
     
     
@@ -769,14 +744,13 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 #else
-#ifndef OFX_READ_OIIO_SHARED_CACHE
-    bool unassociatedAlpha;
-    _unassociatedAlpha->getValueAtTime(time, unassociatedAlpha);
+    // Always keep unassociated alpha.
+    // Don't let OIIO premultiply, because if the image is 8bits,
+    // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
+    // which causes a lot of precision loss.
+    // see also https://github.com/OpenImageIO/oiio/issues/960
     ImageSpec config;
-    if (unassociatedAlpha) {
-        config.attribute("oiio:UnassociatedAlpha",1);
-    }
-#endif
+    config.attribute("oiio:UnassociatedAlpha", 1);
 
     std::auto_ptr<ImageInput> img(ImageInput::open(filename, &config));
     if (!img.get()) {
@@ -1279,7 +1253,8 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
-    desc.setPluginDescription("Read images using OpenImageIO.\n\n"
+    desc.setPluginDescription(kPluginDescription
+                              "\n\n"
                               "OpenImageIO supports reading/writing the following file formats:\n"
                               "BMP (*.bmp)\n"
                               "Cineon (*.cin)\n"
@@ -1307,12 +1282,6 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Targa (*.tga *.tpic)\n"
                               "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
                               "Zfile (*.zfile)\n\n"
-#if defined(OFX_READ_OIIO_USES_CACHE) && !defined(OFX_READ_OIIO_SHARED_CACHE)
-                              "Note that the output is always premultiplied. "
-                              "If the file was wrongly tagged as unpremultiplied, "
-                              "this will result in darker colors than expected. "
-                              "To fix this, use the Unpremult plugin.\n\n"
-#endif
                               + oiio_versions());
 
 
@@ -1350,17 +1319,6 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
-
-#ifndef OFX_READ_OIIO_SHARED_CACHE
-    OFX::BooleanParamDescriptor* unassociatedAlpha = desc.defineBooleanParam(kParamUnassociatedAlpha);
-    unassociatedAlpha->setLabels(kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel, kParamUnassociatedAlphaLabel);
-    unassociatedAlpha->setHint(kParamUnassociatedAlphaHint);
-#ifdef OFX_READ_OIIO_USES_CACHE
-    unassociatedAlpha->setAnimates(false); // cannot be animated, because relies on changedParam()
-#endif
-    page->addChild(*unassociatedAlpha);
-    desc.addClipPreferencesSlaveParam(*unassociatedAlpha);
-#endif
 
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
