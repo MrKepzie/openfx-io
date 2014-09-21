@@ -572,13 +572,31 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     }
 # ifdef OFX_IO_USING_OCIO
     ///find-out the image color-space
-    const ParamValue* colorSpaceValue = _spec.find_attribute("oiio:ColorSpace",TypeDesc::STRING);
+    const ParamValue* colorSpaceValue = _spec.find_attribute("oiio:ColorSpace", TypeDesc::STRING);
+    const ParamValue* photoshopICCProfileValue = _spec.find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
+    //photoshop:ICCProfile: "HDTV (Rec. 709)"
 
     //we found a color-space hint, use it to do the color-space conversion
     const char* colorSpaceStr = NULL;
     if (colorSpaceValue) {
         colorSpaceStr = *(const char**)colorSpaceValue->data();
-    } else {
+    } else if (photoshopICCProfileValue) {
+        const char* ICCProfileStr = *(const char**)photoshopICCProfileValue->data();
+        if (!strcmp(ICCProfileStr, "HDTV (Rec. 709)") ||
+            !strcmp(ICCProfileStr, "SDTV NTSC") ||
+            !strcmp(ICCProfileStr, "SDTV PAL") ||
+            !strcmp(ICCProfileStr, "HDTV (Rec. 709) 16-235") ||
+            !strcmp(ICCProfileStr, "SDTV NTSC 16-235") ||
+            !strcmp(ICCProfileStr, "SDTV PAL 16-235") ||
+            !strcmp(ICCProfileStr, "SDTV NTSC 16-235")) {
+            colorSpaceStr = "Rec709";
+        } else if (!strcmp(ICCProfileStr, "sRGB IEC61966-2.1")) {
+            colorSpaceStr = "sRGB";
+        } else if (!strcmp(ICCProfileStr, "Universal Camera Film Printing Density)")) {
+            colorSpaceStr = "KodakLog";
+        }
+    }
+    if (!colorSpaceStr) {
         // no colorspace... we'll probably have to try something else, then.
         // we set the following defaults:
         // sRGB for 8-bit images
