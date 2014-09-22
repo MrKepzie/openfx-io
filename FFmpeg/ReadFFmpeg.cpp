@@ -134,19 +134,17 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
     *components = OFX::ePixelComponentRGB;
     *premult = OFX::eImageOpaque;
     
+    assert(_ffmpegFile);
     if (_ffmpegFile) {
         if (_ffmpegFile->getFilename() == filename) {
             return;
         } else {
-             _ffmpegFile->open(filename);
+            _ffmpegFile->open(filename);
         }
-    } else {
         
-        _ffmpegFile = new FFmpeg::File(filename);
-        
-    }
-    if (!_ffmpegFile->isValid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+        if (!_ffmpegFile->isValid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+        }
     }
 }
 
@@ -276,23 +274,22 @@ ReadFFmpegPlugin::decode(const std::string& filename,
 
 bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
     
-    ///The ffmpegFile might not have been created so far because the instance changed action was still not called
-    if(!_ffmpegFile) {
-        _ffmpegFile = new FFmpeg::File(filename);
-        if (!_ffmpegFile->isValid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
-            return false;
-        }
-    }
+
+    assert(_ffmpegFile);
 
     
     if (!FFmpeg::isImageFile(filename)) {
         
         int width,height,frames;
         double ap;
-        _ffmpegFile->getInfo(width, height, ap, frames);
-        range.min = 0;
-        range.max = frames - 1;
+        if (_ffmpegFile) {
+            _ffmpegFile->getInfo(width, height, ap, frames);
+            
+            range.min = 0;
+            range.max = frames - 1;
+        } else {
+            return false;
+        }
         return true;
     } else {
         return false;
