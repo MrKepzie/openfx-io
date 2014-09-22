@@ -248,7 +248,13 @@ GenericOCIO::isIdentity(double time)
     _inputSpace->getValueAtTime(time, inputSpace);
     std::string outputSpace;
     _outputSpace->getValueAtTime(time, outputSpace);
-    return inputSpace == outputSpace;
+    if (inputSpace == outputSpace) {
+        return true;
+    }
+    // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
+    OCIO::ConstContextRcPtr context = _config->getCurrentContext();
+    OCIO_NAMESPACE::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+    return proc->isNoOp();
 #else
     return true;
 #endif
@@ -359,21 +365,18 @@ OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const s
 {
     OCIO::ConstContextRcPtr context = config->getCurrentContext();
     _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
-
 }
 
 void
 OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction)
 {
     _proc = config->getProcessor(transform, direction);
-
 }
 
 void
 OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform)
 {
     _proc = config->getProcessor(transform);
-
 }
 
 void
