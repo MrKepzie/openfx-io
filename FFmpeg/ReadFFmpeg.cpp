@@ -177,7 +177,10 @@ fillWindow(const unsigned char* buffer,
             dst_pixels[dstCol + 1] = intToFloat<256>(src_pixels[srcCol + 1]);
             dst_pixels[dstCol + 2] = intToFloat<256>(src_pixels[srcCol + 2]);
             if (nComponents == 4) {
-                dst_pixels[dstCol + 3] = 1.f;
+                // Output is Opaque with alpha=0 by default,
+                // but premultiplication is set to opaque.
+                // That way, chaining with a Roto node works correctly.
+                dst_pixels[dstCol + 3] = 0.f;
             }
         }
     }

@@ -461,7 +461,10 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx)
         if (_spec.alpha_channel >= 0) {
             _aChannel->setValue(kXChannelFirst + _spec.alpha_channel);
         } else if (layerViewChannels != 4) {
-            _aChannel->setValue(1); // opaque by default
+            // Output is Opaque with alpha=0 by default,
+            // but premultiplication is set to opaque.
+            // That way, chaining with a Roto node works correctly.
+            _aChannel->setValue(0);
         } else {
             // if there are exactly 4 channels in this layer/view, then the
             // remaining one should be Alpha
@@ -525,7 +528,7 @@ ReadOIIOPlugin::setDefaultChannels()
         _rChannel->setValue(0);
         _gChannel->setValue(0);
         _bChannel->setValue(0);
-        _aChannel->setValue(1);
+        _aChannel->setValue(0);
     }
 }
 #endif // OFX_READ_OIIO_NEWMENU

@@ -153,7 +153,8 @@ static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
             }
         }
         if (dstC == 4) {
-            dstPix[3] = 1.; // alpha
+            // Alpha is 0 on RGBA images to allow adding alpha using a Roto node
+            dstPix[3] = 0.; // alpha
         }
 
         srcPix += srcC;
