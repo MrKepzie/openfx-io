@@ -1598,18 +1598,23 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         
         _startingTime->setValue(offset + first);
 
-    } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) { // probably only useredit
-        int premult_i;
-        _premult->getValue(premult_i);
-        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+    } else if (paramName == kParamOutputComponents) {
         OFX::PixelComponentEnum comps = getOutputComponents();
-        if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
-            // RGB is always opaque
-            _premult->setValue(OFX::eImageOpaque);
-        } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
-            // Alpha is always premultiplied
-            _premult->setValue(OFX::eImagePreMultiplied);
+    
+        if (args.reason == OFX::eChangeUserEdit) {
+            int premult_i;
+            _premult->getValue(premult_i);
+            OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+            if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
+                // RGB is always opaque
+                _premult->setValue(OFX::eImageOpaque);
+            } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
+                // Alpha is always premultiplied
+                _premult->setValue(OFX::eImagePreMultiplied);
+            }
         }
+        
+        // Even when reason == pluginEdit notify the plug-in that components changed
         onOutputComponentsParamChanged(comps);
     } else if (paramName == kParamPremult && args.reason == OFX::eChangeUserEdit) {
         int premult_i;
