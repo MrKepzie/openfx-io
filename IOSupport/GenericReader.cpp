@@ -290,10 +290,21 @@ void
 GenericReaderPlugin::restoreStateFromParameters()
 {
     std::string filename;
+    _fileParam->getValue(filename);
     
+    if (!filename.empty()) {
+        SequenceParsing::FileNameContent content(filename);
+        std::string pattern;
+        ///We try to match all the files in the same directory that match the pattern with the frame number
+        ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
+        ///everything as it would take too much time.
+        content.generatePatternWithFrameNumberAtIndex(content.getPotentialFrameNumbersCount() - 1, &pattern);
+        
+        _sequenceFromFiles.clear();
+        SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
+    }
     //reset the original range param
     _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
-    
     
     OfxRangeD tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
