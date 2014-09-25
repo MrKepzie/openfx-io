@@ -62,7 +62,7 @@
 
 class ReadFFmpegPlugin : public GenericReaderPlugin
 {
-    FFmpeg::File* _ffmpegFile; //< a ptr to the ffmpeg file, don't delete it the FFmpegFileManager handles their allocation/deallocation
+    FFmpeg::File* _ffmpegFile; 
 
     unsigned char* _buffer;
     int _bufferWidth;
@@ -89,18 +89,18 @@ private:
     virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
 
     virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
+    
+    virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
-, _ffmpegFile(0)
+, _ffmpegFile(new FFmpeg::File())
 , _buffer(0)
 , _bufferWidth(0)
 , _bufferHeight(0)
 {
-    std::string filename;
-    _fileParam->getValue(filename);
-    _ffmpegFile = new FFmpeg::File(filename);
+
 }
 
 ReadFFmpegPlugin::~ReadFFmpegPlugin() {
@@ -111,6 +111,22 @@ ReadFFmpegPlugin::~ReadFFmpegPlugin() {
     if (_ffmpegFile) {
         delete _ffmpegFile;
     }
+}
+
+void
+ReadFFmpegPlugin::restoreState(const std::string& filename)
+{
+    assert(_ffmpegFile);
+    if (_ffmpegFile) {
+        
+        
+        if (_ffmpegFile->getFilename() != filename) {
+            _ffmpegFile->close();
+            _ffmpegFile->open(filename);
+        }
+        
+    }
+
 }
 
 bool ReadFFmpegPlugin::loadNearestFrame() const {
@@ -286,6 +302,11 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
         int width,height,frames;
         double ap;
         if (_ffmpegFile) {
+            
+            if (_ffmpegFile->getFilename() != filename) {
+                _ffmpegFile->close();
+                _ffmpegFile->open(filename);
+            }
             _ffmpegFile->getInfo(width, height, ap, frames);
             
             range.min = 0;
@@ -382,6 +403,50 @@ split(const std::string &s, char delim, std::vector<std::string> &elems)
     return elems;
 }
 
+
+
+#ifdef OFX_IO_MT_FFMPEG
+static int FFmpegLockManager(void** mutex, enum AVLockOp op)
+{
+    switch (op) {
+        case AV_LOCK_CREATE: // Create a mutex.
+            try {
+                *mutex = static_cast< void* >(new OFX::MultiThread::Mutex);
+                return 0;
+            }
+            catch(...) {
+                // Return error if mutex creation failed.
+                return 1;
+            }
+            
+        case AV_LOCK_OBTAIN: // Lock the specified mutex.
+            try {
+                static_cast< OFX::MultiThread::Mutex* >(*mutex)->lock();
+                return 0;
+            }
+            catch(...) {
+                // Return error if mutex lock failed.
+                return 1;
+            }
+            
+        case AV_LOCK_RELEASE: // Unlock the specified mutex.
+            // Mutex unlock can't fail.
+            static_cast< OFX::MultiThread::Mutex* >(*mutex)->unlock();
+            return 0;
+            
+        case AV_LOCK_DESTROY: // Destroy the specified mutex.
+            // Mutex destruction can't fail.
+            delete static_cast< OFX::MultiThread::Mutex* >(*mutex);
+            *mutex = 0;
+            return 0;
+            
+        default: // Unknown operation.
+            assert(false);
+            return 1;
+    }
+}
+#endif
+
 /** @brief The basic describe function, passed a plugin descriptor */
 void
 ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
@@ -438,7 +503,18 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
 #ifndef OFX_IO_MT_FFMPEG
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+#else
+    // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
+    // otherwise non-thread-safe calls.
+    av_lockmgr_register(FFmpegLockManager);
 #endif
+    
+    
+    av_log_set_level(AV_LOG_WARNING);
+    av_register_all();
+    
+  
+    
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */

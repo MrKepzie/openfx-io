@@ -93,43 +93,9 @@ extern "C" {
 }
 
 namespace FFmpeg {
+    
     bool isImageFile(const std::string& filename);
     
-#if 0
-    class File;
-    // Keeps track of all FFmpegFile mapped against file name.
-    class FileManager
-    {
-    public:
-        
-        // singleton
-        static FileManager s_readerManager;
-        
-        // constructor
-        FileManager();
-        
-        ~FileManager();
-        
-        void initialize();
-        
-        // get a specific reader
-        File* get(const std::string& filename);
-        
-    private:
-        typedef std::map<std::string, File*> FilesMap;
-        FilesMap _files;
-
-        bool _isLoaded;///< register all "global" flags to ffmpeg outside of the constructor to allow
-        /// all OpenFX related stuff (which depend on another singleton) to be allocated.
-
-#ifdef OFX_IO_MT_FFMPEG
-        // internal lock
-        OFX::MultiThread::Mutex *_lock;
-#endif
-
-    };
-#endif
-
 
     class File {
         
@@ -217,6 +183,8 @@ namespace FFmpeg {
         // Get the video stream duration in frames...
         int64_t getStreamFrames(Stream& stream);
         
+        bool seekFrame(int frame,Stream* stream);
+        
     public:
         
         File();
@@ -252,6 +220,7 @@ namespace FFmpeg {
                      double& aspect,
                      int& frames,
                      unsigned streamIdx = 0);
+        
         
     };
     

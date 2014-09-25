@@ -41,6 +41,7 @@
 #include "FFmpegHandler.h"
 
 #include <cmath>
+#include <iostream>
 
 #include "ReadFFmpeg.h"
 
@@ -49,6 +50,8 @@
 #else
 #  include <unistd.h> // for sysconf()
 #endif
+
+//#define FFMPEG_PLUGIN_DEBUG
 
 // Use one decoding thread per processor for video decoding.
 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
@@ -214,6 +217,7 @@ namespace FFmpeg {
         
         _filename = filename;
         
+
         CHECKMSG(avformat_open_input(&_context, filename.c_str(), _format, NULL), "Cannot open file");
         CHECKMSG(avformat_find_stream_info(_context, NULL),"Could not find codec parameters");
         
@@ -235,6 +239,9 @@ namespace FFmpeg {
             }
             
             // find the codec
+#ifdef FFMPEG_PLUGIN_DEBUG
+            std::cout << "Calling avcodec_find_decoder(" << avstream->codec->codec_id << ")" << std::endl;
+#endif
             AVCodec* videoCodec = avcodec_find_decoder(avstream->codec->codec_id);
             if (videoCodec == NULL) {
                 continue;
@@ -289,6 +296,16 @@ namespace FFmpeg {
             // set stream start time and numbers of frames
             stream->_startPTS = getStreamStartTime(*stream);
             stream->_frames   = getStreamFrames(*stream);
+            
+#ifdef FFMPEG_PLUGIN_DEBUG
+            std::cout << "Stream infos: \n"
+            << "Stream index: " << stream->_idx
+            << "\nSize: " << stream->_width << "x" << stream->_height
+            << "\nStartPTS: " << stream->_startPTS
+            << "\nFrames: " << stream->_frames
+            << "\nCodec name: " << stream->_videoCodec->name
+            << std::endl;
+#endif
             
             // save the stream
             _streams.push_back(stream);
@@ -500,6 +517,25 @@ namespace FFmpeg {
     }
     
     
+    bool File::seekFrame(int frame,Stream* stream)
+    {
+        ///Private should not lock
+#ifdef FFMPEG_PLUGIN_DEBUG
+        std::cout << "Seeking frame " << frame
+        << " (PTS = " <<  stream->frameToPts(frame) << ") on stream index " << stream->_idx
+        << '\n'
+        << std::endl;
+#endif
+        avcodec_flush_buffers(stream->_codecContext);
+        int error = av_seek_frame(_context, stream->_idx, stream->frameToPts(frame), AVSEEK_FLAG_BACKWARD);
+        if (error < 0) {
+            // Seek error. Abort attempt to read and decode frames.
+            setInternalError(error, "FFmpeg Reader failed to seek frame: ");
+            return false;
+        }
+        return true;
+    }
+    
     // decode a single frame into the buffer thread safe
     bool File::decode(unsigned char* buffer, int frame, bool loadNearest,unsigned streamIdx)
     {
@@ -574,14 +610,11 @@ namespace FFmpeg {
             stream->_accumDecodeLatency = 0;
             awaitingFirstDecodeAfterSeek = true;
             
-            avcodec_flush_buffers(stream->_codecContext);
-            int error = av_seek_frame(_context, stream->_idx, stream->frameToPts(frame), AVSEEK_FLAG_BACKWARD);
-            if (error < 0) {
-                // Seek error. Abort attempt to read and decode frames.
-                setInternalError(error, "FFmpeg Reader failed to seek frame: ");
+            if (!seekFrame(frame, stream)) {
                 return false;
             }
         }
+        
         av_init_packet(&_avPacket);
         
         // Loop until the desired frame has been decoded. May also break from within loop on failure conditions where the
@@ -645,11 +678,7 @@ namespace FFmpeg {
                             // Seek to the new frame. By leaving the seek in progress, we will seek backwards frame by frame until we
                             // either successfully synchronise frame indices or give up having reached the beginning of the stream.
                             
-                            avcodec_flush_buffers(stream->_codecContext);
-                            error = av_seek_frame(_context, stream->_idx, stream->frameToPts(lastSeekedFrame), AVSEEK_FLAG_BACKWARD);
-                            if (error < 0) {
-                                // Seek error. Abort attempt to read and decode frames.
-                                setInternalError(error, "FFmpeg Reader failed to seek frame: ");
+                            if (!seekFrame(lastSeekedFrame, stream)) {
                                 break;
                             }
                         }
@@ -668,6 +697,24 @@ namespace FFmpeg {
                         
                         // Decode the frame just read. frameDecoded indicates whether a decoded frame was output.
                         decodeAttempted = true;
+#ifdef FFMPEG_PLUGIN_DEBUG
+                        std::cout << "avcodec_decode_video2:\n"
+                        << "\nFrame size:  " << stream->_avFrame->width << "x" << stream->_avFrame->height
+                        << "\nKeyframe: " << stream->_avFrame->key_frame
+                        << "\npts: " << stream->_avFrame->pts
+                        << "\npkt_pts: " << stream->_avFrame->pkt_pts
+                        << "\npkt_pos: " << stream->_avFrame->pkt_pos
+                        << "\npkt_dts: " << stream->_avFrame->pkt_dts
+                        << "\npkt_duration: " << stream->_avFrame->pkt_duration
+                        << "\n----------------------"
+                        << "\nPacket pts: " << _avPacket.pts
+                        << "\ndts: " << _avPacket.dts
+                        << "\npos: " << _avPacket.pos
+                        << "\nstreamIndex: " << _avPacket.stream_index
+                        << "\nduration: " << _avPacket.duration
+                        << "\nsize: " << _avPacket.size
+                        << std::endl;
+#endif
                         error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
                         if (error < 0) {
                             // Decode error. Abort attempt to read and decode frames.
@@ -675,9 +722,9 @@ namespace FFmpeg {
                             break;
                         }
                     }
-                }
+                } //_avPacket.stream_index == stream->_idx
                 
-            }
+            } //stream->_decodeNextFrameIn < stream->_frames
             
             // If the next frame to decode is out of frame range, there's nothing more to read and the decoder will be fed
             // null input frames in order to obtain any remaining output.
@@ -767,11 +814,7 @@ namespace FFmpeg {
                     stream->_accumDecodeLatency = 0;
                     awaitingFirstDecodeAfterSeek = true;
                     
-                    avcodec_flush_buffers(stream->_codecContext);
-                    int error = av_seek_frame(_context, stream->_idx, stream->frameToPts(seekTargetFrame), AVSEEK_FLAG_BACKWARD);
-                    if (error < 0) {
-                        // Seek error. Abort attempt to read and decode frames.
-                        setInternalError(error, "FFmpeg Reader failed to seek frame: ");
+                    if (!seekFrame(seekTargetFrame, stream)) {
                         break;
                     }
                 }
@@ -817,105 +860,7 @@ namespace FFmpeg {
         return true;
     }
     
-#if 0
-    FileManager FileManager::s_readerManager;
-    
-    // constructor
-    FileManager::FileManager()
-    : _files()
-    , _isLoaded(false)
-#ifdef OFX_IO_MT_FFMPEG
-    , _lock(0)
-#endif
-    {
-    }
-    
-    FileManager::~FileManager() {
-        for (FilesMap::iterator it = _files.begin(); it!= _files.end(); ++it) {
-            delete it->second;
-        }
-    }
 
-#ifdef OFX_IO_MT_FFMPEG
-    static int FFmpegLockManager(void** mutex, enum AVLockOp op)
-    {
-        switch (op) {
-            case AV_LOCK_CREATE: // Create a mutex.
-                try {
-                    *mutex = static_cast< void* >(new OFX::MultiThread::Mutex);
-                    return 0;
-                }
-                catch(...) {
-                    // Return error if mutex creation failed.
-                    return 1;
-                }
-                
-            case AV_LOCK_OBTAIN: // Lock the specified mutex.
-                try {
-                    static_cast< OFX::MultiThread::Mutex* >(*mutex)->lock();
-                    return 0;
-                }
-                catch(...) {
-                    // Return error if mutex lock failed.
-                    return 1;
-                }
-                
-            case AV_LOCK_RELEASE: // Unlock the specified mutex.
-                                  // Mutex unlock can't fail.
-                static_cast< OFX::MultiThread::Mutex* >(*mutex)->unlock();
-                return 0;
-                
-            case AV_LOCK_DESTROY: // Destroy the specified mutex.
-                                  // Mutex destruction can't fail.
-                delete static_cast< OFX::MultiThread::Mutex* >(*mutex);
-                *mutex = 0;
-                return 0;
-                
-            default: // Unknown operation.
-                assert(false);
-                return 1;
-        }
-    }
-#endif
 
-    void FileManager::initialize() {
-        if(!_isLoaded){
-#ifdef OFX_IO_MT_FFMPEG
-            _lock = new OFX::MultiThread::Mutex();
-#endif
-
-            av_log_set_level(AV_LOG_WARNING);
-            av_register_all();
-            
-#ifdef OFX_IO_MT_FFMPEG
-            // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
-            // otherwise non-thread-safe calls.
-            av_lockmgr_register(FFmpegLockManager);
-#endif
-
-            _isLoaded = true;
-        }
-        
-    }
-    
-    // get a specific reader
-    File* FileManager::get(const std::string& filename)
-    {
-        
-        assert(_isLoaded);
-#ifdef OFX_IO_MT_FFMPEG
-        OFX::MultiThread::AutoMutex g(*_lock);
-#endif
-        FilesMap::iterator it = _files.find(filename);
-        if (it == _files.end()) {
-            std::pair<FilesMap::iterator,bool> ret = _files.insert(std::make_pair(std::string(filename), new File(filename)));
-            assert(ret.second);
-            return ret.first->second;
-        }
-        else {
-            return it->second;
-        }
-    }
-#endif // 0
     
 } //namespace FFmpeg
