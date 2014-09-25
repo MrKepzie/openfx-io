@@ -51,7 +51,7 @@
 #  include <unistd.h> // for sysconf()
 #endif
 
-//#define FFMPEG_PLUGIN_DEBUG
+#define FFMPEG_PLUGIN_DEBUG
 
 // Use one decoding thread per processor for video decoding.
 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
@@ -217,8 +217,20 @@ namespace FFmpeg {
         
         _filename = filename;
         
-
-        CHECKMSG(avformat_open_input(&_context, filename.c_str(), _format, NULL), "Cannot open file");
+        _context = avformat_alloc_context();
+        
+        {
+            int error = avformat_open_input(&_context, filename.c_str(), _format, NULL);
+            if (error < 0) {
+                //Set context to 0 so that av_free is not called in close() because avformat_open_input
+                //frees the context for us in case of failure
+                _context = 0;
+                setError("Cannot open file","");
+                close();
+                return;
+            }
+        }
+        
         CHECKMSG(avformat_find_stream_info(_context, NULL),"Could not find codec parameters");
         
         // fill the array with all available video streams
@@ -327,8 +339,10 @@ namespace FFmpeg {
         }
         _streams.clear();
         
-        if (_context)
+        if (_context) {
             avformat_close_input(&_context);
+            av_free(_context);
+        }
         _filename.clear();
         _errorMsg.clear();
         _invalidState = false;
