@@ -51,7 +51,7 @@
 #  include <unistd.h> // for sysconf()
 #endif
 
-#define FFMPEG_PLUGIN_DEBUG
+//#define FFMPEG_PLUGIN_DEBUG
 
 // Use one decoding thread per processor for video decoding.
 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
