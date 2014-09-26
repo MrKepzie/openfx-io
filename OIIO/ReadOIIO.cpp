@@ -113,6 +113,11 @@ OIIO_NAMESPACE_USING
 #define kParamAChannelLabel "A Channel"
 #define kParamAChannelHint "Channel from the input file corresponding to the alpha component.\nSee \"Image Info...\" for a list of image channels."
 
+#define kParamRChannelName "rChannelIndex"
+#define kParamGChannelName "gChannelIndex"
+#define kParamBChannelName "bChannelIndex"
+#define kParamAChannelName "aChannelIndex"
+
 // number of channels for hosts that don't support modifying choice menus (e.g. Nuke)
 #define kDefaultChannelCount 16
 
@@ -160,6 +165,11 @@ private:
     void buildChannelMenus();
 
     void setDefaultChannels();
+    
+    void setChannels(const std::string& rChannel,
+                     const std::string& gChannel,
+                     const std::string& bChannel,
+                     const std::string& aChannel);
 
     void setDefaultChannelsFromRed(int rChannelIdx);
 #endif
@@ -173,6 +183,10 @@ private:
     OFX::ChoiceParam *_gChannel;
     OFX::ChoiceParam *_bChannel;
     OFX::ChoiceParam *_aChannel;
+    OFX::StringParam *_rChannelName;
+    OFX::StringParam *_gChannelName;
+    OFX::StringParam *_bChannelName;
+    OFX::StringParam *_aChannelName;
 #else
     OFX::IntParam *_firstChannel;
 #endif
@@ -213,32 +227,21 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _gChannel = fetchChoiceParam(kParamGChannel);
     _bChannel = fetchChoiceParam(kParamBChannel);
     _aChannel = fetchChoiceParam(kParamAChannel);
-    assert(_outputComponents && _rChannel && _gChannel && _bChannel && _aChannel);
+    _rChannelName = fetchStringParam(kParamRChannelName);
+    _gChannelName = fetchStringParam(kParamGChannelName);
+    _bChannelName = fetchStringParam(kParamBChannelName);
+    _aChannelName = fetchStringParam(kParamAChannelName);
+    assert(_outputComponents && _rChannel && _gChannel && _bChannel && _aChannel &&
+           _rChannelName && _bChannelName && _gChannelName && _aChannelName);
 #else
     _firstChannel = fetchIntParam(kParamFirstChannel);
     assert(_outputComponents && _firstChannel);
 #endif
     
-#ifdef OFX_READ_OIIO_NEWMENU
-    std::string filename;
-    int first,last;
-    _originalFrameRange->getValue(first, last);
+    //Don't try to restore any state in here, do so in restoreState instead which is called
+    //right away after the constructor.
     
-    ///Make sure to get a valid file name
-    if (first != kOfxFlagInfiniteMin) {
-        _fileParam->getValueAtTime(first,filename);
-        std::ifstream file(filename.c_str());
-        if (file.is_open()) {
-            file.close();
-            updateSpec(filename);
-            buildChannelMenus();
-            setDefaultChannels();
-            // the channel values may be out of the menu range, but we don't care (we can't setValue() here)
-            ///Edit: Sure you can set Value : http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
-            ///The Create instance action is in the list of actions where you can set param values
-        }
-    }
-#endif
+
 }
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
@@ -309,6 +312,35 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         if (rChannelIdx >= kXChannelFirst) {
             setDefaultChannelsFromRed(rChannelIdx - kXChannelFirst);
         }
+        
+        std::string optionName;
+        _rChannel->getOption(rChannelIdx, optionName);
+        _rChannelName->setValue(optionName);
+#endif
+    } else if (paramName == kParamGChannel) {
+#ifdef OFX_READ_OIIO_NEWMENU
+        int gChannelIdx;
+        _gChannel->getValue(gChannelIdx);
+        std::string optionName;
+        _gChannel->getOption(gChannelIdx, optionName);
+        _gChannelName->setValue(optionName);
+#endif
+    } else if (paramName == kParamBChannel) {
+#ifdef OFX_READ_OIIO_NEWMENU
+        int bChannelIdx;
+        _bChannel->getValue(bChannelIdx);
+        std::string optionName;
+        _bChannel->getOption(bChannelIdx, optionName);
+        _bChannelName->setValue(optionName);
+#endif
+    }
+    else if (paramName == kParamAChannel) {
+#ifdef OFX_READ_OIIO_NEWMENU
+        int aChannelIdx;
+        _aChannel->getValue(aChannelIdx);
+        std::string optionName;
+        _aChannel->getOption(aChannelIdx, optionName);
+        _aChannelName->setValue(optionName);
 #endif
     } else {
         GenericReaderPlugin::changedParam(args,paramName);
@@ -531,6 +563,29 @@ ReadOIIOPlugin::setDefaultChannels()
         _aChannel->setValue(0);
     }
 }
+
+void
+ReadOIIOPlugin::setChannels(const std::string& rChannel,
+                 const std::string& gChannel,
+                 const std::string& bChannel,
+                 const std::string& aChannel)
+{
+    OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
+    std::string channelStrings[4] = { rChannel, gChannel, bChannel, aChannel };
+    
+    for (int c = 0; c < 4; ++c) {
+        for (int i = 0; i < channelParams[c]->getNOptions(); ++i) {
+            std::string optionString;
+            channelParams[c]->getOption(i, optionString);
+            if (optionString == channelStrings[c]) {
+                channelParams[c]->setValue(i);
+                break;
+            }
+        }
+    }
+   
+}
+
 #endif // OFX_READ_OIIO_NEWMENU
 
 void
@@ -554,13 +609,33 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
 void
 ReadOIIOPlugin::restoreState(const std::string& filename)
 {
+    //Update OIIO spec
     updateSpec(filename);
+    
 #ifdef OFX_READ_OIIO_NEWMENU
-    // rebuild the channel choices
+    //Update RGBA parameters visibility according to the output components
+    updateComponents(getOutputComponents());
+    
+    //Build available channels from OIIO spec
     buildChannelMenus();
+    
+    //Restore channels from the channel strings serialized
+    std::string rChannel,gChannel,bChannel,aChannel;
+    _rChannelName->getValue(rChannel);
+    _gChannelName->getValue(gChannel);
+    _bChannelName->getValue(bChannel);
+    _aChannelName->getValue(aChannel);
+    setChannels(rChannel, gChannel, bChannel, aChannel);
+    
+    ///http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
+    ///The Create instance action is in the list of actions where you can set param values
+    
+    
 #else
     _firstChannel->setDisplayRange(0, _spec.nchannels);
+    
 #endif
+    
 }
 
 void
@@ -1385,6 +1460,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamRChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
+        param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
         page->addChild(*param);
     }
     {
@@ -1393,6 +1469,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamGChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
+        param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
         page->addChild(*param);
     }
     {
@@ -1401,6 +1478,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamBChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
+        param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
         page->addChild(*param);
     }
     {
@@ -1410,8 +1488,45 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         appendDefaultChannelList(param);
         param->setAnimates(true);
         param->setDefault(1); // opaque by default
+        param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
         page->addChild(*param);
     }
+    
+    {
+        StringParamDescriptor* param = desc.defineStringParam(kParamRChannelName);
+        param->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
+        param->setHint(kParamRChannelHint);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        page->addChild(*param);
+    }
+    {
+        StringParamDescriptor* param = desc.defineStringParam(kParamGChannelName);
+        param->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
+        param->setHint(kParamGChannelHint);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        page->addChild(*param);
+    }
+
+    {
+        StringParamDescriptor* param = desc.defineStringParam(kParamBChannelName);
+        param->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
+        param->setHint(kParamBChannelHint);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        page->addChild(*param);
+    }
+
+    {
+        StringParamDescriptor* param = desc.defineStringParam(kParamAChannelName);
+        param->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
+        param->setHint(kParamAChannelHint);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        page->addChild(*param);
+    }
+
 #endif
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
