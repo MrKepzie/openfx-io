@@ -461,9 +461,18 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "libav"
 #                             endif
                               ".\n\n" + ffmpeg_versions());
-
-#ifdef OFX_EXTENSIONS_TUTTLE
+#ifdef OFX_IO_MT_FFMPEG
+    // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
+    // otherwise non-thread-safe calls.
+    av_lockmgr_register(FFmpegLockManager);
+#endif
+    
+    
+    av_log_set_level(AV_LOG_WARNING);
     av_register_all();
+    
+    
+#ifdef OFX_EXTENSIONS_TUTTLE
     std::vector<std::string> extensions;
 	{
 		AVInputFormat* iFormat = av_iformat_next(NULL);
@@ -503,15 +512,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
 #ifndef OFX_IO_MT_FFMPEG
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-#else
-    // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
-    // otherwise non-thread-safe calls.
-    av_lockmgr_register(FFmpegLockManager);
 #endif
-    
-    
-    av_log_set_level(AV_LOG_WARNING);
-    av_register_all();
     
   
     
