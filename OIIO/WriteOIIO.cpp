@@ -59,6 +59,8 @@ OIIO_NAMESPACE_USING
 
 #define kParamBitDepth    "bitDepth"
 #define kParamBitDepthLabel   "Bit Depth"
+#define kParamBitDepthHint \
+"Number of bits per sample in the file [TIFF,DPX,TGA,DDS,ICO,IFF,PNM,PIC]."
 
 #define kParamBitDepthOptionAuto     "auto"
 #define kParamBitDepthOptionAutoHint "Guess from the output format"
@@ -106,10 +108,18 @@ enum ETuttlePluginComponents
 
 #define kParamOutputQualityName    "quality"
 #define kParamOutputQualityLabel   "Quality"
+#define kParamOutputQualityHint \
+"Indicates the quality of compression to use (0–100), for those plugins and compression methods that allow a variable amount of compression, with higher numbers indicating higher image fidelity."
 
 #define kParamOutputOrientationName    "orientation"
 #define kParamOutputOrientationLabel   "Orientation"
-
+#define kParamOutputOrientationHint \
+"The orientation of the image data [DPX,TIFF,JPEG,HDR,FITS].\n" \
+"By default, image pixels are ordered from the top of the display to the bottom, " \
+"and within each scanline, from left to right (i.e., the same ordering as English " \
+"text and scan progression on a CRT). But the \"Orientation\" parameter can " \
+"suggest that it should be displayed with a different orientation, according to " \
+"the TIFF/EXIF conventions."
 /*
  TIFF defines these values:
 
@@ -123,13 +133,21 @@ enum ETuttlePluginComponents
  8 = The 0th row represents the visual left-hand side of the image, and the 0th column represents the visual bottom. 
  */
 #define kParamOutputOrientationNormal                "normal"
+#define kParamOutputOrientationNormalHint              "normal (top to bottom, left to right)"
 #define kParamOutputOrientationFlop                  "flop"
+#define kParamOutputOrientationFlopHint                "flipped horizontally (top to bottom, right to left)"
 #define kParamOutputOrientationR180                  "180"
+#define kParamOutputOrientationR180Hint                "rotate 180deg (bottom to top, right to left)"
 #define kParamOutputOrientationFlip                  "flip"
+#define kParamOutputOrientationFlipHint                "flipped vertically (bottom to top, left to right)"
 #define kParamOutputOrientationTransposed            "transposed"
+#define kParamOutputOrientationTransposedHint          "transposed (left to right, top to bottom)"
 #define kParamOutputOrientationR90Clockwise          "90clockwise"
+#define kParamOutputOrientationR90ClockwiseHint        "rotated 90deg clockwise (right to left, top to bottom)"
 #define kParamOutputOrientationTransverse            "transverse"
+#define kParamOutputOrientationTransverseHint          "transverse (right to left, bottom to top)"
 #define kParamOutputOrientationR90CounterClockwise   "90counter-clockwise"
+#define kParamOutputOrientationR90CounterClockwiseHint "rotated 90deg counter-clockwise (left to right, bottom to top)"
 enum EOutputOrientation
 {
     eOutputOrientationNormal = 0,
@@ -144,7 +162,11 @@ enum EOutputOrientation
 
 #define kParamOutputCompressionName    "compression"
 #define kParamOutputCompressionLabel   "Compression"
-#define kParamOutputCompressionHint "Compression quality [JPEG, WEBP]"
+#define kParamOutputCompressionHint \
+"Compression type [TIFF,EXR,DDS,IFF,SGI,TGA]\n" \
+"Indicates the type of compression the file uses. Supported compression modes will vary from format to format. " \
+"As an example, the TIFF format supports \"none\", \"lzw\", \"ccittrle\", \"zip\" (the default), \"packbits\", "\
+"and the EXR format supports \"none\", \"rle\", \"zip\" (the default), \"piz\", \"pxr24\", \"b44\", or \"b44a\"."
 
 #define kParamOutputCompressionOptionAuto        "default"
 #define kParamOutputCompressionOptionAutoHint     "Guess from the output format"
@@ -589,6 +611,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBitDepth);
         param->setLabels(kParamBitDepthLabel, kParamBitDepthLabel, kParamBitDepthLabel);
+        param->setHint(kParamBitDepthHint);
         assert(param->getNOptions() == eTuttlePluginBitDepthAuto);
         param->appendOption(kParamBitDepthOptionAuto, kParamBitDepthOptionAutoHint);
         assert(param->getNOptions() == eTuttlePluginBitDepth8);
@@ -615,6 +638,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOutputQualityName);
         param->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
+        param->setHint(kParamOutputQualityHint);
         param->setRange(0, 100);
         param->setDisplayRange(0, 100);
         param->setDefault(80);
@@ -623,22 +647,23 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputOrientationName);
         param->setLabels(kParamOutputOrientationLabel, kParamOutputOrientationLabel, kParamOutputOrientationLabel);
+        param->setHint(kParamOutputOrientationHint);
         assert(param->getNOptions() == eOutputOrientationNormal);
-        param->appendOption(kParamOutputOrientationNormal);
+        param->appendOption(kParamOutputOrientationNormal, kParamOutputOrientationNormalHint);
         assert(param->getNOptions() == eOutputOrientationFlop);
-        param->appendOption(kParamOutputOrientationFlop);
+        param->appendOption(kParamOutputOrientationFlop, kParamOutputOrientationFlopHint);
         assert(param->getNOptions() == eOutputOrientationR180);
-        param->appendOption(kParamOutputOrientationR180);
+        param->appendOption(kParamOutputOrientationR180, kParamOutputOrientationR180Hint);
         assert(param->getNOptions() == eOutputOrientationFlip);
-        param->appendOption(kParamOutputOrientationFlip);
+        param->appendOption(kParamOutputOrientationFlip, kParamOutputOrientationFlipHint);
         assert(param->getNOptions() == eOutputOrientationTransposed);
-        param->appendOption(kParamOutputOrientationTransposed);
+        param->appendOption(kParamOutputOrientationTransposed, kParamOutputOrientationTransposedHint);
         assert(param->getNOptions() == eOutputOrientationR90Clockwise);
-        param->appendOption(kParamOutputOrientationR90Clockwise);
+        param->appendOption(kParamOutputOrientationR90Clockwise, kParamOutputOrientationR90ClockwiseHint);
         assert(param->getNOptions() == eOutputOrientationTransverse);
-        param->appendOption(kParamOutputOrientationTransverse);
+        param->appendOption(kParamOutputOrientationTransverse, kParamOutputOrientationTransverseHint);
         assert(param->getNOptions() == eOutputOrientationR90CounterClockwise);
-        param->appendOption(kParamOutputOrientationR90CounterClockwise);
+        param->appendOption(kParamOutputOrientationR90CounterClockwise, kParamOutputOrientationR90CounterClockwiseHint);
         param->setDefault(0);
         page->addChild(*param);
     }
