@@ -571,19 +571,32 @@ ReadOIIOPlugin::setChannels(const std::string& rChannel,
                  const std::string& aChannel)
 {
     OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
+    OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
     std::string channelStrings[4] = { rChannel, gChannel, bChannel, aChannel };
     
     for (int c = 0; c < 4; ++c) {
-        for (int i = 0; i < channelParams[c]->getNOptions(); ++i) {
-            std::string optionString;
-            channelParams[c]->getOption(i, optionString);
-            if (optionString == channelStrings[c]) {
-                channelParams[c]->setValue(i);
-                break;
+        
+        if ( channelStrings[c].empty() ) {
+            // We are in the case where the strings were not serialized (or didn't exist in that project)
+            // so we blindly trust the values in the channels
+            int idx;
+            channelParams[c]->getValue(idx);
+            std::string option;
+            channelParams[c]->getOption(idx, option);
+            stringParams[c]->setValue(option);
+        } else {
+            // Restore the index from the serialized string
+            for (int i = 0; i < channelParams[c]->getNOptions(); ++i) {
+                std::string optionString;
+                channelParams[c]->getOption(i, optionString);
+                if (optionString == channelStrings[c]) {
+                    channelParams[c]->setValue(i);
+                    break;
+                }
             }
         }
     }
-   
+    
 }
 
 #endif // OFX_READ_OIIO_NEWMENU
