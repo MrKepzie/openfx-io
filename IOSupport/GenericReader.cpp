@@ -418,11 +418,6 @@ GenericReaderPlugin::getSequenceTime(double t, bool canSetOriginalFrameRange, do
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
-
-    OfxRangeD originalTimeDomain;
-    if (getSequenceTimeDomainInternal(originalTimeDomain, canSetOriginalFrameRange)) {
-        timeDomainFromSequenceTimeDomain(originalTimeDomain,canSetOriginalFrameRange);
-    }
     
     ///get the time sequence domain
     OfxRangeI sequenceTimeDomain;
@@ -1716,8 +1711,8 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
     }
 
     double sequenceTime;
-    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, true, &sequenceTime);
-    switch (getSequencerTimeRet) {
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, &sequenceTime);
+    switch (getSequenceTimeRet) {
         case eGetSequenceTimeBlack:
             return false;
 
