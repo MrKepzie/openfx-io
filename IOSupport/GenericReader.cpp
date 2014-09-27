@@ -367,7 +367,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
 //    The The Instance Changed Action
 //    The The End Instance Changed Action
 //    The The Sync Private Data Action
-    if (canSetOriginalFrameRange) {
+    if (!filename.empty() && canSetOriginalFrameRange) {
         _originalFrameRange->setValue(range.min, range.max);
     }
     return true;
@@ -418,13 +418,17 @@ GenericReaderPlugin::getSequenceTime(double t, bool canSetOriginalFrameRange, do
     int timeOffset;
     _timeOffset->getValue(timeOffset);
     
+
+    OfxRangeD originalTimeDomain;
+    if (getSequenceTimeDomainInternal(originalTimeDomain, canSetOriginalFrameRange)) {
+        timeDomainFromSequenceTimeDomain(originalTimeDomain,canSetOriginalFrameRange);
+    }
+    
     ///get the time sequence domain
     OfxRangeI sequenceTimeDomain;
     _firstFrame->getValue(sequenceTimeDomain.min);
     _lastFrame->getValue(sequenceTimeDomain.max);
-    
-    OfxRangeD originalTimeDomain;
-    getSequenceTimeDomainInternal(originalTimeDomain, canSetOriginalFrameRange);
+
     
     ///the return value
     *sequenceTime = t - timeOffset ;
@@ -1712,8 +1716,8 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
     }
 
     double sequenceTime;
-    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, &sequenceTime);
-    switch (getSequenceTimeRet) {
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, true, &sequenceTime);
+    switch (getSequencerTimeRet) {
         case eGetSequenceTimeBlack:
             return false;
 
