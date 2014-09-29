@@ -45,7 +45,7 @@
 #include <fstream>
 #ifdef DEBUG
 #include <cstdio>
-#define DBG(x) x
+#define DBG(x) (void)0//x
 #else
 #define DBG(x) (void)0
 #endif
@@ -355,6 +355,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
             range.min = _sequenceFromFiles.begin()->first;
             range.max = _sequenceFromFiles.rbegin()->first;
         } else {
+            range.min = range.max = 0.;
             return false;
         }
     }

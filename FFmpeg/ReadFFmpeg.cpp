@@ -312,10 +312,12 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
             range.min = 0;
             range.max = frames - 1;
         } else {
+            range.min = range.max = 0.;
             return false;
         }
         return true;
     } else {
+        range.min = range.max = 0.;
         return false;
     }
     
