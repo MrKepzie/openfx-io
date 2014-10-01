@@ -96,7 +96,7 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& /*filename*/,OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
     virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 };
@@ -644,12 +644,13 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
 }
 
 bool
-ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,
-                                          OfxTime /*time*/,
-                                          OfxRectD *rod,
-                                          std::string *error)
+ReadEXRPlugin::getFrameBounds(const std::string& filename,
+                              OfxTime /*time*/,
+                              OfxRectI *bounds,
+                              double *par,
+                              std::string *error)
 {
-    assert(rod);
+    assert(bounds && par);
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
     if (!file) {
         if (error) {
@@ -657,10 +658,13 @@ ReadEXRPlugin::getFrameRegionOfDefinition(const std::string& filename,
         }
         return false;
     }
-    rod->x1 = file->dataWindow.x1;
-    rod->x2 = file->dataWindow.x2;
-    rod->y1 = file->dataWindow.y1;
-    rod->y2 = file->dataWindow.y2;
+    bounds->x1 = file->dataWindow.x1;
+    bounds->x2 = file->dataWindow.x2;
+    bounds->y1 = file->dataWindow.y1;
+    bounds->y2 = file->dataWindow.y2;
+#pragma message WARN("TODO: get PAR for EXR")
+    *par = 1.0;
+
     return true;
 }
 

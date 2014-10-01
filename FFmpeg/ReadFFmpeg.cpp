@@ -94,7 +94,7 @@ private:
 
     virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
     virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
 };
@@ -331,12 +331,13 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
 
 
 bool
-ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,
-                                             OfxTime /*time*/,
-                                             OfxRectD *rod,
-                                             std::string *error)
+ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
+                                 OfxTime /*time*/,
+                                 OfxRectI *bounds,
+                                 double *par,
+                                 std::string *error)
 {
-    assert(rod);
+    assert(bounds && par);
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
         _ffmpegFile->open(filename);
@@ -360,10 +361,11 @@ ReadFFmpegPlugin::getFrameRegionOfDefinition(const std::string& filename,
     int width,height,frames;
     double ap;
     _ffmpegFile->getInfo(width, height, ap, frames);
-    rod->x1 = 0;
-    rod->x2 = width;
-    rod->y1 = 0;
-    rod->y2 = height;
+    bounds->x1 = 0;
+    bounds->x2 = width;
+    bounds->y1 = 0;
+    bounds->y2 = height;
+    *par = ap;
     return true;
 }
 

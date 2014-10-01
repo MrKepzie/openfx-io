@@ -76,7 +76,7 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
     virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 
@@ -275,12 +275,13 @@ ReadPFMPlugin::decode(const std::string& filename,
 }
 
 bool
-ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,
-                                          OfxTime /*time*/,
-                                          OfxRectD *rod,
-                                          std::string *error)
+ReadPFMPlugin::getFrameBounds(const std::string& filename,
+                              OfxTime /*time*/,
+                              OfxRectI *bounds,
+                              double *par,
+                              std::string *error)
 {
-    assert(rod);
+    assert(bounds && par);
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
 
@@ -320,10 +321,11 @@ ReadPFMPlugin::getFrameRegionOfDefinition(const std::string& filename,
     }
     std::fclose(nfile);
 
-    rod->x1 = 0;
-    rod->x2 = W;
-    rod->y1 = 0;
-    rod->y2 = H;
+    bounds->x1 = 0;
+    bounds->x2 = W;
+    bounds->y1 = 0;
+    bounds->y2 = H;
+    *par = 1.;
     return true;
 }
 

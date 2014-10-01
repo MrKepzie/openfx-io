@@ -149,7 +149,7 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
     virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
     
@@ -895,7 +895,7 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
-    assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height);
+    //assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height); // crashes if PAR != 1. on Nuke
     assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
 
@@ -974,10 +974,10 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
             if (!_cache->get_pixels(ustring(filename),
                                     0, //subimage
                                     0, //miplevel
-                                    renderWindow.x1, //x begin
-                                    renderWindow.x2, //x end
-                                    spec.height - renderWindow.y2, //y begin
-                                    spec.height - renderWindow.y1, //y end
+                                    spec.full_x + renderWindow.x1, //x begin
+                                    spec.full_x + renderWindow.x2, //x end
+                                    spec.full_y + spec.full_height - renderWindow.y2, //y begin
+                                    spec.full_y + spec.full_height - renderWindow.y1, //y end
                                     0, //z begin
                                     1, //z end
                                     chbegin, //chan begin
@@ -1218,12 +1218,13 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
 }
 
 bool
-ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,
-                                           OfxTime /*time*/,
-                                           OfxRectD *rod,
-                                           std::string *error)
+ReadOIIOPlugin::getFrameBounds(const std::string& filename,
+                               OfxTime /*time*/,
+                               OfxRectI *bounds,
+                               double *par,
+                               std::string *error)
 {
-    assert(rod);
+    assert(bounds && par);
 #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
@@ -1243,10 +1244,13 @@ ReadOIIOPlugin::getFrameRegionOfDefinition(const std::string& filename,
     }
     const ImageSpec &spec = img->spec();
 #endif
-    rod->x1 = spec.x;
-    rod->x2 = spec.x + spec.width;
-    rod->y1 = spec.y;
-    rod->y2 = spec.y + spec.height;
+    // the image coordinates are expressed in the "full/display" image.
+    // The RoD are the coordinates of the data window with respect to that full window
+    bounds->x1 = (spec.x - spec.full_x);
+    bounds->x2 = (spec.x + spec.width - spec.full_x);
+    bounds->y1 = spec.full_y + spec.full_height - (spec.y + spec.height);
+    bounds->y2 = (spec.full_height) + (spec.full_y - spec.y);
+    *par = spec.get_float_attribute("PixelAspectRatio", 1);
 #ifdef OFX_READ_OIIO_USES_CACHE
 #else
     img->close();

@@ -1126,12 +1126,16 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     }
 
     std::string error;
-    bool success = getFrameRegionOfDefinition(filename, sequenceTime, &rod, &error);
-    
+    OfxRectI bounds;
+    double par = 1.;
+    bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error);
     if (!success) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
-    
+    rod.x1 = bounds.x1 * par;
+    rod.x2 = bounds.x2 * par;
+    rod.y1 = bounds.y1;
+    rod.y2 = bounds.y2;
 //    if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedProxy) {
 //        ///upscale the proxy RoD to be in canonical coords.
 //        unsigned int mipmapLvl = getLevelFromScale(args.renderScale.x);
@@ -1231,7 +1235,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         case eGetFileNameBlack:
             clearPersistentMessage();
-            fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
+            fillWithBlack(args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
             return;
 
         case eGetFileNameReturnedFullRes:
@@ -1279,43 +1283,42 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///of the proxy file and adjust the scale so it fits the given scale.
     // allocate
     OfxRectI renderWindowFullRes = args.renderWindow;
-    
 
-    
-    OfxRectD rod = _outputClip->getRegionOfDefinition(args.time);
-    OfxRectI rodI;
-    rodI.x1 = rod.x1;
-    rodI.x2 = rod.x2;
-    rodI.y1 = rod.y1;
-    rodI.y2 = rod.y2;
     if (_supportsTiles) {
-        if (useProxy) {
+        OfxRectI frameBounds;
+        double par = 1.;
+        std::string error;
+        if (useProxy && !proxyFile.empty()) {
             renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - originalProxyMipMapLevel);
             
             ///Get the RoD of the proxy to intersect the render window against it
-            std::string error;
-            bool success = getFrameRegionOfDefinition(proxyFile, sequenceTime, &rod, &error);
+            bool success = getFrameBounds(proxyFile, sequenceTime, &frameBounds, &par, &error);
             ///We shouldve checked above for any failure, now this is too late.
             assert(success);
-            rodI.x1 = rod.x1;
-            rodI.x2 = rod.x2;
-            rodI.y1 = rod.y1;
-            rodI.y2 = rod.y2;
         } else if (kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.
+            bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
+            ///We shouldve checked above for any failure, now this is too late.
+            assert(success);
+
             renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel);
         }
         ///Intersect the full res renderwindow to the real rod.
         ///It works for both proxy and non proxy files
-        intersect(renderWindowFullRes, rodI, &renderWindowFullRes);
+        intersect(args.renderWindow, frameBounds, &renderWindowFullRes);
 
     } else {
         ///if the plug-in doesn't support tiles, just render the full rod
-        renderWindowFullRes.x1 = rod.x1;
-        renderWindowFullRes.x2 = rod.x2;
-        renderWindowFullRes.y1 = rod.y1;
-        renderWindowFullRes.y2 = rod.y2;
+        OfxRectI frameBounds;
+        double par = 1.;
+        std::string error;
+        bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
+        ///We shouldve checked above for any failure, now this is too late.
+        assert(success);
+        ///Intersect the full res renderwindow to the real rod.
+        ///It works for both proxy and non proxy files
+        intersect(args.renderWindow, frameBounds, &renderWindowFullRes);
     }
 
     if (filename.empty() || !fileExists(filename)) {
@@ -1688,6 +1691,18 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             break;
     }
     clipPreferences.setOutputPremultiplication(premult);
+
+#pragma message WARN("TODO: set PAR in clip preferences")
+#if 0
+    std::string filename = file name of the first image in sequence; // how do we get this???
+    OfxRectI bounds;
+    double par = 1.;
+    std::string error;
+    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
+    if (success) {
+        clipPreferences.setPixelAspectRatio(*_outputClip, par);
+    }
+#endif
 }
 
 void
@@ -1740,20 +1755,25 @@ GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
                                       const std::string& proxyFileName,
                                       OfxTime time)
 {
-    OfxRectD originalRoD,proxyRoD;
+    OfxRectI originalBounds, proxyBounds;
     std::string error;
-    getFrameRegionOfDefinition(originalFileName, time, &originalRoD, &error);
-    proxyRoD.x1 = proxyRoD.x2 = proxyRoD.y1 = proxyRoD.y2 = 0.;
-    getFrameRegionOfDefinition(proxyFileName, time, &proxyRoD, &error);
+    double originalPAR = 1., proxyPAR = 1.;
+    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error);
+    proxyBounds.x1 = proxyBounds.x2 = proxyBounds.y1 = proxyBounds.y2 = 0.;
+    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error);
     OfxPointD ret;
-    if (proxyRoD.x1 == 0 && proxyRoD.x2 == 0 && proxyRoD.y1 == 0 && proxyRoD.y2 == 0) {
+    if (!success ||
+        (originalBounds.x1 == originalBounds.x2) ||
+        (originalBounds.y1 == originalBounds.y2) ||
+        (proxyBounds.x1 == proxyBounds.x2) ||
+        (proxyBounds.y1 == proxyBounds.y2)) {
         ret.x = 1.;
         ret.y = 1.;
         setPersistentMessage(OFX::Message::eMessageError, "", "Cannot read the proxy file.");
         return ret;
     }
-    ret.x = (proxyRoD.x2 - proxyRoD.x1) / (originalRoD.x2 - originalRoD.x1);
-    ret.y = (proxyRoD.y2 - proxyRoD.y1) / (originalRoD.y2 - originalRoD.y1);
+    ret.x = ((proxyBounds.x2 - proxyBounds.x1)  * proxyPAR) / ((originalBounds.x2 - originalBounds.x1) * originalPAR);
+    ret.y = (proxyBounds.y2 - proxyBounds.y1) / (double)(originalBounds.y2 - originalBounds.y1);
     return ret;
 }
 

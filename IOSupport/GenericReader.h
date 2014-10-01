@@ -83,8 +83,7 @@ public:
      * function will call decode() to read the region of definition of the image and cache away the decoded image
      * into the _dstImg member.
      * If areHeaderAndDataTied() returns false instead, this function will call the virtual function
-     * getFrameRegionOfDefinition() which should read the header of the image to only extract the region of
-     * definition of the image.
+     * getFrameBounds() which should read the header of the image to only extract the bounds and PAR of the image.
      **/
     virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
     
@@ -170,12 +169,12 @@ private:
     
     
     /**
-     * @brief Overload this function to extract the region of definition out of the header
+     * @brief Overload this function to extract the bound of the pixel data
+     * in pixel coordinates and the pixel aspect ratio out of the header
      * of the image targeted by the filename.
      **/
-    virtual bool getFrameRegionOfDefinition(const std::string& filename, OfxTime time, OfxRectD *rod, std::string *error) = 0;
-    
-    
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) = 0;
+
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
      * If the file is a video-stream then you should decode the frame at the time given in parameters.
