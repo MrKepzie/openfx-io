@@ -43,6 +43,7 @@
 #include <ofxsImageEffect.h>
 #include "IOUtility.h"
 #include "ofxsMacros.h"
+#include "ofxsPixelProcessor.h" // for getImageData
 
 namespace OFX {
     class PixelProcessorFilterBase;

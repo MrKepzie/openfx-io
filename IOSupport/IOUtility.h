@@ -74,26 +74,6 @@ int floatToInt(float value)
     return value * (numvals-1) + 0.5;
 }
 
-inline void
-getImageData(OFX::Image* img, void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes)
-{
-    *pixelData = img->getPixelData();
-    *bounds = img->getBounds();
-    *pixelComponents = img->getPixelComponents();
-    *bitDepth = img->getPixelDepth();
-    *rowBytes = img->getRowBytes();
-}
-
-inline void
-getImageData(const OFX::Image* img, const void** pixelData, OfxRectI* bounds, OFX::PixelComponentEnum* pixelComponents, OFX::BitDepthEnum* bitDepth, int* rowBytes)
-{
-    *pixelData = img->getPixelData();
-    *bounds = img->getBounds();
-    *pixelComponents = img->getPixelComponents();
-    *bitDepth = img->getPixelDepth();
-    *rowBytes = img->getRowBytes();
-}
-
 /**
  * @brief Upscales the bounds assuming this rectangle is the Nth level of mipmap
  **/
