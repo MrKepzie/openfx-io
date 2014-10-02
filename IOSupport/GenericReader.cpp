@@ -206,6 +206,10 @@ enum MissingEnum
 
 #define kSupportsMultiResolution 1
 #define kSupportsRenderScale 1 // GenericReader supports render scale: it scales images and uses proxy image when applicable
+#ifdef DEBUG
+#pragma message WARN("Reader renderscale support disabled for testing purposes")
+#define kSupportsRenderScale 0
+#endif
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
@@ -874,8 +878,7 @@ buildMipMapLevel(OFX::ImageEffect* instance,
     for (unsigned int i = 1; i <= level; ++i) {
         ///Halve the smallest enclosing po2 rect as we need to render a minimum of the renderWindow
         OfxRectI nextBounds = downscalePowerOfTwoSmallestEnclosing(previousBounds,1); // should be the same as (srcBounds,i)
-       // OfxRectI nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
-        OfxRectI nextRenderWindow = toPixelEnclosing<OfxRectI>(renderWindowFullRes, i);
+        OfxRectI nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
         ///On the last iteration halve directly into the dstPixels
         if (i == level) {
             ///The nextRenderWindow equal to the original render window.
@@ -1283,19 +1286,25 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
     ///of the proxy file and adjust the scale so it fits the given scale.
     // allocate
-    OfxRectI renderWindowFullRes = args.renderWindow;
+    OfxRectI renderWindowFullRes;
 
     if (_supportsTiles) {
         OfxRectI frameBounds;
         double par = 1.;
         std::string error;
         if (useProxy && !proxyFile.empty()) {
-            renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel - originalProxyMipMapLevel);
-            
             ///Get the RoD of the proxy to intersect the render window against it
             bool success = getFrameBounds(proxyFile, sequenceTime, &frameBounds, &par, &error);
             ///We shouldve checked above for any failure, now this is too late.
             assert(success);
+
+            OfxRectI renderWindowProxy = upscalePowerOfTwo(args.renderWindow, renderMipmapLevel - originalProxyMipMapLevel);
+
+            ///Intersect the full res renderwindow to the real rod.
+            ///It works for both proxy and non proxy files
+            intersect(renderWindowProxy, frameBounds, &renderWindowProxy);
+            
+            renderWindowFullRes = upscalePowerOfTwo(renderWindowProxy, originalProxyMipMapLevel);
         } else if (kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.
@@ -1303,13 +1312,18 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             ///We shouldve checked above for any failure, now this is too late.
             assert(success);
 
-            renderWindowFullRes = upscalePowerOfTwo(renderWindowFullRes, renderMipmapLevel);
+            renderWindowFullRes = upscalePowerOfTwo(args.renderWindow, renderMipmapLevel);
+            ///Intersect the full res renderwindow to the real rod.
+            ///It works for both proxy and non proxy files
+            intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
+        } else {
+            // no proxy, and renderscale is 1
+            assert(args.renderScale.x == 1. && args.renderScale.y == 1.);
+            renderWindowFullRes = args.renderWindow;
         }
-        ///Intersect the full res renderwindow to the real rod.
-        ///It works for both proxy and non proxy files
-        intersect(args.renderWindow, frameBounds, &renderWindowFullRes);
 
     } else {
+        renderWindowFullRes = args.renderWindow;
         ///if the plug-in doesn't support tiles, just render the full rod
         OfxRectI frameBounds;
         double par = 1.;

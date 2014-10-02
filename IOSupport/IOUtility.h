@@ -217,19 +217,6 @@ inline OfxRectI downscalePowerOfTwoLargestEnclosed(const OfxRectI& r,unsigned in
     return ret;
 }
 
-
-template<typename RECT>
-inline OfxRectI toPixelEnclosing(const RECT& r,unsigned int mipMapLevel)
-{
-    double scale = 1. / (1 << mipMapLevel);
-    OfxRectI ret;
-    ret.x1 = std::floor(r.x1 * scale);
-    ret.y1 = std::floor(r.y1 * scale);
-    ret.x2 = std::ceil(r.x2 * scale);
-    ret.y2 = std::ceil(r.y2 * scale);
-    return ret;
-}
-
 /**
  * @brief Scales down the rectangle by the given power of 2, and return the smallest *enclosing* rectangle
  **/
