@@ -202,7 +202,6 @@ enum MissingEnum
 #define kParamPremultOptionUnPreMultipliedHint \
 "The image is unpremultiplied (also called \"unassociated alpha\")."
 
-
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
@@ -277,7 +276,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     _premult = fetchChoiceParam(kParamPremult);
-    
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -1132,10 +1130,13 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     if (!success) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    // get the PAR from the clip preferences, since it should be constant over time
+    par = _outputClip->getPixelAspectRatio();
     rod.x1 = bounds.x1 * par;
     rod.x2 = bounds.x2 * par;
     rod.y1 = bounds.y1;
     rod.y2 = bounds.y2;
+
 //    if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedProxy) {
 //        ///upscale the proxy RoD to be in canonical coords.
 //        unsigned int mipmapLvl = getLevelFromScale(args.renderScale.x);
@@ -1692,17 +1693,22 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     }
     clipPreferences.setOutputPremultiplication(premult);
 
-#pragma message WARN("TODO: set PAR in clip preferences")
-#if 0
-    std::string filename = file name of the first image in sequence; // how do we get this???
-    OfxRectI bounds;
-    double par = 1.;
-    std::string error;
-    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
-    if (success) {
-        clipPreferences.setPixelAspectRatio(*_outputClip, par);
+    // get the pixel aspect ratio from the first frame
+    OfxRangeD tmp;
+    if (getSequenceTimeDomainInternal(tmp, false)) {
+        timeDomainFromSequenceTimeDomain(tmp, false);
+        std::string filename;
+        GetFilenameRetCodeEnum e = getFilenameAtSequenceTime(tmp.min, false, &filename);
+        if (e == eGetFileNameReturnedFullRes) {
+            OfxRectI bounds;
+            double par = 1.;
+            std::string error;
+            bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error);
+            if (success) {
+                clipPreferences.setPixelAspectRatio(*_outputClip, par);
+            }
+        }
     }
-#endif
 }
 
 void
@@ -2115,7 +2121,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
-    
+
     return page;
 }
 
