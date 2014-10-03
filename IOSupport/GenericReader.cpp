@@ -1216,88 +1216,45 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
 
-    ///The args.renderWindow is already in pixels coordinate (render scale is already taken into account ).
-    ///If the filename IS NOT a proxy file we have to make sure the renderWindow is
-    ///upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
-    ///of the proxy file and adjust the scale so it fits the given scale.
+    // The args.renderWindow is already in pixels coordinate (render scale is already taken into account).
+    // If the filename IS NOT a proxy file we have to make sure the renderWindow is
+    // upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
+    // of the proxy file and adjust the scale so it fits the given scale.
     // When in proxy mode renderWindowFullRes is the render window at the proxy mip map level
-    OfxRectI renderWindowFullRes;
+    int downscaleLevels = renderMipmapLevel; // the number of mipmap levels from the actual file (proxy or not) to the renderWindow
 
-    if (_supportsTiles) {
-        OfxRectI frameBounds;
-        double par = 1.;
-        std::string error;
-        if (useProxy && !proxyFile.empty()) {
-            ///Get the RoD of the proxy to intersect the render window against it
-            bool success = getFrameBounds(proxyFile, sequenceTime, &frameBounds, &par, &error);
-            ///We shouldve checked above for any failure, now this is too late.
-            assert(success);
-
-            OfxRectI renderWindowProxy = upscalePowerOfTwo(args.renderWindow, renderMipmapLevel - originalProxyMipMapLevel);
-
-            ///Intersect the full res renderwindow to the real rod.
-            ///It works for both proxy and non proxy files
-            intersect(renderWindowProxy, frameBounds, &renderWindowProxy);
-            
-            renderWindowFullRes = renderWindowProxy;//upscalePowerOfTwo(renderWindowProxy, originalProxyMipMapLevel);
-        } else if (kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
-            ///the user didn't provide a proxy file, just decode the full image
-            ///upscale to a render scale of 1.
-            bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
-            ///We shouldve checked above for any failure, now this is too late.
-            assert(success);
-
-            renderWindowFullRes = upscalePowerOfTwo(args.renderWindow, renderMipmapLevel);
-            ///Intersect the full res renderwindow to the real rod.
-            ///It works for both proxy and non proxy files
-            intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
-        } else {
-            // no proxy, and renderscale is 1
-            assert(args.renderScale.x == 1. && args.renderScale.y == 1.);
-            renderWindowFullRes = args.renderWindow;
-        }
-
-    } else {
-        renderWindowFullRes = upscalePowerOfTwo(args.renderWindow,renderMipmapLevel);
-        ///if the plug-in doesn't support tiles, just render the full rod
-        OfxRectI frameBounds;
-        double par = 1.;
-        std::string error;
-        bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
-        ///We shouldve checked above for any failure, now this is too late.
-        assert(success);
-        ///Intersect the full res renderwindow to the real rod.
-        ///It works for both proxy and non proxy files
-        intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
-    }
-
-    if (filename.empty() || !fileExists(filename)) {
-        fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
-        return;
-    }
-    
-    // The following (commented out) code is not fully-safe, because the same instance may be have
-    // two threads running on the same area of the same frame, and the apply()
-    // calls both read and write dstImg.
-    // This results in colorspace conversion being applied several times.
-    //
-    //if (!filename.empty()) {
-    //    decode(filename, sequenceTime, args.renderWindow, dstImg.get());
-    //}
-    /////do the color-space conversion
-    //_ocio->apply(args.time, args.renderWindow, dstImg.get());
-
-    // Good solution: read into a temporary image, apply colorspace conversion, then copy.
-
-    /// how many times do we need to halve the image read
-    int downscaleLevels;
-    
-    if (useProxy) {
-        downscaleLevels = renderMipmapLevel - originalProxyMipMapLevel;
-    } else {
-        downscaleLevels = renderMipmapLevel;
+    if (_supportsTiles && useProxy && !proxyFile.empty()) {
+        filename = proxyFile;
+        downscaleLevels -= originalProxyMipMapLevel;
     }
     assert(downscaleLevels >= 0);
+    
+    if (filename.empty() || !fileExists(filename)) {
+        fillWithBlack(args.renderWindow, dstPixelDataF, bounds, pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
+        return;
+    }
+
+    OfxRectI renderWindowFullRes;
+    OfxRectI frameBounds;
+    double par = 1.;
+    std::string error;
+
+    ///if the plug-in doesn't support tiles, just render the full rod
+    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
+    ///We shouldve checked above for any failure, now this is too late.
+    assert(success);
+
+    renderWindowFullRes = upscalePowerOfTwo(args.renderWindow, downscaleLevels); // works even if downscaleLevels == 0
+
+    // Intersect the full res renderwindow to the real rod,
+    // because we may have gone a few pixels too far (but never more than 2^downscaleLevels-1 pixels)
+    assert(renderWindowFullRes.x1 >= frameBounds.x1 - std::pow(2.,(double)downscaleLevels) + 1 &&
+           renderWindowFullRes.x2 <= frameBounds.x2 + std::pow(2.,(double)downscaleLevels) - 1 &&
+           renderWindowFullRes.y1 >= frameBounds.y1 - std::pow(2.,(double)downscaleLevels) + 1 &&
+           renderWindowFullRes.y2 <= frameBounds.y2 + std::pow(2.,(double)downscaleLevels) - 1);
+    intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
+
+    // Read into a temporary image, apply colorspace conversion, then copy.
 
     int premult_i;
     _premult->getValue(premult_i);
@@ -1333,11 +1290,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         // read file
         DBG(std::printf("decode (to tmp)\n"));
-        if (!useProxy) {
-            decode(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
-        } else {
-            decode(proxyFile, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
-        }
+        decode(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, pixelComponents, tmpRowBytes);
 
         ///do the color-space conversion
         if (!_ocio->isIdentity(args.time) && pixelComponents != OFX::ePixelComponentAlpha) {
