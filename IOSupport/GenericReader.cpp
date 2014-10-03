@@ -206,10 +206,6 @@ enum MissingEnum
 
 #define kSupportsMultiResolution 1
 #define kSupportsRenderScale 1 // GenericReader supports render scale: it scales images and uses proxy image when applicable
-#ifdef DEBUG
-#pragma message WARN("Reader renderscale support disabled for testing purposes")
-#define kSupportsRenderScale 0
-#endif
 
 #define GENERIC_READER_USE_MULTI_THREAD
 
@@ -714,104 +710,18 @@ GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
 #endif
 }
 
-//halveImage<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, dstPixels, dstBounds, dstRowBytes
-
+// update the window of dst defined by nextRenderWindow by halving the corresponding area in src.
+// proofread and fixed by F. Devernay on 3/10/2014
 template <typename PIX,int nComponents>
 static void
-halve1DImage(const OfxRectI& nextRenderWindow,
-             const PIX* srcPixels,
-             const OfxRectI& srcBounds,
-             int srcRowBytes,
-             PIX* dstPixels,
-             const OfxRectI& dstBounds,
-             int dstRowBytes)
+halveWindow(const OfxRectI& nextRenderWindow,
+            const PIX* srcPixels,
+            const OfxRectI& srcBounds,
+            int srcRowBytes,
+            PIX* dstPixels,
+            const OfxRectI& dstBounds,
+            int dstRowBytes)
 {
-    int width = srcBounds.x2 - srcBounds.x1;
-    int height = srcBounds.y2 - srcBounds.y1;
-
-    int halfWidth = width / 2;
-    int halfHeight = height / 2;
-   
-    int srcRowSize = srcRowBytes / sizeof(PIX);
-    int dstRowSize = dstRowBytes / sizeof(PIX);
-
-    assert(width == 1 || height == 1); /// must be 1D
-    assert(dstBounds.x1 <= nextRenderWindow.x1 &&
-           dstBounds.x2 >= nextRenderWindow.x2 &&
-           dstBounds.y1 <= nextRenderWindow.y1 &&
-           dstBounds.y2 >= nextRenderWindow.y2);
-
-    if (height == 1) { //1 row
-        assert(width != 1);	/// widthxheight can't be 1x1
-        assert(srcBounds.x1 % 2 == 0); // only works for even x1
-        assert(nextRenderWindow.x1 * 2 == srcBounds.x1);
-        int x;
-        for (x = 0; x < halfWidth; ++x) {
-            for (int k = 0; k < nComponents; ++k) {
-                *dstPixels = (*srcPixels + *(srcPixels + nComponents)) / 2.;
-                ++dstPixels;
-                ++srcPixels;
-            }
-            srcPixels += nComponents;
-        }
-        // last pixel
-        if (x * 2 < width) {
-            for (int k = 0; k < nComponents; ++k) {
-                *dstPixels = *srcPixels;
-                ++dstPixels;
-                ++srcPixels;
-            }
-            srcPixels += nComponents;
-        }
-        
-    } else if (width == 1) {
-        assert(height != 1);	/// widthxheight can't be 1x1
-        assert(srcBounds.y1 % 2 == 0); // only works for even x1
-        assert(nextRenderWindow.y1 * 2 == srcBounds.y1);
-   
-        int y;
-        for (y = 0; y < halfHeight; ++y) {
-            for (int k = 0; k < nComponents;++k) {
-                *dstPixels = (*srcPixels + (*srcPixels + srcRowSize)) / 2.;
-                ++dstPixels;
-                ++srcPixels;
-            }
-            srcPixels += srcRowSize - nComponents;
-            dstPixels += dstRowSize - nComponents;
-        }
-        // last pixel
-        if (y * 2 < height) {
-            for (int k = 0; k < nComponents; ++k) {
-                *dstPixels = *srcPixels;
-                ++dstPixels;
-                ++srcPixels;
-            }
-            srcPixels += srcRowSize - nComponents;
-            dstPixels += dstRowSize - nComponents;
-        }
-    }
-}
-
-
-template <typename PIX,int nComponents>
-static void
-halveImage(const OfxRectI& nextRenderWindow,
-           const PIX* srcPixels,
-           const OfxRectI& srcBounds,
-           int srcRowBytes,
-           PIX* dstPixels,
-           const OfxRectI& dstBounds,
-           int dstRowBytes)
-{
-    int width = srcBounds.x2 - srcBounds.x1;
-    int height = srcBounds.y2 - srcBounds.y1;
-    
-    if (width == 1 || height == 1) {
-        assert( !(width == 1 && height == 1) ); /// can't be 1x1
-        halve1DImage<PIX,nComponents>(nextRenderWindow, srcPixels, srcBounds, srcRowBytes, dstPixels, dstBounds, dstRowBytes);
-        return;
-    }
-    
     int srcRowSize = srcRowBytes / sizeof(PIX);
     int dstRowSize = dstRowBytes / sizeof(PIX);
     
@@ -852,6 +762,8 @@ halveImage(const OfxRectI& nextRenderWindow,
     }
 }
 
+// update the window of dst defined by originalRenderWindow by mipmapping the windows of src defined by renderWindowFullRes
+// proofread and fixed by F. Devernay on 3/10/2014
 template <typename PIX,int nComponents>
 static void
 buildMipMapLevel(OFX::ImageEffect* instance,
@@ -867,42 +779,65 @@ buildMipMapLevel(OFX::ImageEffect* instance,
 {
     assert(level > 0);
 
-    const PIX* previousImg = srcPixels;
     std::auto_ptr<OFX::ImageMemory> mem;
+    size_t memSize = 0;
     std::auto_ptr<OFX::ImageMemory> tmpMem;
+    size_t tmpMemSize = 0;
     PIX* nextImg = NULL;
 
+    const PIX* previousImg = srcPixels;
     OfxRectI previousBounds = srcBounds;
     int previousRowBytes = srcRowBytes;
-    ///Build all the mipmap levels until we reach the one we are interested in
-    for (unsigned int i = 1; i <= level; ++i) {
-        ///Halve the smallest enclosing po2 rect as we need to render a minimum of the renderWindow
-        OfxRectI nextBounds = downscalePowerOfTwoSmallestEnclosing(previousBounds,1); // should be the same as (srcBounds,i)
-        OfxRectI nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
-        ///On the last iteration halve directly into the dstPixels
-        if (i == level) {
-            ///The nextRenderWindow equal to the original render window.
-            assert(originalRenderWindow.x1 == nextRenderWindow.x1 && originalRenderWindow.x2 == nextRenderWindow.x2 &&
-                 originalRenderWindow.y1 == nextRenderWindow.y1 && originalRenderWindow.y2 == nextRenderWindow.y2);
-            
-            halveImage<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, dstPixels, dstBounds, dstRowBytes);
 
-        } else {
-            ///Allocate an image with half the size of the source image
-            int nextRowBytes =  (nextBounds.x2 - nextBounds.x1)  * nComponents * sizeof(PIX);
-            size_t memSize =  (nextBounds.y2 - nextBounds.y1) * nextRowBytes;
-            tmpMem.reset(new OFX::ImageMemory(memSize,instance)); // frees the old tmpMem
-            nextImg = (float*)tmpMem->lock();
-            
-            halveImage<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, nextImg, nextBounds,nextRowBytes);
-            
-            ///Switch for next pass
-            previousBounds = nextBounds;
-            previousRowBytes = nextRowBytes;
-            previousImg = nextImg;
-            mem = tmpMem;
+    OfxRectI nextRenderWindow = renderWindowFullRes;
+
+    ///Build all the mipmap levels until we reach the one we are interested in
+    for (unsigned int i = 1; i < level; ++i) {
+        // loop invariant:
+        // - previousImg, previousBounds, previousRowBytes describe the data ate the level before i
+        // - nextRenderWindow contains the renderWindow at the level before i
+        //
+        ///Halve the smallest enclosing po2 rect as we need to render a minimum of the renderWindow
+        nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(nextRenderWindow, 1);
+#     ifdef DEBUG
+        {
+            // check that doing i times 1 level is the same as doing i levels
+            OfxRectI nrw = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
+            assert(nrw.x1 == nextRenderWindow.x1 && nrw.x2 == nextRenderWindow.x2 && nrw.y1 == nextRenderWindow.y1 && nrw.y2 == nextRenderWindow.y2);
         }
+#     endif  fdff
+        ///Allocate a temporary image if necessary, or reuse the previously allocated buffer
+        int nextRowBytes =  (nextRenderWindow.x2 - nextRenderWindow.x1)  * nComponents * sizeof(PIX);
+        size_t newMemSize =  (nextRenderWindow.y2 - nextRenderWindow.y1) * nextRowBytes;
+        if (tmpMem.get()) {
+            // there should be enough memory: no need to reallocate
+            assert(tmpMemSize >= memSize);
+        } else {
+            tmpMem.reset(new OFX::ImageMemory(newMemSize, instance));
+            tmpMemSize = newMemSize;
+        }
+        nextImg = (float*)tmpMem->lock();
+
+        halveWindow<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, nextImg, nextRenderWindow, nextRowBytes);
+
+        ///Switch for next pass
+        previousBounds = nextRenderWindow;
+        previousRowBytes = nextRowBytes;
+        previousImg = nextImg;
+        mem = tmpMem;
+        memSize = tmpMemSize;
     }
+    // here:
+    // - previousImg, previousBounds, previousRowBytes describe the data ate the level before 'level'
+    // - nextRenderWindow contains the renderWindow at the level before 'level'
+
+    ///On the last iteration halve directly into the dstPixels
+    ///The nextRenderWindow should be equal to the original render window.
+    nextRenderWindow = downscalePowerOfTwoSmallestEnclosing(nextRenderWindow, 1);
+    assert(originalRenderWindow.x1 == nextRenderWindow.x1 && originalRenderWindow.x2 == nextRenderWindow.x2 &&
+           originalRenderWindow.y1 == nextRenderWindow.y1 && originalRenderWindow.y2 == nextRenderWindow.y2);
+
+    halveWindow<PIX, nComponents>(nextRenderWindow, previousImg, previousBounds, previousRowBytes, dstPixels, dstBounds, dstRowBytes);
     // mem and tmpMem are freed at destruction
 }
 
