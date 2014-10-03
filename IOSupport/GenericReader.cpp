@@ -1258,7 +1258,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         }
 
     } else {
-        renderWindowFullRes = args.renderWindow;
+        renderWindowFullRes = upscalePowerOfTwo(args.renderWindow,renderMipmapLevel);
         ///if the plug-in doesn't support tiles, just render the full rod
         OfxRectI frameBounds;
         double par = 1.;
@@ -1268,7 +1268,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         assert(success);
         ///Intersect the full res renderwindow to the real rod.
         ///It works for both proxy and non proxy files
-        intersect(args.renderWindow, frameBounds, &renderWindowFullRes);
+        intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
     }
 
     if (filename.empty() || !fileExists(filename)) {
