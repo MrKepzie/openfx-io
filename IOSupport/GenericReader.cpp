@@ -348,12 +348,12 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
     ///in which case our sequence parser will give us the sequence range
     if (!getSequenceTimeDomain(filename, range)){
         if (_sequenceFromFiles.size() == 1) {
-            range.min = range.max = 0;
+            range.min = range.max = 1;
         } else if (_sequenceFromFiles.size() > 1) {
             range.min = _sequenceFromFiles.begin()->first;
             range.max = _sequenceFromFiles.rbegin()->first;
         } else {
-            range.min = range.max = 0.;
+            range.min = range.max = 1.;
             return false;
         }
     }
