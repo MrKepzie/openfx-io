@@ -805,7 +805,7 @@ buildMipMapLevel(OFX::ImageEffect* instance,
             OfxRectI nrw = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
             assert(nrw.x1 == nextRenderWindow.x1 && nrw.x2 == nextRenderWindow.x2 && nrw.y1 == nextRenderWindow.y1 && nrw.y2 == nextRenderWindow.y2);
         }
-#     endif 
+#     endif
         ///Allocate a temporary image if necessary, or reuse the previously allocated buffer
         int nextRowBytes =  (nextRenderWindow.x2 - nextRenderWindow.x1)  * nComponents * sizeof(PIX);
         size_t newMemSize =  (nextRenderWindow.y2 - nextRenderWindow.y1) * nextRowBytes;
@@ -1220,7 +1220,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///If the filename IS NOT a proxy file we have to make sure the renderWindow is
     ///upscaled to a scale of (1,1). On the other hand if the filename IS a proxy we have to determine the actual RoD
     ///of the proxy file and adjust the scale so it fits the given scale.
-    // allocate
+    // When in proxy mode renderWindowFullRes is the render window at the proxy mip map level
     OfxRectI renderWindowFullRes;
 
     if (_supportsTiles) {
@@ -1239,7 +1239,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             ///It works for both proxy and non proxy files
             intersect(renderWindowProxy, frameBounds, &renderWindowProxy);
             
-            renderWindowFullRes = upscalePowerOfTwo(renderWindowProxy, originalProxyMipMapLevel);
+            renderWindowFullRes = renderWindowProxy;//upscalePowerOfTwo(renderWindowProxy, originalProxyMipMapLevel);
         } else if (kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
             ///the user didn't provide a proxy file, just decode the full image
             ///upscale to a render scale of 1.
