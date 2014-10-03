@@ -805,7 +805,7 @@ buildMipMapLevel(OFX::ImageEffect* instance,
             OfxRectI nrw = downscalePowerOfTwoSmallestEnclosing(renderWindowFullRes, i);
             assert(nrw.x1 == nextRenderWindow.x1 && nrw.x2 == nextRenderWindow.x2 && nrw.y1 == nextRenderWindow.y1 && nrw.y2 == nextRenderWindow.y2);
         }
-#     endif  fdff
+#     endif 
         ///Allocate a temporary image if necessary, or reuse the previously allocated buffer
         int nextRowBytes =  (nextRenderWindow.x2 - nextRenderWindow.x1)  * nComponents * sizeof(PIX);
         size_t newMemSize =  (nextRenderWindow.y2 - nextRenderWindow.y1) * nextRowBytes;
