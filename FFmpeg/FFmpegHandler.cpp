@@ -57,8 +57,6 @@
 #  include <unistd.h> // for sysconf()
 #endif
 
-//#define FFMPEG_PLUGIN_DEBUG
-
 // Use one decoding thread per processor for video decoding.
 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
 static int video_decoding_threads()
@@ -257,9 +255,6 @@ namespace FFmpeg {
             }
             
             // find the codec
-#ifdef FFMPEG_PLUGIN_DEBUG
-            std::cout << "Calling avcodec_find_decoder(" << avstream->codec->codec_id << ")" << std::endl;
-#endif
             AVCodec* videoCodec = avcodec_find_decoder(avstream->codec->codec_id);
             if (videoCodec == NULL) {
                 continue;
@@ -314,16 +309,6 @@ namespace FFmpeg {
             // set stream start time and numbers of frames
             stream->_startPTS = getStreamStartTime(*stream);
             stream->_frames   = getStreamFrames(*stream);
-            
-#ifdef FFMPEG_PLUGIN_DEBUG
-            std::cout << "Stream infos: \n"
-            << "Stream index: " << stream->_idx
-            << "\nSize: " << stream->_width << "x" << stream->_height
-            << "\nStartPTS: " << stream->_startPTS
-            << "\nFrames: " << stream->_frames
-            << "\nCodec name: " << stream->_videoCodec->name
-            << std::endl;
-#endif
             
             // save the stream
             _streams.push_back(stream);
@@ -394,6 +379,8 @@ namespace FFmpeg {
     // set reader error
     void File::setError(const char* msg, const char* prefix)
     {
+        // Private, should not lock
+        
         if (prefix) {
             _errorMsg = prefix;
             _errorMsg += msg;
@@ -407,6 +394,8 @@ namespace FFmpeg {
     // set FFmpeg library error
     void File::setInternalError(const int error, const char* prefix)
     {
+        // Private, should not lock
+        
         char errorBuf[1024];
         av_strerror(error, errorBuf, sizeof(errorBuf));
         setError(errorBuf, prefix);
@@ -415,6 +404,7 @@ namespace FFmpeg {
     // get stream start time
     int64_t File::getStreamStartTime(Stream& stream)
     {
+        // Private, should not lock
         
         // Read from stream. If the value read isn't valid, get it from the first frame in the stream that provides such a
         // value.
@@ -455,6 +445,7 @@ namespace FFmpeg {
     // Get the video stream duration in frames...
     int64_t File::getStreamFrames(Stream& stream)
     {
+        // Private, should not lock
         
         int64_t frames = 0;
         
@@ -540,14 +531,10 @@ namespace FFmpeg {
     bool File::seekFrame(int frame,Stream* stream)
     {
         ///Private should not lock
-#ifdef FFMPEG_PLUGIN_DEBUG
-        std::cout << "Seeking frame " << frame
-        << " (PTS = " <<  stream->frameToPts(frame) << ") on stream index " << stream->_idx
-        << '\n'
-        << std::endl;
-#endif
+
         avcodec_flush_buffers(stream->_codecContext);
-        int error = av_seek_frame(_context, stream->_idx, stream->frameToPts(frame), AVSEEK_FLAG_BACKWARD);
+        int64_t timestamp = stream->frameToPts(frame);
+        int error = av_seek_frame(_context, stream->_idx, timestamp, AVSEEK_FLAG_BACKWARD);
         if (error < 0) {
             // Seek error. Abort attempt to read and decode frames.
             setInternalError(error, "FFmpeg Reader failed to seek frame: ");
@@ -557,34 +544,32 @@ namespace FFmpeg {
     }
     
     // decode a single frame into the buffer thread safe
-    bool File::decode(unsigned char* buffer, int frame, bool loadNearest,unsigned streamIdx)
+    bool File::decode(unsigned char* buffer, int frame, bool loadNearest, int maxRetries, unsigned streamIdx)
     {
 #ifdef OFX_IO_MT_FFMPEG
         OFX::MultiThread::AutoMutex guard(_lock);
 #endif
 
-        if (streamIdx >= _streams.size())
+        if ( streamIdx >= _streams.size() ) {
             return false;
+        }
         
         // get the stream
         Stream* stream = _streams[streamIdx];
         
         // Early-out if out-of-range frame requested.
         
-        if (frame < 0){
-            if(loadNearest){
+        if (frame < 0) {
+            if (loadNearest) {
                 frame = 0;
-            }else{
+            } else {
                 throw std::runtime_error("Missing frame");
-                return false;
             }
-        }
-        if (frame >= stream->_frames){
-            if(loadNearest){
+        } else if (frame >= stream->_frames) {
+            if (loadNearest) {
                 frame = (int)stream->_frames - 1;
-            }else{
+            } else {
                 throw std::runtime_error("Missing frame");
-                return false;
             }
         }
         
@@ -597,7 +582,7 @@ namespace FFmpeg {
         // file but those same frames will decode succesfully on a second attempt. The root cause of this is not understood but
         // it appears to be some oddity of FFmpeg. While I don't really like it, retrying decode enables us to successfully
         // decode those files rather than having to fail the read.
-        int retriesRemaining = 1;
+        int retriesAttempts = 0;
         
         // Whether we have just performed a seek and are still awaiting the first decoded frame after that seek. This controls
         // how we respond when a decode stall is detected.
@@ -629,7 +614,7 @@ namespace FFmpeg {
             stream->_decodeNextFrameOut = -1;
             stream->_accumDecodeLatency = 0;
             awaitingFirstDecodeAfterSeek = true;
-            
+
             if (!seekFrame(frame, stream)) {
                 return false;
             }
@@ -650,7 +635,7 @@ namespace FFmpeg {
                 
                 
                 int error = av_read_frame(_context, &_avPacket);
-                if (error < 0) {
+                if (error < 0  && error != AVERROR_EOF) {
                     // Read error. Abort attempt to read and decode frames.
                     setInternalError(error, "FFmpeg Reader failed to read frame: ");
                     break;
@@ -660,52 +645,63 @@ namespace FFmpeg {
                 // into the decoder.
                 if (_avPacket.stream_index == stream->_idx) {
                     // If the packet read has a valid PTS, record that we have seen a PTS for this stream.
-                    if (_avPacket.pts != int64_t(AV_NOPTS_VALUE))
+                    if (_avPacket.pts != int64_t(AV_NOPTS_VALUE)) {
                         stream->_ptsSeen = true;
+                    }
                     
                     // If a seek is in progress, we need to synchronise frame indices if we can...
                     if (lastSeekedFrame >= 0) {
-                        // Determine which frame the seek landed at, using whichever kind of timestamp is currently selected for this
-                        // stream. If there's no timestamp available at that frame, we can't synchronise frame indices to know which
-                        // frame we're first going to decode, so we need to seek back to an earlier frame in hope of obtaining a
-                        // timestamp. Likewise, if the landing frame is after the seek target frame (this can happen, presumably a bug
-                        // in FFmpeg seeking), we need to seek back to an earlier frame so that we can start decoding at or before the
-                        // desired frame.
-                        int landingFrame;
-                        if (_avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) ||
-                            (landingFrame = stream->ptsToFrame(_avPacket.*stream->_timestampField)) > lastSeekedFrame) {
+                        
+                        if (retriesAttempts == 0 || retriesAttempts >= maxRetries) {
                             
-                            // Wind back 1 frame from last seeked frame. If that takes us to before frame 0, we're never going to be
-                            // able to synchronise using the current timestamp source...
-                            if (--lastSeekedFrame < 0) {
+                            // Determine which frame the seek landed at, using whichever kind of timestamp is currently selected for this
+                            // stream. If there's no timestamp available at that frame, we can't synchronise frame indices to know which
+                            // frame we're first going to decode, so we need to seek back to an earlier frame in hope of obtaining a
+                            // timestamp. Likewise, if the landing frame is after the seek target frame (this can happen, presumably a bug
+                            // in FFmpeg seeking), we need to seek back to an earlier frame so that we can start decoding at or before the
+                            // desired frame.
+                            int landingFrame = stream->ptsToFrame(_avPacket.*stream->_timestampField);
+                            
+                            if (_avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) || landingFrame  > lastSeekedFrame) {
                                 
-                                // If we're currently using PTSs to determine the landing frame and we've never seen a valid PTS for any
-                                // frame from this stream, switch to using DTSs and retry the read from the initial desired frame.
-                                if (stream->_timestampField == &AVPacket::pts && !stream->_ptsSeen) {
-                                    stream->_timestampField = &AVPacket::dts;
-                                    lastSeekedFrame = frame;
+                                // Wind back 1 frame from last seeked frame. If that takes us to before frame 0, we're never going to be
+                                // able to synchronise using the current timestamp source...
+                                if (--lastSeekedFrame < 0) {
                                     
+                                    // If we're currently using PTSs to determine the landing frame and we've never seen a valid PTS for any
+                                    // frame from this stream, switch to using DTSs and retry the read from the initial desired frame.
+                                    if (stream->_timestampField == &AVPacket::pts && !stream->_ptsSeen) {
+                                        stream->_timestampField = &AVPacket::dts;
+                                        lastSeekedFrame = frame;
+                                        
+                                    }
+                                    // Otherwise, failure to find a landing point isn't caused by an absence of PTSs from the file or isn't
+                                    // recovered by using DTSs instead. Something is wrong with the file. Abort attempt to read and decode frames.
+                                    else {
+                                        
+                                        setError("FFmpeg Reader failed to find timing reference frame, possible file corruption");
+                                        break;
+                                    }
                                 }
-                                // Otherwise, failure to find a landing point isn't caused by an absence of PTSs from the file or isn't
-                                // recovered by using DTSs instead. Something is wrong with the file. Abort attempt to read and decode frames.
-                                else {
-                                    
-                                    setError("FFmpeg Reader failed to find timing reference frame, possible file corruption");
+                                
+                                // Seek to the new frame. By leaving the seek in progress, we will seek backwards frame by frame until we
+                                // either successfully synchronise frame indices or give up having reached the beginning of the stream.
+                                
+                                if (!seekFrame(lastSeekedFrame, stream)) {
                                     break;
                                 }
                             }
-                            
-                            // Seek to the new frame. By leaving the seek in progress, we will seek backwards frame by frame until we
-                            // either successfully synchronise frame indices or give up having reached the beginning of the stream.
-                            
-                            if (!seekFrame(lastSeekedFrame, stream)) {
-                                break;
+                            // Otherwise, we have a valid landing frame, so set that as the next frame into and out of decode and set
+                            // no seek in progress.
+                            else {
+                                stream->_decodeNextFrameOut = stream->_decodeNextFrameIn = landingFrame;
+                                lastSeekedFrame = -1;
                             }
                         }
-                        // Otherwise, we have a valid landing frame, so set that as the next frame into and out of decode and set
-                        // no seek in progress.
+                        
+                        // We retry to decode without seeking any frame, maybe we will be lucky this time.
                         else {
-                            stream->_decodeNextFrameOut = stream->_decodeNextFrameIn = landingFrame;
+                            stream->_decodeNextFrameOut = stream->_decodeNextFrameIn = lastSeekedFrame;
                             lastSeekedFrame = -1;
                         }
                     }
@@ -717,24 +713,7 @@ namespace FFmpeg {
                         
                         // Decode the frame just read. frameDecoded indicates whether a decoded frame was output.
                         decodeAttempted = true;
-#ifdef FFMPEG_PLUGIN_DEBUG
-                        std::cout << "avcodec_decode_video2:\n"
-                        << "\nFrame size:  " << stream->_avFrame->width << "x" << stream->_avFrame->height
-                        << "\nKeyframe: " << stream->_avFrame->key_frame
-                        << "\npts: " << stream->_avFrame->pts
-                        << "\npkt_pts: " << stream->_avFrame->pkt_pts
-                        << "\npkt_pos: " << stream->_avFrame->pkt_pos
-                        << "\npkt_dts: " << stream->_avFrame->pkt_dts
-                        << "\npkt_duration: " << stream->_avFrame->pkt_duration
-                        << "\n----------------------"
-                        << "\nPacket pts: " << _avPacket.pts
-                        << "\ndts: " << _avPacket.dts
-                        << "\npos: " << _avPacket.pos
-                        << "\nstreamIndex: " << _avPacket.stream_index
-                        << "\nduration: " << _avPacket.duration
-                        << "\nsize: " << _avPacket.size
-                        << std::endl;
-#endif
+
                         error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
                         if (error < 0) {
                             // Decode error. Abort attempt to read and decode frames.
@@ -793,19 +772,21 @@ namespace FFmpeg {
                 if (stream->_accumDecodeLatency > stream->getCodecDelay()) {
                     int seekTargetFrame; // Target frame for any seek we might perform to attempt decode stall recovery.
                     
+                    
                     // Handle a post-seek decode stall.
                     if (awaitingFirstDecodeAfterSeek) {
+                       
+                        // There's nowhere to seek back. If we have any retries remaining, use one to attempt the read again,
+                        // starting from the desired frame.
+                        if (retriesAttempts < maxRetries) {
+                            ++retriesAttempts;
+                            seekTargetFrame = frame;
+                        }
                         // If there's anywhere in the file to seek back to before the last seek's landing frame (which can be found in
                         // stream->_decodeNextFrameOut, since we know we've not decoded any frames since landing), then set up a seek to
                         // the frame before that landing point to try to find a valid decode start frame earlier in the file.
-                        if (stream->_decodeNextFrameOut > 0) {
+                        else if (stream->_decodeNextFrameOut > 0) {
                             seekTargetFrame = stream->_decodeNextFrameOut - 1;
-                        }
-                        // Otherwise, there's nowhere to seek back. If we have any retries remaining, use one to attempt the read again,
-                        // starting from the desired frame.
-                        else if (retriesRemaining > 0) {
-                            --retriesRemaining;
-                            seekTargetFrame = frame;
                         }
                         // Otherwise, all we can do is to fail the read so that this method exits safely.
                         else {
@@ -813,11 +794,11 @@ namespace FFmpeg {
                             break;
                         }
                     }
-                    // Handle a mid-decode stall. All we can do is to fail the read so that this method exits safely.
+                    // Handle a mid-decode stall.
                     else {
                         // If we have any retries remaining, use one to attempt the read again, starting from the desired frame.
-                        if (retriesRemaining > 0) {
-                            --retriesRemaining;
+                        if (retriesAttempts < maxRetries) {
+                            ++retriesAttempts;
                             seekTargetFrame = frame;
                         }
                         // Otherwise, all we can do is to fail the read so that this method exits safely.
@@ -834,7 +815,7 @@ namespace FFmpeg {
                     stream->_accumDecodeLatency = 0;
                     awaitingFirstDecodeAfterSeek = true;
                     
-                    if (!seekFrame(seekTargetFrame, stream)) {
+                    if (retriesAttempts >= maxRetries && !seekFrame(seekTargetFrame, stream)) {
                         break;
                     }
                 }

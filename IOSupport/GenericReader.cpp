@@ -1066,6 +1066,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     double par = 1.;
     bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error);
     if (!success) {
+        setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     // get the PAR from the clip preferences, since it should be constant over time
@@ -1265,7 +1266,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         std::string error;
         bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
         ///We shouldve checked above for any failure, now this is too late.
-        assert(success);
+        if (!success) {
+            setPersistentMessage(OFX::Message::eMessageError, "", error);
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
         ///Intersect the full res renderwindow to the real rod.
         ///It works for both proxy and non proxy files
         intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);

@@ -212,7 +212,7 @@ namespace FFmpeg {
         unsigned int getNbStreams() const;
         
         // decode a single frame into the buffer thread safe
-        bool decode(unsigned char* buffer, int frame,bool loadNearest, unsigned streamIdx = 0);
+        bool decode(unsigned char* buffer, int frame,bool loadNearest, int maxRetries, unsigned streamIdx = 0);
         
         // get stream information
         bool getInfo(int& width,

@@ -61,6 +61,11 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#define kMaxRetriesParamName "maxRetries"
+#define kMaxRetriesParamLabel "Max retries per frame"
+#define kMaxRetriesParamHint "Some video files are sometimes tricky to read and needs several retries before successfully decoding a frame. This" \
+" parameter controls how many times we should attempt to decode the same frame before failing. "
+
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha false
@@ -74,6 +79,8 @@ class ReadFFmpegPlugin : public GenericReaderPlugin
     int _bufferWidth;
     int _bufferHeight;
 
+    OFX::IntParam *_maxRetries;
+    
 public:
 
     ReadFFmpegPlugin(OfxImageEffectHandle handle);
@@ -105,8 +112,10 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 , _buffer(0)
 , _bufferWidth(0)
 , _bufferHeight(0)
+, _maxRetries(0)
 {
-
+    _maxRetries = fetchIntParam(kMaxRetriesParamName);
+    assert(_maxRetries);
 }
 
 ReadFFmpegPlugin::~ReadFFmpegPlugin() {
@@ -273,11 +282,16 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         _bufferWidth = width;
     }
     
-    //< round the time to an int to get a frame number ? Not sure about this
+    
+    int maxRetries;
+    _maxRetries->getValue(maxRetries);
+    
     try {
-        if (!_ffmpegFile->decode(_buffer, std::floor(time+0.5),loadNearestFrame())) {
+        if ( !_ffmpegFile->decode(_buffer, std::floor(time+0.5), loadNearestFrame(), maxRetries) ) {
+            
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            
         }
     } catch (const std::exception& e) {
         int choice;
@@ -536,6 +550,17 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
+    
+    {
+        OFX::IntParamDescriptor *param = desc.defineIntParam(kMaxRetriesParamName);
+        param->setLabels(kMaxRetriesParamLabel, kMaxRetriesParamLabel, kMaxRetriesParamLabel);
+        param->setHint(kMaxRetriesParamHint);
+        param->setAnimates(false);
+        param->setDefault(10);
+        param->setRange(0, 100);
+        param->setDisplayRange(0, 20);
+        page->addChild(*param);
+    }
 
     GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "reference");
 }
