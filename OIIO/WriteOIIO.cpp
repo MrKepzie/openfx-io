@@ -564,7 +564,7 @@ mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe);
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription("Write images using OpenImageIO.\n\n"

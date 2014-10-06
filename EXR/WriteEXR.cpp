@@ -277,7 +277,7 @@ mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe);
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription(kPluginDescription);

@@ -575,7 +575,13 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     picSize = avpicture_get_size(pixFMT,w, h);
     uint8_t* outBuffer = (uint8_t*)av_malloc(picSize);
     
-    av_image_alloc(output->data, output->linesize, w, h, pixFMT, 1);
+    int error = av_image_alloc(output->data, output->linesize, w, h, pixFMT, 1);
+    if (error < 0) {
+        char errorBuf[1024];
+        av_strerror(error, errorBuf, sizeof(errorBuf));
+        setPersistentMessage(OFX::Message::eMessageError, "", errorBuf);
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
     
     SwsContext* convertCtx = sws_getContext(w, h, PIX_FMT_RGB24,w, h,
                                             pixFMT, SWS_BICUBIC, NULL, NULL, NULL);
@@ -709,7 +715,7 @@ static std::string ffmpeg_versions()
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc);
+    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe);
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription("Write images or video file using "

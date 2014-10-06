@@ -94,7 +94,6 @@
 #define kSupportsTiles 0
 #define kSupportsMultiResolution 1
 #define kSupportsRenderScale 0 // Writers do not support render scale: all images must be rendered/written at full resolution
-#define kRenderThreadSafety eRenderInstanceSafe
 
 // in the Writer context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextWriter
 #define kParamFilename kOfxImageEffectFileParamName
@@ -881,7 +880,7 @@ using namespace OFX;
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
 void
-GenericWriterDescribe(OFX::ImageEffectDescriptor &desc)
+GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety)
 {
     desc.setPluginGrouping(kPluginGrouping);
     
@@ -903,7 +902,7 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc)
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
-    desc.setRenderThreadSafety(kRenderThreadSafety);
+    desc.setRenderThreadSafety(safety);
 }
 
 /**

@@ -1120,6 +1120,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     float* dstPixelDataF = (float*)dstPixelData;
 
+    if (!dstPixelDataF) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host provided an invalid image buffer");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
     
     OFX::PixelComponentEnum outputComponents = getOutputComponents();
     if (pixelComponents != outputComponents) {
