@@ -602,7 +602,7 @@ GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        OFX::PixelCopierUnPremult<float, 4, 1, float, 1> fred(*this);
+        OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else {
         ///other pixel components means you want to copy only...
@@ -631,7 +631,7 @@ GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        OFX::PixelCopierPremult<float, 4, 1, float, 1> fred(*this);
+        OFX::PixelCopierPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
 
     } else {
