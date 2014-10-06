@@ -140,6 +140,7 @@ public:
     // override the roi call
     virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 private:
     
     template <typename PIX,int nComps>
@@ -598,6 +599,33 @@ OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &ar
             rois.setRegionOfInterest(*srcClip_, srcRoI);
         }
     }
+}
+
+void
+OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    double par;
+    int type_i;
+    type_->getValue(type_i);
+    ResizeTypeEnum type = (ResizeTypeEnum)type_i;
+    switch (type) {
+        case eResizeTypeFormat: {
+            //specific output format
+            int index;
+            format_->getValue(index);
+            size_t w,h;
+            getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
+        }   break;
+            
+        case eResizeTypeSize:
+        case eResizeTypeScale:
+        default:
+            par = 1.;
+            break;
+
+    }
+
+    clipPreferences.setPixelAspectRatio(*dstClip_, par);
 }
 
 
