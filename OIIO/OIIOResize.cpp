@@ -660,7 +660,9 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     ///We don't support tiles: we can only resize the whole RoD at once
     desc.setSupportsTiles(kSupportsTiles);
-    
+
+    desc.setSupportsMultipleClipPARs(true); // plugin may setPixelAspectRatio on output clip
+
     ///We do support multiresolution
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
     
