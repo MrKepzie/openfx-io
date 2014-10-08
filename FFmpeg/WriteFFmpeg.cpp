@@ -656,7 +656,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     }
     
     avpicture_free(&picture);
-    av_frame_free(&output);
+    av_free(output);
     
     checkAvError();
     
