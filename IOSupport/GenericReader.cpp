@@ -1716,13 +1716,12 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
     
-    // We may support multi-resolution in the future via the proxy mode
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
     
     desc.setSupportsTiles(supportsTiles);
     desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
     desc.setRenderTwiceAlways(false);
-    desc.setSupportsMultipleClipPARs(false);
+    desc.setSupportsMultipleClipPARs(true); // plugin may setPixelAspectRatio on output clip
     desc.setRenderThreadSafety(OFX::eRenderFullySafe);
 }
 
