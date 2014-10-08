@@ -508,6 +508,14 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &args)
     freeFormat();
 }
 
+#define checkAvError() if (error < 0) { \
+                        char errorBuf[1024]; \
+                        av_strerror(error, errorBuf, sizeof(errorBuf)); \
+                        setPersistentMessage(OFX::Message::eMessageError, "", errorBuf); \
+                        OFX::throwSuiteStatusException(kOfxStatFailed); \
+                    }
+
+
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
 #pragma message WARN("TODO: check that 'time' is consistent with the frame being encoded!")
@@ -547,11 +555,8 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     
     
     AVPicture picture;
-    int picSize = avpicture_get_size(PIX_FMT_RGB24, w, h);
-    // allocate a buffer for the picture's image...
-    uint8_t* buffer = (uint8_t*)av_malloc(picSize);
-    // blank the values - this initialises stuff and seems to be needed
-    avpicture_fill(&picture, buffer, PIX_FMT_RGB24, w, h);
+    int error = avpicture_alloc(&picture, PIX_FMT_RGB24,w, h);
+    checkAvError();
 
 
     for (int y = bounds.y1; y < bounds.y2; ++y) {
@@ -572,16 +577,10 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     // now allocate an image frame for the image in the output codec's format...
     AVFrame* output = av_frame_alloc();
     PixelFormat pixFMT = _codecContext->pix_fmt;
-    picSize = avpicture_get_size(pixFMT,w, h);
-    uint8_t* outBuffer = (uint8_t*)av_malloc(picSize);
+    //picSize = avpicture_get_size(pixFMT,w, h);
     
-    int error = av_image_alloc(output->data, output->linesize, w, h, pixFMT, 1);
-    if (error < 0) {
-        char errorBuf[1024];
-        av_strerror(error, errorBuf, sizeof(errorBuf));
-        setPersistentMessage(OFX::Message::eMessageError, "", errorBuf);
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
+    error = av_image_alloc(output->data, output->linesize, w, h, pixFMT, 1);
+    checkAvError();
     
     SwsContext* convertCtx = sws_getContext(w, h, PIX_FMT_RGB24,w, h,
                                             pixFMT, SWS_BICUBIC, NULL, NULL, NULL);
@@ -589,7 +588,6 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     int sliceHeight = sws_scale(convertCtx, picture.data, picture.linesize, 0, h, output->data, output->linesize);
     assert(sliceHeight > 0);
     
-    int ret = 0;
     if ((_formatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
         AVPacket pkt;
         av_init_packet(&pkt);
@@ -597,34 +595,27 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         pkt.stream_index = _stream->index;
         pkt.data = (uint8_t*)output;
         pkt.size = sizeof(AVPicture);
-        ret = av_interleaved_write_frame(_formatContext, &pkt);
+        error = av_interleaved_write_frame(_formatContext, &pkt);
     }
     else {
 #if LIBAVCODEC_VERSION_INT<AV_VERSION_INT(54,1,0)
         uint8_t* outbuf = (uint8_t*)av_malloc(picSize);
         assert(outbuf != NULL);
-        ret = avcodec_encode_video(_codecContext, outbuf, picSize, output);
-        if (ret > 0) {
-            AVPacket pkt;
-            av_init_packet(&pkt);
-            if (_codecContext->coded_frame && _codecContext->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
-                pkt.pts = av_rescale_q(_codecContext->coded_frame->pts, _codecContext->time_base, _stream->time_base);
-            if (_codecContext->coded_frame && _codecContext->coded_frame->key_frame)
-                pkt.flags |= AV_PKT_FLAG_KEY;
-            
-            pkt.stream_index = _stream->index;
-            pkt.data = outbuf;
-            pkt.size = ret;
-            
-            ret = av_interleaved_write_frame(_formatContext, &pkt);
-        }
-        else {
-            // we've got an error
-            char szError[1024];
-            av_strerror(ret, szError, 1024);
-            setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
-        }
+        error = avcodec_encode_video(_codecContext, outbuf, picSize, output);
+        checkAvError();
         
+        AVPacket pkt;
+        av_init_packet(&pkt);
+        if (_codecContext->coded_frame && _codecContext->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
+            pkt.pts = av_rescale_q(_codecContext->coded_frame->pts, _codecContext->time_base, _stream->time_base);
+        if (_codecContext->coded_frame && _codecContext->coded_frame->key_frame)
+            pkt.flags |= AV_PKT_FLAG_KEY;
+        
+        pkt.stream_index = _stream->index;
+        pkt.data = outbuf;
+        pkt.size = ret;
+        
+        error = av_interleaved_write_frame(_formatContext, &pkt);
         av_free(outbuf);
 #else
         AVPacket pkt;
@@ -633,41 +624,26 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         pkt.size = 0;
         pkt.data = NULL;
         pkt.stream_index = _stream->index;
-        ret = avcodec_encode_video2(_codecContext, &pkt, output, &got_packet);
-        if (ret < 0) {
-            // we've got an error
-            char szError[1024];
-            av_strerror(ret, szError, 1024);
-            setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
-        }
+        error = avcodec_encode_video2(_codecContext, &pkt, output, &got_packet);
+        checkAvError();
+        
         if (got_packet) {
             if (pkt.pts != AV_NOPTS_VALUE)
                 pkt.pts = av_rescale_q(pkt.pts, _codecContext->time_base, _stream->time_base);
             if (pkt.dts != AV_NOPTS_VALUE)
                 pkt.dts = av_rescale_q(pkt.dts, _codecContext->time_base, _stream->time_base);
 
-            ret = av_interleaved_write_frame(_formatContext, &pkt);
+            error = av_interleaved_write_frame(_formatContext, &pkt);
             av_free_packet(&pkt);
-            if (ret< 0) {
-                // we've got an error
-                char szError[1024];
-                av_strerror(ret, szError, 1024);
-                setPersistentMessage(OFX::Message::eMessageError,"" ,szError);
-                throwSuiteStatusException(kOfxStatFailed);
-            }
+            checkAvError();
         }
 #endif
     }
     
-    av_free(outBuffer);
-    av_free(buffer);
-    av_free(output);
+    avpicture_free(&picture);
+    av_frame_free(&output);
     
-    if (ret) {
-        setPersistentMessage(OFX::Message::eMessageError,"" ,"Error writing frame to file");
-        throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
+    checkAvError();
     
 }
 
