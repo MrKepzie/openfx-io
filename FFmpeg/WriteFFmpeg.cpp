@@ -117,10 +117,13 @@ private:
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
 
     void freeFormat();
-
+    
+    
+    ///These members are not protected and only read/written by/to by the same thread.
     AVCodecContext*   _codecContext;
     AVFormatContext*  _formatContext;
     AVStream* _stream;
+    int _lastTimeEncoded; //< the frame index of the last frame encoded.
 
     OFX::ChoiceParam* _format;
     OFX::DoubleParam* _fps;
@@ -247,6 +250,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 , _codecContext(0)
 , _formatContext(0)
 , _stream(0)
+, _lastTimeEncoded(-1)
 , _format(0)
 , _fps(0)
 , _codec(0)
@@ -491,6 +495,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,const OfxRectI& 
     
     avformat_write_header(_formatContext, NULL);
     
+    ///Flag that we didn't encode any frame yet
+    _lastTimeEncoded = -1;
     
 }
 
@@ -518,7 +524,7 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &args)
 
 void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-#pragma message WARN("TODO: check that 'time' is consistent with the frame being encoded!")
+    
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -527,6 +533,13 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    
+    ///Check that we're really encoding in sequential order
+    if (_lastTimeEncoded != -1 && _lastTimeEncoded != time -1 && _lastTimeEncoded != time + 1) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+
     }
 
     
@@ -628,10 +641,12 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         checkAvError();
         
         if (got_packet) {
-            if (pkt.pts != AV_NOPTS_VALUE)
+            if (pkt.pts != AV_NOPTS_VALUE) {
                 pkt.pts = av_rescale_q(pkt.pts, _codecContext->time_base, _stream->time_base);
-            if (pkt.dts != AV_NOPTS_VALUE)
+            }
+            if (pkt.dts != AV_NOPTS_VALUE) {
                 pkt.dts = av_rescale_q(pkt.dts, _codecContext->time_base, _stream->time_base);
+            }
 
             error = av_interleaved_write_frame(_formatContext, &pkt);
             av_free_packet(&pkt);
@@ -644,6 +659,8 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     av_frame_free(&output);
     
     checkAvError();
+    
+    _lastTimeEncoded = time;
     
 }
 
