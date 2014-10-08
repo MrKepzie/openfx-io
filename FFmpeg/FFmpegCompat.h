@@ -99,7 +99,7 @@
 #   endif
 #   if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 54, 28, 0, 54, 59, 100)
 namespace {
-inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
+inline void av_frame_free(AVFrame **frame) { av_freep(frame); }
 };
 #   endif
 #   ifndef AVCODEC_MAX_AUDIO_FRAME_SIZE
