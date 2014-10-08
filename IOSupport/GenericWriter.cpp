@@ -105,8 +105,9 @@
 "# (hashes) will define the number of digits to append to each " \
 "file. For example path/mySequence###.jpg will be translated to " \
 "path/mySequence000.jpg, path/mySequence001.jpg, etc. " \
-"By default the plugin will append as many digits as necessary (if you have 11 frames, " \
-"there will be at least 2 digits). The file name may not contain any # (hash)."
+"%d printf-like notation can also be used instead of the hashes, for example path/sequenceName%03d.ext will achieve the same than the example aforementionned. " \
+"there will be at least 2 digits). The file name may not contain any # (hash) in which case it  will be overriden everytimes. " \
+"Views can be specified using the \"long\" view notation %V or the \"short\" notation using %v."
 
 #define kParamOutputFormat "outputFormat"
 #define kParamOutputFormatLabel "Format"
