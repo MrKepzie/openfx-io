@@ -590,7 +590,6 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     // now allocate an image frame for the image in the output codec's format...
     AVFrame* output = av_frame_alloc();
     PixelFormat pixFMT = _codecContext->pix_fmt;
-    //picSize = avpicture_get_size(pixFMT,w, h);
     
     error = av_image_alloc(output->data, output->linesize, w, h, pixFMT, 1);
     checkAvError();
@@ -612,6 +611,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     }
     else {
 #if LIBAVCODEC_VERSION_INT<AV_VERSION_INT(54,1,0)
+        size_t picSize = avpicture_get_size(pixFMT,w, h);
         uint8_t* outbuf = (uint8_t*)av_malloc(picSize);
         assert(outbuf != NULL);
         error = avcodec_encode_video(_codecContext, outbuf, picSize, output);
@@ -626,7 +626,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         
         pkt.stream_index = _stream->index;
         pkt.data = outbuf;
-        pkt.size = ret;
+        pkt.size = error;
         
         error = av_interleaved_write_frame(_formatContext, &pkt);
         av_free(outbuf);
