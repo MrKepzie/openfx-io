@@ -565,6 +565,13 @@ mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc,OFX::eRenderFullySafe);
+    
+    if (!attribute("threads", 1)) {
+#     ifdef DEBUG
+        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
+#     endif
+    }
+    
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription("Write images using OpenImageIO.\n\n"

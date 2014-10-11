@@ -1377,7 +1377,7 @@ static std::string oiio_versions()
 void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles);
-    ///set OIIO to use as many threads as there are cores on the CPU
+
     if (!attribute("threads", 1)) {
 #     ifdef DEBUG
         std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
