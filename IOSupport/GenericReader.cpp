@@ -383,8 +383,8 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
         frameRangeFirst = range.min;
         frameRangeLast = range.max;
         startingTime = frameRangeFirst;
-        _firstFrame->setDisplayRange(range.min, range.max);
-        _lastFrame->setDisplayRange(range.min, range.max);
+        _firstFrame->setRange(range.min, range.max);
+        _lastFrame->setRange(range.min, range.max);
         
         _firstFrame->setValue(range.min);
         _lastFrame->setValue(range.max);
@@ -1460,7 +1460,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _lastFrame->setDisplayRange(first, last);
+        _lastFrame->setRange(first, last);
 
         int offset;
         _timeOffset->getValue(offset);
@@ -1471,7 +1471,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int last;
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setDisplayRange(first, last);
+        _firstFrame->setRange(first, last);
 
     } else if (paramName == kParamFrameMode && args.reason == OFX::eChangeUserEdit) {
         int frameMode_i;
