@@ -637,12 +637,13 @@ mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
 void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     
-    // Let OIIO do the multi-threading for us
-//    This attribute sets the
-//    maximum number of threads that will be spawned. The default is 1. If set to 0, it
-//    means that it should use as many threads as there are hardware cores present on the
-//    system.
-    OIIO::attribute("threads", 0);
+    ///Set number of threads to 1 and let the host do multi-threading
+    if (!attribute("threads", 1)) {
+#     ifdef DEBUG
+        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
+#     endif
+    }
+
     
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
@@ -669,7 +670,7 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderThreadSafety(kRenderThreadSafety);
     
     ///Don't let the host multi-thread
-    desc.setHostFrameThreading(false);
+    desc.setHostFrameThreading(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
