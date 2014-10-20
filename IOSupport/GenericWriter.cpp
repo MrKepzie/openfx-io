@@ -860,7 +860,7 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
 void
 GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-    _premult->setValue((int)_inputClip->getPreMultiplication());
+   
     clipPreferences.setOutputPremultiplication(getExpectedInputPremultiplication());
 }
 
