@@ -176,6 +176,25 @@ enum MissingEnum
 #define kReaderOptionNearest "Load nearest"
 #define kReaderOptionNearestHint "Try to load the nearest frame in the sequence/stream, if any."
 
+#define kParamFilePremult "filePremult"
+#define kParamFilePremultLabel "File Premult"
+#define kParamFilePremultHint \
+"The image file being read is considered to have this premultiplication state.\n"\
+"On output, RGB images are always Opaque, Alpha and RGBA images are always Premultiplied (also called \"associated alpha\").\n"\
+"To get UnPremultiplied (or \"unassociated alpha\") images, use the \"Unpremult\" plugin after this plugin.\n\n"\
+"- Opaque means that the alpha channel is considered to be 1 (one), and it is not taken into account in colorspace conversion.\n" \
+"- Premultiplied, red, green and blue channels are divided by the alpha channel "\
+"before applying the colorspace conversion, and re-multiplied by alpha after colorspace conversion.\n"\
+"- UnPremultiplied, means that red, green and blue channels are not modified "\
+"before applying the colorspace conversion, and are multiplied by alpha after colorspace conversion.\n"\
+"This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file metadata.\n"\
+"RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter).\n"
+#define kParamFilePremultOptionOpaqueHint \
+"The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
+#define kParamFilePremultOptionPreMultipliedHint \
+"The image is premultiplied by its alpha (also called \"associated alpha\")."
+#define kParamFilePremultOptionUnPreMultipliedHint \
+"The image is unpremultiplied (also called \"unassociated alpha\")."
 
 #define kParamOutputComponents "outputComponents"
 #define kParamOutputComponentsLabel "Output Components"
@@ -183,24 +202,6 @@ enum MissingEnum
 #define kParamOutputComponentsOptionRGBA "RGBA"
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
-
-#define kParamPremult "premult"
-#define kParamInputPremultLabel "Image Premult"
-#define kParamInputPremultHint \
-"On output, RGB images are always Opaque, Alpha and RGBA images are always Premultiplied.\n"\
-"To get UnPremultiplied images, use the \"Unpremult\" plugin.\n\n"\
-"Image file being read is considered to have this premultiplication state.\n"\
-"If it is Premultiplied, red, green and blue channels are divided by the alpha channel "\
-"before applying the colorspace conversion.\n"\
-"This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file metadata.\n"\
-"RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter).\n"
-
-#define kParamPremultOptionOpaqueHint \
-"The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
-#define kParamPremultOptionPreMultipliedHint \
-"The image is premultiplied by its alpha (also called \"associated alpha\")."
-#define kParamPremultOptionUnPreMultipliedHint \
-"The image is unpremultiplied (also called \"unassociated alpha\")."
 
 #define MISSING_FRAME_NEAREST_RANGE 100
 
@@ -275,7 +276,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _startingTime = fetchIntParam(kParamStartingTime);
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
-    _premult = fetchChoiceParam(kParamPremult);
+    _premult = fetchChoiceParam(kParamFilePremult);
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -1530,7 +1531,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         
         // Even when reason == pluginEdit notify the plug-in that components changed
         onOutputComponentsParamChanged(comps);
-    } else if (paramName == kParamPremult && args.reason == OFX::eChangeUserEdit) {
+    } else if (paramName == kParamFilePremult && args.reason == OFX::eChangeUserEdit) {
         int premult_i;
         _premult->getValue(premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
@@ -1978,14 +1979,33 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setEvaluateOnChange(false);
         page->addChild(*param);
     }
-    
+
+    //// File premult
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFilePremult);
+        param->setLabels(kParamFilePremultLabel, kParamFilePremultLabel, kParamFilePremultLabel);
+        param->setAnimates(true);
+        param->setHint(kParamFilePremultHint);
+        assert(param->getNOptions() == eImageOpaque);
+        param->appendOption(premultString(eImageOpaque), kParamFilePremultOptionOpaqueHint);
+        if (gHostSupportsRGBA && supportsRGBA) {
+            assert(param->getNOptions() == eImagePreMultiplied);
+            param->appendOption(premultString(eImagePreMultiplied), kParamFilePremultOptionPreMultipliedHint);
+            assert(param->getNOptions() == eImageUnPreMultiplied);
+            param->appendOption(premultString(eImageUnPreMultiplied), kParamFilePremultOptionUnPreMultipliedHint);
+            param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
+        }
+        desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
+    }
+
     //// Output components
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOutputComponents);
         param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
         int i = 0;
-        
+
         if (gHostSupportsRGBA && supportsRGBA) {
             gOutputComponentsMap[i] = ePixelComponentRGBA;
             ++i;
@@ -2008,25 +2028,6 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
 
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
-        desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
-    }
-    
-    //// Output premult
-    {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPremult);
-        param->setLabels(kParamInputPremultLabel, kParamInputPremultLabel, kParamInputPremultLabel);
-        param->setAnimates(true);
-        param->setHint(kParamInputPremultHint);
-        assert(param->getNOptions() == eImageOpaque);
-        param->appendOption(premultString(eImageOpaque), kParamPremultOptionOpaqueHint);
-        if (gHostSupportsRGBA && supportsRGBA) {
-            assert(param->getNOptions() == eImagePreMultiplied);
-            param->appendOption(premultString(eImagePreMultiplied), kParamPremultOptionPreMultipliedHint);
-            assert(param->getNOptions() == eImageUnPreMultiplied);
-            param->appendOption(premultString(eImageUnPreMultiplied), kParamPremultOptionUnPreMultipliedHint);
-            param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
-        }
         desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
