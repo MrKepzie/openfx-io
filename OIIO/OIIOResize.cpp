@@ -130,6 +130,8 @@ public:
 
     /* override changedParam */
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    
+    virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE;
 
     /* override changed clip */
     //virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
@@ -514,6 +516,33 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
     }
 }
 
+void
+OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
+{
+    if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit) {
+        OfxPointD projectSize = getProjectSize();
+        
+        ///Try to find a format matching the project format in which case we switch to format mode otherwise
+        ///switch to size mode and set the size accordingly
+        bool foundFormat = false;
+        for (int i = (int)eParamFormatPCVideo; i < (int)eParamFormatSquare2k ; ++i) {
+            std::size_t w,h;
+            double par;
+            getFormatResolution((OFX::EParamFormat)i, &w, &h, &par);
+            if (w == projectSize.x && h == projectSize.y) {
+                format_->setValue((OFX::EParamFormat)i);
+                type_->setValue((int)eResizeTypeFormat);
+                foundFormat = true;
+            }
+        }
+        size_->setValue(projectSize.x, projectSize.y);
+        if (!foundFormat) {
+            type_->setValue((int)eResizeTypeSize);
+        }
+        
+    }
+}
+
 bool
 OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
                                         OfxRectD &rod)
@@ -761,6 +790,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setLayoutHint(eLayoutHintNoNewLine);
         page->addChild(*param);
     }
+
     {
         BooleanParamDescriptor* param = desc.defineBooleanParam(kParamPreservePAR);
         param->setLabels(kParamPreservePARLabel, kParamPreservePARLabel, kParamPreservePARLabel);
