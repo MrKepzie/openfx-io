@@ -725,11 +725,14 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
                 if (_ocio->hasColorspace("Gamma2.2")) {
                     // nuke-default
                     _ocio->setInputColorspace("Gamma2.2");
+                } else if (_ocio->hasColorspace("VD16")) {
+                    // VD16 in blender
+                    _ocio->setInputColorspace("VD16");
                 } else if (_ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim and spi-vfx
                     _ocio->setInputColorspace("vd16");
                 } else if (_ocio->hasColorspace("sRGB")) {
-                    // nuke-default
+                    // nuke-default and blender
                     _ocio->setInputColorspace("sRGB");
                 } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
                     // rrt_Gamma2.2 in aces 0.7.1
@@ -747,7 +750,7 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             }
         } else if(!strcmp(colorSpaceStr, "sRGB")) {
             if (_ocio->hasColorspace("sRGB")) {
-                // nuke-default
+                // nuke-default and blender
                 _ocio->setInputColorspace("sRGB");
             } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
                 // rrt_Gamma2.2 in aces 0.7.1
@@ -774,6 +777,9 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             if (_ocio->hasColorspace("Rec709")) {
                 // nuke-default
                 _ocio->setInputColorspace("Rec709");
+            } else if (_ocio->hasColorspace("nuke_rec709")) {
+                // blender
+                _ocio->setInputColorspace("nuke_rec709");
             } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
                 // rrt_rec709_full_100nits in aces 0.7.1
                 _ocio->setInputColorspace("rrt_rec709_full_100nits");

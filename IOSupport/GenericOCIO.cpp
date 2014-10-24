@@ -707,7 +707,7 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
     OpenColorIO::ConstColorSpaceRcPtr cs;
     if (!strcmp(colorSpaceNameDefault, "sRGB") || !strcmp(colorSpaceNameDefault, "srgb")) {
         if ((cs = config->getColorSpace("sRGB"))) {
-            // nuke-default
+            // nuke-default and blender
             return cs->getName();
         } else if ((cs = config->getColorSpace("rrt_Gamma2.2"))) {
             // rrt_Gamma2.2 in aces 0.7.1
@@ -721,12 +721,18 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         } else if ((cs = config->getColorSpace("vd16"))) {
             // vd16 in spi-anim
             return cs->getName();
+        } else if ((cs = config->getColorSpace("VD16"))) {
+            // VD16 in blender
+            return cs->getName();
         }
     //} else if(!strcmp(inputSpaceNameDefault, "AdobeRGB") || !strcmp(inputSpaceNameDefault, "adobergb")) {
         // ???
     } else if (!strcmp(colorSpaceNameDefault, "Rec709") || !strcmp(colorSpaceNameDefault, "rec709")) {
         if ((cs = config->getColorSpace("Rec709"))) {
             // nuke-default
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("nuke_rec709"))) {
+            // blender
             return cs->getName();
         } else if ((cs = config->getColorSpace("rrt_rec709_full_100nits"))) {
             // rrt_rec709_full_100nits in aces 0.7.1
