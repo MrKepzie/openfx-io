@@ -245,9 +245,9 @@ GenericOCIO::isIdentity(double time)
         return true;
     }
     std::string inputSpace;
-    _inputSpace->getValueAtTime(time, inputSpace);
+    getInputColorspaceAtTime(time, inputSpace);
     std::string outputSpace;
-    _outputSpace->getValueAtTime(time, outputSpace);
+    getOutputColorspaceAtTime(time, outputSpace);
     if (inputSpace == outputSpace) {
         return true;
     }
@@ -285,7 +285,7 @@ GenericOCIO::inputCheck(double time)
         return;
     }
     std::string inputSpaceName;
-    _inputSpace->getValueAtTime(time, inputSpaceName);
+    getInputColorspaceAtTime(time, inputSpaceName);
     int inputSpaceIndex = _config->getIndexForColorSpace(inputSpaceName.c_str());
     if (inputSpaceIndex >= 0) {
         int inputSpaceIndexOld;
@@ -327,7 +327,7 @@ GenericOCIO::outputCheck(double time)
         return;
     }
     std::string outputSpaceName;
-    _outputSpace->getValueAtTime(time, outputSpaceName);
+    getOutputColorspaceAtTime(time, outputSpaceName);
     int outputSpaceIndex = _config->getIndexForColorSpace(outputSpaceName.c_str());
     if (outputSpaceIndex >= 0) {
         int outputSpaceIndexOld;
@@ -452,9 +452,9 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
     processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
 
     std::string inputSpace;
-    _inputSpace->getValueAtTime(time, inputSpace);
+    getInputColorspaceAtTime(time, inputSpace);
     std::string outputSpace;
-    _outputSpace->getValueAtTime(time, outputSpace);
+    getOutputColorspaceAtTime(time, outputSpace);
     processor.setValues(_config, inputSpace, outputSpace);
 
     // set the render window
@@ -583,6 +583,16 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                     msg += '\n';
                 }
             }
+            msg += '\n';
+            msg += (_config->getNumLooks() <= 0 ? "No look available in this OCIO configuration.\n" : "Available looks in this OCIO Configuration (applied in the given colorspace):\n");
+            for (int i = 0; i < _config->getNumLooks(); ++i) {
+                const char* lkname = _config->getLookNameByIndex(i);
+                OCIO_NAMESPACE::ConstLookRcPtr lk = _config->getLook(lkname);
+                msg += "- ";
+                msg += lkname;
+                std::string lkspace = lk->getProcessSpace();
+                msg += " (" + lkspace + ")\n";
+            }
         }
         _parent->sendMessage(OFX::Message::eMessageMessage, "", msg);
     } else if (!_config) {
@@ -592,7 +602,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         if (args.reason == OFX::eChangeUserEdit) {
             // if the inputspace doesn't correspond to a valid one, reset to default
             std::string inputSpace;
-            _inputSpace->getValueAtTime(args.time, inputSpace);
+            getInputColorspaceAtTime(args.time, inputSpace);
             int inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
             if (inputSpaceIndex < 0) {
                 if (args.reason == OFX::eChangeUserEdit) {
@@ -612,7 +622,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         int inputSpaceIndex;
         _inputSpaceChoice->getValueAtTime(args.time, inputSpaceIndex);
         std::string inputSpaceOld;
-        _inputSpace->getValueAtTime(args.time, inputSpaceOld);
+        getInputColorspaceAtTime(args.time, inputSpaceOld);
         std::string inputSpace = _config->getColorSpaceNameByIndex(inputSpaceIndex);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
         if (inputSpace != inputSpaceOld) {
@@ -624,7 +634,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         if (args.reason == OFX::eChangeUserEdit) {
             // if the outputspace doesn't correspond to a valid one, reset to default
             std::string outputSpace;
-            _outputSpace->getValueAtTime(args.time, outputSpace);
+            getOutputColorspaceAtTime(args.time, outputSpace);
             int outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
             if (outputSpaceIndex < 0) {
                 if (args.reason == OFX::eChangeUserEdit) {
@@ -643,7 +653,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         int outputSpaceIndex;
         _outputSpaceChoice->getValueAtTime(args.time, outputSpaceIndex);
         std::string outputSpaceOld;
-        _outputSpace->getValueAtTime(args.time, outputSpaceOld);
+        getOutputColorspaceAtTime(args.time, outputSpaceOld);
         std::string outputSpace = _config->getColorSpaceNameByIndex(outputSpaceIndex);
         _outputSpace->setValue(outputSpace);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
@@ -658,20 +668,16 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 }
 
 #ifdef OFX_IO_USING_OCIO
-std::string
-GenericOCIO::getInputColorspace(double time) const
+void
+GenericOCIO::getInputColorspaceAtTime(double time, std::string &v)
 {
-    std::string space;
-    _inputSpace->getValueAtTime(time, space);
-    return space;
+    _inputSpace->getValueAtTime(time, v);
 }
 
-std::string
-GenericOCIO::getOutputColorspace(double time) const
+void
+GenericOCIO::getOutputColorspaceAtTime(double time, std::string &v)
 {
-    std::string space;
-    _outputSpace->getValueAtTime(time, space);
-    return space;
+    _outputSpace->getValueAtTime(time, v);
 }
 #endif
 
@@ -785,7 +791,7 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
 #endif
 
 void
-GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
+GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* inputSpaceLabel)
 {
 #ifdef OFX_IO_USING_OCIO
     gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
@@ -803,7 +809,6 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     std::string inputSpaceName, outputSpaceName;
     if (config) {
         inputSpaceName = colorSpaceName(config, inputSpaceNameDefault);
-        outputSpaceName = colorSpaceName(config, outputSpaceNameDefault);
     }
 
     ////////// OCIO config file
@@ -836,7 +841,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     ///////////Input Color-space
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamInputSpaceName);
-        param->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
+        param->setLabels(inputSpaceLabel, inputSpaceLabel, inputSpaceLabel);
         param->setHint(kOCIOParamInputSpaceHint);
         param->setAnimates(true);
         if (config) {
@@ -850,7 +855,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #ifdef OFX_OCIO_CHOICE
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamInputSpaceChoiceName);
-        param->setLabels(kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel, kOCIOParamInputSpaceLabel);
+        param->setLabels(inputSpaceLabel, inputSpaceLabel, inputSpaceLabel);
         param->setHint(kOCIOParamInputSpaceHint);
         if (config) {
             buildChoiceMenu(config, param, inputSpaceName);
@@ -864,10 +869,33 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
         page->addChild(*param);
     }
 #endif
+#endif
+}
+
+void
+GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* outputSpaceNameDefault, const char* outputSpaceLabel)
+{
+#ifdef OFX_IO_USING_OCIO
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
+
+    char* file = std::getenv("OCIO");
+    OCIO::ConstConfigRcPtr config;
+    if (file != NULL) {
+        //Add choices
+        try {
+            config = OCIO::Config::CreateFromFile(file);
+            gWasOCIOEnvVarFound = true;
+        } catch (OCIO::Exception &e) {
+        }
+    }
+    std::string outputSpaceName;
+    if (config) {
+        outputSpaceName = colorSpaceName(config, outputSpaceNameDefault);
+    }
 
     ///////////Output Color-space
     {OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamOutputSpaceName);
-        param->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
+        param->setLabels(outputSpaceLabel, outputSpaceLabel, outputSpaceLabel);
         param->setHint(kOCIOParamOutputSpaceHint);
         param->setAnimates(true);
         if (config) {
@@ -880,7 +908,7 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
 #ifdef OFX_OCIO_CHOICE
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamOutputSpaceChoiceName);
-        param->setLabels(kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel, kOCIOParamOutputSpaceLabel);
+        param->setLabels(outputSpaceLabel, outputSpaceLabel, outputSpaceLabel);
         param->setHint(kOCIOParamOutputSpaceHint);
         if (config) {
             buildChoiceMenu(config, param, outputSpaceName);
@@ -899,6 +927,6 @@ GenericOCIO::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnu
     pb->setLabels(kOCIOHelpButtonLabel, kOCIOHelpButtonLabel, kOCIOHelpButtonLabel);
     pb->setHint(kOCIOHelpButtonHint);
     page->addChild(*pb);
-
+    
 #endif
 }

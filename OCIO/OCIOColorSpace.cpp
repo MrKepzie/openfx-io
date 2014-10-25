@@ -539,7 +539,8 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
-    GenericOCIO::describeInContext(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE, OCIO_NAMESPACE::ROLE_REFERENCE);
+    GenericOCIO::describeInContextInput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
+    GenericOCIO::describeInContextOutput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
 #endif
 
     ofxsPremultDescribeParams(desc, page);

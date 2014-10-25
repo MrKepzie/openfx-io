@@ -445,7 +445,8 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     // function should always be premultiplied/associated
 	//spec.attribute("oiio:UnassociatedAlpha", premultiply);
 #ifdef OFX_IO_USING_OCIO
-    std::string ocioColorspace = _ocio->getOutputColorspace(time);
+    std::string ocioColorspace;
+    _ocio->getOutputColorspaceAtTime(time, ocioColorspace);
     float gamma = 0.;
     std::string colorSpaceStr;
     if (ocioColorspace == "Gamma1.8") {

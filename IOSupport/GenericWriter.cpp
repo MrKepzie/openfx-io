@@ -151,6 +151,8 @@
 #define kParamClipInfoLabel "Clip Info..."
 #define kParamClipInfoHint "Display information about the inputs"
 
+#define kParamOutputSpaceLabel "File Colorspace"
+
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
@@ -1016,7 +1018,8 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     }
 
     // insert OCIO parameters
-    GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
+    GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault);
+    GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault, kParamOutputSpaceLabel);
 
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamInputPremult);

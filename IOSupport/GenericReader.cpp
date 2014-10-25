@@ -203,6 +203,8 @@ enum MissingEnum
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
 
+#define kParamInputSpaceLabel "File Colorspace"
+
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
@@ -2044,7 +2046,8 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
                                   const char* outputSpaceNameDefault)
 {
     // insert OCIO parameters
-    GenericOCIO::describeInContext(desc, context, page, inputSpaceNameDefault, outputSpaceNameDefault);
+    GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault, kParamInputSpaceLabel);
+    GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault);
 }
 
 
