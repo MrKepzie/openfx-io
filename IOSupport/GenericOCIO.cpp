@@ -251,10 +251,16 @@ GenericOCIO::isIdentity(double time)
     if (inputSpace == outputSpace) {
         return true;
     }
-    // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
-    OCIO::ConstContextRcPtr context = _config->getCurrentContext();
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
-    return proc->isNoOp();
+    try {
+        // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
+        OCIO::ConstContextRcPtr context = _config->getCurrentContext();
+        OCIO_NAMESPACE::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+        return proc->isNoOp();
+    } catch (const std::exception& e) {
+        _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return false;
+    }
 #else
     return true;
 #endif
@@ -592,8 +598,11 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (args.reason == OFX::eChangeUserEdit) {
                     _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+inputSpace+"\"");
                 }
-                inputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
-                _inputSpace->setValue(inputSpace);
+                OCIO::ConstColorSpaceRcPtr colorspace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
+                if (colorspace) {
+                    inputSpace = colorspace->getName();
+                    _inputSpace->setValue(inputSpace);
+                } 
             }
         }
         inputCheck(args.time);
