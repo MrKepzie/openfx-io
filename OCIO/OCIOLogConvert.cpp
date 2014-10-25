@@ -50,6 +50,8 @@
 #include "ofxsMacros.h"
 #include "GenericOCIO.h"
 
+#ifdef OFX_IO_USING_OCIO
+
 namespace OCIO = OCIO_NAMESPACE;
 static bool gWasOCIOEnvVarFound = false;
 
@@ -751,3 +753,11 @@ void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
     static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
+
+#else // !OFX_IO_USING_OCIO
+
+void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
+{
+}
+
+#endif

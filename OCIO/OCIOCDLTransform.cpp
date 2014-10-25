@@ -48,6 +48,8 @@
 #include "ofxsMacros.h"
 #include "GenericOCIO.h"
 
+#ifdef OFX_IO_USING_OCIO
+
 namespace OCIO = OCIO_NAMESPACE;
 
 #define kPluginName "OCIOCDLTransformOFX"
@@ -1040,3 +1042,11 @@ void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
     static OCIOCDLTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
+
+#else // !OFX_IO_USING_OCIO
+
+void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
+{
+}
+
+#endif

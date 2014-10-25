@@ -50,6 +50,8 @@
 #include "ofxsMacros.h"
 #include "IOUtility.h"
 
+#ifdef OFX_IO_USING_OCIO
+
 #define kPluginName "OCIOColorSpaceOFX"
 #define kPluginGrouping "Color/OCIO"
 #define kPluginDescription "ColorSpace transformation using OpenColorIO configuration file."
@@ -535,13 +537,11 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         maskClip->setIsMask(true);
     }
 
-#ifdef OFX_IO_USING_OCIO
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
-#endif
 
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
@@ -559,3 +559,9 @@ void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
     static OCIOColorSpacePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
     ids.push_back(&p);
 }
+
+#else // !OFX_IO_USING_OCIO
+void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
+{
+}
+#endif
