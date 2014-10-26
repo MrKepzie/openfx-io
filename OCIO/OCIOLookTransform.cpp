@@ -444,9 +444,6 @@ OCIOLookTransformPlugin::copyPixelData(bool unpremult,
 void
 OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
-    if (_ocio->isIdentity(time)/* && look == None*/) {
-        return;
-    }
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
        renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
@@ -456,29 +453,34 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
         throw std::runtime_error("OCIO: invalid components (only RGB and RGBA are supported)");
     }
 
-    OCIOProcessor processor(*this);
-    // set the images
-    processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
-
     OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
     assert(config);
 
-    std::string inputSpace;
-    _ocio->getInputColorspaceAtTime(time, inputSpace);
     bool singleLook;
     _singleLook->getValueAtTime(time, singleLook);
+    std::string lookCombination;
+    _lookCombination->getValueAtTime(time, lookCombination);
+    if (_ocio->isIdentity(time) && !singleLook && lookCombination.empty()) {
+        return; // isIdentity
+    }
+    std::string inputSpace;
+    _ocio->getInputColorspaceAtTime(time, inputSpace);
     std::string look;
     if (singleLook) {
         int lookChoice_i;
         _lookChoice->getValueAtTime(time, lookChoice_i);
         look = config->getLookNameByIndex(lookChoice_i);
     } else {
-        _lookCombination->getValueAtTime(time, look);
+        look = lookCombination;
     }
     int direction_i;
     direction_->getValueAtTime(time, direction_i);
     std::string outputSpace;
     _ocio->getOutputColorspaceAtTime(time, outputSpace);
+
+    OCIOProcessor processor(*this);
+    // set the images
+    processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
 
     try {
         OCIO::TransformDirection direction = OCIO::TRANSFORM_DIR_UNKNOWN;
