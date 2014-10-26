@@ -16,6 +16,7 @@
 #include "OCIOColorSpace.h"
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
+#include "OCIOLookTransform.h"
 #endif
 #ifndef _WINDOWS
 #include "RunScript.h"
@@ -45,6 +46,7 @@ namespace OFX
             getOCIOColorSpacePluginID(ids);
             getOCIOFileTransformPluginID(ids);
             getOCIOLogConvertPluginID(ids);
+            getOCIOLookTransformPluginID(ids);
 #endif
 #ifndef _WINDOWS
             getRunScriptPluginID(ids);

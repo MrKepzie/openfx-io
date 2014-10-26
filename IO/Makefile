@@ -9,6 +9,7 @@ PLUGINOBJECTS = \
 	OCIOCDLTransform.o \
 	OCIOFileTransform.o \
 	OCIOLogConvert.o \
+	OCIOLookTransform.o \
 	RunScript.o \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \

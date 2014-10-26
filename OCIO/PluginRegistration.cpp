@@ -3,6 +3,7 @@
 #include "OCIOColorSpace.h"
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
+#include "OCIOLookTransform.h"
 
 namespace OFX 
 {
@@ -15,6 +16,7 @@ namespace OFX
             getOCIOColorSpacePluginID(ids);
             getOCIOFileTransformPluginID(ids);
             getOCIOLogConvertPluginID(ids);
+            getOCIOLookTransformPluginID(ids);
 #endif
         }
     }

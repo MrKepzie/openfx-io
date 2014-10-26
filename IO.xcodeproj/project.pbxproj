@@ -111,6 +111,8 @@
 		1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
 		1E814C9119C9815400C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
 		1E814C9219C9815A00C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */; };
+		1E864EBE19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E864EBC19FC09D50016D4FF /* OCIOLookTransform.cpp */; };
+		1E864EBF19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E864EBC19FC09D50016D4FF /* OCIOLookTransform.cpp */; };
 		1E8B5DA618B7A2F300C31FDC /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
 		1E8B5DA818B7A2F300C31FDC /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E8B5DAA18B7A2F300C31FDC /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -332,6 +334,8 @@
 		1E77070D1977D87700E3F68D /* ofxNatron.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxNatron.h; path = include/ofxNatron.h; sourceTree = "<group>"; };
 		1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.RunScript.svg; sourceTree = "<group>"; };
 		1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOText.svg; sourceTree = "<group>"; };
+		1E864EBC19FC09D50016D4FF /* OCIOLookTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOLookTransform.cpp; sourceTree = "<group>"; };
+		1E864EBD19FC09D50016D4FF /* OCIOLookTransform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIOLookTransform.h; sourceTree = "<group>"; };
 		1E8B5D9D18B79E8100C31FDC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E8B5D9E18B79E8100C31FDC /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E8B5D9F18B79E8100C31FDC /* PluginRegistration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -644,6 +648,8 @@
 				1E0524AC19813C5B00260F03 /* OCIOFileTransform.h */,
 				1E90F4151982C04B00BB8B6D /* OCIOLogConvert.cpp */,
 				1E90F4161982C04B00BB8B6D /* OCIOLogConvert.h */,
+				1E864EBC19FC09D50016D4FF /* OCIOLookTransform.cpp */,
+				1E864EBD19FC09D50016D4FF /* OCIOLookTransform.h */,
 				1ED499D218A00BE1008A2D91 /* Info.plist */,
 				1ED499D318A00BE1008A2D91 /* Makefile */,
 				1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */,
@@ -927,6 +933,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */,
+				1E864EBE19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */,
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
 				1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */,
@@ -988,6 +995,7 @@
 			files = (
 				1E9B5EA91986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */,
+				1E864EBF19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */,
 				1E0524AE19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
 				1E90F4181982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,
 				1ED499D118A00BD6008A2D91 /* PluginRegistration.cpp in Sources */,
