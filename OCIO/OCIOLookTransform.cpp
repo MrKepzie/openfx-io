@@ -56,7 +56,19 @@
 
 #define kPluginName "OCIOLookTransformOFX"
 #define kPluginGrouping "Color/OCIO"
-#define kPluginDescription "Apply a Look from the OpenColorIO configuration file."
+#define kPluginDescription \
+"OpenColorIO LookTransform\n\n" \
+"A 'look' is a named color transform, intended to modify the look of an " \
+"image in a 'creative' manner (as opposed to a colorspace definion which " \
+"tends to be technically/mathematically defined).\n\n" \
+"Examples of looks may be a neutral grade, to be applied to film scans " \
+"prior to VFX work, or a per-shot DI grade decided on by the director, " \
+"to be applied just before the viewing transform.\n\n" \
+"OCIOLooks must be predefined in the OpenColorIO configuration before usage, " \
+"and often reference per-shot/sequence LUTs/CCs.\n\n" \
+"See the \'Look Combination\' parameter for further syntax details.\n\n" \
+"See opencolorio.org for look configuration customization examples."
+
 #define kPluginIdentifier "fr.inria.openfx.OCIOLookTransform"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
