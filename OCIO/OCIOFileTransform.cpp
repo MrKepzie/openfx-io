@@ -374,15 +374,16 @@ OCIOFileTransformPlugin::copyPixelData(bool unpremult,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     if (!unpremult && !premult && !maskmix) {
-        OFX::PixelCopier<float, 4, 1> fred(*this);
-        setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-        OFX::PixelCopier<float, 3, 1> fred(*this);
-        setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-        OFX::PixelCopier<float, 1, 1> fred(*this);
-        setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-
+        if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+            OFX::PixelCopier<float, 4, 1> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
+            OFX::PixelCopier<float, 3, 1> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
+            OFX::PixelCopier<float, 1, 1> fred(*this);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        }
     } else if (unpremult && !premult && !maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
