@@ -737,6 +737,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->appendOption(kParamTypeOptionScale);
         param->setAnimates(false);
         param->setDefault(0);
+        desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
     {
