@@ -1326,18 +1326,20 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                                pixelComponents, bitDepth, bounds, dstRowBytes);
             } else {
                 // allocate a temporary image (we must avoid reading from dstPixelData, in case several threads are rendering the same area)
-                OFX::ImageMemory mem2(memSize, this);
+                int mem2RowBytes = (bounds.x2 - bounds.x1) * pixelBytes;
+                size_t mem2Size = (bounds.y2 - bounds.y1) * mem2RowBytes;
+                OFX::ImageMemory mem2(mem2Size, this);
                 float *scaledPixelData = (float*)mem2.lock();
 
                 /// adjust the scale to match the given output image
                 DBG(std::printf("scale (tmp to scaled)\n"));
                 scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, pixelComponents,
                                bitDepth, renderWindowFullRes, tmpRowBytes, scaledPixelData,
-                               pixelComponents, bitDepth, bounds, dstRowBytes);
+                               pixelComponents, bitDepth, bounds, mem2RowBytes);
                 // apply premult
                 DBG(std::printf("premult (scaled to dst)\n"));
                 //scaledPixelData[0] = scaledPixelData[1] = scaledPixelData[2] = 1.; scaledPixelData[3] = 0.5;
-                premultPixelData(args.renderWindow, scaledPixelData, bounds, pixelComponents, bitDepth, dstRowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
+                premultPixelData(args.renderWindow, scaledPixelData, bounds, pixelComponents, bitDepth, mem2RowBytes, dstPixelData, bounds, pixelComponents, bitDepth, dstRowBytes);
                 //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
             }
         } else {
