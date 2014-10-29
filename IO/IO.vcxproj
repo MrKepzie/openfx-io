@@ -168,6 +168,7 @@
     <ClCompile Include="..\OCIO\OCIOColorSpace.cpp" />
     <ClCompile Include="..\OCIO\OCIOFileTransform.cpp" />
     <ClCompile Include="..\OCIO\OCIOLogConvert.cpp" />
+    <ClCompile Include="..\OCIO\OCIOLookTransform.cpp" />
     <ClCompile Include="..\OIIO\OIIOResize.cpp" />
     <ClCompile Include="..\OIIO\OIIOText.cpp" />
     <ClCompile Include="..\OIIO\ReadOIIO.cpp" />
@@ -203,6 +204,7 @@
     <ClInclude Include="..\OCIO\OCIOColorSpace.h" />
     <ClInclude Include="..\OCIO\OCIOFileTransform.h" />
     <ClInclude Include="..\OCIO\OCIOLogConvert.h" />
+    <ClInclude Include="..\OCIO\OCIOLookTransform.h" />
     <ClInclude Include="..\OIIO\OIIOResize.h" />
     <ClInclude Include="..\OIIO\OIIOText.h" />
     <ClInclude Include="..\OIIO\ReadOIIO.h" />
