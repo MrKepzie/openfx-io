@@ -97,6 +97,8 @@
 #define kPluginGrouping "Image"
 #define kPluginDescription \
 "Run a script with the given arguments.\n" \
+"This is mostly useful to execute an external program on a set of input images files, which outputs image files.\n" \
+"Writers should be connected to each input, so that the image files are written before running the script, and the output of this node should be fed into one or more Readers, which read the images written by the script.\n" \
 "Each argument may be:\n" \
 "- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n" \
 "- A floating-point value (which can be linked to any plugin)\n" \
