@@ -785,6 +785,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setLabels(kParamSizeLabel, kParamSizeLabel, kParamSizeLabel);
         param->setHint(kParamSizeHint);
         param->setDefault(200, 200);
+        param->setDisplayRange(0, 0, 10000, 10000);
         param->setAnimates(false);
         param->setIsSecret(true);
         param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
