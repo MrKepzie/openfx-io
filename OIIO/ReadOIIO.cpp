@@ -1389,7 +1389,33 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
         std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
 #     endif
     }
-    
+
+    std::string extensions_list;
+    getattribute("extension_list", extensions_list);
+
+    std::string extensions_pretty;
+    {
+        std::stringstream formatss(extensions_list);
+        std::string format;
+        std::vector<std::string> extensions;
+        while (std::getline(formatss, format, ';')) {
+            std::stringstream extensionss(format);
+            std::string extension;
+            std::getline(extensionss, extension, ':'); // extract the format
+            extensions_pretty += extension;
+            extensions_pretty += ": ";
+            bool first = true;
+            while (std::getline(extensionss, extension, ',')) {
+                if (!first) {
+                    extensions_pretty += ", ";
+                }
+                first = false;
+                extensions_pretty += extension;
+            }
+            extensions_pretty += "; ";
+        }
+    }
+
     // basic labels
     desc.setLabels(kPluginName, kPluginName, kPluginName);
     desc.setPluginDescription(kPluginDescription
@@ -1421,11 +1447,13 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Targa (*.tga *.tpic)\n"
                               "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
                               "Zfile (*.zfile)\n\n"
+                              "All supported formats and extensions: " + extensions_pretty + "\n\n"
                               + oiio_versions());
 
 
 #ifdef OFX_EXTENSIONS_TUTTLE
-
+#if 0
+    // hard-coded extensions list
     const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
         "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
         "pbm", "pgm", "ppm",
@@ -1433,6 +1461,23 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
         "pfm",
 #     endif
         "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+#else
+    // get extensions from OIIO (but there is no distinctions between readers and writers)
+    std::vector<std::string> extensions;
+    {
+        std::stringstream formatss(extensions_list);
+        std::string format;
+        while (std::getline(formatss, format, ';')) {
+            std::stringstream extensionss(format);
+            std::string extension;
+            std::getline(extensionss, extension, ':'); // extract the format
+            while (std::getline(extensionss, extension, ',')) {
+                extensions.push_back(extension);
+            }
+        }
+    }
+
+#endif
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(50);
 #endif
