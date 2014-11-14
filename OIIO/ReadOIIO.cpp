@@ -166,10 +166,7 @@ private:
 
     void setDefaultChannels();
     
-    void setChannels(const std::string& rChannel,
-                     const std::string& gChannel,
-                     const std::string& bChannel,
-                     const std::string& aChannel);
+    void setChannels();
 
     void setDefaultChannelsFromRed(int rChannelIdx);
 #endif
@@ -305,7 +302,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
         }
         sendMessage(OFX::Message::eMessageMessage, "", ss.str());
-    } else if (paramName == kParamRChannel) {
+    } else if (paramName == kParamRChannel && args.reason == OFX::eChangeUserEdit) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
@@ -317,7 +314,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _rChannel->getOption(rChannelIdx, optionName);
         _rChannelName->setValue(optionName);
 #endif
-    } else if (paramName == kParamGChannel) {
+    } else if (paramName == kParamGChannel && args.reason == OFX::eChangeUserEdit) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int gChannelIdx;
         _gChannel->getValue(gChannelIdx);
@@ -325,7 +322,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _gChannel->getOption(gChannelIdx, optionName);
         _gChannelName->setValue(optionName);
 #endif
-    } else if (paramName == kParamBChannel) {
+    } else if (paramName == kParamBChannel && args.reason == OFX::eChangeUserEdit) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int bChannelIdx;
         _bChannel->getValue(bChannelIdx);
@@ -334,7 +331,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _bChannelName->setValue(optionName);
 #endif
     }
-    else if (paramName == kParamAChannel) {
+    else if (paramName == kParamAChannel && args.reason == OFX::eChangeUserEdit) {
 #ifdef OFX_READ_OIIO_NEWMENU
         int aChannelIdx;
         _aChannel->getValue(aChannelIdx);
@@ -565,38 +562,42 @@ ReadOIIOPlugin::setDefaultChannels()
 }
 
 void
-ReadOIIOPlugin::setChannels(const std::string& rChannel,
-                 const std::string& gChannel,
-                 const std::string& bChannel,
-                 const std::string& aChannel)
+ReadOIIOPlugin::setChannels()
 {
     OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
     OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
-    std::string channelStrings[4] = { rChannel, gChannel, bChannel, aChannel };
-    
+
     for (int c = 0; c < 4; ++c) {
-        
-        if ( channelStrings[c].empty() ) {
-            // We are in the case where the strings were not serialized (or didn't exist in that project)
+        std::string channelString;
+        stringParams[c]->getValue(channelString);
+
+        bool channelSet = false;
+
+        if ( !channelString.empty() ) {
+            // Restore the index from the serialized string
+            for (int i = 0; i < channelParams[c]->getNOptions(); ++i) {
+                std::string option;
+                channelParams[c]->getOption(i, option);
+                if (option == channelString) {
+                    channelParams[c]->setValue(i);
+                    channelSet = true;
+                    break;
+                }
+            }
+        }
+        if (!channelSet) {
+            // We are in the case where the strings were not serialized (or didn't exist in that project),
+            // or the named channel doesnt exist,
             // so we blindly trust the values in the channels
             int idx;
             channelParams[c]->getValue(idx);
             std::string option;
             channelParams[c]->getOption(idx, option);
+            assert(option != channelString); // if they were equal, it should have triggered channelSet = true above
             stringParams[c]->setValue(option);
-        } else {
-            // Restore the index from the serialized string
-            for (int i = 0; i < channelParams[c]->getNOptions(); ++i) {
-                std::string optionString;
-                channelParams[c]->getOption(i, optionString);
-                if (optionString == channelStrings[c]) {
-                    channelParams[c]->setValue(i);
-                    break;
-                }
-            }
         }
     }
-    
+
 }
 
 #endif // OFX_READ_OIIO_NEWMENU
@@ -631,14 +632,10 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
     
     //Build available channels from OIIO spec
     buildChannelMenus();
-    
+    // set the default values for R, G, B, A channels
+    setDefaultChannels();
     //Restore channels from the channel strings serialized
-    std::string rChannel,gChannel,bChannel,aChannel;
-    _rChannelName->getValue(rChannel);
-    _gChannelName->getValue(gChannel);
-    _bChannelName->getValue(bChannel);
-    _aChannelName->getValue(aChannel);
-    setChannels(rChannel, gChannel, bChannel, aChannel);
+    setChannels();
     
     ///http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
     ///The Create instance action is in the list of actions where you can set param values
@@ -860,6 +857,8 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     buildChannelMenus();
     // set the default values for R, G, B, A channels
     setDefaultChannels();
+    //Restore channels from the channel strings serialized
+    setChannels();
 #else
     _firstChannel->setDisplayRange(0, _spec.nchannels);
     // set the first channel to the alpha channel if output is alpha
