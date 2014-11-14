@@ -66,7 +66,13 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
+#ifdef DEBUG
 #define kSupportsTiles 1
+#pragma message WARN("TextOIIO: tiles support is buggy - enabled in DEBUG mode")
+#else
+#define kSupportsTiles 0
+#pragma message WARN("TextOIIO: tiles support is buggy - disabled in  RELEASE mode")
+#endif
 #define kSupportsMultiResolution 1
 #define kSupportsRenderScale 1
 #define kRenderThreadSafety eRenderInstanceSafe
