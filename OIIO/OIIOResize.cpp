@@ -778,6 +778,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamFormatHint);
+        desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
     {
