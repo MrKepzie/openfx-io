@@ -270,7 +270,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 case OFX::eBitDepthFloat: {
                     renderInternal<float, 1>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
                 }   break;
-                default :
+                default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
         }
@@ -299,7 +299,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                     BlackFiller<float, 4> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
-                default :
+                default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
         } else if (dstComponents == OFX::ePixelComponentRGB) {
@@ -316,7 +316,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                     BlackFiller<float, 3> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
-                default :
+                default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
         } else {
@@ -334,7 +334,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                     BlackFiller<float, 1> proc(*this);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
-                default :
+                default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
             }
         }
@@ -437,29 +437,43 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
     switch (type) {
         case eResizeTypeFormat: {
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
+            double srcPAR = srcClip_->getPixelAspectRatio();
             int index;
             format_->getValue(index);
             double par;
             size_t w,h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
-            if (srcRoD.x1 == 0 && srcRoD.y1 == 0 && srcRoD.x2 == w && srcRoD.y2 == h) {
+            if (srcPAR != par) {
+                return false;
+            }
+            OfxPointD rsOne;
+            rsOne.x = rsOne.y = 1.;
+            OfxRectI srcRoDPixel;
+            OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+            if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == w && srcRoD.y2 == h) {
                 identityClip = srcClip_;
                 return true;
             }
             return false;
-        }   break;
-
+            break;
+        }
         case eResizeTypeSize: {
             OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
+            double srcPAR = srcClip_->getPixelAspectRatio();
+            OfxPointD rsOne;
+            rsOne.x = rsOne.y = 1.;
+            OfxRectI srcRoDPixel;
+            OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+
             int w,h;
             size_->getValue(w, h);
-            if (srcRoD.x1 == 0 && srcRoD.y1 == 0 && srcRoD.x2 == w && srcRoD.y2 == h) {
+            if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == w && srcRoDPixel.y2 == h) {
                 identityClip = srcClip_;
                 return true;
             }
             return false;
-        }   break;
-
+            break;
+        }
         case eResizeTypeScale: {
             double sx,sy;
             scale_->getValue(sx, sy);
@@ -468,10 +482,8 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
                 return true;
             }
             return false;
-        }   break;
-
-        default:
             break;
+        }
     }
     return false;
 }
@@ -509,9 +521,6 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
                 scale_->setIsSecret(false);
                 format_->setIsSecret(true);
                 break;
-
-            default:
-                break;
         }
     }
 }
@@ -521,7 +530,8 @@ OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::s
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit) {
         OfxPointD projectSize = getProjectSize();
-        
+        double projectPAR = getProjectPixelAspectRatio();
+
         ///Try to find a format matching the project format in which case we switch to format mode otherwise
         ///switch to size mode and set the size accordingly
         bool foundFormat = false;
@@ -529,7 +539,7 @@ OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::s
             std::size_t w,h;
             double par;
             getFormatResolution((OFX::EParamFormat)i, &w, &h, &par);
-            if (w == projectSize.x && h == projectSize.y) {
+            if (w == projectSize.x && h == projectSize.y && par == projectPAR) {
                 format_->setValue((OFX::EParamFormat)i);
                 type_->setValue((int)eResizeTypeFormat);
                 foundFormat = true;
@@ -558,9 +568,13 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             double par;
             size_t w,h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
-            rod.x1 = rod.y1 = 0;
-            rod.x2 = w;
-            rod.y2 = h;
+            OfxRectI rodPixel;
+            rodPixel.x1 = rodPixel.y1 = 0;
+            rodPixel.x2 = w;
+            rodPixel.y2 = h;
+            OfxPointD rsOne;
+            rsOne.x = rsOne.y = 1.;
+            OFX::MergeImages2D::toCanonical(rodPixel, rsOne, par, &rod);
         }   break;
 
         case eResizeTypeSize: {
@@ -607,9 +621,6 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             rod.y1 = std::min(srcRoD.y1, srcRoD.y2 - 1);
             rod.y2 = std::max(srcRoD.y1 + 1, srcRoD.y2);
         }   break;
-            
-        default:
-            return false;
     }
     return true;
 }
@@ -621,11 +632,10 @@ OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &ar
 {
     if (!kSupportsTiles) {
         // The effect requires full images to render any region
-        OfxRectD srcRoI;
 
         if (srcClip_ && srcClip_->isConnected()) {
-            srcRoI = srcClip_->getRegionOfDefinition(args.time);
-            rois.setRegionOfInterest(*srcClip_, srcRoI);
+            OfxRectD srcRoD = srcClip_->getRegionOfDefinition(args.time);
+            rois.setRegionOfInterest(*srcClip_, srcRoD);
         }
     }
 }
@@ -644,17 +654,14 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
             format_->getValue(index);
             size_t w,h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
-        }   break;
-            
+            clipPreferences.setPixelAspectRatio(*dstClip_, par);
+            break;
+        }
         case eResizeTypeSize:
         case eResizeTypeScale:
-        default:
-            par = 1.;
+            // don't change the pixel aspect ratio
             break;
-
     }
-
-    clipPreferences.setPixelAspectRatio(*dstClip_, par);
 }
 
 
