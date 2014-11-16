@@ -568,6 +568,7 @@ ReadOIIOPlugin::setChannels()
     OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
 
     for (int c = 0; c < 4; ++c) {
+        
         std::string channelString;
         stringParams[c]->getValue(channelString);
 
@@ -589,12 +590,19 @@ ReadOIIOPlugin::setChannels()
             // We are in the case where the strings were not serialized (or didn't exist in that project),
             // or the named channel doesnt exist,
             // so we blindly trust the values in the channels
-            int idx;
-            channelParams[c]->getValue(idx);
-            std::string option;
-            channelParams[c]->getOption(idx, option);
-            assert(option != channelString); // if they were equal, it should have triggered channelSet = true above
-            stringParams[c]->setValue(option);
+            
+            //Edit: don't do this if the channel menus are empty (i.e: containing only 2 entries (0 and 1)) otherwise
+            //we will always set the strings to "0" when building new instances of the plug-in and when
+            //inputFileChanged() will be called further on, it will set the channel index to 0 since the string won't be empty!
+            int nChoices = channelParams[c]->getNOptions();
+            if (nChoices > 2) {
+                int idx;
+                channelParams[c]->getValue(idx);
+                std::string option;
+                channelParams[c]->getOption(idx, option);
+                assert(option != channelString); // if they were equal, it should have triggered channelSet = true above
+                stringParams[c]->setValue(option);
+            }
         }
     }
 
