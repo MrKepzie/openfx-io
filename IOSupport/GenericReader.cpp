@@ -1578,6 +1578,25 @@ GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
 void
 GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
+    // if there is only one frame and before/after behaviour is hold, then
+    // the output is not framevarying
+    bool frameVarying = true;
+    OfxRangeI sequenceTimeDomain;
+    _firstFrame->getValue(sequenceTimeDomain.min);
+    _lastFrame->getValue(sequenceTimeDomain.max);
+    if (sequenceTimeDomain.min == sequenceTimeDomain.max) {
+        int beforeChoice_i;
+        _beforeFirst->getValue(beforeChoice_i);
+        BeforeAfterEnum beforeChoice = BeforeAfterEnum(beforeChoice_i);
+        int afterChoice_i;
+        _afterLast->getValue(afterChoice_i);
+        BeforeAfterEnum afterChoice = BeforeAfterEnum(afterChoice_i);
+        if (beforeChoice == eBeforeAfterHold && afterChoice == eBeforeAfterHold) {
+            frameVarying = false;
+        }
+    }
+    clipPreferences.setOutputFrameVarying(frameVarying); // true for readers and frame-varying generators/effects @see kOfxImageEffectFrameVarying
+
     int outputComponents_i;
     _outputComponents->getValue(outputComponents_i);
     OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
@@ -1724,7 +1743,7 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
     
     desc.setSupportsTiles(supportsTiles);
-    desc.setTemporalClipAccess(false); // say we will be doing random time access on clips
+    desc.setTemporalClipAccess(false); // say we will not be doing random time access on clips
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(true); // plugin may setPixelAspectRatio on output clip
     desc.setRenderThreadSafety(OFX::eRenderFullySafe);
