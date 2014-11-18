@@ -1581,9 +1581,8 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     // if there is only one frame and before/after behaviour is hold, then
     // the output is not framevarying
     bool frameVarying = true;
-    OfxRangeI sequenceTimeDomain;
-    _firstFrame->getValue(sequenceTimeDomain.min);
-    _lastFrame->getValue(sequenceTimeDomain.max);
+    OfxRangeD sequenceTimeDomain;
+    getSequenceTimeDomainInternal(sequenceTimeDomain, false);
     if (sequenceTimeDomain.min == sequenceTimeDomain.max) {
         int beforeChoice_i;
         _beforeFirst->getValue(beforeChoice_i);
