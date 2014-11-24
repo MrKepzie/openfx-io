@@ -201,7 +201,7 @@ private:
     /**
      * @brief Used internally by the GenericReader.
      **/
-    void timeDomainFromSequenceTimeDomain(OfxRangeD& range, bool mustSetFrameRange);
+    void timeDomainFromSequenceTimeDomain(OfxRangeD& range, bool mustSetFrameRange, bool setFirstLastFrame = true);
     
     /**
      * @brief Should return true if the file indicated by filename is a video-stream and not 
@@ -322,6 +322,8 @@ protected:
     
     OFX::ChoiceParam* _outputComponents;
     OFX::ChoiceParam* _premult;
+    
+    OFX::BooleanParam* _timeDomainUserSet; //< true when the time domain has bee nuser edited
     
     std::auto_ptr<GenericOCIO> _ocio;
 

@@ -147,6 +147,8 @@ enum FrameModeEnum
 #define kParamAfterHint \
 "What to do after the last frame of the sequence."
 
+#define kParamTimeDomainUserEdited "timeDomainUserEdited"
+
 enum BeforeAfterEnum
 {
     eBeforeAfterHold,
@@ -257,6 +259,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _originalFrameRange(0)
 , _outputComponents(0)
 , _premult(0)
+, _timeDomainUserSet(0)
 , _ocio(new GenericOCIO(this))
 , _sequenceFromFiles()
 , _supportsTiles(supportsTiles)
@@ -277,6 +280,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _timeOffset = fetchIntParam(kParamTimeOffset);
     _startingTime = fetchIntParam(kParamStartingTime);
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
+    _timeDomainUserSet = fetchBooleanParam(kParamTimeDomainUserEdited);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     _premult = fetchChoiceParam(kParamFilePremult);
 }
@@ -309,7 +313,11 @@ GenericReaderPlugin::restoreStateFromParameters()
     
     OfxRangeD tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
-        timeDomainFromSequenceTimeDomain(tmp, true);
+        
+        bool timeDomainUserEdited;
+        _timeDomainUserSet->getValue(timeDomainUserEdited);
+        
+        timeDomainFromSequenceTimeDomain(tmp, true, !timeDomainUserEdited);
     }
     ///We call restoreState with the first frame of the sequence so we're almost sure it will work
     ///unless the user did a mistake. We are also safe to assume that images specs are the same for
@@ -377,7 +385,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
 
 
 void
-GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange)
+GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange, bool setFirstLastFrame)
 {
     ///the values held by GUI parameters
     int frameRangeFirst,frameRangeLast;
@@ -386,11 +394,14 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool must
         frameRangeFirst = range.min;
         frameRangeLast = range.max;
         startingTime = frameRangeFirst;
+        
         _firstFrame->setRange(range.min, range.max);
         _lastFrame->setRange(range.min, range.max);
         
-        _firstFrame->setValue(range.min);
-        _lastFrame->setValue(range.max);
+        if (setFirstLastFrame) {
+            _firstFrame->setValue(range.min);
+            _lastFrame->setValue(range.max);
+        }
         
         _originalFrameRange->setValue(range.min, range.max);
     } else {
@@ -1470,6 +1481,8 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int offset;
         _timeOffset->getValue(offset);
         _startingTime->setValue(first + offset); // will be called with reason == eChangePluginEdit
+        
+        _timeDomainUserSet->setValue(true);
 
     } else if (paramName == kParamLastFrame && args.reason == OFX::eChangeUserEdit) {
         int first;
@@ -1477,6 +1490,8 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
         _firstFrame->setRange(first, last);
+        
+        _timeDomainUserSet->setValue(true);
 
     } else if (paramName == kParamFrameMode && args.reason == OFX::eChangeUserEdit) {
         int frameMode_i;
@@ -1934,6 +1949,16 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0);
         param->setAnimates(true);
         param->setIsSecret(true);
+        page->addChild(*param);
+    }
+    
+    /////////// Secret param set to true if the time domain was edited by the user
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamTimeDomainUserEdited);
+        param->setLabels(kParamTimeDomainUserEdited, kParamTimeDomainUserEdited, kParamTimeDomainUserEdited);
+        param->setIsSecret(true);
+        param->setDefault(false);
+        param->setAnimates(false);
         page->addChild(*param);
     }
 
