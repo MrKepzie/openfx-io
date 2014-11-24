@@ -1363,8 +1363,6 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
-				EXR_PATH = /opt/local;
-				FFMPEG_PATH = /opt/local;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -1386,9 +1384,7 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
-				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
-				OIIO_PATH = /opt/local;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-L$(OCIO_PATH)/lib",
@@ -1404,8 +1400,6 @@
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				EXPORTED_SYMBOLS_FILE = "$(OFX_PATH)/Support/include/osxSymbols";
-				EXR_PATH = /opt/local;
-				FFMPEG_PATH = /opt/local;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"NDEBUG=1",
 					"$(inherited)",
@@ -1426,9 +1420,7 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
 				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
-				OCIO_PATH = /opt/local;
 				OFX_PATH = openfx;
-				OIIO_PATH = /opt/local;
 				OTHER_LDFLAGS = (
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",

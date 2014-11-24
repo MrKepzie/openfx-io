@@ -118,6 +118,16 @@ Then to compile...
 	
 where /opt/local is where the macports tree stores the includes and libs.
 
+## Using Xcode on OSX
+
+In order to use the provided Xcode project file, you should add the
+following definitions in the Xcode preferences
+(Preferences/Locations/Source trees in Xcode 6):
+- EXR_PATH: path to OpenEXR installation prefix (e.g. /usr/local or /opt/local)
+- FFMPEG_PATH: path to FFmpeg installation prefix  (e.g. /usr/local or /opt/local)
+- OCIO_PATH: path to OpenColorIO installation prefix (e.g. /usr/local or /opt/local)
+- OIIO_PATH: path to OpenImageIO installation prefix (e.g. /usr/local or /opt/local)
+
 ## Compiling on MS Windows
 
 We provide pre-compiled static binaries for dependencies here:
