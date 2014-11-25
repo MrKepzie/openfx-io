@@ -818,7 +818,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setHint(kOCIOParamConfigFileHint);
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
-        param->setAnimates(true);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         // the OCIO config can only be set in a portable fashion using the environment variable.
         // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.

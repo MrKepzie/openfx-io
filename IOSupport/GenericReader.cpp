@@ -1766,7 +1766,7 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
 OFX::PageParamDescriptor *
 GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                                     OFX::ContextEnum /*context*/,
-                                    bool isVideoStreamPlugin,
+                                    bool /*isVideoStreamPlugin*/,
                                     bool supportsRGBA,
                                     bool supportsRGB,
                                     bool supportsAlpha,
@@ -1980,7 +1980,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamProxyHint);
-        param->setAnimates(!isVideoStreamPlugin);
+        param->setAnimates(false);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamProxy);
         desc.addClipPreferencesSlaveParam(*param);
