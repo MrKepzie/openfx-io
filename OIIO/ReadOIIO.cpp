@@ -168,7 +168,7 @@ private:
     
     void setChannels();
 
-    void setDefaultChannelsFromRed(int rChannelIdx);
+    void setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames);
 #endif
 
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -307,7 +307,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
         if (rChannelIdx >= kXChannelFirst) {
-            setDefaultChannelsFromRed(rChannelIdx - kXChannelFirst);
+            setDefaultChannelsFromRed(rChannelIdx - kXChannelFirst, true);
         }
         
         std::string optionName;
@@ -408,7 +408,7 @@ ReadOIIOPlugin::buildChannelMenus()
 // called when the red channel is set
 // from the red channel name, infer the corresponding G,B,A channel values
 void
-ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx)
+ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames)
 {
     assert(rChannelIdx >= 0);
     if (!_specValid) {
@@ -468,32 +468,67 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx)
             ++layerViewChannels;
             if (_spec.channelnames[i] == gFullName) {
                 _gChannel->setValue(kXChannelFirst + i);
+                if (mustSetChannelNames) {
+                    std::string optionName;
+                    _gChannel->getOption(kXChannelFirst + i, optionName);
+                    _gChannelName->setValue(optionName);
+                }
                 gSet = true;
             }
             if (_spec.channelnames[i] == bFullName) {
                 _bChannel->setValue(kXChannelFirst + i);
+                if (mustSetChannelNames) {
+                    std::string optionName;
+                    _bChannel->getOption(kXChannelFirst + i, optionName);
+                    _bChannelName->setValue(optionName);
+                }
                 bSet = true;
             }
             if (_spec.channelnames[i] == aFullName) {
                 _aChannel->setValue(kXChannelFirst + i);
+                if (mustSetChannelNames) {
+                    std::string optionName;
+                    _aChannel->getOption(kXChannelFirst + i, optionName);
+                    _aChannelName->setValue(optionName);
+                }
                 aSet = true;
             }
         }
     }
     if (!gSet) {
         _gChannel->setValue(0);
+        if (mustSetChannelNames) {
+            std::string optionName;
+            _gChannel->getOption(0, optionName);
+            _gChannelName->setValue(optionName);
+        }
     }
     if (!bSet) {
         _bChannel->setValue(0);
+        if (mustSetChannelNames) {
+            std::string optionName;
+            _bChannel->getOption(0, optionName);
+            _bChannelName->setValue(optionName);
+        }
     }
     if (!aSet) {
         if (_spec.alpha_channel >= 0) {
             _aChannel->setValue(kXChannelFirst + _spec.alpha_channel);
+            if (mustSetChannelNames) {
+                std::string optionName;
+                _aChannel->getOption(kXChannelFirst + _spec.alpha_channel, optionName);
+                _aChannelName->setValue(optionName);
+            }
         } else if (layerViewChannels != 4) {
             // Output is Opaque with alpha=0 by default,
             // but premultiplication is set to opaque.
             // That way, chaining with a Roto node works correctly.
             _aChannel->setValue(0);
+            if (mustSetChannelNames) {
+                std::string optionName;
+                _aChannel->getOption(0, optionName);
+                _aChannelName->setValue(optionName);
+            }
         } else {
             // if there are exactly 4 channels in this layer/view, then the
             // remaining one should be Alpha
@@ -505,6 +540,11 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx)
                         _spec.channelnames[i] != gFullName &&
                         _spec.channelnames[i] != bFullName) {
                         _aChannel->setValue(kXChannelFirst + i);
+                        if (mustSetChannelNames) {
+                            std::string optionName;
+                            _aChannel->getOption(kXChannelFirst + i, optionName);
+                            _aChannelName->setValue(optionName);
+                        }
                     }
                 }
             }
@@ -552,7 +592,7 @@ ReadOIIOPlugin::setDefaultChannels()
     if (rChannelIdx >= 0) {
         // red was found
         _rChannel->setValue(kXChannelFirst + rChannelIdx);
-        setDefaultChannelsFromRed(rChannelIdx);
+        setDefaultChannelsFromRed(rChannelIdx, false);
     } else {
         _rChannel->setValue(0);
         _gChannel->setValue(0);
