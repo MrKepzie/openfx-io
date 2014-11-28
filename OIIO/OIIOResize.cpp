@@ -719,7 +719,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     srcClip->addSupportedComponent(ePixelComponentRGB);
     srcClip->addSupportedComponent(ePixelComponentAlpha);
     srcClip->setTemporalClipAccess(false);
-    srcClip->setSupportsTiles(true);
+    srcClip->setSupportsTiles(kSupportsTiles);
     srcClip->setIsMask(false);
 
     // create the mandated output clip
@@ -727,7 +727,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->addSupportedComponent(ePixelComponentAlpha);
-    dstClip->setSupportsTiles(true);
+    dstClip->setSupportsTiles(kSupportsTiles);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
