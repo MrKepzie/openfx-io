@@ -358,6 +358,9 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         processor.setMaskImg(mask.get(), maskInvert);
     }
 
+    if (!orig.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
     // set the images
     assert(orig.get() && dstPixelData && srcPixelData);
     processor.setOrigImg(orig.get());
