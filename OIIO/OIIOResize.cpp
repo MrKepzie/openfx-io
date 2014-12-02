@@ -450,7 +450,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             rsOne.x = rsOne.y = 1.;
             OfxRectI srcRoDPixel;
             OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
-            if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == w && srcRoD.y2 == h) {
+            if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == (int)w && srcRoD.y2 == (int)h) {
                 identityClip = srcClip_;
                 return true;
             }
