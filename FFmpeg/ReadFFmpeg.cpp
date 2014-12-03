@@ -534,9 +534,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setPluginEvaluation(0);
 #endif
     
-#ifndef OFX_IO_MT_FFMPEG
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-#endif
     
   
     
