@@ -374,7 +374,11 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
     }
     int width,height,frames;
     double ap;
-    _ffmpegFile->getInfo(width, height, ap, frames);
+    if (!_ffmpegFile->getInfo(width, height, ap, frames)) {
+        width = 0;
+        height = 0;
+        ap = 1.;
+    }
     bounds->x1 = 0;
     bounds->x2 = width;
     bounds->y1 = 0;
