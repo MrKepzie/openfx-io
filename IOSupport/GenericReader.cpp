@@ -1707,6 +1707,12 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
                 success = getFrameRate(filename, &fps);
                 if (success) {
                     clipPreferences.setOutputFrameRate(fps);
+                    
+                    double valueFps;
+                    _fps->getValue(valueFps);
+                    if (valueFps != fps) {
+                        _fps->setValue(fps);
+                    }
                 }
             }
         }
