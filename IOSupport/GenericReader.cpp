@@ -1603,6 +1603,28 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _customFPS->getValue(customFps);
         _fps->setEnabled(customFps);
         
+        if (!customFps) {
+            OfxRangeD tmp;
+            if (getSequenceTimeDomainInternal(tmp,false)) {
+                timeDomainFromSequenceTimeDomain(tmp, false);
+                _startingTime->setValue(tmp.min);
+                
+                ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
+                ///unless the user did a mistake. We are also safe to assume that images specs are the same for
+                ///all the sequence
+                std::string filename;
+                _fileParam->getValueAtTime(tmp.min, filename);
+                
+                double fps;
+                bool gotFps = getFrameRate(filename, &fps);
+                if  (gotFps) {
+                    _fps->setValue(fps);
+                }
+
+            }
+            
+        }
+        
     } else {
         _ocio->changedParam(args, paramName);
     }
@@ -1707,12 +1729,6 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
                 success = getFrameRate(filename, &fps);
                 if (success) {
                     clipPreferences.setOutputFrameRate(fps);
-                    
-                    double valueFps;
-                    _fps->getValue(valueFps);
-                    if (valueFps != fps) {
-                        _fps->setValue(fps);
-                    }
                 }
             }
         }
