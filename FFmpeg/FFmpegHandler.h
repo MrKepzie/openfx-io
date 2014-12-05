@@ -215,12 +215,16 @@ namespace FFmpeg {
         bool decode(unsigned char* buffer, int frame,bool loadNearest, int maxRetries, unsigned streamIdx = 0);
         
         // get stream information
+        bool getFPS(double& fps,
+                     unsigned streamIdx = 0);
+        
+        // get stream information
         bool getInfo(int& width,
                      int& height,
                      double& aspect,
                      int& frames,
                      unsigned streamIdx = 0);
-        
+
         
     };
     

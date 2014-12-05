@@ -103,6 +103,8 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
+    virtual bool getFrameRate(const std::string& filename, double* fps) const OVERRIDE FINAL;
+    
     virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
 };
 
@@ -251,7 +253,6 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     
     int width,height,frames;
     double ap;
-    
     _ffmpegFile->getInfo(width, height, ap, frames);
 
     // wrong assert:
@@ -341,6 +342,27 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
         return false;
     }
     
+}
+
+bool
+ReadFFmpegPlugin::getFrameRate(const std::string& filename, double* fps) const
+{
+    assert(fps);
+    
+    if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
+        _ffmpegFile->open(filename);
+    } else if (!_ffmpegFile) {
+        return false;
+    }
+    if (!_ffmpegFile->isValid()) {
+        return false;
+    }
+    if(!_ffmpegFile) {
+        return false;
+    }
+    
+    bool gotFps = _ffmpegFile->getFPS(*fps);
+    return gotFps;
 }
 
 

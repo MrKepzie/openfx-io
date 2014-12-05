@@ -1651,10 +1651,16 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         if (e == eGetFileNameReturnedFullRes) {
             OfxRectI bounds;
             double par = 1.;
+            double fps = 24.;
             std::string error;
             bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
+            }
+            
+            success = getFrameRate(filename, &fps);
+            if (success) {
+                clipPreferences.setPixelAspectRatio(*_outputClip, fps);
             }
         }
     }

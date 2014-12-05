@@ -836,6 +836,24 @@ namespace FFmpeg {
         return hasPicture;
     }
     
+    bool File::getFPS(double& fps,
+                unsigned streamIdx)
+    {
+#ifdef OFX_IO_MT_FFMPEG
+        OFX::MultiThread::AutoMutex guard(_lock);
+#endif
+        
+        if (streamIdx >= _streams.size())
+            return false;
+        
+        // get the stream
+        Stream* stream = _streams[streamIdx];
+        fps = (double)stream->_fpsNum / stream->_fpsDen;
+        return true;
+
+
+    }
+    
     // get stream information
     bool File::getInfo(int& width,
                        int& height,
@@ -857,7 +875,6 @@ namespace FFmpeg {
         height = stream->_height;
         aspect = stream->_aspect;
         frames = (int)stream->_frames;
-        
         return true;
     }
     
