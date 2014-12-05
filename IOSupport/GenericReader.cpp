@@ -2154,6 +2154,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamCustomFpsHint);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
+        desc.addClipPreferencesSlaveParam(*param);
         page->addChild(*param);
     }
 
