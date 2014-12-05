@@ -217,7 +217,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    std::auto_ptr<OFX::Image> src(srcClip_->fetchImage(args.time));
+    std::auto_ptr<const OFX::Image> src(srcClip_->fetchImage(args.time));
     if (src.get()) {
         OFX::BitDepthEnum dstBitDepth       = dst->getPixelDepth();
         OFX::PixelComponentEnum dstComponents  = dst->getPixelComponents();
