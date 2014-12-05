@@ -114,6 +114,8 @@ private:
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
+    virtual void setOutputFrameRate(double fps) OVERRIDE FINAL;
+    
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
 
     void freeFormat();
@@ -662,6 +664,12 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     
     _lastTimeEncoded = time;
     
+}
+
+void
+WriteFFmpegPlugin::setOutputFrameRate(double fps)
+{
+    _fps->setValue(fps);
 }
 
 void WriteFFmpegPlugin::freeFormat() { 

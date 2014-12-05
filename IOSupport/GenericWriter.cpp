@@ -855,6 +855,9 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
                (components == OFX::ePixelComponentRGBA));
 #      endif
         _premult->setValue(premult);
+        
+        double fps = _inputClip->getFrameRate();
+        setOutputFrameRate(fps);
     }
 }
 

@@ -163,6 +163,8 @@ protected:
      **/
     virtual bool isImageFile(const std::string& fileExtension) const = 0;
     
+    virtual void setOutputFrameRate(double /*fps*/) {}
+    
     /**
      * @brief Must return whether your plug-in expects an input stream to be premultiplied or unpremultiplied to encode
      * properly into the file.
