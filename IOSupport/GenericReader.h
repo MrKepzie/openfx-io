@@ -327,6 +327,9 @@ protected:
     
     OFX::BooleanParam* _timeDomainUserSet; //< true when the time domain has bee nuser edited
     
+    OFX::BooleanParam* _customFPS;
+    OFX::DoubleParam* _fps;
+    
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:

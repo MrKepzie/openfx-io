@@ -207,6 +207,15 @@ enum MissingEnum
 
 #define kParamInputSpaceLabel "File Colorspace"
 
+#define kParamFrameRate "frameRate"
+#define kParamFrameRateLabel "Frame rate"
+#define kParamFrameRateHint "By default this value is guessed from the file. You can override it by checking the Custom fps parameter. " \
+"The value of this parameter is what will be visible by the effects down-stream."
+
+#define kParamCustomFps "customFps"
+#define kParamCustomFpsLabel "Custom FPS"
+#define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter."
+
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
@@ -260,6 +269,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _outputComponents(0)
 , _premult(0)
 , _timeDomainUserSet(0)
+, _customFPS(0)
+, _fps(0)
 , _ocio(new GenericOCIO(this))
 , _sequenceFromFiles()
 , _supportsTiles(supportsTiles)
@@ -283,6 +294,8 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _timeDomainUserSet = fetchBooleanParam(kParamTimeDomainUserEdited);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     _premult = fetchChoiceParam(kParamFilePremult);
+    _customFPS = fetchBooleanParam(kParamCustomFps);
+    _fps = fetchDoubleParam(kParamFrameRate);
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -325,6 +338,16 @@ GenericReaderPlugin::restoreStateFromParameters()
     _fileParam->getValueAtTime(tmp.min, filename);
     
     restoreState(filename);
+    
+    bool customFps;
+    _customFPS->getValue(customFps);
+    if (!customFps) {
+        double fps;
+        bool gotFps = getFrameRate(filename, &fps);
+        if (gotFps) {
+            _fps->setValue(fps);
+        }
+    }
 }
 
 bool
@@ -1414,6 +1437,16 @@ GenericReaderPlugin::inputFileChanged()
         }
         setOutputComponents(components);
         _premult->setValue((int)premult);
+        
+        bool customFps;
+        _customFPS->getValue(customFps);
+        if (!customFps) {
+            double fps;
+            bool gotFps = getFrameRate(filename, &fps);
+            if (gotFps) {
+                _fps->setValue(fps);
+            }
+        }
     }
 }
 
@@ -1564,6 +1597,12 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             // Alpha is always premultiplied
             _premult->setValue((int)OFX::eImagePreMultiplied);
         }
+    } else if (paramName == kParamCustomFps) {
+      
+        bool customFps;
+        _customFPS->getValue(customFps);
+        _fps->setEnabled(customFps);
+        
     } else {
         _ocio->changedParam(args, paramName);
     }
@@ -1651,16 +1690,24 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         if (e == eGetFileNameReturnedFullRes) {
             OfxRectI bounds;
             double par = 1.;
-            double fps = 24.;
             std::string error;
             bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
             }
             
-            success = getFrameRate(filename, &fps);
-            if (success) {
+            bool customFPS;
+            _customFPS->getValue(customFPS);
+            
+            double fps;
+            if (customFPS) {
+                _fps->getValue(fps);
                 clipPreferences.setOutputFrameRate(fps);
+            } else {
+                success = getFrameRate(filename, &fps);
+                if (success) {
+                    clipPreferences.setOutputFrameRate(fps);
+                }
             }
         }
     }
@@ -2029,7 +2076,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setIsSecret(true);
         param->setDefault(false);
         param->setHint(kParamCustomProxyScaleHint);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setEvaluateOnChange(false);
         page->addChild(*param);
     }
@@ -2083,6 +2130,30 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
+        page->addChild(*param);
+    }
+    
+    ///Frame rate
+    {
+        DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFrameRate);
+        param->setLabels(kParamFrameRateLabel, kParamFrameRateLabel, kParamFrameRateLabel);
+        param->setHint(kParamFrameRateHint);
+        param->setAnimates(false);
+        param->setEvaluateOnChange(false);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        desc.addClipPreferencesSlaveParam(*param);
+        param->setEnabled(false);
+        param->setDefault(24.);
+        page->addChild(*param);
+    }
+    
+    ///Custom FPS
+    {
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamCustomFps);
+        param->setLabels(kParamCustomFpsLabel, kParamCustomFpsLabel, kParamCustomFpsLabel);
+        param->setHint(kParamCustomFpsHint);
+        param->setAnimates(false);
+        param->setEvaluateOnChange(false);
         page->addChild(*param);
     }
 
