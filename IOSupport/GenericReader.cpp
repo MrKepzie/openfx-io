@@ -1660,7 +1660,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             
             success = getFrameRate(filename, &fps);
             if (success) {
-                clipPreferences.setPixelAspectRatio(*_outputClip, fps);
+                clipPreferences.setOutputFrameRate(fps);
             }
         }
     }
