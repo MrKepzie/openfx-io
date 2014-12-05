@@ -262,7 +262,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // since it may trigger render actions upstream
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
         if (srcClip_[i]->isConnected()) {
-            std::auto_ptr<OFX::Image> srcImg(srcClip_[i]->fetchImage(args.time));
+            std::auto_ptr<const OFX::Image> srcImg(srcClip_[i]->fetchImage(args.time));
             if (!srcImg.get()) {
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
