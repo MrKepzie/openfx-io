@@ -1090,12 +1090,12 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
             OFX::throwSuiteStatusException(kOfxStatFailed);
 
         case eGetFileNameBlack:
-            clearPersistentMessage();
+            //clearPersistentMessage();
             return false;
 
         case eGetFileNameReturnedFullRes:
         case eGetFileNameReturnedProxy:
-            clearPersistentMessage();
+            //clearPersistentMessage();
             break;
     }
 
