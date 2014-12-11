@@ -509,7 +509,7 @@ setupAndCopy(OFX::PixelProcessorFilterBase & processor,
 
     // set the images
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
 
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -573,7 +573,7 @@ setupAndProcess(OFX::PixelProcessorFilterBase & processor,
     
     // set the images
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
     
     // set the render window
     processor.setRenderWindow(renderWindow);

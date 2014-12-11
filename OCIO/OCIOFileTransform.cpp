@@ -333,7 +333,7 @@ OCIOFileTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     assert(orig.get() && dstPixelData && srcPixelData);
     processor.setOrigImg(orig.get());
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
 
     // set the render window
     processor.setRenderWindow(renderWindow);
