@@ -5,4 +5,7 @@ PLUGINOBJECTS = \
 
 PLUGINNAME = PFM
 
+RESOURCES = \
+fr.inria.openfx.ReadPFM.png \fr.inria.openfx.ReadPFM.svg \fr.inria.openfx.WritePFM.png \fr.inria.openfx.WritePFM.svg  
+
 include ../Makefile.master

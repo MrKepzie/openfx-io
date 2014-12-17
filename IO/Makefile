@@ -20,8 +20,17 @@ PLUGINNAME = IO
 
 # ls */*png|sed -e 's!^!../!' -e 's!$! \\!'
 RESOURCES = \
+../EXR/fr.inria.openfx.WriteEXR.png \
+../EXR/fr.inria.openfx.WriteEXR.svg \
+../EXR/fr.inria.openfx.ReadEXR.png \
+../EXR/fr.inria.openfx.ReadEXR.svg \
+../FFmpeg/fr.inria.openfx.ReadFFmpeg.png \../FFmpeg/fr.inria.openfx.ReadFFmpeg.svg \../FFmpeg/fr.inria.openfx.WriteFFmpeg.png \../FFmpeg/fr.inria.openfx.WriteFFmpeg.svg \
+../OIIO/fr.inria.openfx.ReadOIIO.png \../OIIO/fr.inria.openfx.ReadOIIO.svg \../OIIO/fr.inria.openfx.WriteOIIO.png \../OIIO/fr.inria.openfx.WriteOIIO.svg \
 ../OIIO/fr.inria.openfx.OIIOText.png \
+../OIIO/fr.inria.openfx.OIIOText.svg \
+../PFM/fr.inria.openfx.ReadPFM.png \../PFM/fr.inria.openfx.ReadPFM.svg \../PFM/fr.inria.openfx.WritePFM.png \../PFM/fr.inria.openfx.WritePFM.svg \
 ../RunScript/fr.inria.openfx.RunScript.png \
+../RunScript/fr.inria.openfx.RunScript.svg 
 
 VPATH += \
 ../EXR \
