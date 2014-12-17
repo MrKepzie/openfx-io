@@ -171,6 +171,22 @@
 		1EE4A8CF19C6F08A00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D119C6F0EA00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */; };
+		AC6486FA1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */; };
+		AC6486FB1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */; };
+		AC6486FC1A41BDFD0088844F /* fr.inria.openfx.WriteFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */; };
+		AC6486FD1A41BDFD0088844F /* fr.inria.openfx.WriteFFmpeg.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F91A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.svg */; };
+		AC6486FE1A41BE020088844F /* fr.inria.openfx.ReadEXR.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F21A41BDE80088844F /* fr.inria.openfx.ReadEXR.png */; };
+		AC6486FF1A41BE020088844F /* fr.inria.openfx.ReadEXR.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F31A41BDE80088844F /* fr.inria.openfx.ReadEXR.svg */; };
+		AC6487001A41BE020088844F /* fr.inria.openfx.WriteEXR.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F41A41BDE80088844F /* fr.inria.openfx.WriteEXR.png */; };
+		AC6487011A41BE020088844F /* fr.inria.openfx.WriteEXR.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F51A41BDE80088844F /* fr.inria.openfx.WriteEXR.svg */; };
+		AC6487021A41BE0B0088844F /* fr.inria.openfx.ReadOIIO.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EE1A41BDDD0088844F /* fr.inria.openfx.ReadOIIO.png */; };
+		AC6487031A41BE0B0088844F /* fr.inria.openfx.ReadOIIO.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EF1A41BDDD0088844F /* fr.inria.openfx.ReadOIIO.svg */; };
+		AC6487041A41BE0B0088844F /* fr.inria.openfx.WriteOIIO.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F01A41BDDD0088844F /* fr.inria.openfx.WriteOIIO.png */; };
+		AC6487051A41BE0B0088844F /* fr.inria.openfx.WriteOIIO.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F11A41BDDD0088844F /* fr.inria.openfx.WriteOIIO.svg */; };
+		AC6487061A41BE120088844F /* fr.inria.openfx.ReadPFM.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EA1A41BDD40088844F /* fr.inria.openfx.ReadPFM.png */; };
+		AC6487071A41BE120088844F /* fr.inria.openfx.ReadPFM.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */; };
+		AC6487081A41BE120088844F /* fr.inria.openfx.WritePFM.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */; };
+		AC6487091A41BE120088844F /* fr.inria.openfx.WritePFM.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486ED1A41BDD40088844F /* fr.inria.openfx.WritePFM.svg */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D74E624A1875A7A400D8FA13 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
@@ -259,6 +275,22 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
+				AC6487061A41BE120088844F /* fr.inria.openfx.ReadPFM.png in CopyFiles */,
+				AC6487071A41BE120088844F /* fr.inria.openfx.ReadPFM.svg in CopyFiles */,
+				AC6487081A41BE120088844F /* fr.inria.openfx.WritePFM.png in CopyFiles */,
+				AC6487091A41BE120088844F /* fr.inria.openfx.WritePFM.svg in CopyFiles */,
+				AC6487021A41BE0B0088844F /* fr.inria.openfx.ReadOIIO.png in CopyFiles */,
+				AC6487031A41BE0B0088844F /* fr.inria.openfx.ReadOIIO.svg in CopyFiles */,
+				AC6487041A41BE0B0088844F /* fr.inria.openfx.WriteOIIO.png in CopyFiles */,
+				AC6487051A41BE0B0088844F /* fr.inria.openfx.WriteOIIO.svg in CopyFiles */,
+				AC6486FE1A41BE020088844F /* fr.inria.openfx.ReadEXR.png in CopyFiles */,
+				AC6486FF1A41BE020088844F /* fr.inria.openfx.ReadEXR.svg in CopyFiles */,
+				AC6487001A41BE020088844F /* fr.inria.openfx.WriteEXR.png in CopyFiles */,
+				AC6487011A41BE020088844F /* fr.inria.openfx.WriteEXR.svg in CopyFiles */,
+				AC6486FA1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.png in CopyFiles */,
+				AC6486FB1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.svg in CopyFiles */,
+				AC6486FC1A41BDFD0088844F /* fr.inria.openfx.WriteFFmpeg.png in CopyFiles */,
+				AC6486FD1A41BDFD0088844F /* fr.inria.openfx.WriteFFmpeg.svg in CopyFiles */,
 				1EE4A8D119C6F0EA00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */,
 				1E814C8E19C9813600C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */,
 				1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */,
@@ -394,6 +426,22 @@
 		1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOText.png; sourceTree = "<group>"; };
 		1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.RunScript.png; sourceTree = "<group>"; };
 		1EE4A8CC19C6F06700E6E3AE /* pstream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pstream.h; sourceTree = "<group>"; };
+		AC6486EA1A41BDD40088844F /* fr.inria.openfx.ReadPFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadPFM.png; sourceTree = "<group>"; };
+		AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadPFM.svg; sourceTree = "<group>"; };
+		AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WritePFM.png; sourceTree = "<group>"; };
+		AC6486ED1A41BDD40088844F /* fr.inria.openfx.WritePFM.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.WritePFM.svg; sourceTree = "<group>"; };
+		AC6486EE1A41BDDD0088844F /* fr.inria.openfx.ReadOIIO.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadOIIO.png; sourceTree = "<group>"; };
+		AC6486EF1A41BDDD0088844F /* fr.inria.openfx.ReadOIIO.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadOIIO.svg; sourceTree = "<group>"; };
+		AC6486F01A41BDDD0088844F /* fr.inria.openfx.WriteOIIO.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WriteOIIO.png; sourceTree = "<group>"; };
+		AC6486F11A41BDDD0088844F /* fr.inria.openfx.WriteOIIO.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.WriteOIIO.svg; sourceTree = "<group>"; };
+		AC6486F21A41BDE80088844F /* fr.inria.openfx.ReadEXR.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadEXR.png; sourceTree = "<group>"; };
+		AC6486F31A41BDE80088844F /* fr.inria.openfx.ReadEXR.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadEXR.svg; sourceTree = "<group>"; };
+		AC6486F41A41BDE80088844F /* fr.inria.openfx.WriteEXR.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WriteEXR.png; sourceTree = "<group>"; };
+		AC6486F51A41BDE80088844F /* fr.inria.openfx.WriteEXR.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.WriteEXR.svg; sourceTree = "<group>"; };
+		AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadFFmpeg.png; sourceTree = "<group>"; };
+		AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadFFmpeg.svg; sourceTree = "<group>"; };
+		AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WriteFFmpeg.png; sourceTree = "<group>"; };
+		AC6486F91A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.WriteFFmpeg.svg; sourceTree = "<group>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -499,6 +547,10 @@
 		1E00B3C0188EE8A1003BC7F3 /* FFmpeg */ = {
 			isa = PBXGroup;
 			children = (
+				AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */,
+				AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */,
+				AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */,
+				AC6486F91A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.svg */,
 				1E00B3D0188EE923003BC7F3 /* FFmpegCompat.h */,
 				1E00B3D1188EE923003BC7F3 /* FFmpegHandler.cpp */,
 				1E00B3D2188EE923003BC7F3 /* FFmpegHandler.h */,
@@ -516,6 +568,10 @@
 		1E00B3C1188EE8AE003BC7F3 /* EXR */ = {
 			isa = PBXGroup;
 			children = (
+				AC6486F21A41BDE80088844F /* fr.inria.openfx.ReadEXR.png */,
+				AC6486F31A41BDE80088844F /* fr.inria.openfx.ReadEXR.svg */,
+				AC6486F41A41BDE80088844F /* fr.inria.openfx.WriteEXR.png */,
+				AC6486F51A41BDE80088844F /* fr.inria.openfx.WriteEXR.svg */,
 				1E00B3C2188EE90A003BC7F3 /* Info.plist */,
 				1E00B3C3188EE90A003BC7F3 /* Makefile */,
 				1E00B3C4188EE90A003BC7F3 /* PluginRegistration.cpp */,
@@ -530,6 +586,10 @@
 		1E00B3E3188EEB98003BC7F3 /* OIIO */ = {
 			isa = PBXGroup;
 			children = (
+				AC6486EE1A41BDDD0088844F /* fr.inria.openfx.ReadOIIO.png */,
+				AC6486EF1A41BDDD0088844F /* fr.inria.openfx.ReadOIIO.svg */,
+				AC6486F01A41BDDD0088844F /* fr.inria.openfx.WriteOIIO.png */,
+				AC6486F11A41BDDD0088844F /* fr.inria.openfx.WriteOIIO.svg */,
 				1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */,
 				1E00B3E8188EEBC5003BC7F3 /* ReadOIIO.h */,
 				1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */,
@@ -580,6 +640,10 @@
 		1E8B5D9C18B79E5700C31FDC /* PFM */ = {
 			isa = PBXGroup;
 			children = (
+				AC6486EA1A41BDD40088844F /* fr.inria.openfx.ReadPFM.png */,
+				AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */,
+				AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */,
+				AC6486ED1A41BDD40088844F /* fr.inria.openfx.WritePFM.svg */,
 				1E8B5D9D18B79E8100C31FDC /* Info.plist */,
 				1E8B5D9E18B79E8100C31FDC /* Makefile */,
 				1E8B5D9F18B79E8100C31FDC /* PluginRegistration.cpp */,
