@@ -68,6 +68,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.ofx</TargetExt>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt>.ofx</TargetExt>
@@ -89,6 +90,11 @@
       <TargetMachine>MachineX86</TargetMachine>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -102,6 +108,11 @@
       <AdditionalDependencies>C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenColorIO_1.0.9_shared_MT_release\lib\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenImageIO_1.4.2_shared_MT_release\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Half.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Iex.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\Imath.lib;C:\Users\lex\Documents\GitHub\3rdparty_windows_32_and_64bits_msvc2010\OpenEXR_2.1_shared_MT_release\lib\x64\IlmImf.lib;C:\local\ffmpeg\lib\avcodec.lib;C:\local\ffmpeg\lib\avutil.lib;C:\local\ffmpeg\lib\avformat.lib;C:\local\ffmpeg\lib\swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</OutputFile>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -121,6 +132,11 @@
       <TargetMachine>MachineX86</TargetMachine>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win32/$(ProjectName).ofx</OutputFile>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -153,6 +169,11 @@
       </InputResourceManifests>
     </Manifest>
     <ProjectReference />
+    <PostBuildEvent>
+      <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\EXR\ReadEXR.cpp" />
