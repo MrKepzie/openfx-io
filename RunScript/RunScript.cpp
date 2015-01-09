@@ -656,10 +656,13 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         std::stringstream ss;
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
             {
-                ss.clear();
+                
+                /*The "clear()" member function is inherited from ios and is used to clear the error state of the stream. 
+                 E.g. if a file stream has the error state set to "eofbit" (end-of-file), then calling "clear()" will set the error state back to "goodbit" (no error).*/
+                ss.str(std::string());
                 ss << kParamType << i+1;
                 ChoiceParamDescriptor* param = desc.defineChoiceParam(ss.str());
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setAnimates(true);
@@ -673,10 +676,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeFilenameName << i+1;
                 StringParamDescriptor* param = desc.defineStringParam(ss.str());
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeFilenameLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeFilenameHint);
@@ -689,10 +692,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeStringName << i+1;
                 StringParamDescriptor* param = desc.defineStringParam(ss.str());
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeStringLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeStringHint);
@@ -703,10 +706,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeDoubleName << i+1;
                 DoubleParamDescriptor* param = desc.defineDoubleParam(ss.str());
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeDoubleLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeDoubleHint);
@@ -717,10 +720,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeIntName << i+1;
                 IntParamDescriptor* param = desc.defineIntParam(ss.str());
-                ss.clear();
+                ss.str(std::string());
                 ss << kParamTypeIntLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeIntHint);
