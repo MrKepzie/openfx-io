@@ -190,6 +190,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
         _firstFrame->setIsSecret(true);
         _lastFrame->setIsSecret(true);
     }
+    _outputFormat->setIsSecret(true);
 }
 
 GenericWriterPlugin::~GenericWriterPlugin()
@@ -982,7 +983,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
         param->setLabels(kParamOutputFormatLabel, kParamOutputFormatLabel, kParamOutputFormatLabel);
         param->setAnimates(true);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         param->setHint(kParamOutputFormatHint);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
@@ -1064,7 +1065,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
         param->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
         page->addChild(*param);
     }
@@ -1073,7 +1074,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
         param->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
         page->addChild(*param);
     }

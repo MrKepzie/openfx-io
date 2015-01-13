@@ -82,6 +82,12 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
     _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoiceName);
 #endif
     loadConfig(0.);
+#ifdef OFX_OCIO_CHOICE
+    if (!_config) {
+        _inputSpaceChoice->setIsSecret(true);
+        _outputSpaceChoice->setIsSecret(true);
+    }
+#endif
 #endif
     // setup the GUI
     // setValue() may be called from createInstance, according to
@@ -861,7 +867,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
             buildChoiceMenu(config, param, inputSpaceName);
         } else {
             param->setEnabled(false);
-            param->setIsSecret(true);
+            //param->setIsSecret(true); // done in the plugin constructor
         }
         param->setAnimates(true);
         param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
@@ -914,7 +920,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
             buildChoiceMenu(config, param, outputSpaceName);
         } else {
             param->setEnabled(false);
-            param->setIsSecret(true);
+            //param->setIsSecret(true); // done in the plugin constructor
         }
         param->setAnimates(true);
         param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed

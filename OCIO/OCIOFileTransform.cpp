@@ -728,7 +728,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         IntParamDescriptor *param = desc.defineIntParam(kVersionParamName);
-        param->setIsSecret(true);
+        param->setIsSecret(true); // always secret
         param->setDefault(1);
         page->addChild(*param);
     }

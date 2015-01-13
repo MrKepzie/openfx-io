@@ -670,7 +670,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
                 param->appendOption(kParamTypeDoubleLabel,   kParamTypeDoubleHint);
                 param->appendOption(kParamTypeIntLabel,      kParamTypeIntHint);
-                //type_->setIsSecret(true);
+                //param->setIsSecret(true); // done in the plugin constructor
                 param->setParent(*group);
                 page->addChild(*param);
             }
@@ -686,7 +686,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setStringType(eStringTypeFilePath);
                 param->setFilePathExists(false); // the file may or may not exist
                 param->setAnimates(true); // the file name may change with time
-                //param->setIsSecret(true);
+                //param->setIsSecret(true); // done in the plugin constructor
                 param->setParent(*group);
                 page->addChild(*param);
             }
@@ -700,7 +700,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
-                //param->setIsSecret(true);
+                //param->setIsSecret(true); // done in the plugin constructor
                 param->setParent(*group);
                 page->addChild(*param);
             }
@@ -714,7 +714,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
-                //param->setIsSecret(true);
+                //param->setIsSecret(true); // done in the plugin constructor
                 param->setParent(*group);
                 page->addChild(*param);
             }
@@ -728,7 +728,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
-                //param->setIsSecret(true);
+                //param->setIsSecret(true); // done in the plugin constructor
                 param->setParent(*group);
                 page->addChild(*param);
             }

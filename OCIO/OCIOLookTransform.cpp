@@ -320,6 +320,14 @@ OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
     _lookChoice->setEvaluateOnChange(singleLook);
     _lookCombination->setEnabled(!singleLook);
     _lookCombination->setEvaluateOnChange(!singleLook);
+
+    OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+    if (!config) {
+        // secret should not be set on the descriptor, unless the parameter should *always* be secret
+        _lookChoice->setIsSecret(true);
+        _lookAppend->setIsSecret(true);
+        _singleLook->setIsSecret(true);
+    }
 }
 
 OCIOLookTransformPlugin::~OCIOLookTransformPlugin()
@@ -766,7 +774,6 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         } else {
             param->setDefault(false);
             param->setEnabled(false);
-            param->setIsSecret(true);
         }
         page->addChild(*param);
     }
@@ -778,7 +785,6 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
             buildLookChoiceMenu(config, param);
         } else {
             param->setEnabled(false);
-            param->setIsSecret(true);
         }
         param->setAnimates(true);
         page->addChild(*param);
@@ -789,7 +795,6 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         param->setHint(kParamLookAppendHint);
         if (!config) {
             param->setEnabled(false);
-            param->setIsSecret(true);
         }
         page->addChild(*param);
     }

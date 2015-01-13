@@ -296,6 +296,10 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _premult = fetchChoiceParam(kParamFilePremult);
     _customFPS = fetchBooleanParam(kParamCustomFps);
     _fps = fetchDoubleParam(kParamFrameRate);
+
+    _proxyThreshold->setIsSecret(true);
+    _enableCustomScale->setIsSecret(true);
+    _timeOffset->setIsSecret(true);
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -2024,7 +2028,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamTimeOffsetHint);
         param->setDefault(0);
         param->setAnimates(true);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         page->addChild(*param);
     }
     
@@ -2032,7 +2036,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamTimeDomainUserEdited);
         param->setLabels(kParamTimeDomainUserEdited, kParamTimeDomainUserEdited, kParamTimeDomainUserEdited);
-        param->setIsSecret(true);
+        param->setIsSecret(true); // always secret
         param->setDefault(false);
         param->setAnimates(false);
         page->addChild(*param);
@@ -2044,7 +2048,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabels(kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel);
         param->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
         param->setAnimates(true);
-        param->setIsSecret(true);
+        param->setIsSecret(true); // always secret
         param->setIsPersistant(false);
         page->addChild(*param);
     }
@@ -2069,7 +2073,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabels(kParamOriginalProxyScaleLabel,
                          kParamOriginalProxyScaleLabel, kParamOriginalProxyScaleLabel);
         param->setDefault(1., 1.);
-        param->setIsSecret(true);
+        param->setIsSecret(true); // always secret
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
         // param->setLayoutHint(OFX::eLayoutHintNoNewLine);
@@ -2083,7 +2087,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabels(kParamProxyThresholdLabel,
                          kParamProxyThresholdLabel, kParamProxyThresholdLabel);
         param->setDefault(1., 1.);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
@@ -2095,7 +2099,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamCustomProxyScale);
         param->setLabels(kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(false);
         param->setHint(kParamCustomProxyScaleHint);
         param->setAnimates(false);

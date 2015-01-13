@@ -234,7 +234,11 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _firstChannel = fetchIntParam(kParamFirstChannel);
     assert(_outputComponents && _firstChannel);
 #endif
-    
+
+#ifdef OFX_READ_OIIO_NEWMENU
+    updateComponents(getOutputComponents());
+#endif
+
     //Don't try to restore any state in here, do so in restoreState instead which is called
     //right away after the constructor.
     
@@ -1622,7 +1626,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
         param->setHint(kParamRChannelHint);
         param->setAnimates(false);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         page->addChild(*param);
     }
     {
@@ -1630,7 +1634,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
         param->setHint(kParamGChannelHint);
         param->setAnimates(false);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         page->addChild(*param);
     }
 
@@ -1639,7 +1643,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
         param->setHint(kParamBChannelHint);
         param->setAnimates(false);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         page->addChild(*param);
     }
 
@@ -1648,7 +1652,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
         param->setHint(kParamAChannelHint);
         param->setAnimates(false);
-        param->setIsSecret(true);
+        //param->setIsSecret(true); // done in the plugin constructor
         page->addChild(*param);
     }
 
