@@ -125,8 +125,8 @@
 "What frame range should be rendered."
 #define kParamFrameRangeOptionUnion "Union of input ranges"
 #define kParamFrameRangeOptionUnionHint "The union of all inputs frame ranges will be rendered."
-#define kParamFrameRangeOptionBounds "Timeline bounds"
-#define kParamFrameRangeOptionBoundsHint "The frame range delimited by the timeline bounds will be rendered."
+#define kParamFrameRangeOptionBounds "Project frame range"
+#define kParamFrameRangeOptionBoundsHint "The frame range delimited by the frame range of the project will be rendered."
 #define kParamFrameRangeOptionManual "Manual"
 #define kParamFrameRangeOptionManualHint "The frame range will be the one defined by the first frame and last frame parameters."
 
