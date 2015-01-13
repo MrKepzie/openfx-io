@@ -656,13 +656,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         std::stringstream ss;
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
             {
-                
-                /*The "clear()" member function is inherited from ios and is used to clear the error state of the stream. 
-                 E.g. if a file stream has the error state set to "eofbit" (end-of-file), then calling "clear()" will set the error state back to "goodbit" (no error).*/
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamType << i+1;
                 ChoiceParamDescriptor* param = desc.defineChoiceParam(ss.str());
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setAnimates(true);
@@ -676,10 +677,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeFilenameName << i+1;
                 StringParamDescriptor* param = desc.defineStringParam(ss.str());
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeFilenameLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeFilenameHint);
@@ -692,10 +697,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeStringName << i+1;
                 StringParamDescriptor* param = desc.defineStringParam(ss.str());
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeStringLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeStringHint);
@@ -706,10 +715,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeDoubleName << i+1;
                 DoubleParamDescriptor* param = desc.defineDoubleParam(ss.str());
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeDoubleLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeDoubleHint);
@@ -720,10 +733,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeIntName << i+1;
                 IntParamDescriptor* param = desc.defineIntParam(ss.str());
+                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
                 ss.str(std::string());
+                ss.clear();
                 ss << kParamTypeIntLabel << ' ' << i+1;
                 param->setLabels(ss.str(), ss.str(), ss.str());
                 param->setHint(kParamTypeIntHint);
