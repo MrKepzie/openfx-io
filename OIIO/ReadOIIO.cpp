@@ -1626,7 +1626,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
         param->setHint(kParamRChannelHint);
         param->setAnimates(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        param->setIsSecret(true); // never meant to be visible
         page->addChild(*param);
     }
     {
@@ -1634,7 +1634,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
         param->setHint(kParamGChannelHint);
         param->setAnimates(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        param->setIsSecret(true); // never meant to be visible
         page->addChild(*param);
     }
 
@@ -1643,7 +1643,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
         param->setHint(kParamBChannelHint);
         param->setAnimates(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        param->setIsSecret(true); // never meant to be visible
         page->addChild(*param);
     }
 
@@ -1652,7 +1652,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
         param->setHint(kParamAChannelHint);
         param->setAnimates(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        param->setIsSecret(true); // never meant to be visible
         page->addChild(*param);
     }
 
