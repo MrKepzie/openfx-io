@@ -320,7 +320,17 @@ GenericReaderPlugin::restoreStateFromParameters()
         ///We try to match all the files in the same directory that match the pattern with the frame number
         ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
         ///everything as it would take too much time.
-        content.generatePatternWithFrameNumberAtIndex(content.getPotentialFrameNumbersCount() - 1, &pattern);
+        std::string noStr;
+        int nbFrameNumbers = content.getPotentialFrameNumbersCount();
+        content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
+        
+        int numHashes = content.getNumPrependingZeroes();
+        if ((int)noStr.size() > numHashes) {
+            numHashes += 1;
+        }
+        content.generatePatternWithFrameNumberAtIndex(nbFrameNumbers - 1,
+                                                      numHashes,
+                                                      &pattern);
         
         _sequenceFromFiles.clear();
         SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
@@ -1409,7 +1419,18 @@ GenericReaderPlugin::inputFileChanged()
     ///We try to match all the files in the same directory that match the pattern with the frame number
     ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
     ///everything as it would take too much time.
-    content.generatePatternWithFrameNumberAtIndex(content.getPotentialFrameNumbersCount() - 1, &pattern);
+    std::string noStr;
+    int nbFrameNumbers = content.getPotentialFrameNumbersCount();
+    content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
+    
+    int numHashes = content.getNumPrependingZeroes();
+    if ((int)noStr.size() > numHashes) {
+        numHashes += 1;
+    }
+    content.generatePatternWithFrameNumberAtIndex(nbFrameNumbers - 1,
+                                                  numHashes,
+                                                  &pattern);
+    
 
     _sequenceFromFiles.clear();
     SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
