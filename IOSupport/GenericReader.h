@@ -302,6 +302,8 @@ private:
     
     OfxPointD detectProxyScale(const std::string& originalFileName, const std::string& proxyFileName, OfxTime time);
     
+    void setSequenceFromFile(const std::string& filename);
+    
     
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip

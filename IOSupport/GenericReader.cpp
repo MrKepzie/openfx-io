@@ -315,25 +315,7 @@ GenericReaderPlugin::restoreStateFromParameters()
     _fileParam->getValue(filename);
     
     if (!filename.empty()) {
-        SequenceParsing::FileNameContent content(filename);
-        std::string pattern;
-        ///We try to match all the files in the same directory that match the pattern with the frame number
-        ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
-        ///everything as it would take too much time.
-        std::string noStr;
-        int nbFrameNumbers = content.getPotentialFrameNumbersCount();
-        content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
-        
-        int numHashes = content.getNumPrependingZeroes();
-        if ((int)noStr.size() > numHashes) {
-            numHashes += 1;
-        }
-        content.generatePatternWithFrameNumberAtIndex(nbFrameNumbers - 1,
-                                                      numHashes,
-                                                      &pattern);
-        
-        _sequenceFromFiles.clear();
-        SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
+        setSequenceFromFile(filename);
     }
     //reset the original range param
     _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
@@ -402,7 +384,6 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetO
             range.max = _sequenceFromFiles.rbegin()->first;
         } else {
             range.min = range.max = 1.;
-            return false;
         }
     }
 
@@ -1407,13 +1388,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 }
 
-
 void
-GenericReaderPlugin::inputFileChanged()
+GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
 {
-    std::string filename;
-    _fileParam->getValue(filename);
-    
     SequenceParsing::FileNameContent content(filename);
     std::string pattern;
     ///We try to match all the files in the same directory that match the pattern with the frame number
@@ -1424,16 +1401,38 @@ GenericReaderPlugin::inputFileChanged()
     content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
     
     int numHashes = content.getNumPrependingZeroes();
+    
+    std::string noStrWithoutZeroes;
+    for (std::size_t i = 0; i < noStr.size(); ++i) {
+        if (noStr[i] == '0' && noStrWithoutZeroes.empty()) {
+            continue;
+        }
+        noStrWithoutZeroes.push_back(noStr[i]);
+    }
+    
     if ((int)noStr.size() > numHashes) {
-        numHashes += 1;
+        numHashes += noStrWithoutZeroes.size();
+    } else {
+        numHashes = 1;
     }
     content.generatePatternWithFrameNumberAtIndex(nbFrameNumbers - 1,
                                                   numHashes,
                                                   &pattern);
     
-
+    
     _sequenceFromFiles.clear();
     SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
+
+}
+
+
+void
+GenericReaderPlugin::inputFileChanged()
+{
+    std::string filename;
+    _fileParam->getValue(filename);
+    
+    setSequenceFromFile(filename);
     
     clearPersistentMessage();
     //reset the original range param
