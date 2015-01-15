@@ -312,13 +312,18 @@ void
 GenericReaderPlugin::restoreStateFromParameters()
 {
     std::string filename;
-    _fileParam->getValue(filename);
     
-    if (!filename.empty()) {
-        setSequenceFromFile(filename);
+    if (!gHostIsNatron) {
+        
+        _fileParam->getValue(filename);
+        
+        if (!filename.empty()) {
+            setSequenceFromFile(filename);
+        }
+        
+        //reset the original range param only if the host is not Natron
+        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     }
-    //reset the original range param
-    _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     
     OfxRangeD tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
@@ -1391,6 +1396,12 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 void
 GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
 {
+    ///Do this only when the host is not Natron because we can't rely on the host to compute the frame range for us.
+    ///Natron will set automatically the originalRange parameter when the user selects a file
+    if (gHostIsNatron) {
+        return;
+    }
+    
     SequenceParsing::FileNameContent content(filename);
     std::string pattern;
     ///We try to match all the files in the same directory that match the pattern with the frame number
@@ -1430,13 +1441,18 @@ void
 GenericReaderPlugin::inputFileChanged()
 {
     std::string filename;
-    _fileParam->getValue(filename);
     
-    setSequenceFromFile(filename);
-    
-    clearPersistentMessage();
-    //reset the original range param
-    _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+    if (!gHostIsNatron) {
+        
+        _fileParam->getValue(filename);
+        
+        setSequenceFromFile(filename);
+        
+        clearPersistentMessage();
+        
+        //reset the original range param only if not Natron
+        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+    }
     
     
     OfxRangeD tmp;
