@@ -569,39 +569,155 @@ ReadOIIOPlugin::setDefaultChannels()
     if (!_specValid) {
         return;
     }
-    int rChannelIdx = -1;
 
-    // first, look for the main red channel
-    for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
-        if (_spec.channelnames[i] == "R" ||
-            _spec.channelnames[i] == "r" ||
-            _spec.channelnames[i] == "red") {
-            rChannelIdx = i;
-            break; // found!
-        }
-    }
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
 
-    if (rChannelIdx < 0) {
-        // find a name which ends with ".R", ".r" or ".red"
+    {
+        int rChannelIdx = -1;
+
+        // first, look for the main red channel
         for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
-            if (has_suffix(_spec.channelnames[i], ".R") ||
-                has_suffix(_spec.channelnames[i], ".r") ||
-                has_suffix(_spec.channelnames[i], ".red")) {
+            if (_spec.channelnames[i] == "R" ||
+                _spec.channelnames[i] == "r" ||
+                _spec.channelnames[i] == "red") {
                 rChannelIdx = i;
                 break; // found!
             }
         }
-    }
 
-    if (rChannelIdx >= 0) {
-        // red was found
-        _rChannel->setValue(kXChannelFirst + rChannelIdx);
-        setDefaultChannelsFromRed(rChannelIdx, false);
-    } else {
-        _rChannel->setValue(0);
-        _gChannel->setValue(0);
-        _bChannel->setValue(0);
-        _aChannel->setValue(0);
+        if (rChannelIdx < 0) {
+            // find a name which ends with ".R", ".r" or ".red"
+            for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+                if (has_suffix(_spec.channelnames[i], ".R") ||
+                    has_suffix(_spec.channelnames[i], ".r") ||
+                    has_suffix(_spec.channelnames[i], ".red")) {
+                    rChannelIdx = i;
+                    break; // found!
+                }
+            }
+        }
+
+        if (rChannelIdx >= 0) {
+            // red was found
+            _rChannel->setValue(kXChannelFirst + rChannelIdx);
+            setDefaultChannelsFromRed(rChannelIdx, false);
+            return;
+        } else if (_spec.nchannels >= 3) {
+            _rChannel->setValue(kXChannelFirst + 0);
+        } else if (_spec.nchannels == 1) {
+            _rChannel->setValue(kXChannelFirst);
+        } else {
+            _rChannel->setValue(0);
+        }
+    }
+    // could not find red. look for green, blue, alpha.
+    {
+        int gChannelIdx = -1;
+
+        // first, look for the main green channel
+        for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+            if (_spec.channelnames[i] == "G" ||
+                _spec.channelnames[i] == "g" ||
+                _spec.channelnames[i] == "green") {
+                gChannelIdx = i;
+                break; // found!
+            }
+        }
+
+        if (gChannelIdx < 0) {
+            // find a name which ends with ".G", ".g" or ".green"
+            for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+                if (has_suffix(_spec.channelnames[i], ".G") ||
+                    has_suffix(_spec.channelnames[i], ".g") ||
+                    has_suffix(_spec.channelnames[i], ".green")) {
+                    gChannelIdx = i;
+                    break; // found!
+                }
+            }
+        }
+
+        if (gChannelIdx >= 0) {
+            // green was found
+            _gChannel->setValue(kXChannelFirst + gChannelIdx);
+        } else if (_spec.nchannels >= 3) {
+            _gChannel->setValue(kXChannelFirst + 1);
+        } else if (_spec.nchannels == 1) {
+            _gChannel->setValue(kXChannelFirst);
+        } else {
+            _gChannel->setValue(0);
+        }
+    }
+    {
+        int bChannelIdx = -1;
+
+        // first, look for the main blue channel
+        for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+            if (_spec.channelnames[i] == "B" ||
+                _spec.channelnames[i] == "b" ||
+                _spec.channelnames[i] == "blue") {
+                bChannelIdx = i;
+                break; // found!
+            }
+        }
+
+        if (bChannelIdx < 0) {
+            // find a name which ends with ".B", ".b" or ".blue"
+            for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+                if (has_suffix(_spec.channelnames[i], ".B") ||
+                    has_suffix(_spec.channelnames[i], ".b") ||
+                    has_suffix(_spec.channelnames[i], ".blue")) {
+                    bChannelIdx = i;
+                    break; // found!
+                }
+            }
+        }
+
+        if (bChannelIdx >= 0) {
+            // blue was found
+            _bChannel->setValue(kXChannelFirst + bChannelIdx);
+        } else if (_spec.nchannels >= 3) {
+            _bChannel->setValue(kXChannelFirst + 2);
+        } else if (_spec.nchannels == 1) {
+            _bChannel->setValue(kXChannelFirst);
+        } else {
+            _bChannel->setValue(0);
+        }
+    }
+    {
+        int aChannelIdx = -1;
+
+        // first, look for the main alpha channel
+        for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+            if (_spec.channelnames[i] == "A" ||
+                _spec.channelnames[i] == "a" ||
+                _spec.channelnames[i] == "alpha") {
+                aChannelIdx = i;
+                break; // found!
+            }
+        }
+
+        if (aChannelIdx < 0) {
+            // find a name which ends with ".A", ".a" or ".alpha"
+            for (std::size_t i = 0; i < _spec.channelnames.size(); ++i) {
+                if (has_suffix(_spec.channelnames[i], ".A") ||
+                    has_suffix(_spec.channelnames[i], ".a") ||
+                    has_suffix(_spec.channelnames[i], ".alpha")) {
+                    aChannelIdx = i;
+                    break; // found!
+                }
+            }
+        }
+
+        if (aChannelIdx >= 0) {
+            // alpha was found
+            _aChannel->setValue(kXChannelFirst + aChannelIdx);
+        } else if (_spec.nchannels >= 4) {
+            _aChannel->setValue(kXChannelFirst + 3);
+        } else if (_spec.nchannels == 1) {
+            _aChannel->setValue(kXChannelFirst);
+        } else {
+            _aChannel->setValue(0);
+        }
     }
 }
 
