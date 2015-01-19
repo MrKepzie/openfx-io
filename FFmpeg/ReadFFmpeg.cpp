@@ -118,6 +118,15 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 {
     _maxRetries = fetchIntParam(kMaxRetriesParamName);
     assert(_maxRetries);
+    int originalFrameRangeMin, originalFrameRangeMax;
+    _originalFrameRange->getValue(originalFrameRangeMin, originalFrameRangeMax);
+    if (originalFrameRangeMin == 0) {
+        // probably a buggy instance from before Jan 19 2015, where 0 is the first frame
+        _originalFrameRange->setValue(originalFrameRangeMin+1, originalFrameRangeMax+1);
+        int timeOffset;
+        _timeOffset->getValue(timeOffset);
+        _timeOffset->setValue(timeOffset - 1);
+    }
 }
 
 ReadFFmpegPlugin::~ReadFFmpegPlugin() {
@@ -288,7 +297,8 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     _maxRetries->getValue(maxRetries);
     
     try {
-        if ( !_ffmpegFile->decode(_buffer, std::floor(time+0.5), loadNearestFrame(), maxRetries) ) {
+        // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5 
+        if ( !_ffmpegFile->decode(_buffer, std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
             
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -330,8 +340,8 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
             }
             _ffmpegFile->getInfo(width, height, ap, frames);
             
-            range.min = 0;
-            range.max = frames - 1;
+            range.min = 1;
+            range.max = frames;
         } else {
             range.min = range.max = 0.;
             return false;
