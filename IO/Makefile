@@ -18,19 +18,28 @@ PLUGINOBJECTS = \
 
 PLUGINNAME = IO
 
-# ls */*png|sed -e 's!^!../!' -e 's!$! \\!'
+# ls */*png */*svg|sed -e 's!^!../!' -e 's!$! \\!'|sort
 RESOURCES = \
-../EXR/fr.inria.openfx.WriteEXR.png \
-../EXR/fr.inria.openfx.WriteEXR.svg \
 ../EXR/fr.inria.openfx.ReadEXR.png \
 ../EXR/fr.inria.openfx.ReadEXR.svg \
-../FFmpeg/fr.inria.openfx.ReadFFmpeg.png \../FFmpeg/fr.inria.openfx.ReadFFmpeg.svg \../FFmpeg/fr.inria.openfx.WriteFFmpeg.png \../FFmpeg/fr.inria.openfx.WriteFFmpeg.svg \
-../OIIO/fr.inria.openfx.ReadOIIO.png \../OIIO/fr.inria.openfx.ReadOIIO.svg \../OIIO/fr.inria.openfx.WriteOIIO.png \../OIIO/fr.inria.openfx.WriteOIIO.svg \
+../EXR/fr.inria.openfx.WriteEXR.png \
+../EXR/fr.inria.openfx.WriteEXR.svg \
+../FFmpeg/fr.inria.openfx.ReadFFmpeg.png \
+../FFmpeg/fr.inria.openfx.ReadFFmpeg.svg \
+../FFmpeg/fr.inria.openfx.WriteFFmpeg.png \
+../FFmpeg/fr.inria.openfx.WriteFFmpeg.svg \
 ../OIIO/fr.inria.openfx.OIIOText.png \
 ../OIIO/fr.inria.openfx.OIIOText.svg \
-../PFM/fr.inria.openfx.ReadPFM.png \../PFM/fr.inria.openfx.ReadPFM.svg \../PFM/fr.inria.openfx.WritePFM.png \../PFM/fr.inria.openfx.WritePFM.svg \
+../OIIO/fr.inria.openfx.ReadOIIO.png \
+../OIIO/fr.inria.openfx.ReadOIIO.svg \
+../OIIO/fr.inria.openfx.WriteOIIO.png \
+../OIIO/fr.inria.openfx.WriteOIIO.svg \
+../PFM/fr.inria.openfx.ReadPFM.png \
+../PFM/fr.inria.openfx.ReadPFM.svg \
+../PFM/fr.inria.openfx.WritePFM.png \
+../PFM/fr.inria.openfx.WritePFM.svg \
 ../RunScript/fr.inria.openfx.RunScript.png \
-../RunScript/fr.inria.openfx.RunScript.svg 
+../RunScript/fr.inria.openfx.RunScript.svg \
 
 VPATH += \
 ../EXR \
@@ -45,23 +54,23 @@ include ../Makefile.master
 
 CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript
 
+LOCAL=/usr
+
 # OpenEXR
-CXXFLAGS +=`pkg-config --cflags OpenEXR`
-LINKFLAGS += `pkg-config --libs OpenEXR`
+OPENEXR_CXXFLAGS =`pkg-config --cflags OpenEXR`
+OPENEXR_LINKFLAGS =`pkg-config --libs OpenEXR`
 
 # FFmpeg
-CXXFLAGS +=`pkg-config --cflags libavformat libavcodec libswscale libavutil`
-LINKFLAGS += `pkg-config --libs libavformat libavcodec libswscale libavutil` 
+FFMPEG_CXXFLAGS = `pkg-config --cflags libavformat libavcodec libswscale libavutil`
+FFMPEG_LINKFLAGS = `pkg-config --libs libavformat libavcodec libswscale libavutil` 
 
 # OpenImageIO
 OIIO_HOME ?= /usr
-CXXFLAGS += -I$(OIIO_HOME)/include
-LINKFLAGS += -L$(OIIO_HOME)/lib -lOpenImageIO
+OIIO_CXXFLAGS = -I$(OIIO_HOME)/include
+OIIO_LINKFLAGS = -L$(OIIO_HOME)/lib -lOpenImageIO
 ifeq ($(OS),Linux)
-LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib
+OIIO_LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib
 endif
 
-
-RESOURCES= \
-../OIIO/fr.inria.openfx.OIIOText.png ../OIIO/fr.inria.openfx.OIIOText.svg \
-../RunScript/fr.inria.openfx.RunScript.png ../RunScript/fr.inria.openfx.RunScript.svg \
+CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)
+LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)
