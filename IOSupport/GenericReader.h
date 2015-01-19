@@ -220,10 +220,8 @@ private:
     };
     /**
      * @brief compute the sequence/file time from time
-     * @param canSetOriginalFrameRange If false, the underlying call
-     * cannot set the _originalFrameRange param values.
      */
-    GetSequenceTimeRetEnum getSequenceTime(double t, bool canSetOriginalFrameRange, double *sequenceTime) WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) WARN_UNUSED_RETURN;
 
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
@@ -339,6 +337,9 @@ private:
     
     
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
+    const bool _supportsRGBA;
+    const bool _supportsRGB;
+    const bool _supportsAlpha;
     const bool _supportsTiles;
 };
 

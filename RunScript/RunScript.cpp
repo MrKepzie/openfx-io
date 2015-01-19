@@ -556,7 +556,7 @@ RunScriptPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &arg
 
 bool
 RunScriptPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
-                                       OfxRectD &rod)
+                                       OfxRectD &/*rod*/)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);

@@ -145,7 +145,7 @@ private:
 
     virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 
-    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL { return false; }
+    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
@@ -569,9 +569,6 @@ ReadOIIOPlugin::setDefaultChannels()
     if (!_specValid) {
         return;
     }
-
-    OFX::PixelComponentEnum outputComponents = getOutputComponents();
-
     {
         int rChannelIdx = -1;
 

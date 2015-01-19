@@ -503,7 +503,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,const OfxRectI& 
 }
 
 
-void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &args)
+void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &/*args*/)
 {
     if (!_formatContext) {
         return;

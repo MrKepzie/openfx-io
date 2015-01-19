@@ -273,10 +273,13 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _fps(0)
 , _ocio(new GenericOCIO(this))
 , _sequenceFromFiles()
+, _supportsRGBA(supportsRGBA)
+, _supportsRGB(supportsRGB)
+, _supportsAlpha(supportsAlpha)
 , _supportsTiles(supportsTiles)
 {
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
-    
+
     _fileParam = fetchStringParam(kParamFilename);
     _proxyFileParam = fetchStringParam(kParamProxy);
     _proxyThreshold = fetchDouble2DParam(kParamProxyThreshold);
@@ -362,7 +365,7 @@ GenericReaderPlugin::getTimeDomain(OfxRangeD &range)
 }
 
 bool
-GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range,bool canSetOriginalFrameRange)
+GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range, bool canSetOriginalFrameRange)
 {
     
     ///compute the frame-range
@@ -451,7 +454,7 @@ fileExists(const std::string& filename)
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
-GenericReaderPlugin::getSequenceTime(double t, bool canSetOriginalFrameRange, double *sequenceTime)
+GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
 {
     int timeOffset;
     _timeOffset->getValue(timeOffset);
@@ -634,7 +637,7 @@ OfxStatus
 GenericReaderPlugin::getFilenameAtTime(double t, std::string *filename)
 {
     double sequenceTime;
-    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(t, false, &sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(t, &sequenceTime);
     switch (getSequenceTimeRet) {
         case eGetSequenceTimeBlack:
             return kOfxStatReplyDefault;
@@ -730,21 +733,39 @@ GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        if (!_supportsRGBA) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::PixelCopier<float, 4, 1> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
+        if (!_supportsRGB) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::PixelCopier<float, 3, 1> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
+        if (!_supportsAlpha) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::PixelCopier<float, 1, 1> fred(*this);
         setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 #else
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        if (!_supportsRGBA) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         copyPixels<float,4>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
+        if (!_supportsRGB) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         copyPixels<float,3>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
+        if (!_supportsAlpha) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         copyPixels<float,1>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
 #endif
@@ -911,12 +932,21 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        if (!_supportsRGBA) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         buildMipMapLevel<float, 4>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
+        if (!_supportsRGB) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         buildMipMapLevel<float, 3>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
+        if (!_supportsAlpha) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         buildMipMapLevel<float, 1>(this, originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } // switch
@@ -952,12 +982,21 @@ GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
                                    int dstRowBytes)
 {
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        if (!_supportsRGBA) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::BlackFiller<float, 4> fred(*this);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
+        if (!_supportsRGB) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::BlackFiller<float, 3> fred(*this);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
+        if (!_supportsAlpha) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::BlackFiller<float, 1> fred(*this);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } // switch
@@ -1021,6 +1060,9 @@ GenericReaderPlugin::unPremultPixelData(const OfxRectI &renderWindow,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        if (!_supportsRGBA) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else {
@@ -1050,6 +1092,9 @@ GenericReaderPlugin::premultPixelData(const OfxRectI &renderWindow,
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
+        if (!_supportsRGBA) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        }
         OFX::PixelCopierPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
         
@@ -1069,7 +1114,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     }
 
     double sequenceTime;
-    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, &sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, &sequenceTime);
     switch (getSequenceTimeRet) {
         case eGetSequenceTimeBlack:
             return false;
@@ -1179,7 +1224,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     double sequenceTime;
-    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, &sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, &sequenceTime);
     switch (getSequenceTimeRet) {
         case eGetSequenceTimeBlack:
             fillWithBlack(args.renderWindow, dstPixelDataF, bounds,pixelComponents, dstImg->getPixelDepth(), dstRowBytes);
@@ -1511,7 +1556,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         ///Detect the scale of the proxy.
         std::string proxyFile,originalFileName;
         double sequenceTime;
-        GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, &sequenceTime);
+        GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, &sequenceTime);
         switch (getSequenceTimeRet) {
             case eGetSequenceTimeBlack:
             case eGetSequenceTimeError:
@@ -1726,6 +1771,9 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
     switch (outputComponents) {
         case OFX::ePixelComponentRGBA:
+            if (!_supportsRGBA) {
+                OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            }
             // may be Opaque or PreMultiplied (never UnPremultiplied)
             if (premult == OFX::eImageUnPreMultiplied) {
                 premult = OFX::eImagePreMultiplied;
@@ -1734,11 +1782,17 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             break;
 
         case OFX::ePixelComponentAlpha:
+            if (!_supportsAlpha) {
+                OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            }
             // alpha is always premultiplied
             premult = OFX::eImagePreMultiplied;
             break;
 
         default:
+            if (!_supportsRGB) {
+                OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            }
             // RGB is always Opaque
             premult = OFX::eImageOpaque;
             break;
@@ -1799,7 +1853,7 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
     }
 
     double sequenceTime;
-    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, false, &sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(args.time, &sequenceTime);
     switch (getSequenceTimeRet) {
         case eGetSequenceTimeBlack:
             return false;
