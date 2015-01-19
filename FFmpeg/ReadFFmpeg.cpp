@@ -143,14 +143,10 @@ void
 ReadFFmpegPlugin::restoreState(const std::string& filename)
 {
     assert(_ffmpegFile);
-    if (_ffmpegFile) {
-        
-        
-        if (_ffmpegFile->getFilename() != filename) {
-            _ffmpegFile->close();
-            _ffmpegFile->open(filename);
-        }
-        
+    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
+        // reset
+        _ffmpegFile->close();
+        _ffmpegFile->open(filename);
     }
 
 }
@@ -177,16 +173,18 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
     *premult = OFX::eImageOpaque;
     
     assert(_ffmpegFile);
-    if (_ffmpegFile) {
-        if (_ffmpegFile->getFilename() == filename) {
-            return;
-        } else {
-            _ffmpegFile->open(filename);
-        }
-        
-        if (!_ffmpegFile->isValid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
-        }
+    if (_ffmpegFile && _ffmpegFile->isValid() && _ffmpegFile->getFilename() == filename) {
+        return;
+    }
+
+    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
+        // reset
+        _ffmpegFile->close();
+        _ffmpegFile->open(filename);
+    }
+
+    if (!_ffmpegFile->isValid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
     }
 }
 
@@ -237,11 +235,15 @@ ReadFFmpegPlugin::decode(const std::string& filename,
                          OFX::PixelComponentEnum pixelComponents,
                          int rowBytes)
 {
-    if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
-        _ffmpegFile->open(filename);
-    } else if (!_ffmpegFile) {
+    assert(_ffmpegFile);
+    if (_ffmpegFile && !_ffmpegFile->isValid()) {
+        // reset
+        _ffmpegFile->close();
+    }
+    if (!_ffmpegFile) {
         return;
     }
+
     if (!_ffmpegFile->isValid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
         return;
@@ -334,7 +336,8 @@ bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRang
         double ap;
         if (_ffmpegFile) {
             
-            if (_ffmpegFile->getFilename() != filename) {
+            if (_ffmpegFile && (!_ffmpegFile->isValid() || _ffmpegFile->getFilename() != filename)) {
+                // reset
                 _ffmpegFile->close();
                 _ffmpegFile->open(filename);
             }
@@ -359,7 +362,9 @@ ReadFFmpegPlugin::getFrameRate(const std::string& filename, double* fps) const
 {
     assert(fps);
     
-    if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
+    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
+        // reset
+        _ffmpegFile->close();
         _ffmpegFile->open(filename);
     } else if (!_ffmpegFile) {
         return false;
@@ -385,7 +390,9 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
 {
     assert(bounds && par);
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
-    if (_ffmpegFile && filename != _ffmpegFile->getFilename()) {
+    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
+        // reset
+        _ffmpegFile->close();
         _ffmpegFile->open(filename);
     } else if (!_ffmpegFile) {
         return false;
