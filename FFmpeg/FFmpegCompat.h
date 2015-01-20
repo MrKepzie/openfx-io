@@ -151,6 +151,7 @@ inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 #           define AV_PIX_FMT_YUV440P  PIX_FMT_YUV440P
 #           define AV_PIX_FMT_RGB48LE  PIX_FMT_RGB48LE
 #           define AV_PIX_FMT_RGBA     PIX_FMT_RGBA
+#           define AV_PIX_FMT_RGBA64LE PIX_FMT_RGBA64LE
 #           define AV_PIX_FMT_RGB24    PIX_FMT_RGB24
 #           define AV_PIX_FMT_FLAG_RGB PIX_FMT_RGB
 #       endif
