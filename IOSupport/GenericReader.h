@@ -175,7 +175,7 @@ private:
      **/
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par,std::string *error) = 0;
     
-    virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) const { return false; }
+    virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) { return false; }
 
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.

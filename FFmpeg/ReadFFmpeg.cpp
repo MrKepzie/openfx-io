@@ -52,7 +52,7 @@
 #include "IOUtility.h"
 
 #include "GenericReader.h"
-#include "FFmpegHandler.h"
+#include "FFmpegFile.h"
 
 #define kPluginName "ReadFFmpegOFX"
 #define kPluginGrouping "Image/Readers"
@@ -73,7 +73,7 @@
 
 class ReadFFmpegPlugin : public GenericReaderPlugin
 {
-    FFmpeg::File* _ffmpegFile; 
+    FFmpegFile* _ffmpegFile;
 
     unsigned char* _buffer;
     int _bufferWidth;
@@ -103,14 +103,14 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
-    virtual bool getFrameRate(const std::string& filename, double* fps) const OVERRIDE FINAL;
+    virtual bool getFrameRate(const std::string& filename, double* fps) OVERRIDE FINAL;
     
     virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
-, _ffmpegFile(new FFmpeg::File())
+, _ffmpegFile(0)
 , _buffer(0)
 , _bufferWidth(0)
 , _bufferHeight(0)
@@ -129,7 +129,8 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
     }
 }
 
-ReadFFmpegPlugin::~ReadFFmpegPlugin() {
+ReadFFmpegPlugin::~ReadFFmpegPlugin()
+{
     
     if(_buffer){
         delete [] _buffer;
@@ -143,21 +144,25 @@ void
 ReadFFmpegPlugin::restoreState(const std::string& filename)
 {
     assert(_ffmpegFile);
-    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
-        // reset
-        _ffmpegFile->close();
-        _ffmpegFile->open(filename);
+    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
+        // TODO: use FFmpegFileManager
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpegFile(filename);
     }
-
 }
 
-bool ReadFFmpegPlugin::loadNearestFrame() const {
+bool
+ReadFFmpegPlugin::loadNearestFrame() const
+{
     int v;
     _missingFrameParam->getValue(v);
     return v == 0;
 }
 
-void ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+void
+ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
+                               const std::string &paramName)
+{
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
@@ -172,25 +177,21 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
     *components = OFX::ePixelComponentRGB;
     *premult = OFX::eImageOpaque;
     
-    assert(_ffmpegFile);
-    if (_ffmpegFile && _ffmpegFile->isValid() && _ffmpegFile->getFilename() == filename) {
-        return;
+    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
+        // TODO: use FFmpegFileManager
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpegFile(filename);
     }
-
-    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
-        // reset
-        _ffmpegFile->close();
-        _ffmpegFile->open(filename);
-    }
-
-    if (!_ffmpegFile->isValid()) {
+    if (_ffmpegFile->isInvalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
     }
 }
 
 
-bool ReadFFmpegPlugin::isVideoStream(const std::string& filename){
-    return !FFmpeg::isImageFile(filename);
+bool
+ReadFFmpegPlugin::isVideoStream(const std::string& filename)
+{
+    return !FFmpegFile::isImageFile(filename);
 }
 
 template<int nComponents>
@@ -235,16 +236,12 @@ ReadFFmpegPlugin::decode(const std::string& filename,
                          OFX::PixelComponentEnum pixelComponents,
                          int rowBytes)
 {
-    assert(_ffmpegFile);
-    if (_ffmpegFile && !_ffmpegFile->isValid()) {
-        // reset
-        _ffmpegFile->close();
+    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
+        // TODO: use FFmpegFileManager
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpegFile(filename);
     }
-    if (!_ffmpegFile) {
-        return;
-    }
-
-    if (!_ffmpegFile->isValid()) {
+    if (_ffmpegFile->isInvalid()) {
         setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
         return;
     }
@@ -324,58 +321,47 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     }
 }
 
-bool ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) {
-    
-
-    assert(_ffmpegFile);
-
-    
-    if (!FFmpeg::isImageFile(filename)) {
-        
-        int width,height,frames;
-        double ap;
-        if (_ffmpegFile) {
-            
-            if (_ffmpegFile && (!_ffmpegFile->isValid() || _ffmpegFile->getFilename() != filename)) {
-                // reset
-                _ffmpegFile->close();
-                _ffmpegFile->open(filename);
-            }
-            _ffmpegFile->getInfo(width, height, ap, frames);
-            
-            range.min = 1;
-            range.max = frames;
-        } else {
-            range.min = range.max = 0.;
-            return false;
-        }
-        return true;
-    } else {
+bool
+ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range)
+{
+    if (FFmpegFile::isImageFile(filename)) {
         range.min = range.max = 0.;
         return false;
     }
-    
+
+    int width,height,frames;
+    double ap;
+    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
+        // TODO: use FFmpegFileManager
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpegFile(filename);
+    }
+    if (_ffmpegFile->isInvalid()) {
+        range.min = range.max = 0.;
+        return false;
+    }
+    _ffmpegFile->getInfo(width, height, ap, frames);
+
+    range.min = 1;
+    range.max = frames;
+    return true;
 }
 
 bool
-ReadFFmpegPlugin::getFrameRate(const std::string& filename, double* fps) const
+ReadFFmpegPlugin::getFrameRate(const std::string& filename,
+                               double* fps)
 {
     assert(fps);
     
-    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
-        // reset
-        _ffmpegFile->close();
-        _ffmpegFile->open(filename);
-    } else if (!_ffmpegFile) {
+    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
+        // TODO: use FFmpegFileManager
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpegFile(filename);
+    }
+    if (_ffmpegFile->isInvalid()) {
         return false;
     }
-    if (!_ffmpegFile->isValid()) {
-        return false;
-    }
-    if(!_ffmpegFile) {
-        return false;
-    }
-    
+
     bool gotFps = _ffmpegFile->getFPS(*fps);
     return gotFps;
 }
@@ -389,28 +375,18 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
                                  std::string *error)
 {
     assert(bounds && par);
-    ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
-    if (_ffmpegFile && (!_ffmpegFile->isValid() || filename != _ffmpegFile->getFilename())) {
-        // reset
-        _ffmpegFile->close();
-        _ffmpegFile->open(filename);
-    } else if (!_ffmpegFile) {
-        return false;
+    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
+        // TODO: use FFmpegFileManager
+        delete _ffmpegFile;
+        _ffmpegFile = new FFmpegFile(filename);
     }
-    if (!_ffmpegFile->isValid()) {
+    if (_ffmpegFile->isInvalid()) {
         if (error) {
             *error = _ffmpegFile->getError();
         }
-        //setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
         return false;
     }
-    
-    if(!_ffmpegFile) {
-        if (error) {
-            *error = filename + ": no such file";
-        }
-        return false;
-    }
+
     int width,height,frames;
     double ap;
     if (!_ffmpegFile->getInfo(width, height, ap, frames)) {
@@ -473,7 +449,8 @@ split(const std::string &s, char delim, std::vector<std::string> &elems)
 
 
 #ifdef OFX_IO_MT_FFMPEG
-static int FFmpegLockManager(void** mutex, enum AVLockOp op)
+static int
+FFmpegLockManager(void** mutex, enum AVLockOp op)
 {
     switch (op) {
         case AV_LOCK_CREATE: // Create a mutex.
