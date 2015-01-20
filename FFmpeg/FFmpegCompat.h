@@ -140,8 +140,18 @@ inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 
 #       if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 42, 0, 51, 74, 100)
 #           define AVPixelFormat PixelFormat
-#           define AV_PIX_FMT_NB PIX_FMT_NB
-#           define AV_PIX_FMT_RGB24 PIX_FMT_RGB24
+#           define AV_PIX_FMT_NB       PIX_FMT_NB
+#           define AV_PIX_FMT_YUVJ420P PIX_FMT_YUVJ420P
+#           define AV_PIX_FMT_YUV420P  PIX_FMT_YUV420P
+#           define AV_PIX_FMT_YUVJ422P PIX_FMT_YUVJ422P
+#           define AV_PIX_FMT_YUV422P  PIX_FMT_YUV422P
+#           define AV_PIX_FMT_YUVJ444P PIX_FMT_YUVJ444P
+#           define AV_PIX_FMT_YUV444P  PIX_FMT_YUV444P
+#           define AV_PIX_FMT_YUVJ440P PIX_FMT_YUVJ440P
+#           define AV_PIX_FMT_YUV440P  PIX_FMT_YUV440P
+#           define AV_PIX_FMT_RGB48LE  PIX_FMT_RGB48LE
+#           define AV_PIX_FMT_RGBA     PIX_FMT_RGBA
+#           define AV_PIX_FMT_RGB24    PIX_FMT_RGB24
 #           define AV_PIX_FMT_FLAG_RGB PIX_FMT_RGB
 #       endif
 namespace {

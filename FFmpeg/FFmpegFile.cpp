@@ -853,7 +853,7 @@ FFmpegFile::decode(unsigned char* buffer,
             int error = av_read_frame(_context, &_avPacket);
             // [FD] 2015/01/20
             // the following if() was not in Nuke's mov64Reader.cpp
-            if (error == AVERROR_EOF) {
+            if (error == (int)AVERROR_EOF) {
                 // getStreamFrames() was probably wrong
                 stream->_frames = stream->_decodeNextFrameIn;
                 if (loadNearest) {
