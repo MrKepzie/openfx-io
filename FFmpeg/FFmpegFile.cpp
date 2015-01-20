@@ -569,7 +569,11 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         }
 
         if (stream->_bitDepth > 8) {
+#        if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 53, 6, 0, 53, 6, 0)
+            stream->_outputPixelFormat = (4 == stream->_numberOfComponents) ? AV_PIX_FMT_RGBA : AV_PIX_FMT_RGB48LE; // 16-bit.
+#         else
             stream->_outputPixelFormat = (4 == stream->_numberOfComponents) ? AV_PIX_FMT_RGBA64LE : AV_PIX_FMT_RGB48LE; // 16-bit.
+#         endif
         } else                                                                                                                                     {
             stream->_outputPixelFormat = (4 == stream->_numberOfComponents) ? AV_PIX_FMT_RGBA : AV_PIX_FMT_RGB24; // 8-bit
         }
