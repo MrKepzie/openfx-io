@@ -46,7 +46,7 @@
 		1E00B3CA188EE90A003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C4188EE90A003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C5188EE90A003BC7F3 /* ReadEXR.cpp */; };
 		1E00B3CD188EE90A003BC7F3 /* WriteEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C7188EE90A003BC7F3 /* WriteEXR.cpp */; };
-		1E00B3DB188EE923003BC7F3 /* FFmpegHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D1188EE923003BC7F3 /* FFmpegHandler.cpp */; };
+		1E00B3DB188EE923003BC7F3 /* FFmpegFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D1188EE923003BC7F3 /* FFmpegFile.cpp */; };
 		1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D5188EE923003BC7F3 /* PluginRegistration.cpp */; };
 		1E00B3DF188EE923003BC7F3 /* ReadFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */; };
 		1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D8188EE923003BC7F3 /* WriteFFmpeg.cpp */; };
@@ -58,7 +58,7 @@
 		1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */; };
 		1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
-		1E2F4D9C189295F600F4CE25 /* FFmpegHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D1188EE923003BC7F3 /* FFmpegHandler.cpp */; };
+		1E2F4D9C189295F600F4CE25 /* FFmpegFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D1188EE923003BC7F3 /* FFmpegFile.cpp */; };
 		1E2F4D9D189295F600F4CE25 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E2F4D9E189295F600F4CE25 /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82D1891074000E9034B /* ofxsParams.cpp */; };
 		1E2F4D9F189295F600F4CE25 /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8291891074000E9034B /* ofxsImageEffect.cpp */; };
@@ -381,8 +381,8 @@
 		1E00B3C7188EE90A003BC7F3 /* WriteEXR.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WriteEXR.cpp; sourceTree = "<group>"; };
 		1E00B3C8188EE90A003BC7F3 /* WriteEXR.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WriteEXR.h; sourceTree = "<group>"; };
 		1E00B3D0188EE923003BC7F3 /* FFmpegCompat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFmpegCompat.h; sourceTree = "<group>"; };
-		1E00B3D1188EE923003BC7F3 /* FFmpegHandler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FFmpegHandler.cpp; sourceTree = "<group>"; };
-		1E00B3D2188EE923003BC7F3 /* FFmpegHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFmpegHandler.h; sourceTree = "<group>"; };
+		1E00B3D1188EE923003BC7F3 /* FFmpegFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FFmpegFile.cpp; sourceTree = "<group>"; };
+		1E00B3D2188EE923003BC7F3 /* FFmpegFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFmpegFile.h; sourceTree = "<group>"; };
 		1E00B3D3188EE923003BC7F3 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E00B3D4188EE923003BC7F3 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E00B3D5188EE923003BC7F3 /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -620,8 +620,8 @@
 				1E00B3D8188EE923003BC7F3 /* WriteFFmpeg.cpp */,
 				1E00B3D9188EE923003BC7F3 /* WriteFFmpeg.h */,
 				1E00B3D0188EE923003BC7F3 /* FFmpegCompat.h */,
-				1E00B3D1188EE923003BC7F3 /* FFmpegHandler.cpp */,
-				1E00B3D2188EE923003BC7F3 /* FFmpegHandler.h */,
+				1E00B3D1188EE923003BC7F3 /* FFmpegFile.cpp */,
+				1E00B3D2188EE923003BC7F3 /* FFmpegFile.h */,
 				1E00B3D5188EE923003BC7F3 /* PluginRegistration.cpp */,
 				1E00B3D3188EE923003BC7F3 /* Info.plist */,
 				1E00B3D4188EE923003BC7F3 /* Makefile */,
@@ -1075,7 +1075,7 @@
 				1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */,
 				1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */,
 				1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */,
-				1E2F4D9C189295F600F4CE25 /* FFmpegHandler.cpp in Sources */,
+				1E2F4D9C189295F600F4CE25 /* FFmpegFile.cpp in Sources */,
 				1E2F4DA7189295F600F4CE25 /* WriteFFmpeg.cpp in Sources */,
 				1E9B5EA81986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
@@ -1218,7 +1218,7 @@
 			files = (
 				1E00B3DF188EE923003BC7F3 /* ReadFFmpeg.cpp in Sources */,
 				1E00B3E1188EE923003BC7F3 /* WriteFFmpeg.cpp in Sources */,
-				1E00B3DB188EE923003BC7F3 /* FFmpegHandler.cpp in Sources */,
+				1E00B3DB188EE923003BC7F3 /* FFmpegFile.cpp in Sources */,
 				1E00B3DE188EE923003BC7F3 /* PluginRegistration.cpp in Sources */,
 				1E00B39B188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */,
