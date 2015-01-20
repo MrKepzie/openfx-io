@@ -91,6 +91,7 @@
 #   if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 54, 25, 0, 54, 51, 100)
 #       define AV_CODEC_ID_NONE CODEC_ID_NONE
 #       define AV_CODEC_ID_RAWVIDEO CODEC_ID_RAWVIDEO
+#       define AV_CODEC_ID_MJPEG CODEC_ID_MJPEG
 #       define AVCodecID CodecID
 //      other codec types may have to be defined too
 #   endif
@@ -140,6 +141,8 @@ inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 #       if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 42, 0, 51, 74, 100)
 #           define AVPixelFormat PixelFormat
 #           define AV_PIX_FMT_NB PIX_FMT_NB
+#           define AV_PIX_FMT_RGB24 PIX_FMT_RGB24
+#           define AV_PIX_FMT_FLAG_RGB PIX_FMT_RGB
 #       endif
 namespace {
 inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
