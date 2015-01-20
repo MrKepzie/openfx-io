@@ -1,6 +1,6 @@
 PLUGINOBJECTS = \
 	ReadEXR.o WriteEXR.o \
-	ReadFFmpeg.o FFmpegHandler.o WriteFFmpeg.o \
+	ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
 	ReadOIIO.o WriteOIIO.o \
 	OIIOText.o \
 	OIIOResize.o \
