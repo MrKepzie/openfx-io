@@ -53,6 +53,7 @@
 
 #if defined(_WIN32) || defined(WIN64)
 #  include <windows.h> // for GetSystemInfo()
+#define strncasecmp _strnicmp
 #else
 #  include <unistd.h> // for sysconf()
 #endif

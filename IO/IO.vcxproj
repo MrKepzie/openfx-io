@@ -93,6 +93,22 @@
     <PostBuildEvent>
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.WriteFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)EXR\fr.inria.openfx.ReadEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)EXR\fr.inria.openfx.WriteEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+
+
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -110,6 +126,22 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.WriteFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)EXR\fr.inria.openfx.ReadEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)EXR\fr.inria.openfx.WriteEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+
 
 </Command>
     </PostBuildEvent>
@@ -134,6 +166,22 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.WriteFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)EXR\fr.inria.openfx.ReadEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)EXR\fr.inria.openfx.WriteEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+
 
 </Command>
     </PostBuildEvent>
@@ -172,13 +220,29 @@
     <PostBuildEvent>
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.WriteFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)EXR\fr.inria.openfx.ReadEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)EXR\fr.inria.openfx.WriteEXR.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+
+
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\EXR\ReadEXR.cpp" />
     <ClCompile Include="..\EXR\WriteEXR.cpp" />
-    <ClCompile Include="..\FFmpeg\FFmpegHandler.cpp" />
+    <ClCompile Include="..\FFmpeg\FFmpegFile.cpp" />
     <ClCompile Include="..\FFmpeg\ReadFFmpeg.cpp" />
     <ClCompile Include="..\FFmpeg\WriteFFmpeg.cpp" />
     <ClCompile Include="..\IOSupport\GenericOCIO.cpp" />
@@ -212,7 +276,7 @@
     <ClInclude Include="..\EXR\ReadEXR.h" />
     <ClInclude Include="..\EXR\WriteEXR.h" />
     <ClInclude Include="..\FFmpeg\FFmpegCompat.h" />
-    <ClInclude Include="..\FFmpeg\FFmpegHandler.h" />
+    <ClInclude Include="..\FFmpeg\FFmpegFile.h" />
     <ClInclude Include="..\FFmpeg\ReadFFmpeg.h" />
     <ClInclude Include="..\FFmpeg\WriteFFmpeg.h" />
     <ClInclude Include="..\IOSupport\GenericOCIO.h" />
