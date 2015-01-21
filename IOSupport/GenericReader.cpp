@@ -578,10 +578,10 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
         if (filename->empty()) {
             filenameGood = false;
         }
-//        else {
-//            std::ifstream fs(filename->c_str());
-//            filenameGood = fs.is_open() && fs.good();
-//        }
+        else {
+            std::ifstream fs(filename->c_str());
+            filenameGood = fs.is_open() && fs.good();
+        }
         if (filenameGood) {
             ret = eGetFileNameReturnedFullRes;
             // now, try the proxy file
