@@ -362,6 +362,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
             
+            // copy the source image (the writer is a no-op)
             copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
         }
     } else {
@@ -388,7 +389,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
 
             if (noPremult || userPremult == pluginExpectedPremult) {
                 // copy the whole raw src image
-                copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                copyPixels(*this, renderWindowClipped,
+                           srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes,
+                           tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             } else if (userPremult == OFX::eImagePreMultiplied) {
                 assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
                 unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
@@ -404,7 +407,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             // OCIO expects unpremultiplied input
             if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
                 // copy the whole raw src image
-                copyPixelData(renderWindowClipped, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                copyPixels(*this, renderWindowClipped,
+                           srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes,
+                           tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             } else {
                 assert(userPremult == OFX::eImagePreMultiplied);
                 unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
@@ -419,7 +424,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                                  , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
             }
         }
-        // write theimage file
+        // write the image file
         encode(filename, args.time, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
         // copy to dstImg if necessary
         if (_outputClip && _outputClip->isConnected()) {
@@ -485,70 +490,6 @@ GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &ar
 
 ////////////////////////////////////////////////////////////////////////////////
 // basic plugin render function, just a skelington to instantiate templates from
-
-/* set up and run a copy processor */
-static void
-setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-             const OfxRectI &renderWindow,
-             const void *srcPixelData,
-             const OfxRectI& srcBounds,
-             OFX::PixelComponentEnum srcPixelComponents,
-             OFX::BitDepthEnum srcPixelDepth,
-             int srcRowBytes,
-             void *dstPixelData,
-             const OfxRectI& dstBounds,
-             OFX::PixelComponentEnum dstPixelComponents,
-             OFX::BitDepthEnum dstPixelDepth,
-             int dstRowBytes)
-{
-    assert(srcPixelData && dstPixelData);
-
-    // make sure bit depths are sane
-    if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-
-    // set the images
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
-
-    // set the render window
-    processor.setRenderWindow(renderWindow);
-    
-    // Call the base class process member, this will call the derived templated process code
-    processor.process();
-}
-
-void
-GenericWriterPlugin::copyPixelData(const OfxRectI& renderWindow,
-                                   const void *srcPixelData,
-                                   const OfxRectI& srcBounds,
-                                   OFX::PixelComponentEnum srcPixelComponents,
-                                   OFX::BitDepthEnum srcPixelDepth,
-                                   int srcRowBytes,
-                                   void *dstPixelData,
-                                   const OfxRectI& dstBounds,
-                                   OFX::PixelComponentEnum dstPixelComponents,
-                                   OFX::BitDepthEnum dstBitDepth,
-                                   int dstRowBytes)
-{
-    assert(srcPixelData && dstPixelData);
-
-    // do the rendering
-    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        OFX::PixelCopier<float, 4, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-        OFX::PixelCopier<float, 3, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-        OFX::PixelCopier<float, 1, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } // switch
-}
 
 static void
 setupAndProcess(OFX::PixelProcessorFilterBase & processor,

@@ -674,47 +674,12 @@ GenericReaderPlugin::getStartingTime()
     return startingTime;
 }
 
-/* set up and run a copy processor */
-static void
-setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-             const OfxRectI &renderWindow,
-             const void *srcPixelData,
-             const OfxRectI& srcBounds,
-             OFX::PixelComponentEnum srcPixelComponents,
-             OFX::BitDepthEnum srcPixelDepth,
-             int srcRowBytes,
-             void *dstPixelData,
-             const OfxRectI& dstBounds,
-             OFX::PixelComponentEnum dstPixelComponents,
-             OFX::BitDepthEnum dstPixelDepth,
-             int dstRowBytes)
-{
-    assert(srcPixelData && dstPixelData);
-    assert(srcBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= srcBounds.y2);
-    assert(srcBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= srcBounds.x2);
-
-    // make sure bit depths are sane
-    if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-
-    // set the images
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
-
-    // set the render window
-    processor.setRenderWindow(renderWindow);
-
-    // Call the base class process member, this will call the derived templated process code
-    processor.process();
-}
-
 void
 GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
                                    const void *srcPixelData,
                                    const OfxRectI& srcBounds,
                                    OFX::PixelComponentEnum srcPixelComponents,
-                                   OFX::BitDepthEnum srcPixelDepth,
+                                   OFX::BitDepthEnum srcBitDepth,
                                    int srcRowBytes,
                                    void *dstPixelData,
                                    const OfxRectI& dstBounds,
@@ -727,47 +692,13 @@ GenericReaderPlugin::copyPixelData(const OfxRectI& renderWindow,
     assert(srcBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= srcBounds.x2);
 
 #ifdef GENERIC_READER_USE_MULTI_THREAD
-
-    // do the rendering
-    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
-    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        if (!_supportsRGBA) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        OFX::PixelCopier<float, 4, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-        if (!_supportsRGB) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        OFX::PixelCopier<float, 3, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-        if (!_supportsAlpha) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        OFX::PixelCopier<float, 1, 1> fred(*this);
-        setupAndCopy(fred, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } // switch
+    copyPixels(*this, renderWindow,
+               srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+               dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
 #else
-    if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-        if (!_supportsRGBA) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        copyPixels<float,4>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-        if (!_supportsRGB) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        copyPixels<float,3>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-        if (!_supportsAlpha) {
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
-        copyPixels<float,1>(renderWindow, (const float*)srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, (float*)dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
-    } // switch
+    copyPixelsNT(*this, renderWindow,
+                 srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                 dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
 #endif
 }
 
