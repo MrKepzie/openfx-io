@@ -91,6 +91,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "ofxsCopier.h"
+
 #include "pstream.h"
 
 #define kPluginName "RunScriptOFX"
@@ -99,6 +101,11 @@
 "Run a script with the given arguments.\n" \
 "This is mostly useful to execute an external program on a set of input images files, which outputs image files.\n" \
 "Writers should be connected to each input, so that the image files are written before running the script, and the output of this node should be fed into one or more Readers, which read the images written by the script.\n" \
+"Sample node graph:\n" \
+"... <- WriteOIIO(scriptinput#####.png) <- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) <- ReadOIIO(scriptoutput#####.png) <- ...\n" \
+"Keep in mind that the input and output files are never removed in the above graph.\n" \
+"The output of RunScript is a copy of its first input, so that it can be used to execute a script at some point, e.g. to cleanup temporary files, as in:\n" \
+"... <- WriteOIIO(scriptinput#####.png) <- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) <- ReadOIIO(scriptoutput#####.png) <- RunScript(deletes temporary files scriptinput#####.png and scriptoutput#####.png, optional) <- ...\n" \
 "Each argument may be:\n" \
 "- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n" \
 "- A floating-point value (which can be linked to any plugin)\n" \
@@ -175,15 +182,14 @@ public:
     /* override changedParam */
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
-
-    /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
-    virtual void beginEdit(void) OVERRIDE FINAL;
-
     // override the rod call
     virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
 
     // override the roi call
     virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
+
+private:
+    void updateVisibility(void);
 
 private:
     OFX::Clip *srcClip_[kRunScriptPluginSourceClipCount];
@@ -203,9 +209,13 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
-        std::stringstream s;
-        s << i+1;
-        srcClip_[i] = fetchClip(s.str());
+        if (i == 0 && getContext() == OFX::eContextFilter) {
+            srcClip_[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+        } else {
+            std::stringstream s;
+            s << i+1;
+            srcClip_[i] = fetchClip(s.str());
+        }
     }
     dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
 
@@ -240,6 +250,8 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     }
     script_ = fetchStringParam(kParamScript);
     validate_ = fetchBooleanParam(kParamValidate);
+
+    updateVisibility();
 }
 
 void
@@ -385,6 +397,62 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 
     // remove the script
     (void)unlink(scriptname);
+
+    // now copy the first input to output
+
+    if (dstClip_ && dstClip_->isConnected()) {
+        std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+        if (!dstImg.get()) {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        if (dstImg->getRenderScale().x != args.renderScale.x ||
+            dstImg->getRenderScale().y != args.renderScale.y ||
+            dstImg->getField() != args.fieldToRender) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+
+        void* dstPixelData = NULL;
+        OfxRectI dstBounds;
+        OFX::PixelComponentEnum dstPixelComponents;
+        OFX::BitDepthEnum dstBitDepth;
+        int dstRowBytes;
+        getImageData(dstImg.get(), &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+
+        std::auto_ptr<const OFX::Image> srcImg(srcClip_[0]->fetchImage(args.time));
+        const void* srcPixelData = NULL;
+        OfxRectI srcBounds;
+        OFX::PixelComponentEnum srcPixelComponents;
+        OFX::BitDepthEnum srcBitDepth;
+        int srcRowBytes;
+        getImageData(srcImg.get(), &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+
+        if (!srcImg.get()) {
+            // fill output with black
+            fillBlack(*this, args.renderWindow,
+                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        } else {
+            if (srcImg->getRenderScale().x != args.renderScale.x ||
+                srcImg->getRenderScale().y != args.renderScale.y ||
+                srcImg->getField() != args.fieldToRender) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            const void* srcPixelData = NULL;
+            OfxRectI bounds;
+            OFX::PixelComponentEnum pixelComponents;
+            OFX::BitDepthEnum bitDepth;
+            int srcRowBytes;
+            getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+
+
+            // copy the source image (the writer is a no-op)
+            copyPixels(*this, args.renderWindow,
+                       srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
+                       dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        }
+    }
+
 }
 
 void
@@ -401,7 +469,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
 
     if (paramName == kParamCount) {
         // update the parameters visibility
-        beginEdit();
+        updateVisibility();
     } else if (paramName == kParamValidate) {
         bool validated;
         validate_->getValue(validated);
@@ -486,9 +554,8 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
 }
 
 void
-RunScriptPlugin::beginEdit(void)
+RunScriptPlugin::updateVisibility(void)
 {
-    DBG(std::cout << "beginEdit" << std::endl);
     // Due to a bug in Nuke, all visibility changes have to be done after instance creation.
     // It is not possible in Nuke to show a parameter that was set as secret/hidden in describeInContext()
 
@@ -586,6 +653,7 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // add supported pixel depths
     desc.addSupportedBitDepth(eBitDepthUByte);
     desc.addSupportedBitDepth(eBitDepthUShort);
+    desc.addSupportedBitDepth(eBitDepthHalf);
     desc.addSupportedBitDepth(eBitDepthFloat);
     desc.addSupportedBitDepth(eBitDepthCustom);
 
@@ -652,7 +720,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         }
 
         // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
-        // We thus hide them in beginEdit(), which is called after instance creation
+        // We thus hide them in updateVisibility(), which is called after instance creation
         std::stringstream ss;
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
             {
