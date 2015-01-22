@@ -438,9 +438,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
-            
-            
-            copyPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+
+            // copy the source image (the writer is a no-op)
+            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
         }
         
         // mem is freed at destruction
