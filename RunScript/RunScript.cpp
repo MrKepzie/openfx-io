@@ -412,25 +412,11 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
 
-        void* dstPixelData = NULL;
-        OfxRectI dstBounds;
-        OFX::PixelComponentEnum dstPixelComponents;
-        OFX::BitDepthEnum dstBitDepth;
-        int dstRowBytes;
-        getImageData(dstImg.get(), &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
-
         std::auto_ptr<const OFX::Image> srcImg(srcClip_[0]->fetchImage(args.time));
-        const void* srcPixelData = NULL;
-        OfxRectI srcBounds;
-        OFX::PixelComponentEnum srcPixelComponents;
-        OFX::BitDepthEnum srcBitDepth;
-        int srcRowBytes;
-        getImageData(srcImg.get(), &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
 
         if (!srcImg.get()) {
             // fill output with black
-            fillBlack(*this, args.renderWindow,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            fillBlack(*this, args.renderWindow, dstImg.get());
         } else {
             if (srcImg->getRenderScale().x != args.renderScale.x ||
                 srcImg->getRenderScale().y != args.renderScale.y ||
@@ -438,18 +424,9 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
             }
-            const void* srcPixelData = NULL;
-            OfxRectI bounds;
-            OFX::PixelComponentEnum pixelComponents;
-            OFX::BitDepthEnum bitDepth;
-            int srcRowBytes;
-            getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
-
 
             // copy the source image (the writer is a no-op)
-            copyPixels(*this, args.renderWindow,
-                       srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                       dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            copyPixels(*this, args.renderWindow, srcImg.get(), dstImg.get());
         }
     }
 
