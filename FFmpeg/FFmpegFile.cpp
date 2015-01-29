@@ -370,7 +370,7 @@ FFmpegFile::getStreamFrames(Stream & stream)
         // leads to an extra frame being reported.  To attempt to work around this, compare against the number of
         // frames in the stream, and if they differ by one, use that value instead.
         int64_t streamFrames = stream._avstream->nb_frames;
-        if ( (streamFrames > 0) && (std::abs(frames - streamFrames) <= 1) ) {
+        if ( (streamFrames > 0) && (std::llabs(frames - streamFrames) <= 1) ) {
             frames = streamFrames;
         }
 #if TRACE_FILE_OPEN
