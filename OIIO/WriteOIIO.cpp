@@ -447,18 +447,18 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 #ifdef OFX_IO_USING_OCIO
     std::string ocioColorspace;
     _ocio->getOutputColorspaceAtTime(time, ocioColorspace);
-    float gamma = 0.;
+    float gamma = 0.f;
     std::string colorSpaceStr;
     if (ocioColorspace == "Gamma1.8") {
         // Gamma1.8 in nuke-default
         colorSpaceStr = "GammaCorrected";
-        gamma = 1.8;
+        gamma = 1.8f;
     } else if (ocioColorspace == "Gamma2.2" || ocioColorspace == "vd8" || ocioColorspace == "vd10" || ocioColorspace == "vd16" || ocioColorspace == "VD16") {
         // Gamma2.2 in nuke-default
         // vd8, vd10, vd16 in spi-anim and spi-vfx
         // VD16 in blender
         colorSpaceStr = "GammaCorrected";
-        gamma = 2.2;
+        gamma = 2.2f;
     } else if (ocioColorspace == "sRGB" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
         // sRGB in nuke-default and blender
         // rrt_srgb in aces

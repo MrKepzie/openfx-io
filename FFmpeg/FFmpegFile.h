@@ -225,7 +225,7 @@ class FFmpegFile {
             return !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
         }
 
-        static float GetStreamAspectRatio(Stream* stream);
+        static double GetStreamAspectRatio(Stream* stream);
 
         // Generate the conversion context used by SoftWareScaler if not already set.
         // |reset| forces recalculation of cached context.

@@ -517,17 +517,17 @@ OCIOCDLTransformPlugin::apply(double time, const OfxRectI& renderWindow, float *
     double saturation;
     double r, g, b;
     slope_->getValueAtTime(time, r, g, b);
-    sop[0] = r;
-    sop[1] = g;
-    sop[2] = b;
+    sop[0] = (float)r;
+    sop[1] = (float)g;
+    sop[2] = (float)b;
     offset_->getValueAtTime(time, r, g, b);
-    sop[3] = r;
-    sop[4] = g;
-    sop[5] = b;
+    sop[3] = (float)r;
+    sop[4] = (float)g;
+    sop[5] = (float)b;
     power_->getValueAtTime(time, r, g, b);
-    sop[6] = r;
-    sop[7] = g;
-    sop[8] = b;
+    sop[6] = (float)r;
+    sop[7] = (float)g;
+    sop[8] = (float)b;
     saturation_->getValueAtTime(time, saturation);
     int direction_i;
     direction_->getValueAtTime(time, direction_i);
@@ -541,7 +541,7 @@ OCIOCDLTransformPlugin::apply(double time, const OfxRectI& renderWindow, float *
         assert(config);
         OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
         cc->setSOP(sop);
-        cc->setSat(saturation);
+        cc->setSat((float)saturation);
 
         if (direction_i == 0) {
             cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
@@ -652,17 +652,17 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
     double saturation;
     double r, g, b;
     slope_->getValueAtTime(time, r, g, b);
-    sop[0] = r;
-    sop[1] = g;
-    sop[2] = b;
+    sop[0] = (float)r;
+    sop[1] = (float)g;
+    sop[2] = (float)b;
     offset_->getValueAtTime(time, r, g, b);
-    sop[3] = r;
-    sop[4] = g;
-    sop[5] = b;
+    sop[3] = (float)r;
+    sop[4] = (float)g;
+    sop[5] = (float)b;
     power_->getValueAtTime(time, r, g, b);
-    sop[6] = r;
-    sop[7] = g;
-    sop[8] = b;
+    sop[6] = (float)r;
+    sop[7] = (float)g;
+    sop[8] = (float)b;
     saturation_->getValueAtTime(time, saturation);
     int direction_i;
     direction_->getValueAtTime(time, direction_i);
@@ -676,7 +676,7 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
         assert(config);
         OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
         cc->setSOP(sop);
-        cc->setSat(saturation);
+        cc->setSat((float)saturation);
 
         if (direction_i == 0) {
             cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
@@ -827,17 +827,17 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                 double saturation;
                 double r, g, b;
                 slope_->getValueAtTime(time, r, g, b);
-                sop[0] = r;
-                sop[1] = g;
-                sop[2] = b;
+                sop[0] = (float)r;
+                sop[1] = (float)g;
+                sop[2] = (float)b;
                 offset_->getValueAtTime(time, r, g, b);
-                sop[3] = r;
-                sop[4] = g;
-                sop[5] = b;
+                sop[3] = (float)r;
+                sop[4] = (float)g;
+                sop[5] = (float)b;
                 power_->getValueAtTime(time, r, g, b);
-                sop[6] = r;
-                sop[7] = g;
-                sop[8] = b;
+                sop[6] = (float)r;
+                sop[7] = (float)g;
+                sop[8] = (float)b;
                 saturation_->getValueAtTime(time, saturation);
                 int direction_i;
                 direction_->getValueAtTime(time, direction_i);
@@ -847,7 +847,7 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                     assert(config);
                     OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
                     cc->setSOP(sop);
-                    cc->setSat(saturation);
+                    cc->setSat((float)saturation);
 
                     if (direction_i == 0) {
                         cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);

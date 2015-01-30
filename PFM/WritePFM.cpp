@@ -115,7 +115,7 @@ static void copyLine(const PIX* pixelData, int rowbytes, int W, int /*H*/, int C
             }
         }
         if (dstC == 4) {
-            dstPix[3] = 1.; // alpha
+            dstPix[3] = 1.f; // alpha
         }
 
         srcPix += srcC;

@@ -328,7 +328,7 @@ GenericReaderPlugin::restoreStateFromParameters()
         _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     }
     
-    OfxRangeD tmp;
+    OfxRangeI tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
         
         bool timeDomainUserEdited;
@@ -357,15 +357,18 @@ GenericReaderPlugin::restoreStateFromParameters()
 bool
 GenericReaderPlugin::getTimeDomain(OfxRangeD &range)
 {
-    bool ret = getSequenceTimeDomainInternal(range,false);
+    OfxRangeI rangeI;
+    bool ret = getSequenceTimeDomainInternal(rangeI, false);
     if (ret) {
-        timeDomainFromSequenceTimeDomain(range, false);
+        timeDomainFromSequenceTimeDomain(rangeI, false);
+        range.min = rangeI.min;
+        range.max = rangeI.max;
     }
     return ret;
 }
 
 bool
-GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range, bool canSetOriginalFrameRange)
+GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSetOriginalFrameRange)
 {
     
     ///compute the frame-range
@@ -392,7 +395,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range, bool canSet
             range.min = _sequenceFromFiles.begin()->first;
             range.max = _sequenceFromFiles.rbegin()->first;
         } else {
-            range.min = range.max = 1.;
+            range.min = range.max = 1;
         }
     }
     
@@ -413,7 +416,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeD& range, bool canSet
 
 
 void
-GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeD& range,bool mustSetFrameRange, bool setFirstLastFrame)
+GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mustSetFrameRange, bool setFirstLastFrame)
 {
     ///the values held by GUI parameters
     int frameRangeFirst,frameRangeLast;
@@ -471,7 +474,7 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
 
     
     ///get the offset from the starting time of the sequence in case we bounce or loop
-    int timeOffsetFromStart = t -  sequenceTimeDomain.min;
+    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
     
     ///if the time given is before the sequence
     if (sequenceTimeDomain.min <= *sequenceTime && *sequenceTime <= sequenceTimeDomain.max) {
@@ -558,7 +561,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                std::string *filename)
 {
     GetFilenameRetCodeEnum ret;
-    OfxRangeD sequenceTimeDomain;
+    OfxRangeI sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
 
     int missingFrame_i;
@@ -1433,7 +1436,7 @@ GenericReaderPlugin::inputFileChanged()
     }
     
     
-    OfxRangeD tmp;
+    OfxRangeI tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
         timeDomainFromSequenceTimeDomain(tmp, true);
         _startingTime->setValue(tmp.min);
@@ -1562,7 +1565,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     } else if (paramName == kParamStartingTime && args.reason == OFX::eChangeUserEdit) {
         ///recompute the timedomain
-        OfxRangeD sequenceTimeDomain;
+        OfxRangeI sequenceTimeDomain;
         getSequenceTimeDomainInternal(sequenceTimeDomain,true);
         
         //also update the time offset
@@ -1622,7 +1625,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _fps->setEnabled(customFps);
         
         if (!customFps) {
-            OfxRangeD tmp;
+            OfxRangeI tmp;
             if (getSequenceTimeDomainInternal(tmp,false)) {
                 timeDomainFromSequenceTimeDomain(tmp, false);
                 _startingTime->setValue(tmp.min);
@@ -1676,7 +1679,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     // if there is only one frame and before/after behaviour is hold, then
     // the output is not framevarying
     bool frameVarying = true;
-    OfxRangeD sequenceTimeDomain;
+    OfxRangeI sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain, false);
     if (sequenceTimeDomain.min == sequenceTimeDomain.max) {
         int beforeChoice_i;
@@ -1731,7 +1734,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     clipPreferences.setOutputPremultiplication(premult);
 
     // get the pixel aspect ratio from the first frame
-    OfxRangeD tmp;
+    OfxRangeI tmp;
     if (getSequenceTimeDomainInternal(tmp, false)) {
         timeDomainFromSequenceTimeDomain(tmp, false);
         std::string filename;
@@ -1816,7 +1819,7 @@ GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
     std::string error;
     double originalPAR = 1., proxyPAR = 1.;
     bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error);
-    proxyBounds.x1 = proxyBounds.x2 = proxyBounds.y1 = proxyBounds.y2 = 0.;
+    proxyBounds.x1 = proxyBounds.x2 = proxyBounds.y1 = proxyBounds.y2 = 0.f;
     success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error);
     OfxPointD ret;
     if (!success ||

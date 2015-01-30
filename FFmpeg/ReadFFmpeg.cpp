@@ -297,7 +297,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     
     try {
         // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5 
-        if ( !_ffmpegFile->decode(_buffer, std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
+        if ( !_ffmpegFile->decode(_buffer, (int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
             
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);

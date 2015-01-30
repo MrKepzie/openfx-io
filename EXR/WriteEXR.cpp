@@ -204,7 +204,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
         exrDispW.max.x = (bounds.x2 - bounds.x1);
         exrDispW.max.y = (bounds.y2 - bounds.y1);
 
-        Imf_::Header exrheader(exrDispW, exrDataW, 1.,
+        Imf_::Header exrheader(exrDispW, exrDataW, 1.f,
                                Imath::V2f(0, 0), 1, Imf_::INCREASING_Y, compression);
         
         Imf_::PixelType pixelType;
