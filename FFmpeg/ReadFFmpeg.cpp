@@ -99,7 +99,7 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getSequenceTimeDomain(const std::string& filename,OfxRangeD &range) OVERRIDE FINAL;
+    virtual bool getSequenceTimeDomain(const std::string& filename, OfxRangeI &range) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
@@ -297,7 +297,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     
     try {
         // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5 
-        if ( !_ffmpegFile->decode(_buffer, std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
+        if ( !_ffmpegFile->decode(_buffer, (int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
             
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -322,7 +322,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
 }
 
 bool
-ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename,OfxRangeD &range)
+ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename, OfxRangeI &range)
 {
     if (FFmpegFile::isImageFile(filename)) {
         range.min = range.max = 0.;

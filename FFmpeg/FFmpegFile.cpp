@@ -227,7 +227,7 @@ FFmpegFile::Stream::getConvertCtx(AVPixelFormat srcPixelFormat,
     return _convertCtx;
 } // FFmpegFile::Stream::getConvertCtx
 
-/*static*/ float
+/*static*/ double
 FFmpegFile::Stream::GetStreamAspectRatio(Stream* stream)
 {
     if (stream->_avstream->sample_aspect_ratio.num) {
