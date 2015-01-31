@@ -331,6 +331,8 @@ protected:
     OFX::DoubleParam* _fps;
     
     std::auto_ptr<GenericOCIO> _ocio;
+    
+    std::string _oldFileName; //< used to determine if we need to call inputFileChanged or not
 
 private:
     

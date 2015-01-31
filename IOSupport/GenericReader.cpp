@@ -328,6 +328,8 @@ GenericReaderPlugin::restoreStateFromParameters()
         _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
     }
     
+    _oldFileName = filename;
+    
     OfxRangeD tmp;
     if (getSequenceTimeDomainInternal(tmp,true)) {
         
@@ -1446,23 +1448,28 @@ GenericReaderPlugin::inputFileChanged()
         
         OFX::PixelComponentEnum components;
         OFX::PreMultiplicationEnum premult;
-        onInputFileChanged(filename, &premult, &components);
-        // RGB is always Opaque, Alpha is always PreMultiplied
-        if (components == OFX::ePixelComponentRGB) {
-            premult = OFX::eImageOpaque;
-        } else if (components == OFX::ePixelComponentAlpha) {
-            premult = OFX::eImagePreMultiplied;
-        }
-        setOutputComponents(components);
-        _premult->setValue((int)premult);
-        
-        bool customFps;
-        _customFPS->getValue(customFps);
-        if (!customFps) {
-            double fps;
-            bool gotFps = getFrameRate(filename, &fps);
-            if (gotFps) {
-                _fps->setValue(fps);
+        if (filename != _oldFileName) {
+            
+            _oldFileName = filename;
+            
+            onInputFileChanged(filename, &premult, &components);
+            // RGB is always Opaque, Alpha is always PreMultiplied
+            if (components == OFX::ePixelComponentRGB) {
+                premult = OFX::eImageOpaque;
+            } else if (components == OFX::ePixelComponentAlpha) {
+                premult = OFX::eImagePreMultiplied;
+            }
+            setOutputComponents(components);
+            _premult->setValue((int)premult);
+            
+            bool customFps;
+            _customFPS->getValue(customFps);
+            if (!customFps) {
+                double fps;
+                bool gotFps = getFrameRate(filename, &fps);
+                if (gotFps) {
+                    _fps->setValue(fps);
+                }
             }
         }
     }
