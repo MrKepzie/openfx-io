@@ -61,7 +61,7 @@ int floatToInt(float value)
     } else if (value >= 1.) {
         return numvals - 1;
     }
-    return value * (numvals-1) + 0.5;
+    return (int)(value * (numvals-1) + 0.5);
 }
 
 /**
@@ -247,7 +247,7 @@ inline double getScaleFromMipMapLevel(unsigned int level)
 inline unsigned int getLevelFromScale(double s)
 {
     assert(0. < s && s <= 1.);
-    int retval = -std::floor(std::log(s)/M_LN2 + 0.5);
+    int retval = -(int)std::floor(std::log(s)/M_LN2 + 0.5);
     assert(retval >= 0);
     return retval;
 }

@@ -330,10 +330,10 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     double r, g, b, a;
     textColor_->getValueAtTime(args.time, r, g, b, a);
     float textColor[4];
-    textColor[0] = r;
-    textColor[1] = g;
-    textColor[2] = b;
-    textColor[3] = a;
+    textColor[0] = (float)r;
+    textColor[1] = (float)g;
+    textColor[2] = (float)b;
+    textColor[3] = (float)a;
 
     // allocate temporary image
     int pixelBytes = getPixelBytes(pixelComponents, bitDepth);

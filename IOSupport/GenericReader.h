@@ -193,17 +193,17 @@ private:
      * @brief Override to indicate the time domain. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeD &/*range*/){ return false; }
+    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeI &/*range*/){ return false; }
     
     /**
      * @brief Called internally by getTimeDomain(...)
      **/
-    bool getSequenceTimeDomainInternal(OfxRangeD& range, bool canSetOriginalFrameRange);
+    bool getSequenceTimeDomainInternal(OfxRangeI& range, bool canSetOriginalFrameRange);
     
     /**
      * @brief Used internally by the GenericReader.
      **/
-    void timeDomainFromSequenceTimeDomain(OfxRangeD& range, bool mustSetFrameRange, bool setFirstLastFrame = true);
+    void timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mustSetFrameRange, bool setFirstLastFrame = true);
     
     /**
      * @brief Should return true if the file indicated by filename is a video-stream and not 
@@ -331,6 +331,8 @@ protected:
     OFX::DoubleParam* _fps;
     
     std::auto_ptr<GenericOCIO> _ocio;
+    
+    std::string _oldFileName; //< used to determine if we need to call inputFileChanged or not
 
 private:
     

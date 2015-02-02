@@ -663,7 +663,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     
     checkAvError();
     
-    _lastTimeEncoded = time;
+    _lastTimeEncoded = (int)time;
     
 }
 

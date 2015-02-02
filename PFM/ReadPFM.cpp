@@ -72,7 +72,7 @@ public:
 
 private:
 
-    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL { return false; }
+    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
@@ -154,7 +154,7 @@ static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
         }
         if (dstC == 4) {
             // Alpha is 0 on RGBA images to allow adding alpha using a Roto node
-            dstPix[3] = 0.; // alpha
+            dstPix[3] = 0.f; // alpha
         }
 
         srcPix += srcC;
@@ -330,7 +330,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
 }
 
 void
-ReadPFMPlugin::onInputFileChanged(const std::string& newFile,
+ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components)
 {

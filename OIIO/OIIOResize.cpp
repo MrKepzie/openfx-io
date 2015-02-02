@@ -574,7 +574,7 @@ OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::s
                 foundFormat = true;
             }
         }
-        size_->setValue(projectSize.x, projectSize.y);
+        size_->setValue((int)projectSize.x, (int)projectSize.y);
         if (!foundFormat) {
             type_->setValue((int)eResizeTypeSize);
         }
@@ -623,10 +623,10 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
                 }
                 if ((double)w / srcW < (double)h / srcH) {
                     ///Keep the given width, recompute the height
-                    h = srcH * w / srcW;
+                    h = (int)(srcH * w / srcW);
                 } else {
                     ///Keep the given height,recompute the width
-                    w = srcW * h / srcH;
+                    w = (int)(srcW * h / srcH);
                 }
                 
             }

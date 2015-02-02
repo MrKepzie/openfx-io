@@ -466,10 +466,10 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     ////Since the generic writer doesn't support tiles and multi-resolution, the RoD is necesserarily the
     ////output image size.
     OfxRectI rodI;
-    rodI.x1 = std::floor(rod.x1);
-    rodI.y1 = std::floor(rod.y1);
-    rodI.x2 = std::ceil(rod.x2);
-    rodI.y2 = std::ceil(rod.y2);
+    rodI.x1 = (int)std::floor(rod.x1);
+    rodI.y1 = (int)std::floor(rod.y1);
+    rodI.x2 = (int)std::ceil(rod.x2);
+    rodI.y2 = (int)std::ceil(rod.y2);
     
     beginEncode(filename, rodI, args);
 }
@@ -736,9 +736,9 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _frameRange->getValue(choice);
         if (choice == 2) {
             _firstFrame->setIsSecret(false);
-            _firstFrame->setValue(first);
+            _firstFrame->setValue((int)first);
             _lastFrame->setIsSecret(false);
-            _lastFrame->setValue(last);
+            _lastFrame->setValue((int)last);
         } else {
             _firstFrame->setIsSecret(true);
             _lastFrame->setIsSecret(true);
