@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+
+<assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
+
+<file name="avcodec-56.dll">
+</file>
+
+<file name="avformat-56.dll">
+</file>
+
+<file name="avutil-54.dll">
+</file>
+
+<file name="swscale-3.dll">
+</file>
+
+<file name="swresample-1.dll">
+</file>
+
+</assembly>
