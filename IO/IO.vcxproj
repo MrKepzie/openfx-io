@@ -62,13 +62,16 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TargetExt>.ofx</TargetExt>
+    <OutDir>$(SolutionDir)\win32\Debug</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetExt>.ofx</TargetExt>
+    <OutDir>$(SolutionDir)win64\Debug</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetExt>.ofx</TargetExt>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\win32\Release</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt>.ofx</TargetExt>
@@ -76,6 +79,7 @@
     <GenerateManifest>false</GenerateManifest>
     <EmbedManifest>false</EmbedManifest>
     <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)\x64\Release</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -191,7 +195,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.13\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\include\OpenEXR;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\include;C:\local\boost_1_55_0_vs2010_x86;$(SolutionDir)\SupportExt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.15\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\include\OpenEXR;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\include;C:\boost_1_57_0;$(SolutionDir)\SupportExt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_IO_MT_FFMPEG;OpenColorIO_STATIC;OIIO_STATIC_BUILD;OPJ_STATIC;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;WIN64;NOMINMAX;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -200,7 +204,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>psapi.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\zlib_1.2.8\lib\x64\zlibstat.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\lib\static\x64\libyaml-cppmd.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\lib\static\x64\tinyxml_STL.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\lib\static\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\jpeg_9a\lib\x64\jpeg.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\libpng_1.6.9\lib\x64\libpng16.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\tiff_4.0.3\lib\x64\libtiff.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\Half.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\Iex.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\Imath.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\IlmImf.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenJPEG_1.5.2\lib\x64\openjpeg.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\Freetype_2.5.3\lib\x64\freetype253MT.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\libGif_4.1.6\lib\x64\giflib.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\libRaw_0.16\lib\x64\libraw.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.13\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\avcodec.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\avutil.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\avformat.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\swscale.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_thread-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_date_time-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_system-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_chrono-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_filesystem-vc100-mt-s-1_55.lib;C:\local\boost_1_55_0_vs2010_x86\lib64-msvc-10.0\libboost_regex-vc100-mt-s-1_55.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>psapi.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\zlib_1.2.8\lib\x64\zlibstat.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\lib\static\x64\libyaml-cppmd.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\lib\static\x64\tinyxml_STL.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\lib\static\x64\OpenColorIO.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\jpeg_9a\lib\x64\jpeg.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\libpng_1.6.9\lib\x64\libpng16.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\tiff_4.0.3\lib\x64\libtiff.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\Half.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\Iex.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\IlmThread.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\Imath.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\lib\static\x64\IlmImf.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenJPEG_1.5.2\lib\x64\openjpeg.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\Freetype_2.5.3\lib\x64\freetype253MT.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\libGif_4.1.6\lib\x64\giflib.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\libRaw_0.16\lib\x64\libraw.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.15\lib\x64\OpenImageIO.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\avcodec.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\avutil.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\avformat.lib;C:\Users\lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\lib\x64\swscale.lib;C:\boost_1_57_0\x64\libboost_thread-vc100-mt-s-1_57.lib;C:\boost_1_57_0\x64\libboost_date_time-vc100-mt-s-1_57.lib;C:\boost_1_57_0\x64\libboost_system-vc100-mt-s-1_57.lib;C:\boost_1_57_0\x64\libboost_chrono-vc100-mt-s-1_57.lib;C:\boost_1_57_0\x64\libboost_filesystem-vc100-mt-s-1_57.lib;C:\boost_1_57_0\x64\libboost_regex-vc100-mt-s-1_57.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)$(ProjectName).ofx.bundle/Contents/Win64/$(ProjectName).ofx</OutputFile>
       <AdditionalLibraryDirectories>.;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>$(OutDir)$(ProjectName).lib</ImportLibrary>
