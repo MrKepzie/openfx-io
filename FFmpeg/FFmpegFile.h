@@ -258,6 +258,8 @@ class FFmpegFile {
 
     AVPacket _avPacket;
 
+    unsigned char* _data;
+    
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
     mutable OFX::MultiThread::Mutex _lock;
@@ -425,9 +427,20 @@ public:
         // mov64Reader::decode always uses stream 0
         return _streams[0]->_height;
     }
+    
+    const unsigned char* getData() const {
+        return _data;
+    }
+    
+    std::size_t getSizeOfData() const {
+        if (_streams.empty()) {
+            return 0;
+        }
+        return _streams[0]->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
+    }
 
-    // decode a single frame into the buffer. Thread safe
-    bool decode(unsigned char* buffer, int frame,bool loadNearest, int maxRetries, unsigned streamIdx = 0);
+    // decode a single frame into the buffer (stream 0). Thread safe
+    bool decode(int frame,bool loadNearest, int maxRetries);
 
     // get stream information
     bool getFPS(double& fps,

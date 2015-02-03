@@ -455,6 +455,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
     , _errorMsg()
     , _invalidState(false)
     , _avPacket()
+    , _data(0)
 #ifdef OFX_IO_MT_FFMPEG
     , _lock(0)
 #endif
@@ -616,6 +617,13 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         stream->_startPTS = getStreamStartTime(*stream);
         stream->_frames   = getStreamFrames(*stream);
 
+        if (_streams.empty()) {
+            std::size_t pixelDepth = stream->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
+            // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
+            assert(!_data);
+            _data = new unsigned char[stream->_width * stream->_height * 3 * pixelDepth];
+        }
+        
         // save the stream
         _streams.push_back(stream);
     }
@@ -644,6 +652,7 @@ FFmpegFile::~FFmpegFile()
     _filename.clear();
     _errorMsg.clear();
     _invalidState = false;
+    delete _data;
 }
 
 const char*
@@ -739,12 +748,13 @@ FFmpegFile::seekFrame(int frame,
 
 // decode a single frame into the buffer thread safe
 bool
-FFmpegFile::decode(unsigned char* buffer,
-                   int frame,
+FFmpegFile::decode(int frame,
                    bool loadNearest,
-                   int maxRetries,
-                   unsigned streamIdx)
+                   int maxRetries)
 {
+    
+    const unsigned int streamIdx = 0;
+    
 #ifdef OFX_IO_MT_FFMPEG
     OFX::MultiThread::AutoMutex guard(_lock);
 #endif
@@ -1082,7 +1092,7 @@ FFmpegFile::decode(unsigned char* buffer,
 #endif
 
                 AVPicture output;
-                avpicture_fill(&output, buffer, stream->_outputPixelFormat, stream->_width, stream->_height);
+                avpicture_fill(&output, _data, stream->_outputPixelFormat, stream->_width, stream->_height);
 
                 SwsContext* context = NULL;
                 {

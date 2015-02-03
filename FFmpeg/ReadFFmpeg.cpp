@@ -75,10 +75,6 @@ class ReadFFmpegPlugin : public GenericReaderPlugin
 {
     FFmpegFile* _ffmpegFile;
 
-    unsigned char* _buffer;
-    int _bufferWidth;
-    int _bufferHeight;
-
     OFX::IntParam *_maxRetries;
     
 public:
@@ -111,9 +107,6 @@ private:
 ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
 , _ffmpegFile(0)
-, _buffer(0)
-, _bufferWidth(0)
-, _bufferHeight(0)
 , _maxRetries(0)
 {
     _maxRetries = fetchIntParam(kMaxRetriesParamName);
@@ -132,9 +125,6 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 ReadFFmpegPlugin::~ReadFFmpegPlugin()
 {
     
-    if(_buffer){
-        delete [] _buffer;
-    }
     if (_ffmpegFile) {
         delete _ffmpegFile;
     }
@@ -194,9 +184,9 @@ ReadFFmpegPlugin::isVideoStream(const std::string& filename)
     return !FFmpegFile::isImageFile(filename);
 }
 
-template<int nComponents>
+template<int nComponents,int maxValue,typename PIX>
 static void
-fillWindow(const unsigned char* buffer,
+fillWindow(const PIX* buffer,
            const OfxRectI& renderWindow,
            float *pixelData,
            const OfxRectI& imgBounds,
@@ -209,14 +199,14 @@ fillWindow(const unsigned char* buffer,
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
         int srcY = renderWindow.y2 - y - 1;
         float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
-        const unsigned char* src_pixels = buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
+        const PIX* src_pixels = buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
 
         for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
-            int srcCol = x * 3;
+            int srcCol = x * 3 ;
             int dstCol = x * nComponents;
-            dst_pixels[dstCol + 0] = intToFloat<256>(src_pixels[srcCol + 0]);
-            dst_pixels[dstCol + 1] = intToFloat<256>(src_pixels[srcCol + 1]);
-            dst_pixels[dstCol + 2] = intToFloat<256>(src_pixels[srcCol + 2]);
+            dst_pixels[dstCol + 0] = intToFloat<maxValue>(src_pixels[srcCol + 0]);
+            dst_pixels[dstCol + 1] = intToFloat<maxValue>(src_pixels[srcCol + 1]);
+            dst_pixels[dstCol + 2] = intToFloat<maxValue>(src_pixels[srcCol + 2]);
             if (nComponents == 4) {
                 // Output is Opaque with alpha=0 by default,
                 // but premultiplication is set to opaque.
@@ -275,29 +265,19 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
+    
+#pragma message WARN("Set PAR in getClipPreferences")
     ///set the pixel aspect ratio
     // sorry, but this seems to be read-only,
     // see http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImagePropPixelAspectRatio
     //dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
-    
-    if (_bufferWidth != width || _bufferHeight != height){
-        delete [] _buffer;
-        _buffer = 0;
-    }
-    
-    if (!_buffer){
-        _buffer = new unsigned char[width * height * 3];
-        _bufferHeight = height;
-        _bufferWidth = width;
-    }
-    
-    
+   
     int maxRetries;
     _maxRetries->getValue(maxRetries);
     
     try {
         // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5 
-        if ( !_ffmpegFile->decode(_buffer, (int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
+        if ( !_ffmpegFile->decode((int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
             
             setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -313,11 +293,23 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         return;
     }
 
+    const unsigned char* buffer = _ffmpegFile->getData();
+    std::size_t sizeOfData = _ffmpegFile->getSizeOfData();
+    assert(sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short));
     ///fill the renderWindow in dstImg with the buffer freshly decoded.
     if (pixelComponents == OFX::ePixelComponentRGB) {
-        fillWindow<3>(_buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+        if (sizeOfData == sizeof(unsigned char)) {
+            fillWindow<3,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+        } else {
+            fillWindow<3,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+        }
+        
     } else if (pixelComponents == OFX::ePixelComponentRGBA) {
-        fillWindow<4>(_buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+        if (sizeOfData == sizeof(unsigned char)) {
+            fillWindow<4,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+        } else {
+            fillWindow<4,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+        }
     }
 }
 
