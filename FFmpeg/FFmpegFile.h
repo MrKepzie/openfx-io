@@ -71,9 +71,7 @@ extern "C" {
 }
 #include "FFmpegCompat.h"
 
-#ifdef OFX_IO_MT_FFMPEG
 #include "ofxsMultiThread.h"
-#endif
 
 #define CHECKMSG(x,msg) \
 {\
