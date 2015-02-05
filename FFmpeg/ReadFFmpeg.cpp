@@ -71,15 +71,16 @@
 #define kSupportsAlpha false
 #define kSupportsTiles false
 
+
 class ReadFFmpegPlugin : public GenericReaderPlugin
 {
-    FFmpegFile* _ffmpegFile;
-
+    
+    FFmpegFileManager& _manager;
     OFX::IntParam *_maxRetries;
     
 public:
 
-    ReadFFmpegPlugin(OfxImageEffectHandle handle);
+    ReadFFmpegPlugin(FFmpegFileManager& manager,OfxImageEffectHandle handle);
 
     virtual ~ReadFFmpegPlugin();
 
@@ -104,9 +105,9 @@ private:
     virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
 };
 
-ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
+ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager,OfxImageEffectHandle handle)
 : GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
-, _ffmpegFile(0)
+, _manager(manager)
 , _maxRetries(0)
 {
     _maxRetries = fetchIntParam(kMaxRetriesParamName);
@@ -125,20 +126,12 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(OfxImageEffectHandle handle)
 ReadFFmpegPlugin::~ReadFFmpegPlugin()
 {
     
-    if (_ffmpegFile) {
-        delete _ffmpegFile;
-    }
 }
 
 void
 ReadFFmpegPlugin::restoreState(const std::string& filename)
 {
-    assert(_ffmpegFile);
-    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
-        // TODO: use FFmpegFileManager
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpegFile(filename);
-    }
+    //_manager.getOrCreate(this, filename);
 }
 
 bool
@@ -167,13 +160,12 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
     *components = OFX::ePixelComponentRGB;
     *premult = OFX::eImageOpaque;
     
-    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
-        // TODO: use FFmpegFileManager
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpegFile(filename);
-    }
-    if (_ffmpegFile->isInvalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+    //Clear all opened files by this plug-in since the user changed the selected file/sequence
+    _manager.clear(this);
+    FFmpegFile* file = _manager.getOrCreate(this, filename);
+    
+    if (file && file->isInvalid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
     }
 }
 
@@ -226,13 +218,9 @@ ReadFFmpegPlugin::decode(const std::string& filename,
                          OFX::PixelComponentEnum pixelComponents,
                          int rowBytes)
 {
-    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
-        // TODO: use FFmpegFileManager
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpegFile(filename);
-    }
-    if (_ffmpegFile->isInvalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+    FFmpegFile* file = _manager.getOrCreate(this, filename);
+    if (file && file->isInvalid()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
         return;
     }
 
@@ -243,15 +231,15 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     }
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
-    if (!_ffmpegFile) {
-        setPersistentMessage(OFX::Message::eMessageError, "",filename +  ": Missing frame");
+    if (!file) {
+        setPersistentMessage(OFX::Message::eMessageError, "", filename +  ": Missing frame");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
     int width,height,frames;
     double ap;
-    _ffmpegFile->getInfo(width, height, ap, frames);
+    file->getInfo(width, height, ap, frames);
 
     // wrong assert:
     // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
@@ -265,21 +253,14 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
-    
-#pragma message WARN("Set PAR in getClipPreferences")
-    ///set the pixel aspect ratio
-    // sorry, but this seems to be read-only,
-    // see http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImagePropPixelAspectRatio
-    //dstImg->getPropertySet().propSetDouble(kOfxImagePropPixelAspectRatio, ap, 0);
-   
     int maxRetries;
     _maxRetries->getValue(maxRetries);
     
     try {
         // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5 
-        if ( !_ffmpegFile->decode((int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
+        if ( !file->decode((int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
             
-            setPersistentMessage(OFX::Message::eMessageError, "", _ffmpegFile->getError());
+            setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
             
         }
@@ -293,8 +274,8 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         return;
     }
 
-    const unsigned char* buffer = _ffmpegFile->getData();
-    std::size_t sizeOfData = _ffmpegFile->getSizeOfData();
+    const unsigned char* buffer = file->getData();
+    std::size_t sizeOfData = file->getSizeOfData();
     assert(sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short));
     ///fill the renderWindow in dstImg with the buffer freshly decoded.
     if (pixelComponents == OFX::ePixelComponentRGB) {
@@ -323,16 +304,12 @@ ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename, OfxRangeI &
 
     int width,height,frames;
     double ap;
-    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
-        // TODO: use FFmpegFileManager
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpegFile(filename);
-    }
-    if (_ffmpegFile->isInvalid()) {
+    FFmpegFile* file = _manager.getOrCreate(this, filename);
+    if (!file || file->isInvalid()) {
         range.min = range.max = 0.;
         return false;
     }
-    _ffmpegFile->getInfo(width, height, ap, frames);
+    file->getInfo(width, height, ap, frames);
 
     range.min = 1;
     range.max = frames;
@@ -345,16 +322,12 @@ ReadFFmpegPlugin::getFrameRate(const std::string& filename,
 {
     assert(fps);
     
-    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
-        // TODO: use FFmpegFileManager
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpegFile(filename);
-    }
-    if (_ffmpegFile->isInvalid()) {
+    FFmpegFile* file = _manager.getOrCreate(this, filename);
+    if (!file || file->isInvalid()) {
         return false;
     }
 
-    bool gotFps = _ffmpegFile->getFPS(*fps);
+    bool gotFps = file->getFPS(*fps);
     return gotFps;
 }
 
@@ -367,21 +340,17 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
                                  std::string *error)
 {
     assert(bounds && par);
-    if (!_ffmpegFile || _ffmpegFile->isInvalid() || _ffmpegFile->getFilename() != filename) {
-        // TODO: use FFmpegFileManager
-        delete _ffmpegFile;
-        _ffmpegFile = new FFmpegFile(filename);
-    }
-    if (_ffmpegFile->isInvalid()) {
-        if (error) {
-            *error = _ffmpegFile->getError();
+    FFmpegFile* file = _manager.getOrCreate(this, filename);
+    if (!file || file->isInvalid()) {
+        if (error && file) {
+            *error = file->getError();
         }
         return false;
     }
 
     int width,height,frames;
     double ap;
-    if (!_ffmpegFile->getInfo(width, height, ap, frames)) {
+    if (!file->getInfo(width, height, ap, frames)) {
         width = 0;
         height = 0;
         ap = 1.;
@@ -397,7 +366,28 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
 
 using namespace OFX;
 
-mDeclareReaderPluginFactory(ReadFFmpegPluginFactory, {}, {},true);
+class ReadFFmpegPluginFactory : public OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>
+{
+    FFmpegFileManager _manager;
+    
+public:
+    ReadFFmpegPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
+    : OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>(id, verMaj, verMin)
+    , _manager()
+    {}
+    
+    virtual void load() {}
+    virtual void unload() {}
+    
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context);
+    
+    bool isVideoStreamPlugin() const { return true; }
+    
+    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+};
+
 
 static std::string ffmpeg_versions()
 {
@@ -508,6 +498,8 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     av_register_all();
     
     
+    _manager.init();
+    
 #ifdef OFX_EXTENSIONS_TUTTLE
     std::vector<std::string> extensions;
 	{
@@ -580,7 +572,7 @@ ImageEffect*
 ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
                                         ContextEnum /*context*/)
 {
-    ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(handle);
+    ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(_manager,handle);
     ret->restoreStateFromParameters();
     return ret;
 }

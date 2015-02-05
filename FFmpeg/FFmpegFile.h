@@ -51,6 +51,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <list>
 
 #include <locale>
 #include <cstdio>
@@ -83,7 +84,6 @@ extern "C" {
     return;\
   }\
 }
-
 
 
 class FFmpegFile {
@@ -255,7 +255,7 @@ class FFmpegFile {
     // reader error state
     std::string _errorMsg;  // internal decoding error string
     bool _invalidState;     // true if the reader is in an invalid state
-
+    
     AVPacket _avPacket;
 
     unsigned char* _data;
@@ -459,6 +459,28 @@ public:
     int getRowSize() const;
     
     static bool isImageFile(const std::string& filename);
+};
+
+
+class FFmpegFileManager
+{
+    ///For each plug-in instance, a list of opened files
+    typedef std::map<void*,std::list<FFmpegFile*> > FilesMap;
+    FilesMap _files;
+    mutable OFX::MultiThread::Mutex* _lock;
+    
+public:
+    
+    FFmpegFileManager();
+    
+    ~FFmpegFileManager();
+    
+    void init();
+    
+    void clear(void* plugin);
+    
+    FFmpegFile* getOrCreate(void* plugin,const std::string &filename);
+        
 };
 
 

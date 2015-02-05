@@ -464,11 +464,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
     //OFX::MultiThread::AutoMutex guard(_lock); // not needed in a constructor: we are the only owner
 #endif
 
-    if ( filename.empty() ) {
-        _invalidState = true;
-
-        return;
-    }
+    assert(!_filename.empty());
     CHECK( avformat_open_input(&_context, _filename.c_str(), _format, NULL) );
     CHECK( avformat_find_stream_info(_context, NULL) );
 
@@ -651,7 +647,6 @@ FFmpegFile::~FFmpegFile()
     }
     _filename.clear();
     _errorMsg.clear();
-    _invalidState = false;
     delete _data;
 }
 
@@ -1285,4 +1280,78 @@ FFmpegFile::getBufferSize() const
 {
     return getRowSize() * getHeight();
 }
+
+FFmpegFileManager::FFmpegFileManager()
+: _files()
+, _lock(0)
+{
+    
+}
+
+FFmpegFileManager::~FFmpegFileManager()
+{
+    for (FilesMap::iterator it = _files.begin(); it != _files.end(); ++it) {
+        for (std::list<FFmpegFile*>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+            delete *it2;
+        }
+    }
+    _files.clear();
+    delete _lock;
+}
+
+void
+FFmpegFileManager::init()
+{
+    _lock = new OFX::MultiThread::Mutex(0);
+}
+
+void
+FFmpegFileManager::clear(void* plugin)
+{
+    assert(_lock);
+    OFX::MultiThread::AutoMutex guard(*_lock);
+    FilesMap::iterator found = _files.find(plugin);
+    if (found != _files.end()) {
+        for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
+            delete *it;
+        }
+        _files.erase(found);
+    }
+}
+
+FFmpegFile*
+FFmpegFileManager::getOrCreate(void* plugin,const std::string &filename)
+{
+    if (filename.empty() || !plugin) {
+        return 0;
+    }
+    assert(_lock);
+    OFX::MultiThread::AutoMutex guard(*_lock);
+    FilesMap::iterator found = _files.find(plugin);
+    if (found != _files.end()) {
+        for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
+            if ((*it)->getFilename() == filename) {
+                if ((*it)->isInvalid()) {
+                    delete *it;
+                    found->second.erase(it);
+                    break;
+                } else {
+                    return *it;
+                }
+            }
+        }
+    }
+    
+    
+    FFmpegFile* file = new FFmpegFile(filename);
+    if (found == _files.end()) {
+        std::list<FFmpegFile*> fileList;
+        fileList.push_back(file);
+        _files.insert(std::make_pair(plugin, fileList));
+    } else {
+        found->second.push_back(file);
+    }
+    return file;
+}
+
 
