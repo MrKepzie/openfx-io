@@ -480,9 +480,7 @@ mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
 namespace {
 struct PositionInteractParam {
     static const char *name() { return kParamPosition; }
-};
-struct InteractiveParam {
-    static const char *name() { return kParamInteractive; }
+    static const char *interactiveName() { return kParamInteractive; }
 };
 }
 
@@ -509,7 +507,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setSupportsMultiResolution(kSupportsMultiResolution); // may be switch to true later? don't forget to reduce font size too
     desc.setRenderThreadSafety(kRenderThreadSafety);
 
-    desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam,InteractiveParam>);
+    desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
