@@ -83,6 +83,12 @@
 #define kParamPositionHint \
 "The position where starts the baseline of the first character."
 
+#define kParamInteractive "interactive"
+#define kParamInteractiveLabel "Interactive"
+#define kParamInteractiveHint \
+"When checked the image will be rendered whenever moving the overlay interact instead of when releasing the mouse button."
+
+
 #define kParamText "text"
 #define kParamTextLabel "Text"
 #define kParamTextHint \
@@ -475,6 +481,9 @@ namespace {
 struct PositionInteractParam {
     static const char *name() { return kParamPosition; }
 };
+struct InteractiveParam {
+    static const char *name() { return kParamInteractive; }
+};
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -500,7 +509,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setSupportsMultiResolution(kSupportsMultiResolution); // may be switch to true later? don't forget to reduce font size too
     desc.setRenderThreadSafety(kRenderThreadSafety);
 
-    desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
+    desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam,InteractiveParam>);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -536,6 +545,14 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setAnimates(true);
         page->addChild(*param);
     }
+    {
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kParamInteractive);
+        param->setLabels(kParamInteractiveLabel, kParamInteractiveLabel, kParamInteractiveLabel);
+        param->setHint(kParamInteractiveHint);
+        param->setAnimates(false);
+        page->addChild(*param);
+    }
+    
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamText);
         param->setLabels(kParamTextLabel, kParamTextLabel, kParamTextLabel);
