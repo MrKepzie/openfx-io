@@ -1534,13 +1534,28 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _enableCustomScale->getValue(enabled);
         _proxyThreshold->setEnabled(enabled);
 
+    } else if (paramName == kParamOriginalFrameRange) {
+        int oFirst,oLast;
+        std::string filename;
+        _fileParam->getValue(filename);
+        if (isVideoStream(filename)) {
+            return;
+        }
+        _originalFrameRange->getValue(oFirst, oLast);
+        _firstFrame->setValue(oFirst);
+        _lastFrame->setValue(oLast);
+        _firstFrame->setRange(oFirst, oLast);
+        _lastFrame->setRange(oFirst, oLast);
+        _startingTime->setValue(oFirst);
     } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
 
         int first;
         int last;
+        int oFirst,oLast;
+        _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _lastFrame->setRange(first, last);
+        _lastFrame->setRange(first, oLast);
 
         int offset;
         _timeOffset->getValue(offset);
@@ -1551,9 +1566,11 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
     } else if (paramName == kParamLastFrame && args.reason == OFX::eChangeUserEdit) {
         int first;
         int last;
+        int oFirst,oLast;
+        _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setRange(first, last);
+        _firstFrame->setRange(oFirst, last);
         
         _timeDomainUserSet->setValue(true);
 
