@@ -160,6 +160,8 @@ enum BeforeAfterEnum
 
 enum MissingEnum
 {
+    eMissingPrevious,
+    eMissingNext,
     eMissingNearest,
     eMissingError,
     eMissingBlack,
@@ -175,6 +177,10 @@ enum MissingEnum
 #define kReaderOptionBlackHint "Render a black image"
 #define kReaderOptionError "Error"
 #define kReaderOptionErrorHint "Report an error"
+#define kReaderOptionPrevious "Hold previous"
+#define kReaderOptionPreviousHint "Try to load the previous frame in the sequence/stream, if any."
+#define kReaderOptionNext "Load next"
+#define kReaderOptionNextHint "Try to load the next frame in the sequence/stream, if any."
 #define kReaderOptionNearest "Load nearest"
 #define kReaderOptionNearestHint "Try to load the nearest frame in the sequence/stream, if any."
 
@@ -577,6 +583,9 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     bool filenameGood = true;
     int offset = 0;
 
+    const bool searchOtherFrame = ((missingFrame == eMissingNearest) ||
+                                   (missingFrame == eMissingNext) ||
+                                   (missingFrame == eMissingNearest));
     do {
         _fileParam->getValueAtTime(sequenceTime + offset, *filename);
         if (offset == 0) {
@@ -609,20 +618,31 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                 }
             }
         }
-        if (offset <= 0) {
-            offset = -offset + 1;
-        } else {
-            offset = -offset;
+        if (missingFrame == eMissingPrevious) {
+            --offset;
+        } else if (missingFrame == eMissingNext) {
+            ++offset;
+        } else if (missingFrame == eMissingNearest) {
+            if (offset <= 0) {
+                offset = -offset + 1;
+            } else if (sequenceTime - offset >= 0) {
+                offset = -offset;
+            } else {
+                ++offset;
+            }
         }
-    } while (missingFrame == eMissingNearest &&      // only loop if eMissingNearest
+    } while (searchOtherFrame &&                     // only loop if searchOtherFrame
              !filenameGood &&                        // and no valid file was found
-             offset <= MISSING_FRAME_NEAREST_RANGE); // and we are within range
+             std::abs(offset) <= MISSING_FRAME_NEAREST_RANGE && // and we are within range
 
+             (sequenceTime + offset >= 0)); // and index is positive
     if (filenameGood) {
         // ret is already set (see above)
     } else {
         *filename = filename0; // reset to the original frame name;
         switch (missingFrame) {
+            case eMissingPrevious: // Hold previous
+            case eMissingNext:    // Load next
             case eMissingNearest: // Load nearest
             case eMissingError:   // Error
                 /// For images sequences, we can safely say this is  a missing frame. For video-streams we do not know and the derived class
@@ -2037,6 +2057,10 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOnMissingFrame);
         param->setLabels(kParamOnMissingFrameLabel, kParamOnMissingFrameLabel, kParamOnMissingFrameLabel);
         param->setHint(kParamOnMissingFrameHint);
+        assert(param->getNOptions() == eMissingPrevious);
+        param->appendOption(kReaderOptionPrevious,  kReaderOptionPreviousHint);
+        assert(param->getNOptions() == eMissingNext);
+        param->appendOption(kReaderOptionNext,  kReaderOptionNextHint);
         assert(param->getNOptions() == eMissingNearest);
         param->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
         assert(param->getNOptions() == eMissingError);
@@ -2044,7 +2068,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eMissingBlack);
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
         param->setAnimates(true);
-        param->setDefault(eMissingNearest);
+        param->setDefault(eMissingError);
         page->addChild(*param);
     }
 
