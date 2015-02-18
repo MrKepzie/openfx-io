@@ -322,19 +322,6 @@ GenericReaderPlugin::restoreStateFromParameters()
 {
     std::string filename;
     
-    if (!gHostIsNatron) {
-        
-        _fileParam->getValue(filename);
-        
-        if (!filename.empty()) {
-            setSequenceFromFile(filename);
-        }
-        
-        //reset the original range param only if the host is not Natron
-        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
-    }
-    
-
     _oldFileName = filename;
     
     OfxRangeI tmp;
