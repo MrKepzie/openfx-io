@@ -603,7 +603,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     }
 
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginDescription("Write images using OpenImageIO.\n\n"
                               "OpenImageIO supports writing the following file formats:\n"
                               "BMP (*.bmp)\n"
@@ -667,7 +667,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBitDepth);
-        param->setLabels(kParamBitDepthLabel, kParamBitDepthLabel, kParamBitDepthLabel);
+        param->setLabel(kParamBitDepthLabel);
         param->setHint(kParamBitDepthHint);
         assert(param->getNOptions() == eTuttlePluginBitDepthAuto);
         param->appendOption(kParamBitDepthOptionAuto, kParamBitDepthOptionAutoHint);
@@ -694,7 +694,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     }
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOutputQualityName);
-        param->setLabels(kParamOutputQualityLabel, kParamOutputQualityLabel, kParamOutputQualityLabel);
+        param->setLabel(kParamOutputQualityLabel);
         param->setHint(kParamOutputQualityHint);
         param->setRange(0, 100);
         param->setDisplayRange(0, 100);
@@ -703,7 +703,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputOrientationName);
-        param->setLabels(kParamOutputOrientationLabel, kParamOutputOrientationLabel, kParamOutputOrientationLabel);
+        param->setLabel(kParamOutputOrientationLabel);
         param->setHint(kParamOutputOrientationHint);
         assert(param->getNOptions() == eOutputOrientationNormal);
         param->appendOption(kParamOutputOrientationNormal, kParamOutputOrientationNormalHint);
@@ -726,7 +726,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputCompressionName);
-        param->setLabels(kParamOutputCompressionLabel, kParamOutputCompressionLabel, kParamOutputCompressionLabel);
+        param->setLabel(kParamOutputCompressionLabel);
         param->setHint(kParamOutputCompressionHint);
         assert(param->getNOptions() == eParamCompressionAuto);
         param->appendOption(kParamOutputCompressionOptionAuto, kParamOutputCompressionOptionAutoHint);

@@ -279,7 +279,7 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc,OFX::eRenderFullySafe);
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
 
 #ifdef OFX_EXTENSIONS_TUTTLE

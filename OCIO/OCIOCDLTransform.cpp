@@ -895,7 +895,7 @@ mDeclarePluginFactory(OCIOCDLTransformPluginFactory, {}, {});
 void OCIOCDLTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(kPluginDescription);
 
@@ -948,7 +948,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     // ASC CDL grade numbers
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamSlope);
-        param->setLabels(kParamSlopeLabel, kParamSlopeLabel, kParamSlopeLabel);
+        param->setLabel(kParamSlopeLabel);
         param->setHint(kParamSlopeHint);
         param->setRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
         param->setDisplayRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
@@ -957,7 +957,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamOffset);
-        param->setLabels(kParamOffsetLabel, kParamOffsetLabel, kParamOffsetLabel);
+        param->setLabel(kParamOffsetLabel);
         param->setHint(kParamOffsetHint);
         param->setRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
         param->setDisplayRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
@@ -966,7 +966,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamPower);
-        param->setLabels(kParamPowerLabel, kParamPowerLabel, kParamPowerLabel);
+        param->setLabel(kParamPowerLabel);
         param->setHint(kParamPowerHint);
         param->setRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
         param->setDisplayRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
@@ -975,7 +975,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         DoubleParamDescriptor *param = desc.defineDoubleParam(kParamSaturation);
-        param->setLabels(kParamSaturationLabel, kParamSaturationLabel, kParamSaturationLabel);
+        param->setLabel(kParamSaturationLabel);
         param->setHint(kParamSaturationHint);
         param->setRange(kParamSaturationMin, kParamSaturationMax);
         param->setDisplayRange(kParamSaturationMin, kParamSaturationMax);
@@ -984,7 +984,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
-        param->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+        param->setLabel(kParamDirectionLabel);
         param->setHint(kParamDirectionHint);
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
@@ -993,7 +993,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         BooleanParamDescriptor *param = desc.defineBooleanParam(kParamReadFromFile);
-        param->setLabels(kParamReadFromFileLabel, kParamReadFromFileLabel, kParamReadFromFileLabel);
+        param->setLabel(kParamReadFromFileLabel);
         param->setHint(kParamReadFromFileHint);
         param->setAnimates(false);
         param->setDefault(false);
@@ -1001,7 +1001,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamFile);
-        param->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
+        param->setLabel(kParamFileLabel);
         param->setHint(kParamFileHint);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
@@ -1010,7 +1010,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
-        param->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
+        param->setLabel(kParamReloadLabel);
         param->setHint(kParamReloadHint);
         page->addChild(*param);
     }
@@ -1022,13 +1022,13 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
-        param->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
+        param->setLabel(kParamCCCIDLabel);
         param->setHint(kParamCCCIDHint);
         page->addChild(*param);
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamExport);
-        param->setLabels(kParamExportLabel, kParamExportLabel, kParamExportLabel);
+        param->setLabel(kParamExportLabel);
         param->setHint(kParamExportHint);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(false); // necessary for output files

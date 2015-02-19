@@ -719,7 +719,7 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc,OFX::eRenderInstanceSafe);
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginDescription("Write images or video file using "
 #                             ifdef FFMS_USE_FFMPEG_COMPAT
                               "FFmpeg"
@@ -767,7 +767,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
         const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
-        param->setLabels("Format", "Format", "Format");
+        param->setLabel("Format");
         param->setHint("The outputformat");
         for (unsigned int i = 0; i < formatsV.size(); ++i) {
             param->appendOption(formatsV[i],"");
@@ -781,7 +781,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     ///////////FPS
     {
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFPS);
-        param->setLabels("fps", "fps", "fps");
+        param->setLabel("fps");
         param->setRange(0.f, 100.f);
         param->setDefault(24.f);
         param->setAnimates(false);
@@ -791,14 +791,14 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     /////////// Advanced group
     {
         OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamAdvanced);
-        group->setLabels("Advanced", "Advanced", "Advanced");
+        group->setLabel("Advanced");
         group->setOpen(false);
         page->addChild(*group);
 
         ///////////Codec
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamCodec);
-            param->setLabels("Codec","Codec","Codec");
+            param->setLabel("Codec");
             const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
             for (unsigned int i = 0; i < codecsV.size(); ++i) {
                 param->appendOption(codecsV[i],"");
@@ -812,7 +812,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         ///////////bit-rate
         {
             OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitRate);
-            param->setLabels("Bitrate", "Bitrate", "Bitrate");
+            param->setLabel("Bitrate");
             param->setRange(0, 400000);
             param->setDefault(400000);
             param->setParent(*group);
@@ -823,7 +823,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         ///////////bit-rate tolerance
         {
             OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitRateTolerance);
-            param->setLabels("Bitrate tolerance", "Bitrate tolerance", "Bitrate tolerance");
+            param->setLabel("Bitrate tolerance");
             param->setRange(0, 4000 * 10000);
             param->setDefault(4000 * 10000);
             param->setParent(*group);
@@ -834,7 +834,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         ///////////Gop size
         {
             OFX::IntParamDescriptor* param = desc.defineIntParam(kParamGop);
-            param->setLabels("GOP Size", "GOP Size", "GOP Size");
+            param->setLabel("GOP Size");
             param->setRange(0, 30);
             param->setDefault(12);
             param->setParent(*group);
@@ -845,7 +845,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         ////////////B Frames
         {
             OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBFrames);
-            param->setLabels("B Frames", "B Frames", "B Frames");
+            param->setLabel("B Frames");
             param->setRange(0, 30);
             param->setDefault(0);
             param->setParent(*group);
@@ -856,7 +856,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         ////////////Macro block decision
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamMBDecision);
-            param->setLabels("Macro block decision mode", "Macro block decision mode", "Macro block decision mode");
+            param->setLabel("Macro block decision mode");
             param->appendOption("FF_MB_DECISION_SIMPLE");
             param->appendOption("FF_MB_DECISION_BITS");
             param->appendOption("FF_MB_DECISION_RD");

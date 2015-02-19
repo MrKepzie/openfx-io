@@ -703,7 +703,7 @@ mDeclarePluginFactory(OCIOLookTransformPluginFactory, {}, {});
 void OCIOLookTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(kPluginDescription);
 
@@ -758,7 +758,7 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamSingleLook);
-        param->setLabels(kParamSingleLookLabel, kParamSingleLookLabel, kParamSingleLookLabel);
+        param->setLabel(kParamSingleLookLabel);
         param->setHint(kParamSingleLookHint);
         if (config) {
             param->setDefault(true);
@@ -770,7 +770,7 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamLookChoice);
-        param->setLabels(kParamLookChoiceLabel, kParamLookChoiceLabel, kParamLookChoiceLabel);
+        param->setLabel(kParamLookChoiceLabel);
         param->setHint(kParamLookChoiceHint);
         if (config) {
             buildLookChoiceMenu(config, param);
@@ -782,7 +782,7 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLookAppend);
-        param->setLabels(kParamLookAppendLabel, kParamLookAppendLabel, kParamLookAppendLabel);
+        param->setLabel(kParamLookAppendLabel);
         param->setHint(kParamLookAppendHint);
         if (!config) {
             param->setEnabled(false);
@@ -791,13 +791,13 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kParamLookCombination);
-        param->setLabels(kParamLookCombinationLabel, kParamLookCombinationLabel, kParamLookCombinationLabel);
+        param->setLabel(kParamLookCombinationLabel);
         param->setHint(kParamLookCombinationHint);
         page->addChild(*param);
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
-        param->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+        param->setLabel(kParamDirectionLabel);
         param->setHint(kParamDirectionHint);
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);

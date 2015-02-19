@@ -711,7 +711,7 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
     
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(kPluginDescription);
 
@@ -763,7 +763,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
 
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamType);
-        param->setLabels(kParamTypeLabel, kParamTypeLabel, kParamTypeLabel);
+        param->setLabel(kParamTypeLabel);
         param->setHint(kParamTypeHint);
         assert(param->getNOptions() == eResizeTypeFormat);
         param->appendOption(kParamTypeOptionFormat);
@@ -778,7 +778,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     }
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
-        param->setLabels(kParamFormatLabel, kParamFormatLabel, kParamFormatLabel);
+        param->setLabel(kParamFormatLabel);
         param->setAnimates(false);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
@@ -819,7 +819,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     }
     {
         Int2DParamDescriptor* param = desc.defineInt2DParam(kParamSize);
-        param->setLabels(kParamSizeLabel, kParamSizeLabel, kParamSizeLabel);
+        param->setLabel(kParamSizeLabel);
         param->setHint(kParamSizeHint);
         param->setDefault(200, 200);
         param->setDisplayRange(0, 0, 10000, 10000);
@@ -832,7 +832,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
 
     {
         BooleanParamDescriptor* param = desc.defineBooleanParam(kParamPreservePAR);
-        param->setLabels(kParamPreservePARLabel, kParamPreservePARLabel, kParamPreservePARLabel);
+        param->setLabel(kParamPreservePARLabel);
         param->setHint(kParamPreservePARHint);
         param->setAnimates(false);
         param->setDefault(false);
@@ -843,7 +843,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     {
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamScale);
         param->setHint(kParamScaleHint);
-        param->setLabels(kParamScaleLabel, kParamScaleLabel, kParamScaleLabel);
+        param->setLabel(kParamScaleLabel);
         param->setAnimates(true);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(1., 1.);
@@ -853,7 +853,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamFilter);
-        param->setLabels(kParamFilterLabel, kParamFilterLabel, kParamFilterLabel);
+        param->setLabel(kParamFilterLabel);
         param->setHint(kParamFilterHint);
         param->setAnimates(false);
         param->appendOption(kParamFilterOptionImpulse);

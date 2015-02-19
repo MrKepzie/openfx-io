@@ -618,7 +618,7 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     DBG(std::cout << "describing!\n");
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(kPluginDescription);
 
@@ -683,12 +683,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     {
         GroupParamDescriptor *group = desc.defineGroupParam(kGroupRunScriptPlugin);
         group->setHint(kGroupRunScriptPluginHint);
-        group->setLabels(kGroupRunScriptPluginLabel, kGroupRunScriptPluginLabel, kGroupRunScriptPluginLabel);
+        group->setLabel(kGroupRunScriptPluginLabel);
         page->addChild(*group);
 
         {
             IntParamDescriptor *param = desc.defineIntParam(kParamCount);
-            param->setLabels(kParamCountLabel, kParamCountLabel, kParamCountLabel);
+            param->setLabel(kParamCountLabel);
             param->setAnimates(true);
             param->setRange(0, kRunScriptPluginArgumentsCount);
             param->setDisplayRange(0, kRunScriptPluginArgumentsCount);
@@ -710,7 +710,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 ss.str(std::string());
                 ss.clear();
                 ss << kParamTypeLabel << ' ' << i+1;
-                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setLabel(ss.str());
                 param->setAnimates(true);
                 param->appendOption(kParamTypeFilenameLabel, kParamTypeFilenameHint);
                 param->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
@@ -731,7 +731,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 ss.str(std::string());
                 ss.clear();
                 ss << kParamTypeFilenameLabel << ' ' << i+1;
-                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setLabel(ss.str());
                 param->setHint(kParamTypeFilenameHint);
                 param->setStringType(eStringTypeFilePath);
                 param->setFilePathExists(false); // the file may or may not exist
@@ -751,7 +751,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 ss.str(std::string());
                 ss.clear();
                 ss << kParamTypeStringLabel << ' ' << i+1;
-                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setLabel(ss.str());
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -769,7 +769,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 ss.str(std::string());
                 ss.clear();
                 ss << kParamTypeDoubleLabel << ' ' << i+1;
-                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setLabel(ss.str());
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -787,7 +787,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 ss.str(std::string());
                 ss.clear();
                 ss << kParamTypeIntLabel << ' ' << i+1;
-                param->setLabels(ss.str(), ss.str(), ss.str());
+                param->setLabel(ss.str());
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -799,7 +799,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamScript);
-        param->setLabels(kParamScriptLabel, kParamScriptLabel, kParamScriptLabel);
+        param->setLabel(kParamScriptLabel);
         param->setHint(kParamScriptHint);
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
@@ -809,7 +809,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     {
         BooleanParamDescriptor *param = desc.defineBooleanParam(kParamValidate);
-        param->setLabels(kParamValidateLabel, kParamValidateLabel, kParamValidateLabel);
+        param->setLabel(kParamValidateLabel);
         param->setHint(kParamValidateHint);
         param->setEvaluateOnChange(true);
         page->addChild(*param);

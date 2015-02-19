@@ -678,7 +678,7 @@ ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
-    desc.setLabels("ReadEXROFX", "ReadEXROFX", "ReadEXROFX");
+    desc.setLabel("ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");
 #ifdef OFX_IO_MT_EXR
     desc.setRenderThreadSafety(eRenderFullySafe);

@@ -646,7 +646,7 @@ mDeclarePluginFactory(OCIOLogConvertPluginFactory, {}, {});
 void OCIOLogConvertPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(kPluginDescription);
 
@@ -708,7 +708,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     ////////// OCIO config file
     {
         OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
-        ocioConfigFileParam->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
+        ocioConfigFileParam->setLabel(kOCIOParamConfigFileLabel);
         ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
         ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
         ocioConfigFileParam->setFilePathExists(true);
@@ -733,13 +733,13 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     }
     {
         OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
-        pb->setLabels(kOCIOHelpButtonLabel, kOCIOHelpButtonLabel, kOCIOHelpButtonLabel);
+        pb->setLabel(kOCIOHelpButtonLabel);
         pb->setHint(kOCIOHelpButtonHint);
         page->addChild(*pb);
     }
     {
         ChoiceParamDescriptor *mode = desc.defineChoiceParam(kParamOperation);
-        mode->setLabels(kParamOperationLabel, kParamOperationLabel, kParamOperationLabel);
+        mode->setLabel(kParamOperationLabel);
         mode->setHint(kParamOperationHint);
         mode->appendOption(kParamOperationOptionLogToLin);
         mode->appendOption(kParamOperationOptionLinToLog);

@@ -1979,7 +1979,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //////////Input file
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kParamFilename);
-        param->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
+        param->setLabel(kParamFilenameLabel);
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamFilenameHint);
@@ -1993,7 +1993,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //////////First-frame
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
-        param->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
+        param->setLabel(kParamFirstFrameLabel);
         param->setHint(kParamFirstFrameHint);
         param->setDefault(0);
         param->setAnimates(true);
@@ -2004,7 +2004,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Before first
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBefore);
-        param->setLabels(kParamBeforeLabel, kParamBeforeLabel, kParamBeforeLabel);
+        param->setLabel(kParamBeforeLabel);
         param->setHint(kParamBeforeHint);
         assert(param->getNOptions() == eBeforeAfterHold);
         param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
@@ -2024,7 +2024,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //////////Last-frame
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
-        param->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
+        param->setLabel(kParamLastFrameLabel);
         param->setHint(kParamLastFrameHint);
         param->setDefault(0);
         param->setAnimates(true);
@@ -2035,7 +2035,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////After first
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamAfter);
-        param->setLabels(kParamAfterLabel, kParamAfterLabel, kParamAfterLabel);
+        param->setLabel(kParamAfterLabel);
         param->setHint(kParamAfterHint);
         assert(param->getNOptions() == eBeforeAfterHold);
         param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
@@ -2055,7 +2055,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Missing frame choice
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOnMissingFrame);
-        param->setLabels(kParamOnMissingFrameLabel, kParamOnMissingFrameLabel, kParamOnMissingFrameLabel);
+        param->setLabel(kParamOnMissingFrameLabel);
         param->setHint(kParamOnMissingFrameHint);
         assert(param->getNOptions() == eMissingPrevious);
         param->appendOption(kReaderOptionPrevious,  kReaderOptionPreviousHint);
@@ -2075,7 +2075,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Frame-mode
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFrameMode);
-        param->setLabels(kParamFrameModeLabel, kParamFrameModeLabel, kParamFrameModeLabel);
+        param->setLabel(kParamFrameModeLabel);
         assert(param->getNOptions() == eFrameModeStartingTime);
         param->appendOption(kParamFrameModeOptionStartingTime);
         assert(param->getNOptions() == eFrameModeTimeOffset);
@@ -2089,7 +2089,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Starting frame
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamStartingTime);
-        param->setLabels(kParamStartingTimeLabel, kParamStartingTimeLabel, kParamStartingTimeLabel);
+        param->setLabel(kParamStartingTimeLabel);
         param->setHint(kParamStartingTimeHint);
         param->setDefault(0);
         param->setAnimates(true);
@@ -2100,7 +2100,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Time offset
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamTimeOffset);
-        param->setLabels(kParamTimeOffsetLabel, kParamTimeOffsetLabel, kParamTimeOffsetLabel);
+        param->setLabel(kParamTimeOffsetLabel);
         param->setHint(kParamTimeOffsetHint);
         param->setDefault(0);
         param->setAnimates(true);
@@ -2111,7 +2111,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     /////////// Secret param set to true if the time domain was edited by the user
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamTimeDomainUserEdited);
-        param->setLabels(kParamTimeDomainUserEdited, kParamTimeDomainUserEdited, kParamTimeDomainUserEdited);
+        param->setLabel(kParamTimeDomainUserEdited);
         param->setIsSecret(true); // always secret
         param->setDefault(false);
         param->setAnimates(false);
@@ -2121,7 +2121,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///////////Original frame range
     {
         OFX::Int2DParamDescriptor* param = desc.defineInt2DParam(kParamOriginalFrameRange);
-        param->setLabels(kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel, kParamOriginalFrameRangeLabel);
+        param->setLabel(kParamOriginalFrameRangeLabel);
         param->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
         param->setAnimates(true);
         param->setIsSecret(true); // always secret
@@ -2132,7 +2132,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //////////Input proxy file
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kParamProxy);
-        param->setLabels(kParamProxyLabel, kParamProxyLabel, kParamProxyLabel);
+        param->setLabel(kParamProxyLabel);
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamProxyHint);
@@ -2146,8 +2146,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ////Proxy original scale
     {
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamOriginalProxyScale);
-        param->setLabels(kParamOriginalProxyScaleLabel,
-                         kParamOriginalProxyScaleLabel, kParamOriginalProxyScaleLabel);
+        param->setLabel(kParamOriginalProxyScaleLabel);
         param->setDefault(1., 1.);
         param->setIsSecret(true); // always secret
         param->setEnabled(false);
@@ -2160,8 +2159,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ////Proxy  scale threshold
     {
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamProxyThreshold);
-        param->setLabels(kParamProxyThresholdLabel,
-                         kParamProxyThresholdLabel, kParamProxyThresholdLabel);
+        param->setLabel(kParamProxyThresholdLabel);
         param->setDefault(1., 1.);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setEnabled(false);
@@ -2174,7 +2172,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///Enable custom proxy scale
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamCustomProxyScale);
-        param->setLabels(kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel, kParamCustomProxyScaleLabel);
+        param->setLabel(kParamCustomProxyScaleLabel);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(false);
         param->setHint(kParamCustomProxyScaleHint);
@@ -2186,7 +2184,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //// File premult
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFilePremult);
-        param->setLabels(kParamFilePremultLabel, kParamFilePremultLabel, kParamFilePremultLabel);
+        param->setLabel(kParamFilePremultLabel);
         param->setAnimates(true);
         param->setHint(kParamFilePremultHint);
         assert(param->getNOptions() == eImageOpaque);
@@ -2205,7 +2203,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     //// Output components
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOutputComponents);
-        param->setLabels(kParamOutputComponentsLabel, kParamOutputComponentsLabel, kParamOutputComponentsLabel);
+        param->setLabel(kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
         int i = 0;
 
@@ -2238,7 +2236,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///Frame rate
     {
         DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFrameRate);
-        param->setLabels(kParamFrameRateLabel, kParamFrameRateLabel, kParamFrameRateLabel);
+        param->setLabel(kParamFrameRateLabel);
         param->setHint(kParamFrameRateHint);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
@@ -2252,7 +2250,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     ///Custom FPS
     {
         BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamCustomFps);
-        param->setLabels(kParamCustomFpsLabel, kParamCustomFpsLabel, kParamCustomFpsLabel);
+        param->setLabel(kParamCustomFpsLabel);
         param->setHint(kParamCustomFpsHint);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);

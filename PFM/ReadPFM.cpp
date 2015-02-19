@@ -384,7 +384,7 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     GenericReaderDescribe(desc, kSupportsTiles);
     
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
 
 

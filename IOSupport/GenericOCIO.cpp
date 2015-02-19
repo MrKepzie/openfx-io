@@ -820,7 +820,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
     ////////// OCIO config file
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamConfigFileName);
-        param->setLabels(kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel, kOCIOParamConfigFileLabel);
+        param->setLabel(kOCIOParamConfigFileLabel);
         param->setHint(kOCIOParamConfigFileHint);
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
@@ -847,7 +847,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
     ///////////Input Color-space
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamInputSpaceName);
-        param->setLabels(inputSpaceLabel, inputSpaceLabel, inputSpaceLabel);
+        param->setLabel(inputSpaceLabel);
         param->setHint(kOCIOParamInputSpaceHint);
         param->setAnimates(true);
         if (config) {
@@ -861,7 +861,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
 #ifdef OFX_OCIO_CHOICE
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamInputSpaceChoiceName);
-        param->setLabels(inputSpaceLabel, inputSpaceLabel, inputSpaceLabel);
+        param->setLabel(inputSpaceLabel);
         param->setHint(kOCIOParamInputSpaceHint);
         if (config) {
             buildChoiceMenu(config, param, inputSpaceName);
@@ -901,7 +901,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
 
     ///////////Output Color-space
     {OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamOutputSpaceName);
-        param->setLabels(outputSpaceLabel, outputSpaceLabel, outputSpaceLabel);
+        param->setLabel(outputSpaceLabel);
         param->setHint(kOCIOParamOutputSpaceHint);
         param->setAnimates(true);
         if (config) {
@@ -914,7 +914,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
 #ifdef OFX_OCIO_CHOICE
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamOutputSpaceChoiceName);
-        param->setLabels(outputSpaceLabel, outputSpaceLabel, outputSpaceLabel);
+        param->setLabel(outputSpaceLabel);
         param->setHint(kOCIOParamOutputSpaceHint);
         if (config) {
             buildChoiceMenu(config, param, outputSpaceName);
@@ -930,7 +930,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
 #endif
 
     OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
-    pb->setLabels(kOCIOHelpButtonLabel, kOCIOHelpButtonLabel, kOCIOHelpButtonLabel);
+    pb->setLabel(kOCIOHelpButtonLabel);
     pb->setHint(kOCIOHelpButtonHint);
     page->addChild(*pb);
     

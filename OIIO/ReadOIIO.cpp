@@ -1591,7 +1591,7 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     }
 
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription
                               "\n\n"
                               "OpenImageIO supports reading/writing the following file formats:\n"
@@ -1680,7 +1680,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
-        param->setLabels(kParamShowMetadataLabel, kParamShowMetadataLabel, kParamShowMetadataLabel);
+        param->setLabel(kParamShowMetadataLabel);
         param->setHint(kParamShowMetadataHint);
         page->addChild(*param);
     }
@@ -1688,7 +1688,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 #ifndef OFX_READ_OIIO_NEWMENU
     {
         IntParamDescriptor *param = desc.defineIntParam(kParamFirstChannel);
-        param->setLabels(kParamFirstChannelLabel, kParamFirstChannelLabel, kParamFirstChannelLabel);
+        param->setLabel(kParamFirstChannelLabel, kParamFirstChannelLabel, kParamFirstChannelLabel);
         param->setHint(kParamFirstChannelHint);
         page->addChild(*param);
     }
@@ -1698,7 +1698,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 #ifdef OFX_READ_OIIO_NEWMENU
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamRChannel);
-        param->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
+        param->setLabel(kParamRChannelLabel);
         param->setHint(kParamRChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
@@ -1707,7 +1707,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamGChannel);
-        param->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
+        param->setLabel(kParamGChannelLabel);
         param->setHint(kParamGChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
@@ -1716,7 +1716,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamBChannel);
-        param->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
+        param->setLabel(kParamBChannelLabel);
         param->setHint(kParamBChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
@@ -1725,7 +1725,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamAChannel);
-        param->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
+        param->setLabel(kParamAChannelLabel);
         param->setHint(kParamAChannelHint);
         appendDefaultChannelList(param);
         param->setAnimates(true);
@@ -1736,7 +1736,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamRChannelName);
-        param->setLabels(kParamRChannelLabel, kParamRChannelLabel, kParamRChannelLabel);
+        param->setLabel(kParamRChannelLabel);
         param->setHint(kParamRChannelHint);
         param->setAnimates(false);
         param->setIsSecret(true); // never meant to be visible
@@ -1744,7 +1744,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamGChannelName);
-        param->setLabels(kParamGChannelLabel, kParamGChannelLabel, kParamGChannelLabel);
+        param->setLabel(kParamGChannelLabel);
         param->setHint(kParamGChannelHint);
         param->setAnimates(false);
         param->setIsSecret(true); // never meant to be visible
@@ -1753,7 +1753,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamBChannelName);
-        param->setLabels(kParamBChannelLabel, kParamBChannelLabel, kParamBChannelLabel);
+        param->setLabel(kParamBChannelLabel);
         param->setHint(kParamBChannelHint);
         param->setAnimates(false);
         param->setIsSecret(true); // never meant to be visible
@@ -1762,7 +1762,7 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamAChannelName);
-        param->setLabels(kParamAChannelLabel, kParamAChannelLabel, kParamAChannelLabel);
+        param->setLabel(kParamAChannelLabel);
         param->setHint(kParamAChannelHint);
         param->setAnimates(false);
         param->setIsSecret(true); // never meant to be visible

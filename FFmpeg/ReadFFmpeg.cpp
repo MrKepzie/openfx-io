@@ -479,7 +479,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles);
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginDescription("Read images or video using "
 #                             ifdef FFMS_USE_FFMPEG_COMPAT
                               "FFmpeg"
@@ -555,7 +555,7 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     
     {
         OFX::IntParamDescriptor *param = desc.defineIntParam(kMaxRetriesParamName);
-        param->setLabels(kMaxRetriesParamLabel, kMaxRetriesParamLabel, kMaxRetriesParamLabel);
+        param->setLabel(kMaxRetriesParamLabel);
         param->setHint(kMaxRetriesParamHint);
         param->setAnimates(false);
         param->setDefault(10);

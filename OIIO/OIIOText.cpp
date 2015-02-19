@@ -488,7 +488,7 @@ struct PositionInteractParam {
 void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(kPluginDescription);
 
@@ -535,7 +535,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     {
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamPosition);
-        param->setLabels(kParamPositionLabel, kParamPositionLabel, kParamPositionLabel);
+        param->setLabel(kParamPositionLabel);
         param->setHint(kParamPositionHint);
         param->setDoubleType(eDoubleTypeXYAbsolute);
         param->setDefaultCoordinateSystem(eCoordinatesNormalised);
@@ -545,7 +545,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         BooleanParamDescriptor* param = desc.defineBooleanParam(kParamInteractive);
-        param->setLabels(kParamInteractiveLabel, kParamInteractiveLabel, kParamInteractiveLabel);
+        param->setLabel(kParamInteractiveLabel);
         param->setHint(kParamInteractiveHint);
         param->setAnimates(false);
         page->addChild(*param);
@@ -553,7 +553,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamText);
-        param->setLabels(kParamTextLabel, kParamTextLabel, kParamTextLabel);
+        param->setLabel(kParamTextLabel);
         param->setHint(kParamTextHint);
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
@@ -562,7 +562,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         IntParamDescriptor* param = desc.defineIntParam(kParamFontSize);
-        param->setLabels(kParamFontSizeLabel, kParamFontSizeLabel, kParamFontSizeLabel);
+        param->setLabel(kParamFontSizeLabel);
         param->setHint(kParamFontSizeHint);
         param->setDefault(16);
         param->setAnimates(true);
@@ -570,14 +570,14 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     }
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamFontName);
-        param->setLabels(kParamFontNameLabel, kParamFontNameLabel, kParamFontNameLabel);
+        param->setLabel(kParamFontNameLabel);
         param->setHint(kParamFontNameHint);
         param->setAnimates(true);
         page->addChild(*param);
     }
     {
         RGBAParamDescriptor* param = desc.defineRGBAParam(kParamTextColor);
-        param->setLabels(kParamTextColorLabel, kParamTextColorLabel, kParamTextColorLabel);
+        param->setLabel(kParamTextColorLabel);
         param->setHint(kParamTextColorHint);
         param->setDefault(1., 1., 1., 1.);
         param->setAnimates(true);

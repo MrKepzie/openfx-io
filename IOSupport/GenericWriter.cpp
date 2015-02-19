@@ -893,7 +893,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     //////////Output file
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kParamFilename);
-        param->setLabels(kParamFilenameLabel, kParamFilenameLabel, kParamFilenameLabel);
+        param->setLabel(kParamFilenameLabel);
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(false);
         param->setHint(kParamFilenameHint);
@@ -908,7 +908,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     //////////// Output type
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormatType);
-        param->setLabels(kParamFormatTypeLabel, kParamFormatTypeLabel, kParamFormatTypeLabel);
+        param->setLabel(kParamFormatTypeLabel);
         param->appendOption("Input stream format","Renders using for format the input stream's format.");
         param->appendOption("Project format","Renders using the format of the current project");
         param->appendOption("Fixed format","Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter.");
@@ -922,7 +922,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     //////////// Output format
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
-        param->setLabels(kParamOutputFormatLabel, kParamOutputFormatLabel, kParamOutputFormatLabel);
+        param->setLabel(kParamOutputFormatLabel);
         param->setAnimates(true);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setHint(kParamOutputFormatHint);
@@ -968,7 +968,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
 
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamInputPremult);
-        param->setLabels(kParamInputPremultLabel, kParamInputPremultLabel, kParamInputPremultLabel);
+        param->setLabel(kParamInputPremultLabel);
         param->setAnimates(true);
         param->setHint(kParamInputPremultHint);
         assert(param->getNOptions() == eImageOpaque);
@@ -984,7 +984,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
 
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamClipInfo);
-        param->setLabels(kParamClipInfoLabel, kParamClipInfoLabel, kParamClipInfoLabel);
+        param->setLabel(kParamClipInfoLabel);
         param->setHint(kParamClipInfoHint);
         page->addChild(*param);
     }
@@ -992,7 +992,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     ///////////Frame range choosal
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFrameRange);
-        param->setLabels(kParamFrameRangeLabel, kParamFrameRangeLabel, kParamFrameRangeLabel);
+        param->setLabel(kParamFrameRangeLabel);
         param->setHint(kParamFrameRangeHint);
         param->appendOption(kParamFrameRangeOptionUnion, kParamFrameRangeOptionUnionHint);
         param->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
@@ -1005,7 +1005,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     /////////////First frame
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
-        param->setLabels(kParamFirstFrameLabel, kParamFirstFrameLabel, kParamFirstFrameLabel);
+        param->setLabel(kParamFirstFrameLabel);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
         page->addChild(*param);
@@ -1014,7 +1014,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     ////////////Last frame
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
-        param->setLabels(kParamLastFrameLabel, kParamLastFrameLabel, kParamLastFrameLabel);
+        param->setLabel(kParamLastFrameLabel);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
         page->addChild(*param);

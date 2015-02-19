@@ -672,7 +672,7 @@ supportedFormats()
 void OCIOFileTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabels(kPluginName, kPluginName, kPluginName);
+    desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     desc.setPluginDescription(std::string(kPluginDescription) + "\n\n" + supportedFormats());
 
@@ -724,7 +724,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
 
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamFile);
-        param->setLabels(kParamFileLabel, kParamFileLabel, kParamFileLabel);
+        param->setLabel(kParamFileLabel);
         param->setHint(std::string(kParamFileHint) + "\n\n" + supportedFormats());
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
@@ -733,7 +733,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
-        param->setLabels(kParamReloadLabel, kParamReloadLabel, kParamReloadLabel);
+        param->setLabel(kParamReloadLabel);
         param->setHint(kParamReloadHint);
         page->addChild(*param);
     }
@@ -745,13 +745,13 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
-        param->setLabels(kParamCCCIDLabel, kParamCCCIDLabel, kParamCCCIDLabel);
+        param->setLabel(kParamCCCIDLabel);
         param->setHint(kParamCCCIDHint);
         page->addChild(*param);
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
-        param->setLabels(kParamDirectionLabel, kParamDirectionLabel, kParamDirectionLabel);
+        param->setLabel(kParamDirectionLabel);
         param->setHint(kParamDirectionHint);
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
@@ -759,7 +759,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamInterpolation);
-        param->setLabels(kParamInterpolationLabel, kParamInterpolationLabel, kParamInterpolationLabel);
+        param->setLabel(kParamInterpolationLabel);
         param->setHint(kParamInterpolationHint);
         param->appendOption(kParamInterpolationOptionNearest);
         param->appendOption(kParamInterpolationOptionLinear);
