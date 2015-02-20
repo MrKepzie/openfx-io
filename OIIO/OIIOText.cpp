@@ -541,6 +541,9 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setDefaultCoordinateSystem(eCoordinatesNormalised);
         param->setDefault(0.5, 0.5);
         param->setAnimates(true);
+        if (param->getHostHasNativeOverlayHandle()) {
+            param->setUseHostOverlayHandle(true);
+        }
         page->addChild(*param);
     }
     {
