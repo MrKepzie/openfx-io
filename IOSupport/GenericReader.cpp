@@ -442,6 +442,7 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
         if (setFirstLastFrame) {
             _firstFrame->setValue(range.min);
             _lastFrame->setValue(range.max);
+            _startingTime->setValue(range.min);
         }
         
         _originalFrameRange->setValue(range.min, range.max);
