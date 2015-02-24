@@ -533,6 +533,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Text");
 
+    bool hostHasNativeOverlayForPosition;
     {
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamPosition);
         param->setLabel(kParamPositionLabel);
@@ -541,7 +542,8 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setDefaultCoordinateSystem(eCoordinatesNormalised);
         param->setDefault(0.5, 0.5);
         param->setAnimates(true);
-        if (param->getHostHasNativeOverlayHandle()) {
+        hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
+        if (hostHasNativeOverlayForPosition) {
             param->setUseHostOverlayHandle(true);
         }
         page->addChild(*param);
@@ -552,6 +554,11 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamInteractiveHint);
         param->setAnimates(false);
         page->addChild(*param);
+        
+        //Do not show this parameter if the host handles the interact
+        if (hostHasNativeOverlayForPosition) {
+            param->setIsSecret(true);
+        }
     }
     
     {
