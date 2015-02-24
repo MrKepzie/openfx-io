@@ -265,8 +265,8 @@ OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
-    std::auto_ptr<OFX::Image> mask(getContext() != OFX::eContextFilter ? maskClip_->fetchImage(time) : 0);
-    std::auto_ptr<OFX::Image> orig(srcClip_->fetchImage(time));
+    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) ? maskClip_->fetchImage(time) : 0);
+    std::auto_ptr<const OFX::Image> orig(srcClip_->fetchImage(time));
     if (getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);

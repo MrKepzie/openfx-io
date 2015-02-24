@@ -391,7 +391,7 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
     srcSpec.full_height = srcSpec.height;
     srcSpec.default_channel_names();
     
-    ImageBuf srcBuf("src", srcSpec, srcImg->getPixelAddress(srcBounds.x1, srcBounds.y1));
+    const ImageBuf srcBuf("src", srcSpec, const_cast<void*>(srcImg->getPixelAddress(srcBounds.x1, srcBounds.y1)));
     
     
     ///This code assumes that the dstImg has the target size hence that we don't support tiles

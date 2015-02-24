@@ -289,7 +289,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OFX::PixelComponentEnum pixelComponents = ePixelComponentNone;
     OFX::BitDepthEnum bitDepth = eBitDepthNone;
     OIIO::ImageSpec srcSpec;
-    std::auto_ptr<OIIO::ImageBuf> srcBuf;
+    std::auto_ptr<const OIIO::ImageBuf> srcBuf;
     OfxRectI dstRod = dstImg->getRegionOfDefinition();
     if (srcImg.get()) {
         srcRod = srcImg->getRegionOfDefinition();
@@ -297,7 +297,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         pixelComponents = srcImg->getPixelComponents();
         bitDepth = srcImg->getPixelDepth();
         srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
-        srcBuf.reset(new OIIO::ImageBuf("src", srcSpec, srcImg->getPixelData()));
+        srcBuf.reset(new OIIO::ImageBuf("src", srcSpec, const_cast<void*>(srcImg->getPixelData())));
 
         if (!kSupportsTiles) {
             // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
