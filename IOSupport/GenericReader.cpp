@@ -584,7 +584,8 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     bool filenameGood = true;
     int offset = 0;
 
-    const bool searchOtherFrame = ((missingFrame == eMissingNearest) ||
+    const bool searchOtherFrame = ((missingFrame == eMissingPrevious) ||
+                                   (missingFrame == eMissingNearest) ||
                                    (missingFrame == eMissingNext) ||
                                    (missingFrame == eMissingNearest));
     do {
