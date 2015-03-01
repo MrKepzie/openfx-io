@@ -124,7 +124,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
         OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
-        std::string csdesc = cs->getDescription();
+        std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
         csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
         int csdesclen = csdesc.size();
         if ( csdesclen > 0 ) {
@@ -578,7 +578,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (!first /*&& roles > 0*/) {
                     msg += ')';
                 }
-                std::string csdesc = cs->getDescription();
+                std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
                 csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
                 int csdesclen = csdesc.size();
                 if ( csdesclen > 0 ) {

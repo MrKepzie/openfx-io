@@ -589,7 +589,7 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
                 msg += "SCENE_LINEAR colorspace: ";
                 msg += csname;
                 OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
-                std::string csdesc = cs->getDescription();
+                std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
                 csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
                 int csdesclen = csdesc.size();
                 if ( csdesclen > 0 ) {
@@ -607,7 +607,7 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
                 msg += "COMPOSITING_LOG colorspace: ";
                 msg += csname;
                 OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
-                std::string csdesc = cs->getDescription();
+                std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
                 csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
                 int csdesclen = csdesc.size();
                 if ( csdesclen > 0 ) {
