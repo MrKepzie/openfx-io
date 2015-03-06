@@ -653,7 +653,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 #endif
     desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(50);
+    desc.setPluginEvaluation(91);
 #endif
 }
 
