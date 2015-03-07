@@ -513,7 +513,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum /*context*/)
 {
-    //gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kOfxNatronHostName);
+    //gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
     
     // Source clip only in the filter context
     // create the mandated source clip
