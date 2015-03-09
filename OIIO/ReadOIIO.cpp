@@ -721,6 +721,8 @@ ReadOIIOPlugin::setDefaultChannels()
 void
 ReadOIIOPlugin::setChannels()
 {
+    
+#ifdef OFX_READ_OIIO_NEWMENU
     OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
     OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
 
@@ -762,7 +764,13 @@ ReadOIIOPlugin::setChannels()
             }
         }
     }
-
+#else
+    _firstChannel->setDisplayRange(0, _spec.nchannels);
+    // set the first channel to the alpha channel if output is alpha
+    if (_spec.alpha_channel != -1 && components == OFX::ePixelComponentAlpha) {
+        _firstChannel->setValue(_spec.alpha_channel);
+    }
+#endif
 }
 
 #endif // OFX_READ_OIIO_NEWMENU
@@ -1022,18 +1030,18 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     buildChannelMenus();
     // set the default values for R, G, B, A channels
     setDefaultChannels();
-    
-    OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
-    OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
-    
-    for (int c = 0; c < 4; ++c) {
-        int idx;
-        channelParams[c]->getValue(idx);
-        std::string option;
-        channelParams[c]->getOption(idx, option);
-        stringParams[c]->setValue(option);
-    }
-    
+//    
+//    OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
+//    OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
+//    
+//    for (int c = 0; c < 4; ++c) {
+//        int idx;
+//        channelParams[c]->getValue(idx);
+//        std::string option;
+//        channelParams[c]->getOption(idx, option);
+//        stringParams[c]->setValue(option);
+//    }
+    setChannels();
 #else
     _firstChannel->setDisplayRange(0, _spec.nchannels);
     // set the first channel to the alpha channel if output is alpha
