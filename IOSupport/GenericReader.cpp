@@ -2125,6 +2125,10 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     if (OFX::getImageEffectHostDescription()
         && OFX::getImageEffectHostDescription()->isMultiPlanar) {
         desc.setIsMultiPlanar(multiPlanar);
+        if (multiPlanar) {
+            //We let all un-rendered planes pass-through so that they can be retrieved below by a shuffle node
+            desc.setIsPassThroughForNotProcessedPlanes(true);
+        }
     }
 #endif
 }
