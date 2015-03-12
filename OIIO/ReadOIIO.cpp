@@ -155,8 +155,28 @@ private:
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+                             OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL
+    {
+        std::string rawComps;
+        switch (pixelComponents) {
+            case OFX::ePixelComponentAlpha:
+                rawComps = kOfxImageComponentAlpha;
+                break;
+            case OFX::ePixelComponentRGB:
+                rawComps = kOfxImageComponentRGB;
+                break;
+            case OFX::ePixelComponentRGBA:
+                rawComps = kOfxImageComponentRGBA;
+                break;
+            default:
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        decodePlane(filename, time, renderWindow, pixelData, bounds, pixelComponents, rawComps, rowBytes);
+    }
+    
     virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
-                             OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes);
+                             OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
@@ -1233,13 +1253,13 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
         channels.resize(chanNames.size());
         
         pixelBytes = (int)chanNames.size() * sizeof(float);
-        
+        numChannels = (int)chanNames.size();
         for (std::size_t i = 0; i < chanNames.size(); ++i) {
             bool found = false;
             for (std::size_t j = 0; j < spec.channelnames.size(); ++j) {
                 std::string realChan = layer + '.' + chanNames[i];
                 if (spec.channelnames[j] == realChan) {
-                    channels[i] = j;
+                    channels[i] = j + kXChannelFirst;
                     found = true;
                     break;
                 }
