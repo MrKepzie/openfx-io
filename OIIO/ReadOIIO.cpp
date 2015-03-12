@@ -1196,7 +1196,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
 #ifdef OFX_READ_OIIO_NEWMENU
     std::vector<int> channels;
     int numChannels = 0;
-    int pixelBytes;
+    int pixelBytes = 0;
     if (pixelComponents != OFX::ePixelComponentCustom) {
         assert(rawComponents == kOfxImageComponentAlpha || rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
         int rChannel, gChannel, bChannel, aChannel;
@@ -1246,6 +1246,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
                 break;
         }
     } // if (pixelComponents != OFX::ePixelComponentCustom) {
+#ifdef OFX_EXTENSIONS_NATRON
     else {
         std::string layer;
         std::vector<std::string> chanNames;
@@ -1270,7 +1271,8 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             }
         }
     }
-   
+#endif
+    
     size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
 
     

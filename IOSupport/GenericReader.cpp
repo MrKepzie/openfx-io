@@ -975,22 +975,22 @@ GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
         if (!_supportsRGBA) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
         }
-        OFX::BlackFiller<float, 4> fred(*this);
+        OFX::BlackFiller<float> fred(*this, 4);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         if (!_supportsRGB) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
         }
-        OFX::BlackFiller<float, 3> fred(*this);
+        OFX::BlackFiller<float> fred(*this, 3);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         if (!_supportsAlpha) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
         }
-        OFX::BlackFiller<float, 1> fred(*this);
+        OFX::BlackFiller<float> fred(*this, 1);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else {
-        OFX::BlackFillerBase<float> fred(numComponents, *this);
+        OFX::BlackFiller<float> fred(*this, numComponents);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }
 

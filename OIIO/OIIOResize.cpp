@@ -317,15 +317,15 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         if (dstComponents == OFX::ePixelComponentRGBA) {
             switch (dstBitDepth) {
                 case OFX::eBitDepthUByte: {
-                    BlackFiller<unsigned char, 4> proc(*this);
+                    BlackFiller<unsigned char> proc(*this, 4);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthUShort: {
-                    BlackFiller<unsigned short, 4> proc(*this);
+                    BlackFiller<unsigned short> proc(*this, 4);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthFloat: {
-                    BlackFiller<float, 4> proc(*this);
+                    BlackFiller<float> proc(*this, 4);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 default:
@@ -334,15 +334,15 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         } else if (dstComponents == OFX::ePixelComponentRGB) {
             switch (dstBitDepth) {
                 case OFX::eBitDepthUByte: {
-                    BlackFiller<unsigned char, 3> proc(*this);
+                    BlackFiller<unsigned char> proc(*this, 3);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthUShort: {
-                    BlackFiller<unsigned short, 3> proc(*this);
+                    BlackFiller<unsigned short> proc(*this, 3);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthFloat: {
-                    BlackFiller<float, 3> proc(*this);
+                    BlackFiller<float> proc(*this, 3);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 default:
@@ -352,15 +352,15 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
             assert(dstComponents == OFX::ePixelComponentAlpha);
             switch (dstBitDepth) {
                 case OFX::eBitDepthUByte: {
-                    BlackFiller<unsigned char, 1> proc(*this);
+                    BlackFiller<unsigned char> proc(*this, 1);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthUShort: {
-                    BlackFiller<unsigned short, 1> proc(*this);
+                    BlackFiller<unsigned short> proc(*this, 1);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthFloat: {
-                    BlackFiller<float, 1> proc(*this);
+                    BlackFiller<float> proc(*this, 1);
                     fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
                 }   break;
                 default:
