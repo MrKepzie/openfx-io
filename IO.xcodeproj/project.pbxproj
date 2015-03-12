@@ -403,6 +403,10 @@
 		1E2F4D95189295DA00F4CE25 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2F4D96189295DA00F4CE25 /* PluginRegistrationCombined.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistrationCombined.cpp; sourceTree = "<group>"; };
 		1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E4E58331AB24365004D6E04 /* INRIA.IO.manifest */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = INRIA.IO.manifest; sourceTree = "<group>"; };
+		1E4E58341AB24365004D6E04 /* IO.sln */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IO.sln; sourceTree = "<group>"; };
+		1E4E58351AB24365004D6E04 /* IOPluginProperty.props */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = IOPluginProperty.props; sourceTree = "<group>"; };
+		1E4E58361AB24374004D6E04 /* IO.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = IO.vcxproj; path = IO/IO.vcxproj; sourceTree = SOURCE_ROOT; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
 		1E74D8181891070300E9034B /* ofxsCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCore.h; sourceTree = "<group>"; };
 		1E74D8191891070300E9034B /* ofxsHWNDInteract.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsHWNDInteract.h; sourceTree = "<group>"; };
@@ -811,6 +815,10 @@
 				1E9B5F6E198A557A0095C8AA /* Makefile.master */,
 				1EC04CAF193C8E4100E47D42 /* Makefile */,
 				1E9B5F6F198A557A0095C8AA /* README.md */,
+				1E4E58331AB24365004D6E04 /* INRIA.IO.manifest */,
+				1E4E58361AB24374004D6E04 /* IO.vcxproj */,
+				1E4E58341AB24365004D6E04 /* IO.sln */,
+				1E4E58351AB24365004D6E04 /* IOPluginProperty.props */,
 				1EDECBAA18B9F6BB0093B6FC /* RunScript */,
 				1E8B5D9C18B79E5700C31FDC /* PFM */,
 				1ED4999D18A00B49008A2D91 /* OCIO */,
@@ -1506,6 +1514,7 @@
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
+					OFX_EXTENSIONS_NATRON,
 					OFX_IO_USING_OCIO,
 					OFX_IO_MT_FFMPEG,
 				);
@@ -1542,6 +1551,7 @@
 					OFX_EXTENSIONS_NUKE,
 					OFX_EXTENSIONS_VEGAS,
 					OFX_EXTENSIONS_TUTTLE,
+					OFX_EXTENSIONS_NATRON,
 					OFX_IO_USING_OCIO,
 					OFX_IO_MT_FFMPEG,
 				);
