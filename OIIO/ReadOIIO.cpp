@@ -43,6 +43,7 @@
 #include "GenericReader.h"
 
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <fstream>
 #include <cmath>
@@ -80,6 +81,11 @@ OIIO_NAMESPACE_USING
 #define kSupportsAlpha true
 #ifdef OFX_READ_OIIO_USES_CACHE
 #define kSupportsTiles true
+#ifdef OFX_READ_OIIO_NEWMENU
+#define kIsMultiPlanar true
+#else
+#define kIsMultiPlanar false
+#endif
 #else
 // It is more efficient to read full frames if no cache is used.
 #define kSupportsTiles false
@@ -139,6 +145,8 @@ public:
     virtual ~ReadOIIOPlugin();
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    
+    virtual void getClipComponents(const OFX::ClipComponentsArguments& args, OFX::ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
 
     virtual void clearAnyCache() OVERRIDE FINAL;
 private:
@@ -146,8 +154,9 @@ private:
     virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
-
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    
+    virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+                             OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes);
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
@@ -192,7 +201,13 @@ private:
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles,
+#ifdef OFX_EXTENSIONS_NUKE
+                      (OFX::getImageEffectHostDescription() && OFX::getImageEffectHostDescription()->isMultiPlanar) ? kIsMultiPlanar : false
+#else
+                      false
+#endif
+                      )
 #ifdef OFX_READ_OIIO_USES_CACHE
 #  ifdef OFX_READ_OIIO_SHARED_CACHE
 , _cache(ImageCache::create(true)) // shared cache
@@ -363,6 +378,74 @@ ReadOIIOPlugin::onOutputComponentsParamChanged(OFX::PixelComponentEnum component
         onInputFileChanged(filename, &premult, &components);
     }
 #endif
+}
+
+static std::string makeNatronCustomChannel(const std::string& layer,const std::vector<std::string>& channels)
+{
+    std::string ret(kNatronOfxImageComponentsPlane);
+    ret.append(layer);
+    for (std::size_t i = 0; i < channels.size(); ++i) {
+        ret.append(kNatronOfxImageComponentsPlaneChannel);
+        ret.append(channels[i]);
+    }
+    return ret;
+    
+}
+
+void
+ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX::ClipComponentsSetter& clipComponents)
+{
+    //Should only be called if multi-planar
+    assert(isMultiPlanar());
+    
+    clipComponents.addClipComponents(*_outputClip, getOutputComponents());
+    clipComponents.setPassThroughClip(NULL, args.time, args.view);
+    
+    if (_specValid) {
+        
+        std::map<std::string,std::vector<std::string> > layers;
+        for (int i = 0; i < _spec.nchannels; ++i) {
+            if (i < (int)_spec.channelnames.size()) {
+                const std::string& chan = _spec.channelnames[i];
+                std::size_t foundLastDot = chan.find_last_of('.');
+                
+                //Consider everything before the last dot as being a layer
+                if (foundLastDot != std::string::npos) {
+                    std::string layer = chan.substr(0,foundLastDot);
+                    std::string channel = chan.substr(foundLastDot + 1,std::string::npos);
+                    
+                    std::map<std::string,std::vector<std::string> >::iterator foundLayer = layers.find(layer);
+                    if (foundLayer == layers.end()) {
+                        ///Add a new vector of channels for the layer
+                        std::vector<std::string> chanVec;
+                        chanVec.push_back(channel);
+                        layers.insert(std::make_pair(layer, chanVec));
+                        
+                    } else {
+                        ///Complete the vector
+                        foundLayer->second.push_back(channel);
+                    }
+                    
+                } else {
+                    //The channel does not have a layer prefix, it is either R,G,B,A or a custom single channel component
+                    //If RGBA, don't consider it as it is already considered with the output components.
+                    if (chan != "R" && chan != "r" && chan != "red" &&
+                        chan != "G" && chan != "g" && chan != "green" &&
+                        chan != "B" && chan != "b" && chan != "blue" &&
+                        chan != "A" && chan != "a" && chan != "alpha") {
+                        
+                        std::vector<std::string> chanVec;
+                        chanVec.push_back(chan);
+                        layers.insert(std::make_pair(chan, chanVec));
+                    }
+                }
+            }
+        }
+        for (std::map<std::string,std::vector<std::string> >::iterator it = layers.begin(); it!=layers.end(); ++it) {
+            std::string component = makeNatronCustomChannel(it->first, it->second);
+            clipComponents.addClipComponents(*_outputClip, component);
+        }
+    }
 }
 
 #ifdef OFX_READ_OIIO_NEWMENU
@@ -1051,7 +1134,8 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
 #endif
 }
 
-void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+                                 OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes)
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
@@ -1076,66 +1160,100 @@ void ReadOIIOPlugin::decode(const std::string& filename, OfxTime time, const Ofx
     }
     const ImageSpec &spec = img->spec();
 #endif
-
-    // we only support RGBA, RGB or Alpha output clip
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-    }
+    
     //assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == spec.full_width && renderWindow.y1 == 0 && renderWindow.y2 == spec.full_height));
     //assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height);
     assert(bounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= bounds.x2);
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
 
+    // we only support RGBA, RGB or Alpha output clip on the color plane
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha
+        && pixelComponents != OFX::ePixelComponentCustom) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB, Alpha or custom components images");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    }
+    
 #ifdef OFX_READ_OIIO_NEWMENU
-    int rChannel, gChannel, bChannel, aChannel;
-    _rChannel->getValueAtTime(time, rChannel);
-    _gChannel->getValueAtTime(time, gChannel);
-    _bChannel->getValueAtTime(time, bChannel);
-    _aChannel->getValueAtTime(time, aChannel);
-    // test if channels are valid
-    if (rChannel > spec.nchannels + kXChannelFirst) {
-        rChannel = 0;
-    }
-    if (gChannel > spec.nchannels + kXChannelFirst) {
-        gChannel = 0;
-    }
-    if (bChannel > spec.nchannels + kXChannelFirst) {
-        bChannel = 0;
-    }
-    if (aChannel > spec.nchannels + kXChannelFirst) {
-        aChannel = 1; // opaque by default
-    }
+    std::vector<int> channels;
     int numChannels = 0;
-    int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+    int pixelBytes;
+    if (pixelComponents != OFX::ePixelComponentCustom) {
+        assert(rawComponents == kOfxImageComponentAlpha || rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
+        int rChannel, gChannel, bChannel, aChannel;
+        _rChannel->getValueAtTime(time, rChannel);
+        _gChannel->getValueAtTime(time, gChannel);
+        _bChannel->getValueAtTime(time, bChannel);
+        _aChannel->getValueAtTime(time, aChannel);
+        // test if channels are valid
+        if (rChannel > spec.nchannels + kXChannelFirst) {
+            rChannel = 0;
+        }
+        if (gChannel > spec.nchannels + kXChannelFirst) {
+            gChannel = 0;
+        }
+        if (bChannel > spec.nchannels + kXChannelFirst) {
+            bChannel = 0;
+        }
+        if (aChannel > spec.nchannels + kXChannelFirst) {
+            aChannel = 1; // opaque by default
+        }
+        
+        pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+        
+        switch (pixelComponents) {
+            case OFX::ePixelComponentRGBA:
+                numChannels = 4;
+                channels.resize(numChannels);
+                channels[0] = rChannel;
+                channels[1] = gChannel;
+                channels[2] = bChannel;
+                channels[3] = aChannel;
+                break;
+            case OFX::ePixelComponentRGB:
+                numChannels = 3;
+                channels.resize(numChannels);
+                channels[0] = rChannel;
+                channels[1] = gChannel;
+                channels[2] = bChannel;
+                break;
+            case OFX::ePixelComponentAlpha:
+                numChannels = 1;
+                channels.resize(numChannels);
+                channels[0] = aChannel;
+                break;
+            default:
+                assert(false);
+                break;
+        }
+    } // if (pixelComponents != OFX::ePixelComponentCustom) {
+    else {
+        std::string layer;
+        std::vector<std::string> chanNames;
+        OFX::ImageBase::ofxCustomCompToNatronComp(rawComponents, &layer, &chanNames);
+        channels.resize(chanNames.size());
+        
+        pixelBytes = (int)chanNames.size() * sizeof(float);
+        
+        for (std::size_t i = 0; i < chanNames.size(); ++i) {
+            bool found = false;
+            for (std::size_t j = 0; j < spec.channelnames.size(); ++j) {
+                std::string realChan = layer + '.' + chanNames[i];
+                if (spec.channelnames[j] == realChan) {
+                    channels[i] = j;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Could not find channel named " + chanNames[i]);
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+        }
+    }
+   
     size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
 
-    std::vector<int> channels;
-    switch (pixelComponents) {
-        case OFX::ePixelComponentRGBA:
-            numChannels = 4;
-            channels.resize(numChannels);
-            channels[0] = rChannel;
-            channels[1] = gChannel;
-            channels[2] = bChannel;
-            channels[3] = aChannel;
-            break;
-        case OFX::ePixelComponentRGB:
-            numChannels = 3;
-            channels.resize(numChannels);
-            channels[0] = rChannel;
-            channels[1] = gChannel;
-            channels[2] = bChannel;
-            break;
-        case OFX::ePixelComponentAlpha:
-            numChannels = 1;
-            channels.resize(numChannels);
-            channels[0] = aChannel;
-            break;
-        default:
-            assert(false);
-            break;
-    }
+    
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i+=incr) {
         incr = 1;
@@ -1564,7 +1682,7 @@ static std::string oiio_versions()
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles);
+    GenericReaderDescribe(desc, kSupportsTiles, kIsMultiPlanar);
 
     if (!attribute("threads", 1)) {
 #     ifdef DEBUG

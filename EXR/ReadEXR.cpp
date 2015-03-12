@@ -509,7 +509,7 @@ namespace Exr {
 
 
 ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 {
     Exr::FileManager::s_readerManager.initialize();
 }
@@ -676,7 +676,7 @@ mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
 void
 ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles);
+    GenericReaderDescribe(desc, kSupportsTiles, false);
     // basic labels
     desc.setLabel("ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");

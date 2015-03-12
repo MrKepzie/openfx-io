@@ -124,7 +124,7 @@ static void invert_endianness(T *const buffer, const unsigned int size)
 }
 
 ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 {
 }
 
@@ -381,7 +381,7 @@ mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles);
+    GenericReaderDescribe(desc, kSupportsTiles, false);
     
     // basic labels
     desc.setLabel(kPluginName);

@@ -106,7 +106,7 @@ private:
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager,OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles)
+: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 , _manager(manager)
 , _maxRetries(0)
 {
@@ -477,7 +477,7 @@ FFmpegLockManager(void** mutex, enum AVLockOp op)
 void
 ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles);
+    GenericReaderDescribe(desc, kSupportsTiles, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription("Read images or video using "

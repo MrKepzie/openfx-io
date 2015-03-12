@@ -60,7 +60,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha);
+    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool isMultiPlanar);
     
     virtual ~GenericReaderPlugin();
 
@@ -125,6 +125,9 @@ public:
      **/
     void restoreStateFromParameters();
 
+    bool isMultiPlanar() const {
+        return _isMultiPlanar;
+    }
     
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
@@ -136,7 +139,15 @@ protected:
     OFX::PixelComponentEnum getOutputComponents() const;
     
 
-
+    struct PlaneToRender
+    {
+        float* pixelData;
+        int rowBytes;
+        int numChans;
+        OFX::PixelComponentEnum comps;
+        std::string rawComps;
+    };
+    
 private:
     
     
@@ -186,7 +197,11 @@ private:
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.
      **/
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) = 0;
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    
+   
+    virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+                             OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes);
     
     
     /**
@@ -264,12 +279,14 @@ private:
                         OFX::PixelComponentEnum dstPixelComponents,
                         OFX::BitDepthEnum dstPixelDepth,
                         const OfxRectI& dstBounds,
-                        int dstRowBytes);
+                        int dstRowBytes,
+                        int nComponents);
     
     void fillWithBlack(const OfxRectI &renderWindow,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
                        OFX::PixelComponentEnum dstPixelComponents,
+                       int numComponents,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
 
@@ -343,10 +360,11 @@ private:
     const bool _supportsRGB;
     const bool _supportsAlpha;
     const bool _supportsTiles;
+    const bool _isMultiPlanar;
 };
 
 
-void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles);
+void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles, bool multiPlanar);
 OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles);
 void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 
