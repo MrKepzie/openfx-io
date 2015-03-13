@@ -1255,10 +1255,18 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
         
         pixelBytes = (int)chanNames.size() * sizeof(float);
         numChannels = (int)chanNames.size();
+        if (chanNames.size() == 1 && chanNames[0] == layer) {
+            layer.clear();
+        }
         for (std::size_t i = 0; i < chanNames.size(); ++i) {
             bool found = false;
             for (std::size_t j = 0; j < spec.channelnames.size(); ++j) {
-                std::string realChan = layer + '.' + chanNames[i];
+                std::string realChan;
+                if (!layer.empty()) {
+                    realChan.append(layer);
+                    realChan.push_back('.');
+                }
+                realChan.append(chanNames[i]);
                 if (spec.channelnames[j] == realChan) {
                     channels[i] = j + kXChannelFirst;
                     found = true;

@@ -1294,6 +1294,7 @@
 					"DEBUG=1",
 					OFX_IO_MT_FFMPEG,
 					OFX_IO_USING_OCIO,
+					OFX_EXTENSIONS_NATRON,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
