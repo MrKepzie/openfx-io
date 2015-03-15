@@ -89,7 +89,37 @@
 #define kPluginGrouping "Merge"
 #define kPluginDescription \
 "Use the Walt Disney Animation Studio SeExpr library to write an expression to process pixels of the input image.\n" \
-"SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc."
+"SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
+"Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images." \
+"The following pre-defined variable can be used in the script:\n" \
+"- $x: This is the canonical X coordinate of the pixel to render (as seen on the viewer)\n" \
+"- $y: This is the canonical Y coordinate of the pixel to render (as seen on the viewer)\n" \
+"- $frame: This is the current frame being rendered\n\n" \
+"To fetch an input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for a given input fetch the pixel at the " \
+"(x,y) position in the image at the given frame. Note that inputNumber starts from 1.\n\n" \
+"Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
+"$a = getPixel(1,frame,$x,$y);\n" \
+"$b = getPixel(2,frame,$x,$y);\n" \
+"$color = $a * $b;\n" \
+"$color\n" \
+"\n\n" \
+"Limitations:\n\n" \
+"Some optimizations have been made so that the plug-in is efficient even though using an expression language." \
+"In order to correctly work with input images, your expression should always call the getPixel(...) function in the " \
+"global scope of your expression, e.g:\n" \
+"if ($a > 5) {\n" \
+"   $b = getPixel(1,frame,$x,$y);\n" \
+"} else {\n" \
+"   $b = [0,0,0]\n" \
+"}\n" \
+"This will not produce an efficient program and the plug-in will most likely be very slow to render.\n" \
+"A well formed and efficient expression should use the getPixel function in the global scope like this:\n" \
+"$c = getPixel(1,frame,$x,$y);\n"\
+"if ($a > 5) {\n"\
+"   $b = $c\n"\
+"} else {\n"\
+"   $b = [0,0,0]\n"\
+"}"
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -323,17 +353,20 @@ public:
     OFX::Image* getOrFetchImage(int inputIndex, OfxTime time, int* nComponents) {
         FetchedImagesMap::iterator foundInput = _images.find(inputIndex);
         if (foundInput == _images.end()) {
-            assert(_plugin->getClip(inputIndex));
-            
+            OFX::Clip* clip = _plugin->getClip(inputIndex);
+            assert(clip);
+            if (!clip->isConnected()) {
+                return 0;
+            }
             ImageData data;
             if (gHostIsMultiPlanar) {
                 if (_layersToFetch[inputIndex].empty()) {
                     data.img = 0;
                 } else {
-                    data.img = _plugin->getClip(inputIndex)->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
+                    data.img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
                 }
             } else {
-                data.img = _plugin->getClip(inputIndex)->fetchImage(time);
+                data.img = clip->fetchImage(time);
             }
             if (!data.img) {
                 return 0;
@@ -348,11 +381,18 @@ public:
         } else {
             std::map<OfxTime, ImageData>::iterator foundImage = foundInput->second.find(time);
             if (foundImage == foundInput->second.end()) {
+                OFX::Clip* clip = _plugin->getClip(inputIndex);
+                assert(clip);
+                
+                if (!clip->isConnected()) {
+                    return 0;
+                }
+
                 ImageData data;
                 if (gHostIsMultiPlanar) {
-                    data.img = _plugin->getClip(inputIndex)->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
+                    data.img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
                 } else {
-                    data.img = _plugin->getClip(inputIndex)->fetchImage(time);
+                    data.img = clip->fetchImage(time);
                 }
                 if (!data.img) {
                     return 0;
@@ -1418,14 +1458,6 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _doubleParamCount->setEvaluateOnChange(validated);
         _double2DParamCount->setEvaluateOnChange(validated);
         _colorParamCount->setEvaluateOnChange(validated);
-        for (int i = 0; i < kParamsCount; ++i) {
-            _doubleParams[i]->setEnabled(!validated);
-            _doubleParams[i]->setEvaluateOnChange(validated);
-            _double2DParams[i]->setEnabled(!validated);
-            _double2DParams[i]->setEvaluateOnChange(validated);
-            _colorParams[i]->setEnabled(!validated);
-            _colorParams[i]->setEvaluateOnChange(validated);
-        }
         _script->setEnabled(!validated);
         _script->setEvaluateOnChange(validated);
         clearPersistentMessage();
