@@ -160,7 +160,7 @@
 #define kBoundingBoxChoiceCustomInputHelp "The output region will be the bounding box of the input"
 
 #define kLayerInputParamName "layerInput"
-#define kLayerInputParamLabel "Layer Input "
+#define kLayerInputParamLabel "Input Layer"
 #define kLayerInputParamHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
 
 #define kDoubleParamNumberParamName "noDoubleParams"
@@ -220,6 +220,8 @@ public:
 
     /* override changedParam */
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    
+    virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
 
     // override the rod call
     virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
@@ -1565,6 +1567,22 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
 }
 
 void
+SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
+{
+    if (!gHostIsMultiPlanar) {
+        return;
+    }
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        std::stringstream ss;
+        ss << i+1;
+        if (ss.str() == clipName) {
+            assert(_srcClip[i]);
+            _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
+        }
+    }
+}
+
+void
 SeExprPlugin::buildChannelMenus()
 {
     
@@ -1941,9 +1959,13 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             std::stringstream s;
             s << kLayerInputParamName << i+1;
             ChoiceParamDescriptor *param = desc.defineChoiceParam(s.str());
-            param->setLabel(kLayerInputParamLabel);
+            
+            std::stringstream ss;
+            ss << kLayerInputParamLabel << i+1;
+            param->setLabel(ss.str());
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
+            param->setIsSecret(true);
             param->setParent(*group);
             page->addChild(*param);
         }
