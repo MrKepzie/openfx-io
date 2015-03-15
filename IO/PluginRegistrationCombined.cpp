@@ -52,9 +52,7 @@ namespace OFX
 #ifndef _WINDOWS
             getRunScriptPluginID(ids);
 #endif
-#ifdef DEBUG
-            getSeExprPluginID(ids);
-#endif
+			getSeExprPluginID(ids);
         }
     }
 }
