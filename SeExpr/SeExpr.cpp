@@ -1062,16 +1062,18 @@ public:
     virtual void process(OfxRectI procWindow) OVERRIDE FINAL
     {
         float tmpPix[nComponents];
+        bool fetchBgImage = _src0CurTime && (_doMasking || _mix != 1.);
         
-        for (int y = procWindow.y1; y < procWindow.y2; y++) {
+        for (int y = procWindow.y1; y < procWindow.y2; ++y) {
             if (_plugin->abort()) {
                 break;
             }
         
             PIX *dstPix = (PIX *) _dstImg->getPixelAddress(procWindow.x1, y);
-            const PIX* srcPix0 = _src0CurTime ? (const PIX*) _src0CurTime->getPixelAddress(procWindow.x1, y) : 0;
             
-            for (int x = procWindow.x1; x < procWindow.x2; x++) {
+            for (int x = procWindow.x1; x < procWindow.x2; ++x) {
+                
+                const PIX* srcPix0 = fetchBgImage ? (const PIX*) _src0CurTime->getPixelAddress(x, y) : 0;
                 
                 _expression->setXY(x, y);
                 SeVec3d result = _expression->evaluate();
@@ -1614,7 +1616,15 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             rois.setRegionOfInterest(*clip, roi);
         }
         
+        bool isMasked = _maskClip ? _maskClip->isConnected() : false;
+        
         for (int i = 0; i < kSourceClipCount; ++i) {
+            
+            if (i == 0 && isMasked) {
+                //Make sure the first input is fetched on all the render window if we are using a mask
+                rois.setRegionOfInterest(*_srcClip[0], args.regionOfInterest);
+            }
+            
             if (!clipSet) {
                 
                 OFX::Clip* clip = getClip(i);
