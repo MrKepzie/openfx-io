@@ -146,7 +146,7 @@
 #define kSeExprOutputWidthVarName "output_width"
 #define kSeExprOutputHeightVarName "output_height"
 
-#define kSeExprDefaultScript "$color = " kSeExprGetPixelFuncName "(1, frame, x, y);\n$color"
+#define kSeExprDefaultScript "$color = " kSeExprGetPixelFuncName "(1, frame, x, y);\n#Return the output color\n$color"
 
 #define kBoundingBoxParamName "boundingBox"
 #define kBoundingBoxParamLabel "Bounding box"
@@ -1561,7 +1561,9 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _colorParamCount->setEvaluateOnChange(validated);
         _script->setEnabled(!validated);
         _script->setEvaluateOnChange(validated);
-        clearPersistentMessage();
+        if (validated) {
+            clearPersistentMessage();
+        }
     }
 
 }
