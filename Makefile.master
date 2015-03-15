@@ -2,7 +2,7 @@ PATHTOROOT = ../openfx/Support
 
 include $(PATHTOROOT)/Plugins/Makefile.master
 
-CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_TUTTLE -DOXF_EXTENSIONS_NATRON -I../IOSupport -I../SupportExt
+CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_TUTTLE -DOFX_EXTENSIONS_NATRON -I../IOSupport -I../SupportExt
 VPATH += ../IOSupport ../IOSupport/SequenceParsing ../SupportExt
 
 # Comment the following two lines to disable OpenColorIO support
