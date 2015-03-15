@@ -6,6 +6,7 @@ EXR \
 FFmpeg \
 OCIO \
 OIIO \
+SeExpr \
 PFM
 
 all: subdirs

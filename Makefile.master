@@ -12,8 +12,8 @@ ifeq ($(OS),Linux)
 LINKFLAGS += -Wl,-rpath,`pkg-config --variable=libdir OpenColorIO`
 endif
 
-# Uncomment the following line to enable multithreaded ffmpeg reading (probably buggy!)
-#CXXFLAGS += -DOFX_IO_MT_FFMPEG
+# Uncomment the following line to enable multithreaded ffmpeg reading
+CXXFLAGS += -DOFX_IO_MT_FFMPEG
 
 # Uncomment the following line to enable multithreaded EXR reading (untested, and probably does not make sense)
 #CXXFLAGS += -DOFX_IO_MT_EXR

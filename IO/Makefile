@@ -14,6 +14,7 @@ PLUGINOBJECTS = \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
+    SeExpr.o \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO
@@ -48,11 +49,12 @@ VPATH += \
 ../OIIO \
 ../PFM \
 ../RunScript \
+../SeExpr \
 ../IOSupport/SequenceParsing
 
 include ../Makefile.master
 
-CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript
+CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript -I../SeExpr
 
 LOCAL=/usr
 
@@ -72,5 +74,13 @@ ifeq ($(OS),Linux)
 OIIO_LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib
 endif
 
-CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)
-LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)
+#SeExpr
+SEEXPR_HOME ?=/usr
+SEEXPR_CXXFLAGS = -I$(SEEXPR_HOME)/include
+SEEXPR_LINKFLAGS = -L$(SEEXPR_HOME)/lib -lSeExpr
+ifeq ($(OS),Linux)
+SEEXPR_LINKFLAGS += -Wl,-rpath,$(SEEXPR_HOME)/lib
+endif
+
+CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS)
+LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS)

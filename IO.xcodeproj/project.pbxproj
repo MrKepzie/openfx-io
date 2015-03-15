@@ -203,6 +203,18 @@
 		AC6487071A41BE120088844F /* fr.inria.openfx.ReadPFM.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */; };
 		AC6487081A41BE120088844F /* fr.inria.openfx.WritePFM.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */; };
 		AC6487091A41BE120088844F /* fr.inria.openfx.WritePFM.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486ED1A41BDD40088844F /* fr.inria.openfx.WritePFM.svg */; };
+		ACE084A21AB4AB9B00BE558C /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
+		ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
+		ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82D1891074000E9034B /* ofxsParams.cpp */; };
+		ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8291891074000E9034B /* ofxsImageEffect.cpp */; };
+		ACE084A61AB4AB9B00BE558C /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82F1891074000E9034B /* ofxsPropertyValidation.cpp */; };
+		ACE084A71AB4AB9B00BE558C /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82B1891074000E9034B /* ofxsLog.cpp */; };
+		ACE084A81AB4AB9B00BE558C /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82A1891074000E9034B /* ofxsInteract.cpp */; };
+		ACE084A91AB4AB9B00BE558C /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82C1891074000E9034B /* ofxsMultiThread.cpp */; };
+		ACE084AB1AB4AB9B00BE558C /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
+		ACE084B41AB4ABAF00BE558C /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */; };
+		ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */; };
+		ACE084B61AB4ABDF00BE558C /* SeExpr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D74E624A1875A7A400D8FA13 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
@@ -366,6 +378,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ACE084AC1AB4AB9B00BE558C /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -514,6 +535,13 @@
 		AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadFFmpeg.svg; sourceTree = "<group>"; };
 		AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WriteFFmpeg.png; sourceTree = "<group>"; };
 		AC6486F91A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.WriteFFmpeg.svg; sourceTree = "<group>"; };
+		ACE084991AB4AB7E00BE558C /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		ACE0849A1AB4AB7E00BE558C /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
+		ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeExpr.cpp; sourceTree = "<group>"; };
+		ACE0849D1AB4AB7E00BE558C /* SeExpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeExpr.h; sourceTree = "<group>"; };
+		ACE084B21AB4AB9B00BE558C /* SeExpr.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SeExpr.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACE084B31AB4AB9B00BE558C /* RunScript.ofx copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "RunScript.ofx copy-Info.plist"; path = "/Users/alexandre/development/openfx-io/RunScript.ofx copy-Info.plist"; sourceTree = "<absolute>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -570,6 +598,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EDECBC418B9F8040093B6FC /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACE084AA1AB4AB9B00BE558C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACE084AB1AB4AB9B00BE558C /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -808,6 +844,18 @@
 			path = RunScript;
 			sourceTree = "<group>";
 		};
+		ACE084981AB4AB7E00BE558C /* SeExpr */ = {
+			isa = PBXGroup;
+			children = (
+				ACE084991AB4AB7E00BE558C /* Info.plist */,
+				ACE0849A1AB4AB7E00BE558C /* Makefile */,
+				ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */,
+				ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */,
+				ACE0849D1AB4AB7E00BE558C /* SeExpr.h */,
+			);
+			path = SeExpr;
+			sourceTree = "<group>";
+		};
 		D74E623B1875A79700D8FA13 = {
 			isa = PBXGroup;
 			children = (
@@ -827,10 +875,12 @@
 				1E00B3C1188EE8AE003BC7F3 /* EXR */,
 				1E00B3C0188EE8A1003BC7F3 /* FFmpeg */,
 				1E00B386188EE860003BC7F3 /* IOSupport */,
+				ACE084981AB4AB7E00BE558C /* SeExpr */,
 				D74E62931875AABD00D8FA13 /* OpenFX */,
 				1E9B5F21198A50250095C8AA /* SupportExt */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
+				ACE084B31AB4AB9B00BE558C /* RunScript.ofx copy-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -844,6 +894,7 @@
 				1ED499CC18A00B66008A2D91 /* OCIO.ofx.bundle */,
 				1E8B5DD218B7A2F300C31FDC /* PFM.ofx.bundle */,
 				1EDECBE018B9F8040093B6FC /* RunScript.ofx.bundle */,
+				ACE084B21AB4AB9B00BE558C /* SeExpr.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -987,6 +1038,23 @@
 			productReference = 1EDECBE018B9F8040093B6FC /* RunScript.ofx.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
+		ACE0849E1AB4AB9B00BE558C /* SeExpr.ofx */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACE084AF1AB4AB9B00BE558C /* Build configuration list for PBXNativeTarget "SeExpr.ofx" */;
+			buildPhases = (
+				ACE0849F1AB4AB9B00BE558C /* Sources */,
+				ACE084AA1AB4AB9B00BE558C /* Frameworks */,
+				ACE084AC1AB4AB9B00BE558C /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SeExpr.ofx;
+			productName = oiioReader;
+			productReference = ACE084B21AB4AB9B00BE558C /* SeExpr.ofx.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 		D709B95218787D6700D5A0B4 /* EXR.ofx */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D709B96418787D6700D5A0B4 /* Build configuration list for PBXNativeTarget "EXR.ofx" */;
@@ -1067,6 +1135,7 @@
 				D7330DD018867B35004A6199 /* OIIO.ofx */,
 				1E8B5DA418B7A2F300C31FDC /* PFM.ofx */,
 				1EDECBB018B9F8040093B6FC /* RunScript.ofx */,
+				ACE0849E1AB4AB9B00BE558C /* SeExpr.ofx */,
 			);
 		};
 /* End PBXProject section */
@@ -1089,6 +1158,7 @@
 				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E0524AD19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
 				1E90F4171982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,
+				ACE084B61AB4ABDF00BE558C /* SeExpr.cpp in Sources */,
 				1E2F4DDE1892977800F4CE25 /* ReadOIIO.cpp in Sources */,
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E9B5EF7198A2B9A0095C8AA /* OIIOText.cpp in Sources */,
@@ -1169,6 +1239,23 @@
 				1EDECBBB18B9F8040093B6FC /* ofxsLog.cpp in Sources */,
 				1EDECBBF18B9F8040093B6FC /* ofxsInteract.cpp in Sources */,
 				1EDECBC218B9F8040093B6FC /* ofxsMultiThread.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACE0849F1AB4AB9B00BE558C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACE084A21AB4AB9B00BE558C /* ofxsProperty.cpp in Sources */,
+				ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */,
+				ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */,
+				ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */,
+				ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */,
+				ACE084B41AB4ABAF00BE558C /* PluginRegistration.cpp in Sources */,
+				ACE084A61AB4AB9B00BE558C /* ofxsPropertyValidation.cpp in Sources */,
+				ACE084A71AB4AB9B00BE558C /* ofxsLog.cpp in Sources */,
+				ACE084A81AB4AB9B00BE558C /* ofxsInteract.cpp in Sources */,
+				ACE084A91AB4AB9B00BE558C /* ofxsMultiThread.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1319,6 +1406,8 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 					"-lOpenImageIO_Util",
+					"-L$(SEEXPR_PATH)/lib",
+					"-lSeExpr",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1350,6 +1439,8 @@
 					"-L$(OIIO_PATH)/lib",
 					"-lOpenImageIO",
 					"-lOpenImageIO_Util",
+					"-L$(SEEXPR_PATH)/lib",
+					"-lSeExpr",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1418,6 +1509,30 @@
 			buildSettings = {
 				INFOPLIST_FILE = RunScript/Info.plist;
 				PRODUCT_NAME = RunScript.ofx;
+			};
+			name = Release;
+		};
+		ACE084B01AB4AB9B00BE558C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = Info.plist;
+				OTHER_LDFLAGS = (
+					"-L$(SEEXPR_PATH)",
+					"-lSeExpr",
+				);
+				PRODUCT_NAME = SeExpr.ofx;
+			};
+			name = Debug;
+		};
+		ACE084B11AB4AB9B00BE558C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = Info.plist;
+				OTHER_LDFLAGS = (
+					"-L$(SEEXPR_PATH)",
+					"-lSeExpr",
+				);
+				PRODUCT_NAME = SeExpr.ofx;
 			};
 			name = Release;
 		};
@@ -1674,6 +1789,15 @@
 			buildConfigurations = (
 				1EDECBDE18B9F8040093B6FC /* Debug */,
 				1EDECBDF18B9F8040093B6FC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ACE084AF1AB4AB9B00BE558C /* Build configuration list for PBXNativeTarget "SeExpr.ofx" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ACE084B01AB4AB9B00BE558C /* Debug */,
+				ACE084B11AB4AB9B00BE558C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
