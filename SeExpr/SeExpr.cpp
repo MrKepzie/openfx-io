@@ -90,11 +90,15 @@
 #define kPluginDescription \
 "Use the Walt Disney Animation Studio SeExpr library to write an expression to process pixels of the input image.\n" \
 "SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
-"Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images." \
-"The following pre-defined variable can be used in the script:\n" \
-"- $x: This is the canonical X coordinate of the pixel to render (as seen on the viewer)\n" \
-"- $y: This is the canonical Y coordinate of the pixel to render (as seen on the viewer)\n" \
-"- $frame: This is the current frame being rendered\n\n" \
+"Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images. " \
+"The following pre-defined variables can be used in the script:\n\n" \
+"- $x: This is the canonical X coordinate of the pixel to render (this is not normalized in the [0,1] range)\n" \
+"- $y: This is the canonical Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n" \
+"- $frame: This is the current frame being rendered\n" \
+"- $output_width: This is the width of the output image being rendered. This is useful to normalize x coordinates into the range [0,1]\n" \
+"- $output_height: This is the height of the output image being rendered. This is useful to normalize y coordinates into the range [0,1]\n" \
+"- Each input has a variable named $input_width<index> and $input_height<index> indicating respectively the width and height of the input. " \
+"For example, the input 1 will have the variables $input_width1 and $input_height1.\n\n" \
 "To fetch an input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for a given input fetch the pixel at the " \
 "(x,y) position in the image at the given frame. Note that inputNumber starts from 1.\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
@@ -137,6 +141,10 @@
 #define kSeExprCurrentTimeVarName "frame"
 #define kSeExprXCoordVarName "x"
 #define kSeExprYCoordVarName "y"
+#define kSeExprInputWidthVarName "input_width"
+#define kSeExprInputHeightVarName "input_height"
+#define kSeExprOutputWidthVarName "output_width"
+#define kSeExprOutputHeightVarName "output_height"
 
 #define kSeExprDefaultScript "$color = " kSeExprGetPixelFuncName "(1, frame, x, y);\n$color"
 
@@ -181,7 +189,8 @@
 
 #define kScriptParamName "script"
 #define kScriptParamLabel "Script"
-#define kScriptParamHint "Contents of the SeExpr expression. See http://www.disneyanimation.com/technology/seexpr.html for documentation."
+#define kScriptParamHint "Contents of the SeExpr expression. See the description of the plug-in and " \
+"http://www.disneyanimation.com/technology/seexpr.html for documentation."
 
 #define kParamValidate                  "validate"
 #define kParamValidateLabel             "Validate"
@@ -346,7 +355,7 @@ public:
     
 
     
-    void setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers);
+    void setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers, OfxPointI* inputSizes, OfxPointI outputSize);
     
     bool isExprOk(std::string* error);
     
@@ -692,6 +701,29 @@ public:
     
 };
 
+class SimpleVec : public SeExprVarRef
+{
+    
+public:
+    
+    double _value[3];
+    
+    SimpleVec() : SeExprVarRef(), _value() { _value[0] = _value[1] = _value[2] = 0.; }
+    
+    virtual ~SimpleVec() {}
+    
+    virtual bool isVec() { return true;}
+    
+    virtual void eval(const SeExprVarNode* node, SeVec3d& result)
+    {
+        result[0] = _value[0];
+        result[1] = _value[1];
+        result[2] = _value[2];
+    }
+    
+    
+};
+
 class StubSeExpression;
 class StubGetPixelFuncX : public SeExprFuncX
 {
@@ -810,6 +842,11 @@ class OFXSeExpression : public SeExpression
     mutable SimpleScalar _currentTime;
     mutable SimpleScalar _xCoord,_yCoord;
     
+    mutable SimpleScalar _inputWidths[kSourceClipCount];
+    mutable SimpleScalar _inputHeights[kSourceClipCount];
+    
+    mutable SimpleScalar _outputWidth,_outputHeight;
+    
 public:
     
     
@@ -829,6 +866,16 @@ public:
     void setXY(int x, int y) {
         _xCoord._value = x;
         _yCoord._value = y;
+    }
+    
+    void setSize(int inputNumber, int w, int h) {
+        if (inputNumber == -1) {
+            _outputWidth._value = w;
+            _outputHeight._value = h;
+        } else {
+            _inputWidths[inputNumber]._value = w;
+            _inputHeights[inputNumber]._value = h;
+        }
     }
     
 };
@@ -879,6 +926,10 @@ OFXSeExpression::resolveVar(const std::string& name) const
         return &_xCoord;
     } else if (name == kSeExprYCoordVarName) {
         return &_yCoord;
+    } else if (name == kSeExprOutputWidthVarName) {
+        return &_outputWidth;
+    } else if (name == kSeExprOutputHeightVarName) {
+        return &_outputHeight;
     }
     
     for (int i = 0; i < kParamsCount; ++i) {
@@ -903,6 +954,22 @@ OFXSeExpression::resolveVar(const std::string& name) const
                 return _colorRefs[i];
             }
         }
+        {
+            std::stringstream ss;
+            ss << kSeExprInputWidthVarName << i+1;
+            if (ss.str() == name) {
+                return &_inputWidths[i];
+            }
+        }
+        {
+            std::stringstream ss;
+            ss << kSeExprInputHeightVarName << i+1;
+            if (ss.str() == name) {
+                return &_inputHeights[i];
+            }
+        }
+        
+        
     }
     return 0;
 }
@@ -1055,7 +1122,7 @@ SeExprProcessorBase::~SeExprProcessorBase()
 }
 
 void
-SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers)
+SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers,OfxPointI* inputSizes, OfxPointI outputSize)
 {
     _renderTime = time;
     _renderView = view;
@@ -1065,6 +1132,10 @@ SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::st
             _layersToFetch[i] = layers[i];
         }
     }
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        _expression->setSize(i, inputSizes[i].x, inputSizes[i].y);
+    }
+    _expression->setSize(-1, outputSize.x, outputSize.y);
     _mix = mix;
 }
 
@@ -1319,8 +1390,36 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
         processor.setMaskImg(mask.get(), maskInvert);
     }
 
+    OfxPointI inputSizes[kSourceClipCount];
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        if (_srcClip[i]->isConnected()) {
+            OfxRectD rod = _srcClip[i]->getRegionOfDefinition(args.time);
+            double par = _srcClip[i]->getPixelAspectRatio();
+            OfxRectI pixelRod;
+            OFX::MergeImages2D::toPixelEnclosing(rod, args.renderScale, par, &pixelRod);
+            inputSizes[i].x = pixelRod.x2 - pixelRod.x1;
+            inputSizes[i].y = pixelRod.y2 - pixelRod.y1;
+        } else {
+            inputSizes[i].x = inputSizes[i].y = 0.;
+        }
+    }
     
-    processor.setValues(args.time, args.viewsToRender, mix, script, inputLayers);
+    OFX::RegionOfDefinitionArguments rodArgs;
+    rodArgs.time = args.time;
+    rodArgs.view = args.viewsToRender;
+    rodArgs.renderScale = args.renderScale;
+    OfxRectD outputRod;
+    getRegionOfDefinition(rodArgs, outputRod);
+    OfxRectI outputPixelRod;
+    
+    double par = dst->getPixelAspectRatio();
+    
+    OFX::MergeImages2D::toPixelEnclosing(outputRod, args.renderScale, par, &outputPixelRod);
+    OfxPointI outputSize;
+    outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
+    outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
+    
+    processor.setValues(args.time, args.viewsToRender, mix, script, inputLayers, inputSizes, outputSize);
     
     std::string error;
     if (!processor.isExprOk(&error)) {
