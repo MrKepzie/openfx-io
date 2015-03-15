@@ -86,7 +86,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.15\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\include\OpenEXR;C:\Users\Lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\include;C:\boost;$(SolutionDir)\SupportExt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -121,7 +121,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.15\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\include\OpenEXR;C:\Users\Lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\include;C:\boost;$(SolutionDir)\SupportExt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -157,7 +157,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.15\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\include\OpenEXR;C:\Users\Lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\include;C:\boost;$(SolutionDir)\SupportExt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OpenColorIO_STATIC;OIIO_STATIC_BUILD;OPJ_STATIC;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;WIN32;NOMINMAX;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OpenColorIO_STATIC;OIIO_STATIC_BUILD;OPJ_STATIC;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;WIN32;NOMINMAX;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -196,7 +196,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(SolutionDir)\EXR;$(SolutionDir)\IOSupport;$(SolutionDir)\OCIO;$(SolutionDir)\OIIO;$(SolutionDir)\FFmpeg;$(SolutionDir)\RunScript;$(SolutionDir)\PFM;$(SolutionDir)\openfx\include;$(SolutionDir)\openfx\Support\include;$(SolutionDir)\openfx\Support\Plugins\include;$(SolutionDir)\openfx\include\natron;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenImageIO_1.4.15\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenColorIO_1.0.9\include;C:\Users\lex\Documents\GitHub\Natron3rdParty\OpenEXR_2.1\include\OpenEXR;C:\Users\Lex\Documents\GitHub\Natron3rdParty\ffmpeg_2.4\include;C:\boost;$(SolutionDir)\SupportExt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_TUTTLE;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OFX_IO_MT_FFMPEG;OpenColorIO_STATIC;OIIO_STATIC_BUILD;OPJ_STATIC;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;WIN64;NOMINMAX;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>OFX_IO_USING_OCIO;OFX_EXTENSIONS_VEGAS;OFX_EXTENSIONS_NUKE;OFX_EXTENSIONS_NATRON;OFX_EXTENSIONS_TUTTLE;OFX_IO_MT_FFMPEG;OpenColorIO_STATIC;OIIO_STATIC_BUILD;OPJ_STATIC;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;WIN64;NOMINMAX;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <CompileAs>CompileAsCpp</CompileAs>
     </ClCompile>
