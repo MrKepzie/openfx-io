@@ -1471,20 +1471,18 @@ SeExprPlugin::buildChannelMenus()
     
     for (int i = 0; i < kSourceClipCount; ++i) {
         
-        bool hasColor = false;
         _clipLayerToFetch[i]->resetOptions();
+        _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
+
         std::list<std::string> components = _srcClip[i]->getComponentsPresent();
         for (std::list<std::string> ::iterator it = components.begin(); it!=components.end(); ++it) {
             const std::string& comp = *it;
             if (comp == kOfxImageComponentAlpha) {
-                _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
-                hasColor = true;
+                continue;
             } else if (comp == kOfxImageComponentRGB) {
-                _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
-                hasColor = true;
+                continue;
             } else if (comp == kOfxImageComponentRGBA) {
-                _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
-                hasColor = true;
+                continue;
             } else if (comp == kFnOfxImageComponentMotionVectors) {
                 _clipLayerToFetch[i]->appendOption(kSeExprBackwardMotionPlaneName);
                 _clipLayerToFetch[i]->appendOption(kSeExprForwardMotionPlaneName);
@@ -1501,9 +1499,6 @@ SeExprPlugin::buildChannelMenus()
 #endif
             }
 
-        }
-        if (!hasColor) {
-            _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
         }
     }
 }
