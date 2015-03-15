@@ -1528,7 +1528,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
     if (paramName == kDoubleParamNumberParamName) {
         int numVisible;
         _doubleParamCount->getValue(numVisible);
-        assert(numVisible < kParamsCount && numVisible >=0);
+        assert(numVisible <= kParamsCount && numVisible >=0);
         for (int i = 0; i < kParamsCount; ++i) {
             bool visible = i < numVisible;
             _doubleParams[i]->setIsSecret(!visible);
@@ -1536,7 +1536,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
     } else if (paramName == kDouble2DParamNumberParamName) {
         int numVisible;
         _double2DParamCount->getValue(numVisible);
-        assert(numVisible < kParamsCount && numVisible >=0);
+        assert(numVisible <= kParamsCount && numVisible >=0);
         for (int i = 0; i < kParamsCount; ++i) {
             bool visible = i < numVisible;
             _double2DParams[i]->setIsSecret(!visible);
@@ -1544,7 +1544,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
     } else if (paramName == kColorParamNumberParamName) {
         int numVisible;
         _colorParamCount->getValue(numVisible);
-        assert(numVisible < kParamsCount && numVisible >=0);
+        assert(numVisible <= kParamsCount && numVisible >=0);
         for (int i = 0; i < kParamsCount; ++i) {
             bool visible = i < numVisible;
             _colorParams[i]->setIsSecret(!visible);
