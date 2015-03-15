@@ -1496,6 +1496,10 @@ SeExprPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX::C
             clipComponents.addClipComponents(*_srcClip[i], ofxComp);
         }
     }
+    
+    OFX::PixelComponentEnum outputComps = _dstClip->getPixelComponents();
+    clipComponents.addClipComponents(*_dstClip, outputComps);
+    clipComponents.setPassThroughClip(_srcClip[0], args.time, args.view);
 }
 
 
@@ -1590,6 +1594,12 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
 
         expr.setXY(originalRoIPixel.x2 - 1, originalRoIPixel.y1);
         (void)expr.evaluate();
+        
+        
+        bool clipSet[kSourceClipCount];
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            clipSet[i] = false;
+        }
 
         const std::map<int,OfxRectI>& roisMap = expr.getRoIs();
         for (std::map<int,OfxRectI>::const_iterator it = roisMap.begin(); it != roisMap.end(); ++it) {
@@ -1597,9 +1607,23 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             OFX::Clip* clip = getClip(it->first);
             assert(clip);
             
+            clipSet[it->first] = true;
+            
             OfxRectD roi;
             OFX::MergeImages2D::toCanonical(it->second, args.renderScale, par, &roi);
             rois.setRegionOfInterest(*clip, roi);
+        }
+        
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            if (!clipSet) {
+                
+                OFX::Clip* clip = getClip(i);
+                assert(clip);
+                //Set an empty roi if the user didn't specify any interest for this input.
+                OfxRectD emptyRoI;
+                emptyRoI.x1 = emptyRoI.y1 = emptyRoI.x2 = emptyRoI.y2 = 0.;
+                rois.setRegionOfInterest(*clip, emptyRoI);
+            }
         }
     }
 }
@@ -1612,6 +1636,8 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     
+    bool rodSet = false;
+    
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
     
@@ -1621,6 +1647,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
             if (_srcClip[i]->isConnected()) {
                 OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
                 OFX::MergeImages2D::rectBoundingBox(srcRod, rod, &rod);
+                rodSet = true;
             }
         }
         
@@ -1636,14 +1663,24 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
                     rodSet = true;
                     rod = srcRod;
                 }
+                rodSet = true;
             }
         }
     } else {
         int inputIndex = boundingBox_i - 2;
         assert(inputIndex >= 0 && inputIndex < kSourceClipCount);
         rod = _srcClip[inputIndex]->getRegionOfDefinition(args.time);
+        rodSet = true;
     }
-
+    
+    if (!rodSet) {
+        OfxPointD extent = getProjectExtent();
+        OfxPointD offset = getProjectOffset();
+        rod.x1 = offset.x;
+        rod.y1 = offset.y;
+        rod.x2 = extent.x;
+        rod.y2 = extent.y;
+    }
     return true;
 }
 
