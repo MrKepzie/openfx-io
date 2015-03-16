@@ -162,7 +162,7 @@
 #define kSeExprColorVarName "Cs"
 #define kSeExprAlphaVarName "As"
 
-#define kSeExprDefaultScript "#Just copy the source image\nCs1"
+#define kSeExprDefaultScript "#Just copy the source image\nCs"
 
 #define kParamBoundingBox "boundingBox"
 #define kParamBoundingBoxLabel "Bounding Box"
@@ -1485,6 +1485,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
 void
 SeExprPlugin::render(const OFX::RenderArguments &args)
 {
+    clearPersistentMessage();
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
