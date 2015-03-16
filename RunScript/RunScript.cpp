@@ -90,6 +90,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdio.h> // for snprintf & _snprintf
+#ifdef _WINDOWS
+#include <windows.h>
+#define snprintf _snprintf
+#endif
 
 #include "ofxsCopier.h"
 
@@ -208,13 +213,13 @@ private:
 RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
+    char name[256];
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
         if (i == 0 && getContext() == OFX::eContextFilter) {
             srcClip_[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
         } else {
-            std::stringstream s;
-            s << i+1;
-            srcClip_[i] = fetchClip(s.str());
+            snprintf(name, sizeof(name), "%d", i+1);
+            srcClip_[i] = fetchClip(name);
         }
     }
     dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
@@ -222,31 +227,16 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     param_count_ = fetchIntParam(kParamCount);
 
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
-        {
-            std::stringstream ss;
-            ss << kParamType << i+1;
-            type_[i] = fetchChoiceParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeFilenameName << i+1;
-            filename_[i] = fetchStringParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeStringName << i+1;
-            string_[i] = fetchStringParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeDoubleName << i+1;
-            double_[i] = fetchDoubleParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kParamTypeIntName << i+1;
-            int_[i] = fetchIntParam(ss.str());
-        }
+        snprintf(name, sizeof(name), "%s%d", kParamType, i+1);
+        type_[i] = fetchChoiceParam(name);
+        snprintf(name, sizeof(name), "%s%d", kParamTypeFilenameName, i+1);
+        filename_[i] = fetchStringParam(name);
+        snprintf(name, sizeof(name), "%s%d", kParamTypeStringName, i+1);
+        string_[i] = fetchStringParam(name);
+        snprintf(name, sizeof(name), "%s%d", kParamTypeDoubleName, i+1);
+        double_[i] = fetchDoubleParam(name);
+        snprintf(name, sizeof(name), "%s%d", kParamTypeIntName, i+1);
+        int_[i] = fetchIntParam(name);
     }
     script_ = fetchStringParam(kParamScript);
     validate_ = fetchBooleanParam(kParamValidate);
@@ -331,52 +321,47 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     int param_count;
     param_count_->getValue(param_count);
 
+    char name[256];
     for (int i = 0; i < param_count; ++i) {
         int t_int;
         type_[i]->getValue(t_int);
         ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
         OFX::ValueParam *p = NULL;
         switch (t) {
-            case eRunScriptPluginParamTypeFilename:
-            {
+            case eRunScriptPluginParamTypeFilename: {
                 std::string s;
                 filename_[i]->getValue(s);
                 p = filename_[i];
                 DBG(std::cout << p->getName() << "=" << s);
                 argv.push_back(s);
-            }
                 break;
-            case eRunScriptPluginParamTypeString:
-            {
+            }
+            case eRunScriptPluginParamTypeString: {
                 std::string s;
                 string_[i]->getValue(s);
                 p = string_[i];
                 DBG(std::cout << p->getName() << "=" << s);
                 argv.push_back(s);
-            }
                 break;
-            case eRunScriptPluginParamTypeDouble:
-            {
+            }
+            case eRunScriptPluginParamTypeDouble: {
                 double v;
                 double_[i]->getValue(v);
                 p = double_[i];
                 DBG(std::cout << p->getName() << "=" << v);
-                std::ostringstream ss;
-                ss << v;
-                argv.push_back(ss.str());
-            }
+                snprintf(name, sizeof(name), "%g", v);
+                argv.push_back(name);
                 break;
-            case eRunScriptPluginParamTypeInteger:
-            {
+            }
+            case eRunScriptPluginParamTypeInteger: {
                 int v;
                 int_[i]->getValue(v);
                 p = int_[i];
                 DBG(std::cout << p->getName() << "=" << v);
-                std::ostringstream ss;
-                ss << v;
-                argv.push_back(ss.str());
-            }
+                snprintf(name, sizeof(name), "%d", v);
+                argv.push_back(name);
                 break;
+            }
         }
         if (p) {
             DBG(std::cout << "; IsAnimating=" << (p->getIsAnimating() ? "true" : "false"));
@@ -647,17 +632,17 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
+    char name[256];
     DBG(std::cout << "describing in context " << (int)context << std::endl);
     // Source clip only in the filter context
     // create the mandated source clip
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
-        std::stringstream s;
-        s << i+1;
         ClipDescriptor *srcClip;
         if (i == 0 && context == eContextFilter) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
         } else {
-            srcClip = desc.defineClip(s.str());
+            snprintf(name, sizeof(name), "%d", i+1);
+            srcClip = desc.defineClip(name);
         }
         srcClip->addSupportedComponent(ePixelComponentRGB);
         srcClip->addSupportedComponent(ePixelComponentRGBA);
@@ -698,19 +683,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
         // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
         // We thus hide them in updateVisibility(), which is called after instance creation
-        std::stringstream ss;
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
             {
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamType << i+1;
-                ChoiceParamDescriptor* param = desc.defineChoiceParam(ss.str());
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeLabel << ' ' << i+1;
-                param->setLabel(ss.str());
+                snprintf(name, sizeof(name), "%s%d", kParamType, i+1);
+                ChoiceParamDescriptor* param = desc.defineChoiceParam(name);
+                snprintf(name, sizeof(name), "%s%d", kParamTypeLabel, i+1);
+                param->setLabel(name);
                 param->setAnimates(true);
                 param->appendOption(kParamTypeFilenameLabel, kParamTypeFilenameHint);
                 param->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
@@ -722,16 +700,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeFilenameName << i+1;
-                StringParamDescriptor* param = desc.defineStringParam(ss.str());
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeFilenameLabel << ' ' << i+1;
-                param->setLabel(ss.str());
+                snprintf(name, sizeof(name), "%s%d", kParamTypeFilenameName, i+1);
+                StringParamDescriptor* param = desc.defineStringParam(name);
+                snprintf(name, sizeof(name), "%s%d", kParamTypeFilenameLabel, i+1);
+                param->setLabel(name);
                 param->setHint(kParamTypeFilenameHint);
                 param->setStringType(eStringTypeFilePath);
                 param->setFilePathExists(false); // the file may or may not exist
@@ -742,16 +714,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeStringName << i+1;
-                StringParamDescriptor* param = desc.defineStringParam(ss.str());
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeStringLabel << ' ' << i+1;
-                param->setLabel(ss.str());
+                snprintf(name, sizeof(name), "%s%d", kParamTypeStringName, i+1);
+                StringParamDescriptor* param = desc.defineStringParam(name);
+                snprintf(name, sizeof(name), "%s%d", kParamTypeStringLabel, i+1);
+                param->setLabel(name);
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -760,16 +726,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeDoubleName << i+1;
-                DoubleParamDescriptor* param = desc.defineDoubleParam(ss.str());
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeDoubleLabel << ' ' << i+1;
-                param->setLabel(ss.str());
+                snprintf(name, sizeof(name), "%s%d", kParamTypeDoubleName, i+1);
+                DoubleParamDescriptor* param = desc.defineDoubleParam(name);
+                snprintf(name, sizeof(name), "%s%d", kParamTypeDoubleLabel, i+1);
+                param->setLabel(name);
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -778,16 +738,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeIntName << i+1;
-                IntParamDescriptor* param = desc.defineIntParam(ss.str());
-                // https://stackoverflow.com/questions/2848087/how-to-clear-stringstream
-                ss.str(std::string());
-                ss.clear();
-                ss << kParamTypeIntLabel << ' ' << i+1;
-                param->setLabel(ss.str());
+                snprintf(name, sizeof(name), "%s%d", kParamTypeIntName, i+1);
+                IntParamDescriptor* param = desc.defineIntParam(name);
+                snprintf(name, sizeof(name), "%s%d", kParamTypeIntLabel, i+1);
+                param->setLabel(name);
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor

@@ -74,6 +74,11 @@
 
 #include <vector>
 #include <algorithm>
+#include <stdio.h> // for snprintf & _snprintf
+#ifdef _WINDOWS
+#include <windows.h>
+#define snprintf _snprintf
+#endif
 
 #include "ofxsMacros.h"
 #include "ofxsCopier.h"
@@ -148,48 +153,48 @@
 
 #define kSeExprDefaultScript "$color = " kSeExprGetPixelFuncName "(1, frame, x, y);\n#Return the output color\n$color"
 
-#define kBoundingBoxParamName "boundingBox"
-#define kBoundingBoxParamLabel "Bounding Box"
-#define kBoundingBoxParamHint "The region to output."
+#define kParamBoundingBox "boundingBox"
+#define kParamBoundingBoxLabel "Bounding Box"
+#define kParamBoundingBoxHint "The region to output."
 
-#define kBoundingBoxChoiceUnion "Union"
-#define kBoundingBoxChoiceUnionHelp "The output region will be the union of all connected inputs bounding box."
-#define kBoundingBoxChoiceIntersection "Intersection"
-#define kBoundingBoxChoiceIntersectionHelp "The output region will be the intersection of all connected inputs bounding box."
-#define kBoundingBoxChoiceCustomInput "Input"
-#define kBoundingBoxChoiceCustomInputHelp "The output region will be the bounding box of the input."
+#define kParamBoundingBoxOptionUnion "Union"
+#define kParamBoundingBoxOptionUnionHelp "The output region will be the union of all connected inputs bounding box."
+#define kParamBoundingBoxOptionIntersection "Intersection"
+#define kParamBoundingBoxOptionIntersectionHelp "The output region will be the intersection of all connected inputs bounding box."
+#define kParamBoundingBoxOptionCustomInput "Input"
+#define kParamBoundingBoxOptionCustomInputHelp "The output region will be the bounding box of the input."
 
-#define kLayerInputParamName "layerInput"
-#define kLayerInputParamLabel "Input Layer"
-#define kLayerInputParamHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
+#define kkParamLayerInput "layerInput"
+#define kkParamLayerInputLabel "Input Layer"
+#define kkParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
 
-#define kDoubleParamNumberParamName "noDoubleParams"
-#define kDoubleParamNumberParamLabel "Number of Scalar Parameters"
-#define kDoubleParamNumberParamHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
+#define kParamDoubleParamNumber "doubleParamsNb"
+#define kParamDoubleParamNumberLabel "Number of Scalar Parameters"
+#define kParamDoubleParamNumberHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
-#define kDoubleParamName "x"
-#define kDoubleParamLabel "X"
-#define kDoubleParamHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
+#define kParamDouble "x"
+#define kParamDoubleLabel "X"
+#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
 
-#define kDouble2DParamNumberParamName "noDouble2DParams"
-#define kDouble2DParamNumberParamLabel "Number of Positional Parameters"
-#define kDouble2DParamNumberParamHint "Use this to control how many positional parameters should be exposed to the SeExpr expression."
+#define kParamDouble2DParamNumber "double2DParamsNb"
+#define kParamDouble2DParamNumberLabel "Number of Positional Parameters"
+#define kParamDouble2DParamNumberHint "Use this to control how many positional parameters should be exposed to the SeExpr expression."
 
-#define kDouble2DParamName "pos"
-#define kDouble2DParamLabel "Pos"
-#define kDouble2DParamHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, e.g: $pos1"
+#define kParamDouble2D "pos"
+#define kParamDouble2DLabel "Pos"
+#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, e.g: $pos1"
 
-#define kColorParamNumberParamName "noColorParams"
-#define kColorParamNumberParamLabel "Number of Color Parameters"
-#define kColorParamNumberParamHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
+#define kParamColorNumber "colorParamsNb"
+#define kParamColorNumberLabel "Number of Color Parameters"
+#define kParamColorNumberHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
-#define kColorParamName "color"
-#define kColorParamLabel "Color"
-#define kColorParamHint "A custom RGB variable that can be referenced in the expression by its script-name, e.g: $color1"
+#define kParamColor "color"
+#define kParamColorLabel "Color"
+#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, e.g: $color1"
 
-#define kScriptParamName "script"
-#define kScriptParamLabel "Script"
-#define kScriptParamHint "Contents of the SeExpr expression. See the description of the plug-in and " \
+#define kParamScript "script"
+#define kParamScriptLabel "Script"
+#define kParamScriptHint "Contents of the SeExpr expression. See the description of the plug-in and " \
 "http://www.disneyanimation.com/technology/seexpr.html for documentation."
 
 #define kParamValidate                  "validate"
@@ -472,9 +477,9 @@ private:
             SeVec3d val;
             node->child(i)->eval(val);
             if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-                std::stringstream ss;
-                ss << "Argument " << i + 1 << " should be an integer.";
-                node->addError(ss.str());
+                char name[256];
+                snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
+                node->addError(name);
                 return false;
             }
 
@@ -920,71 +925,55 @@ OFXSeExpression::~OFXSeExpression()
 }
 
 SeExprVarRef*
-OFXSeExpression::resolveVar(const std::string& name) const
+OFXSeExpression::resolveVar(const std::string& varName) const
 {
-    if (name == kSeExprCurrentTimeVarName) {
+    if (varName == kSeExprCurrentTimeVarName) {
         return &_currentTime;
-    } else if (name == kSeExprXCoordVarName) {
+    } else if (varName == kSeExprXCoordVarName) {
         return &_xCoord;
-    } else if (name == kSeExprYCoordVarName) {
+    } else if (varName == kSeExprYCoordVarName) {
         return &_yCoord;
-    } else if (name == kSeExprOutputWidthVarName) {
+    } else if (varName == kSeExprOutputWidthVarName) {
         return &_outputWidth;
-    } else if (name == kSeExprOutputHeightVarName) {
+    } else if (varName == kSeExprOutputHeightVarName) {
         return &_outputHeight;
     }
-    
+
+    char name[256];
     for (int i = 0; i < kParamsCount; ++i) {
-        {
-            std::stringstream ss;
-            ss << kDoubleParamName << i+1;
-            if (ss.str() == name) {
-                return _doubleRefs[i];
-            }
+        snprintf(name, sizeof(name), "%s%d", kParamDouble, i+1);
+        if (name == varName) {
+            return _doubleRefs[i];
         }
-        {
-            std::stringstream ss;
-            ss << kDouble2DParamName << i+1;
-            if (ss.str() == name) {
-                return _double2DRefs[i];
-            }
+        snprintf(name, sizeof(name), "%s%d", kParamDouble2D, i+1);
+        if (name == varName) {
+            return _double2DRefs[i];
         }
-        {
-            std::stringstream ss;
-            ss << kColorParamName << i+1;
-            if (ss.str() == name) {
-                return _colorRefs[i];
-            }
+        snprintf(name, sizeof(name), "%s%d", kParamColor, i+1);
+        if (name == varName) {
+            return _colorRefs[i];
         }
-        {
-            std::stringstream ss;
-            ss << kSeExprInputWidthVarName << i+1;
-            if (ss.str() == name) {
-                return &_inputWidths[i];
-            }
+        snprintf(name, sizeof(name), "%s%d", kSeExprInputWidthVarName, i+1);
+        if (name == varName) {
+            return &_inputWidths[i];
         }
-        {
-            std::stringstream ss;
-            ss << kSeExprInputHeightVarName << i+1;
-            if (ss.str() == name) {
-                return &_inputHeights[i];
-            }
+        snprintf(name, sizeof(name), "%s%d", kSeExprInputHeightVarName, i+1);
+        if (name == varName) {
+            return &_inputHeights[i];
         }
-        
-        
     }
     return 0;
 }
 
 
-SeExprFunc* OFXSeExpression::resolveFunc(const std::string& name) const
+SeExprFunc* OFXSeExpression::resolveFunc(const std::string& funcName) const
 {
     // check if it is builtin so we get proper behavior
-    if (SeExprFunc::lookup(name)) {
+    if (SeExprFunc::lookup(funcName)) {
         return 0;
     }
     
-    if (name == kSeExprGetPixelFuncName) {
+    if (funcName == kSeExprGetPixelFuncName) {
         return &_getPixFunction;
     }
     return 0;
@@ -1014,9 +1003,9 @@ StubGetPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
         SeVec3d val;
         node->child(i)->eval(val);
         if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-            std::stringstream ss;
-            ss << "Argument " << i + 1 << " should be an integer.";
-            node->addError(ss.str());
+            char name[256];
+            snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
+            node->addError(name);
             return false;
         }
         
@@ -1072,13 +1061,13 @@ StubSeExpression::~StubSeExpression()
 
 /** override resolveVar to add external variables */
 SeExprVarRef*
-StubSeExpression::resolveVar(const std::string& name) const
+StubSeExpression::resolveVar(const std::string& varName) const
 {
-    if (name == kSeExprCurrentTimeVarName) {
+    if (varName == kSeExprCurrentTimeVarName) {
         return &_currentTime;
-    } else if (name == kSeExprXCoordVarName) {
+    } else if (varName == kSeExprXCoordVarName) {
         return &_xCoord;
-    } else if (name == kSeExprYCoordVarName) {
+    } else if (varName == kSeExprYCoordVarName) {
         return &_yCoord;
     }
     return &_stubScalar;
@@ -1086,13 +1075,13 @@ StubSeExpression::resolveVar(const std::string& name) const
 
 /** override resolveFunc to add external functions */
 SeExprFunc*
-StubSeExpression::resolveFunc(const std::string& name) const
+StubSeExpression::resolveFunc(const std::string& funcName) const
 {
     // check if it is builtin so we get proper behavior
-    if (SeExprFunc::lookup(name)) {
+    if (SeExprFunc::lookup(funcName)) {
         return 0;
     }
-    if (name == kSeExprGetPixelFuncName) {
+    if (funcName == kSeExprGetPixelFuncName) {
         return &_getPixFunction;
     }
     return 0;
@@ -1211,13 +1200,13 @@ public:
 SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
+    char name[256];
     for (int i = 0; i < kSourceClipCount; ++i) {
         if (i == 0 && getContext() == OFX::eContextFilter) {
             _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
         } else {
-            std::stringstream s;
-            s << i+1;
-            _srcClip[i] = fetchClip(s.str());
+            snprintf(name, sizeof(name), "%d", i+1);
+            _srcClip[i] = fetchClip(name);
         }
     }
     
@@ -1225,38 +1214,28 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
 
-    _doubleParamCount = fetchIntParam(kDoubleParamNumberParamName);
+    _doubleParamCount = fetchIntParam(kParamDoubleParamNumber);
     assert(_doubleParamCount);
-    _double2DParamCount = fetchIntParam(kDouble2DParamNumberParamName);
+    _double2DParamCount = fetchIntParam(kParamDouble2DParamNumber);
     assert(_double2DParamCount);
-    _colorParamCount = fetchIntParam(kColorParamNumberParamName);
+    _colorParamCount = fetchIntParam(kParamColorNumber);
     assert(_colorParamCount);
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-            std::stringstream ss;
-            ss << kLayerInputParamName << i+1;
-            _clipLayerToFetch[i] = fetchChoiceParam(ss.str());
+            snprintf(name, sizeof(name), "%s%d", kkParamLayerInput, i+1 );
+            _clipLayerToFetch[i] = fetchChoiceParam(name);
         } else {
             _clipLayerToFetch[i] = 0;
         }
-        {
-            std::stringstream ss;
-            ss << kDoubleParamName << i+1;
-            _doubleParams[i] = fetchDoubleParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kDouble2DParamName << i+1;
-            _double2DParams[i] = fetchDouble2DParam(ss.str());
-        }
-        {
-            std::stringstream ss;
-            ss << kColorParamName << i+1;
-            _colorParams[i] = fetchRGBParam(ss.str());
-        }
+        snprintf(name, sizeof(name), "%s%d", kParamDouble, i+1 );
+        _doubleParams[i] = fetchDoubleParam(name);
+        snprintf(name, sizeof(name), "%s%d", kParamDouble2D, i+1 );
+        _double2DParams[i] = fetchDouble2DParam(name);
+        snprintf(name, sizeof(name), "%s%d", kParamColor, i+1 );
+        _colorParams[i] = fetchRGBParam(name);
     }
-    _script = fetchStringParam(kScriptParamName);
+    _script = fetchStringParam(kParamScript);
     assert(_script);
     _validate = fetchBooleanParam(kParamValidate);
     assert(_validate);
@@ -1265,7 +1244,7 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 
-    _boundingBox = fetchChoiceParam(kBoundingBoxParamName);
+    _boundingBox = fetchChoiceParam(kParamBoundingBox);
     assert(_boundingBox);
 
 }
@@ -1525,7 +1504,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    if (paramName == kDoubleParamNumberParamName) {
+    if (paramName == kParamDoubleParamNumber) {
         int numVisible;
         _doubleParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1533,7 +1512,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _doubleParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kDouble2DParamNumberParamName) {
+    } else if (paramName == kParamDouble2DParamNumber) {
         int numVisible;
         _double2DParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1541,7 +1520,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _double2DParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kColorParamNumberParamName) {
+    } else if (paramName == kParamColorNumber) {
         int numVisible;
         _colorParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1574,10 +1553,10 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
     if (!gHostIsMultiPlanar) {
         return;
     }
+    char name[256];
     for (int i = 0; i < kSourceClipCount; ++i) {
-        std::stringstream ss;
-        ss << i+1;
-        if (ss.str() == clipName) {
+        snprintf(name, sizeof(name), "%d", i+1);
+        if (name == clipName) {
             assert(_srcClip[i]);
             _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
         }
@@ -1873,7 +1852,8 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     
-#ifdef OFX_EXTENSIONS_NATRON
+#if defined(OFX_EXTENSIONS_NATRON) && defined(OFX_EXTENSIONS_NUKE)
+    // TODO @MrKepzie: can we support multiplanar even if host is not Natron?
     if (OFX::getImageEffectHostDescription()->isMultiPlanar &&
         OFX::getImageEffectHostDescription()->supportsDynamicChoices) {
         gHostIsMultiPlanar = true;
@@ -1889,16 +1869,17 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
+    char name[256];
+    char help[256];
     // Source clip only in the filter context
     // create the mandated source clip
     for (int i = 0; i < kSourceClipCount; ++i) {
-        std::stringstream s;
-        s << i+1;
+        snprintf(name, sizeof(name), "%d", i+1);
         ClipDescriptor *srcClip;
         if (i == 0 && context == eContextFilter) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
         } else {
-            srcClip = desc.defineClip(s.str());
+            srcClip = desc.defineClip(name);
         }
         srcClip->addSupportedComponent(ePixelComponentRGB);
         srcClip->addSupportedComponent(ePixelComponentRGBA);
@@ -1909,7 +1890,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         srcClip->setIsMask(false);
         srcClip->setOptional(true);
     }
-    
+
     if (context == eContextGeneral || context == eContextPaint) {
         ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
         maskClip->addSupportedComponent(ePixelComponentAlpha);
@@ -1930,23 +1911,22 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
-    
+
     {
-        ChoiceParamDescriptor* param = desc.defineChoiceParam(kBoundingBoxParamName);
-        param->setLabel(kBoundingBoxParamLabel);
-        param->setHint(kBoundingBoxParamHint);
-        param->appendOption(kBoundingBoxChoiceUnion, kBoundingBoxChoiceUnionHelp);
-        param->appendOption(kBoundingBoxChoiceIntersection, kBoundingBoxChoiceIntersectionHelp);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBoundingBox);
+        param->setLabel(kParamBoundingBoxLabel);
+        param->setHint(kParamBoundingBoxHint);
+        param->appendOption(kParamBoundingBoxOptionUnion, kParamBoundingBoxOptionUnionHelp);
+        param->appendOption(kParamBoundingBoxOptionIntersection, kParamBoundingBoxOptionIntersectionHelp);
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::stringstream opt;
-            opt << kBoundingBoxChoiceCustomInput << i+1;
-            std::stringstream help;
-            help << kBoundingBoxChoiceCustomInputHelp << i+1;
-            param->appendOption(opt.str(), help.str());
+            snprintf(name, sizeof(name), "%s%d", kParamBoundingBoxOptionCustomInput, i+1);
+            snprintf(help, sizeof(help), "%s%d", kParamBoundingBoxOptionCustomInputHelp, i+1);
+            param->appendOption(name, help);
         }
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     if (gHostIsMultiPlanar) {
@@ -1954,137 +1934,144 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setLabel("Input layers");
         group->setOpen(false);
-        page->addChild(*group);
+        if (page) {
+            page->addChild(*group);
+        }
 
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::stringstream s;
-            s << kLayerInputParamName << i+1;
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(s.str());
-            
-            std::stringstream ss;
-            ss << kLayerInputParamLabel << i+1;
-            param->setLabel(ss.str());
+            snprintf(name, sizeof(name), "%s%d", kkParamLayerInput, i+1);
+            ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
+            snprintf(name, sizeof(name), "%s%d", kkParamLayerInputLabel, i+1);
+            param->setLabel(name);
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
             param->setIsSecret(true);
             param->setParent(*group);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
-    
+
     {
         GroupParamDescriptor *group = desc.defineGroupParam("Scalar Variables");
         group->setLabel("Scalar Variables");
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setOpen(false);
-        page->addChild(*group);
-        
-        IntParamDescriptor* numParam = desc.defineIntParam(kDoubleParamNumberParamName);
-        numParam->setLabel(kDoubleParamNumberParamLabel);
-        numParam->setHint(kDoubleParamNumberParamHint);
-        numParam->setRange(0, kParamsCount);
-        numParam->setDefault(0);
-        numParam->setAnimates(false);
-        numParam->setParent(*group);
-        page->addChild(*numParam);
-        
+        if (page) {
+            page->addChild(*group);
+        }
+
+        {
+            IntParamDescriptor* param = desc.defineIntParam(kParamDoubleParamNumber);
+            param->setLabel(kParamDoubleParamNumberLabel);
+            param->setHint(kParamDoubleParamNumberHint);
+            param->setRange(0, kParamsCount);
+            param->setDefault(0);
+            param->setAnimates(false);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::stringstream s;
-            s << kDoubleParamName << i+1;
-            DoubleParamDescriptor *param = desc.defineDoubleParam(s.str());
-            
-            std::stringstream ss;
-            ss << kDoubleParamLabel << i+1;
-            
-            param->setLabel(ss.str());
-            param->setHint(kDoubleParamHint);
+            snprintf(name, sizeof(name), "%s%d", kParamDouble, i+1);
+            DoubleParamDescriptor *param = desc.defineDoubleParam(name);
+            snprintf(name, sizeof(name), "%s%d", kParamDoubleLabel, i+1);
+            param->setLabel(name);
+            param->setHint(kParamDoubleHint);
             param->setAnimates(true);
             param->setIsSecret(true);
             param->setDoubleType(OFX::eDoubleTypePlain);
             param->setParent(*group);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
-    
+
     {
         GroupParamDescriptor *group = desc.defineGroupParam("Position Variables");
         group->setLabel("Position Variables");
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setOpen(false);
-        page->addChild(*group);
-        
-        IntParamDescriptor* numParam = desc.defineIntParam(kDouble2DParamNumberParamName);
-        numParam->setLabel(kDouble2DParamNumberParamLabel);
-        numParam->setHint(kDouble2DParamNumberParamHint);
-        numParam->setRange(0, kParamsCount);
-        numParam->setDefault(0);
-        numParam->setAnimates(false);
-        numParam->setParent(*group);
-        page->addChild(*numParam);
-        
+        if (page) {
+            page->addChild(*group);
+        }
+
+        {
+            IntParamDescriptor* param = desc.defineIntParam(kParamDouble2DParamNumber);
+            param->setLabel(kParamDouble2DParamNumberLabel);
+            param->setHint(kParamDouble2DParamNumberHint);
+            param->setRange(0, kParamsCount);
+            param->setDefault(0);
+            param->setAnimates(false);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::stringstream s;
-            s << kDouble2DParamName << i+1;
-            Double2DParamDescriptor *param = desc.defineDouble2DParam(s.str());
-            
-            std::stringstream ss;
-            ss << kDouble2DParamLabel << i+1;
-            
-            param->setLabel(ss.str());
-            param->setHint(kDouble2DParamHint);
+            snprintf(name, sizeof(name), "%s%d", kParamDouble2D, i+1);
+            Double2DParamDescriptor *param = desc.defineDouble2DParam(name);
+            snprintf(name, sizeof(name), "%s%d", kParamDouble2DLabel, i+1);
+            param->setLabel(name);
+            param->setHint(kParamDouble2DHint);
             param->setAnimates(true);
             param->setIsSecret(true);
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
             param->setParent(*group);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
-    
+
     {
         GroupParamDescriptor *group = desc.defineGroupParam("Color Variables");
         group->setLabel("Color Variables");
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setOpen(false);
-        page->addChild(*group);
-        
-        IntParamDescriptor* numParam = desc.defineIntParam(kColorParamNumberParamName);
-        numParam->setLabel(kColorParamNumberParamLabel);
-        numParam->setHint(kColorParamNumberParamHint);
-        numParam->setRange(0, kParamsCount);
-        numParam->setDefault(0);
-        numParam->setAnimates(false);
-        numParam->setParent(*group);
-        page->addChild(*numParam);
-        
+        if (page) {
+            page->addChild(*group);
+        }
+        {
+            IntParamDescriptor* param = desc.defineIntParam(kParamColorNumber);
+            param->setLabel(kParamColorNumberLabel);
+            param->setHint(kParamColorNumberHint);
+            param->setRange(0, kParamsCount);
+            param->setDefault(0);
+            param->setAnimates(false);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::stringstream s;
-            s << kColorParamName << i+1;
-            RGBParamDescriptor *param = desc.defineRGBParam(s.str());
-            
-            std::stringstream ss;
-            ss << kColorParamLabel << i+1;
-            
-            param->setLabel(ss.str());
-            param->setHint(kColorParamHint);
+            snprintf(name, sizeof(name), "%s%d", kParamColor, i+1);
+            RGBParamDescriptor *param = desc.defineRGBParam(name);
+            snprintf(name, sizeof(name), "%s%d", kParamColorLabel, i+1);
+            param->setLabel(name);
+            param->setHint(kParamColorHint);
             param->setAnimates(true);
             param->setParent(*group);
             param->setIsSecret(true);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
-    
+
     {
-        StringParamDescriptor *param = desc.defineStringParam(kScriptParamName);
-        param->setLabel(kScriptParamLabel);
-        param->setHint(kScriptParamHint);
+        StringParamDescriptor *param = desc.defineStringParam(kParamScript);
+        param->setLabel(kParamScriptLabel);
+        param->setHint(kParamScriptHint);
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault(kSeExprDefaultScript);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     {
@@ -2092,7 +2079,9 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setLabel(kParamValidateLabel);
         param->setHint(kParamValidateHint);
         param->setEvaluateOnChange(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ofxsMaskMixDescribeParams(desc, page);
