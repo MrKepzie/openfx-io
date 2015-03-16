@@ -856,6 +856,10 @@ class OFXSeExpression : public SeExpression
     mutable GetPixelFunc _getPixFunction;
     OfxRectI _dstPixelRod;
     std::map<std::string,SeExprVarRef*> _variablesMap;
+    
+    SimpleVec* _scale;
+    
+    SimpleScalar* _curTime;
     SimpleScalar* _xCoord;
     SimpleScalar* _yCoord;
     SimpleScalar* _uCoord;
@@ -863,11 +867,15 @@ class OFXSeExpression : public SeExpression
     
     SimpleScalar* _outputWidth;
     SimpleScalar* _outputHeight;
-    SimpleScalar* _inputWidths[10];
-    SimpleScalar* _inputHeights[10];
+    SimpleScalar* _inputWidths[kSourceClipCount];
+    SimpleScalar* _inputHeights[kSourceClipCount];
     
-    SimpleVec* _inputColors[10];
-    SimpleScalar* _inputAlphas[10];
+    SimpleVec* _inputColors[kSourceClipCount];
+    SimpleScalar* _inputAlphas[kSourceClipCount];
+    
+    DoubleParamVarRef* _doubleRef[kParamsCount];
+    Double2DParamVarRef* _double2DRef[kParamsCount];
+    ColorParamVarRef* _colorRef[kParamsCount];
 public:
     
     
@@ -919,6 +927,8 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 , _getPixFunction(_getPix, 4, 4)
 , _dstPixelRod(outputRod)
 , _variablesMap()
+, _scale(0)
+, _curTime(0)
 , _xCoord(0)
 , _yCoord(0)
 , _uCoord(0)
@@ -929,23 +939,26 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 , _inputHeights()
 , _inputColors()
 , _inputAlphas()
+, _doubleRef()
+, _double2DRef()
+, _colorRef()
 {
     _dstPixelRod = outputRod;
     
-    SimpleVec* rs = new SimpleVec;
-    rs->_value[0] = renderScale.x;
-    rs->_value[1] = renderScale.y;
-    rs->_value[2] = 1.;
-    _variablesMap.insert(std::make_pair(kSeExprRenderScaleVarName, rs));
+    _scale = new SimpleVec;
+    _scale->_value[0] = renderScale.x;
+    _scale->_value[1] = renderScale.y;
+    _scale->_value[2] = 1.;
+    _variablesMap.insert(std::make_pair(kSeExprRenderScaleVarName, _scale));
     
     assert(processor);
     SeExprPlugin* plugin = processor->getPlugin();
     
     char name[256];
     
-    SimpleScalar* curTime = new SimpleScalar;
-    curTime->_value = time;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprCurrentTimeVarName), curTime));
+    _curTime = new SimpleScalar;
+    _curTime->_value = time;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprCurrentTimeVarName), _curTime));
     
     _xCoord = new SimpleScalar;
     _variablesMap.insert(std::make_pair(std::string(kSeExprXCoordVarName), _xCoord));
@@ -978,7 +991,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _variablesMap.insert(std::make_pair(std::string(name), _inputHeights[i]));
         
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputWidths[i]));
+            _variablesMap.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputHeights[i]));
         }
         
         snprintf(name, sizeof(name), kSeExprColorVarName "%d", i+1);
@@ -986,7 +999,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _variablesMap.insert(std::make_pair(std::string(name), _inputColors[i]));
         
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprColorVarName), _inputWidths[i]));
+            _variablesMap.insert(std::make_pair(std::string(kSeExprColorVarName), _inputColors[i]));
         }
         
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
@@ -994,7 +1007,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _variablesMap.insert(std::make_pair(std::string(name), _inputAlphas[i]));
         
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputWidths[i]));
+            _variablesMap.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputAlphas[i]));
         }
     }
     
@@ -1004,15 +1017,15 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
     OFX::RGBParam** colorParams = plugin->getRGBParams();
     
     for (int i = 0; i < kParamsCount; ++i) {
-        DoubleParamVarRef* doubleRef = new DoubleParamVarRef(doubleParams[i]);
-        Double2DParamVarRef* double2DRef = new Double2DParamVarRef(double2DParams[i]);
-        ColorParamVarRef* colorRef = new ColorParamVarRef(colorParams[i]);
+        _doubleRef[i] = new DoubleParamVarRef(doubleParams[i]);
+        _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
+        _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
         snprintf(name, sizeof(name), kParamDouble, i+1);
-        _variablesMap.insert(std::make_pair(std::string(name), doubleRef));
+        _variablesMap.insert(std::make_pair(std::string(name), _doubleRef[i]));
         snprintf(name, sizeof(name), kParamDouble2D, i+1);
-        _variablesMap.insert(std::make_pair(std::string(name), double2DRef));
+        _variablesMap.insert(std::make_pair(std::string(name), _double2DRef[i]));
         snprintf(name, sizeof(name), kParamColor, i+1);
-        _variablesMap.insert(std::make_pair(std::string(name), colorRef));
+        _variablesMap.insert(std::make_pair(std::string(name), _colorRef[i]));
     }
     
     
@@ -1021,9 +1034,28 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 
 OFXSeExpression::~OFXSeExpression()
 {
-    for (std::map<std::string,SeExprVarRef*>::iterator it = _variablesMap.begin(); it!=_variablesMap.end(); ++it) {
-        delete it->second;
+    delete _scale;
+    delete _curTime;
+    delete _xCoord;
+    delete _yCoord;
+    delete _uCoord;
+    delete _vCoord;
+    delete _outputWidth;
+    delete _outputHeight;
+    
+    for (int i = 0; i < kParamsCount; ++i) {
+        delete _doubleRef[i];
+        delete _double2DRef[i];
+        delete _colorRef[i];
     }
+    
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        delete _inputWidths[i];
+        delete _inputHeights[i];
+        delete _inputColors[i];
+        delete _inputAlphas[i];
+    }
+    
 }
 
 SeExprVarRef*
