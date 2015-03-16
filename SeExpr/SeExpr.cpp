@@ -98,8 +98,14 @@
 "SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
 "Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images. " \
 "The following pre-defined variables can be used in the script:\n\n" \
-"- x: This is the canonical X coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
-"- y: This is the canonical Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
+"- x: This is the pixel X coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
+"- y: This is the pixel Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
+"- u: This is the normalized (to the output image size) X coordinate of the output pixel to render\n\n" \
+"- v: This is the normalized (to the output image size) Y coordinate of the output pixel to render\n\n" \
+"- scale: A 2-Dimensional vector (X,Y) indicating the scale at which the image is being rendered. Depending on the zoom level "
+"of the viewer, the image might be rendered at a lower scale than usual. This parameter is useful when producing spatial " \
+"effects that need to be invariant to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
+"image is being rendered at half of its original size.\n\n " \
 "- frame: This is the current frame being rendered\n\n" \
 "- Each input has 2 variables named Cs<index> and As<index> which respectively references the color (RGB vector) " \
 "and the alpha (scalar) of the image originated from the input at the given index. For the first input, you do not need to add " \
@@ -111,7 +117,7 @@
 "For example, the input 2 will have the variables input_width2 and input_height2.\n\n" \
 "To fetch an arbitraty input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for " \
 "a given input fetch the pixel at the (x,y) position in the image at the given frame. " \
-"Note that inputNumber starts from 1.\n\n" \
+"Note that inputNumber starts from 1 and that x,y are PIXEL COORDINATES and not normalized coordinates.\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
 "Cs * Cs2\n\n" \
 "Another merge operator example (over):\n\n" \
@@ -155,12 +161,15 @@
 #define kSeExprCurrentTimeVarName "frame"
 #define kSeExprXCoordVarName "x"
 #define kSeExprYCoordVarName "y"
+#define kSeExprUCoordVarName "u"
+#define kSeExprVCoordVarName "v"
 #define kSeExprInputWidthVarName "input_width"
 #define kSeExprInputHeightVarName "input_height"
 #define kSeExprOutputWidthVarName "output_width"
 #define kSeExprOutputHeightVarName "output_height"
 #define kSeExprColorVarName "Cs"
 #define kSeExprAlphaVarName "As"
+#define kSeExprRenderScaleVarName "scale"
 
 #define kSeExprDefaultScript "#Just copy the source image\nCs1"
 
@@ -375,7 +384,8 @@ public:
     
 
     
-    void setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers, OfxPointI* inputSizes, OfxPointI outputSize);
+    void setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers,
+                   const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale);
     
     bool isExprOk(std::string* error);
     
@@ -795,12 +805,6 @@ public:
     /** override resolveFunc to add external functions */
     virtual SeExprFunc* resolveFunc(const std::string& name) const OVERRIDE FINAL;
     
-    /** NOT MT-SAFE, this object is to be used PER-THREAD*/
-    void setXY(int x, int y) {
-        _xCoord._value = x;
-        _yCoord._value = y;
-    }
-    
     void onGetPixelCalled(int inputIndex, OfxTime time) {
         
         {
@@ -837,7 +841,9 @@ class OFXSeExpression : public SeExpression
     ColorParamVarRef* _colorRefs[kParamsCount];
     
     mutable SimpleScalar _currentTime;
-    mutable SimpleScalar _xCoord,_yCoord;
+    mutable SimpleScalar _xCoord,_yCoord,_uCoord,_vCoord;
+    
+    mutable SimpleVec _renderScale;
     
     mutable SimpleVec _colorCurPix[kSourceClipCount];
     mutable SimpleScalar _alphaCurPix[kSourceClipCount];
@@ -847,12 +853,14 @@ class OFXSeExpression : public SeExpression
     
     mutable SimpleScalar _outputWidth,_outputHeight;
     
+    OfxRectI _dstPixelRod;
 public:
     
     
     
     
-    OFXSeExpression(SeExprProcessorBase* processor,const std::string& expr, OfxTime time);
+    OFXSeExpression(SeExprProcessorBase* processor,const std::string& expr, OfxTime time,
+                    const OfxPointD& renderScale, const OfxRectI& outputRod);
     
     virtual ~OFXSeExpression();
     
@@ -866,6 +874,8 @@ public:
     void setXY(int x, int y) {
         _xCoord._value = x;
         _yCoord._value = y;
+        _uCoord._value = (x + 0.5 - _dstPixelRod.x1) / (_dstPixelRod.x2 - _dstPixelRod.x1);
+        _vCoord._value = (y + 0.5 - _dstPixelRod.y1) / (_dstPixelRod.y2 - _dstPixelRod.y1);
     }
     
     void setRGBA(int inputIndex, float r, float g, float b, float a) {
@@ -884,10 +894,12 @@ public:
             _inputHeights[inputNumber]._value = h;
         }
     }
+
     
 };
 
-OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::string& expr, OfxTime time)
+OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::string& expr, OfxTime time,
+                                 const OfxPointD& renderScale, const OfxRectI& outputRod)
 : SeExpression(expr)
 , _getPix(processor)
 , _getPixFunction(_getPix, 4, 4)
@@ -897,8 +909,16 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 , _currentTime()
 , _xCoord()
 , _yCoord()
+, _uCoord()
+, _vCoord()
+, _renderScale()
 {
     _currentTime._value = time;
+    _dstPixelRod = outputRod;
+    
+    _renderScale._value[0] = renderScale.x;
+    _renderScale._value[1] = renderScale.y;
+    _renderScale._value[2] = 1.;
     
     assert(processor);
     SeExprPlugin* plugin = processor->getPlugin();
@@ -933,6 +953,10 @@ OFXSeExpression::resolveVar(const std::string& varName) const
         return &_xCoord;
     } else if (varName == kSeExprYCoordVarName) {
         return &_yCoord;
+    } else if (varName == kSeExprUCoordVarName) {
+        return &_uCoord;
+    } else if (varName == kSeExprVCoordVarName) {
+        return &_vCoord;
     } else if (varName == kSeExprOutputWidthVarName) {
         return &_outputWidth;
     } else if (varName == kSeExprOutputHeightVarName) {
@@ -945,6 +969,8 @@ OFXSeExpression::resolveVar(const std::string& varName) const
         return &_inputWidths[0];
     } else if (varName == kSeExprInputHeightVarName) {
         return &_inputHeights[0];
+    } else if (varName == kSeExprRenderScaleVarName) {
+        return &_renderScale;
     }
 
     char name[256];
@@ -1085,6 +1111,10 @@ StubSeExpression::resolveVar(const std::string& varName) const
         return &_xCoord;
     } else if (varName == kSeExprYCoordVarName) {
         return &_yCoord;
+    } else if (varName == kSeExprUCoordVarName) {
+        return &_zeroScalar;
+    } else if (varName == kSeExprUCoordVarName) {
+        return &_zeroScalar;
     } else if (varName == kSeExprOutputWidthVarName) {
         return &_zeroScalar;
     } else if (varName == kSeExprOutputHeightVarName) {
@@ -1097,6 +1127,8 @@ StubSeExpression::resolveVar(const std::string& varName) const
         return &_nanScalar;
     } else if (varName == kSeExprInputHeightVarName) {
         return &_nanScalar;
+    } else if (varName == kSeExprRenderScaleVarName) {
+        return &_zeroScalar;
     }
 
     return &_zeroScalar;
@@ -1146,11 +1178,11 @@ SeExprProcessorBase::~SeExprProcessorBase()
 }
 
 void
-SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers,OfxPointI* inputSizes, OfxPointI outputSize)
+SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers, const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale)
 {
     _renderTime = time;
     _renderView = view;
-    _expression = new OFXSeExpression(this, expression, time);
+    _expression = new OFXSeExpression(this, expression, time, renderScale, dstPixelRod);
     if (gHostIsMultiPlanar) {
         for (int i = 0; i < kSourceClipCount; ++i) {
             _layersToFetch[i] = layers[i];
@@ -1469,7 +1501,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
     outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
     
-    processor.setValues(args.time, args.viewsToRender, mix, script, inputLayers, inputSizes, outputSize);
+    processor.setValues(args.time, args.viewsToRender, mix, script, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale);
     
     std::string error;
     if (!processor.isExprOk(&error)) {
