@@ -194,7 +194,7 @@
 
 #define kParamDouble "x%d"
 #define kParamDoubleLabel "x%d"
-#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
+#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, x%d"
 
 #define kParamDouble2DParamNumber "double2DParamsNb"
 #define kParamDouble2DParamNumberLabel "No. of 2D Params"
@@ -202,7 +202,7 @@
 
 #define kParamDouble2D "pos%d"
 #define kParamDouble2DLabel "pos%d"
-#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, $pos%d"
+#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, pos%d"
 
 #define kParamColorNumber "colorParamsNb"
 #define kParamColorNumberLabel "No. of Color Params"
@@ -210,7 +210,7 @@
 
 #define kParamColor "color%d"
 #define kParamColorLabel "color%d"
-#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, $color%d"
+#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color%d"
 
 #define kParamScript "script"
 #define kParamScriptLabel "Script"
@@ -835,25 +835,20 @@ class OFXSeExpression : public SeExpression
 {
     mutable GetPixelFuncX _getPix;
     mutable GetPixelFunc _getPixFunction;
-    
-    DoubleParamVarRef* _doubleRefs[kParamsCount];
-    Double2DParamVarRef* _double2DRefs[kParamsCount];
-    ColorParamVarRef* _colorRefs[kParamsCount];
-    
-    mutable SimpleScalar _currentTime;
-    mutable SimpleScalar _xCoord,_yCoord,_uCoord,_vCoord;
-    
-    mutable SimpleVec _renderScale;
-    
-    mutable SimpleVec _colorCurPix[kSourceClipCount];
-    mutable SimpleScalar _alphaCurPix[kSourceClipCount];
-    
-    mutable SimpleScalar _inputWidths[kSourceClipCount];
-    mutable SimpleScalar _inputHeights[kSourceClipCount];
-    
-    mutable SimpleScalar _outputWidth,_outputHeight;
-    
     OfxRectI _dstPixelRod;
+    std::map<std::string,SeExprVarRef*> _variablesMap;
+    SimpleScalar* _xCoord;
+    SimpleScalar* _yCoord;
+    SimpleScalar* _uCoord;
+    SimpleScalar* _vCoord;
+    
+    SimpleScalar* _outputWidth;
+    SimpleScalar* _outputHeight;
+    SimpleScalar* _inputWidths[10];
+    SimpleScalar* _inputHeights[10];
+    
+    SimpleVec* _inputColors[10];
+    SimpleScalar* _inputAlphas[10];
 public:
     
     
@@ -872,26 +867,26 @@ public:
     
     /** NOT MT-SAFE, this object is to be used PER-THREAD*/
     void setXY(int x, int y) {
-        _xCoord._value = x;
-        _yCoord._value = y;
-        _uCoord._value = (x + 0.5 - _dstPixelRod.x1) / (_dstPixelRod.x2 - _dstPixelRod.x1);
-        _vCoord._value = (y + 0.5 - _dstPixelRod.y1) / (_dstPixelRod.y2 - _dstPixelRod.y1);
+        _xCoord->_value = x;
+        _yCoord->_value = y;
+        _uCoord->_value = (x + 0.5 - _dstPixelRod.x1) / (_dstPixelRod.x2 - _dstPixelRod.x1);
+        _vCoord->_value = (y + 0.5 - _dstPixelRod.y1) / (_dstPixelRod.y2 - _dstPixelRod.y1);
     }
     
     void setRGBA(int inputIndex, float r, float g, float b, float a) {
-        _colorCurPix[inputIndex]._value[0] = r;
-        _colorCurPix[inputIndex]._value[1] = g;
-        _colorCurPix[inputIndex]._value[2] = b;
-        _alphaCurPix[inputIndex]._value = a;
+        _inputColors[inputIndex]->_value[0] = r;
+        _inputColors[inputIndex]->_value[1] = g;
+        _inputColors[inputIndex]->_value[2] = b;
+        _inputAlphas[inputIndex]->_value = a;
     }
     
     void setSize(int inputNumber, int w, int h) {
         if (inputNumber == -1) {
-            _outputWidth._value = w;
-            _outputHeight._value = h;
+            _outputWidth->_value = w;
+            _outputHeight->_value = h;
         } else {
-            _inputWidths[inputNumber]._value = w;
-            _inputHeights[inputNumber]._value = h;
+            _inputWidths[inputNumber]->_value = w;
+            _inputHeights[inputNumber]->_value = h;
         }
     }
 
@@ -903,111 +898,108 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 : SeExpression(expr)
 , _getPix(processor)
 , _getPixFunction(_getPix, 4, 4)
-, _doubleRefs()
-, _double2DRefs()
-, _colorRefs()
-, _currentTime()
-, _xCoord()
-, _yCoord()
-, _uCoord()
-, _vCoord()
-, _renderScale()
+, _dstPixelRod(outputRod)
+, _variablesMap()
+, _xCoord(0)
+, _yCoord(0)
+, _uCoord(0)
+, _vCoord(0)
+, _outputWidth(0)
+, _outputHeight(0)
+, _inputWidths()
+, _inputHeights()
+, _inputColors()
+, _inputAlphas()
 {
-    _currentTime._value = time;
     _dstPixelRod = outputRod;
     
-    _renderScale._value[0] = renderScale.x;
-    _renderScale._value[1] = renderScale.y;
-    _renderScale._value[2] = 1.;
+    SimpleVec* rs = new SimpleVec;
+    rs->_value[0] = renderScale.x;
+    rs->_value[1] = renderScale.y;
+    rs->_value[2] = 1.;
+    _variablesMap.insert(std::make_pair(kSeExprRenderScaleVarName, rs));
     
     assert(processor);
     SeExprPlugin* plugin = processor->getPlugin();
+    
+    char name[256];
+    
+    SimpleScalar* curTime = new SimpleScalar;
+    curTime->_value = time;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprCurrentTimeVarName), curTime));
+    
+    _xCoord = new SimpleScalar;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprXCoordVarName), _xCoord));
+    
+    _yCoord = new SimpleScalar;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprYCoordVarName), _yCoord));
+    
+    _uCoord = new SimpleScalar;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprUCoordVarName), _uCoord));
+    
+    _vCoord = new SimpleScalar;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprVCoordVarName), _vCoord));
+    
+    _outputWidth = new SimpleScalar;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprOutputWidthVarName), _outputWidth));
+    
+    _outputHeight = new SimpleScalar;
+    _variablesMap.insert(std::make_pair(std::string(kSeExprOutputHeightVarName), _outputHeight));
+    
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
+        _inputWidths[i] = new SimpleScalar;
+        _variablesMap.insert(std::make_pair(std::string(name), _inputWidths[i]));
+        
+        snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
+        _inputHeights[i] = new SimpleScalar;
+        _variablesMap.insert(std::make_pair(std::string(name), _inputHeights[i]));
+        
+        snprintf(name, sizeof(name), kSeExprColorVarName "%d", i+1);
+        _inputColors[i] = new SimpleVec;
+        _variablesMap.insert(std::make_pair(std::string(name), _inputColors[i]));
+        
+        snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
+        _inputAlphas[i] = new SimpleScalar;
+        _variablesMap.insert(std::make_pair(std::string(name), _inputAlphas[i]));
+    }
+    
     
     OFX::DoubleParam** doubleParams = plugin->getDoubleParams();
     OFX::Double2DParam** double2DParams = plugin->getDouble2DParams();
     OFX::RGBParam** colorParams = plugin->getRGBParams();
     
     for (int i = 0; i < kParamsCount; ++i) {
-        _doubleRefs[i] = new DoubleParamVarRef(doubleParams[i]);
-        _double2DRefs[i] = new Double2DParamVarRef(double2DParams[i]);
-        _colorRefs[i] = new ColorParamVarRef(colorParams[i]);
+        DoubleParamVarRef* doubleRef = new DoubleParamVarRef(doubleParams[i]);
+        Double2DParamVarRef* double2DRef = new Double2DParamVarRef(double2DParams[i]);
+        ColorParamVarRef* colorRef = new ColorParamVarRef(colorParams[i]);
+        snprintf(name, sizeof(name), kParamDouble, i+1);
+        _variablesMap.insert(std::make_pair(std::string(name), doubleRef));
+        snprintf(name, sizeof(name), kParamDouble2D, i+1);
+        _variablesMap.insert(std::make_pair(std::string(name), double2DRef));
+        snprintf(name, sizeof(name), kParamColor, i+1);
+        _variablesMap.insert(std::make_pair(std::string(name), colorRef));
     }
+    
+    
     
 }
 
 OFXSeExpression::~OFXSeExpression()
 {
-    for (int i = 0; i < kParamsCount; ++i) {
-        delete _doubleRefs[i];
-        delete _double2DRefs[i];
-        delete _colorRefs[i];
+    for (std::map<std::string,SeExprVarRef*>::iterator it = _variablesMap.begin(); it!=_variablesMap.end(); ++it) {
+        delete it->second;
     }
 }
 
 SeExprVarRef*
 OFXSeExpression::resolveVar(const std::string& varName) const
 {
-    if (varName == kSeExprCurrentTimeVarName) {
-        return &_currentTime;
-    } else if (varName == kSeExprXCoordVarName) {
-        return &_xCoord;
-    } else if (varName == kSeExprYCoordVarName) {
-        return &_yCoord;
-    } else if (varName == kSeExprUCoordVarName) {
-        return &_uCoord;
-    } else if (varName == kSeExprVCoordVarName) {
-        return &_vCoord;
-    } else if (varName == kSeExprOutputWidthVarName) {
-        return &_outputWidth;
-    } else if (varName == kSeExprOutputHeightVarName) {
-        return &_outputHeight;
-    } else if (varName == kSeExprColorVarName) {
-        return &_colorCurPix[0];
-    } else if (varName == kSeExprAlphaVarName) {
-        return &_alphaCurPix[0];
-    } else if (varName == kSeExprInputWidthVarName) {
-        return &_inputWidths[0];
-    } else if (varName == kSeExprInputHeightVarName) {
-        return &_inputHeights[0];
-    } else if (varName == kSeExprRenderScaleVarName) {
-        return &_renderScale;
+    std::map<std::string,SeExprVarRef*>::const_iterator found = _variablesMap.find(varName);
+    if (found == _variablesMap.end()) {
+        return 0;
     }
-
-    char name[256];
-    for (int i = 0; i < kParamsCount; ++i) {
-        snprintf(name, sizeof(name), kParamDouble, i+1);
-        if (name == varName) {
-            return _doubleRefs[i];
-        }
-        snprintf(name, sizeof(name), kParamDouble2D, i+1);
-        if (name == varName) {
-            return _double2DRefs[i];
-        }
-        snprintf(name, sizeof(name), kParamColor, i+1);
-        if (name == varName) {
-            return _colorRefs[i];
-        }
-    }
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        snprintf(name, sizeof(name), "%s%d", kSeExprInputWidthVarName, i+1);
-        if (name == varName) {
-            return &_inputWidths[i];
-        }
-        snprintf(name, sizeof(name), "%s%d", kSeExprInputHeightVarName, i+1);
-        if (name == varName) {
-            return &_inputHeights[i];
-        }
-        snprintf(name, sizeof(name), "%s%d", kSeExprColorVarName, i+1);
-        if (name == varName) {
-            return &_colorCurPix[i];
-        }
-        snprintf(name, sizeof(name), "%s%d", kSeExprAlphaVarName, i+1);
-        if (name == varName) {
-            return &_alphaCurPix[i];
-        }
-
-    }
-    return 0;
+    return found->second;
 }
 
 
