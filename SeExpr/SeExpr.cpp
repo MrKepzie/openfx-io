@@ -1832,6 +1832,9 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     if (par != 0.) {
         clipPreferences.setPixelAspectRatio(*_dstClip, par);
     }
+    
+    //We're frame varying since we don't know what the user may output at any frame
+    clipPreferences.setOutputFrameVarying(true);
 }
 
 void
