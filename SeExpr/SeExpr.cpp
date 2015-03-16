@@ -164,44 +164,44 @@
 
 #define kSeExprDefaultScript "#Just copy the source image\nCs"
 
-#define kParamBoundingBox "boundingBox"
-#define kParamBoundingBoxLabel "Bounding Box"
-#define kParamBoundingBoxHint "The region to output."
+#define kParamRegionOfDefinition "rod"
+#define kParamRegionOfDefinitionLabel "Region of Definition"
+#define kParamRegionOfDefinitionHint "The region of definition of the output."
 
-#define kParamBoundingBoxOptionUnion "Union"
-#define kParamBoundingBoxOptionUnionHelp "The output region will be the union of all connected inputs bounding box."
-#define kParamBoundingBoxOptionIntersection "Intersection"
-#define kParamBoundingBoxOptionIntersectionHelp "The output region will be the intersection of all connected inputs bounding box."
-#define kParamBoundingBoxOptionCustomInput "Input"
-#define kParamBoundingBoxOptionCustomInputHelp "The output region will be the bounding box of the input."
+#define kParamRegionOfDefinitionOptionUnion "Union"
+#define kParamRegionOfDefinitionOptionUnionHelp "The output region will be the union of the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionIntersection "Intersection"
+#define kParamRegionOfDefinitionOptionIntersectionHelp "The output region will be the intersection the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionCustomInput "Input%d"
+#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region will be the regions of definition of input %d."
 
-#define kkParamLayerInput "layerInput"
-#define kkParamLayerInputLabel "Input Layer"
-#define kkParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
+#define kParamLayerInput "layerInput%d"
+#define kParamLayerInputLabel "Input Layer %d"
+#define kParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on input %d."
 
 #define kParamDoubleParamNumber "doubleParamsNb"
 #define kParamDoubleParamNumberLabel "No. of Scalar Params"
 #define kParamDoubleParamNumberHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
-#define kParamDouble "x"
-#define kParamDoubleLabel "X"
+#define kParamDouble "x%d"
+#define kParamDoubleLabel "x%d"
 #define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
 
 #define kParamDouble2DParamNumber "double2DParamsNb"
 #define kParamDouble2DParamNumberLabel "No. of 2D Params"
 #define kParamDouble2DParamNumberHint "Use this to control how many 2D (position) parameters should be exposed to the SeExpr expression."
 
-#define kParamDouble2D "pos"
-#define kParamDouble2DLabel "Pos"
-#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, e.g: $pos1"
+#define kParamDouble2D "pos%d"
+#define kParamDouble2DLabel "pos%d"
+#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, $pos%d"
 
 #define kParamColorNumber "colorParamsNb"
 #define kParamColorNumberLabel "No. of Color Params"
 #define kParamColorNumberHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
-#define kParamColor "color"
-#define kParamColorLabel "Color"
-#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, e.g: $color1"
+#define kParamColor "color%d"
+#define kParamColorLabel "color%d"
+#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, $color%d"
 
 #define kParamScript "script"
 #define kParamScriptLabel "Script"
@@ -1272,16 +1272,16 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-            snprintf(name, sizeof(name), "%s%d", kkParamLayerInput, i+1 );
+            snprintf(name, sizeof(name), kParamLayerInput, i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
         } else {
             _clipLayerToFetch[i] = 0;
         }
-        snprintf(name, sizeof(name), "%s%d", kParamDouble, i+1 );
+        snprintf(name, sizeof(name), kParamDouble, i+1 );
         _doubleParams[i] = fetchDoubleParam(name);
-        snprintf(name, sizeof(name), "%s%d", kParamDouble2D, i+1 );
+        snprintf(name, sizeof(name), kParamDouble2D, i+1 );
         _double2DParams[i] = fetchDouble2DParam(name);
-        snprintf(name, sizeof(name), "%s%d", kParamColor, i+1 );
+        snprintf(name, sizeof(name), kParamColor, i+1 );
         _colorParams[i] = fetchRGBParam(name);
     }
     _script = fetchStringParam(kParamScript);
@@ -1293,7 +1293,7 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 
-    _boundingBox = fetchChoiceParam(kParamBoundingBox);
+    _boundingBox = fetchChoiceParam(kParamRegionOfDefinition);
     assert(_boundingBox);
 
     // update visibility
@@ -1973,14 +1973,14 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     PageParamDescriptor *page = desc.definePageParam("Controls");
 
     {
-        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBoundingBox);
-        param->setLabel(kParamBoundingBoxLabel);
-        param->setHint(kParamBoundingBoxHint);
-        param->appendOption(kParamBoundingBoxOptionUnion, kParamBoundingBoxOptionUnionHelp);
-        param->appendOption(kParamBoundingBoxOptionIntersection, kParamBoundingBoxOptionIntersectionHelp);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRegionOfDefinition);
+        param->setLabel(kParamRegionOfDefinitionLabel);
+        param->setHint(kParamRegionOfDefinitionHint);
+        param->appendOption(kParamRegionOfDefinitionOptionUnion, kParamRegionOfDefinitionOptionUnionHelp);
+        param->appendOption(kParamRegionOfDefinitionOptionIntersection, kParamRegionOfDefinitionOptionIntersectionHelp);
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), "%s%d", kParamBoundingBoxOptionCustomInput, i+1);
-            snprintf(help, sizeof(help), "%s%d", kParamBoundingBoxOptionCustomInputHelp, i+1);
+            snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput, i+1);
+            snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp, i+1);
             param->appendOption(name, help);
         }
         param->setAnimates(false);
@@ -1998,10 +1998,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
 
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), "%s%d", kkParamLayerInput, i+1);
+            snprintf(name, sizeof(name), kParamLayerInput, i+1);
             ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
-            snprintf(name, sizeof(name), "%s%d", kkParamLayerInputLabel, i+1);
+            snprintf(name, sizeof(name), kParamLayerInputLabel, i+1);
             param->setLabel(name);
+            snprintf(name, sizeof(name), kParamLayerInputHint, i+1);
+            param->setHint(name);
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
             //param->setIsSecret(true); // done in the plugin constructor
@@ -2034,11 +2036,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), "%s%d", kParamDouble, i+1);
+            snprintf(name, sizeof(name), kParamDouble, i+1);
             DoubleParamDescriptor *param = desc.defineDoubleParam(name);
-            snprintf(name, sizeof(name), "%s%d", kParamDoubleLabel, i+1);
+            snprintf(name, sizeof(name), kParamDoubleLabel, i+1);
             param->setLabel(name);
-            param->setHint(kParamDoubleHint);
+            snprintf(name, sizeof(name), kParamDoubleHint, i+1);
+            param->setHint(name);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypePlain);
@@ -2071,11 +2074,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), "%s%d", kParamDouble2D, i+1);
+            snprintf(name, sizeof(name), kParamDouble2D, i+1);
             Double2DParamDescriptor *param = desc.defineDouble2DParam(name);
-            snprintf(name, sizeof(name), "%s%d", kParamDouble2DLabel, i+1);
+            snprintf(name, sizeof(name), kParamDouble2DLabel, i+1);
             param->setLabel(name);
-            param->setHint(kParamDouble2DHint);
+            snprintf(name, sizeof(name), kParamDouble2DHint, i+1);
+            param->setHint(name);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
@@ -2107,11 +2111,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), "%s%d", kParamColor, i+1);
+            snprintf(name, sizeof(name), kParamColor, i+1);
             RGBParamDescriptor *param = desc.defineRGBParam(name);
-            snprintf(name, sizeof(name), "%s%d", kParamColorLabel, i+1);
+            snprintf(name, sizeof(name), kParamColorLabel, i+1);
             param->setLabel(name);
-            param->setHint(kParamColorHint);
+            snprintf(name, sizeof(name), kParamColorHint, i+1);
+            param->setHint(name);
             param->setAnimates(true);
             param->setParent(*group);
             //param->setIsSecret(true); // done in the plugin constructor
