@@ -169,7 +169,7 @@
 #define kkParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
 
 #define kParamDoubleParamNumber "doubleParamsNb"
-#define kParamDoubleParamNumberLabel "Number of Scalar Parameters"
+#define kParamDoubleParamNumberLabel "No. of Scalar Params"
 #define kParamDoubleParamNumberHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
 #define kParamDouble "x"
@@ -177,7 +177,7 @@
 #define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
 
 #define kParamDouble2DParamNumber "double2DParamsNb"
-#define kParamDouble2DParamNumberLabel "Number of 2D Parameters"
+#define kParamDouble2DParamNumberLabel "No. of 2D Params"
 #define kParamDouble2DParamNumberHint "Use this to control how many 2D (position) parameters should be exposed to the SeExpr expression."
 
 #define kParamDouble2D "pos"
@@ -185,7 +185,7 @@
 #define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, e.g: $pos1"
 
 #define kParamColorNumber "colorParamsNb"
-#define kParamColorNumberLabel "Number of Color Parameters"
+#define kParamColorNumberLabel "No. of Color Params"
 #define kParamColorNumberHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
 #define kParamColor "color"
