@@ -969,18 +969,33 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
         _inputWidths[i] = new SimpleScalar;
         _variablesMap.insert(std::make_pair(std::string(name), _inputWidths[i]));
+        if (i == 0) {
+            _variablesMap.insert(std::make_pair(std::string(kSeExprInputWidthVarName), _inputWidths[i]));
+        }
         
         snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
         _inputHeights[i] = new SimpleScalar;
         _variablesMap.insert(std::make_pair(std::string(name), _inputHeights[i]));
         
+        if (i == 0) {
+            _variablesMap.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputWidths[i]));
+        }
+        
         snprintf(name, sizeof(name), kSeExprColorVarName "%d", i+1);
         _inputColors[i] = new SimpleVec;
         _variablesMap.insert(std::make_pair(std::string(name), _inputColors[i]));
         
+        if (i == 0) {
+            _variablesMap.insert(std::make_pair(std::string(kSeExprColorVarName), _inputWidths[i]));
+        }
+        
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
         _inputAlphas[i] = new SimpleScalar;
         _variablesMap.insert(std::make_pair(std::string(name), _inputAlphas[i]));
+        
+        if (i == 0) {
+            _variablesMap.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputWidths[i]));
+        }
     }
     
     
