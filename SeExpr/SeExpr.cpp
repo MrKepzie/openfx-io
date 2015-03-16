@@ -180,7 +180,7 @@
 #define kkParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
 
 #define kParamDoubleParamNumber "doubleParamsNb"
-#define kParamDoubleParamNumberLabel "Number of Scalar Parameters"
+#define kParamDoubleParamNumberLabel "No. of Scalar Params"
 #define kParamDoubleParamNumberHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
 #define kParamDouble "x"
@@ -188,15 +188,15 @@
 #define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
 
 #define kParamDouble2DParamNumber "double2DParamsNb"
-#define kParamDouble2DParamNumberLabel "Number of Positional Parameters"
-#define kParamDouble2DParamNumberHint "Use this to control how many positional parameters should be exposed to the SeExpr expression."
+#define kParamDouble2DParamNumberLabel "No. of 2D Params"
+#define kParamDouble2DParamNumberHint "Use this to control how many 2D (position) parameters should be exposed to the SeExpr expression."
 
 #define kParamDouble2D "pos"
 #define kParamDouble2DLabel "Pos"
 #define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, e.g: $pos1"
 
 #define kParamColorNumber "colorParamsNb"
-#define kParamColorNumberLabel "Number of Color Parameters"
+#define kParamColorNumberLabel "No. of Color Params"
 #define kParamColorNumberHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
 #define kParamColor "color"
@@ -1296,6 +1296,26 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _boundingBox = fetchChoiceParam(kParamBoundingBox);
     assert(_boundingBox);
 
+    // update visibility
+    int numVisible;
+    _doubleParamCount->getValue(numVisible);
+    assert(numVisible <= kParamsCount && numVisible >=0);
+    for (int i = 0; i < kParamsCount; ++i) {
+        bool visible = i < numVisible;
+        _doubleParams[i]->setIsSecret(!visible);
+    }
+    _double2DParamCount->getValue(numVisible);
+    assert(numVisible <= kParamsCount && numVisible >=0);
+    for (int i = 0; i < kParamsCount; ++i) {
+        bool visible = i < numVisible;
+        _double2DParams[i]->setIsSecret(!visible);
+    }
+    _colorParamCount->getValue(numVisible);
+    assert(numVisible <= kParamsCount && numVisible >=0);
+    for (int i = 0; i < kParamsCount; ++i) {
+        bool visible = i < numVisible;
+        _colorParams[i]->setIsSecret(!visible);
+    }
 }
 
 std::string
@@ -1970,7 +1990,6 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
 
     if (gHostIsMultiPlanar) {
         GroupParamDescriptor *group = desc.defineGroupParam("Input layers");
-        group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setLabel("Input layers");
         group->setOpen(false);
         if (page) {
@@ -1984,7 +2003,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(name);
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
-            param->setIsSecret(true);
+            //param->setIsSecret(true); // done in the plugin constructor
             param->setParent(*group);
             if (page) {
                 page->addChild(*param);
@@ -1993,9 +2012,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     }
 
     {
-        GroupParamDescriptor *group = desc.defineGroupParam("Scalar Variables");
-        group->setLabel("Scalar Variables");
-        group->setLayoutHint(OFX::eLayoutHintDivider);
+        GroupParamDescriptor *group = desc.defineGroupParam("Scalar Parameters");
+        group->setLabel("Scalar Parameters");
         group->setOpen(false);
         if (page) {
             page->addChild(*group);
@@ -2006,6 +2024,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(kParamDoubleParamNumberLabel);
             param->setHint(kParamDoubleParamNumberHint);
             param->setRange(0, kParamsCount);
+            param->setDisplayRange(0, kParamsCount);
             param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);
@@ -2020,7 +2039,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(name);
             param->setHint(kParamDoubleHint);
             param->setAnimates(true);
-            param->setIsSecret(true);
+            //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypePlain);
             param->setParent(*group);
             if (page) {
@@ -2030,9 +2049,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     }
 
     {
-        GroupParamDescriptor *group = desc.defineGroupParam("Position Variables");
-        group->setLabel("Position Variables");
-        group->setLayoutHint(OFX::eLayoutHintDivider);
+        GroupParamDescriptor *group = desc.defineGroupParam("Position Parameters");
+        group->setLabel("Position Parameters");
         group->setOpen(false);
         if (page) {
             page->addChild(*group);
@@ -2043,6 +2061,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(kParamDouble2DParamNumberLabel);
             param->setHint(kParamDouble2DParamNumberHint);
             param->setRange(0, kParamsCount);
+            param->setDisplayRange(0, kParamsCount);
             param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);
@@ -2057,7 +2076,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(name);
             param->setHint(kParamDouble2DHint);
             param->setAnimates(true);
-            param->setIsSecret(true);
+            //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
             param->setParent(*group);
             if (page) {
@@ -2067,9 +2086,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     }
 
     {
-        GroupParamDescriptor *group = desc.defineGroupParam("Color Variables");
-        group->setLabel("Color Variables");
-        group->setLayoutHint(OFX::eLayoutHintDivider);
+        GroupParamDescriptor *group = desc.defineGroupParam("Color Parameters");
+        group->setLabel("Color Parameters");
         group->setOpen(false);
         if (page) {
             page->addChild(*group);
@@ -2079,6 +2097,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(kParamColorNumberLabel);
             param->setHint(kParamColorNumberHint);
             param->setRange(0, kParamsCount);
+            param->setDisplayRange(0, kParamsCount);
             param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);
@@ -2094,7 +2113,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setHint(kParamColorHint);
             param->setAnimates(true);
             param->setParent(*group);
-            param->setIsSecret(true);
+            //param->setIsSecret(true); // done in the plugin constructor
             if (page) {
                 page->addChild(*param);
             }
