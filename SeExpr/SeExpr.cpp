@@ -74,6 +74,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <limits>
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
 #include <windows.h>
@@ -97,38 +98,46 @@
 "SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
 "Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images. " \
 "The following pre-defined variables can be used in the script:\n\n" \
-"- $x: This is the canonical X coordinate of the pixel to render (this is not normalized in the [0,1] range)\n" \
-"- $y: This is the canonical Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n" \
-"- $frame: This is the current frame being rendered\n" \
-"- $output_width: This is the width of the output image being rendered. This is useful to normalize x coordinates into the range [0,1]\n" \
-"- $output_height: This is the height of the output image being rendered. This is useful to normalize y coordinates into the range [0,1]\n" \
-"- Each input has a variable named $input_width<index> and $input_height<index> indicating respectively the width and height of the input. " \
-"For example, the input 1 will have the variables $input_width1 and $input_height1.\n\n" \
-"To fetch an input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for a given input fetch the pixel at the " \
-"(x,y) position in the image at the given frame. Note that inputNumber starts from 1.\n\n" \
+"- x: This is the canonical X coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
+"- y: This is the canonical Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
+"- frame: This is the current frame being rendered\n\n" \
+"- Each input has 2 variables named Cs<index> and As<index> which respectively references the color (RGB vector) " \
+"and the alpha (scalar) of the image originated from the input at the given index. For the first input, you do not need to add " \
+"the index after Cs and As. See usage example below.\n\n" \
+"- output_width: This is the width of the output image being rendered. This is useful to normalize x coordinates into the range [0,1]\n\n" \
+"- output_height: This is the height of the output image being rendered. This is useful to normalize y coordinates into the range [0,1]\n\n" \
+"- Each input has a variable named input_width<index> and input_height<index> indicating respectively the width and height of the input. " \
+"For the first input you do not need to add the index after input_width and input_height." \
+"For example, the input 2 will have the variables input_width2 and input_height2.\n\n" \
+"To fetch an arbitraty input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for " \
+"a given input fetch the pixel at the (x,y) position in the image at the given frame. " \
+"Note that inputNumber starts from 1.\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
-"$a = getPixel(1,frame,$x,$y);\n" \
-"$b = getPixel(2,frame,$x,$y);\n" \
-"$color = $a * $b;\n" \
-"$color\n" \
-"\n\n" \
+"Cs * Cs2\n\n" \
+"Another merge operator example (over):\n\n" \
+"Cs + Cs2 * (1 -  As)\n\n" \
+"A more complex example used to average pixels over the previous, current and next frame:\n\n" \
+"prev = getPixel(1,frame - 1,x,y);\n" \
+"cur = Cs;\n" \
+"next = getPixel(1,frame + 1,x,y);\n" \
+"(prev + cur + next) / 3;\n\n" \
+"To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
+"using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n\n" \
+"Cs + x1\n\n" \
+"Note that for expressions that span multiple lines, you must end each instruction by ; as you would do in C/C++. The last line " \
+"of your expression will always be considered as the final value of the pixel.\n" \
+"More documentation is available on the website of the SeExpr project: http://www.disneyanimation.com/technology/seexpr.html\n\n" \
 "Limitations:\n\n" \
-"Some optimizations have been made so that the plug-in is efficient even though using an expression language." \
-"In order to correctly work with input images, your expression should always call the getPixel(...) function in the " \
-"global scope of your expression, e.g:\n" \
-"if ($a > 5) {\n" \
-"   $b = getPixel(1,frame,$x,$y);\n" \
+"In order to be efficient getPixel(inputNumber,frame,x,y) works only under certain circumstances:\n" \
+"- the inputNumber must be in the correct range\n" \
+"- frame must not depend on the color or alpha of a pixel, nor on the result of another call to getPixel\n" \
+"- A call to getPixel must not depend on the color or alpha of a pixel, e.g this is not correct:\n\n" \
+"if (As > 0.1) {\n" \
+"    src = getPixel(1,frame,x,y);\n" \
 "} else {\n" \
-"   $b = [0,0,0]\n" \
-"}\n" \
-"This will not produce an efficient program and the plug-in will most likely be very slow to render.\n" \
-"A well formed and efficient expression should use the getPixel function in the global scope like this:\n" \
-"$c = getPixel(1,frame,$x,$y);\n"\
-"if ($a > 5) {\n"\
-"   $b = $c\n"\
-"} else {\n"\
-"   $b = [0,0,0]\n"\
-"}"
+"    src = [0,0,0];\n" \
+"}\n"
+
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -150,8 +159,10 @@
 #define kSeExprInputHeightVarName "input_height"
 #define kSeExprOutputWidthVarName "output_width"
 #define kSeExprOutputHeightVarName "output_height"
+#define kSeExprColorVarName "Cs"
+#define kSeExprAlphaVarName "As"
 
-#define kSeExprDefaultScript "$color = " kSeExprGetPixelFuncName "(1, frame, x, y);\n#Return the output color\n$color"
+#define kSeExprDefaultScript "#Just copy the source image\nCs1"
 
 #define kParamBoundingBox "boundingBox"
 #define kParamBoundingBoxLabel "Bounding Box"
@@ -290,6 +301,7 @@ class OFXSeExpression;
 int getNComponents(OFX::PixelComponentEnum pixelComps, const std::string& rawComponents) {
     switch (pixelComps) {
         case OFX::ePixelComponentRGBA:
+            return 4;
         case OFX::ePixelComponentRGB:
             return 3;
         case OFX::ePixelComponentStereoDisparity:
@@ -322,7 +334,8 @@ protected:
     SeExprPlugin* _plugin;
     std::string _layersToFetch[kSourceClipCount];
     OFXSeExpression* _expression;
-    const OFX::Image* _src0CurTime;
+    const OFX::Image* _srcCurTime[kSourceClipCount];
+    int _nSrcComponents[kSourceClipCount];
     OFX::Image* _dstImg;
     bool _maskInvert;
     const OFX::Image* _maskImg;
@@ -761,7 +774,7 @@ class StubSeExpression : public SeExpression
 {
     
     
-    mutable SimpleScalar _stubScalar;
+    mutable SimpleScalar _nanScalar,_zeroScalar;
     mutable StubGetPixelFuncX _getPix;
     mutable GetPixelFunc _getPixFunction;
     mutable SimpleScalar _currentTime;
@@ -769,9 +782,6 @@ class StubSeExpression : public SeExpression
 
     typedef std::map<int,std::vector<OfxTime> > FramesNeeded;
     mutable FramesNeeded _images;
-    
-    typedef std::map<int, OfxRectI> RoIsMap;
-    mutable RoIsMap _rois;
     
 public:
     
@@ -791,7 +801,7 @@ public:
         _yCoord._value = y;
     }
     
-    void onGetPixelCalled(int inputIndex, OfxTime time, int x, int y) {
+    void onGetPixelCalled(int inputIndex, OfxTime time) {
         
         {
             //Register image needed
@@ -806,24 +816,7 @@ public:
                 }
             }
         }
-        {
-            //Register RoI
-            RoIsMap::iterator foundInput = _rois.find(inputIndex);
-            if (foundInput == _rois.end()) {
-                OfxRectI roiPixel;
-                roiPixel.x1 = x;
-                roiPixel.x2 = x + 1;
-                roiPixel.y1 = y;
-                roiPixel.y2 = y + 1;
-                _rois.insert(std::make_pair(inputIndex, roiPixel));
-            } else {
-                foundInput->second.x1 = std::min(foundInput->second.x1, x);
-                foundInput->second.x2 = std::max(foundInput->second.x2, x + 1);
-                foundInput->second.y1 = std::min(foundInput->second.y1, x);
-                foundInput->second.y2 = std::max(foundInput->second.y2, x + 1);
-            }
-            
-        }
+        
     }
     
     const std::map<int,std::vector<OfxTime> >& getFramesNeeded() const
@@ -831,10 +824,7 @@ public:
         return _images;
     }
     
-    const std::map<int, OfxRectI> & getRoIs() const
-    {
-        return _rois;
-    }
+
 };
 
 class OFXSeExpression : public SeExpression
@@ -848,6 +838,9 @@ class OFXSeExpression : public SeExpression
     
     mutable SimpleScalar _currentTime;
     mutable SimpleScalar _xCoord,_yCoord;
+    
+    mutable SimpleVec _colorCurPix[kSourceClipCount];
+    mutable SimpleScalar _alphaCurPix[kSourceClipCount];
     
     mutable SimpleScalar _inputWidths[kSourceClipCount];
     mutable SimpleScalar _inputHeights[kSourceClipCount];
@@ -873,6 +866,13 @@ public:
     void setXY(int x, int y) {
         _xCoord._value = x;
         _yCoord._value = y;
+    }
+    
+    void setRGBA(int inputIndex, float r, float g, float b, float a) {
+        _colorCurPix[inputIndex]._value[0] = r;
+        _colorCurPix[inputIndex]._value[1] = g;
+        _colorCurPix[inputIndex]._value[2] = b;
+        _alphaCurPix[inputIndex]._value = a;
     }
     
     void setSize(int inputNumber, int w, int h) {
@@ -937,6 +937,14 @@ OFXSeExpression::resolveVar(const std::string& varName) const
         return &_outputWidth;
     } else if (varName == kSeExprOutputHeightVarName) {
         return &_outputHeight;
+    } else if (varName == kSeExprColorVarName) {
+        return &_colorCurPix[0];
+    } else if (varName == kSeExprAlphaVarName) {
+        return &_alphaCurPix[0];
+    } else if (varName == kSeExprInputWidthVarName) {
+        return &_inputWidths[0];
+    } else if (varName == kSeExprInputHeightVarName) {
+        return &_inputHeights[0];
     }
 
     char name[256];
@@ -953,6 +961,8 @@ OFXSeExpression::resolveVar(const std::string& varName) const
         if (name == varName) {
             return _colorRefs[i];
         }
+    }
+    for (int i = 0; i < kSourceClipCount; ++i) {
         snprintf(name, sizeof(name), "%s%d", kSeExprInputWidthVarName, i+1);
         if (name == varName) {
             return &_inputWidths[i];
@@ -961,6 +971,15 @@ OFXSeExpression::resolveVar(const std::string& varName) const
         if (name == varName) {
             return &_inputHeights[i];
         }
+        snprintf(name, sizeof(name), "%s%d", kSeExprColorVarName, i+1);
+        if (name == varName) {
+            return &_colorCurPix[i];
+        }
+        snprintf(name, sizeof(name), "%s%d", kSeExprAlphaVarName, i+1);
+        if (name == varName) {
+            return &_alphaCurPix[i];
+        }
+
     }
     return 0;
 }
@@ -1032,26 +1051,23 @@ StubGetPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
     SeVec3d frame;
     node->child(1)->eval(frame);
     
-    SeVec3d xCoord;
-    node->child(2)->eval(xCoord);
     
-    SeVec3d yCoord;
-    node->child(3)->eval(yCoord);
-    
-    _expr->onGetPixelCalled(inputIndex[0] - 1, frame[0], xCoord[0], yCoord[0]);
+    _expr->onGetPixelCalled(inputIndex[0] - 1, frame[0]);
     
 }
 
 StubSeExpression::StubSeExpression(const std::string& expr, OfxTime time)
 : SeExpression(expr)
-, _stubScalar()
+, _nanScalar()
+, _zeroScalar()
 , _getPix(this)
 , _getPixFunction(_getPix, 4, 4)
 , _currentTime()
 , _xCoord()
 , _yCoord()
 {
-    
+    _nanScalar._value = std::numeric_limits<double>::quiet_NaN();
+    _currentTime._value = time;
 }
 
 StubSeExpression::~StubSeExpression()
@@ -1069,8 +1085,21 @@ StubSeExpression::resolveVar(const std::string& varName) const
         return &_xCoord;
     } else if (varName == kSeExprYCoordVarName) {
         return &_yCoord;
+    } else if (varName == kSeExprOutputWidthVarName) {
+        return &_zeroScalar;
+    } else if (varName == kSeExprOutputHeightVarName) {
+        return &_zeroScalar;
+    } else if (varName == kSeExprColorVarName) {
+        return &_nanScalar;
+    } else if (varName == kSeExprAlphaVarName) {
+        return &_nanScalar;
+    } else if (varName == kSeExprInputWidthVarName) {
+        return &_nanScalar;
+    } else if (varName == kSeExprInputHeightVarName) {
+        return &_nanScalar;
     }
-    return &_stubScalar;
+
+    return &_zeroScalar;
 }
 
 /** override resolveFunc to add external functions */
@@ -1092,7 +1121,7 @@ SeExprProcessorBase::SeExprProcessorBase(SeExprPlugin* instance)
 , _renderView(0)
 , _plugin(instance)
 , _expression(0)
-, _src0CurTime(0)
+, _srcCurTime()
 , _dstImg(0)
 , _maskInvert(false)
 , _maskImg(0)
@@ -1100,6 +1129,10 @@ SeExprProcessorBase::SeExprProcessorBase(SeExprPlugin* instance)
 , _mix(0.)
 , _images()
 {
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        _srcCurTime[i] = 0;
+        _nSrcComponents[i] = 0;
+    }
 }
 
 SeExprProcessorBase::~SeExprProcessorBase()
@@ -1142,9 +1175,13 @@ SeExprProcessorBase::isExprOk(std::string* error)
     (void)_expression->evaluate();
     
     //Ensure the image of the input 0 at the current time exists for the mix
-    int nComps;
-    _src0CurTime = getOrFetchImage(0, _renderTime, &nComps);
-    
+
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        int nComps;
+        _srcCurTime[i] = getOrFetchImage(i, _renderTime, &nComps);
+        _nSrcComponents[i] = nComps;
+    }
+
     return true;
 }
 
@@ -1164,7 +1201,9 @@ public:
     virtual void process(OfxRectI procWindow) OVERRIDE FINAL
     {
         float tmpPix[nComponents];
-        bool fetchBgImage = _src0CurTime && (_doMasking || _mix != 1.);
+        const PIX* srcPixels[kSourceClipCount];
+        
+        float srcRGBA[4] = {0,0,0,0};
         
         for (int y = procWindow.y1; y < procWindow.y2; ++y) {
             if (_plugin->abort()) {
@@ -1175,7 +1214,17 @@ public:
             
             for (int x = procWindow.x1; x < procWindow.x2; ++x) {
                 
-                const PIX* srcPix0 = fetchBgImage ? (const PIX*) _src0CurTime->getPixelAddress(x, y) : 0;
+                for (int i = kSourceClipCount - 1; i  >= 0; --i) {
+                    srcPixels[i] = _srcCurTime[i] ? (const PIX*) _srcCurTime[i]->getPixelAddress(x,y) : 0;
+                    for (int k = 0; k < 4; ++k) {
+                        if (k < _nSrcComponents[i]) {
+                            srcRGBA[k] =  srcPixels[i] ? *(srcPixels[i] + k) / maxValue : 0.;
+                        } else {
+                            srcRGBA[k] = 0.;
+                        }
+                    }
+                    _expression->setRGBA(i, srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3]);
+                }
                 
                 _expression->setXY(x, y);
                 SeVec3d result = _expression->evaluate();
@@ -1188,7 +1237,7 @@ public:
                     }
                 }
                 
-                OFX::ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPix0, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
+                OFX::ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPixels[0], _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 
                 // increment the dst pixel
                 dstPix += nComponents;
@@ -1663,9 +1712,25 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         OFX::Clip* clip = getClip(it->first);
         assert(clip);
         
+        bool hasFetchedCurrentTime = false;
         for (std::size_t i = 0; i < it->second.size(); ++i) {
+            
+            if (it->second[i] != it->second[i]) {
+                //This number is NaN! The user probably used something dependant on a pixel value as a time for the getPixel function
+                setPersistentMessage(OFX::Message::eMessageError, "", "Invalid frame for getPixel, see the Limitations in the description.");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            
             OfxRangeD range;
+            if (it->second[i] == args.time) {
+                hasFetchedCurrentTime = true;
+            }
             range.min = range.max = it->second[i];
+            frames.setFramesNeeded(*clip, range);
+        }
+        if (!hasFetchedCurrentTime) {
+            OfxRangeD range;
+            range.min = range.max = args.time;
             frames.setFramesNeeded(*clip, range);
         }
         
@@ -1705,61 +1770,35 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
         
+        //Notify that we will need the RoI for all connected input clips at the current time
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            OFX::Clip* clip = getClip(i);
+            assert(clip);
+            if (clip->isConnected()) {
+                rois.setRegionOfInterest(*clip, args.regionOfInterest);
+            }
+        }
+        
+        //Now evaluate the expression once and determine whether the user will call getPixel.
+        //If he/she does, then we have no choice but to ask for the entire input image because we do not know
+        //what the user may need (typically when applying UVMaps and stuff)
+        
         double par = _srcClip[0]->getPixelAspectRatio();
         
         OfxRectI originalRoIPixel;
         OFX::MergeImages2D::toPixelEnclosing(args.regionOfInterest, args.renderScale, par, &originalRoIPixel);
         
-        expr.setXY(originalRoIPixel.x1, originalRoIPixel.y1);
         (void)expr.evaluate();
+        const std::map<int,std::vector<OfxTime> >& framesNeeded = expr.getFramesNeeded();
         
-        expr.setXY(originalRoIPixel.x1, originalRoIPixel.y2 - 1);
-        (void)expr.evaluate();
-
-        expr.setXY(originalRoIPixel.x2 - 1, originalRoIPixel.y2 - 1);
-        (void)expr.evaluate();
-
-        expr.setXY(originalRoIPixel.x2 - 1, originalRoIPixel.y1);
-        (void)expr.evaluate();
-        
-        
-        bool clipSet[kSourceClipCount];
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            clipSet[i] = false;
-        }
-
-        const std::map<int,OfxRectI>& roisMap = expr.getRoIs();
-        for (std::map<int,OfxRectI>::const_iterator it = roisMap.begin(); it != roisMap.end(); ++it) {
-            assert(it->first >= 0 && it->first < kSourceClipCount);
+        for (std::map<int,std::vector<OfxTime> >::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
             OFX::Clip* clip = getClip(it->first);
             assert(clip);
-            
-            clipSet[it->first] = true;
-            
-            OfxRectD roi;
-            OFX::MergeImages2D::toCanonical(it->second, args.renderScale, par, &roi);
-            rois.setRegionOfInterest(*clip, roi);
-        }
-        
-        bool isMasked = _maskClip ? _maskClip->isConnected() : false;
-        
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            if (i == 0 && isMasked) {
-                //Make sure the first input is fetched on all the render window if we are using a mask
-                rois.setRegionOfInterest(*_srcClip[0], args.regionOfInterest);
-            }
-            
-            if (!clipSet) {
-                
-                OFX::Clip* clip = getClip(i);
-                assert(clip);
-                //Set an empty roi if the user didn't specify any interest for this input.
-                OfxRectD emptyRoI;
-                emptyRoI.x1 = emptyRoI.y1 = emptyRoI.x2 = emptyRoI.y2 = 0.;
-                rois.setRegionOfInterest(*clip, emptyRoI);
+            if (clip->isConnected()) {
+                rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(args.time));
             }
         }
+        
     }
 }
 
