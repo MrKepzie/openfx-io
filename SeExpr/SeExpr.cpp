@@ -102,7 +102,7 @@
 "- y: This is the pixel Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
 "- u: This is the normalized (to the output image size) X coordinate of the output pixel to render\n\n" \
 "- v: This is the normalized (to the output image size) Y coordinate of the output pixel to render\n\n" \
-"- scale: A 2-Dimensional vector (X,Y) indicating the scale at which the image is being rendered. Depending on the zoom level "
+"- scale: A 2-Dimensional vector (X,Y) indicating the scale at which the image is being rendered. Depending on the zoom level " \
 "of the viewer, the image might be rendered at a lower scale than usual. This parameter is useful when producing spatial " \
 "effects that need to be invariant to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
 "image is being rendered at half of its original size.\n\n " \
