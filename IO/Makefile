@@ -14,7 +14,9 @@ PLUGINOBJECTS = \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
-    SeExpr.o \
+        SeExpr.o \
+	ofxsGenerator.o \
+	ofxsRectangleInteract.o \
 	PluginRegistrationCombined.o
 
 PLUGINNAME = IO

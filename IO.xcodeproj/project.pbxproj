@@ -215,6 +215,10 @@
 		ACE084B41AB4ABAF00BE558C /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */; };
 		ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */; };
 		ACE084B61AB4ABDF00BE558C /* SeExpr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */; };
+		ACE90FFD1AB74341007A49F8 /* ofxsRectangleInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F2E198A505E0095C8AA /* ofxsRectangleInteract.cpp */; };
+		ACE90FFE1AB7434C007A49F8 /* ofxsGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */; };
+		ACE90FFF1AB74353007A49F8 /* ofxsGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */; };
+		ACE910001AB7435B007A49F8 /* ofxsRectangleInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F2E198A505E0095C8AA /* ofxsRectangleInteract.cpp */; };
 		D709B95418787D6700D5A0B4 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D7330DD218867B35004A6199 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
 		D74E624A1875A7A400D8FA13 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
@@ -541,6 +545,8 @@
 		ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeExpr.cpp; sourceTree = "<group>"; };
 		ACE0849D1AB4AB7E00BE558C /* SeExpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeExpr.h; sourceTree = "<group>"; };
 		ACE084B21AB4AB9B00BE558C /* SeExpr.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SeExpr.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsGenerator.cpp; sourceTree = "<group>"; };
+		ACE90FFC1AB7433D007A49F8 /* ofxsGenerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsGenerator.h; sourceTree = "<group>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -765,6 +771,8 @@
 		1E9B5F21198A50250095C8AA /* SupportExt */ = {
 			isa = PBXGroup;
 			children = (
+				ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */,
+				ACE90FFC1AB7433D007A49F8 /* ofxsGenerator.h */,
 				1E9B5F22198A505E0095C8AA /* ofxsCopier.h */,
 				1E9B5F23198A505E0095C8AA /* ofxsFilter.h */,
 				1E9B5F24198A505E0095C8AA /* ofxsFormatResolution.h */,
@@ -1152,6 +1160,8 @@
 				1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */,
 				1E2F4D9C189295F600F4CE25 /* FFmpegFile.cpp in Sources */,
 				1E2F4DA7189295F600F4CE25 /* WriteFFmpeg.cpp in Sources */,
+				ACE90FFF1AB74353007A49F8 /* ofxsGenerator.cpp in Sources */,
+				ACE910001AB7435B007A49F8 /* ofxsRectangleInteract.cpp in Sources */,
 				1E9B5EA81986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E0524AD19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
@@ -1250,6 +1260,8 @@
 				ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */,
 				ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */,
 				ACE084B41AB4ABAF00BE558C /* PluginRegistration.cpp in Sources */,
+				ACE90FFE1AB7434C007A49F8 /* ofxsGenerator.cpp in Sources */,
+				ACE90FFD1AB74341007A49F8 /* ofxsRectangleInteract.cpp in Sources */,
 				ACE084A61AB4AB9B00BE558C /* ofxsPropertyValidation.cpp in Sources */,
 				ACE084A71AB4AB9B00BE558C /* ofxsLog.cpp in Sources */,
 				ACE084A81AB4AB9B00BE558C /* ofxsInteract.cpp in Sources */,
