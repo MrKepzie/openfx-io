@@ -949,15 +949,15 @@ OFXSeExpression::resolveVar(const std::string& varName) const
 
     char name[256];
     for (int i = 0; i < kParamsCount; ++i) {
-        snprintf(name, sizeof(name), "%s%d", kParamDouble, i+1);
+        snprintf(name, sizeof(name), kParamDouble, i+1);
         if (name == varName) {
             return _doubleRefs[i];
         }
-        snprintf(name, sizeof(name), "%s%d", kParamDouble2D, i+1);
+        snprintf(name, sizeof(name), kParamDouble2D, i+1);
         if (name == varName) {
             return _double2DRefs[i];
         }
-        snprintf(name, sizeof(name), "%s%d", kParamColor, i+1);
+        snprintf(name, sizeof(name), kParamColor, i+1);
         if (name == varName) {
             return _colorRefs[i];
         }
