@@ -2324,7 +2324,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->addSupportedComponent(ePixelComponentAlpha);
     dstClip->addSupportedComponent(ePixelComponentCustom);
-    dstClip->setSupportsTiles(false);
+    dstClip->setSupportsTiles(true);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
