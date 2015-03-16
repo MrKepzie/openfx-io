@@ -119,20 +119,20 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kParamReload "reload"
 #define kParamReloadLabel "Reload"
 #define kParamReloadHint "Reloads specified files"
-#define kVersionParamName "version"
+#define kParamVersion "version"
 
 #define kParamCCCID "cccId"
 #define kParamCCCIDLabel "CCC Id"
 #define kParamCCCIDHint "If the source file is an ASC CDL CCC (color correction collection), " \
 "this specifies the id to lookup. OpenColorIO::Contexts (envvars) are obeyed."
-#define kCCCIDChoiceParamName "cccIdIndex"
+#define kParamCCCIDChoice "cccIdIndex"
 
 #define kParamExport "export"
 #define kParamExportLabel "Export"
 #define kParamExportHint "Export this grade as a ColorCorrection XML file (.cc), which can be loaded with the OCIOFileTransform, or using a FileTransform in an OCIO config. The file must not already exist."
 #define kParamExportDefault "Set filename to export this grade as .cc"
 
-static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kCCCIDChoiceParamName from available IDs
+static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kParamCCCIDChoice from available IDs
 
 class OCIOCDLTransformPlugin : public OFX::ImageEffect
 {
@@ -328,7 +328,7 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     direction_ = fetchChoiceParam(kParamDirection);
     readFromFile_ = fetchBooleanParam(kParamReadFromFile);
     file_ = fetchStringParam(kParamFile);
-    version_ = fetchIntParam(kVersionParamName);
+    version_ = fetchIntParam(kParamVersion);
     cccid_ = fetchStringParam(kParamCCCID);
     export_ = fetchStringParam(kParamExport);
     assert(slope_ && offset_ && power_ && saturation_ && direction_ && readFromFile_ && file_ && version_ && cccid_ && export_);
@@ -1017,7 +1017,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         page->addChild(*param);
     }
     {
-        IntParamDescriptor *param = desc.defineIntParam(kVersionParamName);
+        IntParamDescriptor *param = desc.defineIntParam(kParamVersion);
         param->setIsSecret(true); // always secret
         param->setDefault(1);
         page->addChild(*param);

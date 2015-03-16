@@ -61,9 +61,9 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kMaxRetriesParamName "maxRetries"
-#define kMaxRetriesParamLabel "Max retries per frame"
-#define kMaxRetriesParamHint "Some video files are sometimes tricky to read and needs several retries before successfully decoding a frame. This" \
+#define kParamMaxRetries "maxRetries"
+#define kParamMaxRetriesLabel "Max retries per frame"
+#define kParamMaxRetriesHint "Some video files are sometimes tricky to read and needs several retries before successfully decoding a frame. This" \
 " parameter controls how many times we should attempt to decode the same frame before failing. "
 
 #define kSupportsRGBA true
@@ -110,7 +110,7 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager,OfxImageEffectHand
 , _manager(manager)
 , _maxRetries(0)
 {
-    _maxRetries = fetchIntParam(kMaxRetriesParamName);
+    _maxRetries = fetchIntParam(kParamMaxRetries);
     assert(_maxRetries);
     int originalFrameRangeMin, originalFrameRangeMax;
     _originalFrameRange->getValue(originalFrameRangeMin, originalFrameRangeMax);
@@ -554,9 +554,9 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
     
     {
-        OFX::IntParamDescriptor *param = desc.defineIntParam(kMaxRetriesParamName);
-        param->setLabel(kMaxRetriesParamLabel);
-        param->setHint(kMaxRetriesParamHint);
+        OFX::IntParamDescriptor *param = desc.defineIntParam(kParamMaxRetries);
+        param->setLabel(kParamMaxRetriesLabel);
+        param->setHint(kParamMaxRetriesHint);
         param->setAnimates(false);
         param->setDefault(10);
         param->setRange(0, 100);

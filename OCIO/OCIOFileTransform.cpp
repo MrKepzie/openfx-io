@@ -40,6 +40,12 @@
 
 #include "OCIOFileTransform.h"
 
+#include <stdio.h> // for snprintf & _snprintf
+#ifdef _WINDOWS
+#include <windows.h>
+#define snprintf _snprintf
+#endif
+
 #include <OpenColorIO/OpenColorIO.h>
 
 #include "ofxsProcessing.H"
@@ -81,13 +87,13 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kParamReload "reload"
 #define kParamReloadLabel "Reload"
 #define kParamReloadHint "Reloads specified files"
-#define kVersionParamName "version"
+#define kParamVersion "version"
 
 #define kParamCCCID "cccId"
 #define kParamCCCIDLabel "CCC Id"
 #define kParamCCCIDHint "If the source file is an ASC CDL CCC (color correction collection), " \
 "this specifies the id to lookup. OpenColorIO::Contexts (envvars) are obeyed."
-#define kCCCIDChoiceParamName "cccIdIndex"
+#define kParamCCCIDChoice "cccIdIndex"
 
 #define kParamDirection "direction"
 #define kParamDirectionLabel "Direction"
@@ -103,7 +109,7 @@ namespace OCIO = OCIO_NAMESPACE;
 #define kParamInterpolationOptionTetrahedral "Tetrahedral"
 #define kParamInterpolationOptionBest "Best"
 
-static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kCCCIDChoiceParamName from available IDs
+static bool gHostIsNatron = false; // TODO: generate a CCCId choice param kParamCCCIDChoice from available IDs
 
 class OCIOFileTransformPlugin : public OFX::ImageEffect
 {
@@ -279,7 +285,7 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
     maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
     file_ = fetchStringParam(kParamFile);
-    version_ = fetchIntParam(kVersionParamName);
+    version_ = fetchIntParam(kParamVersion);
     cccid_ = fetchStringParam(kParamCCCID);
     direction_ = fetchChoiceParam(kParamDirection);
     interpolation_ = fetchChoiceParam(kParamInterpolation);
@@ -657,17 +663,15 @@ mDeclarePluginFactory(OCIOFileTransformPluginFactory, {}, {});
 static std::string
 supportedFormats()
 {
-    std::ostringstream os;
-
-    os << "Supported formats:\n";
+    std::string s = "Supported formats:\n";
     for(int i=0; i<OCIO::FileTransform::getNumFormats(); ++i)
     {
         const char* name = OCIO::FileTransform::getFormatNameByIndex(i);
         const char* exten = OCIO::FileTransform::getFormatExtensionByIndex(i);
-        os << "\n." << exten << " (" << name << ")";
+        s += std::string("\n.") + exten + " (" + name + ")";
     }
     
-    return os.str();
+    return s;
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -740,7 +744,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         page->addChild(*param);
     }
     {
-        IntParamDescriptor *param = desc.defineIntParam(kVersionParamName);
+        IntParamDescriptor *param = desc.defineIntParam(kParamVersion);
         param->setIsSecret(true); // always secret
         param->setDefault(1);
         page->addChild(*param);

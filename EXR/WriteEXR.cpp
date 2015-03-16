@@ -59,8 +59,8 @@
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
-#define kWriteEXRCompressionParamName "compression"
-#define kWriteEXRDataTypeParamName "dataType"
+#define kParamWriteEXRCompression "compression"
+#define kParamWriteEXRDataType "dataType"
 
 #ifndef OPENEXR_IMF_NAMESPACE
 #define OPENEXR_IMF_NAMESPACE Imf
@@ -144,8 +144,8 @@ WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
 , _compression(0)
 , _bitDepth(0)
 {
-    _compression = fetchChoiceParam(kWriteEXRCompressionParamName);
-    _bitDepth = fetchChoiceParam(kWriteEXRDataTypeParamName);
+    _compression = fetchChoiceParam(kParamWriteEXRCompression);
+    _bitDepth = fetchChoiceParam(kParamWriteEXRDataType);
 }
 
 WriteEXRPlugin::~WriteEXRPlugin(){
@@ -299,7 +299,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     /////////Compression
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWriteEXRCompressionParamName);
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRCompression);
         param->setAnimates(true);
         for (int i =0; i < 6; ++i) {
             param->appendOption(Exr::compressionNames[i]);
@@ -310,7 +310,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     ////////Data type
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWriteEXRDataTypeParamName);
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRDataType);
         param->setAnimates(true);
         for(int i = 0 ; i < 2 ; ++i) {
             param->appendOption(Exr::depthNames[i]);
