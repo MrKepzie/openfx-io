@@ -1,8 +1,8 @@
 /*
  OFX SeExpr plugin.
- Run a shell script.
+ Execute a SeExpr script.
 
- Copyright (C) 2014 INRIA
+ Copyright (C) 2015 INRIA
  
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -88,7 +88,7 @@
 #define kPluginName "SeExpr"
 #define kPluginGrouping "Merge"
 #define kPluginDescription \
-"Use the Walt Disney Animation Studio SeExpr library to write an expression to process pixels of the input image.\n" \
+"Use the Walt Disney Animation Studio SeExpr expresion language to process pixels of the input image.\n" \
 "SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
 "Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images. " \
 "The following pre-defined variables can be used in the script:\n\n" \
@@ -149,22 +149,22 @@
 #define kSeExprDefaultScript "$color = " kSeExprGetPixelFuncName "(1, frame, x, y);\n#Return the output color\n$color"
 
 #define kBoundingBoxParamName "boundingBox"
-#define kBoundingBoxParamLabel "Bounding box"
-#define kBoundingBoxParamHint "The region to output"
+#define kBoundingBoxParamLabel "Bounding Box"
+#define kBoundingBoxParamHint "The region to output."
 
 #define kBoundingBoxChoiceUnion "Union"
-#define kBoundingBoxChoiceUnionHelp "The output region will be the union of all connected inputs bounding box"
+#define kBoundingBoxChoiceUnionHelp "The output region will be the union of all connected inputs bounding box."
 #define kBoundingBoxChoiceIntersection "Intersection"
-#define kBoundingBoxChoiceIntersectionHelp "The output region will be the intersection of all connected inputs bounding box"
+#define kBoundingBoxChoiceIntersectionHelp "The output region will be the intersection of all connected inputs bounding box."
 #define kBoundingBoxChoiceCustomInput "Input"
-#define kBoundingBoxChoiceCustomInputHelp "The output region will be the bounding box of the input"
+#define kBoundingBoxChoiceCustomInputHelp "The output region will be the bounding box of the input."
 
 #define kLayerInputParamName "layerInput"
 #define kLayerInputParamLabel "Input Layer"
 #define kLayerInputParamHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on the given input."
 
 #define kDoubleParamNumberParamName "noDoubleParams"
-#define kDoubleParamNumberParamLabel "Number of scalar parameters"
+#define kDoubleParamNumberParamLabel "Number of Scalar Parameters"
 #define kDoubleParamNumberParamHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
 #define kDoubleParamName "x"
@@ -172,7 +172,7 @@
 #define kDoubleParamHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, e.g: $x1"
 
 #define kDouble2DParamNumberParamName "noDouble2DParams"
-#define kDouble2DParamNumberParamLabel "Number of positional parameters"
+#define kDouble2DParamNumberParamLabel "Number of Positional Parameters"
 #define kDouble2DParamNumberParamHint "Use this to control how many positional parameters should be exposed to the SeExpr expression."
 
 #define kDouble2DParamName "pos"
@@ -180,7 +180,7 @@
 #define kDouble2DParamHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, e.g: $pos1"
 
 #define kColorParamNumberParamName "noColorParams"
-#define kColorParamNumberParamLabel "Number of color parameters"
+#define kColorParamNumberParamLabel "Number of Color Parameters"
 #define kColorParamNumberParamHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
 #define kColorParamName "color"
@@ -202,7 +202,7 @@
 #define kSeExprDisparityLeftPlaneName "DisparityLeft"
 #define kSeExprDisparityRightPlaneName "DisparityRight"
 
-static bool gHostIsMultiPlanar ;
+static bool gHostIsMultiPlanar;
 
 class SeExprProcessorBase;
 
@@ -1974,8 +1974,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     }
     
     {
-        GroupParamDescriptor *group = desc.defineGroupParam("Scalar variables");
-        group->setLabel("Scalar variables");
+        GroupParamDescriptor *group = desc.defineGroupParam("Scalar Variables");
+        group->setLabel("Scalar Variables");
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setOpen(false);
         page->addChild(*group);
@@ -2009,8 +2009,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     }
     
     {
-        GroupParamDescriptor *group = desc.defineGroupParam("Position variables");
-        group->setLabel("Position variables");
+        GroupParamDescriptor *group = desc.defineGroupParam("Position Variables");
+        group->setLabel("Position Variables");
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setOpen(false);
         page->addChild(*group);
@@ -2044,8 +2044,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     }
     
     {
-        GroupParamDescriptor *group = desc.defineGroupParam("Color variables");
-        group->setLabel("Color variables");
+        GroupParamDescriptor *group = desc.defineGroupParam("Color Variables");
+        group->setLabel("Color Variables");
         group->setLayoutHint(OFX::eLayoutHintDivider);
         group->setOpen(false);
         page->addChild(*group);

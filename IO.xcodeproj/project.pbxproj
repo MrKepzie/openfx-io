@@ -541,7 +541,6 @@
 		ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeExpr.cpp; sourceTree = "<group>"; };
 		ACE0849D1AB4AB7E00BE558C /* SeExpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeExpr.h; sourceTree = "<group>"; };
 		ACE084B21AB4AB9B00BE558C /* SeExpr.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SeExpr.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		ACE084B31AB4AB9B00BE558C /* RunScript.ofx copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "RunScript.ofx copy-Info.plist"; path = "/Users/alexandre/development/openfx-io/RunScript.ofx copy-Info.plist"; sourceTree = "<absolute>"; };
 		D709B95318787D6700D5A0B4 /* EXR.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EXR.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D7330DD118867B35004A6199 /* OIIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OIIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		D74E62461875A7A400D8FA13 /* FFmpeg.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FFmpeg.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -880,7 +879,6 @@
 				1E9B5F21198A50250095C8AA /* SupportExt */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
-				ACE084B31AB4AB9B00BE558C /* RunScript.ofx copy-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};

@@ -1,7 +1,7 @@
 /*
  OFX SeExpr plugin.
 
- Copyright (C) 2014 INRIA
+ Copyright (C) 2015 INRIA
  
  Redistribution and use in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
