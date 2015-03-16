@@ -139,20 +139,20 @@
 #define kParamCount                   "paramCount"
 #define kParamCountLabel              "Number of Parameters"
 
-#define kParamType                    "type"
-#define kParamTypeLabel               "Type of Parameter"
+#define kParamType                    "type%d"
+#define kParamTypeLabel               "Type of Parameter %d"
 
-#define kParamTypeFilenameName  "filename"
-#define kParamTypeFilenameLabel "File Name"
+#define kParamTypeFilenameName  "filename%d"
+#define kParamTypeFilenameLabel "File Name %d"
 #define kParamTypeFilenameHint  "A constant or animated string containing a filename.\nIf the string contains hashes (like ####) or a printf token (like %04d), they will be replaced by the frame number, and if it contains %v or %V, it will be replaced by the view ID (\"l\" or \"r\" for %v, \"left\" or \"right\" for %V).\nThis is usually linked to the output filename of an upstream Writer node, or to the input filename of a downstream Reader node."
-#define kParamTypeStringName          "string"
-#define kParamTypeStringLabel         "String"
+#define kParamTypeStringName          "string%d"
+#define kParamTypeStringLabel         "String %d"
 #define kParamTypeStringHint          "A string (or sequence of characters)."
-#define kParamTypeDoubleName          "double"
-#define kParamTypeDoubleLabel         "Floating Point"
+#define kParamTypeDoubleName          "double%d"
+#define kParamTypeDoubleLabel         "Floating Point %d"
 #define kParamTypeDoubleHint          "A floating point numerical value."
-#define kParamTypeIntName             "integer"
-#define kParamTypeIntLabel            "Integer"
+#define kParamTypeIntName             "integer%d"
+#define kParamTypeIntLabel            "Integer %d"
 #define kParamTypeIntHint             "An integer numerical value."
 
 
@@ -227,15 +227,15 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     param_count_ = fetchIntParam(kParamCount);
 
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
-        snprintf(name, sizeof(name), "%s%d", kParamType, i+1);
+        snprintf(name, sizeof(name), kParamType, i+1);
         type_[i] = fetchChoiceParam(name);
-        snprintf(name, sizeof(name), "%s%d", kParamTypeFilenameName, i+1);
+        snprintf(name, sizeof(name), kParamTypeFilenameName, i+1);
         filename_[i] = fetchStringParam(name);
-        snprintf(name, sizeof(name), "%s%d", kParamTypeStringName, i+1);
+        snprintf(name, sizeof(name), kParamTypeStringName, i+1);
         string_[i] = fetchStringParam(name);
-        snprintf(name, sizeof(name), "%s%d", kParamTypeDoubleName, i+1);
+        snprintf(name, sizeof(name), kParamTypeDoubleName, i+1);
         double_[i] = fetchDoubleParam(name);
-        snprintf(name, sizeof(name), "%s%d", kParamTypeIntName, i+1);
+        snprintf(name, sizeof(name), kParamTypeIntName, i+1);
         int_[i] = fetchIntParam(name);
     }
     script_ = fetchStringParam(kParamScript);
@@ -685,9 +685,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         // We thus hide them in updateVisibility(), which is called after instance creation
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
             {
-                snprintf(name, sizeof(name), "%s%d", kParamType, i+1);
+                snprintf(name, sizeof(name), kParamType, i+1);
                 ChoiceParamDescriptor* param = desc.defineChoiceParam(name);
-                snprintf(name, sizeof(name), "%s%d", kParamTypeLabel, i+1);
+                snprintf(name, sizeof(name), kParamTypeLabel, i+1);
                 param->setLabel(name);
                 param->setAnimates(true);
                 param->appendOption(kParamTypeFilenameLabel, kParamTypeFilenameHint);
@@ -700,9 +700,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), "%s%d", kParamTypeFilenameName, i+1);
+                snprintf(name, sizeof(name), kParamTypeFilenameName, i+1);
                 StringParamDescriptor* param = desc.defineStringParam(name);
-                snprintf(name, sizeof(name), "%s%d", kParamTypeFilenameLabel, i+1);
+                snprintf(name, sizeof(name), kParamTypeFilenameLabel, i+1);
                 param->setLabel(name);
                 param->setHint(kParamTypeFilenameHint);
                 param->setStringType(eStringTypeFilePath);
@@ -714,9 +714,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), "%s%d", kParamTypeStringName, i+1);
+                snprintf(name, sizeof(name), kParamTypeStringName, i+1);
                 StringParamDescriptor* param = desc.defineStringParam(name);
-                snprintf(name, sizeof(name), "%s%d", kParamTypeStringLabel, i+1);
+                snprintf(name, sizeof(name), kParamTypeStringLabel, i+1);
                 param->setLabel(name);
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
@@ -726,9 +726,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), "%s%d", kParamTypeDoubleName, i+1);
+                snprintf(name, sizeof(name), kParamTypeDoubleName, i+1);
                 DoubleParamDescriptor* param = desc.defineDoubleParam(name);
-                snprintf(name, sizeof(name), "%s%d", kParamTypeDoubleLabel, i+1);
+                snprintf(name, sizeof(name), kParamTypeDoubleLabel, i+1);
                 param->setLabel(name);
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
@@ -738,9 +738,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), "%s%d", kParamTypeIntName, i+1);
+                snprintf(name, sizeof(name), kParamTypeIntName, i+1);
                 IntParamDescriptor* param = desc.defineIntParam(name);
-                snprintf(name, sizeof(name), "%s%d", kParamTypeIntLabel, i+1);
+                snprintf(name, sizeof(name), kParamTypeIntLabel, i+1);
                 param->setLabel(name);
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
