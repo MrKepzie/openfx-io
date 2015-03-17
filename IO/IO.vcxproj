@@ -273,8 +273,10 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx
     <ClCompile Include="..\PFM\ReadPFM.cpp" />
     <ClCompile Include="..\PFM\WritePFM.cpp" />
     <ClCompile Include="..\SeExpr\SeExpr.cpp" />
+    <ClCompile Include="..\SupportExt\ofxsGenerator.cpp" />
     <ClCompile Include="..\SupportExt\ofxsOGLFontData.cpp" />
     <ClCompile Include="..\SupportExt\ofxsOGLTextRenderer.cpp" />
+    <ClCompile Include="..\SupportExt\ofxsRectangleInteract.cpp" />
     <ClCompile Include="PluginRegistrationCombined.cpp" />
   </ItemGroup>
   <ItemGroup>
