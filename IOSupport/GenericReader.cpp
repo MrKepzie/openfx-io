@@ -1529,6 +1529,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 decodePlane(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->rawComps, tmpRowBytes);
             }
             
+            if (abort()) {
+                return;
+            }
+            
             ///do the color-space conversion
             if (!isOCIOIdentity && it->comps != OFX::ePixelComponentAlpha) {
                 if (premult == OFX::eImagePreMultiplied) {
@@ -1536,6 +1540,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     DBG(std::printf("unpremult (tmp in-place)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
                     unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, it->comps, firstDepth, tmpRowBytes);
+                    
+                    if (abort()) {
+                        return;
+                    }
+
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
                 DBG(std::printf("OCIO (tmp in-place)\n"));
@@ -1562,6 +1571,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, it->comps,
                                    firstDepth, renderWindowFullRes, tmpRowBytes, scaledPixelData,
                                    it->comps, firstDepth, firstBounds, mem2RowBytes, it->numChans);
+                    
+                    if (abort()) {
+                        return;
+                    }
+
                     // apply premult
                     DBG(std::printf("premult (scaled to dst)\n"));
                     //scaledPixelData[0] = scaledPixelData[1] = scaledPixelData[2] = 1.; scaledPixelData[3] = 0.5;
