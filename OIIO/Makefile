@@ -15,6 +15,5 @@ fr.inria.openfx.WriteOIIO.svg
 
 include ../Makefile.master
 
-OIIO_HOME ?= /usr
-CXXFLAGS += -I$(OIIO_HOME)/include
-LINKFLAGS += -L$(OIIO_HOME)/lib -lOpenImageIO
+CXXFLAGS += $(OIIO_CXXFLAGS) $(OCIO_CXXFLAGS)
+LINKFLAGS += $(OIIO_LINKFLAGS) $(OCIO_LINKFLAGS)

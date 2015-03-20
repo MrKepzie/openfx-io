@@ -4,3 +4,5 @@ RESOURCES = #fr.inria.openfx.RunScript.png fr.inria.openfx.RunScript.svg
 
 include ../Makefile.master
 
+CXXFLAGS += $(SEEXPR_CXXFLAGS)
+LINKFLAGS += $(SEEXPR_LINKFLAGS)

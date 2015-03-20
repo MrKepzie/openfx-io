@@ -58,31 +58,5 @@ include ../Makefile.master
 
 CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript -I../SeExpr
 
-LOCAL=/usr
-
-# OpenEXR
-OPENEXR_CXXFLAGS =`pkg-config --cflags OpenEXR`
-OPENEXR_LINKFLAGS =`pkg-config --libs OpenEXR`
-
-# FFmpeg
-FFMPEG_CXXFLAGS = `pkg-config --cflags libavformat libavcodec libswscale libavutil`
-FFMPEG_LINKFLAGS = `pkg-config --libs libavformat libavcodec libswscale libavutil` 
-
-# OpenImageIO
-OIIO_HOME ?= /usr
-OIIO_CXXFLAGS = -I$(OIIO_HOME)/include
-OIIO_LINKFLAGS = -L$(OIIO_HOME)/lib -lOpenImageIO
-ifeq ($(OS),Linux)
-OIIO_LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib
-endif
-
-#SeExpr
-SEEXPR_HOME ?=/usr
-SEEXPR_CXXFLAGS = -I$(SEEXPR_HOME)/include
-SEEXPR_LINKFLAGS = -L$(SEEXPR_HOME)/lib -lSeExpr
-ifeq ($(OS),Linux)
-SEEXPR_LINKFLAGS += -Wl,-rpath,$(SEEXPR_HOME)/lib
-endif
-
 CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS)
 LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS)

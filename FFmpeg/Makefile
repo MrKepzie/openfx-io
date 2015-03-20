@@ -11,5 +11,5 @@ fr.inria.openfx.ReadFFmpeg.svg \
 fr.inria.openfx.WriteFFmpeg.png \
 fr.inria.openfx.WriteFFmpeg.svg 
 
-CXXFLAGS += `pkg-config --cflags libavformat libavcodec libswscale libavutil`
-LINKFLAGS += `pkg-config --libs libavformat libavcodec libswscale libavutil`
+CXXFLAGS += $(FFMPEG_CXXFLAGS) $(OCIO_CXXFLAGS)
+LINKFLAGS += $(FFMPEG_LINKFLAGS) $(OCIO_LINKFLAGS)

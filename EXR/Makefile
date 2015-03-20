@@ -10,5 +10,5 @@ fr.inria.openfx.ReadEXR.svg
 
 include ../Makefile.master
 
-CXXFLAGS += `pkg-config --cflags OpenEXR`
-LINKFLAGS += `pkg-config --libs OpenEXR`
+CXXFLAGS += $(OPENEXR_CXXFLAGS) $(OCIO_CXXFLAGS)
+LINKFLAGS += $(OPENEXR_LINKFLAGS) $(OCIO_LINKFLAGS)
