@@ -372,7 +372,7 @@ protected:
     
     struct ImageData
     {
-        OFX::Image* img;
+        const OFX::Image* img;
         int nComponents;
         
         ImageData() : img(0), nComponents(0) {}
@@ -380,7 +380,8 @@ protected:
     
     
     // <clipIndex, <time, image> >
-    typedef std::map<int, std::map<OfxTime, ImageData> > FetchedImagesMap;
+    typedef std::map<OfxTime, const ImageData> FetchedImagesForClipMap;
+    typedef std::map<int, FetchedImagesForClipMap> FetchedImagesMap;
     FetchedImagesMap _images;
     
 public:
@@ -407,73 +408,51 @@ public:
                    const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale);
     
     bool isExprOk(std::string* error);
-    
-    OFX::Image* getOrFetchImage(int inputIndex, OfxTime time, int* nComponents) {
-        FetchedImagesMap::iterator foundInput = _images.find(inputIndex);
-        if (foundInput == _images.end()) {
-            OFX::Clip* clip = _plugin->getClip(inputIndex);
-            assert(clip);
-            if (!clip->isConnected()) {
-                return 0;
-            }
-            ImageData data;
-            if (gHostIsMultiPlanar) {
-                if (_layersToFetch[inputIndex].empty()) {
-                    data.img = 0;
-                } else {
-                    data.img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
-                }
-            } else {
-                data.img = clip->fetchImage(time);
-            }
-            if (!data.img) {
-                return 0;
-            }
-            data.nComponents = getNComponents(data.img->getPixelComponents(), data.img->getPixelComponentsProperty());
-            *nComponents = data.nComponents;
-            std::map<OfxTime, ImageData> imgMap;
-            imgMap.insert(std::make_pair(time, data));
-            std::pair<FetchedImagesMap::iterator,bool> ret = _images.insert(std::make_pair(inputIndex, imgMap));
-            assert(ret.second);
-            return data.img;
-        } else {
-            std::map<OfxTime, ImageData>::iterator foundImage = foundInput->second.find(time);
-            if (foundImage == foundInput->second.end()) {
-                OFX::Clip* clip = _plugin->getClip(inputIndex);
-                assert(clip);
-                
-                if (!clip->isConnected()) {
-                    return 0;
-                }
 
-                ImageData data;
-                if (gHostIsMultiPlanar) {
-                    data.img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
-                } else {
-                    data.img = clip->fetchImage(time);
-                }
-                if (!data.img) {
-                    return 0;
-                }
-                data.nComponents = getNComponents(data.img->getPixelComponents(), data.img->getPixelComponentsProperty());
-                *nComponents = data.nComponents;
-                std::pair<std::map<OfxTime, ImageData>::iterator, bool> ret = foundInput->second.insert(std::make_pair(time, data));
-                assert(ret.second);
-                return data.img;
-            } else {
-                *nComponents = foundImage->second.nComponents;
-                return foundImage->second.img;
-            }
+    const OFX::Image* getOrFetchImage(int inputIndex,
+                                      OfxTime time,
+                                      int* nComponents)
+    {
+        // find or create input
+        FetchedImagesForClipMap& foundInput = _images[inputIndex];
+
+        FetchedImagesForClipMap::iterator foundImage = foundInput.find(time);
+        if (foundImage != foundInput.end()) {
+            *nComponents = foundImage->second.nComponents;
+            return foundImage->second.img;
         }
+
+        OFX::Clip* clip = _plugin->getClip(inputIndex);
+        assert(clip);
+
+        if (!clip->isConnected()) {
+            return 0;
+        }
+
+        ImageData data;
+        if (gHostIsMultiPlanar) {
+            data.img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
+        } else {
+            data.img = clip->fetchImage(time);
+        }
+        if (!data.img) {
+            return 0;
+        }
+        data.nComponents = getNComponents(data.img->getPixelComponents(), data.img->getPixelComponentsProperty());
+        *nComponents = data.nComponents;
+        std::pair<FetchedImagesForClipMap::iterator, bool> ret = foundInput.insert(std::make_pair(time, data));
+        assert(ret.second);
+        return data.img;
     }
-    
+
     virtual void process(OfxRectI procWindow) = 0;
 };
 
 
 template <typename PIX, int maxComps>
-void getPixInternal(int nComps, void* data, SeVec3d& result) {
-    PIX* pix = (PIX*)data;
+void getPixInternal(int nComps, const void* data, SeVec3d& result)
+{
+    const PIX* pix = (const PIX*)data;
     for (int i = 0; i < nComps; ++i) {
         result[i] = pix[i] / maxComps;
     }
@@ -562,11 +541,11 @@ private:
         node->child(3)->eval(yCoord);
         
         int nComponents;
-        OFX::Image* img = _processor->getOrFetchImage(inputIndex[0] - 1, frame[0], &nComponents);
+        const OFX::Image* img = _processor->getOrFetchImage(inputIndex[0] - 1, frame[0], &nComponents);
         if (!img || nComponents == 0) {
             result[0] = result[1] = result[2] = 0.;
         } else {
-            void* data = img->getPixelAddress(xCoord[0], yCoord[0]);
+            const void* data = img->getPixelAddress(xCoord[0], yCoord[0]);
             if (!data) {
                 result[0] = result[1] = result[2] = 0.;
                 return;
@@ -786,6 +765,8 @@ private:
     
 };
 
+typedef std::map<int,std::vector<OfxTime> > FramesNeeded;
+
 /**
  * @brief Used to determine what are the frames needed and RoIs of the expression
  **/
@@ -799,7 +780,6 @@ class StubSeExpression : public SeExpression
     mutable SimpleScalar _currentTime;
     mutable SimpleScalar _xCoord,_yCoord;
 
-    typedef std::map<int,std::vector<OfxTime> > FramesNeeded;
     mutable FramesNeeded _images;
     
 public:
@@ -832,7 +812,7 @@ public:
         
     }
     
-    const std::map<int,std::vector<OfxTime> >& getFramesNeeded() const
+    const FramesNeeded& getFramesNeeded() const
     {
         return _images;
     }
@@ -845,7 +825,8 @@ class OFXSeExpression : public SeExpression
     mutable GetPixelFuncX _getPix;
     mutable SeExprFunc _getPixFunction;
     OfxRectI _dstPixelRod;
-    std::map<std::string,SeExprVarRef*> _variablesMap;
+    typedef std::map<std::string,SeExprVarRef*> VariablesMap;
+    VariablesMap _variables;
     
     SimpleVec* _scale;
     
@@ -916,7 +897,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 , _getPix(processor)
 , _getPixFunction(_getPix, _getPix.numArgs(), _getPix.numArgs())
 , _dstPixelRod(outputRod)
-, _variablesMap()
+, _variables()
 , _scale(0)
 , _curTime(0)
 , _xCoord(0)
@@ -939,7 +920,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
     _scale->_value[0] = renderScale.x;
     _scale->_value[1] = renderScale.y;
     _scale->_value[2] = 1.;
-    _variablesMap.insert(std::make_pair(kSeExprRenderScaleVarName, _scale));
+    _variables.insert(std::make_pair(kSeExprRenderScaleVarName, _scale));
     
     assert(processor);
     SeExprPlugin* plugin = processor->getPlugin();
@@ -948,56 +929,56 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
     
     _curTime = new SimpleScalar;
     _curTime->_value = time;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprCurrentTimeVarName), _curTime));
+    _variables.insert(std::make_pair(std::string(kSeExprCurrentTimeVarName), _curTime));
     
     _xCoord = new SimpleScalar;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprXCoordVarName), _xCoord));
+    _variables.insert(std::make_pair(std::string(kSeExprXCoordVarName), _xCoord));
     
     _yCoord = new SimpleScalar;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprYCoordVarName), _yCoord));
+    _variables.insert(std::make_pair(std::string(kSeExprYCoordVarName), _yCoord));
     
     _uCoord = new SimpleScalar;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprUCoordVarName), _uCoord));
+    _variables.insert(std::make_pair(std::string(kSeExprUCoordVarName), _uCoord));
     
     _vCoord = new SimpleScalar;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprVCoordVarName), _vCoord));
+    _variables.insert(std::make_pair(std::string(kSeExprVCoordVarName), _vCoord));
     
     _outputWidth = new SimpleScalar;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprOutputWidthVarName), _outputWidth));
+    _variables.insert(std::make_pair(std::string(kSeExprOutputWidthVarName), _outputWidth));
     
     _outputHeight = new SimpleScalar;
-    _variablesMap.insert(std::make_pair(std::string(kSeExprOutputHeightVarName), _outputHeight));
+    _variables.insert(std::make_pair(std::string(kSeExprOutputHeightVarName), _outputHeight));
     
     for (int i = 0; i < kSourceClipCount; ++i) {
         snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
         _inputWidths[i] = new SimpleScalar;
-        _variablesMap.insert(std::make_pair(std::string(name), _inputWidths[i]));
+        _variables.insert(std::make_pair(std::string(name), _inputWidths[i]));
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprInputWidthVarName), _inputWidths[i]));
+            _variables.insert(std::make_pair(std::string(kSeExprInputWidthVarName), _inputWidths[i]));
         }
         
         snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
         _inputHeights[i] = new SimpleScalar;
-        _variablesMap.insert(std::make_pair(std::string(name), _inputHeights[i]));
+        _variables.insert(std::make_pair(std::string(name), _inputHeights[i]));
         
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputHeights[i]));
+            _variables.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputHeights[i]));
         }
         
         snprintf(name, sizeof(name), kSeExprColorVarName "%d", i+1);
         _inputColors[i] = new SimpleVec;
-        _variablesMap.insert(std::make_pair(std::string(name), _inputColors[i]));
+        _variables.insert(std::make_pair(std::string(name), _inputColors[i]));
         
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprColorVarName), _inputColors[i]));
+            _variables.insert(std::make_pair(std::string(kSeExprColorVarName), _inputColors[i]));
         }
         
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
         _inputAlphas[i] = new SimpleScalar;
-        _variablesMap.insert(std::make_pair(std::string(name), _inputAlphas[i]));
+        _variables.insert(std::make_pair(std::string(name), _inputAlphas[i]));
         
         if (i == 0) {
-            _variablesMap.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputAlphas[i]));
+            _variables.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputAlphas[i]));
         }
     }
     
@@ -1011,11 +992,11 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
         _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
         snprintf(name, sizeof(name), kParamDouble, i+1);
-        _variablesMap.insert(std::make_pair(std::string(name), _doubleRef[i]));
+        _variables.insert(std::make_pair(std::string(name), _doubleRef[i]));
         snprintf(name, sizeof(name), kParamDouble2D, i+1);
-        _variablesMap.insert(std::make_pair(std::string(name), _double2DRef[i]));
+        _variables.insert(std::make_pair(std::string(name), _double2DRef[i]));
         snprintf(name, sizeof(name), kParamColor, i+1);
-        _variablesMap.insert(std::make_pair(std::string(name), _colorRef[i]));
+        _variables.insert(std::make_pair(std::string(name), _colorRef[i]));
     }
     
     
@@ -1051,8 +1032,8 @@ OFXSeExpression::~OFXSeExpression()
 SeExprVarRef*
 OFXSeExpression::resolveVar(const std::string& varName) const
 {
-    std::map<std::string,SeExprVarRef*>::const_iterator found = _variablesMap.find(varName);
-    if (found == _variablesMap.end()) {
+    VariablesMap::const_iterator found = _variables.find(varName);
+    if (found == _variables.end()) {
         return 0;
     }
     return found->second;
@@ -1219,7 +1200,7 @@ SeExprProcessorBase::~SeExprProcessorBase()
 {
     delete _expression;
     for (FetchedImagesMap::iterator it = _images.begin(); it!=_images.end(); ++it) {
-        for (std::map<OfxTime, ImageData> ::iterator it2 = it->second.begin(); it2!= it->second.end(); ++it2) {
+        for (FetchedImagesForClipMap::iterator it2 = it->second.begin(); it2!= it->second.end(); ++it2) {
             delete it2->second.img;
         }
     }
@@ -1876,8 +1857,8 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         }
      */
     (void)expr.evaluate();
-    const std::map<int, std::vector<OfxTime > >& framesNeeded = expr.getFramesNeeded();
-    for (std::map<int, std::vector<OfxTime > >::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+    const FramesNeeded& framesNeeded = expr.getFramesNeeded();
+    for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
         
         assert(it->first >= 0  && it->first < kSourceClipCount);
         OFX::Clip* clip = getClip(it->first);
@@ -1960,9 +1941,9 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
         OFX::MergeImages2D::toPixelEnclosing(args.regionOfInterest, args.renderScale, par, &originalRoIPixel);
         
         (void)expr.evaluate();
-        const std::map<int,std::vector<OfxTime> >& framesNeeded = expr.getFramesNeeded();
+        const FramesNeeded& framesNeeded = expr.getFramesNeeded();
         
-        for (std::map<int,std::vector<OfxTime> >::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+        for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
             OFX::Clip* clip = getClip(it->first);
             assert(clip);
             if (clip->isConnected()) {
