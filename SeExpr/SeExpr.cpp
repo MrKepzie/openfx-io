@@ -593,16 +593,6 @@ private:
     
 };
 
-class GetPixelFunc : public SeExprFunc {
-    
-public:
-    
-    GetPixelFunc(SeExprFuncX& f, int minargs, int maxargs)
-    : SeExprFunc(f, GetPixelFuncX::numArgs() , GetPixelFuncX::numArgs()) {
-        
-    }
-};
-
 class DoubleParamVarRef : public SeExprVarRef
 {
     
@@ -632,7 +622,7 @@ public:
     
     //! returns this variable's value by setting result, node refers to
     //! where in the parse tree the evaluation is occurring
-    virtual void eval(const SeExprVarNode* node, SeVec3d& result)
+    virtual void eval(const SeExprVarNode* /*node*/, SeVec3d& result)
     {
         SeExprInternal::AutoLock<SeExprInternal::Mutex> locker(_lock);
         if (!_varSet) {
@@ -673,7 +663,7 @@ public:
     
     //! returns this variable's value by setting result, node refers to
     //! where in the parse tree the evaluation is occurring
-    virtual void eval(const SeExprVarNode* node, SeVec3d& result)
+    virtual void eval(const SeExprVarNode* /*node*/, SeVec3d& result)
     {
         SeExprInternal::AutoLock<SeExprInternal::Mutex> locker(_lock);
         if (!_varSet) {
@@ -715,7 +705,7 @@ public:
     
     //! returns this variable's value by setting result, node refers to
     //! where in the parse tree the evaluation is occurring
-    virtual void eval(const SeExprVarNode* node, SeVec3d& result)
+    virtual void eval(const SeExprVarNode* /*node*/, SeVec3d& result)
     {
         SeExprInternal::AutoLock<SeExprInternal::Mutex> locker(_lock);
         if (!_varSet) {
@@ -742,7 +732,7 @@ public:
     
     virtual bool isVec() { return false;}
    
-    virtual void eval(const SeExprVarNode* node, SeVec3d& result)
+    virtual void eval(const SeExprVarNode* /*node*/, SeVec3d& result)
     {
         result[0] = _value;
     }
@@ -763,7 +753,7 @@ public:
     
     virtual bool isVec() { return true;}
     
-    virtual void eval(const SeExprVarNode* node, SeVec3d& result)
+    virtual void eval(const SeExprVarNode* /*node*/, SeVec3d& result)
     {
         result[0] = _value[0];
         result[1] = _value[1];
@@ -805,7 +795,7 @@ class StubSeExpression : public SeExpression
     
     mutable SimpleScalar _nanScalar,_zeroScalar;
     mutable StubGetPixelFuncX _getPix;
-    mutable GetPixelFunc _getPixFunction;
+    mutable SeExprFunc _getPixFunction;
     mutable SimpleScalar _currentTime;
     mutable SimpleScalar _xCoord,_yCoord;
 
@@ -853,7 +843,7 @@ public:
 class OFXSeExpression : public SeExpression
 {
     mutable GetPixelFuncX _getPix;
-    mutable GetPixelFunc _getPixFunction;
+    mutable SeExprFunc _getPixFunction;
     OfxRectI _dstPixelRod;
     std::map<std::string,SeExprVarRef*> _variablesMap;
     
@@ -924,7 +914,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
                                  const OfxPointD& renderScale, const OfxRectI& outputRod)
 : SeExpression(expr)
 , _getPix(processor)
-, _getPixFunction(_getPix, 4, 4)
+, _getPixFunction(_getPix, _getPix.numArgs(), _getPix.numArgs())
 , _dstPixelRod(outputRod)
 , _variablesMap()
 , _scale(0)
@@ -1137,7 +1127,7 @@ StubGetPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
     
     
     _expr->onGetPixelCalled(inputIndex[0] - 1, frame[0]);
-    
+    result[0] = result[1] = result[2] = std::numeric_limits<double>::quiet_NaN();
 }
 
 StubSeExpression::StubSeExpression(const std::string& expr, OfxTime time)
@@ -1748,12 +1738,14 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
     if (!gHostIsMultiPlanar) {
         return;
     }
-    char name[256];
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        snprintf(name, sizeof(name), "%d", i+1);
-        if (name == clipName) {
-            assert(_srcClip[i]);
-            _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
+    if (args.reason == OFX::eChangeUserEdit) {
+        char name[256];
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            snprintf(name, sizeof(name), "%d", i+1);
+            if (name == clipName) {
+                assert(_srcClip[i]);
+                _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
+            }
         }
     }
 }
