@@ -1,13 +1,35 @@
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "az4QH6KOKwa7UCQBEslcDQkm2yedGAoaGpJQ5UjO3I+W467GpuJm9iPEbKZAwz+Geo/QfLOWVA5w3wfwl8LTrOlI+vKTwbgjV2PkqTaHWzFF31v0p7NUoLDPpidHbs7sX/09q0XbBjdlvgCjs4+mbeGm5hPjk6bIcWX2MD8Wi4g="
+   # Coverity run condition (avoid matrix multiple runs), need customized
+   # build script. Need an update if new matrix cases.
+   - coverity_scan_run_condition='"$CC" = gcc -a "$TRAVIS_OS_NAME" != osx'
+   # Coverity script test mode (if true no uploading, avoid reaching the quota)
+   # usual processing: false.
+   - coverity_scan_script_test_mode=false
+
+os:
+  - linux
+  - osx
+
 language: cpp
 
 compiler:
   - gcc
   - clang
 
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc
+  fast_finish: true
+
 # Travis CI has 1.5 cores per VM, take advantage of it
 # But first, the makefiles have to be fixed: all plugins are using the same .o's
-env:
-  - CONFIG="coverage debug" MAKEFLAGSPARALLEL="-j 2"
+#env:
+#  - MAKEFLAGS="-j 2"
 
 # requires boost >= 1.49 to compile in C++11 mode
 # see http://stackoverflow.com/questions/11302758/error-while-copy-constructing-boostshared-ptr-using-c11
@@ -16,6 +38,9 @@ env:
 # we get libyaml-cpp-dev from kubuntu backports
 
 before_install:
+  - date -u
+  - uname -a
+  - export J='-j3'
   - git submodule update --init --recursive
 #  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg 
 #  - sudo add-apt-repository -y ppa:irie/boost
@@ -57,7 +82,31 @@ install:
 
   
 script:
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
+  - if [[ ${COVERITY_SCAN_BRANCH} == 1 ]];
+    then
+      echo "Don't build on coverty_scan branch.";
+      exit 0;
+    fi
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
   - make clean
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
+
+addons:
+  coverity_scan:
+    # customized build script URL
+    # TRAVIS_REPO_SLUG: owner_name/repo_name of repository currently being built
+    # TRAVIS_BRANCH: name of the branch currently being built
+    build_script_url: https://raw.githubusercontent.com/$TRAVIS_REPO_SLUG/$TRAVIS_BRANCH/.travis-coverity-scan-build.sh
+    # project metadata
+    project:
+      name: $TRAVIS_REPO_SLUG
+    # Where email notification of build analysis results will be sent
+    notification_email: frederic.devernay@m4x.org
+    # Commands to prepare for build_command
+    #build_command_prepend: ./configure
+    # This command will be added as an argument to "cov-build" to compile
+    # the project for analysis
+    build_command: "env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio"
+    # Pattern to match selecting branches that will run analysis
+    branch_pattern: coverity_scan
