@@ -40,6 +40,7 @@
 
 #include "OCIOLogConvert.h"
 
+#ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
 
 #include <cstdlib>
@@ -50,9 +51,8 @@
 #include "ofxsMacros.h"
 #include "GenericOCIO.h"
 
-#ifdef OFX_IO_USING_OCIO
-
 namespace OCIO = OCIO_NAMESPACE;
+
 static bool gWasOCIOEnvVarFound = false;
 
 #define kPluginName "OCIOLogConvertOFX"

@@ -38,6 +38,8 @@
  */
 
 #include "OCIOCDLTransform.h"
+
+#ifdef OFX_IO_USING_OCIO
 #include <cstdio> // fopen...
 #include <OpenColorIO/OpenColorIO.h>
 
@@ -47,8 +49,6 @@
 #include "ofxNatron.h"
 #include "ofxsMacros.h"
 #include "GenericOCIO.h"
-
-#ifdef OFX_IO_USING_OCIO
 
 namespace OCIO = OCIO_NAMESPACE;
 

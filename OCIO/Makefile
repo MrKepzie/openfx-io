@@ -3,4 +3,5 @@ PLUGINNAME = OCIO
 
 include ../Makefile.master
 
-OIIO_HOME ?= /usr
+CXXFLAGS += $(OCIO_CXXFLAGS)
+LINKFLAGS += $(OCIO_LINKFLAGS)

@@ -40,6 +40,8 @@
 
 #include "OCIOLookTransform.h"
 
+
+#ifdef OFX_IO_USING_OCIO
 //#include <iostream>
 #include <memory>
 
@@ -51,8 +53,6 @@
 #include <ofxNatron.h>
 
 #include "IOUtility.h"
-
-#ifdef OFX_IO_USING_OCIO
 
 #define kPluginName "OCIOLookTransformOFX"
 #define kPluginGrouping "Color/OCIO"

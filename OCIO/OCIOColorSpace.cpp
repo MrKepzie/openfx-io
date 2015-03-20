@@ -40,6 +40,7 @@
 
 #include "OCIOColorSpace.h"
 
+#ifdef OFX_IO_USING_OCIO
 //#include <iostream>
 #include <memory>
 
@@ -50,7 +51,6 @@
 #include "ofxsMacros.h"
 #include "IOUtility.h"
 
-#ifdef OFX_IO_USING_OCIO
 
 #define kPluginName "OCIOColorSpaceOFX"
 #define kPluginGrouping "Color/OCIO"
