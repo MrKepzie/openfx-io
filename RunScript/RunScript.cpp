@@ -283,6 +283,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     if (!dstClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    assert(dstClip_);
     std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -385,7 +386,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 
     // now copy the first input to output
 
-    if (dstClip_ && dstClip_->isConnected()) {
+    if (dstClip_->isConnected()) {
         std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
         if (!dstImg.get()) {
             OFX::throwSuiteStatusException(kOfxStatFailed);

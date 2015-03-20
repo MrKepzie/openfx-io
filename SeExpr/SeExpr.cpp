@@ -1238,7 +1238,7 @@ SeExprProcessorBase::isExprOk(std::string* error)
     //Ensure the image of the input 0 at the current time exists for the mix
 
     for (int i = 0; i < kSourceClipCount; ++i) {
-        int nComps;
+        int nComps = 0;
         _srcCurTime[i] = getOrFetchImage(i, _renderTime, &nComps);
         _nSrcComponents[i] = nComps;
     }
@@ -1986,7 +1986,6 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
                 if (rodSet) {
                     OFX::MergeImages2D::rectIntersection<OfxRectD>(srcRod, rod, &rod);
                 } else {
-                    rodSet = true;
                     rod = srcRod;
                 }
                 rodSet = true;

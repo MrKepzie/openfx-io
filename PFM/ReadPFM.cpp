@@ -192,6 +192,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("PFM header not found in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
         std::fgetc(nfile);
@@ -200,6 +201,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (err == 2) {
         clearPersistentMessage();
@@ -231,8 +233,10 @@ ReadPFMPlugin::decode(const std::string& filename,
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
         int numread = std::fread(image.data(), 4, numpixels, nfile);
         if (numread < numpixels) {
+            std::fclose(nfile);
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
 
         if (is_inverted) {
@@ -355,8 +359,10 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
+        return;
     }
-    
+    std::fclose(nfile);
+
     // set the components of _outputClip
     *components = OFX::ePixelComponentNone;
     if (pfm_type == 'F') {

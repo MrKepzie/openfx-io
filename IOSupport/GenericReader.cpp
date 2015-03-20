@@ -913,23 +913,27 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
         dstPixelDepth != srcPixelDepth ||
         dstPixelComponents != srcPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         if (!_supportsRGBA) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         buildMipMapLevel<float, 4>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         if (!_supportsRGB) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         buildMipMapLevel<float, 3>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         if (!_supportsAlpha) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         buildMipMapLevel<float, 1>(this, originalRenderWindow, renderWindow,levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
@@ -974,18 +978,21 @@ GenericReaderPlugin::fillWithBlack(const OfxRectI &renderWindow,
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         if (!_supportsRGBA) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
+            return;
+       }
         OFX::BlackFiller<float> fred(*this, 4);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
         if (!_supportsRGB) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        }
+            return;
+       }
         OFX::BlackFiller<float> fred(*this, 3);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         if (!_supportsAlpha) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         OFX::BlackFiller<float> fred(*this, 1);
         setupAndFillWithBlack(fred, renderWindow, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
@@ -1017,6 +1024,7 @@ setupAndProcess(OFX::PixelProcessorFilterBase & processor,
     // make sure bit depths are sane
     if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     
     // set the images
@@ -1051,10 +1059,12 @@ GenericReaderPlugin::unPremultPixelData(const OfxRectI &renderWindow,
     // do the rendering
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         if (!_supportsRGBA) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
@@ -1082,11 +1092,13 @@ GenericReaderPlugin::premultPixelData(const OfxRectI &renderWindow,
     // do the rendering
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         if (!_supportsRGBA) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         OFX::PixelCopierPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
@@ -1104,6 +1116,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     double sequenceTime;
@@ -1114,6 +1127,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
 
         case eGetSequenceTimeError:
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return false;
 
         case eGetSequenceTimeBeforeSequence:
         case eGetSequenceTimeWithinSequence:
@@ -1128,6 +1142,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
         case eGetFileNameFailed:
             setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return false;
 
         case eGetFileNameBlack:
             clearPersistentMessage();
@@ -1146,6 +1161,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return false;
     }
     // get the PAR from the clip preferences, since it should be constant over time
     par = _outputClip->getPixelAspectRatio();
@@ -1197,10 +1213,12 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 {
     if (!_outputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     assert(kSupportsRenderScale || (args.renderScale.x == 1. && args.renderScale.y == 1.));
@@ -1214,6 +1232,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         OFX::Image* dstImg = _outputClip->fetchImage(args.time);
         if (!dstImg) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
         outputImagesHolder.appendImage(dstImg);
 #ifdef OFX_EXTENSIONS_NUKE
@@ -1224,15 +1243,16 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             OFX::Image* dstPlane = _outputClip->fetchImagePlane(args.time, args.renderView, it->c_str());
             if (!dstPlane) {
                 OFX::throwSuiteStatusException(kOfxStatFailed);
-            }
+                return;
+           }
             outputImagesHolder.appendImage(dstPlane);
         }
     }
     
 #endif
     
-    OfxRectI firstBounds;
-    OFX::BitDepthEnum firstDepth;
+    OfxRectI firstBounds = {0, 0, 0, 0};
+    OFX::BitDepthEnum firstDepth = OFX::eBitDepthNone;
     bool firstImageSet = false;
     
     std::list<PlaneToRender> planes;
@@ -1244,6 +1264,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             outputImages[i]->getField() != args.fieldToRender) {
             setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
         
         PlaneToRender plane;
@@ -1253,6 +1274,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         getImageData(outputImages[i], &dstPixelData, &bounds, &plane.comps, &bitDepth, &plane.rowBytes);
         if (bitDepth != OFX::eBitDepthFloat) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         if (!firstImageSet) {
             firstBounds = bounds;
@@ -1262,6 +1284,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 || firstDepth != bitDepth) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image plane with wrong properites");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
         }
         plane.pixelData = (float*)dstPixelData;
@@ -1280,6 +1303,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             if (plane.comps != outputComponents) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host dit not take into account output components");
                 OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+                return;
             }
 #ifdef OFX_EXTENSIONS_NUKE
         }
@@ -1324,6 +1348,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         args.renderWindow.x2 <= firstBounds.x1 || args.renderWindow.x2 > firstBounds.x2 || args.renderWindow.y2 <= firstBounds.y1 || args.renderWindow.y2 > firstBounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
         //throw std::runtime_error("render window outside of image bounds");
+        return;
     }
 
     double sequenceTime;
@@ -1337,6 +1362,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         case eGetSequenceTimeError:
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
 
         case eGetSequenceTimeBeforeSequence:
         case eGetSequenceTimeWithinSequence:
@@ -1366,6 +1392,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         case eGetFileNameFailed:
             setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
 
         case eGetFileNameBlack:
             clearPersistentMessage();
@@ -1382,6 +1409,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             // we didn't ask for proxy!
             assert(false);
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
     }
 
     std::string proxyFile;
@@ -1393,6 +1421,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 // should never happen: it should return at least the full res frame
                 assert(false);
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
 
             case eGetFileNameBlack:
                 // should never happen: it should return at least the full res frame
@@ -1447,7 +1476,8 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
+        return;
+   }
 
     renderWindowFullRes = upscalePowerOfTwo(args.renderWindow, downscaleLevels); // works even if downscaleLevels == 0
 
@@ -1726,6 +1756,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     // please check the reason for each parameter when it makes sense!
@@ -1973,7 +2004,8 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         case OFX::ePixelComponentRGBA:
             if (!_supportsRGBA) {
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            }
+                return;
+           }
             // may be Opaque or PreMultiplied (never UnPremultiplied)
             if (premult == OFX::eImageUnPreMultiplied) {
                 premult = OFX::eImagePreMultiplied;
@@ -1984,6 +2016,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         case OFX::ePixelComponentAlpha:
             if (!_supportsAlpha) {
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
+                return;
             }
             // alpha is always premultiplied
             premult = OFX::eImagePreMultiplied;
@@ -1992,7 +2025,8 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         default:
             if (!_supportsRGB) {
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            }
+                return;
+           }
             // RGB is always Opaque
             premult = OFX::eImageOpaque;
             break;
@@ -2045,7 +2079,8 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
+        return false;
+   }
 
     if (!gHostIsNatron) {
         // only Natron supports setting the identityClip to the output clip
@@ -2060,6 +2095,7 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
 
         case eGetSequenceTimeError:
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return false;
 
         case eGetSequenceTimeBeforeSequence:
         case eGetSequenceTimeAfterSequence:

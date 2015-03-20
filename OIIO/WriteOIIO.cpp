@@ -311,7 +311,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
 
-    int numChannels;
+    int numChannels = 0;
     switch(pixelComponents)
     {
         case OFX::ePixelComponentRGBA:
@@ -325,6 +325,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
             break;
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
     }
 
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));

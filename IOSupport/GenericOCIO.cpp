@@ -415,6 +415,7 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
         default:
             numChannels = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
     }
 
     pixelBytes = numChannels * sizeof(float);
