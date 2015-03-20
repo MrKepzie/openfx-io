@@ -372,6 +372,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 }
 
 
+#ifdef OFX_IO_USING_OCIO
 void
 OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const std::string& inputSpace, const std::string& outputSpace)
 {
@@ -431,6 +432,7 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
     _instance->clearPersistentMessage();
 #endif
 }
+#endif // OFX_IO_USING_OCIO
 
 
 void

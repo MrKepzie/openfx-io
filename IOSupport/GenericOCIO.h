@@ -66,6 +66,9 @@
 #define kOCIOHelpButtonName "ocioHelp"
 #define kOCIOHelpButtonLabel "OCIO config help..."
 #define kOCIOHelpButtonHint "Help about the OpenColorIO configuration."
+#else
+#define kOCIOParamInputSpaceLabel ""
+#define kOCIOParamOutputSpaceLabel ""
 #endif
 
 class GenericOCIO
@@ -110,6 +113,7 @@ private:
 #endif
 };
 
+#ifdef OFX_IO_USING_OCIO
 class OCIOProcessor : public OFX::PixelProcessor {
 public:
     // ctor
@@ -130,5 +134,6 @@ private:
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     OFX::ImageEffect* _instance;
 };
+#endif
 
 #endif

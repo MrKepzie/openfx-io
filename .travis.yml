@@ -58,3 +58,6 @@ install:
   
 script:
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
+  - make clean
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
