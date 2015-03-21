@@ -1552,7 +1552,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
     outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
     
-    processor.setValues(args.time, args.viewsToRender, mix, script, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale);
+    processor.setValues(args.time, args.renderView, mix, script, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale);
     
     std::string error;
     if (!processor.isExprOk(&error)) {
