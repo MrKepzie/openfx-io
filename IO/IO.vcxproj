@@ -111,7 +111,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.
 
 xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
-
+xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 </Command>
     </PostBuildEvent>
@@ -144,6 +144,8 @@ xcopy $(SolutionDir)EXR\fr.inria.openfx.WriteEXR.png $(OutDir)$(ProjectName).ofx
 xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 
 
@@ -185,6 +187,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.
 
 xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
+xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 
 </Command>
@@ -237,6 +240,8 @@ xcopy $(SolutionDir)EXR\fr.inria.openfx.WriteEXR.png $(OutDir)$(ProjectName).ofx
 xcopy $(SolutionDir)PFM\fr.inria.openfx.ReadPFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)PFM\fr.inria.openfx.WritePFM.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+
+xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 
 

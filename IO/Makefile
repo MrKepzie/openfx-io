@@ -35,6 +35,8 @@ RESOURCES = \
 ../OIIO/fr.inria.openfx.OIIOText.svg \
 ../OIIO/fr.inria.openfx.ReadOIIO.png \
 ../OIIO/fr.inria.openfx.ReadOIIO.svg \
+../SeExpr/fr.inria.openfx.SeExpr.png \
+../SeExpr/fr.inria.openfx.SeExpr.svg \
 ../OIIO/fr.inria.openfx.WriteOIIO.png \
 ../OIIO/fr.inria.openfx.WriteOIIO.svg \
 ../PFM/fr.inria.openfx.ReadPFM.png \
