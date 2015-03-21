@@ -241,6 +241,7 @@
 #define kSeExprDisparityRightPlaneName "DisparityRight"
 
 static bool gHostIsMultiPlanar;
+static bool gHostIsNatron;
 
 class SeExprProcessorBase;
 
@@ -1574,12 +1575,14 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
     
     OFX::BitDepthEnum       dstBitDepth    = _dstClip->getPixelDepth();
     OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
-
-    bool validated;
-    _validate->getValue(validated);
-    if (!validated) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    
+    if (!gHostIsNatron) {
+        bool validated;
+        _validate->getValue(validated);
+        if (!validated) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
     }
 
     assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentAlpha);
@@ -1681,19 +1684,21 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             _colorParams[i]->setIsSecret(!visible);
         }
     } else if (paramName == kParamValidate) {
-        bool validated;
-        _validate->getValue(validated);
-        
-        _doubleParamCount->setEnabled(!validated);
-        _double2DParamCount->setEnabled(!validated);
-        _colorParamCount->setEnabled(!validated);
-        _doubleParamCount->setEvaluateOnChange(validated);
-        _double2DParamCount->setEvaluateOnChange(validated);
-        _colorParamCount->setEvaluateOnChange(validated);
-        _script->setEnabled(!validated);
-        _script->setEvaluateOnChange(validated);
-        if (validated) {
-            clearPersistentMessage();
+        if (!gHostIsNatron) {
+            bool validated;
+            _validate->getValue(validated);
+            
+            _doubleParamCount->setEnabled(!validated);
+            _double2DParamCount->setEnabled(!validated);
+            _colorParamCount->setEnabled(!validated);
+            _doubleParamCount->setEvaluateOnChange(validated);
+            _double2DParamCount->setEvaluateOnChange(validated);
+            _colorParamCount->setEvaluateOnChange(validated);
+            _script->setEnabled(!validated);
+            _script->setEvaluateOnChange(validated);
+            if (validated) {
+                clearPersistentMessage();
+            }
         }
     } else if (paramName == kParamRegionOfDefinition && args.reason == OFX::eChangeUserEdit) {
         int boundingbox_i;
@@ -2242,6 +2247,16 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     
+#ifdef OFX_EXTENSIONS_NATRON
+    if (OFX::getImageEffectHostDescription()->isNatron) {
+        gHostIsNatron = true;
+    } else {
+        gHostIsNatron = false;
+    }
+#else 
+    gHostIsNatron = false;
+#endif
+    
 #if defined(OFX_EXTENSIONS_NATRON) && defined(OFX_EXTENSIONS_NUKE)
     // TODO @MrKepzie: can we support multiplanar even if host is not Natron?
     if (OFX::getImageEffectHostDescription()->isMultiPlanar &&
@@ -2567,6 +2582,9 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setLabel(kParamValidateLabel);
         param->setHint(kParamValidateHint);
         param->setEvaluateOnChange(true);
+        if (gHostIsNatron) {
+            param->setIsSecret(true);
+        }
         if (page) {
             page->addChild(*param);
         }
