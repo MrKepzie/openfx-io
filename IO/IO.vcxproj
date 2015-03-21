@@ -98,6 +98,7 @@
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOResize.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
@@ -132,6 +133,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.b
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOResize.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
@@ -174,6 +176,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.b
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOResize.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
@@ -228,6 +231,7 @@ xcopy $(SolutionDir)PFM\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).ofx.b
       <Command>xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOText.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.ReadOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
+xcopy $(SolutionDir)OIIO\fr.inria.openfx.OIIOResize.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 
 xcopy $(SolutionDir)OIIO\fr.inria.openfx.WriteOIIO.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
 xcopy $(SolutionDir)FFmpeg\fr.inria.openfx.ReadFFmpeg.png $(OutDir)$(ProjectName).ofx.bundle\Contents\Resources\ /Y
