@@ -617,7 +617,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             std::size_t pixelDepth = stream->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
             // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
             assert(!_data);
-            _data = new unsigned char[stream->_width * stream->_height * 3 * pixelDepth];
+            _data = new unsigned char[stream->_width * stream->_height * stream->_numberOfComponents * pixelDepth];
         }
         
         // save the stream

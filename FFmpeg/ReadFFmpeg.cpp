@@ -176,7 +176,7 @@ ReadFFmpegPlugin::isVideoStream(const std::string& filename)
     return !FFmpegFile::isImageFile(filename);
 }
 
-template<int nComponents,int maxValue,typename PIX>
+template<int nDstComp,int nSrcComp,int maxValue,typename PIX>
 static void
 fillWindow(const PIX* buffer,
            const OfxRectI& renderWindow,
@@ -185,25 +185,26 @@ fillWindow(const PIX* buffer,
            OFX::PixelComponentEnum pixelComponents,
            int rowBytes)
 {
-    assert((nComponents == 3 && pixelComponents == OFX::ePixelComponentRGB) ||
-           (nComponents == 4 && pixelComponents == OFX::ePixelComponentRGBA));
+    assert(nSrcComp >= 3 && nSrcComp <= 4);
+    assert((nDstComp == 3 && pixelComponents == OFX::ePixelComponentRGB) ||
+           (nDstComp == 4 && pixelComponents == OFX::ePixelComponentRGBA));
     ///fill the renderWindow in dstImg with the buffer freshly decoded.
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
         int srcY = renderWindow.y2 - y - 1;
         float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
-        const PIX* src_pixels = buffer + (imgBounds.x2 - imgBounds.x1) * srcY * 3;
+        const PIX* src_pixels = buffer + (imgBounds.x2 - imgBounds.x1) * srcY * nSrcComp;
 
         for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
-            int srcCol = x * 3 ;
-            int dstCol = x * nComponents;
+            int srcCol = x * nSrcComp ;
+            int dstCol = x * nDstComp;
             dst_pixels[dstCol + 0] = intToFloat<maxValue>(src_pixels[srcCol + 0]);
             dst_pixels[dstCol + 1] = intToFloat<maxValue>(src_pixels[srcCol + 1]);
             dst_pixels[dstCol + 2] = intToFloat<maxValue>(src_pixels[srcCol + 2]);
-            if (nComponents == 4) {
+            if (nDstComp == 4) {
                 // Output is Opaque with alpha=0 by default,
                 // but premultiplication is set to opaque.
                 // That way, chaining with a Roto node works correctly.
-                dst_pixels[dstCol + 3] = 0.f;
+                dst_pixels[dstCol + 3] = nSrcComp == 4 ? intToFloat<maxValue>(src_pixels[srcCol + 3]) : 0.f;
             }
         }
     }
@@ -276,20 +277,37 @@ ReadFFmpegPlugin::decode(const std::string& filename,
 
     const unsigned char* buffer = file->getData();
     std::size_t sizeOfData = file->getSizeOfData();
+    unsigned int numComponents = file->getNumberOfComponents();
     assert(sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short));
     ///fill the renderWindow in dstImg with the buffer freshly decoded.
     if (pixelComponents == OFX::ePixelComponentRGB) {
         if (sizeOfData == sizeof(unsigned char)) {
-            fillWindow<3,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            if (numComponents == 3) {
+                fillWindow<3,3,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            } else if (numComponents == 4) {
+                fillWindow<3,4,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            }
         } else {
-            fillWindow<3,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            if (numComponents == 3) {
+                fillWindow<3,3,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            } else {
+                fillWindow<3,4,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            }
         }
         
     } else if (pixelComponents == OFX::ePixelComponentRGBA) {
         if (sizeOfData == sizeof(unsigned char)) {
-            fillWindow<4,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            if (numComponents == 3) {
+                fillWindow<4,3,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            } else {
+                fillWindow<4,4,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            }
         } else {
-            fillWindow<4,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            if (numComponents == 3) {
+                fillWindow<4,3,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            } else {
+                fillWindow<4,4,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
+            }
         }
     }
 }
