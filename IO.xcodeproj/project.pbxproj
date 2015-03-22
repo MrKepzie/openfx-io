@@ -532,6 +532,11 @@
 		AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExpr.png; sourceTree = "<group>"; };
 		AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOResize.png; sourceTree = "<group>"; };
 		AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOResize.svg; sourceTree = "<group>"; };
+		AC2B24D51ABF0A7200D8F04C /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AC2B24D61ABF0A7200D8F04C /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		AC2B24D71ABF0A7200D8F04C /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
+		AC2B24D81ABF0A7200D8F04C /* ReadRaw.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReadRaw.cpp; sourceTree = "<group>"; };
+		AC2B24D91ABF0A7200D8F04C /* ReadRaw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ReadRaw.h; sourceTree = "<group>"; };
 		AC6486EA1A41BDD40088844F /* fr.inria.openfx.ReadPFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadPFM.png; sourceTree = "<group>"; };
 		AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadPFM.svg; sourceTree = "<group>"; };
 		AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WritePFM.png; sourceTree = "<group>"; };
@@ -862,6 +867,18 @@
 			path = RunScript;
 			sourceTree = "<group>";
 		};
+		AC2B24D41ABF0A7200D8F04C /* Raw */ = {
+			isa = PBXGroup;
+			children = (
+				AC2B24D51ABF0A7200D8F04C /* Info.plist */,
+				AC2B24D61ABF0A7200D8F04C /* Makefile */,
+				AC2B24D71ABF0A7200D8F04C /* PluginRegistration.cpp */,
+				AC2B24D81ABF0A7200D8F04C /* ReadRaw.cpp */,
+				AC2B24D91ABF0A7200D8F04C /* ReadRaw.h */,
+			);
+			path = Raw;
+			sourceTree = "<group>";
+		};
 		ACE084981AB4AB7E00BE558C /* SeExpr */ = {
 			isa = PBXGroup;
 			children = (
@@ -890,6 +907,7 @@
 				1E8B5D9C18B79E5700C31FDC /* PFM */,
 				1ED4999D18A00B49008A2D91 /* OCIO */,
 				1E2F4D93189295B000F4CE25 /* IO */,
+				AC2B24D41ABF0A7200D8F04C /* Raw */,
 				1E00B3E3188EEB98003BC7F3 /* OIIO */,
 				1E00B3C1188EE8AE003BC7F3 /* EXR */,
 				1E00B3C0188EE8A1003BC7F3 /* FFmpeg */,

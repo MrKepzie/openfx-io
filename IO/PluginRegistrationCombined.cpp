@@ -18,6 +18,7 @@
 #include "OCIOLogConvert.h"
 #include "OCIOLookTransform.h"
 #endif
+//#include "ReadRaw.h"
 #ifndef _WINDOWS
 #include "RunScript.h"
 #endif
@@ -53,6 +54,9 @@ namespace OFX
             getRunScriptPluginID(ids);
 #endif
 			getSeExprPluginID(ids);
+#ifdef DEBUG
+           // getReadRawPluginID(ids);
+#endif
         }
     }
 }
