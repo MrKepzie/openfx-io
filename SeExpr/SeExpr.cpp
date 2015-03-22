@@ -1263,9 +1263,7 @@ public:
     virtual void process(OfxRectI procWindow) OVERRIDE FINAL
     {
         float tmpPix[nComponents];
-        const PIX* srcPixels[kSourceClipCount];
-        
-        float srcRGBA[4] = {0,0,0,0};
+        PIX srcPixels[kSourceClipCount][4];
         
         for (int y = procWindow.y1; y < procWindow.y2; ++y) {
             if (_plugin->abort()) {
@@ -1277,15 +1275,15 @@ public:
             for (int x = procWindow.x1; x < procWindow.x2; ++x) {
                 
                 for (int i = kSourceClipCount - 1; i  >= 0; --i) {
-                    srcPixels[i] = _srcCurTime[i] ? (const PIX*) _srcCurTime[i]->getPixelAddress(x,y) : 0;
+                    const PIX* src_pixels  = _srcCurTime[i] ? (const PIX*) _srcCurTime[i]->getPixelAddress(x,y) : 0;
                     for (int k = 0; k < 4; ++k) {
                         if (k < _nSrcComponents[i]) {
-                            srcRGBA[k] =  srcPixels[i] ? *(srcPixels[i] + k) / maxValue : 0.;
+                            srcPixels[i][k] = src_pixels ? src_pixels[k] : 0;
                         } else {
-                            srcRGBA[k] = 0.;
+                            srcPixels[i][k] = 0;
                         }
                     }
-                    _expression->setRGBA(i, srcRGBA[0], srcRGBA[1], srcRGBA[2], srcRGBA[3]);
+                    _expression->setRGBA(i, srcPixels[i][0] / maxValue, srcPixels[i][1] / maxValue, srcPixels[i][2] / maxValue, srcPixels[i][3] / maxValue);
                 }
                 
                 _expression->setXY(x, y);
