@@ -75,6 +75,7 @@
 #include <vector>
 #include <algorithm>
 #include <limits>
+#include <set>
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
 #include <windows.h>
@@ -174,7 +175,8 @@
 #define kSeExprAlphaVarName "As"
 #define kSeExprRenderScaleVarName "scale"
 
-#define kSeExprDefaultScript "#Just copy the source image\nCs"
+#define kSeExprDefaultRGBScript "#Just copy the source RGB\nCs"
+#define kSeExprDefaultAlphaScript "#Just copy the source alpha\nAs"
 
 #define kParamRegionOfDefinition "rod"
 #define kParamRegionOfDefinitionLabel "Region of Definition"
@@ -196,6 +198,15 @@
 #define kParamGeneratorFormat "format"
 #define kParamGeneratorFormatLabel "Format"
 #define kParamGeneratorFormatHint "The output format"
+
+#define kParamOutputComponents "outputComponents"
+#define kParamOutputComponentsLabel "Output components"
+#define kParamOutputComponentsHint "Specify what components to output. In RGB only, the alpha script will not be executed. Similarily, in alpha only, the RGB script " \
+"will not be executed."
+
+#define kParamOutputComponentsAlpha "Alpha"
+#define kParamOutputComponentsRGB "RGB"
+#define kParamOutputComponentsRGBA "RGBA"
 
 #define kParamLayerInput "layerInput%d"
 #define kParamLayerInputLabel "Input Layer %d"
@@ -226,8 +237,13 @@
 #define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color%d"
 
 #define kParamScript "script"
-#define kParamScriptLabel "Script"
-#define kParamScriptHint "Contents of the SeExpr expression. See the description of the plug-in and " \
+#define kParamScriptLabel "RGB Script"
+#define kParamScriptHint "Contents of the SeExpr expression. This expression should output the RGB components. See the description of the plug-in and " \
+"http://www.disneyanimation.com/technology/seexpr.html for documentation."
+
+#define kParamAlphaScript "alphaScript"
+#define kParamAlphaScriptLabel "Alpha Script"
+#define kParamAlphaScriptHint "Contents of the SeExpr expression. This expression should output the alpha component only. See the description of the plug-in and " \
 "http://www.disneyanimation.com/technology/seexpr.html for documentation."
 
 #define kParamValidate                  "validate"
@@ -310,7 +326,8 @@ private:
     OFX::IntParam *_colorParamCount;
     OFX::RGBParam* _colorParams[kParamsCount];
     
-    OFX::StringParam *_script;
+    OFX::StringParam *_rgbScript;
+    OFX::StringParam *_alphaScript;
     OFX::BooleanParam *_validate;
     
     OFX::DoubleParam* _mix;
@@ -322,6 +339,9 @@ private:
     OFX::Double2DParam* _btmLeft;
     OFX::Double2DParam* _size;
     OFX::BooleanParam* _interactive;
+    
+    OFX::ChoiceParam* _outputComponents;
+    
 
 };
 
@@ -362,7 +382,8 @@ protected:
     int _renderView;
     SeExprPlugin* _plugin;
     std::string _layersToFetch[kSourceClipCount];
-    OFXSeExpression* _expression;
+    OFXSeExpression* _rgbExpr;
+    OFXSeExpression* _alphaExpr;
     const OFX::Image* _srcCurTime[kSourceClipCount];
     int _nSrcComponents[kSourceClipCount];
     OFX::Image* _dstImg;
@@ -405,7 +426,7 @@ public:
     
 
     
-    void setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers,
+    void setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers,
                    const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale);
     
     bool isExprOk(std::string* error);
@@ -1182,7 +1203,8 @@ SeExprProcessorBase::SeExprProcessorBase(SeExprPlugin* instance)
 : _renderTime(0)
 , _renderView(0)
 , _plugin(instance)
-, _expression(0)
+, _rgbExpr(0)
+, _alphaExpr(0)
 , _srcCurTime()
 , _dstImg(0)
 , _maskInvert(false)
@@ -1199,7 +1221,8 @@ SeExprProcessorBase::SeExprProcessorBase(SeExprPlugin* instance)
 
 SeExprProcessorBase::~SeExprProcessorBase()
 {
-    delete _expression;
+    delete _rgbExpr;
+    delete _alphaExpr;
     for (FetchedImagesMap::iterator it = _images.begin(); it!=_images.end(); ++it) {
         for (FetchedImagesForClipMap::iterator it2 = it->second.begin(); it2!= it->second.end(); ++it2) {
             delete it2->second.img;
@@ -1208,33 +1231,58 @@ SeExprProcessorBase::~SeExprProcessorBase()
 }
 
 void
-SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& expression, std::string* layers, const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale)
+SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers, const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale)
 {
     _renderTime = time;
     _renderView = view;
-    _expression = new OFXSeExpression(this, expression, time, renderScale, dstPixelRod);
+    if (!rgbExpr.empty()) {
+        _rgbExpr = new OFXSeExpression(this, rgbExpr, time, renderScale, dstPixelRod);
+    }
+    if (!alphaExpr.empty()) {
+        _alphaExpr = new OFXSeExpression(this, alphaExpr, time, renderScale, dstPixelRod);
+    }
     if (gHostIsMultiPlanar) {
         for (int i = 0; i < kSourceClipCount; ++i) {
             _layersToFetch[i] = layers[i];
         }
     }
     for (int i = 0; i < kSourceClipCount; ++i) {
-        _expression->setSize(i, inputSizes[i].x, inputSizes[i].y);
+        if (_rgbExpr) {
+            _rgbExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
+        }
+        if (_alphaExpr) {
+            _alphaExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
+        }
     }
-    _expression->setSize(-1, outputSize.x, outputSize.y);
+    if (_rgbExpr) {
+        _rgbExpr->setSize(-1, outputSize.x, outputSize.y);
+    }
+    if (_alphaExpr) {
+        _alphaExpr->setSize(-1, outputSize.x, outputSize.y);
+    }
+    assert(_alphaExpr || _rgbExpr);
     _mix = mix;
 }
 
 bool
 SeExprProcessorBase::isExprOk(std::string* error)
 {
-    if (!_expression->isValid()) {
-        *error = _expression->parseError();
+    if (_rgbExpr && !_rgbExpr->isValid()) {
+        *error = _rgbExpr->parseError();
+        return false;
+    }
+    if (_alphaExpr && !_alphaExpr->isValid()) {
+        *error = _alphaExpr->parseError();
         return false;
     }
     
     //Run the expression once to initialize all the images fields before multi-threading
-    (void)_expression->evaluate();
+    if (_rgbExpr) {
+        (void)_rgbExpr->evaluate();
+    }
+    if (_alphaExpr) {
+        (void)_alphaExpr->evaluate();
+    }
     
     //Ensure the image of the input 0 at the current time exists for the mix
 
@@ -1262,7 +1310,12 @@ public:
     // and do some processing
     virtual void process(OfxRectI procWindow) OVERRIDE FINAL
     {
-        float tmpPix[nComponents];
+        assert((nComponents == 4 && _rgbExpr && _alphaExpr) ||
+               (nComponents == 3 && _rgbExpr && !_alphaExpr) ||
+               (nComponents == 1 && !_rgbExpr && _alphaExpr));
+
+        
+        float tmpPix[4];
         PIX srcPixels[kSourceClipCount][4];
         
         for (int y = procWindow.y1; y < procWindow.y2; ++y) {
@@ -1283,19 +1336,43 @@ public:
                             srcPixels[i][k] = 0;
                         }
                     }
-                    _expression->setRGBA(i, srcPixels[i][0] / maxValue, srcPixels[i][1] / maxValue, srcPixels[i][2] / maxValue, srcPixels[i][3] / maxValue);
-                }
-                
-                _expression->setXY(x, y);
-                SeVec3d result = _expression->evaluate();
-                
-                for (int k = 0; k < nComponents; ++k) {
-                    if (k < 3) {
-                        tmpPix[k] = result[k];
-                    } else {
-                        tmpPix[k] = 0.;
+                    float r = srcPixels[i][0] / maxValue;
+                    float g = srcPixels[i][1] / maxValue;
+                    float b = srcPixels[i][2] / maxValue;
+                    float a = nComponents == 4 ? srcPixels[i][3] / maxValue : srcPixels[i][0] / maxValue;
+                    if (_rgbExpr) {
+                        _rgbExpr->setRGBA(i, r, g, b, a);
+                    }
+                    if (_alphaExpr) {
+                        _alphaExpr->setRGBA(i, r, g, b, a);
                     }
                 }
+                
+                if (_rgbExpr) {
+                    _rgbExpr->setXY(x, y);
+                    SeVec3d result = _rgbExpr->evaluate();
+                    tmpPix[0] = result[0];
+                    tmpPix[1] = result[1];
+                    tmpPix[2] = result[2];
+                } else {
+                    tmpPix[0] = 0.;
+                    tmpPix[1] = 0.;
+                    tmpPix[2] = 0.;
+                }
+                if (_alphaExpr) {
+                    _alphaExpr->setXY(x, y);
+                    SeVec3d result = _alphaExpr->evaluate();
+                    if (nComponents == 4) {
+                        tmpPix[3] = result[0];
+                    } else {
+                        tmpPix[0] = result[0];
+                        tmpPix[3] = 0.;
+                    }
+                    
+                } else {
+                    tmpPix[3] = 0.;
+                }
+                
                 
                 OFX::ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPixels[0], _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 
@@ -1344,8 +1421,10 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
         snprintf(name, sizeof(name), kParamColor, i+1 );
         _colorParams[i] = fetchRGBParam(name);
     }
-    _script = fetchStringParam(kParamScript);
-    assert(_script);
+    _rgbScript = fetchStringParam(kParamScript);
+    assert(_rgbScript);
+    _alphaScript = fetchStringParam(kParamAlphaScript);
+    assert(_alphaScript);
     _validate = fetchBooleanParam(kParamValidate);
     assert(_validate);
     
@@ -1355,7 +1434,9 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     _boundingBox = fetchChoiceParam(kParamRegionOfDefinition);
     assert(_boundingBox);
-
+    
+    _outputComponents = fetchChoiceParam(kParamOutputComponents);
+    assert(_outputComponents);
     
     _format = fetchChoiceParam(kParamGeneratorFormat);
     _btmLeft = fetchDouble2DParam(kParamRectangleInteractBtmLeft);
@@ -1397,6 +1478,19 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _btmLeft->setIsSecret(!hasSize);
     _interactive->setEnabled(hasSize);
     _interactive->setIsSecret(!hasSize);
+    
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    if (outputComponents_i == 0 || outputComponents_i == 1) { // RGB || RGBA
+        _rgbScript->setIsSecret(false);
+    } else {
+        _rgbScript->setIsSecret(true);
+    }
+    if (outputComponents_i == 1 || outputComponents_i == 2) { // RGBA || alpha
+        _alphaScript->setIsSecret(false);
+    } else {
+        _alphaScript->setIsSecret(true);
+    }
 }
 
 std::string
@@ -1491,8 +1585,15 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    std::string script;
-    _script->getValue(script);
+    std::string rgbScript,alphaScript;
+    if (dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA) {
+        _rgbScript->getValue(rgbScript);
+    }
+    if (dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentAlpha) {
+        _alphaScript->getValue(alphaScript);
+    }
+    
+    
     std::string inputLayers[kSourceClipCount];
     if (gHostIsMultiPlanar) {
         for (int i = 0; i < kSourceClipCount; ++i) {
@@ -1550,7 +1651,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
     outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
     
-    processor.setValues(args.time, args.renderView, mix, script, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale);
+    processor.setValues(args.time, args.renderView, mix, rgbScript, alphaScript, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale);
     
     std::string error;
     if (!processor.isExprOk(&error)) {
@@ -1692,8 +1793,10 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             _doubleParamCount->setEvaluateOnChange(validated);
             _double2DParamCount->setEvaluateOnChange(validated);
             _colorParamCount->setEvaluateOnChange(validated);
-            _script->setEnabled(!validated);
-            _script->setEvaluateOnChange(validated);
+            _rgbScript->setEnabled(!validated);
+            _rgbScript->setEvaluateOnChange(validated);
+            _alphaScript->setEnabled(!validated);
+            _alphaScript->setEvaluateOnChange(validated);
             if (validated) {
                 clearPersistentMessage();
             }
@@ -1712,6 +1815,19 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _btmLeft->setIsSecret(!hasSize);
         _interactive->setEnabled(hasSize);
         _interactive->setIsSecret(!hasSize);
+    } else if (paramName == kParamOutputComponents) {
+        int outputComps_i;
+        _outputComponents->getValue(outputComps_i);
+        if (outputComps_i == 0 || outputComps_i == 1) { // RGB || RGBA
+            _rgbScript->setIsSecret(false);
+        } else {
+            _rgbScript->setIsSecret(true);
+        }
+        if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+            _alphaScript->setIsSecret(false);
+        } else {
+            _alphaScript->setIsSecret(true);
+        }
     }
 
 }
@@ -1811,6 +1927,17 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     
     //We're frame varying since we don't know what the user may output at any frame
     clipPreferences.setOutputFrameVarying(true);
+    
+    int outputComp_i;
+    _outputComponents->getValue(outputComp_i);
+    if (outputComp_i == 0) { // RGB
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGB);
+    } else if (outputComp_i == 1) { // RGBA
+        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGBA);
+    } else if ( outputComp_i == 2) { // alpha
+        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentAlpha);
+    }
 }
 
 void
@@ -1840,27 +1967,83 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
     
     //To determine the frames needed of the expression, we just execute the expression for 1 pixel
     //and record what are the calls made to getPixel in order to figure out the Roi.
-    
-    std::string script;
-    _script->getValue(script);
-    
-    StubSeExpression expr(script,args.time);
-    if (!expr.isValid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-    }
-    
     //We trust that only evaluating the expression for 1 pixel will make all the calls to getPixel
     //In other words, we do not support scripts that do not fetch all images needed for all pixels, e.g:
     /*
-        if(x > 0) {
-            srcCol = getPixel(0,frame,5,5)
-        } else {
-            srcCol = [0,0,0]
-        }
+     if(x > 0) {
+     srcCol = getPixel(0,frame,5,5)
+     } else {
+     srcCol = [0,0,0]
+     }
      */
-    (void)expr.evaluate();
-    const FramesNeeded& framesNeeded = expr.getFramesNeeded();
+    FramesNeeded framesNeeded;
+    
+    int outputComps_i;
+    _outputComponents->getValue(outputComps_i);
+    
+    if (outputComps_i == 0 || outputComps_i == 1) {// RGB || RGBA
+        std::string rgbScript;
+        _rgbScript->getValue(rgbScript);
+        
+        StubSeExpression expr(rgbScript,args.time);
+        if (!expr.isValid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        
+        
+        (void)expr.evaluate();
+        const FramesNeeded& rgbNeeded = expr.getFramesNeeded();
+        for (FramesNeeded::const_iterator it = rgbNeeded.begin(); it != rgbNeeded.end() ;++it) {
+            std::vector<OfxTime>& frames = framesNeeded[it->first];
+            for (std::size_t j = 0; j < it->second.size(); ++j) {
+                
+                bool found = false;
+                for (std::size_t i = 0;  i < frames.size() ; ++i) {
+                    if (frames[i] == it->second[j]) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    frames.push_back(it->second[j]);
+                }
+            }
+            
+        }
+    }
+    if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+        std::string alphaScript;
+        _alphaScript->getValue(alphaScript);
+        
+        StubSeExpression expr(alphaScript,args.time);
+        if (!expr.isValid()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        
+        
+        (void)expr.evaluate();
+        const FramesNeeded& alphaNeeded = expr.getFramesNeeded();
+        for (FramesNeeded::const_iterator it = alphaNeeded.begin(); it != alphaNeeded.end() ;++it) {
+            std::vector<OfxTime>& frames = framesNeeded[it->first];
+            for (std::size_t j = 0; j < it->second.size(); ++j) {
+                
+                bool found = false;
+                for (std::size_t i = 0;  i < frames.size() ; ++i) {
+                    if (frames[i] == it->second[j]) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    frames.push_back(it->second[j]);
+                }
+            }
+            
+        }
+    }
+    
     for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
         
         assert(it->first >= 0  && it->first < kSourceClipCount);
@@ -1913,17 +2096,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             }
         }
     } else {
-        //To determine the ROIs of the expression, we just execute the expression at the 4 corners of the render window
-        //and record what are the calls made to getPixel in order to figure out the Roi.
-        
-        std::string script;
-        _script->getValue(script);
-        
-        StubSeExpression expr(script,args.time);
-        if (!expr.isValid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-        }
+       
         
         //Notify that we will need the RoI for all connected input clips at the current time
         for (int i = 0; i < kSourceClipCount; ++i) {
@@ -1934,23 +2107,66 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             }
         }
         
-        //Now evaluate the expression once and determine whether the user will call getPixel.
-        //If he/she does, then we have no choice but to ask for the entire input image because we do not know
-        //what the user may need (typically when applying UVMaps and stuff)
+        //To determine the ROIs of the expression, we just execute the expression at the 4 corners of the render window
+        //and record what are the calls made to getPixel in order to figure out the Roi.
         
-        double par = _srcClip[0]->getPixelAspectRatio();
+        std::set<OFX::Clip*> processedClips;
         
-        OfxRectI originalRoIPixel;
-        OFX::MergeImages2D::toPixelEnclosing(args.regionOfInterest, args.renderScale, par, &originalRoIPixel);
+        int outputComps_i;
+        _outputComponents->getValue(outputComps_i);
         
-        (void)expr.evaluate();
-        const FramesNeeded& framesNeeded = expr.getFramesNeeded();
-        
-        for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
-            OFX::Clip* clip = getClip(it->first);
-            assert(clip);
-            if (clip->isConnected()) {
-                rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(args.time));
+        if (outputComps_i == 0 || outputComps_i == 1) { // RGB || RGBA
+            std::string rgbScript;
+            _rgbScript->getValue(rgbScript);
+            
+            StubSeExpression expr(rgbScript,args.time);
+            if (!expr.isValid()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            //Now evaluate the expression once and determine whether the user will call getPixel.
+            //If he/she does, then we have no choice but to ask for the entire input image because we do not know
+            //what the user may need (typically when applying UVMaps and stuff)
+            
+            (void)expr.evaluate();
+            const FramesNeeded& framesNeeded = expr.getFramesNeeded();
+            
+            for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+                OFX::Clip* clip = getClip(it->first);
+                assert(clip);
+                std::pair<std::set<OFX::Clip*>::iterator,bool> ret = processedClips.insert(clip);
+                if (ret.second) {
+                    if (clip->isConnected()) {
+                        rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(args.time));
+                    }
+                }
+            }
+        }
+        if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+            std::string alphaScript;
+            _alphaScript->getValue(alphaScript);
+            
+            StubSeExpression expr(alphaScript,args.time);
+            if (!expr.isValid()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+            }
+            //Now evaluate the expression once and determine whether the user will call getPixel.
+            //If he/she does, then we have no choice but to ask for the entire input image because we do not know
+            //what the user may need (typically when applying UVMaps and stuff)
+            
+            (void)expr.evaluate();
+            const FramesNeeded& framesNeeded = expr.getFramesNeeded();
+            
+            for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+                OFX::Clip* clip = getClip(it->first);
+                assert(clip);
+                std::pair<std::set<OFX::Clip*>::iterator,bool> ret = processedClips.insert(clip);
+                if (ret.second) {
+                    if (clip->isConnected()) {
+                        rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(args.time));
+                    }
+                }
             }
         }
         
@@ -2321,6 +2537,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRegionOfDefinition);
         param->setLabel(kParamRegionOfDefinitionLabel);
         param->setHint(kParamRegionOfDefinitionHint);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         
         param->appendOption(kParamRegionOfDefinitionOptionUnion, kParamRegionOfDefinitionOptionUnionHelp);
         param->appendOption(kParamRegionOfDefinitionOptionIntersection, kParamRegionOfDefinitionOptionIntersectionHelp);
@@ -2334,6 +2551,22 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->appendOption(name, help);
         }
         param->setAnimates(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    
+    {
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputComponents);
+        param->setLabel(kParamOutputComponentsLabel);
+        param->setHint(kParamOutputComponentsHint);
+        
+        param->appendOption(kParamOutputComponentsRGB);
+        param->appendOption(kParamOutputComponentsRGBA);
+        param->appendOption(kParamOutputComponentsAlpha);
+        param->setAnimates(false);
+        param->setDefault(0);
+        desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
         }
@@ -2569,11 +2802,24 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setHint(kParamScriptHint);
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
-        param->setDefault(kSeExprDefaultScript);
+        param->setDefault(kSeExprDefaultRGBScript);
         if (page) {
             page->addChild(*param);
         }
     }
+    
+    {
+        StringParamDescriptor *param = desc.defineStringParam(kParamAlphaScript);
+        param->setLabel(kParamAlphaScriptLabel);
+        param->setHint(kParamAlphaScriptHint);
+        param->setStringType(eStringTypeMultiLine);
+        param->setAnimates(true);
+        param->setDefault(kSeExprDefaultAlphaScript);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
 
     {
         BooleanParamDescriptor *param = desc.defineBooleanParam(kParamValidate);
