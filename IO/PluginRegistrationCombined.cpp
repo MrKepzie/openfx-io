@@ -55,7 +55,7 @@ namespace OFX
 #endif
 			getSeExprPluginID(ids);
 #ifdef DEBUG
-           // getReadRawPluginID(ids);
+            //getReadRawPluginID(ids);
 #endif
         }
     }

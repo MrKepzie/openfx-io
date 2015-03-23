@@ -144,6 +144,8 @@ ReadRawPlugin::decode(const std::string& filename,
         setPersistentMessage(OFX::Message::eMessageError, "", "Raw: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
+    
+    int numComps = getNComponents(pixelComponents);
 
     LibRaw rawObj;
     int err = LIBRAW_SUCCESS;
@@ -178,8 +180,22 @@ ReadRawPlugin::decode(const std::string& filename,
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
     }
-
-    //rawObj.COLOR(<#int row#>, <#int col#>)
+    
+    int dstRowSize = (bounds.x2 - bounds.x1) * numComps;
+    
+    assert(bounds.x1 >= 0 && bounds.y1 >= 0 && bounds.x2 <= rawObj.imgdata.sizes.width && bounds.y2 <= rawObj.imgdata.sizes.height);
+    assert(rawObj.imgdata.idata.colors == numComps);
+    
+    for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
+        for (int c = 0; c < numComps; ++c) {
+            
+            float* dst_pixels = pixelData + (y - bounds.y1) * dstRowSize + (renderWindow.x1 - bounds.x1) * numComps;            
+            for (int x = renderWindow.x1; x < renderWindow.x2; ++x/*, ++src_pixels*/, dst_pixels += numComps) {
+                ushort pix = rawObj.imgdata.image[(rawObj.imgdata.sizes.height - 1 - y) * rawObj.imgdata.sizes.width + x][c];
+                dst_pixels[c] = float(pix / 65535.);
+            }
+        }
+    }
     
 }
 
