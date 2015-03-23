@@ -193,11 +193,11 @@ private:
 
     void buildChannelMenus();
 
-    void setDefaultChannels();
+    void setDefaultChannels(OFX::PixelComponentEnum *components);
     
     void setChannels();
 
-    void setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames);
+    void setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames, OFX::PixelComponentEnum *components);
 #endif
 
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -346,7 +346,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         int rChannelIdx;
         _rChannel->getValue(rChannelIdx);
         if (rChannelIdx >= kXChannelFirst) {
-            setDefaultChannelsFromRed(rChannelIdx - kXChannelFirst, true);
+            setDefaultChannelsFromRed(rChannelIdx - kXChannelFirst, true, NULL);
         }
         
         std::string optionName;
@@ -515,7 +515,7 @@ ReadOIIOPlugin::buildChannelMenus()
 // called when the red channel is set
 // from the red channel name, infer the corresponding G,B,A channel values
 void
-ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames)
+ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames, OFX::PixelComponentEnum *components)
 {
     assert(rChannelIdx >= 0);
     if (!_specValid) {
@@ -570,9 +570,13 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNa
     int layerViewChannels = 0;
     for (size_t i = 0; i < _spec.channelnames.size(); ++i) {
         // check if the channel is within the layer/view, and count number of channels
+        size_t channelDot = _spec.channelnames[i].find_last_of(".");
         if (lastdot == std::string::npos ||
             _spec.channelnames[i].compare(0, layerDotViewDot.length(), layerDotViewDot) == 0) {
-            ++layerViewChannels;
+            if ((lastdot == std::string::npos && channelDot == std::string::npos) ||
+                (lastdot != std::string::npos && channelDot != std::string::npos)) {
+                ++layerViewChannels;
+            }
             if (_spec.channelnames[i] == gFullName) {
                 _gChannel->setValue(kXChannelFirst + i);
                 if (mustSetChannelNames) {
@@ -630,6 +634,9 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNa
             // Output is Opaque with alpha=0 by default,
             // but premultiplication is set to opaque.
             // That way, chaining with a Roto node works correctly.
+            if (components && *components == OFX::ePixelComponentRGBA) {
+                *components = OFX::ePixelComponentRGB;
+            }
             _aChannel->setValue(0);
             if (mustSetChannelNames) {
                 std::string optionName;
@@ -667,7 +674,7 @@ static bool has_suffix(const std::string &str, const std::string &suffix)
 
 // called after changing the filename, set all channels
 void
-ReadOIIOPlugin::setDefaultChannels()
+ReadOIIOPlugin::setDefaultChannels(OFX::PixelComponentEnum *components)
 {
     if (!_specValid) {
         return;
@@ -700,7 +707,7 @@ ReadOIIOPlugin::setDefaultChannels()
         if (rChannelIdx >= 0) {
             // red was found
             _rChannel->setValue(kXChannelFirst + rChannelIdx);
-            setDefaultChannelsFromRed(rChannelIdx, false);
+            setDefaultChannelsFromRed(rChannelIdx, false, components);
             return;
         } else if (_spec.nchannels >= 3) {
             _rChannel->setValue(kXChannelFirst + 0);
@@ -816,6 +823,9 @@ ReadOIIOPlugin::setDefaultChannels()
         } else if (_spec.nchannels == 1) {
             _aChannel->setValue(kXChannelFirst);
         } else {
+            if (components && *components == OFX::ePixelComponentRGBA) {
+                *components = OFX::ePixelComponentRGB; // so that premult is set to opaque
+            }
             _aChannel->setValue(0);
         }
     }
@@ -909,7 +919,7 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
     //Build available channels from OIIO spec
     buildChannelMenus();
     // set the default values for R, G, B, A channels
-    setDefaultChannels();
+    setDefaultChannels(NULL);
     //Restore channels from the channel strings serialized
     setChannels();
     
@@ -1116,23 +1126,11 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             break;
     }
     
-    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
-        *premult = OFX::eImageOpaque;
-    } else {
-        bool unassociatedAlpha = _spec.get_int_attribute("oiio:UnassociatedAlpha", 0);
-        if (unassociatedAlpha) {
-            *premult = OFX::eImageUnPreMultiplied;
-        } else {
-            *premult = OFX::eImagePreMultiplied;
-        }
-    }
-    
-    
 #ifdef OFX_READ_OIIO_NEWMENU
     // rebuild the channel choices
     buildChannelMenus();
     // set the default values for R, G, B, A channels
-    setDefaultChannels();
+    setDefaultChannels(components);
 //    
 //    OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
 //    OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
@@ -1152,6 +1150,16 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
         _firstChannel->setValue(_spec.alpha_channel);
     }
 #endif
+    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+        *premult = OFX::eImageOpaque;
+    } else {
+        bool unassociatedAlpha = _spec.get_int_attribute("oiio:UnassociatedAlpha", 0);
+        if (unassociatedAlpha) {
+            *premult = OFX::eImageUnPreMultiplied;
+        } else {
+            *premult = OFX::eImagePreMultiplied;
+        }
+    }
 }
 
 void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
