@@ -576,7 +576,8 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     GetFilenameRetCodeEnum ret;
     OfxRangeI sequenceTimeDomain;
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
-
+    timeDomainFromSequenceTimeDomain(sequenceTimeDomain, false);
+    
     int missingFrame_i;
     _missingFrameParam->getValue(missingFrame_i);
     const MissingEnum missingFrame = MissingEnum(missingFrame_i);
@@ -1815,18 +1816,19 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->setValue(oFirst);
         _lastFrame->setValue(oLast);
-        _firstFrame->setRange(oFirst, oLast);
-        _lastFrame->setRange(oFirst, oLast);
+        _firstFrame->setRange(INT_MIN, oLast);
+        _firstFrame->setDisplayRange(oFirst, oLast);
+        _lastFrame->setRange(oFirst, INT_MAX);
+        _lastFrame->setDisplayRange(oFirst, oLast);
         _startingTime->setValue(oFirst);
     } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
 
         int first;
-        int last;
         int oFirst,oLast;
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
-        _lastFrame->getValue(last);
-        _lastFrame->setRange(first, oLast);
+        _lastFrame->setRange(first, INT_MAX);
+        _lastFrame->setDisplayRange(first, oLast);
 
         int offset;
         _timeOffset->getValue(offset);
@@ -1841,7 +1843,8 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setRange(oFirst, last);
+        _firstFrame->setRange(INT_MIN, last);
+        _firstFrame->setDisplayRange(oFirst, last);
         
         _timeDomainUserSet->setValue(true);
 
