@@ -1309,36 +1309,8 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 #ifdef OFX_EXTENSIONS_NUKE
         }
 #endif
-        
-        switch (plane.comps) {
-            case OFX::ePixelComponentAlpha:
-                plane.numChans = 1;
-                break;
-            case OFX::ePixelComponentNone:
-                plane.numChans = 0;
-                break;
-#ifdef OFX_EXTENSIONS_NUKE
-            case OFX::ePixelComponentMotionVectors:
-            case OFX::ePixelComponentStereoDisparity:
-                plane.numChans = 2;
-                break;
-#endif
-            case OFX::ePixelComponentRGB:
-                plane.numChans = 3;
-                break;
-            case OFX::ePixelComponentRGBA:
-                plane.numChans = 4;
-                break;
-            case OFX::ePixelComponentCustom:
-#ifdef OFX_EXTENSIONS_NUKE
-                plane.numChans = (int)outputImages[i]->getChannels().size();
-#else
-                plane.numChans = 0;
-#endif
-                break;
-            default:
-                break;
-        }
+
+        plane.numChans = outputImages[i]->getPixelComponentCount();
         planes.push_back(plane);
     }
     
