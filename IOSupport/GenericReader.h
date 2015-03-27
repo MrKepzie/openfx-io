@@ -161,10 +161,10 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) = 0;
+    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) = 0;
     
     /**
-     * @brief Called when the Output Componentns param changes
+     * @brief Called when the Output Components param changes
      **/
     virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum /*components*/) {}
     
@@ -197,11 +197,11 @@ private:
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.
      **/
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
     
    
     virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
-                             OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes);
+                             OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes);
     
     
     /**
@@ -259,11 +259,13 @@ private:
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
+                       int srcPixelComponentCount,
                        OFX::BitDepthEnum srcPixelDepth,
                        int srcRowBytes,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
                        OFX::PixelComponentEnum dstPixelComponents,
+                       int dstPixelComponentCount,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
     
@@ -272,48 +274,53 @@ private:
                         unsigned int levels,
                         const void* srcPixelData,
                         OFX::PixelComponentEnum srcPixelComponents,
+                        int srcPixelComponentCount,
                         OFX::BitDepthEnum srcPixelDepth,
                         const OfxRectI& srcBounds,
                         int srcRowBytes,
                         void* dstPixelData,
                         OFX::PixelComponentEnum dstPixelComponents,
+                        int dstPixelComponentCount,
                         OFX::BitDepthEnum dstPixelDepth,
                         const OfxRectI& dstBounds,
-                        int dstRowBytes,
-                        int nComponents);
+                        int dstRowBytes);
     
     void fillWithBlack(const OfxRectI &renderWindow,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
                        OFX::PixelComponentEnum dstPixelComponents,
-                       int numComponents,
+                       int dstPixelComponentCount,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
 
-    
+
     void premultPixelData(const OfxRectI &renderWindow,
-                     const void *srcPixelData,
-                     const OfxRectI& srcBounds,
-                     OFX::PixelComponentEnum srcPixelComponents,
-                     OFX::BitDepthEnum srcPixelDepth,
-                     int srcRowBytes,
-                     void *dstPixelData,
-                     const OfxRectI& dstBounds,
-                     OFX::PixelComponentEnum dstPixelComponents,
-                     OFX::BitDepthEnum dstBitDepth,
+                          const void *srcPixelData,
+                          const OfxRectI& srcBounds,
+                          OFX::PixelComponentEnum srcPixelComponents,
+                          int srcPixelComponentCount,
+                          OFX::BitDepthEnum srcPixelDepth,
+                          int srcRowBytes,
+                          void *dstPixelData,
+                          const OfxRectI& dstBounds,
+                          OFX::PixelComponentEnum dstPixelComponents,
+                          int dstPixelComponentCount,
+                          OFX::BitDepthEnum dstBitDepth,
                           int dstRowBytes);
     
     void unPremultPixelData(const OfxRectI &renderWindow,
-                       const void *srcPixelData,
-                       const OfxRectI& srcBounds,
-                       OFX::PixelComponentEnum srcPixelComponents,
-                       OFX::BitDepthEnum srcPixelDepth,
-                       int srcRowBytes,
-                       void *dstPixelData,
-                       const OfxRectI& dstBounds,
-                       OFX::PixelComponentEnum dstPixelComponents,
-                       OFX::BitDepthEnum dstBitDepth,
-                       int dstRowBytes);
+                            const void *srcPixelData,
+                            const OfxRectI& srcBounds,
+                            OFX::PixelComponentEnum srcPixelComponents,
+                            int srcPixelComponentCount,
+                            OFX::BitDepthEnum srcPixelDepth,
+                            int srcRowBytes,
+                            void *dstPixelData,
+                            const OfxRectI& dstBounds,
+                            OFX::PixelComponentEnum dstPixelComponents,
+                            int dstPixelComponentCount,
+                            OFX::BitDepthEnum dstBitDepth,
+                            int dstRowBytes);
     
     OfxPointD detectProxyScale(const std::string& originalFileName, const std::string& proxyFileName, OfxTime time);
     

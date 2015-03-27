@@ -300,6 +300,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum bitDepth;
     int srcRowBytes;
     getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+    int pixelComponentCount = srcImg->getPixelComponentCount();
     if (bitDepth != OFX::eBitDepthFloat) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
@@ -363,13 +364,13 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             }
             
             // copy the source image (the writer is a no-op)
-            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
+            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, dstImg.get());
         }
     } else {
         // generic case: some conversions are needed.
 
         // allocate
-        int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+        int pixelBytes = pixelComponentCount * getComponentBytes(bitDepth);
         int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
         size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
         OFX::ImageMemory mem(memSize,this);
@@ -390,17 +391,17 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             if (noPremult || userPremult == pluginExpectedPremult) {
                 // copy the whole raw src image
                 copyPixels(*this, renderWindowClipped,
-                           srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes,
-                           tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                           srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
+                           tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             } else if (userPremult == OFX::eImagePreMultiplied) {
                 assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
-                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             } else {
                 assert(userPremult == OFX::eImageUnPreMultiplied);
                 assert(pluginExpectedPremult == OFX::eImagePreMultiplied);
-                premultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
-                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                premultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
+                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             }
         } else {
             assert(!isOCIOIdentity);
@@ -408,20 +409,20 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
                 // copy the whole raw src image
                 copyPixels(*this, renderWindowClipped,
-                           srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes,
-                           tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                           srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
+                           tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             } else {
                 assert(userPremult == OFX::eImagePreMultiplied);
-                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
+                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             }
             // do the color-space conversion
-            _ocio->apply(args.time, renderWindowClipped, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+            _ocio->apply(args.time, renderWindowClipped, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
 
             ///If needed, re-premult the image for the plugin to work correctly
             if (pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
-                premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents
-                                 , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+                premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount
+                                 , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             }
         }
         // write the image file
@@ -440,7 +441,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             }
 
             // copy the source image (the writer is a no-op)
-            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, bitDepth, srcRowBytes, dstImg.get());
+            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, dstImg.get());
         }
         
         // mem is freed at destruction
@@ -498,11 +499,13 @@ setupAndProcess(OFX::PixelProcessorFilterBase & processor,
                 const void *srcPixelData,
                 const OfxRectI& srcBounds,
                 OFX::PixelComponentEnum srcPixelComponents,
+                int srcPixelComponentCount,
                 OFX::BitDepthEnum srcPixelDepth,
                 int srcRowBytes,
                 void *dstPixelData,
                 const OfxRectI& dstBounds,
                 OFX::PixelComponentEnum dstPixelComponents,
+                int dstPixelComponentCount,
                 OFX::BitDepthEnum dstPixelDepth,
                 int dstRowBytes)
 {
@@ -514,8 +517,8 @@ setupAndProcess(OFX::PixelProcessorFilterBase & processor,
     }
     
     // set the images
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, 0);
     
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -529,16 +532,18 @@ setupAndProcess(OFX::PixelProcessorFilterBase & processor,
 
 void
 GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
-                        const void *srcPixelData,
-                        const OfxRectI& srcBounds,
-                        OFX::PixelComponentEnum srcPixelComponents,
-                        OFX::BitDepthEnum srcPixelDepth,
-                        int srcRowBytes,
-                        void *dstPixelData,
-                        const OfxRectI& dstBounds,
-                        OFX::PixelComponentEnum dstPixelComponents,
-                        OFX::BitDepthEnum dstBitDepth,
-                        int dstRowBytes)
+                                        const void *srcPixelData,
+                                        const OfxRectI& srcBounds,
+                                        OFX::PixelComponentEnum srcPixelComponents,
+                                        int srcPixelComponentCount,
+                                        OFX::BitDepthEnum srcPixelDepth,
+                                        int srcRowBytes,
+                                        void *dstPixelData,
+                                        const OfxRectI& dstBounds,
+                                        OFX::PixelComponentEnum dstPixelComponents,
+                                        int dstPixelComponentCount,
+                                        OFX::BitDepthEnum dstBitDepth,
+                                        int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     
@@ -548,7 +553,7 @@ GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
-        setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     } else {
         ///other pixel components means you want to copy only...
         assert(false);
@@ -557,16 +562,18 @@ GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
 
 void
 GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
-                      const void *srcPixelData,
-                      const OfxRectI& srcBounds,
-                      OFX::PixelComponentEnum srcPixelComponents,
-                      OFX::BitDepthEnum srcPixelDepth,
-                      int srcRowBytes,
-                      void *dstPixelData,
-                      const OfxRectI& dstBounds,
-                      OFX::PixelComponentEnum dstPixelComponents,
-                      OFX::BitDepthEnum dstBitDepth,
-                      int dstRowBytes)
+                                      const void *srcPixelData,
+                                      const OfxRectI& srcBounds,
+                                      OFX::PixelComponentEnum srcPixelComponents,
+                                      int srcPixelComponentCount,
+                                      OFX::BitDepthEnum srcPixelDepth,
+                                      int srcRowBytes,
+                                      void *dstPixelData,
+                                      const OfxRectI& dstBounds,
+                                      OFX::PixelComponentEnum dstPixelComponents,
+                                      int dstPixelComponentCount,
+                                      OFX::BitDepthEnum dstBitDepth,
+                                      int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     
@@ -577,7 +584,7 @@ GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
     
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         OFX::PixelCopierPremult<float, 4, 1, float, 4, 1> fred(*this);
-        setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
 
     } else {
         ///other pixel components means you want to copy only...

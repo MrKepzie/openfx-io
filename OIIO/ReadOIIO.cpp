@@ -151,12 +151,12 @@ public:
     virtual void clearAnyCache() OVERRIDE FINAL;
 private:
 
-    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
     virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
-                             OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL
+                             OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL
     {
         std::string rawComps;
         switch (pixelComponents) {
@@ -172,11 +172,11 @@ private:
             default:
                 OFX::throwSuiteStatusException(kOfxStatFailed);
         }
-        decodePlane(filename, time, renderWindow, pixelData, bounds, pixelComponents, rawComps, rowBytes);
+        decodePlane(filename, time, renderWindow, pixelData, bounds, pixelComponents, pixelComponentCount, rawComps, rowBytes);
     }
     
     virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
-                             OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes) OVERRIDE FINAL;
+                             OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
@@ -937,7 +937,8 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
 void
 ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
                                    OFX::PreMultiplicationEnum *premult,
-                                   OFX::PixelComponentEnum *components)
+                                   OFX::PixelComponentEnum *components,
+                                   int *componentCount)
 {
     updateSpec(filename);
     if (!_specValid) {
@@ -1111,20 +1112,26 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     switch (_spec.nchannels) {
         case 0:
             *components = OFX::ePixelComponentNone;
+            *componentCount = _spec.nchannels;
             break;
         case 1:
             *components = OFX::ePixelComponentAlpha;
+            *componentCount = _spec.nchannels;
             break;
         case 3:
             *components = OFX::ePixelComponentRGB;
-            break;
+            *componentCount = _spec.nchannels;
+           break;
         case 4:
             *components = OFX::ePixelComponentRGBA;
-            break;
+            *componentCount = _spec.nchannels;
+           break;
         default:
             *components = OFX::ePixelComponentRGBA;
-            break;
+            *componentCount = 4;
+          break;
     }
+    *componentCount = _spec.nchannels;
     
 #ifdef OFX_READ_OIIO_NEWMENU
     // rebuild the channel choices
@@ -1163,7 +1170,7 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
 }
 
 void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
-                                 OFX::PixelComponentEnum pixelComponents, const std::string& rawComponents, int rowBytes)
+                                 OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
     ImageSpec spec;
@@ -1226,7 +1233,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             aChannel = 1; // opaque by default
         }
         
-        pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
+        pixelBytes = pixelComponentCount * getComponentBytes(OFX::eBitDepthFloat);
         
         switch (pixelComponents) {
             case OFX::ePixelComponentRGBA:

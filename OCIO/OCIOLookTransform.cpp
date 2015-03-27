@@ -167,19 +167,21 @@ private:
         OFX::BitDepthEnum srcBitDepth;
         int srcRowBytes;
         getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+        int srcPixelComponentCount = srcImg->getPixelComponentCount();
         void* dstPixelData;
         OfxRectI dstBounds;
         OFX::PixelComponentEnum dstPixelComponents;
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+        int dstPixelComponentCount = dstImg->getPixelComponentCount();
         copyPixelData(unpremult,
                       premult,
                       maskmix,
                       time,
                       renderWindow,
-                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+                      srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     }
 
     void copyPixelData(bool unpremult,
@@ -190,6 +192,7 @@ private:
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
+                       int srcPixelComponentCount,
                        OFX::BitDepthEnum srcBitDepth,
                        int srcRowBytes,
                        OFX::Image* dstImg)
@@ -200,13 +203,14 @@ private:
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
+        int dstPixelComponentCount = dstImg->getPixelComponentCount();
         copyPixelData(unpremult,
                       premult,
                       maskmix,
                       time,
                       renderWindow,
-                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+                      srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     }
 
     void copyPixelData(bool unpremult,
@@ -218,6 +222,7 @@ private:
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
                        OFX::PixelComponentEnum dstPixelComponents,
+                       int dstPixelComponentCount,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes)
     {
@@ -227,13 +232,14 @@ private:
         OFX::BitDepthEnum srcBitDepth;
         int srcRowBytes;
         getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
+        int srcPixelComponentCount = srcImg->getPixelComponentCount();
         copyPixelData(unpremult,
                       premult,
                       maskmix,
                       time,
                       renderWindow,
-                      srcPixelData, srcBounds, srcPixelComponents, srcBitDepth, srcRowBytes,
-                      dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+                      srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
+                      dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     }
 
     void copyPixelData(bool unpremult,
@@ -244,11 +250,13 @@ private:
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
                        OFX::PixelComponentEnum srcPixelComponents,
+                       int srcPixelComponentCount,
                        OFX::BitDepthEnum srcPixelDepth,
                        int srcRowBytes,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
                        OFX::PixelComponentEnum dstPixelComponents,
+                       int dstPixelComponentCount,
                        OFX::BitDepthEnum dstBitDepth,
                        int dstRowBytes);
 
@@ -258,15 +266,17 @@ private:
                       const void *srcPixelData,
                       const OfxRectI& srcBounds,
                       OFX::PixelComponentEnum srcPixelComponents,
+                      int srcPixelComponentCount,
                       OFX::BitDepthEnum srcPixelDepth,
                       int srcRowBytes,
                       void *dstPixelData,
                       const OfxRectI& dstBounds,
                       OFX::PixelComponentEnum dstPixelComponents,
+                      int dstPixelComponentCount,
                       OFX::BitDepthEnum dstPixelDepth,
                       int dstRowBytes);
 
-    void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes);
+    void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
 
     // do not need to delete these, the ImageEffect is managing them for us
     OFX::Clip *dstClip_;
@@ -337,18 +347,20 @@ OCIOLookTransformPlugin::~OCIOLookTransformPlugin()
 /* set up and run a copy processor */
 void
 OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
-                                   double time,
-                                   const OfxRectI &renderWindow,
-                                   const void *srcPixelData,
-                                   const OfxRectI& srcBounds,
-                                   OFX::PixelComponentEnum srcPixelComponents,
-                                   OFX::BitDepthEnum srcPixelDepth,
-                                   int srcRowBytes,
-                                   void *dstPixelData,
-                                   const OfxRectI& dstBounds,
-                                   OFX::PixelComponentEnum dstPixelComponents,
-                                   OFX::BitDepthEnum dstPixelDepth,
-                                   int dstRowBytes)
+                                      double time,
+                                      const OfxRectI &renderWindow,
+                                      const void *srcPixelData,
+                                      const OfxRectI& srcBounds,
+                                      OFX::PixelComponentEnum srcPixelComponents,
+                                      int srcPixelComponentCount,
+                                      OFX::BitDepthEnum srcPixelDepth,
+                                      int srcRowBytes,
+                                      void *dstPixelData,
+                                      const OfxRectI& dstBounds,
+                                      OFX::PixelComponentEnum dstPixelComponents,
+                                      int dstPixelComponentCount,
+                                      OFX::BitDepthEnum dstPixelDepth,
+                                      int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
 
@@ -374,8 +386,8 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     // set the images
     assert(orig.get() && dstPixelData && srcPixelData);
     processor.setOrigImg(orig.get());
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
-    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, 0);
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
+    processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, 0);
 
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -394,20 +406,22 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
 
 void
 OCIOLookTransformPlugin::copyPixelData(bool unpremult,
-                                    bool premult,
-                                    bool maskmix,
-                                    double time,
-                                    const OfxRectI& renderWindow,
-                                    const void *srcPixelData,
-                                    const OfxRectI& srcBounds,
-                                    OFX::PixelComponentEnum srcPixelComponents,
-                                    OFX::BitDepthEnum srcPixelDepth,
-                                    int srcRowBytes,
-                                    void *dstPixelData,
-                                    const OfxRectI& dstBounds,
-                                    OFX::PixelComponentEnum dstPixelComponents,
-                                    OFX::BitDepthEnum dstBitDepth,
-                                    int dstRowBytes)
+                                       bool premult,
+                                       bool maskmix,
+                                       double time,
+                                       const OfxRectI& renderWindow,
+                                       const void *srcPixelData,
+                                       const OfxRectI& srcBounds,
+                                       OFX::PixelComponentEnum srcPixelComponents,
+                                       int srcPixelComponentCount,
+                                       OFX::BitDepthEnum srcPixelDepth,
+                                       int srcRowBytes,
+                                       void *dstPixelData,
+                                       const OfxRectI& dstBounds,
+                                       OFX::PixelComponentEnum dstPixelComponents,
+                                       int dstPixelComponentCount,
+                                       OFX::BitDepthEnum dstBitDepth,
+                                       int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     // do the rendering
@@ -415,41 +429,41 @@ OCIOLookTransformPlugin::copyPixelData(bool unpremult,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
     }
     if (!unpremult && !premult && !maskmix) {
-        copyPixels(*this, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+        copyPixels(*this, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     } else if (unpremult && !premult && !maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
             OFX::PixelCopierUnPremult<float, 3, 1, float, 3, 1> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
             OFX::PixelCopierUnPremult<float, 1, 1, float, 1, 1> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
 
     } else if (!unpremult && !premult && maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierMaskMix<float, 4, 1, true> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
             OFX::PixelCopierMaskMix<float, 3, 1, true> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
             OFX::PixelCopierMaskMix<float, 1, 1, true> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
 
     } else if (!unpremult && premult && maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierPremultMaskMix<float, 4, 1, float, 4, 1> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
             OFX::PixelCopierPremultMaskMix<float, 3, 1, float, 3, 1> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
             OFX::PixelCopierPremultMaskMix<float, 1, 1, float, 1, 1> fred(*this);
-            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstBitDepth, dstRowBytes);
+            setupAndCopy(fred, time, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
 
     } else {
@@ -458,7 +472,7 @@ OCIOLookTransformPlugin::copyPixelData(bool unpremult,
 }
 
 void
-OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes)
 {
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
@@ -496,7 +510,7 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
 
     OCIOProcessor processor(*this);
     // set the images
-    processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
+    processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
     try {
         OCIO::TransformDirection direction = OCIO::TRANSFORM_DIR_UNKNOWN;
@@ -593,9 +607,10 @@ OCIOLookTransformPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum bitDepth;
     int srcRowBytes;
     getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+    int pixelComponentCount = srcImg->getPixelComponentCount();
 
     // allocate temporary image
-    int pixelBytes = getPixelBytes(srcComponents, srcBitDepth);
+    int pixelBytes = pixelComponentCount * getComponentBytes(srcBitDepth);
     int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
     size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
     OFX::ImageMemory mem(memSize,this);
@@ -605,13 +620,13 @@ OCIOLookTransformPlugin::render(const OFX::RenderArguments &args)
     _premult->getValueAtTime(args.time, premult);
 
     // copy renderWindow to the temporary image
-    copyPixelData(premult, false, false, args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes);
+    copyPixelData(premult, false, false, args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
 
     ///do the color-space conversion
-    apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+    apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
 
     // copy the color-converted window and apply masking
-    copyPixelData(false, premult, true, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, bitDepth, tmpRowBytes, dstImg.get());
+    copyPixelData(false, premult, true, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
 }
 
 bool

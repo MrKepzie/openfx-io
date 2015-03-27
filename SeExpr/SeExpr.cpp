@@ -2477,7 +2477,7 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
         OFX::getImageEffectHostDescription()->supportsDynamicChoices) {
         gHostIsMultiPlanar = true;
         desc.setIsMultiPlanar(true);
-        desc.setIsPassThroughForNotProcessedPlanes(true);
+        desc.setPassThroughForNotProcessedPlanes(ePassThroughLevelPassThroughNonRenderedPlanes);
     } else {
         gHostIsMultiPlanar = false;
     }

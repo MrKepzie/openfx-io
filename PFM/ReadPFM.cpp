@@ -74,11 +74,11 @@ private:
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
 };
 
@@ -169,6 +169,7 @@ ReadPFMPlugin::decode(const std::string& filename,
                       float *pixelData,
                       const OfxRectI& bounds,
                       OFX::PixelComponentEnum pixelComponents,
+                      int pixelComponentCount,
                       int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
@@ -246,28 +247,34 @@ ReadPFMPlugin::decode(const std::string& filename,
         // now copy to the dstImg
         float* dstPix = (float*)((char*)pixelData + (y - bounds.y1)*rowBytes);
         if (C == 1) {
-            switch (pixelComponents) {
-                case OFX::ePixelComponentAlpha:
+            switch (pixelComponentCount) {
+                case 1:
                     copyLine<float,1,1>(image.data(), x1, x2, C, dstPix);
                     break;
-                case OFX::ePixelComponentRGB:
+                case 2:
+                    copyLine<float,1,2>(image.data(), x1, x2, C, dstPix);
+                    break;
+                case 3:
                     copyLine<float,1,3>(image.data(), x1, x2, C, dstPix);
                     break;
-                case OFX::ePixelComponentRGBA:
+                case 4:
                     copyLine<float,1,4>(image.data(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;
             }
         } else if (C == 3) {
-            switch (pixelComponents) {
-                case OFX::ePixelComponentAlpha:
+            switch (pixelComponentCount) {
+                case 1:
                     copyLine<float,3,1>(image.data(), x1, x2, C, dstPix);
                     break;
-                case OFX::ePixelComponentRGB:
+                case 2:
+                    copyLine<float,3,2>(image.data(), x1, x2, C, dstPix);
+                    break;
+                case 3:
                     copyLine<float,3,3>(image.data(), x1, x2, C, dstPix);
                     break;
-                case OFX::ePixelComponentRGBA:
+                case 4:
                     copyLine<float,3,4>(image.data(), x1, x2, C, dstPix);
                     break;
                 default:
@@ -336,7 +343,8 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
 void
 ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
                                   OFX::PreMultiplicationEnum *premult,
-                                  OFX::PixelComponentEnum *components)
+                                  OFX::PixelComponentEnum *components,
+                                  int *componentCount)
 {
     assert(premult && components);
     int startingTime = getStartingTime();
@@ -365,11 +373,15 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
 
     // set the components of _outputClip
     *components = OFX::ePixelComponentNone;
+    *componentCount = 0;
     if (pfm_type == 'F') {
         *components = OFX::ePixelComponentRGB;
+        *componentCount = 3;
     } else if (pfm_type == 'f') {
         *components = OFX::ePixelComponentAlpha;
+        *componentCount = 1;
     } else {
+        *premult = OFX::eImageOpaque;
         return;
     }
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {

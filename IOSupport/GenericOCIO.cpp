@@ -367,7 +367,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
         throw std::runtime_error("OCIO: invalid pixel depth (only float is supported)");
     }
 
-    apply(time, renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getRowBytes());
+    apply(time, renderWindow, (float*)img->getPixelData(), img->getBounds(), img->getPixelComponents(), img->getPixelComponentCount(), img->getRowBytes());
 #endif
 }
 
@@ -437,7 +437,7 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
 
 
 void
-GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes)
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
@@ -458,7 +458,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
 
     OCIOProcessor processor(*_parent);
     // set the images
-    processor.setDstImg(pixelData, bounds, pixelComponents, OFX::eBitDepthFloat, rowBytes);
+    processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
     std::string inputSpace;
     getInputColorspaceAtTime(time, inputSpace);

@@ -92,9 +92,9 @@ private:
 
     virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getSequenceTimeDomain(const std::string& filename, OfxRangeI &range) OVERRIDE FINAL;
 
@@ -152,12 +152,14 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 void
 ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
                                      OFX::PreMultiplicationEnum *premult,
-                                     OFX::PixelComponentEnum *components)
+                                     OFX::PixelComponentEnum *components,
+                                     int *componentCount)
 {
     assert(premult && components);
     ///Ffmpeg is RGB opaque.
     ///The GenericReader is responsible for checking if RGB is good enough, otherwise will map it to RGBA
     *components = OFX::ePixelComponentRGB;
+    *componentCount = 3;
     *premult = OFX::eImageOpaque;
     
     //Clear all opened files by this plug-in since the user changed the selected file/sequence
@@ -217,6 +219,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
                          float *pixelData,
                          const OfxRectI& imgBounds,
                          OFX::PixelComponentEnum pixelComponents,
+                         int pixelComponentCount,
                          int rowBytes)
 {
     FFmpegFile* file = _manager.getOrCreate(this, filename);

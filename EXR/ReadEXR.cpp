@@ -94,11 +94,11 @@ private:
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -538,6 +538,7 @@ ReadEXRPlugin::decode(const std::string& filename,
                       float *pixelData,
                       const OfxRectI& bounds,
                       OFX::PixelComponentEnum pixelComponents,
+                      int pixelComponentCount,
                       int rowBytes)
 {
     /// we only support RGBA output clip
@@ -609,7 +610,8 @@ ReadEXRPlugin::decode(const std::string& filename,
 void
 ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
                                   OFX::PreMultiplicationEnum *premult,
-                                  OFX::PixelComponentEnum *components)
+                                  OFX::PixelComponentEnum *components,
+                                  int *componentCount)
 {
     assert(premult && components);
     Exr::File* file = Exr::FileManager::s_readerManager.get(newFile);
@@ -627,15 +629,19 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
         // if any color channel is present, let it be RGBA
         if (hasRed || hasGreen || hasBlue) {
             *components = OFX::ePixelComponentRGBA;
+            *componentCount = 4;
         } else {
             *components = OFX::ePixelComponentAlpha;
+            *componentCount = 1;
         }
     } else {
         // if any color channel is present, let it be RGB
         if (hasRed || hasGreen || hasBlue) {
             *components = OFX::ePixelComponentRGB;
+            *componentCount = 3;
         } else {
             *components = OFX::ePixelComponentNone;
+            *componentCount = 0;
         }
     }
 #pragma message WARN("This is probably wrong, I just set it for the sake of making it compile.")

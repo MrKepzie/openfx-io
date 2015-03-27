@@ -153,6 +153,7 @@ private:
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
                        OFX::PixelComponentEnum dstPixelComponents,
+                       int dstPixelComponentCount,
                        OFX::BitDepthEnum dstPixelDepth,
                        int dstRowBytes);
     
@@ -310,6 +311,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dst.get(), &dstPixelData, &dstBounds, &dstComponents, &dstBitDepth, &dstRowBytes);
+        int dstPixelComponentCount = dst->getPixelComponentCount();
         
         assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA ||
                dstComponents == OFX::ePixelComponentAlpha);
@@ -318,15 +320,15 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
             switch (dstBitDepth) {
                 case OFX::eBitDepthUByte: {
                     BlackFiller<unsigned char> proc(*this, 4);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthUShort: {
                     BlackFiller<unsigned short> proc(*this, 4);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthFloat: {
                     BlackFiller<float> proc(*this, 4);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
@@ -335,15 +337,15 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
             switch (dstBitDepth) {
                 case OFX::eBitDepthUByte: {
                     BlackFiller<unsigned char> proc(*this, 3);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthUShort: {
                     BlackFiller<unsigned short> proc(*this, 3);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthFloat: {
                     BlackFiller<float> proc(*this, 3);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
@@ -353,15 +355,15 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
             switch (dstBitDepth) {
                 case OFX::eBitDepthUByte: {
                     BlackFiller<unsigned char> proc(*this, 1);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthUShort: {
                     BlackFiller<unsigned short> proc(*this, 1);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 case OFX::eBitDepthFloat: {
                     BlackFiller<float> proc(*this, 1);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstBitDepth, dstRowBytes);
+                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
@@ -440,11 +442,12 @@ OIIOResizePlugin::fillWithBlack(OFX::PixelProcessorFilterBase & processor,
                                 void *dstPixelData,
                                 const OfxRectI& dstBounds,
                                 OFX::PixelComponentEnum dstPixelComponents,
+                                int dstPixelComponentCount,
                                 OFX::BitDepthEnum dstPixelDepth,
                                 int dstRowBytes)
 {
     // set the images
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelDepth, dstRowBytes);
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
     
     // set the render window
     processor.setRenderWindow(renderWindow);

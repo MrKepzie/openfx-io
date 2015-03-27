@@ -287,6 +287,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OfxRectI srcRod;
     OfxRectI srcBounds;
     OFX::PixelComponentEnum pixelComponents = ePixelComponentNone;
+    int pixelComponentCount = 0;
     OFX::BitDepthEnum bitDepth = eBitDepthNone;
     OIIO::ImageSpec srcSpec;
     std::auto_ptr<const OIIO::ImageBuf> srcBuf;
@@ -295,6 +296,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         srcRod = srcImg->getRegionOfDefinition();
         srcBounds = srcImg->getBounds();
         pixelComponents = srcImg->getPixelComponents();
+        pixelComponentCount = srcImg->getPixelComponentCount();
         bitDepth = srcImg->getPixelDepth();
         srcSpec = imageSpecFromOFXImage(srcRod, srcBounds, pixelComponents, bitDepth);
         srcBuf.reset(new OIIO::ImageBuf("src", srcSpec, const_cast<void*>(srcImg->getPixelData())));
@@ -342,7 +344,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     textColor[3] = (float)a;
 
     // allocate temporary image
-    int pixelBytes = getPixelBytes(pixelComponents, bitDepth);
+    int pixelBytes = pixelComponentCount * getComponentBytes(bitDepth);
     int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
     size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
     OFX::ImageMemory mem(memSize,this);
