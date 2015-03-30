@@ -1263,34 +1263,34 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
     } // if (pixelComponents != OFX::ePixelComponentCustom) {
 #ifdef OFX_EXTENSIONS_NATRON
     else {
-        std::string layer;
-        std::vector<std::string> chanNames;
-        OFX::ImageBase::ofxCustomCompToNatronComp(rawComponents, &layer, &chanNames);
-        channels.resize(chanNames.size());
-        
-        pixelBytes = (int)chanNames.size() * sizeof(float);
-        numChannels = (int)chanNames.size();
-        if (chanNames.size() == 1 && chanNames[0] == layer) {
-            layer.clear();
-        }
-        for (std::size_t i = 0; i < chanNames.size(); ++i) {
-            bool found = false;
-            for (std::size_t j = 0; j < spec.channelnames.size(); ++j) {
-                std::string realChan;
-                if (!layer.empty()) {
-                    realChan.append(layer);
-                    realChan.push_back('.');
-                }
-                realChan.append(chanNames[i]);
-                if (spec.channelnames[j] == realChan) {
-                    channels[i] = j + kXChannelFirst;
-                    found = true;
-                    break;
-                }
+        std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(rawComponents);
+        if (!layerChannels.empty()) {
+            numChannels = (int)layerChannels.size() - 1;
+            std::string layer = layerChannels[0];
+
+            pixelBytes = numChannels * sizeof(float);
+            if (numChannels == 1 && layerChannels[1] == layer) {
+                layer.clear();
             }
-            if (!found) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "Could not find channel named " + chanNames[i]);
-                OFX::throwSuiteStatusException(kOfxStatFailed);
+            for (int i = 0; i < numChannels; ++i) {
+                bool found = false;
+                for (std::size_t j = 0; j < spec.channelnames.size(); ++j) {
+                    std::string realChan;
+                    if (!layer.empty()) {
+                        realChan.append(layer);
+                        realChan.push_back('.');
+                    }
+                    realChan.append(layerChannels[i+1]);
+                    if (spec.channelnames[j] == realChan) {
+                        channels[i] = j + kXChannelFirst;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Could not find channel named " + layerChannels[i+1]);
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                }
             }
         }
     }

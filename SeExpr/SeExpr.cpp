@@ -358,15 +358,14 @@ int getNComponents(OFX::PixelComponentEnum pixelComps, const std::string& rawCom
             return 2;
         case OFX::ePixelComponentAlpha:
             return 1;
-        case OFX::ePixelComponentCustom:
-        {
-            std::string layer;
-            std::vector<std::string> channelNames;
-            if (!OFX::ImageBase::ofxCustomCompToNatronComp(rawComponents, &layer, &channelNames)) {
+        case OFX::ePixelComponentCustom: {
+            std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(rawComponents);
+            if (layerChannels.empty()) {
                 return 0;
             }
-            return (int)std::max((double)channelNames.size() , 3.);
-        }   break;
+            return std::max((int)layerChannels.size() - 1, 3);
+           break;
+        }
         default:
             return 0;
     }
@@ -1503,22 +1502,23 @@ SeExprPlugin::getOfxComponentsForClip(int inputNumber) const
     _clipLayerToFetch[inputNumber]->getOption(opt_i, opt);
     
     if (opt == kSeExprColorPlaneName) {
+
         return _srcClip[inputNumber]->getPixelComponentsProperty();
     } else if (opt == kSeExprForwardMotionPlaneName || opt == kSeExprBackwardMotionPlaneName) {
+
         return kFnOfxImageComponentMotionVectors;
     } else if (opt == kSeExprDisparityLeftPlaneName || opt == kSeExprDisparityRightPlaneName) {
+
         return kFnOfxImageComponentStereoDisparity;
     } else {
-        
-        
         std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
-        for (std::list<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
-            std::string layer;
-            std::vector<std::string> channels;
-            if (!OFX::ImageBase::ofxCustomCompToNatronComp(*it, &layer, &channels)) {
+        for (std::list<std::string>::iterator it = components.begin(); it != components.end(); ++it) {
+            std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
+            if (layerChannels.empty()) {
                 continue;
             }
-            if (layer == opt) {
+            // first element is layer name
+            if (layerChannels[0] == opt) {
                 return *it;
             }
         }
@@ -1550,12 +1550,12 @@ SeExprPlugin::getOfxPlaneForClip(int inputNumber) const
         
         std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
         for (std::list<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
-            std::string layer;
-            std::vector<std::string> channels;
-            if (!OFX::ImageBase::ofxCustomCompToNatronComp(*it, &layer, &channels)) {
+            std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
+            if (layerChannels.empty()) {
                 continue;
             }
-            if (layer == opt) {
+            // first element is layer name
+            if (layerChannels[0] == opt) {
                 return *it;
             }
         }
@@ -1876,11 +1876,12 @@ SeExprPlugin::buildChannelMenus()
                 _clipLayerToFetch[i]->appendOption(kSeExprDisparityRightPlaneName);
 #ifdef OFX_EXTENSIONS_NATRON
             } else {
-                std::string layer;
-                std::vector<std::string> channels;
-                if (OFX::ImageBase::ofxCustomCompToNatronComp(comp, &layer, &channels)) {
-                    _clipLayerToFetch[i]->appendOption(layer);
+                std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
+                if (!layerChannels.empty()) {
+                    continue;
                 }
+                // first element is layer name
+                _clipLayerToFetch[i]->appendOption(layerChannels[0]);
 #endif
             }
 
