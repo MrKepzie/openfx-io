@@ -251,6 +251,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     bool validated;
@@ -258,6 +259,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     if (!validated) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     // fetch images corresponding to all connected inputs,
@@ -267,12 +269,14 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
             std::auto_ptr<const OFX::Image> srcImg(srcClip_[i]->fetchImage(args.time));
             if (!srcImg.get()) {
                 OFX::throwSuiteStatusException(kOfxStatFailed);
-            }
+                return;
+           }
             if (srcImg->getRenderScale().x != args.renderScale.x ||
                 srcImg->getRenderScale().y != args.renderScale.y ||
                 srcImg->getField() != args.fieldToRender) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
         }
     }
@@ -282,17 +286,20 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // Nuke executes hundreds of render() if we don't.
     if (!dstClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     assert(dstClip_);
     std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (dstImg->getRenderScale().x != args.renderScale.x ||
         dstImg->getRenderScale().y != args.renderScale.y ||
         dstImg->getField() != args.fieldToRender) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     // create the script
@@ -300,6 +307,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     int fd = mkstemp(scriptname); // modifies template
     if (fd < 0) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     std::string script;
     script_->getValue(script);
@@ -307,12 +315,14 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     close(fd);
     if (s < 0) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     // make the script executable
     int stat = chmod(scriptname, S_IRWXU);
     if (stat != 0) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     // build the command-line
@@ -390,12 +400,14 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
         std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
         if (!dstImg.get()) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
         if (dstImg->getRenderScale().x != args.renderScale.x ||
             dstImg->getRenderScale().y != args.renderScale.y ||
             dstImg->getField() != args.fieldToRender) {
             setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
 
         std::auto_ptr<const OFX::Image> srcImg(srcClip_[0]->fetchImage(args.time));
@@ -409,6 +421,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
                 srcImg->getField() != args.fieldToRender) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
 
             // copy the source image (the writer is a no-op)
@@ -425,6 +438,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
 
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     int param_count;
@@ -569,6 +583,7 @@ RunScriptPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &arg
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     if (!kSupportsTiles) {

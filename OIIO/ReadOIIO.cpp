@@ -171,6 +171,7 @@ private:
                 break;
             default:
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
         }
         decodePlane(filename, time, renderWindow, pixelData, bounds, pixelComponents, pixelComponentCount, rawComps, rowBytes);
     }
@@ -944,6 +945,7 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     if (!_specValid) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 # ifdef OFX_IO_USING_OCIO
     ///find-out the image color-space
@@ -1178,6 +1180,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 #else
     // Always keep unassociated alpha.
@@ -1192,6 +1195,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
     if (!img.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     const ImageSpec &spec = img->spec();
 #endif
@@ -1206,6 +1210,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
         && pixelComponents != OFX::ePixelComponentCustom) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB, Alpha or custom components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     
 #ifdef OFX_READ_OIIO_NEWMENU
@@ -1290,6 +1295,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
                 if (!found) {
                     setPersistentMessage(OFX::Message::eMessageError, "", "Could not find channel named " + layerChannels[i+1]);
                     OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
                 }
             }
         }
@@ -1390,6 +1396,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
         oss << "ReadOIIO: Cannot read, first channel is " << firstChannel << ", but image has only " << spec.nchannels << " channels";
         setPersistentMessage(OFX::Message::eMessageError, "", oss.str());
         OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+        return;
     }
     int numChannels = 0;
     int outputChannelBegin = 0;
@@ -1449,6 +1456,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             img->close();
 #endif
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
     }
     assert(numChannels);
     int pixelBytes = getPixelBytes(pixelComponents, OFX::eBitDepthFloat);
@@ -1620,12 +1628,14 @@ ReadOIIOPlugin::metadata(const std::string& filename)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 #else 
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     const ImageSpec& spec = img->spec();
 #endif

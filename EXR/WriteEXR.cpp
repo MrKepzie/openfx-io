@@ -164,6 +164,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     int numChannels = 0;
     switch(pixelComponents)
@@ -179,6 +180,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
             break;
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
     }
     assert(numChannels);
     try {
@@ -261,6 +263,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
     } catch (const std::exception& e) {
         setPersistentMessage(OFX::Message::eMessageError, "",std::string("OpenEXR error") + ": " + e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 }
 

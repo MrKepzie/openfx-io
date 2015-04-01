@@ -234,10 +234,12 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     if (!srcClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     assert(srcClip_);
     std::auto_ptr<const OFX::Image> srcImg(srcClip_->fetchImage(args.time));
@@ -247,33 +249,39 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
             srcImg->getField() != args.fieldToRender) {
             setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
     }
 
     if (!dstClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     assert(dstClip_);
     std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (dstImg->getRenderScale().x != args.renderScale.x ||
         dstImg->getRenderScale().y != args.renderScale.y ||
         dstImg->getField() != args.fieldToRender) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
     if (dstBitDepth != OFX::eBitDepthFloat || (srcImg.get() && dstBitDepth != srcImg->getPixelDepth())) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
     if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
         (srcImg.get() && (dstComponents != srcImg->getPixelComponents()))) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     // are we in the image bounds
@@ -281,6 +289,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
        args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
+        return;
         //throw std::runtime_error("render window outside of image bounds");
     }
 
@@ -433,6 +442,7 @@ OIIOTextPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &id
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return false;
     }
 
     std::string text;
@@ -457,6 +467,7 @@ OIIOTextPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::st
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     clearPersistentMessage();
@@ -467,6 +478,7 @@ OIIOTextPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &ar
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return false;
     }
     if (srcClip_ && srcClip_->isConnected()) {
         rod = srcClip_->getRegionOfDefinition(args.time);

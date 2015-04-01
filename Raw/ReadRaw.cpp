@@ -143,6 +143,7 @@ ReadRawPlugin::decode(const std::string& filename,
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Raw: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     
     int numComps = getNComponents(pixelComponents);
@@ -158,6 +159,7 @@ ReadRawPlugin::decode(const std::string& filename,
         setPersistentMessage(fatal ? OFX::Message::eMessageError : OFX::Message::eMessageWarning, "", error);
         if (fatal) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
     }
     
@@ -168,6 +170,7 @@ ReadRawPlugin::decode(const std::string& filename,
         setPersistentMessage(fatal ? OFX::Message::eMessageError : OFX::Message::eMessageWarning, "", error);
         if (fatal) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
     }
 
@@ -178,6 +181,7 @@ ReadRawPlugin::decode(const std::string& filename,
         setPersistentMessage(fatal ? OFX::Message::eMessageError : OFX::Message::eMessageWarning, "", error);
         if (fatal) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
     }
     

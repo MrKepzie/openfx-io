@@ -130,6 +130,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     int spectrum;
@@ -147,12 +148,14 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
         default:
             spectrum = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
     }
 
     std::FILE *const nfile = std::fopen(filename.c_str(), "wb");
     if (!nfile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file \"" + filename + "\"");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     int width = (bounds.x2 - bounds.x1);
     int height = (bounds.y2 - bounds.y1);

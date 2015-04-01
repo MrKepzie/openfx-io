@@ -232,6 +232,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     if ((pixelComponents != OFX::ePixelComponentRGB) &&
         (pixelComponents != OFX::ePixelComponentRGBA)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
@@ -255,6 +256,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
        (imgBounds.y2 - imgBounds.y1) < height){
         setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     int maxRetries;
@@ -266,6 +268,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
             
             setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
             
         }
     } catch (const std::exception& e) {
@@ -274,6 +277,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         if(choice == 1){ //error
             setPersistentMessage(OFX::Message::eMessageError, "", e.what());
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
         return;
     }

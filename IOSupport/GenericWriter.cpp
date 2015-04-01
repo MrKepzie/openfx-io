@@ -273,10 +273,12 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     if (!_inputClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     std::string filename;
@@ -285,12 +287,14 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     std::auto_ptr<const OFX::Image> srcImg(_inputClip->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (srcImg->getRenderScale().x != args.renderScale.x ||
         srcImg->getRenderScale().y != args.renderScale.y ||
         srcImg->getField() != args.fieldToRender) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
 
@@ -303,8 +307,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     int pixelComponentCount = srcImg->getPixelComponentCount();
     if (bitDepth != OFX::eBitDepthFloat) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
-    
+
     
     
     ///This is automatically the same generally as inputClip premultiplication but can differ is the user changed it.
@@ -355,12 +360,14 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
             if (!dstImg.get()) {
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
             if (dstImg->getRenderScale().x != args.renderScale.x ||
                 dstImg->getRenderScale().y != args.renderScale.y ||
                 dstImg->getField() != args.fieldToRender) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
             
             // copy the source image (the writer is a no-op)
@@ -432,12 +439,14 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
             if (!dstImg.get()) {
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
             if (dstImg->getRenderScale().x != args.renderScale.x ||
                 dstImg->getRenderScale().y != args.renderScale.y ||
                 dstImg->getField() != args.fieldToRender) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
 
             // copy the source image (the writer is a no-op)
@@ -456,6 +465,7 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     std::string filename;
@@ -481,6 +491,7 @@ GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &ar
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     endEncode(args);
@@ -514,8 +525,9 @@ setupAndProcess(OFX::PixelProcessorFilterBase & processor,
     // make sure bit depths are sane
     if (srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
-    
+
     // set the images
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
     processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, 0);
@@ -550,6 +562,7 @@ GenericWriterPlugin::unPremultPixelData(const OfxRectI &renderWindow,
     // do the rendering
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
@@ -580,8 +593,9 @@ GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
     // do the rendering
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
-    
+
     if (dstPixelComponents == OFX::ePixelComponentRGBA) {
         OFX::PixelCopierPremult<float, 4, 1, float, 4, 1> fred(*this);
         setupAndProcess(fred, 3, renderWindow, srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
@@ -626,6 +640,7 @@ GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return false;
     }
     getRegionOfDefinitionInternal(args.time, rod);
     return true;
@@ -708,7 +723,7 @@ imageFormatString(OFX::PixelComponentEnum components, OFX::BitDepthEnum bitDepth
         case OFX::eBitDepthCustom:
             s += "x";
             break;
-        case OFX::ePixelComponentNone:
+        case OFX::eBitDepthNone:
             s += "0";
             break;
         default:

@@ -304,11 +304,13 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,const OfxRectI& 
     if (!args.sequentialRenderStatus || _formatContext || _stream) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     if (args.isInteractive) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files when in non-interactive mode.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     assert(!_formatContext);
@@ -520,7 +522,7 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &/*args*
                         char errorBuf[1024]; \
                         av_strerror(error, errorBuf, sizeof(errorBuf)); \
                         setPersistentMessage(OFX::Message::eMessageError, "", errorBuf); \
-                        OFX::throwSuiteStatusException(kOfxStatFailed); \
+                        OFX::throwSuiteStatusException(kOfxStatFailed); return; \
                     }
 
 
@@ -530,17 +532,20 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     
     if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     ///Check that we're really encoding in sequential order
     if (_lastTimeEncoded != -1 && _lastTimeEncoded != time -1 && _lastTimeEncoded != time + 1) {
         setPersistentMessage(OFX::Message::eMessageError, "", "FFmpeg: can only write files in sequential order");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
 
     }
 
@@ -559,6 +564,7 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
         //    break;
         default:
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
     }
     assert(numChannels);
 

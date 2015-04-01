@@ -309,6 +309,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     int numChannels = 0;
@@ -346,6 +347,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 	switch (finalBitDepth) {
 		case eTuttlePluginBitDepthAuto:
             OFX::throwSuiteStatusException(kOfxStatErrUnknown);
+            return;
 		case eTuttlePluginBitDepth8:
 			oiioBitDepth = TypeDesc::UINT8;
 			bitsPerSample = 8;
@@ -417,6 +419,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
             break;
         case eParamCompressionRle: // DPX, IFF, EXR, TGA, RLA
             compression = "rle";
+            break;
         case eParamCompressionPiz: // EXR
             compression = "piz";
             break;
@@ -520,6 +523,7 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
     if (!output->open(filename, spec)) {
         setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     if (supportsRectangles) {

@@ -1574,6 +1574,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(args.time));
     if (!dst.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     OFX::BitDepthEnum         dstBitDepth    = dst->getPixelDepth();
     OFX::PixelComponentEnum   dstComponents  = dst->getPixelComponents();
@@ -1581,12 +1582,14 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
         dstComponents != _dstClip->getPixelComponents()) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong depth or components");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (dst->getRenderScale().x != args.renderScale.x ||
         dst->getRenderScale().y != args.renderScale.y ||
         (dst->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && dst->getField() != args.fieldToRender)) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     std::string rgbScript,alphaScript;
@@ -1661,6 +1664,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     if (!processor.isExprOk(&error)) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     
@@ -1674,6 +1678,7 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
     clearPersistentMessage();
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     OFX::BitDepthEnum       dstBitDepth    = _dstClip->getPixelDepth();
@@ -1685,6 +1690,7 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
         if (!validated) {
             setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
     }
 
@@ -1708,6 +1714,7 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
             }
             default:
                 OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                return;
         }
     } else if (dstComponents == OFX::ePixelComponentRGB) {
         switch (dstBitDepth) {
@@ -1728,6 +1735,7 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
             }
             default:
                 OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                return;
         }
     } else {
         assert(dstComponents == OFX::ePixelComponentAlpha);
@@ -1749,6 +1757,7 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
             }
             default:
                 OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                return;
         }
     }
 
@@ -1760,6 +1769,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
 
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     if (paramName == kParamDoubleParamNumber) {
@@ -1994,6 +2004,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
         
         
@@ -2025,6 +2036,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
         
         
@@ -2062,6 +2074,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
                 //This number is NaN! The user probably used something dependant on a pixel value as a time for the getPixel function
                 setPersistentMessage(OFX::Message::eMessageError, "", "Invalid frame for getPixel, see the Limitations in the description.");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
             
             OfxRangeD range;
@@ -2088,6 +2101,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     if (!kSupportsTiles) {
@@ -2128,6 +2142,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             if (!expr.isValid()) {
                 setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
             //Now evaluate the expression once and determine whether the user will call getPixel.
             //If he/she does, then we have no choice but to ask for the entire input image because we do not know
@@ -2155,6 +2170,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             if (!expr.isValid()) {
                 setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
                 OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
             //Now evaluate the expression once and determine whether the user will call getPixel.
             //If he/she does, then we have no choice but to ask for the entire input image because we do not know
@@ -2184,6 +2200,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
 {
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return false;
     }
     
     bool rodSet = false;

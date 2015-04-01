@@ -239,12 +239,14 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
     std::auto_ptr<OFX::Image> dst(dstClip_->fetchImage(args.time));
     if (!dst.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (dst->getRenderScale().x != args.renderScale.x ||
         dst->getRenderScale().y != args.renderScale.y ||
         dst->getField() != args.fieldToRender) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     std::auto_ptr<const OFX::Image> src(srcClip_->fetchImage(args.time));
@@ -258,6 +260,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
         OFX::PixelComponentEnum srcComponents = src->getPixelComponents();
         if (srcBitDepth != dstBitDepth || srcComponents != dstComponents) {
             OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+            return;
         }
 
         if (dstComponents == OFX::ePixelComponentRGBA) {
@@ -273,6 +276,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                    return;
             }
         } else if (dstComponents == OFX::ePixelComponentRGB) {
             switch (dstBitDepth) {
@@ -287,6 +291,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                    return;
             }
         } else {
             assert(dstComponents == OFX::ePixelComponentAlpha);
@@ -302,6 +307,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                    return;
             }
         }
     } else { //!src.get()
@@ -332,6 +338,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                    return;
             }
         } else if (dstComponents == OFX::ePixelComponentRGB) {
             switch (dstBitDepth) {
@@ -349,6 +356,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                    return;
             }
         } else {
             assert(dstComponents == OFX::ePixelComponentAlpha);
@@ -367,6 +375,7 @@ OIIOResizePlugin::render(const OFX::RenderArguments &args)
                 }   break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+                    return;
             }
         }
     }

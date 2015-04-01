@@ -544,6 +544,7 @@ ReadEXRPlugin::decode(const std::string& filename,
     /// we only support RGBA output clip
     if (pixelComponents != OFX::ePixelComponentRGBA) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);

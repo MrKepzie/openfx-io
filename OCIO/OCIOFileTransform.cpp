@@ -335,6 +335,7 @@ OCIOFileTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     // make sure bit depths are sane
     if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) ?
@@ -393,6 +394,7 @@ OCIOFileTransformPlugin::copyPixelData(bool unpremult,
     // do the rendering
     if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
     if (!unpremult && !premult && !maskmix) {
         copyPixels(*this, renderWindow,
@@ -510,12 +512,14 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
             // Should never happen
             setPersistentMessage(OFX::Message::eMessageError, "", "OCIO Interpolation value out of bounds");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
 
         processor.setValues(config, transform, OCIO::TRANSFORM_DIR_FORWARD);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -530,17 +534,20 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 {
     if (!srcClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     assert(srcClip_);
     std::auto_ptr<const OFX::Image> srcImg(srcClip_->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (srcImg->getRenderScale().x != args.renderScale.x ||
         srcImg->getRenderScale().y != args.renderScale.y ||
         srcImg->getField() != args.fieldToRender) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
@@ -548,28 +555,33 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 
     if (!dstClip_) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     assert(dstClip_);
     std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     if (dstImg->getRenderScale().x != args.renderScale.x ||
         dstImg->getRenderScale().y != args.renderScale.y ||
         dstImg->getField() != args.fieldToRender) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 
     OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
     if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
     if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
         dstComponents != srcComponents) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     // are we in the image bounds
@@ -577,6 +589,7 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
     if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
        args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
         OFX::throwSuiteStatusException(kOfxStatErrValue);
+        return;
         //throw std::runtime_error("render window outside of image bounds");
     }
 
