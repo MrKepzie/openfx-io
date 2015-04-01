@@ -1628,7 +1628,7 @@ ReadOIIOPlugin::metadata(const std::string& filename)
     if(!_cache->get_imagespec(ustring(filename), spec)){
         setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
+        return std::string();
     }
 #else 
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
