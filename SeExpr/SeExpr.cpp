@@ -473,12 +473,12 @@ public:
 };
 
 
-template <typename PIX, int maxComps>
-void getPixInternal(int nComps, const void* data, SeVec3d& result)
+template <typename PIX, int maxValue>
+static void getPixInternal(int nComps, const void* data, SeVec3d& result)
 {
     const PIX* pix = (const PIX*)data;
     for (int i = 0; i < nComps; ++i) {
-        result[i] = pix[i] / maxComps;
+        result[i] = pix[i] / (double)maxValue;
     }
 }
 
@@ -1339,10 +1339,10 @@ public:
                             srcPixels[i][k] = 0;
                         }
                     }
-                    float r = srcPixels[i][0] / maxValue;
-                    float g = srcPixels[i][1] / maxValue;
-                    float b = srcPixels[i][2] / maxValue;
-                    float a = nComponents == 4 ? srcPixels[i][3] / maxValue : srcPixels[i][0] / maxValue;
+                    float r = srcPixels[i][0] / (float)maxValue;
+                    float g = srcPixels[i][1] / (float)maxValue;
+                    float b = srcPixels[i][2] / (float)maxValue;
+                    float a = srcPixels[i][nComponents == 4 ? 3 : 0] / (float)maxValue;
                     if (_rgbExpr) {
                         _rgbExpr->setRGBA(i, r, g, b, a);
                     }
