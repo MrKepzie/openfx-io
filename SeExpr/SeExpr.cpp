@@ -393,17 +393,8 @@ protected:
     bool _doMasking;
     double _mix;
     
-    struct ImageData
-    {
-        const OFX::Image* img;
-        int nComponents;
-        
-        ImageData() : img(0), nComponents(0) {}
-    };
-    
-    
     // <clipIndex, <time, image> >
-    typedef std::map<OfxTime, const ImageData> FetchedImagesForClipMap;
+    typedef std::map<OfxTime, const OFX::Image*> FetchedImagesForClipMap;
     typedef std::map<int, FetchedImagesForClipMap> FetchedImagesMap;
     FetchedImagesMap _images;
     
@@ -432,40 +423,50 @@ public:
     
     bool isExprOk(std::string* error);
 
-    const OFX::Image* getOrFetchImage(int inputIndex,
-                                      OfxTime time,
-                                      int* nComponents)
+    void prefetchImage(int inputIndex,
+                       OfxTime time)
     {
         // find or create input
         FetchedImagesForClipMap& foundInput = _images[inputIndex];
 
         FetchedImagesForClipMap::iterator foundImage = foundInput.find(time);
         if (foundImage != foundInput.end()) {
-            *nComponents = foundImage->second.nComponents;
-            return foundImage->second.img;
+            // image already fetched
+            return;
         }
 
         OFX::Clip* clip = _plugin->getClip(inputIndex);
         assert(clip);
 
         if (!clip->isConnected()) {
-            return 0;
+            // clip is not connected, image is NULL
+            return;
         }
 
-        ImageData data;
+        OFX::Image *img;
         if (gHostIsMultiPlanar) {
-            data.img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
+            img = clip->fetchImagePlane(time, _renderView,  _layersToFetch[inputIndex].c_str());
         } else {
-            data.img = clip->fetchImage(time);
+            img = clip->fetchImage(time);
         }
-        if (!data.img) {
-            return 0;
+        if (!img) {
+            return;
         }
-        data.nComponents = getNComponents(data.img->getPixelComponents(), data.img->getPixelComponentsProperty());
-        *nComponents = data.nComponents;
-        std::pair<FetchedImagesForClipMap::iterator, bool> ret = foundInput.insert(std::make_pair(time, data));
+        std::pair<FetchedImagesForClipMap::iterator, bool> ret = foundInput.insert(std::make_pair(time, img));
         assert(ret.second);
-        return data.img;
+    }
+
+    const OFX::Image* getImage(int inputIndex,
+                               OfxTime time)
+    {
+        // find or create input
+        FetchedImagesForClipMap& foundInput = _images[inputIndex];
+
+        FetchedImagesForClipMap::iterator foundImage = foundInput.find(time);
+        if (foundImage != foundInput.end()) {
+            return foundImage->second;
+        }
+        return NULL;
     }
 
     virtual void process(OfxRectI procWindow) = 0;
@@ -563,8 +564,9 @@ private:
         SeVec3d yCoord;
         node->child(3)->eval(yCoord);
         
-        int nComponents;
-        const OFX::Image* img = _processor->getOrFetchImage(inputIndex[0] - 1, frame[0], &nComponents);
+        _processor->prefetchImage(inputIndex[0] - 1, frame[0]);
+        const OFX::Image* img = _processor->getImage(inputIndex[0] - 1, frame[0]);
+        int nComponents = img ? img->getPixelComponentCount() : 0;
         if (!img || nComponents == 0) {
             result[0] = result[1] = result[2] = 0.;
         } else {
@@ -1226,7 +1228,7 @@ SeExprProcessorBase::~SeExprProcessorBase()
     delete _alphaExpr;
     for (FetchedImagesMap::iterator it = _images.begin(); it!=_images.end(); ++it) {
         for (FetchedImagesForClipMap::iterator it2 = it->second.begin(); it2!= it->second.end(); ++it2) {
-            delete it2->second.img;
+            delete it2->second;
         }
     }
 }
@@ -1288,9 +1290,9 @@ SeExprProcessorBase::isExprOk(std::string* error)
     //Ensure the image of the input 0 at the current time exists for the mix
 
     for (int i = 0; i < kSourceClipCount; ++i) {
-        int nComps = 0;
-        _srcCurTime[i] = getOrFetchImage(i, _renderTime, &nComps);
-        _nSrcComponents[i] = nComps;
+        prefetchImage(i, _renderTime);
+        _srcCurTime[i] = getImage(i, _renderTime);
+        _nSrcComponents[i] = _srcCurTime[i] ? _srcCurTime[i]->getPixelComponentCount() : 0;
     }
 
     return true;
