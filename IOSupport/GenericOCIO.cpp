@@ -413,7 +413,6 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
             break;
             //case OFX::ePixelComponentAlpha: pixelBytes = 1; break;
         default:
-            numChannels = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
             return;
     }
