@@ -127,6 +127,7 @@ following definitions in the Xcode preferences
 - FFMPEG_PATH: path to FFmpeg installation prefix  (e.g. /usr/local or /opt/local)
 - OCIO_PATH: path to OpenColorIO installation prefix (e.g. /usr/local or /opt/local)
 - OIIO_PATH: path to OpenImageIO installation prefix (e.g. /usr/local or /opt/local)
+- SEEXPR_PATH: path to SeExpr installation prefix (e.g. /usr/local or /opt/local)
 
 ## Compiling on MS Windows
 

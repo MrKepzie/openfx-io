@@ -1428,6 +1428,7 @@
 					"$(EXR_PATH)/include/OpenEXR",
 					"$(FFMPEG_PATH)/include",
 					"$(OIIO_PATH)/include",
+					"$(SEEXPR_PATH)/include",
 				);
 				INFOPLIST_FILE = IO/Info.plist;
 				OTHER_LDFLAGS = (
@@ -1461,6 +1462,7 @@
 					"$(EXR_PATH)/include/OpenEXR",
 					"$(FFMPEG_PATH)/include",
 					"$(OIIO_PATH)/include",
+					"$(SEEXPR_PATH)/include",
 				);
 				INFOPLIST_FILE = IO/Info.plist;
 				OTHER_LDFLAGS = (
@@ -1555,6 +1557,10 @@
 		ACE084B01AB4AB9B00BE558C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SEEXPR_PATH)/include",
+				);
 				INFOPLIST_FILE = Info.plist;
 				OTHER_LDFLAGS = (
 					"-L$(SEEXPR_PATH)",
@@ -1567,6 +1573,10 @@
 		ACE084B11AB4AB9B00BE558C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SEEXPR_PATH)/include",
+				);
 				INFOPLIST_FILE = Info.plist;
 				OTHER_LDFLAGS = (
 					"-L$(SEEXPR_PATH)",

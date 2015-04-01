@@ -355,6 +355,7 @@ int getNComponents(OFX::PixelComponentEnum pixelComps, const std::string& rawCom
             return 3;
         case OFX::ePixelComponentStereoDisparity:
         case OFX::ePixelComponentMotionVectors:
+        case OFX::ePixelComponentXY:
             return 2;
         case OFX::ePixelComponentAlpha:
             return 1;
@@ -364,11 +365,12 @@ int getNComponents(OFX::PixelComponentEnum pixelComps, const std::string& rawCom
                 return 0;
             }
             return std::max((int)layerChannels.size() - 1, 3);
-           break;
+            break;
         }
-        default:
+        case OFX::ePixelComponentNone:
             return 0;
     }
+    return 0;
 }
 
 // Base class for processor, note that we do not use the multi-thread suite.
