@@ -187,7 +187,8 @@ ReadPFMPlugin::decode(const std::string& filename,
     int err = 0;
     double scale = 0.0;
     while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-        std::fgetc(nfile);
+        int c = std::fgetc(nfile);
+        (void)c;
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
@@ -196,7 +197,8 @@ ReadPFMPlugin::decode(const std::string& filename,
         return;
     }
     while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-        std::fgetc(nfile);
+        int c = std::fgetc(nfile);
+        (void)c;
     }
     if ((err = std::sscanf(item, " %d %d", &W, &H)) < 2) {
         std::fclose(nfile);
@@ -207,14 +209,18 @@ ReadPFMPlugin::decode(const std::string& filename,
     if (err == 2) {
         clearPersistentMessage();
         while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-            std::fgetc(nfile);
+            int c = std::fgetc(nfile);
+            (void)c;
         }
         if (std::sscanf(item, "%lf", &scale) != 1) {
             setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("SCALE field is undefined in file \"") + filename + "\".");
         }
     }
 
-    std::fgetc(nfile);
+    {
+        int c = std::fgetc(nfile);
+        (void)c;
+    }
 
     const bool is_inverted = (scale > 0) != endianness();
     if (pfm_type == 'F') {
@@ -302,7 +308,8 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     int err = 0;
     double scale = 0.0;
     while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-        std::fgetc(nfile);
+        int c = std::fgetc(nfile);
+        (void)c;
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
@@ -312,7 +319,8 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
         return false;
     }
     while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-        std::fgetc(nfile);
+        int c = std::fgetc(nfile);
+        (void)c;
     }
     if ((err = std::sscanf(item, " %d %d", &W, &H)) < 2) {
         std::fclose(nfile);
@@ -324,7 +332,8 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     if (err == 2) {
         clearPersistentMessage();
         while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-            std::fgetc(nfile);
+            int c = std::fgetc(nfile);
+            (void)c;
         }
         if (std::sscanf(item, "%lf", &scale) != 1) {
             setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("SCALE field is undefined in file \"") + filename + "\".");
@@ -362,7 +371,8 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     char item[1024] = { 0 };
     int err = 0;
     while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-        std::fgetc(nfile);
+        int c = std::fgetc(nfile);
+        (void)c;
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);

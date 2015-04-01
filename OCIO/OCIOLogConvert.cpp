@@ -326,7 +326,7 @@ OCIOLogConvertPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
                                    maskClip_->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig((srcClip_ && srcClip_->isConnected()) ?
                                    srcClip_->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
+    if (getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);

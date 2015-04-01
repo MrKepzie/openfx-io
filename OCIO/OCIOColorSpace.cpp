@@ -279,7 +279,7 @@ OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
 
     std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) ? maskClip_->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig(srcClip_->fetchImage(time));
-    if (getContext() != OFX::eContextFilter && maskClip_->isConnected()) {
+    if (getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
