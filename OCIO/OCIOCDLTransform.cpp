@@ -856,6 +856,8 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                 file = std::fopen(exportName.c_str(), "w");
                 if (!file) {
                     sendMessage(OFX::Message::eMessageError, "", std::string("File ") + exportName + " cannot be written");
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
                 }
                 const double time = args.time;
                 float sop[9];

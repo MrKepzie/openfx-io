@@ -2444,19 +2444,19 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         if (gHostSupportsRGBA && supportsRGBA) {
             gOutputComponentsMap[i] = ePixelComponentRGBA;
             ++i;
-            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
             param->appendOption(kParamOutputComponentsOptionRGBA);
         }
         if (gHostSupportsRGB && supportsRGB) {
             gOutputComponentsMap[i] = ePixelComponentRGB;
             ++i;
-            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
             param->appendOption(kParamOutputComponentsOptionRGB);
         }
         if (gHostSupportsAlpha && supportsAlpha) {
             gOutputComponentsMap[i] = ePixelComponentAlpha;
             ++i;
-            assert(gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
             param->appendOption(kParamOutputComponentsOptionAlpha);
         }
         gOutputComponentsMap[i] = ePixelComponentNone;

@@ -304,6 +304,9 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 
     // create the script
     char scriptname[] = "/tmp/runscriptXXXXXX";
+    // Coverity suggests to call umask here for compatibility with POSIX<2008 systems,
+    // but umask affects the whole process. We prefer to ignore this.
+    // coverity[secure_temp]
     int fd = mkstemp(scriptname); // modifies template
     if (fd < 0) {
         OFX::throwSuiteStatusException(kOfxStatFailed);

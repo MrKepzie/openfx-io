@@ -134,8 +134,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
     }
 
     int spectrum;
-    switch(pixelComponents)
-    {
+    switch(pixelComponents) {
         case OFX::ePixelComponentRGBA:
             spectrum = 4;
             break;
@@ -171,32 +170,14 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
 
         // now copy to the dstImg
         if (depth == 1) {
-            switch (pixelComponents) {
-                case OFX::ePixelComponentAlpha:
-                    copyLine<float,1,1>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
-                    break;
-                case OFX::ePixelComponentRGB:
-                    copyLine<float,3,1>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
-                    break;
-                case OFX::ePixelComponentRGBA:
-                    copyLine<float,4,1>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
-                    break;
-                default:
-                    break;
-            }
+            assert(pixelComponents == OFX::ePixelComponentAlpha);
+            copyLine<float,1,1>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
         } else if (depth == 3) {
-            switch (pixelComponents) {
-                case OFX::ePixelComponentAlpha:
-                    copyLine<float,1,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
-                    break;
-                case OFX::ePixelComponentRGB:
-                    copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
-                    break;
-                case OFX::ePixelComponentRGBA:
-                    copyLine<float,4,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
-                    break;
-                default:
-                    break;
+            assert(pixelComponents == OFX::ePixelComponentRGB || pixelComponents == OFX::ePixelComponentRGBA);
+            if (pixelComponents == OFX::ePixelComponentRGB) {
+                copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
+            } else if (pixelComponents == OFX::ePixelComponentRGBA) {
+                copyLine<float,4,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
             }
         }
 
