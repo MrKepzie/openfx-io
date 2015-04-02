@@ -1267,6 +1267,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         if (!firstImageSet) {
             firstBounds = bounds;
             firstDepth = bitDepth;
+            firstImageSet = true;
         } else {
             if (firstBounds.x1 != bounds.x1 || firstBounds.x2 != bounds.x2 || firstBounds.y1 != bounds.y1 || firstBounds.y2 != bounds.y2
                 || firstDepth != bitDepth) {
