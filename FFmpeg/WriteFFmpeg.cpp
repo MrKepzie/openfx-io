@@ -75,6 +75,13 @@ extern "C" {
 #include "IOUtility.h"
 
 #include "GenericWriter.h"
+#include "FFmpegFile.h"
+
+#define FFMPEG_PRINT_CODECS 0
+
+#if FFMPEG_PRINT_CODECS
+#include <iostream>
+#endif
 
 #define kPluginName "WriteFFmpeg"
 #define kPluginGrouping "Image/Writers"
@@ -169,6 +176,8 @@ public:
     
     const std::vector<std::string>& getCodecsLongNames() const { return _codecsLongNames; }
     
+    const std::vector<std::string>& getCodecsKnobLabels() const { return _codecsKnobLabels; }
+
 private:
     
     FFmpegSingleton &operator= (const FFmpegSingleton &) {
@@ -187,6 +196,7 @@ private:
     std::vector<std::string> _formatsShortNames;
     std::vector<std::string> _codecsLongNames;
     std::vector<std::string> _codecsShortNames;
+    std::vector<std::string> _codecsKnobLabels;
 };
 
 FFmpegSingleton FFmpegSingleton::m_instance = FFmpegSingleton();
@@ -199,10 +209,21 @@ FFmpegSingleton::FFmpegSingleton(){
     while (fmt) {
         
         if (fmt->video_codec != AV_CODEC_ID_NONE) {
-            if (fmt->long_name) {
-                _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
-                _formatsShortNames.push_back(fmt->name);
+            if (FFmpegFile::isFormatWhitelistedForWriting( fmt->name ) ) {
+                if (fmt->long_name) {
+                    _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
+                    _formatsShortNames.push_back(fmt->name);
+#if FFMPEG_PRINT_CODECS
+                    std::cout << "Format: " << fmt->name << " = " << fmt->long_name << std::endl;
+#endif //  FFMPEG_PRINT_CODECS
+                }
             }
+#if FFMPEG_PRINT_CODECS
+            else {
+                std::cout << "Disallowed Format: " << fmt->name << " = " << fmt->long_name << std::endl;
+            }
+#endif //  FFMPEG_PRINT_CODECS
+
         }
         fmt = av_oformat_next(fmt);
     }
@@ -210,10 +231,21 @@ FFmpegSingleton::FFmpegSingleton(){
     AVCodec* c = av_codec_next(NULL);
     while (c) {
         if (c->type == AVMEDIA_TYPE_VIDEO && c->encode2) {
-            if (c->long_name) {
+            if (FFmpegFile::isCodecWhitelistedForWriting( c->name ) &&
+                (c->long_name)) {
                 _codecsLongNames.push_back(c->long_name);
                 _codecsShortNames.push_back(c->name);
+                const char* knobLabel = FFmpegFile::getCodecKnobLabel( c->name );
+                _codecsKnobLabels.push_back(knobLabel);
+#if FFMPEG_PRINT_CODECS
+                std::cout << "Codec: " << c->name << " = " << c->long_name << std::endl;
+#endif //  FFMPEG_PRINT_CODECS
             }
+#if FFMPEG_PRINT_CODECS
+            else {
+                std::cout << "Disallowed Codec: " << c->name << " = " << c->long_name << std::endl;
+            }
+#endif //  FFMPEG_PRINT_CODECS
         }
         c = av_codec_next(c);
     }
@@ -805,7 +837,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamCodec);
             param->setLabel("Codec");
-            const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
+            const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsKnobLabels();// was .getCodecsLongNames();
             for (unsigned int i = 0; i < codecsV.size(); ++i) {
                 param->appendOption(codecsV[i],"");
             }

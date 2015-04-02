@@ -132,6 +132,199 @@ FFmpegFile::isImageFile(const std::string & filename)
     return extensionCorrespondToImageFile(ext);
 }
 
+namespace
+{
+    struct FilterEntry
+    {
+        const char* name;
+        bool        enableReader;
+        bool        enableWriter;
+    };
+
+    // Bug 11027 - Nuke write: ffmpeg codec fails has details on individual codecs
+
+    // For a full list of formats, define FN_FFMPEGWRITER_PRINT_CODECS in ffmpegWriter.cpp
+    const FilterEntry kFormatWhitelist[] =
+    {
+        { "avi",            true,  true },
+        { "h264",           true,  true },
+        { "mov",            true,  true },
+        { "mp4",            true,  true },
+        { "mpeg",           true,  true },
+        { NULL, false, false}
+    };
+
+    // For a full list of formats, define FN_FFMPEGWRITER_PRINT_CODECS in ffmpegWriter.cpp
+    // A range of codecs are omitted for licensing reasons, or because they support obselete/unnecessary
+    // formats that confuse the interface.
+
+    const FilterEntry kCodecWhitelist[] =
+    {
+        // Video codecs.
+        { "avrp",           true,  false }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec.
+        { "avui",           true,  false }, // Avid Meridien Uncompressed - write not supported as this is an SD only codec.
+        { "ayuv",           true,  false }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable.
+        { "dnxhd",          true,  true }, // VC3/DNxHD
+        { "h264",           true,  true }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10
+        { "hevc",           true,  true }, // H.265 / HEVC (High Efficiency Video Coding)
+        { "jpeg2000",       true,  false }, // JPEG 2000 - write not supported as it looks terrible.
+        { "jpegls",         true,  false }, // JPEG-LS - write not supported as can't be read in in official qt.
+        { "ljpeg",          true,  false }, // Lossless JPEG - write not supported as can't be read in in official qt.
+        { "mjpeg",          true,  true}, // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
+        { "mpeg1video",     true,  true }, // MPEG-1 video
+        { "mpeg4",          true,  true }, // MPEG-4 part 2
+        { "msmpeg4v2",      true,  false }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
+        { "msmpeg4",        true,  false }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
+        { "png",            true,  true }, // PNG (Portable Network Graphics) image
+        { "prores",         true,  true }, // Apple ProRes
+        { "qtrle",          true,  true }, // QuickTime Animation (RLE) video
+        { "r10k",           true,  false }, // AJA Kono 10-bit RGB - write not supported as not official qt readable with relevant 3rd party codec.
+        { "r210",           true,  false }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
+        { "rawvideo",       true,  false }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
+        { "tiff",           true,  false }, // TIFF Image - write not supported as not official qt readable.
+        { "v210",           true,  true }, // Uncompressed 4:2:2 10-bit
+        { "v308",           true,  false }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
+        { "v408",           true,  false }, // Uncompressed packed QT 4:4:4:4 - write not supported as official qt can't write, so bad round trip choice and 8-bit only.
+        { "v410",           true,  false }, // Uncompressed 4:4:4 10-bit - write not supported as not official qt readable with standard codecs.
+
+        // Audio codecs.
+        { "pcm_alaw",       true,  true }, // PCM A-law / G.711 A-law
+        { "pcm_f32be",      true,  true }, // PCM 32-bit floating point big-endian
+        { "pcm_f32le",      true,  true }, // PCM 32-bit floating point little-endian
+        { "pcm_f64be",      true,  true }, // PCM 64-bit floating point big-endian
+        { "pcm_f64le",      true,  true }, // PCM 64-bit floating point little-endian
+        { "pcm_mulaw",      true,  true }, // PCM mu-law / G.711 mu-law
+        { "pcm_s16be",      true,  true }, // PCM signed 16-bit big-endian
+        { "pcm_s16le",      true,  true }, // PCM signed 16-bit little-endian
+        { "pcm_s24be",      true,  true }, // PCM signed 24-bit big-endian
+        { "pcm_s24le",      true,  true }, // PCM signed 24-bit little-endian
+        { "pcm_s32be",      true,  true }, // PCM signed 32-bit big-endian
+        { "pcm_s32le",      true,  true }, // PCM signed 32-bit little-endian
+        { "pcm_s8",         true,  true }, // PCM signed 8-bit
+        { "pcm_u16be",      true,  true }, // PCM unsigned 16-bit big-endian
+        { "pcm_u16le",      true,  true }, // PCM unsigned 16-bit little-endian
+        { "pcm_u24be",      true,  true }, // PCM unsigned 24-bit big-endian
+        { "pcm_u24le",      true,  true }, // PCM unsigned 24-bit little-endian
+        { "pcm_u32be",      true,  true }, // PCM unsigned 32-bit big-endian
+        { "pcm_u32le",      true,  true }, // PCM unsigned 32-bit little-endian
+        { "pcm_u8",         true,  true }, // PCM unsigned 8-bit
+        { NULL, false, false}
+    };
+
+
+    typedef std::map<std::string, std::string> CodecMap;
+    CodecMap CreateCodecOverridenLongNamesMap()
+    {
+        CodecMap m;
+        m["mjpeg"]         = "Photo - JPEG";
+        m["mpeg1video"]    = "MPEG-1 Video";
+        m["mpeg2video"]    = "MPEG-2 Video";
+        m["mpeg4"]         = "MPEG-4 Video";
+        m["png"]           = "PNG";
+        m["qtrle"]         = "Animation";
+        m["v210"]          = "Uncompressed 10-bit 4:2:2";
+        return m;
+    }
+
+    static const CodecMap kCodecOverridenLongNames = CreateCodecOverridenLongNamesMap();
+
+    CodecMap CreateCodecKnobLabelsMap()
+    {
+        CodecMap m;
+
+        // Video codecs.
+        m["mjpeg"]         = "jpeg\tPhoto - JPEG";
+        m["mpeg1video"]    = "mp1v\tMPEG-1 Video";
+        m["mpeg2video"]    = "mp2v\tMPEG-2 Video";
+        m["mpeg4"]         = "mp4v\tMPEG-4 Video";
+        m["png"]           = "png \tPNG";
+        m["qtrle"]         = "rle \tAnimation";
+        m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
+        
+        return m;
+    }
+    
+    static const CodecMap kCodecKnobLabels = CreateCodecKnobLabelsMap();
+
+    const FilterEntry* getEntry(const char* name, const FilterEntry* whitelist, const FilterEntry* blacklist = NULL)
+    {
+        const FilterEntry* iterWhitelist = whitelist;
+
+        const size_t nameLength = strlen(name);
+        // check for normal mode
+        while (iterWhitelist->name != NULL) {
+            size_t iteNameLength = strlen(iterWhitelist->name);
+            size_t maxLength = (nameLength > iteNameLength) ? nameLength : iteNameLength;
+            if (strncmp(name, iterWhitelist->name, maxLength) == 0) {
+                // Found in whitelist, now check blacklist
+                if (blacklist) {
+                    const FilterEntry* iterBlacklist = blacklist;
+
+                    while (iterBlacklist->name != NULL) {
+                        iteNameLength = strlen(iterBlacklist->name);
+                        maxLength = (nameLength > iteNameLength) ? nameLength : iteNameLength;
+                        if (strncmp(name, iterBlacklist->name, maxLength) == 0) {
+                            // Found in codec whitelist but blacklisted too
+                            return NULL;
+                        }
+
+                        ++iterBlacklist;
+                    }
+                }
+                // Found in whitelist and not in blacklist
+                return iterWhitelist;
+            }
+            
+            ++iterWhitelist;
+        }
+        return NULL;
+    }
+}
+
+bool FFmpegFile::isFormatWhitelistedForReading(const char* formatName)
+{
+    const FilterEntry* whitelistEntry = getEntry(formatName, kFormatWhitelist);
+    return (whitelistEntry && whitelistEntry->enableReader);
+}
+
+bool FFmpegFile::isFormatWhitelistedForWriting(const char* formatName)
+{
+    const FilterEntry* whitelistEntry = getEntry(formatName, kFormatWhitelist);
+    return (whitelistEntry && whitelistEntry->enableWriter);
+}
+
+bool FFmpegFile::isCodecWhitelistedForReading(const char* codecName)
+{
+    const FilterEntry* whitelistEntry = getEntry(codecName, kCodecWhitelist);
+    return (whitelistEntry && whitelistEntry->enableReader);
+}
+
+bool FFmpegFile::isCodecWhitelistedForWriting(const char* codecName)
+{
+    const FilterEntry* whitelistEntry = getEntry(codecName, kCodecWhitelist);
+    return (whitelistEntry && whitelistEntry->enableWriter);
+}
+
+const char* FFmpegFile::getCodecOverridenLongName(const char* codecShortName)
+{
+    CodecMap::const_iterator it = kCodecOverridenLongNames.find(std::string(codecShortName));
+    if (it != kCodecOverridenLongNames.end()) {
+        return it->second.c_str();
+    } else {
+        return "";
+    }
+}
+
+const char* FFmpegFile::getCodecKnobLabel(const char* codecShortName)
+{
+    CodecMap::const_iterator it = kCodecKnobLabels.find(std::string(codecShortName));
+    if (it != kCodecKnobLabels.end()) {
+        return it->second.c_str();
+    } else {
+        return "";
+    }
+}
+
 SwsContext*
 FFmpegFile::Stream::getConvertCtx(AVPixelFormat srcPixelFormat,
                                   int srcWidth,
@@ -504,6 +697,15 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 #if TRACE_FILE_OPEN
             std::cout << "Decoder not found, skipping..." << std::endl;
 #endif
+            continue;
+        }
+
+        // skip codecs not in the white list
+        if (!isCodecWhitelistedForReading(videoCodec->name)) {
+# if TRACE_FILE_OPEN
+            std::cout << "Decoder \"" << videoCodec->name << "\" disallowed, skipping..." << std::endl;
+# endif
+            unsuported_codec = true;
             continue;
         }
 
