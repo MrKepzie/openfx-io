@@ -211,41 +211,6 @@ namespace
         { NULL, false, false}
     };
 
-
-    typedef std::map<std::string, std::string> CodecMap;
-    CodecMap CreateCodecOverridenLongNamesMap()
-    {
-        CodecMap m;
-        m["mjpeg"]         = "Photo - JPEG";
-        m["mpeg1video"]    = "MPEG-1 Video";
-        m["mpeg2video"]    = "MPEG-2 Video";
-        m["mpeg4"]         = "MPEG-4 Video";
-        m["png"]           = "PNG";
-        m["qtrle"]         = "Animation";
-        m["v210"]          = "Uncompressed 10-bit 4:2:2";
-        return m;
-    }
-
-    static const CodecMap kCodecOverridenLongNames = CreateCodecOverridenLongNamesMap();
-
-    CodecMap CreateCodecKnobLabelsMap()
-    {
-        CodecMap m;
-
-        // Video codecs.
-        m["mjpeg"]         = "jpeg\tPhoto - JPEG";
-        m["mpeg1video"]    = "mp1v\tMPEG-1 Video";
-        m["mpeg2video"]    = "mp2v\tMPEG-2 Video";
-        m["mpeg4"]         = "mp4v\tMPEG-4 Video";
-        m["png"]           = "png \tPNG";
-        m["qtrle"]         = "rle \tAnimation";
-        m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
-        
-        return m;
-    }
-    
-    static const CodecMap kCodecKnobLabels = CreateCodecKnobLabelsMap();
-
     const FilterEntry* getEntry(const char* name, const FilterEntry* whitelist, const FilterEntry* blacklist = NULL)
     {
         const FilterEntry* iterWhitelist = whitelist;
@@ -303,26 +268,6 @@ bool FFmpegFile::isCodecWhitelistedForWriting(const char* codecName)
 {
     const FilterEntry* whitelistEntry = getEntry(codecName, kCodecWhitelist);
     return (whitelistEntry && whitelistEntry->enableWriter);
-}
-
-const char* FFmpegFile::getCodecOverridenLongName(const char* codecShortName)
-{
-    CodecMap::const_iterator it = kCodecOverridenLongNames.find(std::string(codecShortName));
-    if (it != kCodecOverridenLongNames.end()) {
-        return it->second.c_str();
-    } else {
-        return "";
-    }
-}
-
-const char* FFmpegFile::getCodecKnobLabel(const char* codecShortName)
-{
-    CodecMap::const_iterator it = kCodecKnobLabels.find(std::string(codecShortName));
-    if (it != kCodecKnobLabels.end()) {
-        return it->second.c_str();
-    } else {
-        return "";
-    }
 }
 
 SwsContext*

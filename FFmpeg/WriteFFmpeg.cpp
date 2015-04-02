@@ -176,8 +176,6 @@ public:
     
     const std::vector<std::string>& getCodecsLongNames() const { return _codecsLongNames; }
     
-    const std::vector<std::string>& getCodecsKnobLabels() const { return _codecsKnobLabels; }
-
 private:
     
     FFmpegSingleton &operator= (const FFmpegSingleton &) {
@@ -196,7 +194,6 @@ private:
     std::vector<std::string> _formatsShortNames;
     std::vector<std::string> _codecsLongNames;
     std::vector<std::string> _codecsShortNames;
-    std::vector<std::string> _codecsKnobLabels;
 };
 
 FFmpegSingleton FFmpegSingleton::m_instance = FFmpegSingleton();
@@ -235,8 +232,6 @@ FFmpegSingleton::FFmpegSingleton(){
                 (c->long_name)) {
                 _codecsLongNames.push_back(c->long_name);
                 _codecsShortNames.push_back(c->name);
-                const char* knobLabel = FFmpegFile::getCodecKnobLabel( c->name );
-                _codecsKnobLabels.push_back(knobLabel);
 #if FFMPEG_PRINT_CODECS
                 std::cout << "Codec: " << c->name << " = " << c->long_name << std::endl;
 #endif //  FFMPEG_PRINT_CODECS
@@ -837,7 +832,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamCodec);
             param->setLabel("Codec");
-            const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsKnobLabels();// was .getCodecsLongNames();
+            const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsLongNames();
             for (unsigned int i = 0; i < codecsV.size(); ++i) {
                 param->appendOption(codecsV[i],"");
             }

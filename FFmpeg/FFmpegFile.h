@@ -472,16 +472,6 @@ public:
     //! Check whether a certain codec name is Whitelisted
     static bool isCodecWhitelistedForReading(const char* name);
     static bool isCodecWhitelistedForWriting(const char* name);
-
-    // Get the codec's long name, if it has been overriden.
-    // Used to match ffmpeg code names to Quicktime's.
-    // Should move to Simon's ffmpeg shared header when available.
-    static const char* getCodecOverridenLongName(const char* shortName);
-
-    // Get the codec's knob label.
-    // Used to match ffmpeg fourccs and code names to Quicktime's.
-    // Should move to Simon's ffmpeg shared header when available.
-    static const char* getCodecKnobLabel(const char* shortName);
 };
 
 
