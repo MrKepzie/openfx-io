@@ -201,7 +201,9 @@ extern "C" {
 #define kProresProfile4444 4
 #define kProresProfile4444Name "Apple ProRes 4444"
 #define kProresProfile4444FourCC "ap4h"
-
+#define kProresProfile4444XQ 5
+#define kProresProfile4444XQName "Apple ProRes 4444 XQ"
+#define kProresProfile4444XQFourCC "ap4x"
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -1013,10 +1015,10 @@ bool WriteFFmpegPlugin::IsYUV(AVPixelFormat pix_fmt)
 /*static*/
 bool WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName)
 {
-    return (!strcmp(shortName, kProresCodec"ch") ||
-            !strcmp(shortName, kProresCodec"cn") ||
-            !strcmp(shortName, kProresCodec"cs") ||
-            !strcmp(shortName, kProresCodec"co") ||
+    return (!strcmp(shortName, kProresCodec kProresProfileHQFourCC) ||
+            !strcmp(shortName, kProresCodec kProresProfileSQFourCC) ||
+            !strcmp(shortName, kProresCodec kProresProfileLTFourCC) ||
+            !strcmp(shortName, kProresCodec kProresProfileProxyFourCC) ||
             !strcmp(shortName, "mjpeg") ||
             !strcmp(shortName, "mpeg1video") ||
             !strcmp(shortName, "mpeg4") ||
@@ -1027,8 +1029,8 @@ bool WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName)
 /*static*/
 bool WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName)
 {
-    return (!strcmp(shortName, kProresCodec"4h") ||
-            !strcmp(shortName, kProresCodec"4x") ||
+    return (!strcmp(shortName, kProresCodec kProresProfile4444FourCC) ||
+            !strcmp(shortName, kProresCodec kProresProfile4444XQFourCC) ||
             !strcmp(shortName, "png")  ||
             !strcmp(shortName, "qtrle"));
 }
