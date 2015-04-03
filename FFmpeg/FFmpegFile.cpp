@@ -172,11 +172,12 @@ namespace
         { "ljpeg",          true,  false }, // Lossless JPEG - write not supported as can't be read in in official qt.
         { "mjpeg",          true,  true}, // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
         { "mpeg1video",     true,  true }, // MPEG-1 video
+        { "mpeg2video",     true,  true }, // MPEG-2 video
         { "mpeg4",          true,  true }, // MPEG-4 part 2
         { "msmpeg4v2",      true,  false }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
         { "msmpeg4",        true,  false }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
         { "png",            true,  true }, // PNG (Portable Network Graphics) image
-        { "prores",         true,  true }, // Apple ProRes
+        //{ "prores",         true,  true }, // Apple ProRes
         { "qtrle",          true,  true }, // QuickTime Animation (RLE) video
         { "r10k",           true,  false }, // AJA Kono 10-bit RGB - write not supported as not official qt readable with relevant 3rd party codec.
         { "r210",           true,  false }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.

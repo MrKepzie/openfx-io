@@ -83,6 +83,28 @@ extern "C" {
   }\
 }
 
+//Used in ffmpeg metadata dicts to stash values written to and from nclc atom.
+#define kNCLCPrimariesKey "fn_primaries"
+#define kNCLCTransferKey "fn_transfer_function"
+#define kNCLCMatrixKey "fn_matrix"
+#define kNCLCUnknownLabel "Unknown"
+#define kNCLCReservedLabel "Reserved"
+
+// metadata keys used by Nuke
+#define kMetaKeyApplication        "uk.co.thefoundry.Application"
+#define kMetaKeyApplicationVersion "uk.co.thefoundry.ApplicationVersion"
+#define kMetaKeyYCbCrMatrix        "uk.co.thefoundry.YCbCrMatrix"
+#define kMetaKeyPixelFormat        "uk.co.thefoundry.PixelFormat"
+#define kMetaKeyColorspace         "uk.co.thefoundry.Colorspace"
+#define kMetaKeyWriter             "uk.co.thefoundry.Writer"
+#define kMetaValueWriter64         "mov64"
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Chunksize static names.
+////////////////////////////////////////////////////////////////////////////////
+
+#define kChunkSizeKey "fn_log2chunksize"
 
 class FFmpegFile {
 
