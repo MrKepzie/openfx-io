@@ -677,9 +677,21 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 
 #ifdef OFX_IO_USING_OCIO
 void
+GenericOCIO::getInputColorspace(std::string &v)
+{
+    _inputSpace->getValue(v);
+}
+
+void
 GenericOCIO::getInputColorspaceAtTime(double time, std::string &v)
 {
     _inputSpace->getValueAtTime(time, v);
+}
+
+void
+GenericOCIO::getOutputColorspace(std::string &v)
+{
+    _outputSpace->getValue(v);
 }
 
 void

@@ -81,7 +81,9 @@ public:
     void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
+    void getInputColorspace(std::string &v);
     void getInputColorspaceAtTime(double time, std::string &v);
+    void getOutputColorspace(std::string &v);
     void getOutputColorspaceAtTime(double time, std::string &v);
     bool hasColorspace(const char* name) const;
     void setInputColorspace(const char* name);
