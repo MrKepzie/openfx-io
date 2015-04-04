@@ -403,7 +403,7 @@ private:
     // Probably do not need the following or the headaches
     // of trying to support the functionality.
     // Hide the copy constuctor. Who would manage memory?
-    MyAVFrame(MyAVFrame& avFrame) { }
+    MyAVFrame(MyAVFrame& avFrame);
     // Hide the assignment operator. Who would manage memory?
     MyAVFrame& operator=(const MyAVFrame& rhs) { return *this; }
 };
@@ -541,7 +541,7 @@ int MyAVFrame::alloc(int nbChannels, int nbSamples, enum AVSampleFormat avSample
 // the AVFrame structure.
 void MyAVFrame::deallocateAVFrameData()
 {
-    if (_avFrame && _avFrame->data)
+    if (_avFrame && _avFrame->data[0])
         av_freep(_avFrame->data);
 }
 
@@ -619,7 +619,7 @@ private:
     // Probably do not need the following or the headaches
     // of trying to support the functionality.
     // Hide the copy constuctor. Who would manage memory?
-    MyAVPicture(MyAVPicture& avPicture) { }
+    MyAVPicture(MyAVPicture& avPicture);
     // Hide the assignment operator. Who would manage memory?
     MyAVPicture& operator=(const MyAVPicture& rhs) { return *this; }
 };
@@ -1147,9 +1147,8 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         //This is the most frequent path, where we can guess best pix format using ffmpeg.
         //find highest bit depth pix fmt.
         const AVPixelFormat* currPixFormat  = videoCodec->pix_fmts;
-        int currPixFormatBitDepth           = outBitDepth;
         while (*currPixFormat != -1) {
-            currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
+            int currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
             if (currPixFormatBitDepth  > outBitDepth)
                 outBitDepth                     = currPixFormatBitDepth;
             currPixFormat++;
@@ -1225,7 +1224,7 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
         outLossyParams = outInterGOPParams = outInterBParams = false;
     }
     //Mpeg4 ms var 3 / AV_CODEC_ID_MSMPEG4V3 doesn't have a descriptor, but needs the params.
-    if (codec && (codec->id == AV_CODEC_ID_MSMPEG4V3)) {
+    if (!codecDesc && (codec->id == AV_CODEC_ID_MSMPEG4V3)) {
         outLossyParams = outInterGOPParams = outInterBParams = true;
     }
     //QTRLE supports differing GOPs, but any b frame settings causes unreadable files.
@@ -1234,8 +1233,14 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
         outInterGOPParams = true;
     }
 #if OFX_FFMPEG_PRORES
-    // Prores
+    // Prores is profile-based, we don't need the bitrate parameters
     if (codecDesc && (codecDesc->id == AV_CODEC_ID_PRORES)) {
+        outLossyParams = outInterBParams = outInterGOPParams = false;
+    }
+#endif
+#if OFX_FFMPEG_DNXHD
+    // DNxHD is profile-based, we don't need the bitrate parameters
+    if (codecDesc && (codecDesc->id == AV_CODEC_ID_DNXHD)) {
         outLossyParams = outInterBParams = outInterGOPParams = false;
     }
 #endif
@@ -1761,7 +1766,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
 
     if (!ret) {
         int error = 0;
-        if ((avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
+        if (avFrame && (avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
             AVPacket pkt;
             av_init_packet(&pkt);
             pkt.flags |= AV_PKT_FLAG_KEY;

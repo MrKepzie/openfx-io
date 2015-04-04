@@ -145,7 +145,7 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
             spectrum = 1;
             break;
         default:
-            spectrum = 0;
+            //spectrum = 0;
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
             return;
     }

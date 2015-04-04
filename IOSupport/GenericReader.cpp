@@ -2444,18 +2444,21 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         if (gHostSupportsRGBA && supportsRGBA) {
             gOutputComponentsMap[i] = ePixelComponentRGBA;
             ++i;
+            // coverity[check_return]
             assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
             param->appendOption(kParamOutputComponentsOptionRGBA);
         }
         if (gHostSupportsRGB && supportsRGB) {
             gOutputComponentsMap[i] = ePixelComponentRGB;
             ++i;
+            // coverity[check_return]
             assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
             param->appendOption(kParamOutputComponentsOptionRGB);
         }
         if (gHostSupportsAlpha && supportsAlpha) {
             gOutputComponentsMap[i] = ePixelComponentAlpha;
             ++i;
+            // coverity[check_return]
             assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
             param->appendOption(kParamOutputComponentsOptionAlpha);
         }

@@ -207,6 +207,12 @@ ReadPFMPlugin::decode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
+    if (W <= 0 || H <= 0) {
+        std::fclose(nfile);
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("invalid WIDTH or HEIGHT fields in file \"") + filename + "\".");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
     if (err == 2) {
         clearPersistentMessage();
         while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
@@ -230,7 +236,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         C = 1;
     }
 
-    int numpixels = W * C;
+    std::size_t numpixels = W * C;
     std::vector<float> image(numpixels);
 
     assert(0 <= renderWindow.x1 && renderWindow.x2 <= W &&

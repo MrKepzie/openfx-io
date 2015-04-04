@@ -1277,6 +1277,7 @@ namespace redi
 
             // check child called exec() successfully
             ::close(ck_exec[WR]);
+            // coverity[check_return]
             switch (::read(ck_exec[RD], &error_, sizeof(error_)))
             {
             case 0:
