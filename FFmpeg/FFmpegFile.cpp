@@ -151,6 +151,7 @@ namespace
         { "mov",            true,  true },
         { "mp4",            true,  true },
         { "mpeg",           true,  true },
+        { "mxf",            true,  true },
         { NULL, false, false}
     };
 
