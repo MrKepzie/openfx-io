@@ -89,7 +89,7 @@ extern "C" {
 #define OFX_FFMPEG_AUDIO 0        // audio support
 #define OFX_FFMPEG_MBDECISION 0   // add the macroblock decision parameter
 #define OFX_FFMPEG_PRORES 1       // experimental apple prores support
-#define OFX_FFMPEG_PRORES4444 0   // experimental apple prores 4444 support
+#define OFX_FFMPEG_PRORES4444 1   // experimental apple prores 4444 support
 #define OFX_FFMPEG_DNXHD 0        // experimental DNxHD support (should use porofiles)
 
 #if OFX_FFMPEG_PRINT_CODECS
@@ -1130,7 +1130,13 @@ bool WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AV
     if (userCodec) {
         outCodecId = userCodec->id;
     }
-
+#if OFX_FFMPEG_PRORES
+    if (outCodecId == AV_CODEC_ID_PRORES) {
+        // use prores_ks instead of prores
+        outVideoCodec = userCodec;
+        return true;
+    }
+#endif
     outVideoCodec = avcodec_find_encoder(outCodecId);
     if (!outVideoCodec) {
         return false;
@@ -1499,6 +1505,12 @@ AVStream* WriteFFmpegPlugin::addStream(AVFormatContext* avFormatContext, enum AV
     AVCodec* avCodec = NULL;
     if (pavCodec) {
         // Find the encoder.
+#if OFX_FFMPEG_PRORES
+        if (avCodecId == AV_CODEC_ID_PRORES) {
+            // use prores_ks instead of prores
+            avCodec = avcodec_find_encoder_by_name(kProresCodec);
+        } else
+#endif
         avCodec = avcodec_find_encoder(avCodecId);
         if (!avCodec) {
             setPersistentMessage(OFX::Message::eMessageError, "", "could not find codec");
@@ -2099,7 +2111,11 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
             const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
             assert(index < (int)codecsShortNames.size());
             avCodecContext->profile = getProfileFromShortName(codecsShortNames[index]);
-
+            if (avCodecContext->profile == 4) {
+                // Prores 4444
+                // TODO: we could handle alpha too, using AV_PIX_FMT_YUVA444P10
+                avCodecContext->pix_fmt = AV_PIX_FMT_YUV444P10;
+            }
             av_opt_set(avCodecContext->priv_data, "bits_per_mb", "8000", 0);
             av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
         }
