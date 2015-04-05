@@ -241,6 +241,10 @@ GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& fi
     }
 #endif
     
+#if 0
+    // [FD] disabled 5/04/2015 because it modifies the filename when writing to a file that ends with digits.
+    // For example sequence_01.mov, will be changed to sequence_.mov, which is very dangerous.
+
     ////if the file extension corresponds to a video file, remove file digits that were
     ////added to the file path in order to write into the same file.
     if (!isImageFile(ext)) {
@@ -254,7 +258,7 @@ GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& fi
         ++firstDigitPos;
         filename.erase(firstDigitPos, sepPos - firstDigitPos); //< erase the digits
     }
-
+#endif
 }
 
 bool
