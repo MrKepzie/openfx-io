@@ -2191,14 +2191,14 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
     }
 
     if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "can only write files in sequential order");
+        setPersistentMessage(OFX::Message::eMessageError, "", "Another render is currently active");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
     ///Check that we're really encoding in sequential order
     if (_lastTimeEncoded != -1 && _lastTimeEncoded != time -1 && _lastTimeEncoded != time + 1) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "can only write files in sequential order");
+        setPersistentMessage(OFX::Message::eMessageError, "", "Another render is currently active");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
 
