@@ -1271,6 +1271,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
         std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(rawComponents);
         if (!layerChannels.empty()) {
             numChannels = (int)layerChannels.size() - 1;
+            channels.resize(numChannels);
             std::string layer = layerChannels[0];
 
             pixelBytes = numChannels * sizeof(float);
