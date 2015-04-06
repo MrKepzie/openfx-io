@@ -87,7 +87,6 @@
 #include "ofxsMerging.h"
 #include "ofxsMultiThread.h"
 #include "ofxsFormatResolution.h"
-#include "ofxsGenerator.h"
 #include "ofxsRectangleInteract.h"
 
 #include <SeExpression.h>
