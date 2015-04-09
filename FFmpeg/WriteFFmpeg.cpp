@@ -403,6 +403,31 @@ int getProfileFromShortName(const std::string& name)
     return -1;
 }
 
+// see libavcodec/proresenc_kostya.c for the list of profiles
+static
+const char* getProfileStringFromShortName(const std::string& name)
+{
+    std::string prefix(kProresCodec);
+    if (!name.compare(0, prefix.size(), prefix)) {
+        if (!name.compare(prefix.size(), std::string::npos, kProresProfile4444FourCC)) {
+            return "4444";
+        }
+        if (!name.compare(prefix.size(), std::string::npos, kProresProfileHQFourCC)) {
+            return "hq";
+        }
+        if (!name.compare(prefix.size(), std::string::npos, kProresProfileSQFourCC)) {
+            return "standard";
+        }
+        if (!name.compare(prefix.size(), std::string::npos, kProresProfileLTFourCC)) {
+            return "lt";
+        }
+        if (!name.compare(prefix.size(), std::string::npos, kProresProfileProxyFourCC)) {
+            return "proxy";
+        }
+    }
+    return "auto";
+}
+
 struct AVCodecContext;
 struct AVFormatContext;
 struct AVStream;
@@ -2653,7 +2678,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
             _codec->getValue(index);
             const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
             assert(index < (int)codecsShortNames.size());
-            avCodecContext->profile = getProfileFromShortName(codecsShortNames[index]);
+            //avCodecContext->profile = getProfileFromShortName(codecsShortNames[index]);
+            av_opt_set(avCodecContext->priv_data, "profile", getProfileStringFromShortName(codecsShortNames[index]), 0);
             av_opt_set(avCodecContext->priv_data, "bits_per_mb", "8000", 0);
             av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
         }
