@@ -1346,9 +1346,8 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         //This is the most frequent path, where we can guess best pix format using ffmpeg.
         //find highest bit depth pix fmt.
         const AVPixelFormat* currPixFormat  = videoCodec->pix_fmts;
-        int currPixFormatBitDepth           = outBitDepth;
         while (*currPixFormat != -1) {
-            currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
+            int currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
             if (currPixFormatBitDepth  > outBitDepth)
                 outBitDepth                     = currPixFormatBitDepth;
             currPixFormat++;
@@ -1365,7 +1364,7 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         std::vector<AVPixelFormat> bestFormats;
         currPixFormat  = videoCodec->pix_fmts;
         while (*currPixFormat != -1) {
-            currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
+            int currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
             if (currPixFormatBitDepth  == outBitDepth)
                 bestFormats.push_back(*currPixFormat);
             currPixFormat++;
@@ -1785,6 +1784,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
                             break;
                         case 29:
                             mbs = progressive ? 220 : 0;
+                            break;
                         case 25:
                             mbs = progressive ? 185 : 0;
                             break;
@@ -1822,6 +1822,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
                             break;
                         case 29:
                             mbs = progressive ? 145 : 0;
+                            break;
                         case 25:
                             mbs = progressive ? 120 : 0;
                             break;
@@ -1859,6 +1860,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
                             break;
                         case 29:
                             mbs = progressive ? 45 : 0;
+                            break;
                         case 25:
                             mbs = progressive ? 36 : 0;
                             break;
@@ -1944,21 +1946,22 @@ AVStream* WriteFFmpegPlugin::addStream(AVFormatContext* avFormatContext, enum AV
     AVStream* avStream = NULL;
 
     AVCodec* avCodec = NULL;
-    if (pavCodec) {
-        // Find the encoder.
+
+    // Find the encoder.
 #if OFX_FFMPEG_PRORES
-        if (avCodecId == AV_CODEC_ID_PRORES) {
-            // use prores_ks instead of prores
-            avCodec = avcodec_find_encoder_by_name(kProresCodec);
-        } else
+    if (avCodecId == AV_CODEC_ID_PRORES) {
+        // use prores_ks instead of prores
+        avCodec = avcodec_find_encoder_by_name(kProresCodec);
+    } else
 #endif
+    {
         avCodec = avcodec_find_encoder(avCodecId);
-        if (!avCodec) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "could not find codec");
-            return NULL;
-        }
     }
-    
+    if (!avCodec) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "could not find codec");
+        return NULL;
+    }
+
     avStream = avformat_new_stream(avFormatContext, avCodec);
     if (!avStream) {
         setPersistentMessage(OFX::Message::eMessageError, "", "could not allocate stream");
@@ -2276,7 +2279,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                         dst_pixels[dstCol + 1] = floatToInt<65536>(src_pixels[srcCol + 1]);
                         dst_pixels[dstCol + 2] = floatToInt<65536>(src_pixels[srcCol + 2]);
                         if (hasAlpha) {
-                            dst_pixels[dstCol + 3] = floatToInt<65536>((numDestChannels == 4) ? src_pixels[srcCol + 3] : 1.);
+                            dst_pixels[dstCol + 3] = floatToInt<65536>((numChannels == 4) ? src_pixels[srcCol + 3] : 1.);
                         }
                     }
                } else {
@@ -2291,7 +2294,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                         dst_pixels[dstCol + 1] = floatToInt<256>(src_pixels[srcCol + 1]);
                         dst_pixels[dstCol + 2] = floatToInt<256>(src_pixels[srcCol + 2]);
                         if (hasAlpha) {
-                            dst_pixels[dstCol + 3] = floatToInt<256>((numDestChannels == 4) ? src_pixels[srcCol + 3] : 1.);
+                            dst_pixels[dstCol + 3] = floatToInt<256>((numChannels == 4) ? src_pixels[srcCol + 3] : 1.);
                         }
                    }
                 }
@@ -2325,7 +2328,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             av_init_packet(&pkt);
             pkt.flags |= AV_PKT_FLAG_KEY;
             pkt.stream_index = avStream->index;
-            pkt.data = avFrame->data[0];
+            pkt.data = avFrame ? avFrame->data[0] : NULL;
             pkt.size = sizeof(AVPicture);
             const int writeResult = av_write_frame(avFormatContext, &pkt);
             const bool writeSucceeded = (writeResult == 0);
