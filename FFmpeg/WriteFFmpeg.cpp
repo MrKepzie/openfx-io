@@ -284,6 +284,16 @@ enum DNxHDCodecProfileEnum {
     eDNxHDCodecProfile145,
     eDNxHDCodecProfile36,
 };
+
+#define kParamDNxHDEncodeVideoRange "DNxHDEncodeVideoRange"
+#define kParamDNxHDEncodeVideoRangeLabel "DNxHD Output Range"
+#define kParamDNxHDEncodeVideoRangeHint \
+"When encoding using DNxHD this is used to select between full scale data range " \
+"and 'video/legal' data range.\nFull scale data range is 0-255 for 8-bit and 0-1023 for 10-bit. " \
+"'Video/legal' data range is a reduced range, 16-240 for 8-bit and 64-960 for 10-bit."
+#define kParamDNxHDEncodeVideoRangeOptionFull "Full Range"
+#define kParamDNxHDEncodeVideoRangeOptionVideo "Video Range"
+
 #endif
 
 #define STR_HELPER(x) #x
@@ -860,6 +870,7 @@ private:
     OFX::DoubleParam* _fps;
 #ifdef OFX_FFMPEG_DNXHD
     OFX::ChoiceParam* _dnxhdCodecProfile;
+    OFX::ChoiceParam* _encodeVideoRange;
 #endif
 #if OFX_FFMPEG_TIMECODE
     OFX::BooleanParam* _writeTimeCode;
@@ -927,6 +938,7 @@ FFmpegSingleton::FFmpegSingleton()
 {
     // TODO: add a log buffer and a way to display it / clear it.
     av_log_set_level(AV_LOG_WARNING);
+    //av_log_set_level(AV_LOG_DEBUG);
     av_register_all();
     
     AVOutputFormat* fmt = av_oformat_next(NULL);
@@ -1027,6 +1039,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 , _fps(0)
 #if OFX_FFMPEG_DNXHD
 , _dnxhdCodecProfile(0)
+, _encodeVideoRange(0)
 #endif
 #if OFX_FFMPEG_TIMECODE
 , _writeTimeCode(0)
@@ -1048,6 +1061,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
     _fps = fetchDoubleParam(kParamFPS);
 #if OFX_FFMPEG_DNXHD
     _dnxhdCodecProfile = fetchChoiceParam(kParamDNxHDCodecProfile);
+    _encodeVideoRange = fetchChoiceParam(kParamDNxHDEncodeVideoRange);
 #endif
 #if OFX_FFMPEG_TIMECODE
     _writeTimeCode = fetchBooleanParam(kParamWriteTimeCode);
@@ -1306,7 +1320,19 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         //call best_pix_fmt using the full list.
         const int hasAlphaInt = hasAlpha ? 1 : 0;
         int loss     = 0; //Potentially we should error, or at least report if over a certain value?
-        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(videoCodec->pix_fmts, outNukeBufferPixelFormat, hasAlphaInt, &loss);
+
+        // gather the formats that have the highest bit depth (avcodec_find_best_pix_fmt_of_list doesn't do the best job: it prefers yuv422p over yuv422p10)
+        std::vector<AVPixelFormat> bestFormats;
+        currPixFormat  = videoCodec->pix_fmts;
+        while (*currPixFormat != -1) {
+            currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
+            if (currPixFormatBitDepth  == outBitDepth)
+                bestFormats.push_back(*currPixFormat);
+            currPixFormat++;
+        }
+        bestFormats.push_back(AV_PIX_FMT_NONE);
+
+        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outNukeBufferPixelFormat, hasAlphaInt, &loss);
 
         if (AV_CODEC_ID_QTRLE == videoCodec->id) {
             if (hasAlphaInt &&
@@ -1397,7 +1423,8 @@ int WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
         case AV_PIX_FMT_GRAY8:
         case AV_PIX_FMT_YA8:
         case AV_PIX_FMT_MONOBLACK:
-        case AV_PIX_FMT_RGB555:
+        case AV_PIX_FMT_RGB555LE:
+        case AV_PIX_FMT_RGB555BE:
             return 8;
             break;
         default:
@@ -2025,6 +2052,34 @@ int WriteFFmpegPlugin::writeAudio(AVFormatContext* avFormatContext, AVStream* av
 }
 #endif
 
+// the following was taken from libswscale/utils.c:
+static int handle_jpeg(enum AVPixelFormat *format)
+{
+    switch (*format) {
+        case AV_PIX_FMT_YUVJ420P:
+            *format = AV_PIX_FMT_YUV420P;
+            return 1;
+        case AV_PIX_FMT_YUVJ411P:
+            *format = AV_PIX_FMT_YUV411P;
+            return 1;
+        case AV_PIX_FMT_YUVJ422P:
+            *format = AV_PIX_FMT_YUV422P;
+            return 1;
+        case AV_PIX_FMT_YUVJ444P:
+            *format = AV_PIX_FMT_YUV444P;
+            return 1;
+        case AV_PIX_FMT_YUVJ440P:
+            *format = AV_PIX_FMT_YUV440P;
+            return 1;
+        case AV_PIX_FMT_GRAY8:
+        case AV_PIX_FMT_GRAY16LE:
+        case AV_PIX_FMT_GRAY16BE:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // More of a utility function added since supported DNxHD.
 // This codec requires colour space conversions, and more to the point, requires
@@ -2038,6 +2093,14 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
     int width = (_rod.x2 - _rod.x1);
     int height = (_rod.y2 - _rod.y1);
 
+    int dstRange = IsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
+    dstRange |= handle_jpeg(&dstPixelFormat); // may modify dstPixelFormat
+    if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
+        int encodeVideoRange;
+        _encodeVideoRange->getValue(encodeVideoRange);
+        dstRange = !(encodeVideoRange);
+    }
+
     SwsContext* convertCtx = sws_getCachedContext(NULL,
                                                   width, height, srcPixelFormat, // from
                                                   avCodecContext->width, avCodecContext->height, dstPixelFormat,// to
@@ -2045,7 +2108,6 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
 
     // Set up the sws (SoftWareScaler) to convert colourspaces correctly, in the sws_scale function below
     const int colorspace = (width < 1000) ? SWS_CS_ITU601 : SWS_CS_ITU709;
-    int dstRange = IsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
 
     // Only apply colorspace conversions for YUV.
     if (IsYUV(dstPixelFormat)) {
@@ -2277,7 +2339,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         }
         
         if (error) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "error writing frame to file");
+            av_log(avCodecContext, AV_LOG_ERROR, "error writing frame to file\n");
             ret = -2;
         }
     }
@@ -2545,6 +2607,17 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         avCodecContext->pix_fmt = targetPixelFormat;
         avCodecContext->bits_per_raw_sample = outBitDepth;
 
+        // Now that the stream has been created, and the pixel format
+        // is known, for DNxHD, set the YUV range.
+        if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
+            int encodeVideoRange;
+            _encodeVideoRange->getValue(encodeVideoRange);
+            // Set the metadata for the YUV range. This modifies the appropriate
+            // field in the 'ACLR' atom in the video sample description.
+            // Set 'full range' = 1 or 'legal range' = 2.
+            av_dict_set(&_streamVideo->metadata, kACLRYuvRange, encodeVideoRange ? "2" :"1", 0);
+        }
+
         // Bug 45010 The following flags must be set BEFORE calling
         // openCodec (avcodec_open2). This will ensure that codec
         // specific data is created and initialized. (E.g. for MPEG4
@@ -2665,10 +2738,12 @@ void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const 
 
         if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelComponents, rowBytes)) {
             _error = SUCCESS;
+            _lastTimeEncoded = (int)time;
+        } else {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
         }
     }
-
-    _lastTimeEncoded = (int)time;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2778,8 +2853,8 @@ void WriteFFmpegPlugin::updateVisibility()
     bool isdnxhd = (!strcmp(codecsShortNames[index].c_str(), "dnxhd"));
     _dnxhdCodecProfile->setEnabled(isdnxhd);
     _dnxhdCodecProfile->setIsSecret(!isdnxhd);
-    //_DNxHDEncodeVideoRange->setEnabled(isdnxhd);
-    //_DNxHDEncodeVideoRange->setIsSecret(!isdnxhd);
+    _encodeVideoRange->setEnabled(isdnxhd);
+    _encodeVideoRange->setIsSecret(!isdnxhd);
 #endif
 }
 
@@ -3049,6 +3124,21 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             page->addChild(*group);
         }
 
+#ifdef OFX_FFMPEG_DNXHD
+        {
+            OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDNxHDEncodeVideoRange);
+            param->setLabel(kParamDNxHDEncodeVideoRangeLabel);
+            param->setHint(kParamDNxHDEncodeVideoRangeHint);
+            param->appendOption(kParamDNxHDEncodeVideoRangeOptionFull);
+            param->appendOption(kParamDNxHDEncodeVideoRangeOptionVideo);
+            param->setAnimates(false);
+            param->setDefault(1);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+#endif
 
         ///////////bit-rate
         {

@@ -90,6 +90,9 @@ extern "C" {
 #define kNCLCUnknownLabel "Unknown"
 #define kNCLCReservedLabel "Reserved"
 
+// Avid DNxHD specific. Label for switching between video legal and full range.
+#define kACLRYuvRange "fn_aclr_yuv_range"
+
 // metadata keys used by Nuke
 #define kMetaKeyApplication        "uk.co.thefoundry.Application"
 #define kMetaKeyApplicationVersion "uk.co.thefoundry.ApplicationVersion"
