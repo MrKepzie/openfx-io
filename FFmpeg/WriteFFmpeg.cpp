@@ -91,7 +91,7 @@ extern "C" {
 #define OFX_FFMPEG_MBDECISION 0   // add the macroblock decision parameter
 #define OFX_FFMPEG_PRORES 1       // experimental apple prores support
 #define OFX_FFMPEG_PRORES4444 1   // experimental apple prores 4444 support
-#define OFX_FFMPEG_DNXHD 1        // experimental DNxHD support (should use porofiles)
+#define OFX_FFMPEG_DNXHD 1        // experimental DNxHD support
 
 #if OFX_FFMPEG_PRINT_CODECS
 #include <iostream>
@@ -328,16 +328,31 @@ static CodecMap CreateCodecKnobLabelsMap()
     CodecMap m;
 
     // Video codecs.
+    m["cinepak"]       = "cvid\tCinepak";
 #if OFX_FFMPEG_DNXHD
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
-    m["mjpeg"]         = "jpeg\tPhoto - JPEG";
+    m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
+    m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
+    m["libx264rgb"]    = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB";
+    m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)";
+    m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist
+    m["jpeg2ls"]       = "MJLS\tJPEG-LS"; // disabled in whitelist
+    m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
+    m["mjpeg"]         = "jpeg\tMotion JPEG";
     m["mpeg1video"]    = "mp1v\tMPEG-1 Video";
     m["mpeg2video"]    = "mp2v\tMPEG-2 Video";
     m["mpeg4"]         = "mp4v\tMPEG-4 Video";
-    m["png"]           = "png \tPNG";
-    m["qtrle"]         = "rle \tAnimation";
+    m["png"]           = "png \tPNG (Portable Network Graphics) image";
+    m["r10k"]          = "R10k\tAJA Kona 10-bit RGB Codec"; // disabled in whitelist
+    m["r210"]          = "r210\tUncompressed RGB 10-bit"; // disabled in whitelist
+    m["qtrle"]         = "rle \tQuickTime Animation (RLE) video";
+    m["svq1"]          = "SVQ1\tSorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1";
+    m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
     m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
+    m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
+    m["libvpx"]        = "VP80\tOn2 VP8";
+    m["libvpx-vp9"]    = "VP90\tGoogle VP9";
     return m;
 }
 
@@ -992,7 +1007,7 @@ FFmpegSingleton::FFmpegSingleton()
 
     AVCodec* c = av_codec_next(NULL);
     while (c) {
-        if (c->type == AVMEDIA_TYPE_VIDEO && c->encode2) {
+        if (c->type == AVMEDIA_TYPE_VIDEO && av_codec_is_encoder(c)) {
             if (FFmpegFile::isCodecWhitelistedForWriting( c->name ) &&
                 (c->long_name)) {
                 const char* knobLabel = getCodecKnobLabel(c->name);
@@ -1009,7 +1024,7 @@ FFmpegSingleton::FFmpegSingleton()
 #             endif //  FFMPEG_PRINT_CODECS
                 }
             }
-#         if FFMPEG_PRINT_CODECS
+#         if OFX_FFMPEG_PRINT_CODECS
             else {
                 std::cout << "Disallowed Codec: " << c->name << " = " << c->long_name << std::endl;
             }
