@@ -185,7 +185,7 @@ namespace
         { "msmpeg4v2",      true,  false }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
         { "msmpeg4",        true,  false }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
         { "png",            true,  true }, // PNG (Portable Network Graphics) image
-        //{ "prores",         true,  true }, // Apple ProRes
+        { "prores",         true,  false }, // Apple ProRes (the encoder is prores_ks)
         { "qtrle",          true,  true }, // QuickTime Animation (RLE) video
         { "r10k",           true,  false }, // AJA Kono 10-bit RGB - write not supported as not official qt readable with relevant 3rd party codec.
         { "r210",           true,  false }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
@@ -309,15 +309,23 @@ FFmpegFile::Stream::getConvertCtx(AVPixelFormat srcPixelFormat,
         switch (srcPixelFormat) {
         case AV_PIX_FMT_YUVJ420P:
             srcPixelFormat = AV_PIX_FMT_YUV420P;
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+                srcColorRange = AVCOL_RANGE_JPEG;
             break;
         case AV_PIX_FMT_YUVJ422P:
             srcPixelFormat = AV_PIX_FMT_YUV422P;
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+                srcColorRange = AVCOL_RANGE_JPEG;
             break;
         case AV_PIX_FMT_YUVJ444P:
             srcPixelFormat = AV_PIX_FMT_YUV444P;
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+                srcColorRange = AVCOL_RANGE_JPEG;
             break;
         case AV_PIX_FMT_YUVJ440P:
             srcPixelFormat = AV_PIX_FMT_YUV440P;
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+                srcColorRange = AVCOL_RANGE_JPEG;
         default:
             break;
         }
@@ -614,6 +622,10 @@ FFmpegFile::FFmpegFile(const std::string & filename)
     //OFX::MultiThread::AutoMutex guard(_lock); // not needed in a constructor: we are the only owner
 #endif
 
+#if TRACE_FILE_OPEN
+    std::cout << "FFmpeg Reader=" << this << "::c'tor(): filename=" << filename + offset << std::endl;
+#endif
+
     assert(!_filename.empty());
     CHECK( avformat_open_input(&_context, _filename.c_str(), _format, NULL) );
     CHECK( avformat_find_stream_info(_context, NULL) );
@@ -658,6 +670,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         }
 
         // skip codecs not in the white list
+        std::string reason;
         if (!isCodecWhitelistedForReading(videoCodec->name)) {
 # if TRACE_FILE_OPEN
             std::cout << "Decoder \"" << videoCodec->name << "\" disallowed, skipping..." << std::endl;
@@ -684,6 +697,21 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             }
         }
 
+        // Some codecs support multi-threaded decoding (eg mpeg). Its fast but causes problems when opening many readers
+        // simultaneously since each opens as many threads as you have cores. This leads to resource starvation and failed reads.
+        // For now, revert to the previous ffmpeg behaviour (single-threaded decode) unless overridden by env var.
+#if OFX_FFMPEG_MULTI_THREADED_CODEC_SUPPORT
+# if TRACE_FILE_OPEN
+        std::cout << "FFmpeg Reader: Multi-threaded decode" << std::endl;
+# endif
+#else
+# if TRACE_FILE_OPEN
+        std::cout << "FFmpeg Reader: Single-threaded decode" << std::endl;
+# endif
+        // Default behaviour
+        avstream->codec->thread_count = 1;
+        avstream->codec->thread_type = FF_THREAD_FRAME;
+#endif
         // skip if the codec can't be open
         if (avcodec_open2(avstream->codec, videoCodec, NULL) < 0) {
 #if TRACE_FILE_OPEN
@@ -703,7 +731,14 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         stream->_videoCodec = videoCodec;
         stream->_avFrame = av_frame_alloc();
         {
+            // In |engine| the output bit depth was hard coded to 16-bits.
+            // Now it will use the bit depth reported by the decoder so
+            // that if a decoder outputs 10-bits then |engine| will convert
+            // this correctly. This means that the following change is
+            // required for FFmpeg decoders. Currently |_bitDepth| is used
+            // internally so this change has no side effects.
             stream->_bitDepth = avstream->codec->bits_per_raw_sample;
+            //stream->_bitDepth = 16; // enabled in Nuke's reader
 
             const AVPixFmtDescriptor* avPixFmtDescriptor = av_pix_fmt_desc_get(stream->_codecContext->pix_fmt);
             // Sanity check the number of components.
@@ -772,13 +807,15 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         stream->_startPTS = getStreamStartTime(*stream);
         stream->_frames   = getStreamFrames(*stream);
 
+        // not in FFmpeg Reader: initialize the output buffer
         if (_streams.empty()) {
+            // TODO: use avpicture_get_size? see WriteFFmpeg
             std::size_t pixelDepth = stream->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
             // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
             assert(!_data);
             _data = new unsigned char[stream->_width * stream->_height * stream->_numberOfComponents * pixelDepth];
         }
-        
+
         // save the stream
         _streams.push_back(stream);
     }
@@ -854,6 +891,20 @@ FFmpegFile::getColorspace() const
         }
         if ( t && !strncasecmp(t->value, "REC-709", 7) ) {
             return "rec709";
+        }
+    }
+
+    //Special case for prores - the util YUV will report RGB, due to pixel format support, but for
+    //compatibility and consistency with official quicktime, we need to be using 2.2 for 422 material
+    //and 1.8 for 4444. Protected to deal with ffmpeg vagaries.
+    if (!_streams.empty() && _streams[0]->_codecContext && _streams[0]->_codecContext->codec_id) {
+        if (_streams[0]->_codecContext->codec_id == AV_CODEC_ID_PRORES) {
+            if (_streams[0]->_codecContext->codec_tag == MKTAG('a', 'p', '4', 'h') ||
+                _streams[0]->_codecContext->codec_tag == MKTAG('a', 'p', '4', 'x')) {
+                return "Gamma1.8";
+            } else {
+                return "Gamma2.2";
+            }
         }
     }
 
@@ -939,7 +990,7 @@ FFmpegFile::decode(int frame,
     }
 
 #if TRACE_DECODE_PROCESS
-    std::cout << "mov64Reader=" << this << "::decode(): frame=" << frame << ", videoStream=" << streamIdx << ", streamIdx=" << stream->_idx << std::endl;
+    std::cout << "FFmpeg Reader=" << this << "::decode(): frame=" << frame << ", videoStream=" << streamIdx << ", streamIdx=" << stream->_idx << std::endl;
 #endif
 
     // Number of read retries remaining when decode stall is detected before we give up (in the case of post-seek stalls,
@@ -1021,7 +1072,7 @@ FFmpegFile::decode(int frame,
 
             int error = av_read_frame(_context, &_avPacket);
             // [FD] 2015/01/20
-            // the following if() was not in Nuke's mov64Reader.cpp
+            // the following if() was not in Nuke's FFmpeg Reader.cpp
             if (error == (int)AVERROR_EOF) {
                 // getStreamFrames() was probably wrong
                 stream->_frames = stream->_decodeNextFrameIn;
@@ -1083,7 +1134,8 @@ FFmpegFile::decode(int frame,
                     // timestamp. Likewise, if the landing frame is after the seek target frame (this can happen, presumably a bug
                     // in FFmpeg seeking), we need to seek back to an earlier frame so that we can start decoding at or before the
                     // desired frame.
-                    int landingFrame = stream->ptsToFrame(_avPacket.*stream->_timestampField);
+                    int landingFrame = (_avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) ? -1 :
+                                        stream->ptsToFrame(_avPacket.*stream->_timestampField));
 
                     if ( ( _avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) ) || (landingFrame  > lastSeekedFrame) ) {
 #if TRACE_DECODE_PROCESS
@@ -1218,7 +1270,12 @@ FFmpegFile::decode(int frame,
             // was output.
             decodeAttempted = true;
             int error = 0;
-            {
+            if ((AV_CODEC_ID_PRORES == stream->_codecContext->codec_id) ||
+                (AV_CODEC_ID_DNXHD == stream->_codecContext->codec_id)) {
+                // Apple ProRes specific.
+                // The ProRes codec is I-frame only so will not have any
+                // remaining frames.
+            } else {
                 error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
             }
             if (error < 0) {
@@ -1245,9 +1302,6 @@ FFmpegFile::decode(int frame,
                 std::cout << ", is desired frame" << std::endl;
 #endif
 
-                AVPicture output;
-                avpicture_fill(&output, _data, stream->_outputPixelFormat, stream->_width, stream->_height);
-
                 SwsContext* context = NULL;
                 {
                     context = stream->getConvertCtx(stream->_codecContext->pix_fmt, stream->_width, stream->_height,
@@ -1259,6 +1313,8 @@ FFmpegFile::decode(int frame,
                 // context. Otherwise, no scaling/conversion is required after
                 // decoding the frame.
                 if (context) {
+                    AVPicture output;
+                    avpicture_fill(&output, _data, stream->_outputPixelFormat, stream->_width, stream->_height);
                     sws_scale(context,
                               stream->_avFrame->data,
                               stream->_avFrame->linesize,
