@@ -68,7 +68,7 @@ install:
   - wget https://github.com/OpenImageIO/oiio/archive/Release-1.5.13.tar.gz -O /tmp/OpenImageIO-1.5.13.tar.gz
   - tar zxf /tmp/OpenImageIO-1.5.13.tar.gz > /dev/null 2>&1
   - cd oiio-Release-1.5.13
-  - make $MAKEFLAGSPARALLEL USE_QT=0 USE_TBB=0 USE_PYTHON=0 USE_FIELD3D=0 USE_OPENJPEG=1 USE_OCIO=1 OIIO_BUILD_TESTS=0 OIIO_BUILD_TOOLS=0 OCIO_HOME=/opt/ocio INSTALLDIR=/opt/oiio dist_dir=. cmake
+  - make $MAKEFLAGSPARALLEL USE_QT=0 USE_TBB=0 USE_PYTHON=0 USE_FIELD3D=0 USE_OPENJPEG=1 USE_OCIO=1 USE_FFMPEG=0 USE_OPENCV=0 OIIO_BUILD_TESTS=0 OIIO_BUILD_TOOLS=0 OCIO_HOME=/opt/ocio INSTALLDIR=/opt/oiio dist_dir=. cmake
   - sudo make $MAKEFLAGSPARALLEL dist_dir=.
   - cd ..
 # FFmpeg
