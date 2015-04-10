@@ -1607,7 +1607,9 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     _codec->getValue(codec);
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     int dnxhdCodecProfile = 0;
+#if OFX_FFMPEG_DNXHD
     _dnxhdCodecProfile->getValue(dnxhdCodecProfile);
+#endif
     //Write the NCLC atom in the case the underlying storage is YUV.
     if(IsYUVFromShortName(codecsShortNames[codec].c_str(), dnxhdCodecProfile)) {
         bool writeNCLC = false;
