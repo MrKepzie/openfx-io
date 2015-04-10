@@ -207,7 +207,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    if (W <= 0 || H <= 0 || 0xffff < W || 0xffff < H) {
+    if (W <= 0 || H <= 0 || 0xffff < W || 0xffff < H) {
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("invalid WIDTH or HEIGHT fields in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
