@@ -166,7 +166,7 @@ namespace
         { "avrp",           true,  false }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec.
         { "avui",           true,  false }, // Avid Meridien Uncompressed - write not supported as this is an SD only codec.
         { "ayuv",           true,  false }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable.
-        { "cinepak",        true,  true }, // Cinepak
+        //{ "cinepak",        true,  true }, // Cinepak
         { "dnxhd",          true,  true }, // VC3/DNxHD
         { "flv",            true,  true }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video)
         { "h264",           true,  true }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10

@@ -328,7 +328,7 @@ static CodecMap CreateCodecKnobLabelsMap()
     CodecMap m;
 
     // Video codecs.
-    m["cinepak"]       = "cvid\tCinepak";
+    m["cinepak"]       = "cvid\tCinepak"; // disabled (bad quality)
 #if OFX_FFMPEG_DNXHD
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
