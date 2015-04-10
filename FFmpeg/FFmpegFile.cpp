@@ -737,8 +737,8 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             // this correctly. This means that the following change is
             // required for FFmpeg decoders. Currently |_bitDepth| is used
             // internally so this change has no side effects.
-            stream->_bitDepth = avstream->codec->bits_per_raw_sample;
-            //stream->_bitDepth = 16; // enabled in Nuke's reader
+            //stream->_bitDepth = avstream->codec->bits_per_raw_sample;
+            stream->_bitDepth = 16; // enabled in Nuke's reader
 
             const AVPixFmtDescriptor* avPixFmtDescriptor = av_pix_fmt_desc_get(stream->_codecContext->pix_fmt);
             // Sanity check the number of components.

@@ -155,20 +155,25 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
                                      OFX::PixelComponentEnum *components,
                                      int *componentCount)
 {
-    assert(premult && components);
-    ///Ffmpeg is RGB opaque.
-    ///The GenericReader is responsible for checking if RGB is good enough, otherwise will map it to RGBA
-    *components = OFX::ePixelComponentRGB;
-    *componentCount = 3;
-    *premult = OFX::eImageOpaque;
-    
+    assert(premult && components && componentCount);
     //Clear all opened files by this plug-in since the user changed the selected file/sequence
     _manager.clear(this);
     FFmpegFile* file = _manager.getOrCreate(this, filename);
     
-    if (file && file->isInvalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
+    if (!file || file->isInvalid()) {
+        if (file) {
+            setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
+        } else {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file.");
+        }
+        *components = OFX::ePixelComponentNone;
+        *componentCount = 0;
+        *premult = OFX::eImageOpaque;
     }
+    *componentCount = file->getNumberOfComponents();
+    *components = (*componentCount > 3) ? OFX::ePixelComponentRGBA : OFX::ePixelComponentRGB;
+    ///Ffmpeg is RGB opaque.
+    *premult = (*componentCount > 3) ? OFX::eImageUnPreMultiplied : OFX::eImageOpaque;
 }
 
 

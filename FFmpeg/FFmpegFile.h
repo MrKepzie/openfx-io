@@ -462,15 +462,8 @@ public:
         return _streams[0]->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
     }
 
-    unsigned int getNumComponents() const {
-        if (_streams.empty()) {
-            return 0;
-        }
-        return _streams[0]->_numberOfComponents;
-    }
-    
     // decode a single frame into the buffer (stream 0). Thread safe
-    bool decode(int frame,bool loadNearest, int maxRetries);
+    bool decode(int frame, bool loadNearest, int maxRetries);
 
     // get stream information
     bool getFPS(double& fps,
