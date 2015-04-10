@@ -201,27 +201,26 @@ ReadPFMPlugin::decode(const std::string& filename,
         int c = std::fgetc(nfile);
         (void)c;
     }
-    if ((err = std::sscanf(item, " %d %d", &W, &H)) < 2) {
+    if (std::sscanf(item, " %d %d", &W, &H) != 2) {
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    if (W <= 0 || H <= 0) {
+    if (W <= 0 || H <= 0 || 0xffff < W || 0xffff < H) {
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("invalid WIDTH or HEIGHT fields in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    if (err == 2) {
-        clearPersistentMessage();
-        while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
-            int c = std::fgetc(nfile);
-            (void)c;
-        }
-        if (std::sscanf(item, "%lf", &scale) != 1) {
-            setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("SCALE field is undefined in file \"") + filename + "\".");
-        }
+
+    clearPersistentMessage();
+    while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+        int c = std::fgetc(nfile);
+        (void)c;
+    }
+    if (std::sscanf(item, "%lf", &scale) != 1) {
+        setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("SCALE field is undefined in file \"") + filename + "\".");
     }
 
     {
