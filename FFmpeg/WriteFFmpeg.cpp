@@ -2323,6 +2323,9 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
 
     if (!ret) {
         bool error = false;
+        if (avFrame) {
+            avFrame->pts = avCodecContext->frame_number; // ... or libx264 encoding says "non-strictly-monotonic PTS" and encodes the wrong fps
+        }
         if ((avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
             AVPacket pkt;
             av_init_packet(&pkt);
