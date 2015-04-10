@@ -91,7 +91,7 @@ extern "C" {
 #define OFX_FFMPEG_MBDECISION 0   // add the macroblock decision parameter
 #define OFX_FFMPEG_PRORES 1       // experimental apple prores support
 #define OFX_FFMPEG_PRORES4444 1   // experimental apple prores 4444 support
-#define OFX_FFMPEG_DNXHD 1        // experimental DNxHD support
+#define OFX_FFMPEG_DNXHD 0        // experimental DNxHD support (disactivated, because of unsolved color shifting issues)
 
 #if OFX_FFMPEG_PRINT_CODECS
 #include <iostream>
@@ -1740,6 +1740,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     // into the QuickTime 'moov' atom.
     avCodecContext->field_order = AV_FIELD_PROGRESSIVE;
 
+#if OFX_FFMPEG_DNXHD
     // the following was moved here from openCodec()
     if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
         // This writer will rescale for any source format
@@ -1892,6 +1893,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         }
         avCodecContext->bit_rate = mbs * 1000000;
     }
+#endif // DNxHD
 
 #if OFX_FFMPEG_MBDECISION
     int mbDecision;
@@ -3171,7 +3173,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             page->addChild(*group);
         }
 
-#ifdef OFX_FFMPEG_DNXHD
+#if OFX_FFMPEG_DNXHD
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDNxHDEncodeVideoRange);
             param->setLabel(kParamDNxHDEncodeVideoRangeLabel);
