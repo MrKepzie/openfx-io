@@ -536,7 +536,7 @@ private:
     // Hide the copy constuctor. Who would manage memory?
     MyAVFrame(MyAVFrame& avFrame);
     // Hide the assignment operator. Who would manage memory?
-    MyAVFrame& operator=(const MyAVFrame& rhs) { return *this; }
+    MyAVFrame& operator=(const MyAVFrame&/* rhs*/) { return *this; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -752,7 +752,7 @@ private:
     // Hide the copy constuctor. Who would manage memory?
     MyAVPicture(MyAVPicture& avPicture);
     // Hide the assignment operator. Who would manage memory?
-    MyAVPicture& operator=(const MyAVPicture& rhs) { return *this; }
+    MyAVPicture& operator=(const MyAVPicture& /*rhs*/) { return *this; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1155,7 +1155,7 @@ bool WriteFFmpegPlugin::isRec709Format(const int height) const
     }
 
     // Using method described in step 5 of QuickTimeCodecReader::setPreferredMetadata
-    return ((_rod.y2 - _rod.y1) >= 720);
+    return (height >= 720);
 }
 
 // Figure out if an FFmpeg codec is definitely YUV based from its underlying storage
@@ -1170,13 +1170,13 @@ bool WriteFFmpegPlugin::IsYUV(AVPixelFormat pix_fmt)
 
 // Figure out if a codec is definitely YUV based from its shortname.
 /*static*/
-bool WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName, int codecProfile)
+bool WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName, int /*codecProfile*/)
 {
     return (!strcmp(shortName, kProresCodec kProresProfileHQFourCC) ||
             !strcmp(shortName, kProresCodec kProresProfileSQFourCC) ||
             !strcmp(shortName, kProresCodec kProresProfileLTFourCC) ||
             !strcmp(shortName, kProresCodec kProresProfileProxyFourCC) ||
-            //((codecProfile != (int)eDNxHDCodecProfile440x) && !strcmp(shortName, "dnxhd")) ||
+            (/*(codecProfile != (int)eDNxHDCodecProfile440x) &&*/ !strcmp(shortName, "dnxhd")) ||
             !strcmp(shortName, "mjpeg") ||
             !strcmp(shortName, "mpeg1video") ||
             !strcmp(shortName, "mpeg4") ||
@@ -2004,7 +2004,7 @@ AVStream* WriteFFmpegPlugin::addStream(AVFormatContext* avFormatContext, enum AV
 // @return 0 if successful,
 //         <0 otherwise.
 //
-int WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext, AVCodec* avCodec, AVStream* avStream)
+int WriteFFmpegPlugin::openCodec(AVFormatContext* /*avFormatContext*/, AVCodec* avCodec, AVStream* avStream)
 {
     AVCodecContext* avCodecContext = avStream->codec;
     if (AVMEDIA_TYPE_AUDIO == avCodecContext->codec_type) {

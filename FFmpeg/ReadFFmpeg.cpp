@@ -129,7 +129,7 @@ ReadFFmpegPlugin::~ReadFFmpegPlugin()
 }
 
 void
-ReadFFmpegPlugin::restoreState(const std::string& filename)
+ReadFFmpegPlugin::restoreState(const std::string& /*filename*/)
 {
     //_manager.getOrCreate(this, filename);
 }
@@ -234,6 +234,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
+    assert((pixelComponents == OFX::ePixelComponentRGB && pixelComponentCount == 3) || (pixelComponents == OFX::ePixelComponentRGBA && pixelComponentCount == 4));
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (!file) {
