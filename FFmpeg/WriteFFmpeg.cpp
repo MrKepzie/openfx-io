@@ -141,6 +141,11 @@ extern "C" {
 #define kParamAdvanced "advanced"
 #define kParamAdvancedLabel "Advanced"
 
+#define kParamEnableAlpha "enableAlpha"
+#define kParamEnableAlphaLabel "Enable Alpha"
+#define kParamEnableAlphaHint \
+"Write alpha channel to the video file (if supported by the codec)."
+
 #define kParamBitrate "bitrate"
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
@@ -917,6 +922,7 @@ private:
 #endif
 
     OFX::ChoiceParam* _codec;
+    OFX::BooleanParam* _enableAlpha;
     OFX::IntParam* _bitrate;
     OFX::IntParam* _bitrateTolerance;
     OFX::Int2DParam* _quality;
@@ -1085,6 +1091,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 , _writeTimeCode(0)
 #endif
 , _codec(0)
+, _enableAlpha(0)
 , _bitrate(0)
 , _bitrateTolerance(0)
 , _quality(0)
@@ -1107,6 +1114,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
     _writeTimeCode = fetchBooleanParam(kParamWriteTimeCode);
 #endif
     _codec = fetchChoiceParam(kParamCodec);
+    _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
     _bitrate = fetchIntParam(kParamBitrate);
     _bitrateTolerance = fetchIntParam(kParamBitrateTolerance);
     _quality = fetchInt2DParam(kParamQuality);
@@ -1319,8 +1327,11 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         int profile = getProfileFromShortName(codecsShortNames[index]);
         if (profile == kProresProfile4444 /*|| profile == kProresProfile4444XQ*/) {
             // Prores 4444
-            // TODO: we could handle alpha too, using AV_PIX_FMT_YUVA444P10
-            outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
+            if (hasAlpha) {
+                outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
+            } else {
+                outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
+            }
             outBitDepth = 10;
         } else {
             // in prores_ks, all other profiles use AV_PIX_FMT_YUV422P10
@@ -1766,8 +1777,8 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         // be set to 32. This will ensure the correct bit depth
         // information will be embedded in the QuickTime movie.
         // Otherwise the following must be set to 24.
-        //const bool hasAlpha = alphaEnabled();
-        //avCodecContext->bits_per_coded_sample = (hasAlpha) ? 32 : 24;
+        const bool hasAlpha = alphaEnabled();
+        avCodecContext->bits_per_coded_sample = (hasAlpha) ? 32 : 24;
         int dnxhdCodecProfile_i;
         _dnxhdCodecProfile->getValue(dnxhdCodecProfile_i);
         DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
@@ -2182,7 +2193,9 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
 bool WriteFFmpegPlugin::alphaEnabled() const
 {
     // is the writer configured to write alpha channel to file ?
-    return false;
+    bool enableAlpha;
+    _enableAlpha->getValue(enableAlpha);
+    return enableAlpha && _inputClip->getPixelComponents() == ePixelComponentRGBA;
 }
 
 int WriteFFmpegPlugin::numberOfDestChannels() const
@@ -3173,6 +3186,19 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         group->setOpen(false);
         if (page) {
             page->addChild(*group);
+        }
+
+        ///////////Enable Alpha
+        {
+            OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamEnableAlpha);
+            param->setLabel(kParamEnableAlphaLabel);
+            param->setHint(kParamEnableAlphaHint);
+            param->setDefault(true);
+            param->setAnimates(false);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
         }
 
 #if OFX_FFMPEG_DNXHD
