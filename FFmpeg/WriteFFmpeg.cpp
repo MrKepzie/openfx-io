@@ -338,14 +338,14 @@ static CodecMap CreateCodecKnobLabelsMap()
     CodecMap m;
 
     // Video codecs.
-    m["cinepak"]       = "cvid\tCinepak"; // disabled (bad quality)
+    //m["cinepak"]       = "cvid\tCinepak"; // disabled in whitelist (bad quality)
 #if OFX_FFMPEG_DNXHD
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
     m["libx264rgb"]    = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB";
-    m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)";
+    //m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // write doesn't work yet
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist
     m["jpeg2ls"]       = "MJLS\tJPEG-LS"; // disabled in whitelist
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
@@ -361,8 +361,8 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
     m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
     m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
-    m["libvpx"]        = "VP80\tOn2 VP8";
-    m["libvpx-vp9"]    = "VP90\tGoogle VP9";
+    //m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
+    //m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // write doesn't work yet
     return m;
 }
 
