@@ -116,6 +116,11 @@ extern "C" {
 #define kParamCodecName "Codec"
 #define kParamCodecHint "Output codec used for encoding."
 
+// a string param holding the short name of the codec (used to disambiguiate the codec choice when using different versions of FFmpeg)
+#define kParamCodecShortName "codecShortName"
+#define kParamCodecShortNameLabel "Codec Name"
+#define kParamCodecShortNameHint "The codec used when the writer was configured. If this parameter is visible, this means that this codec may not be supported by this version of the plugin."
+
 #define kParamFPS "fps"
 #define kParamFPSLabel "FPS"
 #define kParamFPSHint "File frame rate"
@@ -837,11 +842,13 @@ public:
     virtual ~WriteFFmpegPlugin();
 
 private:
-    void updateVisibility();
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
     virtual void onOutputFileChanged(const std::string &filename) OVERRIDE FINAL;
+
+    /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
+    virtual void beginEdit(void) OVERRIDE FINAL;
 
     virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
 
@@ -854,8 +861,11 @@ private:
 
     virtual void setOutputFrameRate(double fps) OVERRIDE FINAL;
     
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImageUnPreMultiplied; }
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImageUnPreMultiplied; }
 
+private:
+    void updateVisibility();
+    void checkCodec();
     void freeFormat();
     AVColorTransferCharacteristic getColorTransferCharacteristic() const;
     AVPixelFormat                 getPixelFormat(AVCodec* videoCodec) const;
@@ -922,6 +932,7 @@ private:
 #endif
 
     OFX::ChoiceParam* _codec;
+    OFX::StringParam* _codecShortName;
     OFX::BooleanParam* _enableAlpha;
     OFX::IntParam* _bitrate;
     OFX::IntParam* _bitrateTolerance;
@@ -1091,6 +1102,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 , _writeTimeCode(0)
 #endif
 , _codec(0)
+, _codecShortName(0)
 , _enableAlpha(0)
 , _bitrate(0)
 , _bitrateTolerance(0)
@@ -1114,6 +1126,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
     _writeTimeCode = fetchBooleanParam(kParamWriteTimeCode);
 #endif
     _codec = fetchChoiceParam(kParamCodec);
+    _codecShortName = fetchStringParam(kParamCodecShortName);
     _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
     _bitrate = fetchIntParam(kParamBitrate);
     _bitrateTolerance = fetchIntParam(kParamBitrateTolerance);
@@ -1126,6 +1139,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 #endif
 
     updateVisibility();
+
 }
 
 WriteFFmpegPlugin::~WriteFFmpegPlugin(){
@@ -2539,7 +2553,10 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     }
 
     assert(!_formatContext);
-    
+
+    // first, check that the codec setting is OK
+    checkCodec();
+
         ////////////////////                        ////////////////////
         //////////////////// INTIALIZE FORMAT       ////////////////////
     
@@ -2872,7 +2889,8 @@ WriteFFmpegPlugin::setOutputFrameRate(double fps)
     _fps->setValue(fps);
 }
 
-void WriteFFmpegPlugin::updateVisibility()
+void
+WriteFFmpegPlugin::updateVisibility()
 {
     //The advanced params are enabled/disabled based on the codec chosen and its capabilities.
     //We also investigated setting the defaults based on the codec defaults, however all current
@@ -2883,6 +2901,14 @@ void WriteFFmpegPlugin::updateVisibility()
     _codec->getValue(index);
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     assert(index < (int)codecsShortNames.size());
+    std::string codecShortName;
+    _codecShortName->getValue(codecShortName);
+    // codecShortName may be empty if this was configured in an old version
+    if (!codecShortName.empty() && codecShortName != codecsShortNames[index]) {
+        _codecShortName->setIsSecret(false); // something may be wrong. Make it visible, at least
+    } else {
+        _codecShortName->setIsSecret(true);
+    }
 
     AVCodec* codec = avcodec_find_encoder_by_name(getCodecFromShortName(codecsShortNames[index]));
 
@@ -2941,7 +2967,50 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
     _bitrateTolerance->setRange(minRange, 4000 * 10000);
 }
 
-void WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
+// Check that the secret codecShortName corresponds to the selected codec.
+// It may change because different versions of FFmpeg support different codecs, so the choice menu may
+// be different in different instances.
+// This is also done in beginEdit() because setValue() cannot be called in the plugin constructor.
+void
+WriteFFmpegPlugin::checkCodec()
+{
+    int codec;
+    _codec->getValue(codec);
+    const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
+    assert(codec < (int)codecsShortNames.size());
+    std::string codecShortName;
+    _codecShortName->getValue(codecShortName);
+    // codecShortName may be empty if this was configured in an old version
+    if (!codecShortName.empty() && codecShortName != codecsShortNames[codec]) {
+        // maybe it's another one but the label changed, if yes select it
+        std::vector<std::string>::const_iterator it;
+
+        it = find (codecsShortNames.begin(), codecsShortNames.end(), codecShortName);
+        if (it != codecsShortNames.end()) {
+            // found it! update the choice param
+            codec = it - codecsShortNames.begin();
+            _codec->setValue(codec);
+            // hide the codec name
+            _codecShortName->setIsSecret(true);
+        } else {
+            _codecShortName->setIsSecret(false);
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("writer was configured for unavailable codec \"") + codecShortName + "\".");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+    }
+}
+
+// Check that the secret codecShortName corresponds to the selected codec.
+// This is also done in beginEdit() because setValue() cannot be called in the plugin constructor.
+void
+WriteFFmpegPlugin::beginEdit()
+{
+    checkCodec();
+}
+
+void
+WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
 {
     // Switch the 'format' knob based on the new filename suffix
     std::string suffix = filename.substr(filename.find_last_of(".") + 1);
@@ -2955,34 +3024,43 @@ void WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
             }
         }
     }
+    // also check that the codec setting is OK
+    checkCodec();
 }
 
 void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
     if (paramName == kParamCodec && args.reason == eChangeUserEdit) {
+        // update the secret parameter
+        int codec;
+        _codec->getValue(codec);
+        const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
+        assert(codec < (int)codecsShortNames.size());
+        _codecShortName->setValue(codecsShortNames[codec]);
         updateVisibility();
-        return;
-    }
-    if (paramName == kParamFPS || paramName == kParamBitrate) {
+
+    } else if (paramName == kParamFPS || paramName == kParamBitrate) {
         updateBitrateToleranceRange();
-        return;
-    }
-    if (paramName == kParamResetFPS && args.reason == eChangeUserEdit) {
+
+    } else if (paramName == kParamResetFPS && args.reason == eChangeUserEdit) {
         double fps = _inputClip->getFrameRate();
         _fps->setValue(fps);
         updateBitrateToleranceRange();
-        return;
-    }
-    if (paramName == kParamQuality && args.reason == eChangeUserEdit) {
+
+    } else if (paramName == kParamQuality && args.reason == eChangeUserEdit) {
         int qMin, qMax;
         _quality->getValue(qMin, qMax);
         if (qMax < qMin) {
             // reorder
             _quality->setValue(qMax, qMin);
         }
-        return;
+
+    } else {
+        GenericWriterPlugin::changedParam(args, paramName);
     }
-    GenericWriterPlugin::changedParam(args, paramName);
+
+    // also check that the codec setting is OK
+    checkCodec();
 }
 
 void WriteFFmpegPlugin::freeFormat()
@@ -3114,6 +3192,18 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         }
         param->setAnimates(false);
         param->setDefault(0);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    // codecShortName: a secret parameter that holds the real codec name
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kParamCodecShortName);
+        param->setLabel(kParamCodecShortNameLabel);
+        param->setHint(kParamCodecShortNameHint);
+        param->setAnimates(false);
+        param->setEnabled(false); // non-editable
         if (page) {
             page->addChild(*param);
         }
