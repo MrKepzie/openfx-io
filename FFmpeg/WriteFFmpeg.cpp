@@ -91,7 +91,7 @@ extern "C" {
 #define OFX_FFMPEG_MBDECISION 0   // add the macroblock decision parameter
 #define OFX_FFMPEG_PRORES 1       // experimental apple prores support
 #define OFX_FFMPEG_PRORES4444 1   // experimental apple prores 4444 support
-#define OFX_FFMPEG_DNXHD 0        // experimental DNxHD support (disactivated, because of unsolved color shifting issues)
+#define OFX_FFMPEG_DNXHD 1        // experimental DNxHD support (disactivated, because of unsolved color shifting issues)
 
 #if OFX_FFMPEG_PRINT_CODECS
 #include <iostream>
@@ -1615,13 +1615,6 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 
     av_dict_set(&_formatContext->metadata, kMetaKeyApplicationVersion, STR(kPluginVersionMajor)"."STR(kPluginVersionMinor), 0);
 
-    //Currently not set - the main problem being that the mov32 reader will use it to set its defaults.
-    //TODO: investigate using the writer key in mov32 to ignore this value when set to mov64.
-    //av_dict_set(&_formatContext->metadata, kMetaKeyPixelFormat, "YCbCr  8-bit 422 (2vuy)", 0);
-
-    const char* ycbcrmetavalue = isRec709Format(avCodecContext->height) ? "Rec 709" : "Rec 601";
-    av_dict_set(&_formatContext->metadata, kMetaKeyYCbCrMatrix, ycbcrmetavalue, 0);
-
     //const char* lutName = GetLutName(lut());
     //if (lutName)
     //    av_dict_set(&_formatContext->metadata, kMetaKeyColorspace, lutName, 0);
@@ -1631,12 +1624,12 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     int codec = 0;
     _codec->getValue(codec);
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
-    int dnxhdCodecProfile = 0;
+    int dnxhdCodecProfile_i = 0;
 #if OFX_FFMPEG_DNXHD
-    _dnxhdCodecProfile->getValue(dnxhdCodecProfile);
+    _dnxhdCodecProfile->getValue(dnxhdCodecProfile_i);
 #endif
     //Write the NCLC atom in the case the underlying storage is YUV.
-    if(IsYUVFromShortName(codecsShortNames[codec].c_str(), dnxhdCodecProfile)) {
+    if(IsYUVFromShortName(codecsShortNames[codec].c_str(), dnxhdCodecProfile_i)) {
         bool writeNCLC = false;
         _writeNCLC->getValue(writeNCLC);
 
@@ -1793,10 +1786,8 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         // Otherwise the following must be set to 24.
         const bool hasAlpha = alphaEnabled();
         avCodecContext->bits_per_coded_sample = (hasAlpha) ? 32 : 24;
-        int dnxhdCodecProfile_i;
-        _dnxhdCodecProfile->getValue(dnxhdCodecProfile_i);
-        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
         int mbs = 0;
+        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
         switch (dnxhdCodecProfile) {
             case eDNxHDCodecProfile220x:
             case eDNxHDCodecProfile220:
@@ -1921,6 +1912,13 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         avCodecContext->bit_rate = mbs * 1000000;
     }
 #endif // DNxHD
+
+    //Currently not set - the main problem being that the mov32 reader will use it to set its defaults.
+    //TODO: investigate using the writer key in mov32 to ignore this value when set to mov64.
+    //av_dict_set(&_formatContext->metadata, kMetaKeyPixelFormat, "YCbCr  8-bit 422 (2vuy)", 0);
+
+    const char* ycbcrmetavalue = isRec709Format(avCodecContext->height) ? "Rec 709" : "Rec 601";
+    av_dict_set(&_formatContext->metadata, kMetaKeyYCbCrMatrix, ycbcrmetavalue, 0);
 
 #if OFX_FFMPEG_MBDECISION
     int mbDecision;
@@ -2179,7 +2177,9 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
                                                   SWS_BICUBIC, NULL, NULL, NULL);
 
     // Set up the sws (SoftWareScaler) to convert colourspaces correctly, in the sws_scale function below
-    const int colorspace = (width < 1000) ? SWS_CS_ITU601 : SWS_CS_ITU709;
+    //const int colorspace = (width < 1000) ? SWS_CS_ITU601 : SWS_CS_ITU709;
+    // it's the output size that counts (e.g. for DNxHD), and we prefer using height
+    const int colorspace = isRec709Format(avCodecContext->height) ? SWS_CS_ITU709 : SWS_CS_ITU601;
 
     // Only apply colorspace conversions for YUV.
     if (IsYUV(dstPixelFormat)) {
