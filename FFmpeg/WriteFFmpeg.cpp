@@ -338,33 +338,90 @@ static CodecMap CreateCodecKnobLabelsMap()
     CodecMap m;
 
     // Video codecs.
-    //m["cinepak"]       = "cvid\tCinepak"; // disabled in whitelist (bad quality)
+    m["avrp"]          = "AVrp\tAvid 1:1 10-bit RGB Packer";
+    m["ayuv"]          = "AYUV\tUncompressed packed MS 4:4:4:4";
+    m["cinepak"]       = "cvid\tCinepak"; // disabled in whitelist (bad quality)
 #if OFX_FFMPEG_DNXHD
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
+    m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
+    m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
+    m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
+    m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // disabled in whitelist (bad quality)
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
     m["libx264rgb"]    = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB";
-    //m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // write doesn't work yet
-    m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist
-    m["jpeg2ls"]       = "MJLS\tJPEG-LS"; // disabled in whitelist
+    m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // disabled in whitelist (does not work will all sizes)
+
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
     m["mjpeg"]         = "jpeg\tMotion JPEG";
-    m["mpeg1video"]    = "mp1v\tMPEG-1 Video";
-    m["mpeg2video"]    = "mp2v\tMPEG-2 Video";
+    m["mpeg1video"]    = "m1v \tMPEG-1 Video";
+    m["mpeg2video"]    = "m2v1\tMPEG-2 Video";
     m["mpeg4"]         = "mp4v\tMPEG-4 Video";
+    m["msmpeg4v2"]     = "MP42\tMPEG-4 part 2 Microsoft variant version 2";
+    m["msmpeg4"]       = "3IVD\tMPEG-4 part 2 Microsoft variant version 3";
     m["png"]           = "png \tPNG (Portable Network Graphics) image";
+    m["qtrle"]         = "rle \tQuickTime Animation (RLE) video";
     m["r10k"]          = "R10k\tAJA Kona 10-bit RGB Codec"; // disabled in whitelist
     m["r210"]          = "r210\tUncompressed RGB 10-bit"; // disabled in whitelist
-    m["qtrle"]         = "rle \tQuickTime Animation (RLE) video";
     m["svq1"]          = "SVQ1\tSorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1";
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
     m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
+    m["v308"]          = "v308\tUncompressed 8-bit 4:4:4";
+    m["v408"]          = "v308\tUncompressed 8-bit QT 4:4:4:4";
     m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
-    //m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
-    //m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // write doesn't work yet
+
     return m;
 }
+
+// MPEG-2 codecs (non-SD)
+#if 0
+    
+    // HDV
+    m["hdv1"]          = "MPEG2 HDV 720p30";
+    m["hdv2"]          = "MPEG2 HDV 1080i60";
+    m["hdv3"]          = "MPEG2 HDV 1080i50";
+    m["hdv4"]          = "MPEG2 HDV 720p24";
+    m["hdv5"]          = "MPEG2 HDV 720p25";
+    m["hdv6"]          = "MPEG2 HDV 1080p24";
+    m["hdv7"]          = "MPEG2 HDV 1080p25";
+    m["hdv8"]          = "MPEG2 HDV 1080p30";
+    m["hdv9"]          = "MPEG2 HDV 720p60 JVC";
+    m["hdva"]          = "MPEG2 HDV 720p50";
+
+    // XDCAM
+    m["xdv1"]          = "XDCAM EX 720p30 35Mb/s";
+    m["xdv2"]          = "XDCAM HD 1080i60 35Mb/s";
+    m["xdv3"]          = "XDCAM HD 1080i50 35Mb/s";
+    m["xdv4"]          = "XDCAM EX 720p24 35Mb/s";
+    m["xdv5"]          = "XDCAM EX 720p25 35Mb/s";
+    m["xdv6"]          = "XDCAM HD 1080p24 35Mb/s";
+    m["xdv7"]          = "XDCAM HD 1080p25 35Mb/s";
+    m["xdv8"]          = "XDCAM HD 1080p30 35Mb/s";
+    m["xdv9"]          = "XDCAM EX 720p60 35Mb/s";
+    m["xdva"]          = "XDCAM EX 720p50 35Mb/s";
+
+    m["xdvb"]          = "XDCAM EX 1080i60 50Mb/s CBR";
+    m["xdvc"]          = "XDCAM EX 1080i50 50Mb/s CBR";
+    m["xdvd"]          = "XDCAM EX 1080p24 50Mb/s CBR";
+    m["xdve"]          = "XDCAM EX 1080p25 50Mb/s CBR";
+    m["xdvf"]          = "XDCAM EX 1080p30 50Mb/s CBR";
+
+    m["xd51"]          = "XDCAM HD422 720p30 50Mb/s CBR";
+    m["xd54"]          = "XDCAM HD422 720p24 50Mb/s CBR";
+    m["xd55"]          = "XDCAM HD422 720p25 50Mb/s CBR";
+    m["xd59"]          = "XDCAM HD422 720p60 50Mb/s CBR";
+    m["xd5a"]          = "XDCAM HD422 720p50 50Mb/s CBR";
+    m["xd5b"]          = "XDCAM HD422 1080i60 50Mb/s CBR";
+    m["xd5c"]          = "XDCAM HD422 1080i50 50Mb/s CBR";
+    m["xd5d"]          = "XDCAM HD422 1080p24 50Mb/s CBR";
+    m["xd5e"]          = "XDCAM HD422 1080p25 50Mb/s CBR";
+    m["xd5f"]          = "XDCAM HD422 1080p30 50Mb/s CBR";
+
+    m["xdhd"]          = "XDCAM HD 540p";
+    m["xdh2"]          = "XDCAM HD422 540p";
+
+#endif
 
 static const CodecMap kCodecKnobLabels = CreateCodecKnobLabelsMap();
 
@@ -1058,12 +1115,14 @@ FFmpegSingleton::FFmpegSingleton()
                     std::cout << "Codec whitelisted but unknown: " << c->name << " = " << c->long_name << std::endl;
 #             endif //  FFMPEG_PRINT_CODECS
                 } else {
+#             if OFX_FFMPEG_PRINT_CODECS
+                    std::cout << "Codec[" << _codecsLongNames.size() << "]: " << c->name << " = " << c->long_name << std::endl;
+#             endif //  FFMPEG_PRINT_CODECS
                     _codecsLongNames.push_back(c->long_name);
                     _codecsShortNames.push_back(c->name);
                     _codecsKnobLabels.push_back(knobLabel);
-#             if OFX_FFMPEG_PRINT_CODECS
-                    std::cout << "Codec: " << c->name << " = " << c->long_name << std::endl;
-#             endif //  FFMPEG_PRINT_CODECS
+                    assert(_codecsLongNames.size() == _codecsShortNames.size());
+                    assert(_codecsKnobLabels.size() == _codecsKnobLabels.size());
                 }
             }
 #         if OFX_FFMPEG_PRINT_CODECS
@@ -2899,18 +2958,22 @@ WriteFFmpegPlugin::updateVisibility()
     //(we still want to use showPanel to update when loading from script and the like).
     int index;
     _codec->getValue(index);
+    //assert(index < _codec->getNOptions());
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
-    assert(index < (int)codecsShortNames.size());
     std::string codecShortName;
     _codecShortName->getValue(codecShortName);
+    //assert(index < (int)codecsShortNames.size());
     // codecShortName may be empty if this was configured in an old version
-    if (!codecShortName.empty() && codecShortName != codecsShortNames[index]) {
+    if (!codecShortName.empty() && (codecsShortNames.size() <= index || codecShortName != codecsShortNames[index])) {
         _codecShortName->setIsSecret(false); // something may be wrong. Make it visible, at least
     } else {
         _codecShortName->setIsSecret(true);
+        if (codecsShortNames.size() <= index) {
+            codecShortName = codecsShortNames[index];
+        }
     }
 
-    AVCodec* codec = avcodec_find_encoder_by_name(getCodecFromShortName(codecsShortNames[index]));
+    AVCodec* codec = avcodec_find_encoder_by_name(codecShortName.c_str());
 
     bool lossyParams    = false;
     bool interGOPParams = false;
@@ -2940,7 +3003,7 @@ WriteFFmpegPlugin::updateVisibility()
     // DNxHD codec has been selected.
     // Only enable the video range knob if the Avid DNxHD codec
     // has been selected.
-    bool isdnxhd = (!strcmp(codecsShortNames[index].c_str(), "dnxhd"));
+    bool isdnxhd = (!strcmp(codecShortName.c_str(), "dnxhd"));
     _dnxhdCodecProfile->setEnabled(isdnxhd);
     _dnxhdCodecProfile->setIsSecret(!isdnxhd);
     _encodeVideoRange->setEnabled(isdnxhd);
@@ -2977,11 +3040,11 @@ WriteFFmpegPlugin::checkCodec()
     int codec;
     _codec->getValue(codec);
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
-    assert(codec < (int)codecsShortNames.size());
+    //assert(codec < (int)codecsShortNames.size());
     std::string codecShortName;
     _codecShortName->getValue(codecShortName);
     // codecShortName may be empty if this was configured in an old version
-    if (!codecShortName.empty() && codecShortName != codecsShortNames[codec]) {
+    if (!codecShortName.empty() && (codecsShortNames.size() <= codec || codecShortName != codecsShortNames[codec])) {
         // maybe it's another one but the label changed, if yes select it
         std::vector<std::string>::const_iterator it;
 
@@ -2998,6 +3061,10 @@ WriteFFmpegPlugin::checkCodec()
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
+    } else if (codecsShortNames.size() <= codec) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "writer was configured for unavailable codec.");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
 }
 
