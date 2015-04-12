@@ -1055,9 +1055,10 @@ FFmpegSingleton::FFmpegSingleton()
     //av_log_set_level(AV_LOG_DEBUG);
     av_register_all();
     
+    _formatsLongNames.push_back("guess from filename");
+    _formatsShortNames.push_back("default");
     AVOutputFormat* fmt = av_oformat_next(NULL);
     while (fmt) {
-        
         if (fmt->video_codec != AV_CODEC_ID_NONE) {
             if (FFmpegFile::isFormatWhitelistedForWriting( fmt->name ) ) {
                 if (fmt->long_name) {
@@ -1341,7 +1342,7 @@ AVOutputFormat* WriteFFmpegPlugin::initFormat(bool reportErrors) const
     _format->getValue(format);
     AVOutputFormat* fmt = NULL;
 
-    if (!format) {
+    if (!format) { // first item is "Default"
         fmt = av_guess_format(NULL, _filename.c_str(), NULL);
         if (!fmt && reportErrors) {
             return NULL;
