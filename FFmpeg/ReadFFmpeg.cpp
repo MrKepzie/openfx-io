@@ -526,6 +526,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     
     av_log_set_level(AV_LOG_WARNING);
+    avcodec_register_all();
     av_register_all();
     
     

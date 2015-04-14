@@ -1053,6 +1053,7 @@ FFmpegSingleton::FFmpegSingleton()
     // TODO: add a log buffer and a way to display it / clear it.
     av_log_set_level(AV_LOG_WARNING);
     //av_log_set_level(AV_LOG_DEBUG);
+    avcodec_register_all();
     av_register_all();
     
     _formatsLongNames.push_back("guess from filename");
