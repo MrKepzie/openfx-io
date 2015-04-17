@@ -81,15 +81,16 @@ OIIO_NAMESPACE_USING
 #define kSupportsAlpha true
 #ifdef OFX_READ_OIIO_USES_CACHE
 #define kSupportsTiles true
+#else
+// It is more efficient to read full frames if no cache is used.
+#define kSupportsTiles false
+#endif
 #ifdef OFX_READ_OIIO_NEWMENU
 #define kIsMultiPlanar true
 #else
 #define kIsMultiPlanar false
 #endif
-#else
-// It is more efficient to read full frames if no cache is used.
-#define kSupportsTiles false
-#endif
+
 
 #define kParamShowMetadata "showMetadata"
 #define kParamShowMetadataLabel "Image Info..."
@@ -1105,10 +1106,7 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             // unknown color-space or Linear, don't do anything
         }
     }
-#  ifdef OFX_READ_OIIO_USES_CACHE
-#  else
-    img->close();
-#  endif
+
 # endif // OFX_IO_USING_OCIO
 
     switch (_spec.nchannels) {
@@ -1351,7 +1349,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
                 return;
             }
 #else
-            assert(!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height);
+            assert(kSupportsTiles || (!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
             if (spec.tile_width == 0) {
                 ///read by scanlines
                 img->read_scanlines(spec.height - renderWindow.y2, //y begin
@@ -1517,7 +1515,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             return;
         }
 #else
-        assert(!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height);
+        assert(kSupportsTiles || (!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
         if (spec.tile_width == 0) {
            ///read by scanlines
             img->read_scanlines(spec.height - renderWindow.y2, //y begin
@@ -1636,7 +1634,7 @@ ReadOIIOPlugin::metadata(const std::string& filename)
     if (!img.get()) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
         OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
+        return std::string();
     }
     const ImageSpec& spec = img->spec();
 #endif
