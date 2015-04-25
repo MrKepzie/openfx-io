@@ -454,7 +454,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             }
 
             // copy the source image (the writer is a no-op)
-            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, dstImg.get());
+            copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, dstImg.get());
         }
         
         // mem is freed at destruction
