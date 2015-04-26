@@ -1349,7 +1349,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
                 return;
             }
 #else
-            assert(kSupportsTiles || (!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
+            assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
             if (spec.tile_width == 0) {
                 ///read by scanlines
                 img->read_scanlines(spec.height - renderWindow.y2, //y begin
@@ -1515,7 +1515,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             return;
         }
 #else
-        assert(kSupportsTiles || (!kSupportsTiles && renderWindow.x1 == 0 && renderWindow.x2 == spec.width && renderWindow.y1 == 0 && renderWindow.y2 == spec.height));
+        assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
         if (spec.tile_width == 0) {
            ///read by scanlines
             img->read_scanlines(spec.height - renderWindow.y2, //y begin
