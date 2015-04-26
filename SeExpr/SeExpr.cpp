@@ -1890,7 +1890,7 @@ SeExprPlugin::buildChannelMenus()
 #ifdef OFX_EXTENSIONS_NATRON
             } else {
                 std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
-                if (!layerChannels.empty()) {
+                if (layerChannels.empty()) {
                     continue;
                 }
                 // first element is layer name
