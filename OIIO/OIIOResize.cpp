@@ -748,6 +748,11 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     ///Don't let the host multi-thread
     desc.setHostFrameThreading(true);
+    
+#ifdef OFX_EXTENSIONS_NUKE
+    // ask the host to render all planes
+    desc.setPassThroughForNotProcessedPlanes(OFX::ePassThroughLevelRenderAllRequestedPlanes);
+#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
