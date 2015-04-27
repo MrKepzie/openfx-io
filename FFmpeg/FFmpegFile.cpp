@@ -175,9 +175,12 @@ namespace
         { "cinepak",        SHOULDWORK,  SHOULDWORK }, // Cinepak - writing works but reading is broken
         { "dnxhd",          true,  true }, // VC3/DNxHD
         { "flv",            true,  true }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video)
+        { "ffv1",           true,  UNSAFE }, // FFmpeg video codec #1 - write not supported as not official qt readable.
+        { "ffvhuff",        true,  UNSAFE }, // Huffyuv FFmpeg variant - write not supported as not official qt readable.
         { "gif",            true,  UNSAFE }, // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
         { "h264",           true,  false }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
         { "hevc",           true,  false }, // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
+        { "huffyuv",        true,  UNSAFE }, // HuffYUV - write not supported as not official qt readable.
         { "jpeg2000",       true,  TERRIBLE }, // JPEG 2000 - write not supported as it looks terrible.
         { "jpegls",         true,  UNSAFE }, // JPEG-LS - write not supported as can't be read in in official qt.
         { "libvpx",         true,  SHOULDWORK }, // On2 VP8
