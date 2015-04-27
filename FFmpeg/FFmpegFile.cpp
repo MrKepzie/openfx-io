@@ -199,7 +199,7 @@ namespace
         { "r210",           true,  UNSAFE }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
         { "rawvideo",       true,  UNSAFE }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
         { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
-        { "targa",          true,  true }, // Truevision Targa image
+        { "targa",          true,  UNSAFE }, // Truevision Targa image - write not supported as not official qt readable.
         { "tiff",           true,  UNSAFE }, // TIFF Image - write not supported as not official qt readable.
         { "v210",           true,  true }, // Uncompressed 4:2:2 10-bit
         { "v308",           true,  UNSAFE }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
