@@ -169,6 +169,7 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
         *components = OFX::ePixelComponentNone;
         *componentCount = 0;
         *premult = OFX::eImageOpaque;
+        return;
     }
     *componentCount = file->getNumberOfComponents();
     *components = (*componentCount > 3) ? OFX::ePixelComponentRGBA : OFX::ePixelComponentRGB;
