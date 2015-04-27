@@ -97,19 +97,20 @@ video_decoding_threads()
 static bool
 extensionCorrespondToImageFile(const std::string & ext)
 {
-    return ext == "bmp" ||
-           ext == "pix" ||
-           ext == "dpx" ||
-           ext == "exr" ||
-           ext == "jpeg" ||
-           ext == "jpg" ||
-           ext == "png" ||
-           ext == "ppm" ||
-           ext == "ptx" ||
-           ext == "tiff" ||
-           ext == "tga" ||
-           ext == "rgba" ||
-           ext == "rgb";
+    return (ext == "bmp" ||
+            ext == "pix" ||
+            ext == "dpx" ||
+            ext == "exr" ||
+            ext == "gif" ||
+            ext == "jpeg" ||
+            ext == "jpg" ||
+            ext == "png" ||
+            ext == "ppm" ||
+            ext == "ptx" ||
+            ext == "tiff" ||
+            ext == "tga" ||
+            ext == "rgba" ||
+            ext == "rgb");
 }
 
 bool
@@ -174,6 +175,7 @@ namespace
         { "cinepak",        SHOULDWORK,  SHOULDWORK }, // Cinepak - writing works but reading is broken
         { "dnxhd",          true,  true }, // VC3/DNxHD
         { "flv",            true,  true }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video)
+        { "gif",            true,  UNSAFE }, // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
         { "h264",           true,  false }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
         { "hevc",           true,  false }, // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
         { "jpeg2000",       true,  TERRIBLE }, // JPEG 2000 - write not supported as it looks terrible.
@@ -197,6 +199,7 @@ namespace
         { "r210",           true,  UNSAFE }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
         { "rawvideo",       true,  UNSAFE }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
         { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
+        { "targa",          true,  true }, // Truevision Targa image
         { "tiff",           true,  UNSAFE }, // TIFF Image - write not supported as not official qt readable.
         { "v210",           true,  true }, // Uncompressed 4:2:2 10-bit
         { "v308",           true,  UNSAFE }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
