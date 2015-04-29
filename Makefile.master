@@ -24,6 +24,10 @@ FFMPEG_LINKFLAGS = `pkg-config --libs libavformat libavcodec libswscale libavuti
 # Uncomment the following line to enable multithreaded ffmpeg reading
 FFMPEG_CXXFLAGS += -DOFX_IO_MT_FFMPEG
 
+# Fontconfig
+FONTCONFIG_CXXFLAGS = `pkg-config --cflags freetype2 fontconfig`
+FONTCONFIG_LINKFLAGS = `pkg-config --libs freetype2 fontconfig`
+
 # OpenImageIO
 OIIO_HOME ?= /usr
 OIIO_CXXFLAGS = -I$(OIIO_HOME)/include

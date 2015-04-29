@@ -45,6 +45,7 @@
 #include "ofxNatron.h"
 #include "ofxsMacros.h"
 #include <OpenImageIO/imageio.h>
+#include <fontconfig/fontconfig.h>
 
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
@@ -149,7 +150,7 @@ private:
     OFX::Double2DParam *position_;
     OFX::StringParam *text_;
     OFX::IntParam *fontSize_;
-    OFX::StringParam *fontName_;
+    OFX::ChoiceParam *fontName_;
     OFX::RGBAParam *textColor_;
 };
 
@@ -166,7 +167,7 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     position_ = fetchDouble2DParam(kParamPosition);
     text_ = fetchStringParam(kParamText);
     fontSize_ = fetchIntParam(kParamFontSize);
-    fontName_ = fetchStringParam(kParamFontName);
+    fontName_ = fetchChoiceParam(kParamFontName);
     textColor_ = fetchRGBAParam(kParamTextColor);
     assert(position_ && text_ && fontSize_ && fontName_ && textColor_);
 }
@@ -342,7 +343,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     text_->getValueAtTime(args.time, text);
     int fontSize;
     fontSize_->getValueAtTime(args.time, fontSize);
-    std::string fontName;
+    int fontName;
     fontName_->getValueAtTime(args.time, fontName);
     double r, g, b, a;
     textColor_->getValueAtTime(args.time, r, g, b, a);
@@ -351,6 +352,28 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     textColor[1] = (float)g;
     textColor[2] = (float)b;
     textColor[3] = (float)a;
+
+    // Get font file from fontconfig
+    std::string fontFile;
+    FcConfig* fc_conf = FcInitLoadConfigAndFonts();
+    FcPattern* fc_pat = FcPatternCreate();
+    FcObjectSet* fc_os = FcObjectSetBuild (FC_FAMILY, FC_STYLE, FC_LANG, FC_FILE, (char *) 0);
+    FcFontSet* fc_fs = FcFontList(fc_conf, fc_pat, fc_os);
+    for (int i=0; fc_fs && i < fc_fs->nfont; ++i) {
+        FcPattern* fc_font = fc_fs->fonts[i];
+        FcChar8 *fc_file,*fc_style,*fc_family;
+        if (FcPatternGetString(fc_font, FC_FILE, 0, &fc_file) == FcResultMatch &&
+                FcPatternGetString(fc_font, FC_FAMILY, 0, &fc_family) == FcResultMatch &&
+                FcPatternGetString(fc_font, FC_STYLE, 0, &fc_style) == FcResultMatch) {
+            std::string font_filename(reinterpret_cast<char*>(fc_file));
+            if (fontName==i) {
+               fontFile = font_filename;
+               break;
+            }
+        }
+    }
+    if (fc_fs)
+        FcFontSetDestroy(fc_fs);
 
     // allocate temporary image
     int pixelBytes = pixelComponentCount * getComponentBytes(bitDepth);
@@ -405,7 +428,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
 
     // render text in the temp buffer
     {
-        bool ok = OIIO::ImageBufAlgo::render_text(tmpBuf, int(x*args.renderScale.x), ytext, text, int(fontSize*args.renderScale.y), fontName, textColor);
+        bool ok = OIIO::ImageBufAlgo::render_text(tmpBuf, int(x*args.renderScale.x), ytext, text, int(fontSize*args.renderScale.y), fontFile, textColor);
         if (!ok) {
             setPersistentMessage(OFX::Message::eMessageError, "", tmpBuf.geterror().c_str());
             //throwSuiteStatusException(kOfxStatFailed);
@@ -593,9 +616,30 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         page->addChild(*param);
     }
     {
-        StringParamDescriptor* param = desc.defineStringParam(kParamFontName);
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamFontName);
         param->setLabel(kParamFontNameLabel);
         param->setHint(kParamFontNameHint);
+
+        // Get all fonts from fontconfig
+        FcConfig* fc_conf = FcInitLoadConfigAndFonts();
+        FcPattern* fc_pat = FcPatternCreate();
+        FcObjectSet* fc_os = FcObjectSetBuild (FC_FAMILY, FC_STYLE, FC_LANG, FC_FILE, (char *) 0);
+        FcFontSet* fc_fs = FcFontList(fc_conf, fc_pat, fc_os);
+        for (int i=0; fc_fs && i < fc_fs->nfont; ++i) {
+            FcPattern* fc_font = fc_fs->fonts[i];
+            FcChar8 *fc_file,*fc_style,*fc_family;
+            if (FcPatternGetString(fc_font, FC_FILE, 0, &fc_file) == FcResultMatch &&
+                    FcPatternGetString(fc_font, FC_FAMILY, 0, &fc_family) == FcResultMatch &&
+                    FcPatternGetString(fc_font, FC_STYLE, 0, &fc_style) == FcResultMatch) {
+                 std::string font_name(reinterpret_cast<char*>(fc_family));
+                 std::ostringstream font_stream;
+                 font_stream << font_name << i;
+                 param->appendOption(font_stream.str());
+            }
+        }
+        if (fc_fs)
+            FcFontSetDestroy(fc_fs);
+
         param->setAnimates(true);
         page->addChild(*param);
     }
