@@ -83,7 +83,7 @@ install:
   - make $MAKEFLAGSPARALLEL && sudo make install
   - cd ../..
 # ImageMagick
-    sudo apt-get install libmagick++-dev libmagickcore-dev
+  - sudo apt-get install libmagick++-dev libmagickcore-dev
   
 script:
   - if [[ ${COVERITY_SCAN_BRANCH} == 1 ]];
