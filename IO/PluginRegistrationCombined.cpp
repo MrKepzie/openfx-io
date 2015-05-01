@@ -23,6 +23,7 @@
 #include "RunScript.h"
 #endif
 #include "SeExpr.h"
+#include "MagickText.h"
 
 namespace OFX
 {
@@ -57,6 +58,7 @@ namespace OFX
 #ifdef DEBUG
             //getReadRawPluginID(ids);
 #endif
+            getMagickTextPluginID(ids);
         }
     }
 }

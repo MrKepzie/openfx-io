@@ -82,7 +82,8 @@ install:
   - cmake .. -DCMAKE_INSTALL_PREFIX=/opt/seexpr
   - make $MAKEFLAGSPARALLEL && sudo make install
   - cd ../..
-
+# ImageMagick
+    sudo apt-get install libmagick++-dev libmagickcore-dev
   
 script:
   - if [[ ${COVERITY_SCAN_BRANCH} == 1 ]];
