@@ -418,10 +418,19 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             assert(!isOCIOIdentity);
             // OCIO expects unpremultiplied input
             if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
-                // copy the whole raw src image
-                copyPixels(*this, renderWindowClipped,
-                           srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
-                           tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+                
+                if (userPremult == OFX::eImageOpaque && pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
+                    //Make sure the alpha channel is 1 before premultiplying, otherwise it would render a black image
+                    copyPixelsAndSetAlphaOne(*this, renderWindowClipped,
+                               srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
+                               tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+                } else {
+                    
+                    // copy the whole raw src image
+                    copyPixels(*this, renderWindowClipped,
+                               srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
+                               tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+                }
             } else {
                 assert(userPremult == OFX::eImagePreMultiplied);
                 unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
@@ -432,6 +441,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
 
             ///If needed, re-premult the image for the plugin to work correctly
             if (pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
+                
                 premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount
                                  , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
             }
