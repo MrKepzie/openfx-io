@@ -153,7 +153,12 @@ static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
             }
         }
         if (dstC == 4) {
-            // Alpha is 0 on RGBA images to allow adding alpha using a Roto node
+            // Alpha is 0 on RGBA images to allow adding alpha using a Roto node.
+            // Alpha is set to 0 and premult is set to Opaque.
+            // That way, the Roto node can be conveniently used to draw a mask. This shouldn't
+            // disturb anything else in the process, since Opaque premult means that alpha should
+            // be considered as being 1 everywhere, whatever the actual alpha value is.
+            // see GenericWriterPlugin::render, if (userPremult == OFX::eImageOpaque...
             dstPix[3] = 0.f; // alpha
         }
 

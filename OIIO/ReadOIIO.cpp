@@ -636,6 +636,11 @@ ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNa
             // Output is Opaque with alpha=0 by default,
             // but premultiplication is set to opaque.
             // That way, chaining with a Roto node works correctly.
+            // Alpha is set to 0 and premult is set to Opaque.
+            // That way, the Roto node can be conveniently used to draw a mask. This shouldn't
+            // disturb anything else in the process, since Opaque premult means that alpha should
+            // be considered as being 1 everywhere, whatever the actual alpha value is.
+            // see GenericWriterPlugin::render, if (userPremult == OFX::eImageOpaque...
             if (components && *components == OFX::ePixelComponentRGBA) {
                 *components = OFX::ePixelComponentRGB;
             }
