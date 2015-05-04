@@ -345,6 +345,7 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
+    m["gif"]           = "gif \tGIF (Graphics Interchange Format)";
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
     m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
@@ -365,6 +366,7 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["r10k"]          = "R10k\tAJA Kona 10-bit RGB Codec"; // disabled in whitelist
     m["r210"]          = "r210\tUncompressed RGB 10-bit"; // disabled in whitelist
     m["svq1"]          = "SVQ1\tSorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1";
+    m["targa"]         = "tga \tTruevision Targa image";
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
     m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
     m["v308"]          = "v308\tUncompressed 8-bit 4:4:4";

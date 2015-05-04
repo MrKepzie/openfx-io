@@ -97,19 +97,20 @@ video_decoding_threads()
 static bool
 extensionCorrespondToImageFile(const std::string & ext)
 {
-    return ext == "bmp" ||
-           ext == "pix" ||
-           ext == "dpx" ||
-           ext == "exr" ||
-           ext == "jpeg" ||
-           ext == "jpg" ||
-           ext == "png" ||
-           ext == "ppm" ||
-           ext == "ptx" ||
-           ext == "tiff" ||
-           ext == "tga" ||
-           ext == "rgba" ||
-           ext == "rgb";
+    return (ext == "bmp" ||
+            ext == "pix" ||
+            ext == "dpx" ||
+            ext == "exr" ||
+            ext == "gif" ||
+            ext == "jpeg" ||
+            ext == "jpg" ||
+            ext == "png" ||
+            ext == "ppm" ||
+            ext == "ptx" ||
+            ext == "tiff" ||
+            ext == "tga" ||
+            ext == "rgba" ||
+            ext == "rgb");
 }
 
 bool
@@ -174,8 +175,12 @@ namespace
         { "cinepak",        SHOULDWORK,  SHOULDWORK }, // Cinepak - writing works but reading is broken
         { "dnxhd",          true,  true }, // VC3/DNxHD
         { "flv",            true,  true }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video)
+        { "ffv1",           true,  UNSAFE }, // FFmpeg video codec #1 - write not supported as not official qt readable.
+        { "ffvhuff",        true,  UNSAFE }, // Huffyuv FFmpeg variant - write not supported as not official qt readable.
+        { "gif",            true,  UNSAFE }, // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
         { "h264",           true,  false }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
         { "hevc",           true,  false }, // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
+        { "huffyuv",        true,  UNSAFE }, // HuffYUV - write not supported as not official qt readable.
         { "jpeg2000",       true,  TERRIBLE }, // JPEG 2000 - write not supported as it looks terrible.
         { "jpegls",         true,  UNSAFE }, // JPEG-LS - write not supported as can't be read in in official qt.
         { "libvpx",         true,  SHOULDWORK }, // On2 VP8
@@ -197,6 +202,7 @@ namespace
         { "r210",           true,  UNSAFE }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
         { "rawvideo",       true,  UNSAFE }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
         { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
+        { "targa",          true,  UNSAFE }, // Truevision Targa image - write not supported as not official qt readable.
         { "tiff",           true,  UNSAFE }, // TIFF Image - write not supported as not official qt readable.
         { "v210",           true,  true }, // Uncompressed 4:2:2 10-bit
         { "v308",           true,  UNSAFE }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
@@ -743,8 +749,10 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             // this correctly. This means that the following change is
             // required for FFmpeg decoders. Currently |_bitDepth| is used
             // internally so this change has no side effects.
-            //stream->_bitDepth = avstream->codec->bits_per_raw_sample;
-            stream->_bitDepth = 16; // enabled in Nuke's reader
+            // [openfx-io note] when using insternal ffmpeg 8bits->16 bits conversion,
+            // (255 = 100%) becomes (65280 =99.6%)
+            stream->_bitDepth = avstream->codec->bits_per_raw_sample;
+            //stream->_bitDepth = 16; // enabled in Nuke's reader
 
             const AVPixFmtDescriptor* avPixFmtDescriptor = av_pix_fmt_desc_get(stream->_codecContext->pix_fmt);
             // Sanity check the number of components.

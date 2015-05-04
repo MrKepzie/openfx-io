@@ -169,6 +169,7 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
         *components = OFX::ePixelComponentNone;
         *componentCount = 0;
         *premult = OFX::eImageOpaque;
+        return;
     }
     *componentCount = file->getNumberOfComponents();
     *components = (*componentCount > 3) ? OFX::ePixelComponentRGBA : OFX::ePixelComponentRGB;
@@ -183,7 +184,7 @@ ReadFFmpegPlugin::isVideoStream(const std::string& filename)
     return !FFmpegFile::isImageFile(filename);
 }
 
-template<int nDstComp,int nSrcComp,int maxValue,typename PIX>
+template<int nDstComp, int nSrcComp, int numVals, typename PIX>
 static void
 fillWindow(const PIX* buffer,
            const OfxRectI& renderWindow,
@@ -204,14 +205,14 @@ fillWindow(const PIX* buffer,
         for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
             int srcCol = x * nSrcComp ;
             int dstCol = x * nDstComp;
-            dst_pixels[dstCol + 0] = intToFloat<maxValue>(src_pixels[srcCol + 0]);
-            dst_pixels[dstCol + 1] = intToFloat<maxValue>(src_pixels[srcCol + 1]);
-            dst_pixels[dstCol + 2] = intToFloat<maxValue>(src_pixels[srcCol + 2]);
+            dst_pixels[dstCol + 0] = intToFloat<numVals>(src_pixels[srcCol + 0]);
+            dst_pixels[dstCol + 1] = intToFloat<numVals>(src_pixels[srcCol + 1]);
+            dst_pixels[dstCol + 2] = intToFloat<numVals>(src_pixels[srcCol + 2]);
             if (nDstComp == 4) {
                 // Output is Opaque with alpha=0 by default,
                 // but premultiplication is set to opaque.
                 // That way, chaining with a Roto node works correctly.
-                dst_pixels[dstCol + 3] = nSrcComp == 4 ? intToFloat<maxValue>(src_pixels[srcCol + 3]) : 0.f;
+                dst_pixels[dstCol + 3] = nSrcComp == 4 ? intToFloat<numVals>(src_pixels[srcCol + 3]) : 0.f;
             }
         }
     }
