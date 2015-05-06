@@ -400,7 +400,8 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             // bypass OCIO
 
             if (noPremult || userPremult == pluginExpectedPremult) {
-                if (userPremult == OFX::eImageOpaque && pixelComponents == OFX::ePixelComponentRGBA) {
+                if (userPremult == OFX::eImageOpaque && (pixelComponents == OFX::ePixelComponentRGBA ||
+                                                         pixelComponents == OFX::ePixelComponentAlpha)) {
                     // Opaque: force the alpha channel to 1
                     copyPixelsOpaque(*this, renderWindowClipped,
                                              srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
@@ -425,7 +426,8 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             assert(!isOCIOIdentity);
             // OCIO expects unpremultiplied input
             if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
-                if (userPremult == OFX::eImageOpaque && pixelComponents == OFX::ePixelComponentRGBA) {
+                if (userPremult == OFX::eImageOpaque && (pixelComponents == OFX::ePixelComponentRGBA ||
+                                                         pixelComponents == OFX::ePixelComponentAlpha)) {
                     // Opaque: force the alpha channel to 1
                     copyPixelsOpaque(*this, renderWindowClipped,
                                srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
