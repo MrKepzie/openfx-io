@@ -400,10 +400,17 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             // bypass OCIO
 
             if (noPremult || userPremult == pluginExpectedPremult) {
-                // copy the whole raw src image
-                copyPixels(*this, renderWindowClipped,
-                           srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
-                           tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+                if (userPremult == OFX::eImageOpaque && pixelComponents == OFX::ePixelComponentRGBA) {
+                    // Opaque: force the alpha channel to 1
+                    copyPixelsOpaque(*this, renderWindowClipped,
+                                             srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
+                                             tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+                } else {
+                    // copy the whole raw src image
+                    copyPixels(*this, renderWindowClipped,
+                               srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
+                               tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+                }
             } else if (userPremult == OFX::eImagePreMultiplied) {
                 assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
                 unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
@@ -418,14 +425,12 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             assert(!isOCIOIdentity);
             // OCIO expects unpremultiplied input
             if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
-                
-                if (userPremult == OFX::eImageOpaque && pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
-                    //Make sure the alpha channel is 1 before premultiplying, otherwise it would render a black image
-                    copyPixelsAndSetAlphaOne(*this, renderWindowClipped,
+                if (userPremult == OFX::eImageOpaque && pixelComponents == OFX::ePixelComponentRGBA) {
+                    // Opaque: force the alpha channel to 1
+                    copyPixelsOpaque(*this, renderWindowClipped,
                                srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
                                tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
                 } else {
-                    
                     // copy the whole raw src image
                     copyPixels(*this, renderWindowClipped,
                                srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
