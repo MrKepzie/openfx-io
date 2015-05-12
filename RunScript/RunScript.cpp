@@ -197,17 +197,17 @@ private:
     void updateVisibility(void);
 
 private:
-    OFX::Clip *srcClip_[kRunScriptPluginSourceClipCount];
-    OFX::Clip *dstClip_;
+    OFX::Clip *_srcClip[kRunScriptPluginSourceClipCount];
+    OFX::Clip *_dstClip;
 
-    OFX::IntParam *param_count_;
-    OFX::ChoiceParam *type_[kRunScriptPluginArgumentsCount];
-    OFX::StringParam *filename_[kRunScriptPluginArgumentsCount];
-    OFX::StringParam *string_[kRunScriptPluginArgumentsCount];
-    OFX::DoubleParam *double_[kRunScriptPluginArgumentsCount];
-    OFX::IntParam *int_[kRunScriptPluginArgumentsCount];
-    OFX::StringParam *script_;
-    OFX::BooleanParam *validate_;
+    OFX::IntParam *_param_count;
+    OFX::ChoiceParam *_type[kRunScriptPluginArgumentsCount];
+    OFX::StringParam *_filename[kRunScriptPluginArgumentsCount];
+    OFX::StringParam *_string[kRunScriptPluginArgumentsCount];
+    OFX::DoubleParam *_double[kRunScriptPluginArgumentsCount];
+    OFX::IntParam *_int[kRunScriptPluginArgumentsCount];
+    OFX::StringParam *_script;
+    OFX::BooleanParam *_validate;
 };
 
 RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
@@ -216,30 +216,30 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     char name[256];
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
         if (i == 0 && getContext() == OFX::eContextFilter) {
-            srcClip_[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+            _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
         } else {
             snprintf(name, sizeof(name), "%d", i+1);
-            srcClip_[i] = fetchClip(name);
+            _srcClip[i] = fetchClip(name);
         }
     }
-    dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
+    _dstClip = fetchClip(kOfxImageEffectOutputClipName);
 
-    param_count_ = fetchIntParam(kParamCount);
+    _param_count = fetchIntParam(kParamCount);
 
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
         snprintf(name, sizeof(name), kParamType, i+1);
-        type_[i] = fetchChoiceParam(name);
+        _type[i] = fetchChoiceParam(name);
         snprintf(name, sizeof(name), kParamTypeFilenameName, i+1);
-        filename_[i] = fetchStringParam(name);
+        _filename[i] = fetchStringParam(name);
         snprintf(name, sizeof(name), kParamTypeStringName, i+1);
-        string_[i] = fetchStringParam(name);
+        _string[i] = fetchStringParam(name);
         snprintf(name, sizeof(name), kParamTypeDoubleName, i+1);
-        double_[i] = fetchDoubleParam(name);
+        _double[i] = fetchDoubleParam(name);
         snprintf(name, sizeof(name), kParamTypeIntName, i+1);
-        int_[i] = fetchIntParam(name);
+        _int[i] = fetchIntParam(name);
     }
-    script_ = fetchStringParam(kParamScript);
-    validate_ = fetchBooleanParam(kParamValidate);
+    _script = fetchStringParam(kParamScript);
+    _validate = fetchBooleanParam(kParamValidate);
 
     updateVisibility();
 }
@@ -255,7 +255,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     }
 
     bool validated;
-    validate_->getValue(validated);
+    _validate->getValue(validated);
     if (!validated) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -265,8 +265,8 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // fetch images corresponding to all connected inputs,
     // since it may trigger render actions upstream
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
-        if (srcClip_[i]->isConnected()) {
-            std::auto_ptr<const OFX::Image> srcImg(srcClip_[i]->fetchImage(args.time));
+        if (_srcClip[i]->isConnected()) {
+            std::auto_ptr<const OFX::Image> srcImg(_srcClip[i]->fetchImage(args.time));
             if (!srcImg.get()) {
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
@@ -284,12 +284,12 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // We must at least fetch the output image, even if we don't touch it,
     // or the host may think we couldn't render.
     // Nuke executes hundreds of render() if we don't.
-    if (!dstClip_) {
+    if (!_dstClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(dstClip_);
-    std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    assert(_dstClip);
+    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -313,7 +313,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
         return;
     }
     std::string script;
-    script_->getValue(script);
+    _script->getValue(script);
     ssize_t s = write(fd, script.c_str(), script.size());
     close(fd);
     if (s < 0) {
@@ -333,35 +333,35 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     argv.push_back(scriptname);
 
     int param_count;
-    param_count_->getValue(param_count);
+    _param_count->getValue(param_count);
 
     char name[256];
     for (int i = 0; i < param_count; ++i) {
         int t_int;
-        type_[i]->getValue(t_int);
+        _type[i]->getValue(t_int);
         ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
         OFX::ValueParam *p = NULL;
         switch (t) {
             case eRunScriptPluginParamTypeFilename: {
                 std::string s;
-                filename_[i]->getValue(s);
-                p = filename_[i];
+                _filename[i]->getValue(s);
+                p = _filename[i];
                 DBG(std::cout << p->getName() << "=" << s);
                 argv.push_back(s);
                 break;
             }
             case eRunScriptPluginParamTypeString: {
                 std::string s;
-                string_[i]->getValue(s);
-                p = string_[i];
+                _string[i]->getValue(s);
+                p = _string[i];
                 DBG(std::cout << p->getName() << "=" << s);
                 argv.push_back(s);
                 break;
             }
             case eRunScriptPluginParamTypeDouble: {
                 double v;
-                double_[i]->getValue(v);
-                p = double_[i];
+                _double[i]->getValue(v);
+                p = _double[i];
                 DBG(std::cout << p->getName() << "=" << v);
                 snprintf(name, sizeof(name), "%g", v);
                 argv.push_back(name);
@@ -369,8 +369,8 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
             }
             case eRunScriptPluginParamTypeInteger: {
                 int v;
-                int_[i]->getValue(v);
-                p = int_[i];
+                _int[i]->getValue(v);
+                p = _int[i];
                 DBG(std::cout << p->getName() << "=" << v);
                 snprintf(name, sizeof(name), "%d", v);
                 argv.push_back(name);
@@ -399,8 +399,8 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 
     // now copy the first input to output
 
-    if (dstClip_->isConnected()) {
-        std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    if (_dstClip->isConnected()) {
+        std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
         if (!dstImg.get()) {
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
@@ -413,7 +413,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
             return;
         }
 
-        std::auto_ptr<const OFX::Image> srcImg(srcClip_[0]->fetchImage(args.time));
+        std::auto_ptr<const OFX::Image> srcImg(_srcClip[0]->fetchImage(args.time));
 
         if (!srcImg.get()) {
             // fill output with black
@@ -445,80 +445,80 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
     }
 
     int param_count;
-    param_count_->getValue(param_count);
+    _param_count->getValue(param_count);
 
     if (paramName == kParamCount) {
         // update the parameters visibility
         updateVisibility();
     } else if (paramName == kParamValidate) {
         bool validated;
-        validate_->getValue(validated);
-        param_count_->setEnabled(!validated);
-        param_count_->setEvaluateOnChange(validated);
+        _validate->getValue(validated);
+        _param_count->setEnabled(!validated);
+        _param_count->setEvaluateOnChange(validated);
         for (int i = 0; i < param_count; ++i) {
-            type_[i]->setEnabled(!validated);
-            type_[i]->setEvaluateOnChange(validated);
-            filename_[i]->setEnabled(!validated);
-            filename_[i]->setEvaluateOnChange(validated);
-            string_[i]->setEnabled(!validated);
-            string_[i]->setEvaluateOnChange(validated);
-            double_[i]->setEnabled(!validated);
-            double_[i]->setEvaluateOnChange(validated);
-            int_[i]->setEnabled(!validated);
-            int_[i]->setEvaluateOnChange(validated);
+            _type[i]->setEnabled(!validated);
+            _type[i]->setEvaluateOnChange(validated);
+            _filename[i]->setEnabled(!validated);
+            _filename[i]->setEvaluateOnChange(validated);
+            _string[i]->setEnabled(!validated);
+            _string[i]->setEvaluateOnChange(validated);
+            _double[i]->setEnabled(!validated);
+            _double[i]->setEvaluateOnChange(validated);
+            _int[i]->setEnabled(!validated);
+            _int[i]->setEvaluateOnChange(validated);
         }
-        script_->setEnabled(!validated);
-        script_->setEvaluateOnChange(validated);
+        _script->setEnabled(!validated);
+        _script->setEvaluateOnChange(validated);
         clearPersistentMessage();
     } else {
         for (int i = 0; i < param_count; ++i) {
-            if (paramName == type_[i]->getName() && args.reason == OFX::eChangeUserEdit) {
+            if (paramName == _type[i]->getName() && args.reason == OFX::eChangeUserEdit) {
                 int t_int;
-                type_[i]->getValue(t_int);
+                _type[i]->getValue(t_int);
                 ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
-                filename_[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
-                string_[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
-                double_[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
-                int_[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
+                _filename[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
+                _string[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
+                _double[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
+                _int[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
             }
         }
     }
 
     for (int i = 0; i < param_count; ++i) {
         int t_int;
-        type_[i]->getValue(t_int);
+        _type[i]->getValue(t_int);
         ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
         OFX::ValueParam *p = NULL;
         switch (t) {
             case eRunScriptPluginParamTypeFilename:
             {
                 std::string s;
-                filename_[i]->getValue(s);
-                p = filename_[i];
+                _filename[i]->getValue(s);
+                p = _filename[i];
                 DBG(std::cout << p->getName() << "=" << s);
             }
                 break;
             case eRunScriptPluginParamTypeString:
             {
                 std::string s;
-                string_[i]->getValue(s);
-                p = string_[i];
+                _string[i]->getValue(s);
+                p = _string[i];
                 DBG(std::cout << p->getName() << "=" << s);
             }
                 break;
             case eRunScriptPluginParamTypeDouble:
             {
                 double v;
-                double_[i]->getValue(v);
-                p = double_[i];
+                _double[i]->getValue(v);
+                p = _double[i];
                 DBG(std::cout << p->getName() << "=" << v);
             }
                 break;
             case eRunScriptPluginParamTypeInteger:
             {
                 int v;
-                int_[i]->getValue(v);
-                p = int_[i];
+                _int[i]->getValue(v);
+                p = _int[i];
                 DBG(std::cout << p->getName() << "=" << v);
             }
                 break;
@@ -540,43 +540,43 @@ RunScriptPlugin::updateVisibility(void)
     // It is not possible in Nuke to show a parameter that was set as secret/hidden in describeInContext()
 
     int param_count;
-    param_count_->getValue(param_count);
+    _param_count->getValue(param_count);
 
     bool validated;
-    validate_->getValue(validated);
+    _validate->getValue(validated);
 
-    param_count_->setEnabled(!validated);
-    param_count_->setEvaluateOnChange(validated);
+    _param_count->setEnabled(!validated);
+    _param_count->setEvaluateOnChange(validated);
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
         if (i >= param_count) {
-            type_[i]->setIsSecret(true);
-            filename_[i]->setIsSecret(true);
-            string_[i]->setIsSecret(true);
-            double_[i]->setIsSecret(true);
-            int_[i]->setIsSecret(true);
+            _type[i]->setIsSecret(true);
+            _filename[i]->setIsSecret(true);
+            _string[i]->setIsSecret(true);
+            _double[i]->setIsSecret(true);
+            _int[i]->setIsSecret(true);
         } else {
-            type_[i]->setIsSecret(false);
+            _type[i]->setIsSecret(false);
             int t_int;
-            type_[i]->getValue(t_int);
+            _type[i]->getValue(t_int);
             ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
-            filename_[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
-            string_[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
-            double_[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
-            int_[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
+            _filename[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
+            _string[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
+            _double[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
+            _int[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
         }
-        type_[i]->setEnabled(!validated);
-        type_[i]->setEvaluateOnChange(validated);
-        filename_[i]->setEnabled(!validated);
-        filename_[i]->setEvaluateOnChange(validated);
-        string_[i]->setEnabled(!validated);
-        string_[i]->setEvaluateOnChange(validated);
-        double_[i]->setEnabled(!validated);
-        double_[i]->setEvaluateOnChange(validated);
-        int_[i]->setEnabled(!validated);
-        int_[i]->setEvaluateOnChange(validated);
+        _type[i]->setEnabled(!validated);
+        _type[i]->setEvaluateOnChange(validated);
+        _filename[i]->setEnabled(!validated);
+        _filename[i]->setEvaluateOnChange(validated);
+        _string[i]->setEnabled(!validated);
+        _string[i]->setEvaluateOnChange(validated);
+        _double[i]->setEnabled(!validated);
+        _double[i]->setEvaluateOnChange(validated);
+        _int[i]->setEnabled(!validated);
+        _int[i]->setEvaluateOnChange(validated);
     }
-    script_->setEnabled(!validated);
-    script_->setEvaluateOnChange(validated);
+    _script->setEnabled(!validated);
+    _script->setEvaluateOnChange(validated);
 }
 
 // override the roi call
@@ -594,9 +594,9 @@ RunScriptPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &arg
         for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
             OfxRectD srcRoI;
 
-            if (srcClip_[i] && srcClip_[i]->isConnected()) {
-                srcRoI = srcClip_[i]->getRegionOfDefinition(args.time);
-                rois.setRegionOfInterest(*srcClip_[i], srcRoI);
+            if (_srcClip[i] && _srcClip[i]->isConnected()) {
+                srcRoI = _srcClip[i]->getRegionOfDefinition(args.time);
+                rois.setRegionOfInterest(*_srcClip[i], srcRoI);
             }
         }
     }
