@@ -54,6 +54,7 @@
 #include "IOUtility.h"
 #include "ofxNatron.h"
 #include "ofxsMacros.h"
+#include "ofxsMerging.h"
 #include "GenericOCIO.h"
 
 namespace OCIO = OCIO_NAMESPACE;
@@ -266,15 +267,15 @@ private:
 
 private:
     // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *dstClip_;
-    OFX::Clip *srcClip_;
-    OFX::Clip *maskClip_;
+    OFX::Clip *_dstClip;
+    OFX::Clip *_srcClip;
+    OFX::Clip *_maskClip;
 
-    OFX::StringParam *file_;
-    OFX::IntParam *version_;
-    OFX::StringParam *cccid_;
-    OFX::ChoiceParam *direction_;
-    OFX::ChoiceParam *interpolation_;
+    OFX::StringParam *_file;
+    OFX::IntParam *_version;
+    OFX::StringParam *_cccid;
+    OFX::ChoiceParam *_direction;
+    OFX::ChoiceParam *_interpolation;
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
@@ -283,22 +284,22 @@ private:
 
 OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
-, dstClip_(0)
-, srcClip_(0)
-, maskClip_(0)
+, _dstClip(0)
+, _srcClip(0)
+, _maskClip(0)
 {
-    dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
-    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA || dstClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
-    assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
-    file_ = fetchStringParam(kParamFile);
-    version_ = fetchIntParam(kParamVersion);
-    cccid_ = fetchStringParam(kParamCCCID);
-    direction_ = fetchChoiceParam(kParamDirection);
-    interpolation_ = fetchChoiceParam(kParamInterpolation);
-    assert(file_ && version_ && cccid_ && direction_ && interpolation_);
+    _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
+    _file = fetchStringParam(kParamFile);
+    _version = fetchIntParam(kParamVersion);
+    _cccid = fetchStringParam(kParamCCCID);
+    _direction = fetchChoiceParam(kParamDirection);
+    _interpolation = fetchChoiceParam(kParamInterpolation);
+    assert(_file && _version && _cccid && _direction && _interpolation);
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
@@ -338,11 +339,11 @@ OCIOFileTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) ?
-                                         maskClip_->fetchImage(time) : 0);
-    std::auto_ptr<const OFX::Image> orig((srcClip_ && srcClip_->isConnected()) ?
-                                         srcClip_->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) {
+    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
+                                         _maskClip->fetchImage(time) : 0);
+    std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
+                                         _srcClip->fetchImage(time) : 0);
+    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -476,9 +477,9 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
     std::string file;
-    file_->getValueAtTime(time, file);
+    _file->getValueAtTime(time, file);
     std::string cccid;
-    cccid_->getValueAtTime(time, cccid);
+    _cccid->getValueAtTime(time, cccid);
 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -488,25 +489,25 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
 
         transform->setCCCId(cccid.c_str());
 
-        int direction_i;
-        direction_->getValueAtTime(time, direction_i);
+        int _directioni;
+        _direction->getValueAtTime(time, _directioni);
 
-        if (direction_i == 0) {
+        if (_directioni == 0) {
             transform->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
         } else {
             transform->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
         }
 
-        int interpolation_i;
-        interpolation_->getValueAtTime(time, interpolation_i);
+        int _interpolationi;
+        _interpolation->getValueAtTime(time, _interpolationi);
 
-        if (interpolation_i == 0) {
+        if (_interpolationi == 0) {
             transform->setInterpolation(OCIO::INTERP_NEAREST);
-        } else if(interpolation_i == 1) {
+        } else if(_interpolationi == 1) {
             transform->setInterpolation(OCIO::INTERP_LINEAR);
-        } else if(interpolation_i == 2) {
+        } else if(_interpolationi == 2) {
             transform->setInterpolation(OCIO::INTERP_TETRAHEDRAL);
-        } else if(interpolation_i == 3) {
+        } else if(_interpolationi == 3) {
             transform->setInterpolation(OCIO::INTERP_BEST);
         } else {
             // Should never happen
@@ -532,12 +533,12 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
 void
 OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 {
-    if (!srcClip_) {
+    if (!_srcClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(srcClip_);
-    std::auto_ptr<const OFX::Image> srcImg(srcClip_->fetchImage(args.time));
+    assert(_srcClip);
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -553,12 +554,12 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
     OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
-    if (!dstClip_) {
+    if (!_dstClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(dstClip_);
-    std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    assert(_dstClip);
+    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -622,14 +623,37 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 }
 
 bool
-OCIOFileTransformPlugin::isIdentity(const OFX::IsIdentityArguments &/*args*/, OFX::Clip * &identityClip, double &/*identityTime*/)
+OCIOFileTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
     std::string file;
-    file_->getValue(file);
+    _file->getValue(file);
     if (file.empty()) {
-        identityClip = srcClip_;
+        identityClip = _srcClip;
         return true;
     }
+
+    double mix;
+    _mix->getValueAtTime(args.time, mix);
+
+    if (mix == 0.) {
+        identityClip = _srcClip;
+        return true;
+    }
+
+    if (_maskClip && _maskClip->isConnected()) {
+        bool maskInvert;
+        _maskInvert->getValueAtTime(args.time, maskInvert);
+        if (!maskInvert) {
+            OfxRectI maskRoD;
+            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            // effect is identity if the renderWindow doesn't intersect the mask RoD
+            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+                identityClip = _srcClip;
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -639,14 +663,14 @@ OCIOFileTransformPlugin::updateCCCId()
     // Convoluted equiv to pysting::endswith(m_file, ".ccc")
     // TODO: Could this be queried from the processor?
     std::string srcstring;
-    file_->getValue(srcstring);
+    _file->getValue(srcstring);
     const std::string cccext = "ccc";
     const std::string ccext = "cc";
     if(std::equal(cccext.rbegin(), cccext.rend(), srcstring.rbegin()) ||
        std::equal(ccext.rbegin(), ccext.rend(), srcstring.rbegin())) {
-        cccid_->setIsSecret(false);
+        _cccid->setIsSecret(false);
     } else {
-        cccid_->setIsSecret(true);
+        _cccid->setIsSecret(true);
     }
 }
 
@@ -660,7 +684,7 @@ OCIOFileTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
     if (paramName == kParamFile) {
         updateCCCId();
     } else if (paramName == kParamReload && args.reason == OFX::eChangeUserEdit) {
-        version_->setValue(version_->getValue()+1); // invalidate the node cache
+        _version->setValue(_version->getValue()+1); // invalidate the node cache
         OCIO::ClearAllCaches();
     }
 
@@ -669,8 +693,8 @@ OCIOFileTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
 void
 OCIOFileTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
-    if (clipName == kOfxImageEffectSimpleSourceClipName && srcClip_ && args.reason == OFX::eChangeUserEdit) {
-        switch (srcClip_->getPreMultiplication()) {
+    if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
+        switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
                 break;
             case OFX::eImagePreMultiplied:

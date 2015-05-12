@@ -143,32 +143,32 @@ private:
 
 private:
     // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *dstClip_;
-    OFX::Clip *srcClip_;
+    OFX::Clip *_dstClip;
+    OFX::Clip *_srcClip;
 
-    OFX::Double2DParam *position_;
-    OFX::StringParam *text_;
-    OFX::IntParam *fontSize_;
-    OFX::StringParam *fontName_;
-    OFX::RGBAParam *textColor_;
+    OFX::Double2DParam *_position;
+    OFX::StringParam *_text;
+    OFX::IntParam *_fontSize;
+    OFX::StringParam *_fontName;
+    OFX::RGBAParam *_textColor;
 };
 
 OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
-, dstClip_(0)
-, srcClip_(0)
+, _dstClip(0)
+, _srcClip(0)
 {
-    dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
-    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA || dstClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
+    _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
 
-    position_ = fetchDouble2DParam(kParamPosition);
-    text_ = fetchStringParam(kParamText);
-    fontSize_ = fetchIntParam(kParamFontSize);
-    fontName_ = fetchStringParam(kParamFontName);
-    textColor_ = fetchRGBAParam(kParamTextColor);
-    assert(position_ && text_ && fontSize_ && fontName_ && textColor_);
+    _position = fetchDouble2DParam(kParamPosition);
+    _text = fetchStringParam(kParamText);
+    _fontSize = fetchIntParam(kParamFontSize);
+    _fontName = fetchStringParam(kParamFontName);
+    _textColor = fetchRGBAParam(kParamTextColor);
+    assert(_position && _text && _fontSize && _fontName && _textColor);
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()
@@ -237,12 +237,12 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         return;
     }
 
-    if (!srcClip_) {
+    if (!_srcClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(srcClip_);
-    std::auto_ptr<const OFX::Image> srcImg(srcClip_->fetchImage(args.time));
+    assert(_srcClip);
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
     if (srcImg.get()) {
         if (srcImg->getRenderScale().x != args.renderScale.x ||
             srcImg->getRenderScale().y != args.renderScale.y ||
@@ -253,12 +253,12 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         }
     }
 
-    if (!dstClip_) {
+    if (!_dstClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(dstClip_);
-    std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    assert(_dstClip);
+    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -337,15 +337,15 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     }
 
     double x, y;
-    position_->getValueAtTime(args.time, x, y);
+    _position->getValueAtTime(args.time, x, y);
     std::string text;
-    text_->getValueAtTime(args.time, text);
+    _text->getValueAtTime(args.time, text);
     int fontSize;
-    fontSize_->getValueAtTime(args.time, fontSize);
+    _fontSize->getValueAtTime(args.time, fontSize);
     std::string fontName;
-    fontName_->getValueAtTime(args.time, fontName);
+    _fontName->getValueAtTime(args.time, fontName);
     double r, g, b, a;
-    textColor_->getValueAtTime(args.time, r, g, b, a);
+    _textColor->getValueAtTime(args.time, r, g, b, a);
     float textColor[4];
     textColor[0] = (float)r;
     textColor[1] = (float)g;
@@ -446,16 +446,16 @@ OIIOTextPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &id
     }
 
     std::string text;
-    text_->getValueAtTime(args.time, text);
+    _text->getValueAtTime(args.time, text);
     if (text.empty()) {
-        identityClip = srcClip_;
+        identityClip = _srcClip;
         return true;
     }
 
     double r, g, b, a;
-    textColor_->getValueAtTime(args.time, r, g, b, a);
+    _textColor->getValueAtTime(args.time, r, g, b, a);
     if (a == 0.) {
-        identityClip = srcClip_;
+        identityClip = _srcClip;
         return true;
     }
 
@@ -480,8 +480,8 @@ OIIOTextPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &ar
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return false;
     }
-    if (srcClip_ && srcClip_->isConnected()) {
-        rod = srcClip_->getRegionOfDefinition(args.time);
+    if (_srcClip && _srcClip->isConnected()) {
+        rod = _srcClip->getRegionOfDefinition(args.time);
     } else {
         rod.x1 = rod.y1 = kOfxFlagInfiniteMin;
         rod.x2 = rod.y2 = kOfxFlagInfiniteMax;

@@ -47,7 +47,9 @@
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 #include "ofxNatron.h"
+#include "ofxsMerging.h"
 #include "ofxsMacros.h"
+
 #include "GenericOCIO.h"
 
 namespace OCIO = OCIO_NAMESPACE;
@@ -297,21 +299,21 @@ private:
 
 private:
     // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *dstClip_;
-    OFX::Clip *srcClip_;
-    OFX::Clip *maskClip_;
+    OFX::Clip *_dstClip;
+    OFX::Clip *_srcClip;
+    OFX::Clip *_maskClip;
 
     bool firstLoad_;
-    OFX::RGBParam *slope_;
-    OFX::RGBParam *offset_;
-    OFX::RGBParam *power_;
-    OFX::DoubleParam *saturation_;
-    OFX::ChoiceParam *direction_;
-    OFX::BooleanParam* readFromFile_;
-    OFX::StringParam *file_;
-    OFX::IntParam *version_;
-    OFX::StringParam *cccid_;
-    OFX::StringParam *export_;
+    OFX::RGBParam *_slope;
+    OFX::RGBParam *_offset;
+    OFX::RGBParam *_power;
+    OFX::DoubleParam *_saturation;
+    OFX::ChoiceParam *_direction;
+    OFX::BooleanParam* _readFromFile;
+    OFX::StringParam *_file;
+    OFX::IntParam *_version;
+    OFX::StringParam *_cccid;
+    OFX::StringParam *_export;
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
@@ -320,28 +322,28 @@ private:
 
 OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
-, dstClip_(0)
-, srcClip_(0)
-, maskClip_(0)
+, _dstClip(0)
+, _srcClip(0)
+, _maskClip(0)
 , firstLoad_(true)
 {
-    dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
-    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA || dstClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
-    assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
-    slope_ = fetchRGBParam(kParamSlope);
-    offset_ = fetchRGBParam(kParamOffset);
-    power_ = fetchRGBParam(kParamPower);
-    saturation_ = fetchDoubleParam(kParamSaturation);
-    direction_ = fetchChoiceParam(kParamDirection);
-    readFromFile_ = fetchBooleanParam(kParamReadFromFile);
-    file_ = fetchStringParam(kParamFile);
-    version_ = fetchIntParam(kParamVersion);
-    cccid_ = fetchStringParam(kParamCCCID);
-    export_ = fetchStringParam(kParamExport);
-    assert(slope_ && offset_ && power_ && saturation_ && direction_ && readFromFile_ && file_ && version_ && cccid_ && export_);
+    _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
+    _slope = fetchRGBParam(kParamSlope);
+    _offset = fetchRGBParam(kParamOffset);
+    _power = fetchRGBParam(kParamPower);
+    _saturation = fetchDoubleParam(kParamSaturation);
+    _direction = fetchChoiceParam(kParamDirection);
+    _readFromFile = fetchBooleanParam(kParamReadFromFile);
+    _file = fetchStringParam(kParamFile);
+    _version = fetchIntParam(kParamVersion);
+    _cccid = fetchStringParam(kParamCCCID);
+    _export = fetchStringParam(kParamExport);
+    assert(_slope && _offset && _power && _saturation && _direction && _readFromFile && _file && _version && _cccid && _export);
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
@@ -350,7 +352,7 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     assert(_mix && _maskInvert);
     updateCCCId();
     bool readFromFile;
-    readFromFile_->getValue(readFromFile);
+    _readFromFile->getValue(readFromFile);
     refreshKnobEnabledState(readFromFile);
     // WARNING: we cannot setValue() here in the constructor, because it calls changedParam() on an object which is not yet constructed.
     // CDL file loading and parameter setting is delayed until the first call th changedParam(), beginEdit(), or render()
@@ -386,11 +388,11 @@ OCIOCDLTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) ?
-                                         maskClip_->fetchImage(time) : 0);
-    std::auto_ptr<const OFX::Image> orig((srcClip_ && srcClip_->isConnected()) ?
-                                         srcClip_->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) {
+    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
+                                         _maskClip->fetchImage(time) : 0);
+    std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
+                                         _srcClip->fetchImage(time) : 0);
+    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -531,7 +533,7 @@ OCIOCDLTransformPlugin::apply(double time,
     if (firstLoad_) {
         firstLoad_ = false;
         bool readFromFile;
-        readFromFile_->getValue(readFromFile);
+        _readFromFile->getValue(readFromFile);
         if (readFromFile) {
             loadCDLFromFile();
         }
@@ -540,25 +542,25 @@ OCIOCDLTransformPlugin::apply(double time,
     float sop[9];
     double saturation;
     double r, g, b;
-    slope_->getValueAtTime(time, r, g, b);
+    _slope->getValueAtTime(time, r, g, b);
     sop[0] = (float)r;
     sop[1] = (float)g;
     sop[2] = (float)b;
-    offset_->getValueAtTime(time, r, g, b);
+    _offset->getValueAtTime(time, r, g, b);
     sop[3] = (float)r;
     sop[4] = (float)g;
     sop[5] = (float)b;
-    power_->getValueAtTime(time, r, g, b);
+    _power->getValueAtTime(time, r, g, b);
     sop[6] = (float)r;
     sop[7] = (float)g;
     sop[8] = (float)b;
-    saturation_->getValueAtTime(time, saturation);
-    int direction_i;
-    direction_->getValueAtTime(time, direction_i);
+    _saturation->getValueAtTime(time, saturation);
+    int _directioni;
+    _direction->getValueAtTime(time, _directioni);
     std::string file;
-    file_->getValueAtTime(time, file);
+    _file->getValueAtTime(time, file);
     std::string cccid;
-    cccid_->getValueAtTime(time, cccid);
+    _cccid->getValueAtTime(time, cccid);
 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -567,7 +569,7 @@ OCIOCDLTransformPlugin::apply(double time,
         cc->setSOP(sop);
         cc->setSat((float)saturation);
 
-        if (direction_i == 0) {
+        if (_directioni == 0) {
             cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
         } else {
             cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
@@ -590,12 +592,12 @@ OCIOCDLTransformPlugin::apply(double time,
 void
 OCIOCDLTransformPlugin::render(const OFX::RenderArguments &args)
 {
-    if (!srcClip_) {
+    if (!_srcClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(srcClip_);
-    std::auto_ptr<const OFX::Image> srcImg(srcClip_->fetchImage(args.time));
+    assert(_srcClip);
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -611,12 +613,12 @@ OCIOCDLTransformPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
     OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
-    if (!dstClip_) {
+    if (!_dstClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(dstClip_);
-    std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    assert(_dstClip);
+    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -686,25 +688,25 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
     float sop[9];
     double saturation;
     double r, g, b;
-    slope_->getValueAtTime(time, r, g, b);
+    _slope->getValueAtTime(time, r, g, b);
     sop[0] = (float)r;
     sop[1] = (float)g;
     sop[2] = (float)b;
-    offset_->getValueAtTime(time, r, g, b);
+    _offset->getValueAtTime(time, r, g, b);
     sop[3] = (float)r;
     sop[4] = (float)g;
     sop[5] = (float)b;
-    power_->getValueAtTime(time, r, g, b);
+    _power->getValueAtTime(time, r, g, b);
     sop[6] = (float)r;
     sop[7] = (float)g;
     sop[8] = (float)b;
-    saturation_->getValueAtTime(time, saturation);
-    int direction_i;
-    direction_->getValueAtTime(time, direction_i);
+    _saturation->getValueAtTime(time, saturation);
+    int _directioni;
+    _direction->getValueAtTime(time, _directioni);
     std::string file;
-    file_->getValueAtTime(time, file);
+    _file->getValueAtTime(time, file);
     std::string cccid;
-    cccid_->getValueAtTime(time, cccid);
+    _cccid->getValueAtTime(time, cccid);
 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -713,7 +715,7 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
         cc->setSOP(sop);
         cc->setSat((float)saturation);
 
-        if (direction_i == 0) {
+        if (_directioni == 0) {
             cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
         } else {
             cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
@@ -721,13 +723,36 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
 
         OCIO::ConstProcessorRcPtr proc = config->getProcessor(cc);
         if (proc->isNoOp()) {
-            identityClip = srcClip_;
+            identityClip = _srcClip;
             return true;
         }
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+
+    double mix;
+    _mix->getValueAtTime(args.time, mix);
+
+    if (mix == 0.) {
+        identityClip = _srcClip;
+        return true;
+    }
+
+    if (_maskClip && _maskClip->isConnected()) {
+        bool maskInvert;
+        _maskInvert->getValueAtTime(args.time, maskInvert);
+        if (!maskInvert) {
+            OfxRectI maskRoD;
+            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            // effect is identity if the renderWindow doesn't intersect the mask RoD
+            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+                identityClip = _srcClip;
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -737,12 +762,12 @@ OCIOCDLTransformPlugin::updateCCCId()
     // Convoluted equiv to pysting::endswith(m_file, ".ccc")
     // TODO: Could this be queried from the processor?
     std::string srcstring;
-    file_->getValue(srcstring);
+    _file->getValue(srcstring);
     const std::string cccext = ".ccc";
     if(std::equal(cccext.rbegin(), cccext.rend(), srcstring.rbegin())) {
-        cccid_->setIsSecret(false);
+        _cccid->setIsSecret(false);
     } else {
-        cccid_->setIsSecret(true);
+        _cccid->setIsSecret(true);
     }
 }
 
@@ -750,10 +775,10 @@ void
 OCIOCDLTransformPlugin::refreshKnobEnabledState(bool readFromFile)
 {
     if (readFromFile) {
-        slope_->setEnabled(false);
-        offset_->setEnabled(false);
-        power_->setEnabled(false);
-        saturation_->setEnabled(false);
+        _slope->setEnabled(false);
+        _offset->setEnabled(false);
+        _power->setEnabled(false);
+        _saturation->setEnabled(false);
 
         // We leave these active to allow knob re-use with the import/export buttons
         //m_fileKnob->enable();
@@ -761,10 +786,10 @@ OCIOCDLTransformPlugin::refreshKnobEnabledState(bool readFromFile)
 
         loadCDLFromFile();
     } else {
-        slope_->setEnabled(true);
-        offset_->setEnabled(true);
-        power_->setEnabled(true);
-        saturation_->setEnabled(true);
+        _slope->setEnabled(true);
+        _offset->setEnabled(true);
+        _power->setEnabled(true);
+        _saturation->setEnabled(true);
 
         // We leave these active to allow knob re-use with the import/export buttons
         //m_fileKnob->disable();
@@ -781,9 +806,9 @@ OCIOCDLTransformPlugin::loadCDLFromFile()
         // This is inexpensive to call multiple times, as OCIO caches results
         // internally.
         std::string file;
-        file_->getValue(file);
+        _file->getValue(file);
         std::string cccid;
-        cccid_->getValue(cccid);
+        _cccid->getValue(cccid);
         transform = OCIO::CDLTransform::CreateFromFile(file.c_str(), cccid.c_str());
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
@@ -795,14 +820,14 @@ OCIOCDLTransformPlugin::loadCDLFromFile()
     float sop[9];
     transform->getSOP(sop);
 
-    slope_->deleteAllKeys();
-    slope_->setValue(sop[0], sop[1], sop[2]);
-    offset_->deleteAllKeys();
-    offset_->setValue(sop[3], sop[4], sop[5]);
-    power_->deleteAllKeys();
-    power_->setValue(sop[6], sop[7], sop[8]);
-    saturation_->deleteAllKeys();
-    saturation_->setValue(transform->getSat());
+    _slope->deleteAllKeys();
+    _slope->setValue(sop[0], sop[1], sop[2]);
+    _offset->deleteAllKeys();
+    _offset->setValue(sop[3], sop[4], sop[5]);
+    _power->deleteAllKeys();
+    _power->setValue(sop[6], sop[7], sop[8]);
+    _saturation->deleteAllKeys();
+    _saturation->setValue(transform->getSat());
 }
 
 void
@@ -811,7 +836,7 @@ OCIOCDLTransformPlugin::beginEdit()
     if (firstLoad_) {
         firstLoad_ = false;
         bool readFromFile;
-        readFromFile_->getValue(readFromFile);
+        _readFromFile->getValue(readFromFile);
         if (readFromFile) {
             loadCDLFromFile();
         }
@@ -826,7 +851,7 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
     if (firstLoad_ || paramName == kParamReadFromFile || paramName == kParamFile || paramName == kParamCCCID) {
         firstLoad_ = false;
         bool readFromFile;
-        readFromFile_->getValue(readFromFile);
+        _readFromFile->getValue(readFromFile);
         refreshKnobEnabledState(readFromFile);
         if (readFromFile) {
             loadCDLFromFile();
@@ -839,11 +864,11 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
     if (paramName == kParamFile) {
         updateCCCId();
     } else if (paramName == kParamReload) {
-        version_->setValue(version_->getValue()+1); // invalidate the node cache
+        _version->setValue(_version->getValue()+1); // invalidate the node cache
         OCIO::ClearAllCaches();
     } else if (paramName == kParamExport && args.reason == OFX::eChangeUserEdit) {
         std::string exportName;
-        export_->getValueAtTime(args.time, exportName);
+        _export->getValueAtTime(args.time, exportName);
         // if file already exists, don't overwrite it
         if (exportName.empty()) {
             sendMessage(OFX::Message::eMessageError, "", "Export file name is empty, please enter a valid non-existing file name.");
@@ -863,21 +888,21 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                 float sop[9];
                 double saturation;
                 double r, g, b;
-                slope_->getValueAtTime(time, r, g, b);
+                _slope->getValueAtTime(time, r, g, b);
                 sop[0] = (float)r;
                 sop[1] = (float)g;
                 sop[2] = (float)b;
-                offset_->getValueAtTime(time, r, g, b);
+                _offset->getValueAtTime(time, r, g, b);
                 sop[3] = (float)r;
                 sop[4] = (float)g;
                 sop[5] = (float)b;
-                power_->getValueAtTime(time, r, g, b);
+                _power->getValueAtTime(time, r, g, b);
                 sop[6] = (float)r;
                 sop[7] = (float)g;
                 sop[8] = (float)b;
-                saturation_->getValueAtTime(time, saturation);
-                int direction_i;
-                direction_->getValueAtTime(time, direction_i);
+                _saturation->getValueAtTime(time, saturation);
+                int _directioni;
+                _direction->getValueAtTime(time, _directioni);
 
                 try {
                     OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
@@ -886,7 +911,7 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                     cc->setSOP(sop);
                     cc->setSat((float)saturation);
 
-                    if (direction_i == 0) {
+                    if (_directioni == 0) {
                         cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
                     } else {
                         cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
@@ -904,15 +929,15 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
         }
 
         // reset back to default
-        export_->setValue(kParamExportDefault);
+        _export->setValue(kParamExportDefault);
     }
 }
 
 void
 OCIOCDLTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
-    if (clipName == kOfxImageEffectSimpleSourceClipName && srcClip_ && args.reason == OFX::eChangeUserEdit) {
-        switch (srcClip_->getPreMultiplication()) {
+    if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
+        switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
                 break;
             case OFX::eImagePreMultiplied:

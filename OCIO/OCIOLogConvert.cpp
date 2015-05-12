@@ -48,6 +48,7 @@
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 #include "ofxNatron.h"
+#include "ofxsMerging.h"
 #include "ofxsMacros.h"
 #include "GenericOCIO.h"
 
@@ -86,7 +87,7 @@ public:
     virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    //virtual bool isIdentity(const OFX::RenderArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
 
     /* override changedParam */
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
@@ -230,9 +231,9 @@ private:
 
 private:
     // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *dstClip_;
-    OFX::Clip *srcClip_;
-    OFX::Clip *maskClip_;
+    OFX::Clip *_dstClip;
+    OFX::Clip *_srcClip;
+    OFX::Clip *_maskClip;
 
     std::string _ocioConfigFileName;
     OFX::StringParam *_ocioConfigFile; //< filepath of the OCIO config file
@@ -246,16 +247,16 @@ private:
 
 OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
-, dstClip_(0)
-, srcClip_(0)
-, maskClip_(0)
+, _dstClip(0)
+, _srcClip(0)
+, _maskClip(0)
 {
-    dstClip_ = fetchClip(kOfxImageEffectOutputClipName);
-    assert(dstClip_ && (dstClip_->getPixelComponents() == OFX::ePixelComponentRGBA || dstClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    srcClip_ = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(srcClip_ && (srcClip_->getPixelComponents() == OFX::ePixelComponentRGBA || srcClip_->getPixelComponents() == OFX::ePixelComponentRGB));
-    maskClip_ = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
-    assert(!maskClip_ || maskClip_->getPixelComponents() == OFX::ePixelComponentAlpha);
+    _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _ocioConfigFile = fetchStringParam(kOCIOParamConfigFileName);
     assert(_ocioConfigFile);
     _mode = fetchChoiceParam(kParamOperation);
@@ -323,11 +324,11 @@ OCIOLogConvertPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) ?
-                                   maskClip_->fetchImage(time) : 0);
-    std::auto_ptr<const OFX::Image> orig((srcClip_ && srcClip_->isConnected()) ?
-                                   srcClip_->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && maskClip_ && maskClip_->isConnected()) {
+    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
+                                   _maskClip->fetchImage(time) : 0);
+    std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
+                                   _srcClip->fetchImage(time) : 0);
+    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -493,12 +494,12 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
 void
 OCIOLogConvertPlugin::render(const OFX::RenderArguments &args)
 {
-    if (!srcClip_) {
+    if (!_srcClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(srcClip_);
-    std::auto_ptr<const OFX::Image> srcImg(srcClip_->fetchImage(args.time));
+    assert(_srcClip);
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
     if (!srcImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -514,12 +515,12 @@ OCIOLogConvertPlugin::render(const OFX::RenderArguments &args)
     OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
     OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
-    if (!dstClip_) {
+    if (!_dstClip) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    assert(dstClip_);
-    std::auto_ptr<OFX::Image> dstImg(dstClip_->fetchImage(args.time));
+    assert(_dstClip);
+    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
     if (!dstImg.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -580,6 +581,35 @@ OCIOLogConvertPlugin::render(const OFX::RenderArguments &args)
 
     // copy the color-converted window
     copyPixelData(false, premult, true, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
+}
+
+bool
+OCIOLogConvertPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
+{
+    double mix;
+    _mix->getValueAtTime(args.time, mix);
+
+    if (mix == 0.) {
+        identityClip = _srcClip;
+        return true;
+    }
+
+    if (_maskClip && _maskClip->isConnected()) {
+        bool maskInvert;
+        _maskInvert->getValueAtTime(args.time, maskInvert);
+        if (!maskInvert) {
+            OfxRectI maskRoD;
+            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            // effect is identity if the renderWindow doesn't intersect the mask RoD
+            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+                identityClip = _srcClip;
+                return true;
+            }
+        }
+    }
+
+
+    return false;
 }
 
 void
@@ -653,8 +683,8 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
 void
 OCIOLogConvertPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
-    if (clipName == kOfxImageEffectSimpleSourceClipName && srcClip_ && args.reason == OFX::eChangeUserEdit) {
-        switch (srcClip_->getPreMultiplication()) {
+    if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
+        switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
                 break;
             case OFX::eImagePreMultiplied:
