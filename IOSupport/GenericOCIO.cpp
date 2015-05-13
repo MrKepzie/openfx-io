@@ -61,8 +61,8 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 #ifdef OFX_IO_USING_OCIO
 , _ocioConfigFileName()
 , _ocioConfigFile(0)
-, _inputSpace()
-, _outputSpace()
+, _inputSpace(0)
+, _outputSpace(0)
 #ifdef OFX_OCIO_CHOICE
 , _choiceIsOk(true)
 , _choiceFileName()
@@ -74,18 +74,40 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 {
 #ifdef OFX_IO_USING_OCIO
     _ocioConfigFile = _parent->fetchStringParam(kOCIOParamConfigFileName);
-    _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpaceName);
-    _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpaceName);
+    try {
+        _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpaceName);
+    } catch (const OFX::Exception::Suite& e) {
+        // only ignore kOfxStatErrUnknown
+        if (e.status() != kOfxStatErrUnknown) {
+            throw;
+        }
+    }
+    try {
+        _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpaceName);
+    } catch (const OFX::Exception::Suite& e) {
+        // only ignore kOfxStatErrUnknown
+        if (e.status() != kOfxStatErrUnknown) {
+            throw;
+        }
+    }
 #ifdef OFX_OCIO_CHOICE
     _ocioConfigFile->getDefault(_choiceFileName);
-    _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoiceName);
-    _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoiceName);
+    if (_inputSpace) {
+        _inputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamInputSpaceChoiceName);
+    }
+    if (_outputSpace) {
+        _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoiceName);
+    }
 #endif
     loadConfig(0.);
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
-        _inputSpaceChoice->setIsSecret(true);
-        _outputSpaceChoice->setIsSecret(true);
+        if (_inputSpace) {
+            _inputSpaceChoice->setIsSecret(true);
+        }
+        if (_outputSpace) {
+            _outputSpaceChoice->setIsSecret(true);
+        }
     }
 #endif
 #endif
@@ -124,6 +146,8 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
         OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
+        std::string family = config->getColorSpace(csname.c_str())->getFamily();
+        std::string csnamefull = family.empty() ? csname : family + "/" + csname;
         std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
         csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
         int csdesclen = csdesc.size();
@@ -189,7 +213,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         if (roles > 0) {
             msg += ')';
         }
-        choice->appendOption(csname, msg);
+        choice->appendOption(csnamefull, msg);
         // set the default value, in case the GUI uses it
         if (!name.empty() && csname == name) {
             choice->setDefault(i);
@@ -216,12 +240,18 @@ GenericOCIO::loadConfig(double time)
         _config = OCIO::Config::CreateFromFile(_ocioConfigFileName.c_str());
     } catch (OCIO::Exception &e) {
         _ocioConfigFileName.clear();
-        _inputSpace->setEnabled(false);
-        _outputSpace->setEnabled(false);
-#ifdef OFX_OCIO_CHOICE
-        _inputSpaceChoice->setEnabled(false);
-        _outputSpaceChoice->setEnabled(false);
-#endif
+        if (_inputSpace) {
+            _inputSpace->setEnabled(false);
+#         ifdef OFX_OCIO_CHOICE
+            _inputSpaceChoice->setEnabled(false);
+#         endif
+        }
+        if (_outputSpace) {
+            _outputSpace->setEnabled(false);
+#         ifdef OFX_OCIO_CHOICE
+            _outputSpaceChoice->setEnabled(false);
+#         endif
+        }
     }
 #ifdef OFX_OCIO_CHOICE
     if (_config) {
@@ -229,8 +259,12 @@ GenericOCIO::loadConfig(double time)
             // the choice menu can only be modified in Natron
             // Natron supports changing the entries in a choiceparam
             // Nuke (at least up to 8.0v3) does not
-            buildChoiceMenu(_config, _inputSpaceChoice);
-            buildChoiceMenu(_config, _outputSpaceChoice);
+            if (_inputSpace) {
+                buildChoiceMenu(_config, _inputSpaceChoice);
+            }
+            if (_outputSpace) {
+                buildChoiceMenu(_config, _outputSpaceChoice);
+            }
             _choiceFileName = _ocioConfigFileName;
         }
         _choiceIsOk = (_ocioConfigFileName == _choiceFileName);
@@ -279,7 +313,7 @@ GenericOCIO::inputCheck(double time)
 {
 #ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
-    if (!_config) {
+    if (!_config || !_inputSpace) {
         return;
     }
     if (!_choiceIsOk) {
@@ -321,7 +355,7 @@ GenericOCIO::outputCheck(double time)
 {
 #ifdef OFX_IO_USING_OCIO
 #ifdef OFX_OCIO_CHOICE
-    if (!_config) {
+    if (!_config || !_outputSpace) {
         return;
     }
     if (!_choiceIsOk) {
@@ -607,6 +641,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         // the other parameters assume there is a valid config
         return;
     } else if (paramName == kOCIOParamInputSpaceName) {
+        assert(_inputSpace);
         if (args.reason == OFX::eChangeUserEdit) {
             // if the inputspace doesn't correspond to a valid one, reset to default
             std::string inputSpace;
@@ -627,6 +662,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     }
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamInputSpaceChoiceName && args.reason == OFX::eChangeUserEdit) {
+        assert(_inputSpace);
         int inputSpaceIndex;
         _inputSpaceChoice->getValueAtTime(args.time, inputSpaceIndex);
         std::string inputSpaceOld;
@@ -639,6 +675,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     }
 #endif
     else if (paramName == kOCIOParamOutputSpaceName) {
+        assert(_outputSpace);
         if (args.reason == OFX::eChangeUserEdit) {
             // if the outputspace doesn't correspond to a valid one, reset to default
             std::string outputSpace;
@@ -658,6 +695,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     }
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamOutputSpaceChoiceName && args.reason == OFX::eChangeUserEdit) {
+        assert(_outputSpace);
         int outputSpaceIndex;
         _outputSpaceChoice->getValueAtTime(args.time, outputSpaceIndex);
         std::string outputSpaceOld;
@@ -679,24 +717,28 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 void
 GenericOCIO::getInputColorspace(std::string &v)
 {
+    assert(_inputSpace);
     _inputSpace->getValue(v);
 }
 
 void
 GenericOCIO::getInputColorspaceAtTime(double time, std::string &v)
 {
+    assert(_inputSpace);
     _inputSpace->getValueAtTime(time, v);
 }
 
 void
 GenericOCIO::getOutputColorspace(std::string &v)
 {
+    assert(_outputSpace);
     _outputSpace->getValue(v);
 }
 
 void
 GenericOCIO::getOutputColorspaceAtTime(double time, std::string &v)
 {
+    assert(_outputSpace);
     _outputSpace->getValueAtTime(time, v);
 }
 #endif
@@ -716,6 +758,7 @@ void
 GenericOCIO::setInputColorspace(const char* name)
 {
 #ifdef OFX_IO_USING_OCIO
+    assert(_inputSpace);
     _inputSpace->setValue(name);
 #endif
 }
@@ -724,6 +767,7 @@ void
 GenericOCIO::setOutputColorspace(const char* name)
 {
 #ifdef OFX_IO_USING_OCIO
+    assert(_outputSpace);
     _outputSpace->setValue(name);
 #endif
 }
