@@ -146,8 +146,10 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
         OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
+#ifdef OCIO_CASCADE // maybe in the future we can handle cascading choice menus
         std::string family = config->getColorSpace(csname.c_str())->getFamily();
         std::string csnamefull = family.empty() ? csname : family + "/" + csname;
+#endif
         std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
         csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
         int csdesclen = csdesc.size();
@@ -213,7 +215,11 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         if (roles > 0) {
             msg += ')';
         }
+#ifdef OCIO_CASCADE
         choice->appendOption(csnamefull, msg);
+#else
+        choice->appendOption(csname, msg);
+#endif
         // set the default value, in case the GUI uses it
         if (!name.empty() && csname == name) {
             choice->setDefault(i);
