@@ -94,7 +94,9 @@ public:
 private:
     void copyPixelData(bool unpremult,
                        bool premult,
+                       int premultChannel,
                        bool maskmix,
+                       double mix,
                        double time,
                        const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
@@ -116,7 +118,9 @@ private:
         int dstPixelComponentCount = dstImg->getPixelComponentCount();
         copyPixelData(unpremult,
                       premult,
+                      premultChannel,
                       maskmix,
+                      mix,
                       time,
                       renderWindow,
                       srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
@@ -125,7 +129,9 @@ private:
 
     void copyPixelData(bool unpremult,
                        bool premult,
+                       int premultChannel,
                        bool maskmix,
+                       double mix,
                        double time,
                        const OfxRectI &renderWindow,
                        const void *srcPixelData,
@@ -145,7 +151,9 @@ private:
         int dstPixelComponentCount = dstImg->getPixelComponentCount();
         copyPixelData(unpremult,
                       premult,
+                      premultChannel,
                       maskmix,
+                      mix,
                       time,
                       renderWindow,
                       srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
@@ -154,7 +162,9 @@ private:
 
     void copyPixelData(bool unpremult,
                        bool premult,
+                       int premultChannel,
                        bool maskmix,
+                       double mix,
                        double time,
                        const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
@@ -174,7 +184,9 @@ private:
         int srcPixelComponentCount = srcImg->getPixelComponentCount();
         copyPixelData(unpremult,
                       premult,
+                      premultChannel,
                       maskmix,
+                      mix,
                       time,
                       renderWindow,
                       srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
@@ -183,7 +195,9 @@ private:
 
     void copyPixelData(bool unpremult,
                        bool premult,
+                       int premultChannel,
                        bool maskmix,
+                       double mix,
                        double time,
                        const OfxRectI &renderWindow,
                        const void *srcPixelData,
@@ -312,7 +326,9 @@ OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
 void
 OCIOColorSpacePlugin::copyPixelData(bool unpremult,
                                     bool premult,
+                                    int premultChannel,
                                     bool maskmix,
+                                    double mix,
                                     double time,
                                     const OfxRectI& renderWindow,
                                     const void *srcPixelData,
@@ -334,23 +350,26 @@ OCIOColorSpacePlugin::copyPixelData(bool unpremult,
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
-    if (!unpremult && !premult && !maskmix) {
+    if (((!unpremult && !premult) || (unpremult && premult)) && !maskmix) {
         copyPixels(*this, renderWindow,
                    srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                    dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     } else if (unpremult && !premult && !maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
+            fred.setPremultMaskMix(true, premultChannel, 1.);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
             OFX::PixelCopierUnPremult<float, 3, 1, float, 3, 1> fred(*this);
+            fred.setPremultMaskMix(true, premultChannel, 1.);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
             OFX::PixelCopierUnPremult<float, 1, 1, float, 1, 1> fred(*this);
+            fred.setPremultMaskMix(true, premultChannel, 1.);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
@@ -359,16 +378,19 @@ OCIOColorSpacePlugin::copyPixelData(bool unpremult,
     } else if (!unpremult && !premult && maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierMaskMix<float, 4, 1, true> fred(*this);
+            fred.setPremultMaskMix(false, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
             OFX::PixelCopierMaskMix<float, 3, 1, true> fred(*this);
+            fred.setPremultMaskMix(false, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
             OFX::PixelCopierMaskMix<float, 1, 1, true> fred(*this);
+            fred.setPremultMaskMix(false, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
@@ -377,22 +399,29 @@ OCIOColorSpacePlugin::copyPixelData(bool unpremult,
     } else if (!unpremult && premult && maskmix) {
         if (dstPixelComponents == OFX::ePixelComponentRGBA) {
             OFX::PixelCopierPremultMaskMix<float, 4, 1, float, 4, 1> fred(*this);
+            fred.setPremultMaskMix(true, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
             OFX::PixelCopierPremultMaskMix<float, 3, 1, float, 3, 1> fred(*this);
+            fred.setPremultMaskMix(true, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
             OFX::PixelCopierPremultMaskMix<float, 1, 1, float, 1, 1> fred(*this);
+            fred.setPremultMaskMix(true, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
 
     } else {
+        // not handled: (should never happen in OCIOColorSpace)
+        // !unpremult && premult && !maskmix
+        // unpremult && !premult && maskmix
+        // unpremult && premult && maskmix
         assert(false); // should never happen
     }
 }
@@ -479,15 +508,19 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
 
     bool premult;
     _premult->getValueAtTime(args.time, premult);
+    int premultChannel;
+    _premultChannel->getValueAtTime(args.time, premultChannel);
+    double mix;
+    _mix->getValueAtTime(args.time, mix);
 
     // copy renderWindow to the temporary image
-    copyPixelData(premult, false, false, args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+    copyPixelData(premult, false, premultChannel, false, 1., args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
 
     ///do the color-space conversion
     _ocio->apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
 
     // copy the color-converted window and apply masking
-    copyPixelData(false, premult, true, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
+    copyPixelData(false, premult, premultChannel, true, mix, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
 }
 
 bool
