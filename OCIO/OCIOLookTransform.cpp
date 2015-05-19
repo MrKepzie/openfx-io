@@ -332,13 +332,30 @@ OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
     _lookCombination->setEnabled(!singleLook);
     _lookCombination->setEvaluateOnChange(!singleLook);
 
-    OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+    OCIO::ConstConfigRcPtr config = _ocio->getConfig();
     if (!config) {
         // secret should not be set on the descriptor, unless the parameter should *always* be secret
         _lookChoice->setIsSecret(true);
         _lookAppend->setIsSecret(true);
         _singleLook->setIsSecret(true);
+    } else if (!_ocio->configIsDefault()) {
+        if (gHostIsNatron) {
+            // the choice menu can only be modified in Natron
+            // Natron supports changing the entries in a choiceparam
+            // Nuke (at least up to 8.0v3) does not
+            OCIO::ConstConfigRcPtr config = _ocio->getConfig();
+            buildLookChoiceMenu(config, _lookChoice);
+        } else {
+            _lookChoice->setEnabled(false);
+            _lookChoice->setIsSecret(true);
+            _lookAppend->setEnabled(false);
+            _lookAppend->setIsSecret(true);
+            _singleLook->setValue(true);
+            _singleLook->setIsSecret(true);
+            _singleLook->setEnabled(false);
+        }
     }
+
 }
 
 OCIOLookTransformPlugin::~OCIOLookTransformPlugin()
@@ -487,7 +504,7 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
         throw std::runtime_error("OCIO: invalid components (only RGB and RGBA are supported)");
     }
 
-    OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+    OCIO::ConstConfigRcPtr config = _ocio->getConfig();
     assert(config);
 
     bool singleLook;
@@ -688,7 +705,7 @@ void
 OCIOLookTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
     if (paramName == kParamLookAppend) {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+        OCIO::ConstConfigRcPtr config = _ocio->getConfig();
         std::string lookCombination;
         int lookChoice;
         _lookCombination->getValueAtTime(args.time, lookCombination);
@@ -712,22 +729,24 @@ OCIOLookTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
     } else {
         _ocio->changedParam(args, paramName);
     }
-    // this must be done after handling by GenericOCIO
+    // this must be done after handling by GenericOCIO (to make sure the new config is loaded)
     if (paramName == kOCIOParamConfigFileName && args.reason == OFX::eChangeUserEdit) {
-        if (gHostIsNatron) {
-            // the choice menu can only be modified in Natron
-            // Natron supports changing the entries in a choiceparam
-            // Nuke (at least up to 8.0v3) does not
-            OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-            buildLookChoiceMenu(config, _lookChoice);
-        } else {
-            _lookChoice->setEnabled(false);
-            _lookChoice->setIsSecret(true);
-            _lookAppend->setEnabled(false);
-            _lookAppend->setIsSecret(true);
-            _singleLook->setValue(true);
-            _singleLook->setIsSecret(true);
-            _singleLook->setEnabled(false);
+        if (!_ocio->configIsDefault()) {
+            if (gHostIsNatron) {
+                // the choice menu can only be modified in Natron
+                // Natron supports changing the entries in a choiceparam
+                // Nuke (at least up to 8.0v3) does not
+                OCIO::ConstConfigRcPtr config = _ocio->getConfig();
+                buildLookChoiceMenu(config, _lookChoice);
+            } else {
+                _lookChoice->setEnabled(false);
+                _lookChoice->setIsSecret(true);
+                _lookAppend->setEnabled(false);
+                _lookAppend->setIsSecret(true);
+                _singleLook->setValue(true);
+                _singleLook->setIsSecret(true);
+                _singleLook->setEnabled(false);
+            }
         }
     }
 }
