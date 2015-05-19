@@ -247,6 +247,10 @@ OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 , _dstClip(0)
 , _srcClip(0)
 , _maskClip(0)
+, _premult(0)
+, _premultChannel(0)
+, _mix(0)
+, _maskInvert(0)
 , _ocio(new GenericOCIO(this))
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -637,6 +641,7 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
+    GenericOCIO::describeInContextContext(desc, context, page);
 
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);

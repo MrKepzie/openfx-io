@@ -859,6 +859,7 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         page->addChild(*param);
     }
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO::ROLE_REFERENCE);
+    GenericOCIO::describeInContextContext(desc, context, page);
 
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);

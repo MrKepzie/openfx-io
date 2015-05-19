@@ -71,6 +71,22 @@
 #define kOCIOParamOutputSpaceLabel ""
 #endif
 
+#define kOCIOParamContext "Context"
+#define kOCIOParamContextHint \
+"OCIO Contexts allow you to apply specific LUTs or grades to different shots.\n" \
+"Here you can specify the context name (key) and its corresponding value.\n" \
+"Full details of how to set up contexts and add them to your config can be found in the OpenColorIO documentation:\n" \
+"http://opencolorio.org/userguide/contexts.html"
+
+#define kOCIOParamContextKey1 "key1"
+#define kOCIOParamContextValue1 "value1"
+#define kOCIOParamContextKey2 "key2"
+#define kOCIOParamContextValue2 "value2"
+#define kOCIOParamContextKey3 "key3"
+#define kOCIOParamContextValue3 "value3"
+#define kOCIOParamContextKey4 "key4"
+#define kOCIOParamContextValue4 "value4"
+
 class GenericOCIO
 {
     friend class OCIOProcessor;
@@ -92,9 +108,11 @@ public:
     // Each of the following functions re-reads the OCIO config: Not optimal but more clear.
     static void describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* inputSpaceLabel = kOCIOParamInputSpaceLabel);
     static void describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* outputSpaceNameDefault, const char* outputSpaceLabel = kOCIOParamOutputSpaceLabel);
+    static void describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page);
 
 private:
     void loadConfig(double time);
+    OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
     void inputCheck(double time);
     void outputCheck(double time);
 
@@ -111,6 +129,15 @@ private:
     OFX::ChoiceParam* _inputSpaceChoice; //< the input colorspace we're converting from
     OFX::ChoiceParam* _outputSpaceChoice; //< the output colorspace we're converting to
 #endif
+    OFX::StringParam* _contextKey1;
+    OFX::StringParam* _contextValue1;
+    OFX::StringParam* _contextKey2;
+    OFX::StringParam* _contextValue2;
+    OFX::StringParam* _contextKey3;
+    OFX::StringParam* _contextValue3;
+    OFX::StringParam* _contextKey4;
+    OFX::StringParam* _contextValue4;
+
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
 #endif
 };
@@ -128,7 +155,7 @@ public:
     // and do some processing
     void multiThreadProcessImages(OfxRectI procWindow);
 
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const std::string& inputSpace, const std::string& outputSpace);
+    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace);
     void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
     void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform);
 

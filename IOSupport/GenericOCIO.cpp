@@ -69,6 +69,14 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 , _inputSpaceChoice(0)
 , _outputSpaceChoice(0)
 #endif
+, _contextKey1(0)
+, _contextValue1(0)
+, _contextKey2(0)
+, _contextValue2(0)
+, _contextKey3(0)
+, _contextValue3(0)
+, _contextKey4(0)
+, _contextValue4(0)
 , _config()
 #endif
 {
@@ -110,6 +118,26 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
         }
     }
 #endif
+    try {
+        _contextKey1 = _parent->fetchStringParam(kOCIOParamContextKey1);
+        _contextValue1 = _parent->fetchStringParam(kOCIOParamContextValue1);
+        _contextKey2 = _parent->fetchStringParam(kOCIOParamContextKey2);
+        _contextValue2 = _parent->fetchStringParam(kOCIOParamContextValue2);
+        _contextKey3 = _parent->fetchStringParam(kOCIOParamContextKey3);
+        _contextValue3 = _parent->fetchStringParam(kOCIOParamContextValue3);
+        _contextKey4 = _parent->fetchStringParam(kOCIOParamContextKey4);
+        _contextValue4 = _parent->fetchStringParam(kOCIOParamContextValue4);
+        assert(_contextKey1 && _contextKey2 && _contextKey3 && _contextKey4);
+        assert(_contextValue1 && _contextValue2 && _contextValue3 && _contextValue4);
+    } catch (const OFX::Exception::Suite& e) {
+        // only ignore kOfxStatErrUnknown
+        if (e.status() != kOfxStatErrUnknown) {
+            throw;
+        }
+        _contextKey1 = _contextKey2 = _contextKey3 = _contextKey4 = 0;
+        _contextValue1 = _contextValue2 = _contextValue3 = _contextValue4 = 0;
+    }
+
 #endif
     // setup the GUI
     // setValue() may be called from createInstance, according to
@@ -282,6 +310,71 @@ GenericOCIO::loadConfig(double time)
 #endif
 }
 
+OCIO::ConstContextRcPtr
+GenericOCIO::getLocalContext(double time)
+{
+    OCIO::ConstContextRcPtr context = _config->getCurrentContext();
+    OCIO::ContextRcPtr mutableContext;
+
+    if (_contextKey1) {
+        std::string contextKey1;
+        _contextKey1->getValueAtTime(time, contextKey1);
+        if (!contextKey1.empty()) {
+            std::string contextValue1;
+            _contextValue1->getValueAtTime(time, contextValue1);
+
+            if (!mutableContext) {
+                mutableContext = context->createEditableCopy();
+            }
+            mutableContext->setStringVar(contextKey1.c_str(), contextValue1.c_str());
+        }
+    }
+    if (_contextKey2) {
+        std::string contextKey2;
+        _contextKey1->getValueAtTime(time, contextKey2);
+        if (!contextKey2.empty()) {
+            std::string contextValue2;
+            _contextValue2->getValueAtTime(time, contextValue2);
+
+            if (!mutableContext) {
+                mutableContext = context->createEditableCopy();
+            }
+            mutableContext->setStringVar(contextKey2.c_str(), contextValue2.c_str());
+        }
+    }
+    if (_contextKey3) {
+        std::string contextKey3;
+        _contextKey1->getValueAtTime(time, contextKey3);
+        if (!contextKey3.empty()) {
+            std::string contextValue3;
+            _contextValue3->getValueAtTime(time, contextValue3);
+
+            if (!mutableContext) {
+                mutableContext = context->createEditableCopy();
+            }
+            mutableContext->setStringVar(contextKey3.c_str(), contextValue3.c_str());
+        }
+    }
+    if (_contextKey4) {
+        std::string contextKey4;
+        _contextKey1->getValueAtTime(time, contextKey4);
+        if (!contextKey4.empty()) {
+            std::string contextValue4;
+            _contextValue4->getValueAtTime(time, contextValue4);
+
+            if (!mutableContext) {
+                mutableContext = context->createEditableCopy();
+            }
+            mutableContext->setStringVar(contextKey4.c_str(), contextValue4.c_str());
+        }
+    }
+
+    if (mutableContext) {
+        context = mutableContext;
+    }
+    return context;
+}
+
 bool
 GenericOCIO::isIdentity(double time)
 {
@@ -299,7 +392,7 @@ GenericOCIO::isIdentity(double time)
     }
     try {
         // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
-        OCIO::ConstContextRcPtr context = _config->getCurrentContext();
+        OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
         OCIO_NAMESPACE::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
         return proc->isNoOp();
     } catch (const std::exception& e) {
@@ -414,9 +507,8 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 
 #ifdef OFX_IO_USING_OCIO
 void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const std::string& inputSpace, const std::string& outputSpace)
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
 {
-    OCIO::ConstContextRcPtr context = config->getCurrentContext();
     _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
 }
 
@@ -503,7 +595,8 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
     getInputColorspaceAtTime(time, inputSpace);
     std::string outputSpace;
     getOutputColorspaceAtTime(time, outputSpace);
-    processor.setValues(_config, inputSpace, outputSpace);
+    OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
+    processor.setValues(_config, context, inputSpace, outputSpace);
 
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -964,7 +1057,8 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
     }
 
     ///////////Output Color-space
-    {OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamOutputSpaceName);
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamOutputSpaceName);
         param->setLabel(outputSpaceLabel);
         param->setHint(kOCIOParamOutputSpaceHint);
         param->setAnimates(true);
@@ -1000,3 +1094,76 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
     
 #endif
 }
+
+void
+GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page)
+{
+#ifdef OFX_IO_USING_OCIO
+    OFX::GroupParamDescriptor* group = desc.defineGroupParam(kOCIOParamContext);
+    group->setHint(kOCIOParamContextHint);
+    group->setOpen(false);
+
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey1);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue1);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey2);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue2);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey3);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue3);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey4);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        page->addChild(*param);
+    }
+    {
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue4);
+        param->setHint(kOCIOParamContextHint);
+        param->setAnimates(true);
+        param->setParent(*group);
+        page->addChild(*param);
+    }
+    page->addChild(*group);
+#endif
+}
+

@@ -477,7 +477,7 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
             dst = OCIO::ROLE_COMPOSITING_LOG;
         }
 
-        processor.setValues(config, src, dst);
+        processor.setValues(config, _config->getCurrentContext(), src, dst);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
