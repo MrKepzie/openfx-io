@@ -175,7 +175,7 @@ public:
 
 private:
     void displayCheck(double time);
-    void viewCheck(double time);
+    void viewCheck(double time, bool setDefaultIfInvalid = false);
 
     void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
 
@@ -310,14 +310,8 @@ private:
     OFX::ChoiceParam* _premultChannel;
     OFX::StringParam* _display;
     OFX::StringParam* _view;
-#ifdef OFX_OCIO_CHOICE
-    bool _displayIsOk; //< true if the choice menu contains the right entries
-    std::string _displayFileName; //< the name of the OCIO config file that was used for the display menu
     OFX::ChoiceParam* _displayChoice;
-    bool _viewIsOk; //< true if the choice menu contains the right entries
-    std::string _viewDisplayName; //< the name of the OCIO config file that was used for the display menu
     OFX::ChoiceParam* _viewChoice;
-#endif
     OFX::DoubleParam* _gain;
     OFX::DoubleParam* _gamma;
     OFX::ChoiceParam* _channel;
@@ -357,6 +351,8 @@ OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
     if (gHostIsNatron) {
         _display->setIsSecret(true);
         _view->setIsSecret(true);
+        _displayChoice = fetchChoiceParam(kParamDisplayChoice);
+        _viewChoice = fetchChoiceParam(kParamViewChoice);
         // the choice menu can only be modified in Natron
         // Natron supports changing the entries in a choiceparam
         // Nuke (at least up to 8.0v3) does not
@@ -416,7 +412,7 @@ OCIODisplayPlugin::displayCheck(double time)
 
 // sets the correct choice menu item from the view string value
 void
-OCIODisplayPlugin::viewCheck(double time)
+OCIODisplayPlugin::viewCheck(double time, bool setDefaultIfInvalid)
 {
     if (!_viewChoice) {
         return;
@@ -448,11 +444,15 @@ OCIODisplayPlugin::viewCheck(double time)
         _viewChoice->setEnabled(true);
         _viewChoice->setIsSecret(false);
     } else {
-        // the output space name is not valid
-        _view->setEnabled(true);
-        _view->setIsSecret(false);
-        _viewChoice->setEnabled(false);
-        _viewChoice->setIsSecret(true);
+        // the view name is not valid
+        if (setDefaultIfInvalid) {
+            _view->setValue(config->getDefaultView(displayName.c_str()));
+        } else {
+            _view->setEnabled(true);
+            _view->setIsSecret(false);
+            _viewChoice->setEnabled(false);
+            _viewChoice->setIsSecret(true);
+        }
     }
 }
 
@@ -798,11 +798,24 @@ OCIODisplayPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std:
     if (paramName == kParamDisplay) {
         assert(_display);
         displayCheck(args.time);
+        if (_viewChoice) {
+            std::string display;
+            _display->getValue(display);
+            buildViewMenu(config, _viewChoice, display.c_str());
+            viewCheck(args.time, true);
+        }
     } else if ( paramName == kParamDisplayChoice && args.reason == OFX::eChangeUserEdit) {
         assert(_display);
         int displayIndex;
         _displayChoice->getValue(displayIndex);
-        _display->setValue(config->getDisplay(displayIndex));
+        std::string displayOld;
+        _display->getValue(displayOld);
+        assert(0 <= displayIndex && displayIndex < config->getNumDisplays());
+        std::string display = config->getDisplay(displayIndex);
+        // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
+        if (display != displayOld) {
+            _display->setValue(display);
+        }
     } else if (paramName == kParamView) {
         assert(_view);
         viewCheck(args.time);
@@ -812,7 +825,14 @@ OCIODisplayPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std:
         _display->getValue(display);
         int viewIndex;
         _viewChoice->getValueAtTime(args.time, viewIndex);
-        _view->setValue(config->getView(display.c_str(), viewIndex));
+        std::string viewOld;
+        _view->getValueAtTime(args.time, viewOld);
+        assert(0 <= viewIndex && viewIndex < config->getNumViews(display.c_str()));
+        std::string view = config->getView(display.c_str(), viewIndex);
+        // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
+        if (view != viewOld) {
+            _view->setValue(view);
+        }
     } else {
         return _ocio->changedParam(args, paramName);
     }
