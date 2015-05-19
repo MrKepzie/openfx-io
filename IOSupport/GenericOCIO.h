@@ -104,6 +104,9 @@ public:
     bool hasColorspace(const char* name) const;
     void setInputColorspace(const char* name);
     void setOutputColorspace(const char* name);
+    OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
+    OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
+    bool configIsDefault();
 
     // Each of the following functions re-reads the OCIO config: Not optimal but more clear.
     static void describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* inputSpaceLabel = kOCIOParamInputSpaceLabel);
@@ -111,8 +114,7 @@ public:
     static void describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page);
 
 private:
-    void loadConfig(double time);
-    OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
+    void loadConfig();
     void inputCheck(double time);
     void outputCheck(double time);
 
@@ -155,9 +157,11 @@ public:
     // and do some processing
     void multiThreadProcessImages(OfxRectI procWindow);
 
+    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const std::string& inputSpace, const std::string& outputSpace);
     void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace);
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
     void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform);
+    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
+    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
 
 private:
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;

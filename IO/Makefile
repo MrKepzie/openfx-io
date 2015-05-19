@@ -6,6 +6,7 @@ PLUGINOBJECTS = \
 	OIIOResize.o \
 	ReadPFM.o WritePFM.o \
 	OCIOColorSpace.o \
+	OCIODisplay.o \
 	OCIOCDLTransform.o \
 	OCIOFileTransform.o \
 	OCIOLogConvert.o \

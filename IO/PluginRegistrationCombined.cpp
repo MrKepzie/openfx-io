@@ -14,6 +14,7 @@
 #ifdef OFX_IO_USING_OCIO
 #include "OCIOCDLTransform.h"
 #include "OCIOColorSpace.h"
+#include "OCIODisplay.h"
 #include "OCIOFileTransform.h"
 #include "OCIOLogConvert.h"
 #include "OCIOLookTransform.h"
@@ -46,6 +47,7 @@ namespace OFX
 #ifdef OFX_IO_USING_OCIO
             getOCIOCDLTransformPluginID(ids);
             getOCIOColorSpacePluginID(ids);
+            getOCIODisplayPluginID(ids);
             getOCIOFileTransformPluginID(ids);
             getOCIOLogConvertPluginID(ids);
             getOCIOLookTransformPluginID(ids);

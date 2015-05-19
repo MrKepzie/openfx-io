@@ -138,6 +138,7 @@
 		1E9B5F71198A5A4B0095C8AA /* ofxsOGLTextRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */; };
 		1E9B5F72198A5A4F0095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
 		1E9B5F73198A5A510095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
+		1E9DF4711B0B5F29008C7055 /* OCIODisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */; };
 		1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
 		1EB199031A482E3F0009D9DF /* fr.inria.openfx.ReadFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */; };
 		1EB199041A482E3F0009D9DF /* fr.inria.openfx.ReadFFmpeg.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */; };
@@ -438,6 +439,8 @@
 		1E4E58341AB24365004D6E04 /* IO.sln */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IO.sln; sourceTree = "<group>"; };
 		1E4E58351AB24365004D6E04 /* IOPluginProperty.props */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = IOPluginProperty.props; sourceTree = "<group>"; };
 		1E4E58361AB24374004D6E04 /* IO.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = IO.vcxproj; path = IO/IO.vcxproj; sourceTree = SOURCE_ROOT; };
+		1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIODisplay.cpp; sourceTree = "<group>"; };
+		1E5F9FFA1B03980A000FBC40 /* OCIODisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIODisplay.h; sourceTree = "<group>"; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
 		1E74D8181891070300E9034B /* ofxsCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCore.h; sourceTree = "<group>"; };
 		1E74D8191891070300E9034B /* ofxsHWNDInteract.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsHWNDInteract.h; sourceTree = "<group>"; };
@@ -839,6 +842,8 @@
 				1E9B5EA71986406A0095C8AA /* OCIOCDLTransform.h */,
 				1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */,
 				1ED499D418A00BE1008A2D91 /* OCIOColorSpace.h */,
+				1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */,
+				1E5F9FFA1B03980A000FBC40 /* OCIODisplay.h */,
 				1E0524AB19813C5B00260F03 /* OCIOFileTransform.cpp */,
 				1E0524AC19813C5B00260F03 /* OCIOFileTransform.h */,
 				1E90F4151982C04B00BB8B6D /* OCIOLogConvert.cpp */,
@@ -1201,6 +1206,7 @@
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E9B5EF7198A2B9A0095C8AA /* OIIOText.cpp in Sources */,
 				1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */,
+				1E9DF4711B0B5F29008C7055 /* OCIODisplay.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,
