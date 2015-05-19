@@ -278,7 +278,7 @@ void
 OCIOLogConvertPlugin::loadConfig(double time)
 {
     std::string filename;
-    _ocioConfigFile->getValueAtTime(time, filename);
+    _ocioConfigFile->getValue(filename);
 
     if (filename == _ocioConfigFileName) {
         return;
@@ -464,8 +464,6 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
     _mode->getValueAtTime(time, mode_i);
 
     try {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-
         const char * src = 0;
         const char * dst = 0;
 
@@ -477,7 +475,7 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
             dst = OCIO::ROLE_COMPOSITING_LOG;
         }
 
-        processor.setValues(config, _config->getCurrentContext(), src, dst);
+        processor.setValues(_config, src, dst);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -619,7 +617,7 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
         loadConfig(args.time); // re-load the new OCIO config
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
-            _ocioConfigFile->getValueAtTime(args.time, filename);
+            _ocioConfigFile->getValue(filename);
             sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
     } else if (paramName == kOCIOHelpButtonName) {
@@ -779,7 +777,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         assert(OFX::getImageEffectHostDescription());
         ocioConfigFileParam->setEnabled(true);
         if (file == NULL) {
-            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set an OCIO environnement variable");
+            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
         } else if (!config) {
             std::string s("ERROR: Invalid OCIO configuration '");
             s += file;

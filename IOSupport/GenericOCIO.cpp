@@ -107,7 +107,7 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
         _outputSpaceChoice = _parent->fetchChoiceParam(kOCIOParamOutputSpaceChoiceName);
     }
 #endif
-    loadConfig(0.);
+    loadConfig();
 #ifdef OFX_OCIO_CHOICE
     if (!_config) {
         if (_inputSpace) {
@@ -258,11 +258,11 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
 #endif
 
 void
-GenericOCIO::loadConfig(double time)
+GenericOCIO::loadConfig()
 {
 #ifdef OFX_IO_USING_OCIO
     std::string filename;
-    _ocioConfigFile->getValueAtTime(time, filename);
+    _ocioConfigFile->getValue(filename);
 
     if (filename == _ocioConfigFileName) {
         return;
@@ -308,6 +308,16 @@ GenericOCIO::loadConfig(double time)
     }
 #endif
 #endif
+}
+
+bool
+GenericOCIO::configIsDefault()
+{
+    std::string filename;
+    _ocioConfigFile->getValue(filename);
+    std::string defaultFilename;
+    _ocioConfigFile->getDefault(defaultFilename);
+    return (filename == defaultFilename);
 }
 
 OCIO::ConstContextRcPtr
@@ -507,9 +517,21 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 
 #ifdef OFX_IO_USING_OCIO
 void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const std::string& inputSpace, const std::string& outputSpace)
+{
+    _proc = config->getProcessor(inputSpace.c_str(), outputSpace.c_str());
+}
+
+void
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
 {
     _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+}
+
+void
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform)
+{
+    _proc = config->getProcessor(transform);
 }
 
 void
@@ -518,10 +540,11 @@ OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const O
     _proc = config->getProcessor(transform, direction);
 }
 
+
 void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform)
+OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction)
 {
-    _proc = config->getProcessor(transform);
+    _proc = config->getProcessor(context, transform, direction);
 }
 
 void
@@ -613,12 +636,12 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if (paramName == kOCIOParamConfigFileName) {
-        loadConfig(args.time); // re-load the new OCIO config
+        loadConfig(); // re-load the new OCIO config
         inputCheck(args.time);
         outputCheck(args.time);
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
-            _ocioConfigFile->getValueAtTime(args.time, filename);
+            _ocioConfigFile->getValue(filename);
             _parent->sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
     } else if (paramName == kOCIOHelpButtonName) {
@@ -989,7 +1012,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         assert(OFX::getImageEffectHostDescription());
         param->setEnabled(true);
         if (file == NULL) {
-            param->setDefault("WARNING: Open an OCIO config file, or set an OCIO environnement variable");
+            param->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
         } else if (config) {
             param->setDefault(file);
         } else {
