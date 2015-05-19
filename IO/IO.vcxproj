@@ -265,6 +265,7 @@ xcopy $(SolutionDir)SeExpr\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).of
     <ClCompile Include="..\IOSupport\SequenceParsing\SequenceParsing.cpp" />
     <ClCompile Include="..\OCIO\OCIOCDLTransform.cpp" />
     <ClCompile Include="..\OCIO\OCIOColorSpace.cpp" />
+    <ClCompile Include="..\OCIO\OCIODisplay.cpp" />
     <ClCompile Include="..\OCIO\OCIOFileTransform.cpp" />
     <ClCompile Include="..\OCIO\OCIOLogConvert.cpp" />
     <ClCompile Include="..\OCIO\OCIOLookTransform.cpp" />
@@ -304,6 +305,7 @@ xcopy $(SolutionDir)SeExpr\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).of
     <ClInclude Include="..\IOSupport\SequenceParsing\SequenceParsing.h" />
     <ClInclude Include="..\OCIO\OCIOCDLTransform.h" />
     <ClInclude Include="..\OCIO\OCIOColorSpace.h" />
+    <ClInclude Include="..\OCIO\OCIODisplay.h" />
     <ClInclude Include="..\OCIO\OCIOFileTransform.h" />
     <ClInclude Include="..\OCIO\OCIOLogConvert.h" />
     <ClInclude Include="..\OCIO\OCIOLookTransform.h" />
