@@ -82,21 +82,11 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
 {
 #ifdef OFX_IO_USING_OCIO
     _ocioConfigFile = _parent->fetchStringParam(kOCIOParamConfigFile);
-    try {
+    if (_parent->paramExists(kOCIOParamInputSpace)) {
         _inputSpace = _parent->fetchStringParam(kOCIOParamInputSpace);
-    } catch (const OFX::Exception::Suite& e) {
-        // only ignore kOfxStatErrUnknown
-        if (e.status() != kOfxStatErrUnknown) {
-            throw;
-        }
     }
-    try {
+    if (_parent->paramExists(kOCIOParamOutputSpace)) {
         _outputSpace = _parent->fetchStringParam(kOCIOParamOutputSpace);
-    } catch (const OFX::Exception::Suite& e) {
-        // only ignore kOfxStatErrUnknown
-        if (e.status() != kOfxStatErrUnknown) {
-            throw;
-        }
     }
 #ifdef OFX_OCIO_CHOICE
     _ocioConfigFile->getDefault(_choiceFileName);
@@ -118,7 +108,7 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
         }
     }
 #endif
-    try {
+    if (_parent->paramExists(kOCIOParamContextKey1)) {
         _contextKey1 = _parent->fetchStringParam(kOCIOParamContextKey1);
         _contextValue1 = _parent->fetchStringParam(kOCIOParamContextValue1);
         _contextKey2 = _parent->fetchStringParam(kOCIOParamContextKey2);
@@ -129,15 +119,7 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
         _contextValue4 = _parent->fetchStringParam(kOCIOParamContextValue4);
         assert(_contextKey1 && _contextKey2 && _contextKey3 && _contextKey4);
         assert(_contextValue1 && _contextValue2 && _contextValue3 && _contextValue4);
-    } catch (const OFX::Exception::Suite& e) {
-        // only ignore kOfxStatErrUnknown
-        if (e.status() != kOfxStatErrUnknown) {
-            throw;
-        }
-        _contextKey1 = _contextKey2 = _contextKey3 = _contextKey4 = 0;
-        _contextValue1 = _contextValue2 = _contextValue3 = _contextValue4 = 0;
     }
-
 #endif
     // setup the GUI
     // setValue() may be called from createInstance, according to
