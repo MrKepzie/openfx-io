@@ -344,7 +344,7 @@ GenericOCIO::getLocalContext(double time)
     }
     if (_contextKey2) {
         std::string contextKey2;
-        _contextKey1->getValueAtTime(time, contextKey2);
+        _contextKey2->getValueAtTime(time, contextKey2);
         if (!contextKey2.empty()) {
             std::string contextValue2;
             _contextValue2->getValueAtTime(time, contextValue2);
@@ -357,7 +357,7 @@ GenericOCIO::getLocalContext(double time)
     }
     if (_contextKey3) {
         std::string contextKey3;
-        _contextKey1->getValueAtTime(time, contextKey3);
+        _contextKey3->getValueAtTime(time, contextKey3);
         if (!contextKey3.empty()) {
             std::string contextValue3;
             _contextValue3->getValueAtTime(time, contextValue3);
@@ -370,7 +370,7 @@ GenericOCIO::getLocalContext(double time)
     }
     if (_contextKey4) {
         std::string contextKey4;
-        _contextKey1->getValueAtTime(time, contextKey4);
+        _contextKey4->getValueAtTime(time, contextKey4);
         if (!contextKey4.empty()) {
             std::string contextValue4;
             _contextValue4->getValueAtTime(time, contextValue4);
