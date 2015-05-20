@@ -155,12 +155,14 @@ template <typename ChoiceParamType>
 static void
 buildChoiceMenu(OCIO::ConstConfigRcPtr config,
                 ChoiceParamType* choice,
+                bool cascading,
                 const std::string& name = "")
 {
     choice->resetOptions();
     if (!config) {
         return;
     }
+    int def = -1;
     int defaultcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
     int referencecs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
     int datacs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
@@ -173,11 +175,17 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
     for (int i = 0; i < config->getNumColorSpaces(); ++i) {
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
+        // set the default value, in case the GUI uses it
+        if (!name.empty() && csname == name) {
+            def = i;
+        }
         OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
-#ifdef OCIO_CASCADE // maybe in the future we can handle cascading choice menus
-        std::string family = config->getColorSpace(csname.c_str())->getFamily();
-        std::string csnamefull = family.empty() ? csname : family + "/" + csname;
-#endif
+        if (cascading) {
+            std::string family = config->getColorSpace(csname.c_str())->getFamily();
+            if (!family.empty()) {
+                csname = family + "/" + csname;
+            }
+        }
         std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
         csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
         int csdesclen = csdesc.size();
@@ -243,15 +251,10 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         if (roles > 0) {
             msg += ')';
         }
-#ifdef OCIO_CASCADE
-        choice->appendOption(csnamefull, msg);
-#else
         choice->appendOption(csname, msg);
-#endif
-        // set the default value, in case the GUI uses it
-        if (!name.empty() && csname == name) {
-            choice->setDefault(i);
-        }
+    }
+    if (def != -1) {
+        choice->setDefault(def);
     }
 }
 #endif
@@ -294,10 +297,10 @@ GenericOCIO::loadConfig()
             // Natron supports changing the entries in a choiceparam
             // Nuke (at least up to 8.0v3) does not
             if (_inputSpace) {
-                buildChoiceMenu(_config, _inputSpaceChoice);
+                buildChoiceMenu(_config, _inputSpaceChoice, _inputSpaceChoice->getIsCascading());
             }
             if (_outputSpace) {
-                buildChoiceMenu(_config, _outputSpaceChoice);
+                buildChoiceMenu(_config, _outputSpaceChoice, _inputSpaceChoice->getIsCascading());
             }
             _choiceFileName = _ocioConfigFileName;
         }
@@ -1079,8 +1082,9 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamInputSpaceChoice);
         param->setLabel(inputSpaceLabel);
         param->setHint(kOCIOParamInputSpaceHint);
+        param->setCascading(OFX::getImageEffectHostDescription()->supportsCascadingChoices);
         if (config) {
-            buildChoiceMenu(config, param, inputSpaceName);
+            buildChoiceMenu(config, param, OFX::getImageEffectHostDescription()->supportsCascadingChoices, inputSpaceName);
         } else {
             param->setEnabled(false);
             //param->setIsSecret(true); // done in the plugin constructor
@@ -1133,8 +1137,9 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamOutputSpaceChoice);
         param->setLabel(outputSpaceLabel);
         param->setHint(kOCIOParamOutputSpaceHint);
+        param->setCascading(OFX::getImageEffectHostDescription()->supportsCascadingChoices);
         if (config) {
-            buildChoiceMenu(config, param, outputSpaceName);
+            buildChoiceMenu(config, param, OFX::getImageEffectHostDescription()->supportsCascadingChoices, outputSpaceName);
         } else {
             param->setEnabled(false);
             //param->setIsSecret(true); // done in the plugin constructor
