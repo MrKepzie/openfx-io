@@ -1026,6 +1026,12 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
                 } else if (_ocio->hasColorspace("sRGB")) {
                     // nuke-default and blender
                     _ocio->setInputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
+                    // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                    _ocio->setInputColorspace("sRGB (D60 sim.)");
+                } else if (_ocio->hasColorspace("out_srgbd60sim")) {
+                    // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                    _ocio->setInputColorspace("out_srgbd60sim");
                 } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
                     // rrt_Gamma2.2 in aces 0.7.1
                     _ocio->setInputColorspace("rrt_Gamma2.2");
@@ -1044,6 +1050,12 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             if (_ocio->hasColorspace("sRGB")) {
                 // nuke-default and blender
                 _ocio->setInputColorspace("sRGB");
+            } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                _ocio->setInputColorspace("sRGB (D60 sim.)");
+            } else if (_ocio->hasColorspace("out_srgbd60sim")) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                _ocio->setInputColorspace("out_srgbd60sim");
             } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
                 // rrt_Gamma2.2 in aces 0.7.1
                 _ocio->setInputColorspace("rrt_Gamma2.2");
@@ -1072,6 +1084,12 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             } else if (_ocio->hasColorspace("nuke_rec709")) {
                 // blender
                 _ocio->setInputColorspace("nuke_rec709");
+            } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                _ocio->setInputColorspace("Rec.709 - Full");
+            } else if (_ocio->hasColorspace("out_rec709full")) {
+                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                _ocio->setInputColorspace("out_rec709full");
             } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
                 // rrt_rec709_full_100nits in aces 0.7.1
                 _ocio->setInputColorspace("rrt_rec709_full_100nits");
@@ -1086,6 +1104,9 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             if (_ocio->hasColorspace("Cineon")) {
                 // Cineon in nuke-default
                 _ocio->setInputColorspace("Cineon");
+            } else if (_ocio->hasColorspace("REDlogFilm")) {
+                // REDlogFilm in aces 1.0.0
+                _ocio->setInputColorspace("REDlogFilm");
             } else if (_ocio->hasColorspace("cineon")) {
                 // cineon in aces 0.7.1
                 _ocio->setInputColorspace("cineon");

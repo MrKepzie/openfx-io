@@ -949,6 +949,12 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         if ((cs = config->getColorSpace("sRGB"))) {
             // nuke-default and blender
             return cs->getName();
+        } else if ((cs = config->getColorSpace("sRGB (D60 sim.)"))) {
+            // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("out_srgbd60sim"))) {
+            // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+            return cs->getName();
         } else if ((cs = config->getColorSpace("rrt_Gamma2.2"))) {
             // rrt_Gamma2.2 in aces 0.7.1
             return cs->getName();
@@ -974,6 +980,12 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         } else if ((cs = config->getColorSpace("nuke_rec709"))) {
             // blender
             return cs->getName();
+        } else if ((cs = config->getColorSpace("Rec.709 - Full"))) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("out_rec709full"))) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            return cs->getName();
         } else if ((cs = config->getColorSpace("rrt_rec709_full_100nits"))) {
             // rrt_rec709_full_100nits in aces 0.7.1
             return cs->getName();
@@ -987,6 +999,9 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
     } else if (!strcmp(colorSpaceNameDefault, "KodakLog") || !strcmp(colorSpaceNameDefault, "kodaklog")) {
         if ((cs = config->getColorSpace("Cineon"))) {
             // Cineon in nuke-default
+            return cs->getName();
+        } else if ((cs = config->getColorSpace("REDlogFilm"))) {
+            // REDlogFilm in aces 1.0.0
             return cs->getName();
         } else if ((cs = config->getColorSpace("cineon"))) {
             // cineon in aces 0.7.1

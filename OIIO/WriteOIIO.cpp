@@ -463,23 +463,27 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
         // VD16 in blender
         colorSpaceStr = "GammaCorrected";
         gamma = 2.2f;
-    } else if (ocioColorspace == "sRGB" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
+    } else if (ocioColorspace == "sRGB" || ocioColorspace == "sRGB (D60 sim.)" || ocioColorspace == "out_srgbd60sim" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
         // sRGB in nuke-default and blender
+        // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
         // rrt_srgb in aces
         // srgb8 in spi-vfx
         colorSpaceStr = "sRGB";
-    } else if (ocioColorspace == "Rec709" || ocioColorspace == "nuke_rec709" || ocioColorspace == "rrt_rec709" || ocioColorspace == "hd10") {
+    } else if (ocioColorspace == "Rec709" || ocioColorspace == "nuke_rec709" || ocioColorspace == "Rec.709 - Full" || ocioColorspace == "out_rec709full" || ocioColorspace == "rrt_rec709" || ocioColorspace == "hd10") {
         // Rec709 in nuke-default
         // nuke_rec709 in blender
+        // out_rec709full or "Rec.709 - Full" in aces 1.0.0
         // rrt_rec709 in aces
         // hd10 in spi-anim and spi-vfx
         colorSpaceStr = "Rec709";
-    } else if (ocioColorspace == "KodakLog" || ocioColorspace == "Cineon" || ocioColorspace == "lg10") {
+    } else if (ocioColorspace == "KodakLog" || ocioColorspace == "Cineon" || ocioColorspace == "REDlogFilm" || ocioColorspace == "lg10") {
         // Cineon in nuke-default
+        // REDlogFilm in aces 1.0.0
         // lg10 in spi-vfx and blender
         colorSpaceStr = "KodakLog";
-    } else if (ocioColorspace == "Linear" || ocioColorspace == "linear" || ocioColorspace == "aces" || ocioColorspace == "lnf" || ocioColorspace == "ln16") {
+    } else if (ocioColorspace == "Linear" || ocioColorspace == "linear" || ocioColorspace == "ACES2065-1" || ocioColorspace == "aces" || ocioColorspace == "lnf" || ocioColorspace == "ln16") {
         // linear in nuke-default
+        // ACES2065-1 in aces 1.0.0
         // aces in aces
         // lnf, ln16 in spi-anim and spi-vfx
         colorSpaceStr = "Linear";

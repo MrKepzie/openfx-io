@@ -1301,36 +1301,47 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
 # ifdef OFX_IO_USING_OCIO
     std::string selection;
     _ocio->getOutputColorspace(selection);
-    if (selection.find("sRGB") != std::string::npos ||
+    if (selection.find("sRGB") != std::string::npos || // sRGB in nuke-default and blender
         selection.find("srgb") != std::string::npos ||
-        selection.find("rrt_srgb") != std::string::npos ||
-        selection.find("srgb8") != std::string::npos ||
-        selection.find("vd16") != std::string::npos ||
-        selection.find("VD16") != std::string::npos) {
+        selection == "sRGB (D60 sim.)" || // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+        selection == "out_srgbd60sim" ||
+        selection == "rrt_srgb" || // rrt_srgb in aces
+        selection == "srgb8" ) { // srgb8 in spi-vfx
         return AVCOL_TRC_IEC61966_2_1;///< IEC 61966-2-1 (sRGB or sYCC)
-    } else if (selection.find("Rec709") != std::string::npos ||
+    } else if (selection.find("Rec709") != std::string::npos || // Rec709 in nuke-default
                selection.find("rec709") != std::string::npos ||
-               selection.find("nuke_rec709") != std::string::npos ||
-               selection.find("rrt_rec709_full_100nits") != std::string::npos ||
-               selection.find("rrt_rec709") != std::string::npos ||
-               selection.find("hd10") != std::string::npos) {
+               selection == "nuke_rec709" || // nuke_rec709 in blender
+               selection == "Rec.709 - Full" || // aces 1.0.0
+               selection == "out_rec709full" || // aces 1.0.0
+               selection == "rrt_rec709_full_100nits" || // aces 0.7.1
+               selection == "rrt_rec709" || // rrt_rec709 in aces
+               selection == "hd10") { // hd10 in spi-anim and spi-vfx
         return AVCOL_TRC_BT709;///< also ITU-R BT1361
 #  if 0 // float values should be divided by 100 for this to work?
     } else if (selection.find("KodakLog") != std::string::npos ||
                selection.find("kodaklog") != std::string::npos ||
-               selection.find("Cineon") != std::string::npos ||
+               selection.find("Cineon") != std::string::npos || // Cineon in nuke-default
                selection.find("cineon") != std::string::npos ||
-               selection.find("adx10") != std::string::npos ||
-               selection.find("lg10") != std::string::npos ||
-               selection.find("lm10") != std::string::npos ||
-               selection.find("lgf") != std::string::npos) {
+               selection == "REDlogFilm" != std::string::npos || // REDlogFilm in aces 1.0.0
+               selection == "adx10" != std::string::npos ||
+               selection == "lg10" != std::string::npos || // lg10 in spi-vfx and blender
+               selection == "lm10" != std::string::npos ||
+               selection == "lgf" != std::string::npos) {
         return AVCOL_TRC_LOG;///< "Logarithmic transfer characteristic (100:1 range)"
 #  endif
     } else if (selection.find("Gamma2.2") != std::string::npos ||
-               selection.find("rrt_Gamma2.2") != std::string::npos) {
+               selection == "rrt_Gamma2.2" ||
+               selection == "vd8" || // vd8, vd10, vd16 in spi-anim and spi-vfx
+               selection == "vd10" ||
+               selection == "vd16" ||
+               selection == "VD16") { // VD16 in blender
         return AVCOL_TRC_GAMMA22;///< also ITU-R BT470M / ITU-R BT1700 625 PAL & SECAM
     } else if (selection.find("linear") != std::string::npos ||
-               selection.find("Linear") != std::string::npos) {
+               selection.find("Linear") != std::string::npos ||
+               selection == "ACES2065-1" || // ACES2065-1 in aces 1.0.0
+               selection == "aces" || // aces in aces
+               selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
+               selection == "ln16") {
         return AVCOL_TRC_LINEAR;
     }
 # endif
