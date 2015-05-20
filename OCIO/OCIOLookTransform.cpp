@@ -730,7 +730,7 @@ OCIOLookTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, cons
         _ocio->changedParam(args, paramName);
     }
     // this must be done after handling by GenericOCIO (to make sure the new config is loaded)
-    if (paramName == kOCIOParamConfigFileName && args.reason == OFX::eChangeUserEdit) {
+    if (paramName == kOCIOParamConfigFile && args.reason == OFX::eChangeUserEdit) {
         if (!_ocio->configIsDefault()) {
             if (gHostIsNatron) {
                 // the choice menu can only be modified in Natron
@@ -879,6 +879,12 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO::ROLE_REFERENCE);
     GenericOCIO::describeInContextContext(desc, context, page);
+    {
+        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpLooksButton);
+        pb->setLabel(kOCIOHelpButtonLabel);
+        pb->setHint(kOCIOHelpButtonHint);
+        page->addChild(*pb);
+    }
 
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);

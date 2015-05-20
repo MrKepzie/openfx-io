@@ -1002,6 +1002,12 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     }
 
     GenericOCIO::describeInContextContext(desc, context, page);
+    {
+        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpDisplaysButton);
+        pb->setLabel(kOCIOHelpButtonLabel);
+        pb->setHint(kOCIOHelpButtonHint);
+        page->addChild(*pb);
+    }
 
     ofxsPremultDescribeParams(desc, page);
 }

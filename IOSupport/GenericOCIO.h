@@ -50,20 +50,22 @@
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
-#define kOCIOParamConfigFileName "ocioConfigFile"
+#define kOCIOParamConfigFile "ocioConfigFile"
 #define kOCIOParamConfigFileLabel "OCIO Config File"
 #define kOCIOParamConfigFileHint "OpenColorIO configuration file"
-#define kOCIOParamInputSpaceName "ocioInputSpace"
+#define kOCIOParamInputSpace "ocioInputSpace"
 #define kOCIOParamInputSpaceLabel "Input Colorspace"
 #define kOCIOParamInputSpaceHint "Input data is taken to be in this colorspace."
-#define kOCIOParamOutputSpaceName "ocioOutputSpace"
+#define kOCIOParamOutputSpace "ocioOutputSpace"
 #define kOCIOParamOutputSpaceLabel "Output Colorspace"
 #define kOCIOParamOutputSpaceHint "Output data is taken to be in this colorspace."
 #ifdef OFX_OCIO_CHOICE
-#define kOCIOParamInputSpaceChoiceName "ocioInputSpaceIndex"
-#define kOCIOParamOutputSpaceChoiceName "ocioOutputSpaceIndex"
+#define kOCIOParamInputSpaceChoice "ocioInputSpaceIndex"
+#define kOCIOParamOutputSpaceChoice "ocioOutputSpaceIndex"
 #endif
-#define kOCIOHelpButtonName "ocioHelp"
+#define kOCIOHelpButton "ocioHelp"
+#define kOCIOHelpLooksButton "ocioHelpLooks"
+#define kOCIOHelpDisplaysButton "ocioHelpDisplays"
 #define kOCIOHelpButtonLabel "OCIO config help..."
 #define kOCIOHelpButtonHint "Help about the OpenColorIO configuration."
 #else

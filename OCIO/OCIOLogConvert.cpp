@@ -257,7 +257,7 @@ OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
     assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
     _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
-    _ocioConfigFile = fetchStringParam(kOCIOParamConfigFileName);
+    _ocioConfigFile = fetchStringParam(kOCIOParamConfigFile);
     assert(_ocioConfigFile);
     _mode = fetchChoiceParam(kParamOperation);
     assert(_mode);
@@ -613,14 +613,14 @@ OCIOLogConvertPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip
 void
 OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    if (paramName == kOCIOParamConfigFileName) {
+    if (paramName == kOCIOParamConfigFile) {
         loadConfig(args.time); // re-load the new OCIO config
         if (!_config && args.reason == OFX::eChangeUserEdit) {
             std::string filename;
             _ocioConfigFile->getValue(filename);
             sendMessage(OFX::Message::eMessageError, "", std::string("Cannot load OCIO config file \"") + filename + '"');
         }
-    } else if (paramName == kOCIOHelpButtonName) {
+    } else if (paramName == kOCIOHelpButton) {
         std::string msg = "OpenColorIO Help\n"
         "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
         "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
@@ -764,7 +764,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 
     ////////// OCIO config file
     {
-        OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFileName);
+        OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFile);
         ocioConfigFileParam->setLabel(kOCIOParamConfigFileLabel);
         ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
         ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
@@ -789,7 +789,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         page->addChild(*ocioConfigFileParam);
     }
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButtonName);
+        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
         pb->setLabel(kOCIOHelpButtonLabel);
         pb->setHint(kOCIOHelpButtonHint);
         page->addChild(*pb);

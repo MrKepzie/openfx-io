@@ -1008,6 +1008,12 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault, kParamOutputSpaceLabel);
+    {
+        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
+        pb->setLabel(kOCIOHelpButtonLabel);
+        pb->setHint(kOCIOHelpButtonHint);
+        page->addChild(*pb);
+    }
 
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamInputPremult);

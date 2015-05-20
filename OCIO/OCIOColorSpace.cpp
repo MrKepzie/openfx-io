@@ -642,6 +642,12 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     GenericOCIO::describeInContextInput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
     GenericOCIO::describeInContextContext(desc, context, page);
+    {
+        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
+        pb->setLabel(kOCIOHelpButtonLabel);
+        pb->setHint(kOCIOHelpButtonHint);
+        page->addChild(*pb);
+    }
 
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
