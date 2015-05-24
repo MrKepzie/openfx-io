@@ -282,7 +282,7 @@ GenericOCIO::loadConfig()
                 buildChoiceMenu(_config, _inputSpaceChoice, _inputSpaceChoice->getIsCascading());
             }
             if (_outputSpace) {
-                buildChoiceMenu(_config, _outputSpaceChoice, _inputSpaceChoice->getIsCascading());
+                buildChoiceMenu(_config, _outputSpaceChoice, _outputSpaceChoice->getIsCascading());
             }
             _choiceFileName = _ocioConfigFileName;
         }
