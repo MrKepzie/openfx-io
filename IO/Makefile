@@ -16,6 +16,7 @@ PLUGINOBJECTS = \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
         SeExpr.o \
+        MagickText.o \
 	ofxsGenerator.o \
 	ofxsRectangleInteract.o \
 	PluginRegistrationCombined.o
@@ -48,6 +49,8 @@ RESOURCES = \
 ../PFM/fr.inria.openfx.WritePFM.svg \
 ../RunScript/fr.inria.openfx.RunScript.png \
 ../RunScript/fr.inria.openfx.RunScript.svg \
+../Magick/fr.inria.openfx.MagickText.png \
+../Magick/fr.inria.openfx.MagickText.svg \
 
 VPATH += \
 ../EXR \
@@ -57,11 +60,12 @@ VPATH += \
 ../PFM \
 ../RunScript \
 ../SeExpr \
-../IOSupport/SequenceParsing
+../IOSupport/SequenceParsing \
+../Magick
 
 include ../Makefile.master
 
-CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript -I../SeExpr
+CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript -I../SeExpr -I../Magick
 
-CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS) $(OCIO_CXXFLAGS)
-LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS) $(OCIO_LINKFLAGS)
+CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS) $(OCIO_CXXFLAGS) $(MAGICK_CXXFLAGS)
+LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS) $(OCIO_LINKFLAGS) $(MAGICK_LINKFLAGS)

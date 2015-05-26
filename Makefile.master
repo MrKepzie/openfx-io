@@ -39,3 +39,8 @@ SEEXPR_LINKFLAGS = -L$(SEEXPR_HOME)/lib -lSeExpr
 ifeq ($(OS),Linux)
 SEEXPR_LINKFLAGS += -Wl,-rpath,$(SEEXPR_HOME)/lib
 endif
+
+# ImageMagick
+MAGICK_CXXFLAGS = `Magick++-config --cppflags --cxxflags`
+MAGICK_LINKFLAGS = `Magick++-config --ldflags --libs`
+

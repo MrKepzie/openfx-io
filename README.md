@@ -45,6 +45,12 @@ to checkout a given tag.
 
     sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libavutil-dev
     
+### ImageMagick
+
+    sudo apt-get install libmagick++-dev libmagickcore-dev
+
+    Note! version 6.9.1-2 is minimum recommended version, GraphicsMagick is not supported.
+
 ### Finally
 
     make CONFIG=release OIIO_HOME=/opt/oiio
