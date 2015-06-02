@@ -472,6 +472,9 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
                              OFX::Clip * &identityClip,
                              double &/*identityTime*/)
 {
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     int type_i;
     _type->getValue(type_i);
     ResizeTypeEnum type = (ResizeTypeEnum)type_i;

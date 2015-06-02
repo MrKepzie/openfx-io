@@ -445,6 +445,9 @@ OIIOTextPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &id
         return false;
     }
 
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     std::string text;
     _text->getValueAtTime(args.time, text);
     if (text.empty()) {

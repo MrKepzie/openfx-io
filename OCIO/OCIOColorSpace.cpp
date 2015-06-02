@@ -530,6 +530,9 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
 bool
 OCIOColorSpacePlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     if (_ocio->isIdentity(args.time)) {
         identityClip = _srcClip;
         return true;

@@ -1854,6 +1854,9 @@ SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
                          OFX::Clip * &identityClip,
                          double &identityTime)
 {
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     if (_maskClip && _maskClip->isConnected()) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);

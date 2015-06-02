@@ -2048,6 +2048,9 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
         return false;
    }
 
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     if (!gHostIsNatron) {
         // only Natron supports setting the identityClip to the output clip
         return false;

@@ -625,6 +625,9 @@ OCIOFileTransformPlugin::render(const OFX::RenderArguments &args)
 bool
 OCIOFileTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     std::string file;
     _file->getValue(file);
     if (file.empty()) {
