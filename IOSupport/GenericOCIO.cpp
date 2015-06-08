@@ -385,6 +385,8 @@ GenericOCIO::isIdentity(double time)
     if (inputSpace == outputSpace) {
         return true;
     }
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    _parent->clearPersistentMessage();
     try {
         // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
         OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
@@ -569,7 +571,6 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
         _instance->setPersistentMessage(OFX::Message::eMessageError, "", std::string("OpenColorIO error: ") + e.what());
         throw std::runtime_error(std::string("OpenColorIO error: ") + e.what());
     }
-    _instance->clearPersistentMessage();
 #endif
 }
 #endif // OFX_IO_USING_OCIO

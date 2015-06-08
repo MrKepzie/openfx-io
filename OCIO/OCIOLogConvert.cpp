@@ -584,6 +584,9 @@ OCIOLogConvertPlugin::render(const OFX::RenderArguments &args)
 bool
 OCIOLogConvertPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
 {
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     double mix;
     _mix->getValueAtTime(args.time, mix);
 

@@ -708,6 +708,8 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
     std::string cccid;
     _cccid->getValueAtTime(time, cccid);
 
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
         assert(config);

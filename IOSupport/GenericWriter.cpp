@@ -269,6 +269,8 @@ GenericWriterPlugin::isIdentity(const OFX::IsIdentityArguments &args,
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     return false;
 }
 
