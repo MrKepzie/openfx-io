@@ -2230,7 +2230,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamFirstFrameLabel);
         param->setHint(kParamFirstFrameHint);
         param->setDefault(0);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         page->addChild(*param);
     }
@@ -2261,7 +2261,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamLastFrameLabel);
         param->setHint(kParamLastFrameHint);
         param->setDefault(0);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         page->addChild(*param);
     }
