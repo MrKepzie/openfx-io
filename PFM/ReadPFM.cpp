@@ -430,7 +430,7 @@ void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #ifdef OFX_EXTENSIONS_TUTTLE
     const char* extensions[] = { "pfm", NULL };
     desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(60); // better than ReadOIIO
+    desc.setPluginEvaluation(92); // better than ReadOIIO
 #endif
 }
 
