@@ -185,10 +185,11 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
                         _dstClip->getPixelComponents() == OFX::ePixelComponentRGB ||
                         _dstClip->getPixelComponents() == OFX::ePixelComponentAlpha));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
-                        _srcClip->getPixelComponents() == OFX::ePixelComponentRGB ||
-                        _srcClip->getPixelComponents() == OFX::ePixelComponentAlpha));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentAlpha)));
 
     _type = fetchChoiceParam(kParamType);
     _format = fetchChoiceParam(kParamFormat);

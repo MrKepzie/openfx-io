@@ -342,9 +342,12 @@ OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
 , _ocio(new GenericOCIO(this))
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);

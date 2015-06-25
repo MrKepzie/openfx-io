@@ -2484,6 +2484,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         desc.addClipPreferencesSlaveParam(*param);
         param->setEnabled(false);
         param->setDefault(24.);
+        param->setDisplayRange(0.,300.);
         page->addChild(*param);
     }
     

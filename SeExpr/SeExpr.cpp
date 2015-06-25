@@ -1392,16 +1392,18 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
     char name[256];
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        if (i == 0 && getContext() == OFX::eContextFilter) {
-            _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
-        } else {
-            snprintf(name, sizeof(name), "%d", i+1);
-            _srcClip[i] = fetchClip(name);
+    if (getContext() != OFX::eContextGenerator) {
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            if (i == 0 && getContext() == OFX::eContextFilter) {
+                _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+            } else {
+                snprintf(name, sizeof(name), "%d", i+1);
+                _srcClip[i] = fetchClip(name);
+            }
         }
     }
     
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    _maskClip = (getContext() == OFX::eContextFilter  || getContext() == OFX::eContextGenerator) ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
 
@@ -2764,6 +2766,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setHint(name);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
+            param->setDisplayRange(-1000.,1000.);
             param->setDoubleType(OFX::eDoubleTypePlain);
             param->setParent(*group);
             if (page) {
