@@ -565,6 +565,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 	extensions.push_back("mkv");
 	extensions.push_back("flv");
 	extensions.push_back("m2ts");
+    extensions.push_back("mxf");
 
 	// sort / unique
 	std::sort(extensions.begin(), extensions.end());
