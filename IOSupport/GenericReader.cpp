@@ -438,8 +438,8 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
         frameRangeLast = range.max;
         startingTime = frameRangeFirst;
         
-        _firstFrame->setRange(INT_MIN, range.min);
-        _lastFrame->setRange(range.min, INT_MAX);
+        _firstFrame->setRange(kOfxFlagInfiniteMin, range.min);
+        _lastFrame->setRange(range.min, kOfxFlagInfiniteMax);
         
         if (setFirstLastFrame) {
             _firstFrame->setValue(range.min);
@@ -1779,9 +1779,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->setValue(oFirst);
         _lastFrame->setValue(oLast);
-        _firstFrame->setRange(INT_MIN, oLast);
+        _firstFrame->setRange(kOfxFlagInfiniteMin, oLast);
         _firstFrame->setDisplayRange(oFirst, oLast);
-        _lastFrame->setRange(oFirst, INT_MAX);
+        _lastFrame->setRange(oFirst, kOfxFlagInfiniteMax);
         _lastFrame->setDisplayRange(oFirst, oLast);
         _startingTime->setValue(oFirst);
     } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
@@ -1790,7 +1790,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int oFirst,oLast;
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
-        _lastFrame->setRange(first, INT_MAX);
+        _lastFrame->setRange(first, kOfxFlagInfiniteMax);
         _lastFrame->setDisplayRange(first, oLast);
 
         int offset;
@@ -1806,7 +1806,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setRange(INT_MIN, last);
+        _firstFrame->setRange(kOfxFlagInfiniteMin, last);
         _firstFrame->setDisplayRange(oFirst, last);
         
         _timeDomainUserSet->setValue(true);
