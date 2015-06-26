@@ -303,7 +303,7 @@ private:
     OFX::Clip *_srcClip;
     OFX::Clip *_maskClip;
 
-    bool firstLoad_;
+    bool _firstLoad;
     OFX::RGBParam *_slope;
     OFX::RGBParam *_offset;
     OFX::RGBParam *_power;
@@ -317,6 +317,7 @@ private:
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
 };
 
@@ -325,7 +326,22 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
 , _dstClip(0)
 , _srcClip(0)
 , _maskClip(0)
-, firstLoad_(true)
+, _firstLoad(true)
+, _slope(0)
+, _offset(0)
+, _power(0)
+, _saturation(0)
+, _direction(0)
+, _readFromFile(0)
+, _file(0)
+, _version(0)
+, _cccid(0)
+, _export(0)
+, _premult(0)
+, _premultChannel(0)
+, _mix(0)
+, _maskApply(0)
+, _maskInvert(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -334,7 +350,7 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
            (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
                          _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
-    _maskClip = (getContext() == OFX::eContextFilter  || getContext() == OFX::eContextGenerator) ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _slope = fetchRGBParam(kParamSlope);
     _offset = fetchRGBParam(kParamOffset);
@@ -351,6 +367,7 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     updateCCCId();
@@ -391,11 +408,12 @@ OCIOCDLTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                         _maskClip->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
                                          _srcClip->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -533,8 +551,8 @@ OCIOCDLTransformPlugin::apply(double time,
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
-    if (firstLoad_) {
-        firstLoad_ = false;
+    if (_firstLoad) {
+        _firstLoad = false;
         bool readFromFile;
         _readFromFile->getValue(readFromFile);
         if (readFromFile) {
@@ -744,7 +762,8 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
         return true;
     }
 
-    if (_maskClip && _maskClip->isConnected()) {
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
@@ -838,8 +857,8 @@ OCIOCDLTransformPlugin::loadCDLFromFile()
 void
 OCIOCDLTransformPlugin::beginEdit()
 {
-    if (firstLoad_) {
-        firstLoad_ = false;
+    if (_firstLoad) {
+        _firstLoad = false;
         bool readFromFile;
         _readFromFile->getValue(readFromFile);
         if (readFromFile) {
@@ -853,8 +872,8 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
 {
     clearPersistentMessage();
 
-    if (firstLoad_ || paramName == kParamReadFromFile || paramName == kParamFile || paramName == kParamCCCID) {
-        firstLoad_ = false;
+    if (_firstLoad || paramName == kParamReadFromFile || paramName == kParamFile || paramName == kParamCCCID) {
+        _firstLoad = false;
         bool readFromFile;
         _readFromFile->getValue(readFromFile);
         refreshKnobEnabledState(readFromFile);
@@ -999,16 +1018,14 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral) {
-            maskClip->setOptional(true);
-        }
-        maskClip->setSupportsTiles(kSupportsTiles);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
