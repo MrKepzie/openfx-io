@@ -1470,8 +1470,15 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         
         bool isOCIOIdentity;
         //For custom layers, OCIO is always identity, let the user handle colorspace conversion alone
+        
+        
         if (it->comps == OFX::ePixelComponentCustom) {
-            isOCIOIdentity = true;
+            std::vector<std::string> channelNames = OFX::mapPixelComponentCustomToLayerChannels(it->rawComps);
+            if (channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B") {
+                isOCIOIdentity = _ocio->isIdentity(args.time);
+            } else {
+                isOCIOIdentity = true;
+            }
         } else {
             isOCIOIdentity = _ocio->isIdentity(args.time);
         }
@@ -1594,7 +1601,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             mem.unlock();
         }
 
-    }
+    } // for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
     
 }
 
