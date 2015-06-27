@@ -159,9 +159,12 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
 , _srcClip(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
 
     _position = fetchDouble2DParam(kParamPosition);
     _text = fetchStringParam(kParamText);
@@ -237,12 +240,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         return;
     }
 
-    if (!_srcClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    assert(_srcClip);
-    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip ? _srcClip->fetchImage(args.time) : 0);
     if (srcImg.get()) {
         if (srcImg->getRenderScale().x != args.renderScale.x ||
             srcImg->getRenderScale().y != args.renderScale.y ||

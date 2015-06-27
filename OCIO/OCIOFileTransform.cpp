@@ -279,6 +279,7 @@ private:
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
 };
 
@@ -289,10 +290,13 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
 , _maskClip(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _file = fetchStringParam(kParamFile);
     _version = fetchIntParam(kParamVersion);
@@ -304,6 +308,7 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     updateCCCId();
@@ -339,11 +344,12 @@ OCIOFileTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                         _maskClip->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
                                          _srcClip->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -643,7 +649,8 @@ OCIOFileTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::C
         return true;
     }
 
-    if (_maskClip && _maskClip->isConnected()) {
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
@@ -768,16 +775,14 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral) {
-            maskClip->setOptional(true);
-        }
-        maskClip->setSupportsTiles(kSupportsTiles);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");

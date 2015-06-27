@@ -222,15 +222,19 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
     char name[256];
-    for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
-        if (i == 0 && getContext() == OFX::eContextFilter) {
-            _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
-        } else {
-            snprintf(name, sizeof(name), "%d", i+1);
-            _srcClip[i] = fetchClip(name);
+    if (getContext() != OFX::eContextGenerator) {
+        for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
+            if (i == 0 && getContext() == OFX::eContextFilter) {
+                _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+            } else {
+                snprintf(name, sizeof(name), "%d", i+1);
+                _srcClip[i] = fetchClip(name);
+            }
+            assert(_srcClip[i]);
         }
     }
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+    assert(_dstClip);
 
     _param_count = fetchIntParam(kParamCount);
 
@@ -245,9 +249,11 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
         _double[i] = fetchDoubleParam(name);
         snprintf(name, sizeof(name), kParamTypeIntName, i+1);
         _int[i] = fetchIntParam(name);
+        assert(_type[i] && _filename[i] && _string[i] && _double[i] && _int[i]);
     }
     _script = fetchStringParam(kParamScript);
     _validate = fetchBooleanParam(kParamValidate);
+    assert(_script && _validate);
 
     updateVisibility();
 }
@@ -760,6 +766,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
+                param->setDisplayRange(-1000.,1000.);
                 param->setParent(*group);
                 page->addChild(*param);
             }

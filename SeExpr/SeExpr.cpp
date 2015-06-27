@@ -333,6 +333,7 @@ private:
     OFX::BooleanParam *_validate;
     
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
     
     OFX::ChoiceParam* _boundingBox;
@@ -1392,16 +1393,18 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
     char name[256];
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        if (i == 0 && getContext() == OFX::eContextFilter) {
-            _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
-        } else {
-            snprintf(name, sizeof(name), "%d", i+1);
-            _srcClip[i] = fetchClip(name);
+    if (getContext() != OFX::eContextGenerator) {
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            if (i == 0 && getContext() == OFX::eContextFilter) {
+                _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+            } else {
+                snprintf(name, sizeof(name), "%d", i+1);
+                _srcClip[i] = fetchClip(name);
+            }
         }
     }
     
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
 
@@ -1432,8 +1435,9 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     assert(_alphaScript);
     _validate = fetchBooleanParam(kParamValidate);
     assert(_validate);
-    
+
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 
@@ -1616,11 +1620,10 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     processor.setDstImg(dst.get());
     
     // auto ptr for the mask.
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                         _maskClip->fetchImage(args.time) : 0);
-    
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(args.time) : 0);
     // do we do masking
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         
@@ -1857,7 +1860,8 @@ SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
     // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
     clearPersistentMessage();
 
-    if (_maskClip && _maskClip->isConnected()) {
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
@@ -2562,15 +2566,14 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         srcClip->setOptional(true);
     }
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral)
-            maskClip->setOptional(true);
-        maskClip->setSupportsTiles(true);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
@@ -2764,6 +2767,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setHint(name);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
+            param->setDisplayRange(-1000.,1000.);
             param->setDoubleType(OFX::eDoubleTypePlain);
             param->setParent(*group);
             if (page) {
