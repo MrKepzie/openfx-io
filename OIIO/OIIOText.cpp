@@ -299,7 +299,11 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OIIO::ImageSpec srcSpec;
     std::auto_ptr<const OIIO::ImageBuf> srcBuf;
     OfxRectI dstRod = dstImg->getRegionOfDefinition();
-    if (srcImg.get()) {
+    if (!srcImg.get()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Source needs to be connected");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    } else {
         srcRod = srcImg->getRegionOfDefinition();
         srcBounds = srcImg->getBounds();
         pixelComponents = srcImg->getPixelComponents();
