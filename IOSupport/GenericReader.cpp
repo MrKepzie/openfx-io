@@ -1453,31 +1453,30 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
         
-        // Read into a temporary image, apply colorspace conversion, then copy
-        OFX::PreMultiplicationEnum premult ;
+        
         // force premult for non-RGBA pixelComponents
-        if (it->comps == OFX::ePixelComponentRGB) {
-            premult = OFX::eImageOpaque;
-        } else if (it->comps == OFX::ePixelComponentAlpha) {
-            premult = OFX::eImagePreMultiplied;
-        } else if (it->comps == OFX::ePixelComponentCustom) {
-            premult = OFX::eImageUnPreMultiplied;
-        } else {
-            int premult_i;
-            _premult->getValue(premult_i);
-            premult = (OFX::PreMultiplicationEnum)premult_i;
+        if (it->comps == OFX::ePixelComponentCustom) {
+            
         }
         
         bool isOCIOIdentity;
+        // Read into a temporary image, apply colorspace conversion, then copy
+        OFX::PreMultiplicationEnum premult ;
         
         // if components are custom, remap it to a OFX components with the same number of channels
         OFX::PixelComponentEnum remappedComponents;
+        
+        bool isColor;
+        bool isCustom;
         if (it->comps == OFX::ePixelComponentCustom) {
             std::vector<std::string> channelNames = OFX::mapPixelComponentCustomToLayerChannels(it->rawComps);
-            if (channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B") {
+            isColor = channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B";
+            isCustom = true;
+            if (isColor) {
                 isOCIOIdentity = _ocio->isIdentity(args.time);
             } else {
                 isOCIOIdentity = true;
+                premult = OFX::eImageUnPreMultiplied;
             }
             
             if (it->numChans == 3) {
@@ -1491,8 +1490,22 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             }
             
         } else {
+            isColor = true;
+            isCustom = false;
             isOCIOIdentity = _ocio->isIdentity(args.time);
             remappedComponents = it->comps;
+        }
+        
+        if (it->comps == OFX::ePixelComponentRGB || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGB)) {
+            premult = OFX::eImageOpaque;
+        } else if (it->comps == OFX::ePixelComponentAlpha  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentAlpha)) {
+            premult = OFX::eImagePreMultiplied;
+        } else if (it->comps == OFX::ePixelComponentRGBA  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGBA)) {
+            int premult_i;
+            _premult->getValue(premult_i);
+            premult = (OFX::PreMultiplicationEnum)premult_i;
+        } else {
+            premult = OFX::eImageUnPreMultiplied;
         }
         
         // we have to do the final premultiplication if:
