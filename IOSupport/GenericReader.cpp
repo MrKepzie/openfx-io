@@ -1469,9 +1469,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         }
         
         bool isOCIOIdentity;
-        //For custom layers, OCIO is always identity, let the user handle colorspace conversion alone
         
-        
+        // if components are custom, remap it to a OFX components with the same number of channels
+        OFX::PixelComponentEnum remappedComponents;
         if (it->comps == OFX::ePixelComponentCustom) {
             std::vector<std::string> channelNames = OFX::mapPixelComponentCustomToLayerChannels(it->rawComps);
             if (channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B") {
@@ -1479,8 +1479,20 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             } else {
                 isOCIOIdentity = true;
             }
+            
+            if (it->numChans == 3) {
+                remappedComponents = OFX::ePixelComponentRGB;
+            } else if (it->numChans == 4) {
+                remappedComponents = OFX::ePixelComponentRGBA;
+            } else if (it->numChans == 2) {
+                remappedComponents = OFX::ePixelComponentXY;
+            } else {
+                remappedComponents = OFX::ePixelComponentAlpha;
+            }
+            
         } else {
             isOCIOIdentity = _ocio->isIdentity(args.time);
+            remappedComponents = it->comps;
         }
         
         // we have to do the final premultiplication if:
@@ -1489,7 +1501,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         //   - buffer is PreMultiplied AND OCIO is not identity (OCIO works only on unpremultiplied data)
         //   OR
         //   - premult is unpremultiplied
-        bool mustPremult = ((it->comps == OFX::ePixelComponentRGBA) &&
+        bool mustPremult = ((remappedComponents == OFX::ePixelComponentRGBA) &&
                             ((premult == OFX::eImagePreMultiplied && isOCIOIdentity) ||
                              premult == OFX::eImageUnPreMultiplied));
         
@@ -1534,10 +1546,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             ///do the color-space conversion
             if (!isOCIOIdentity && it->comps != OFX::ePixelComponentAlpha) {
                 if (premult == OFX::eImagePreMultiplied) {
-                    assert(it->comps == OFX::ePixelComponentRGBA);
+                    assert(remappedComponents == OFX::ePixelComponentRGBA);
                     DBG(std::printf("unpremult (tmp in-place)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
-                    unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes);
+                    unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes);
                     
                     if (abort()) {
                         return;
@@ -1546,18 +1558,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
                 DBG(std::printf("OCIO (tmp in-place)\n"));
-                OFX::PixelComponentEnum componentsToApply;
-                if (it->comps == OFX::ePixelComponentCustom) {
-                    assert(it->numChans == 3 || it->numChans == 4);
-                    if (it->numChans == 3) {
-                        componentsToApply = OFX::ePixelComponentRGB;
-                    } else {
-                        componentsToApply = OFX::ePixelComponentRGBA;
-                    }
-                } else {
-                    componentsToApply = it->comps;
-                }
-                _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, componentsToApply, it->numChans, tmpRowBytes);
+                
+                 assert(remappedComponents == 3 || remappedComponents == 4);
+                _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, tmpRowBytes);
             }
             
             if (kSupportsRenderScale && downscaleLevels > 0) {
@@ -1565,9 +1568,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     // we can write directly to dstPixelData
                     /// adjust the scale to match the given output image
                     DBG(std::printf("scale (no premult, tmp to dst)\n"));
-                    scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, it->comps,
+                    scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, remappedComponents,
                                    it->numChans, firstDepth, renderWindowFullRes, tmpRowBytes, it->pixelData,
-                                   it->comps, it->numChans, firstDepth, firstBounds, it->rowBytes);
+                                   remappedComponents, it->numChans, firstDepth, firstBounds, it->rowBytes);
                 } else {
                     // allocate a temporary image (we must avoid reading from dstPixelData, in case several threads are rendering the same area)
                     int mem2RowBytes = (firstBounds.x2 - firstBounds.x1) * pixelBytes;
@@ -1578,9 +1581,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     /// adjust the scale to match the given output image
                     DBG(std::printf("scale (tmp to scaled)\n"));
                     scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData,
-                                   it->comps, it->numChans, firstDepth,
+                                   remappedComponents, it->numChans, firstDepth,
                                    renderWindowFullRes, tmpRowBytes, scaledPixelData,
-                                   it->comps, it->numChans, firstDepth,
+                                   remappedComponents, it->numChans, firstDepth,
                                    firstBounds, mem2RowBytes);
                     
                     if (abort()) {
@@ -1590,23 +1593,20 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     // apply premult
                     DBG(std::printf("premult (scaled to dst)\n"));
                     //scaledPixelData[0] = scaledPixelData[1] = scaledPixelData[2] = 1.; scaledPixelData[3] = 0.5;
-                    premultPixelData(args.renderWindow, scaledPixelData, firstBounds, it->comps,  it->numChans, firstDepth, mem2RowBytes, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
+                    premultPixelData(args.renderWindow, scaledPixelData, firstBounds, remappedComponents,  it->numChans, firstDepth, mem2RowBytes, it->pixelData, firstBounds, remappedComponents, it->numChans, firstDepth, it->rowBytes);
                     //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
                 }
             } else {
-                
-                //We should never enter here for custom layers
-                assert(it->comps != OFX::ePixelComponentCustom);
                 
                 // copy
                 if (mustPremult) {
                     DBG(std::printf("premult (no scale, tmp to dst)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = 1.; tmpPixelData[3] = 0.5;
-                    premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
+                    premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, remappedComponents, it->numChans, firstDepth, it->rowBytes);
                     //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
                 } else {
                     DBG(std::printf("copy (no premult no scale, tmp to dst)\n"));
-                    copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
+                    copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, remappedComponents, it->numChans, firstDepth, it->rowBytes);
                 }
             }
             mem.unlock();
