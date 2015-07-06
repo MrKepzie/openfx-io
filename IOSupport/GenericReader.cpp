@@ -1558,8 +1558,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
                 DBG(std::printf("OCIO (tmp in-place)\n"));
-                
-                 assert(remappedComponents == 3 || remappedComponents == 4);
                 _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, tmpRowBytes);
             }
             
