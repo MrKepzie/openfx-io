@@ -590,10 +590,12 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
     // are we in the image bounds
     if(renderWindow.x1 < bounds.x1 || renderWindow.x1 >= bounds.x2 || renderWindow.y1 < bounds.y1 || renderWindow.y1 >= bounds.y2 ||
        renderWindow.x2 <= bounds.x1 || renderWindow.x2 > bounds.x2 || renderWindow.y2 <= bounds.y1 || renderWindow.y2 > bounds.y2) {
-        throw std::runtime_error("OCIO: render window outside of image bounds");
+        _parent->setPersistentMessage(OFX::Message::eMessageError, "","OCIO: render window outside of image bounds");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
-        throw std::runtime_error("OCIO: invalid components (only RGB and RGBA are supported)");
+        _parent->setPersistentMessage(OFX::Message::eMessageError, "","OCIO: invalid components (only RGB and RGBA are supported)");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
     OCIOProcessor processor(*_parent);

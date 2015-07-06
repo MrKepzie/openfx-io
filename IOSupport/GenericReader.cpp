@@ -1546,7 +1546,18 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
                 DBG(std::printf("OCIO (tmp in-place)\n"));
-                _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, tmpRowBytes);
+                OFX::PixelComponentEnum componentsToApply;
+                if (it->comps == OFX::ePixelComponentCustom) {
+                    assert(it->numChans == 3 || it->numChans == 4);
+                    if (it->numChans == 3) {
+                        componentsToApply = OFX::ePixelComponentRGB;
+                    } else {
+                        componentsToApply = OFX::ePixelComponentRGBA;
+                    }
+                } else {
+                    componentsToApply = it->comps;
+                }
+                _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, componentsToApply, it->numChans, tmpRowBytes);
             }
             
             if (kSupportsRenderScale && downscaleLevels > 0) {
