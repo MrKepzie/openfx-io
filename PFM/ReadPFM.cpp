@@ -41,6 +41,7 @@
 #include "ReadPFM.h"
 
 #include <cstdio> // fopen, fread...
+#include <algorithm>
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
