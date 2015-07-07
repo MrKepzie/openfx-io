@@ -43,14 +43,14 @@
 #ifdef OFX_IO_USING_OCIO
 //#include <iostream>
 #include <memory>
-
-#include <GenericOCIO.h>
+#include <algorithm>
 
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
 #include "ofxsMerging.h"
 #include "ofxsMacros.h"
 #include "IOUtility.h"
+#include "GenericOCIO.h"
 
 #define kPluginName "OCIODisplayOFX"
 #define kPluginGrouping "Color/OCIO"

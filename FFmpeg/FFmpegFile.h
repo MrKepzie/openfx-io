@@ -52,7 +52,7 @@
 #include <string>
 #include <map>
 #include <list>
-
+#include <algorithm>
 #include <locale>
 #include <cstdio>
 #if _WIN32

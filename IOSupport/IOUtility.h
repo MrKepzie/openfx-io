@@ -44,6 +44,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+
 #include "ofxsImageEffect.h"
 
 /// numvals should be 256 for byte, 65536 for 16-bits, etc.

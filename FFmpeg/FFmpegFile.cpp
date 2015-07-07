@@ -48,6 +48,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 
 #include "ReadFFmpeg.h"
 
