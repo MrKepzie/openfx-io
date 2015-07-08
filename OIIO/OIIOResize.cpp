@@ -40,6 +40,8 @@
 #include "OIIOResize.h"
 
 #include <limits>
+#include <algorithm>
+
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
 #include "ofxsFormatResolution.h"

@@ -41,6 +41,7 @@
 
 #include <cstdio> // fopen, fwrite...
 #include <vector>
+#include <algorithm>
 
 #include "GenericOCIO.h"
 

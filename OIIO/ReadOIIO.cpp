@@ -49,6 +49,8 @@
 #include <cmath>
 #include <cstddef>
 #include <climits>
+#include <algorithm>
+
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
 
