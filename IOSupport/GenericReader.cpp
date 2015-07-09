@@ -308,9 +308,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _customFPS = fetchBooleanParam(kParamCustomFps);
     _fps = fetchDoubleParam(kParamFrameRate);
 
-    _proxyThreshold->setIsSecret(true);
-    _enableCustomScale->setIsSecret(true);
-    _timeOffset->setIsSecret(true);
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -365,6 +362,33 @@ GenericReaderPlugin::restoreStateFromParameters()
             _fps->setValue(fps);
         }
     }
+    
+    int frameMode_i;
+    _frameMode->getValue(frameMode_i);
+    FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
+    switch (frameMode) {
+        case eFrameModeStartingTime: //starting frame
+            _startingTime->setIsSecret(false);
+            _timeOffset->setIsSecret(true);
+            break;
+        case eFrameModeTimeOffset: //time offset
+            _startingTime->setIsSecret(true);
+            _timeOffset->setIsSecret(false);
+            break;
+    }
+    
+    ///Detect the scale of the proxy.
+    std::string proxyFile;
+    _proxyFileParam->getValue(proxyFile);
+    if (!proxyFile.empty()) {
+        _proxyThreshold->setIsSecret(false);
+        _enableCustomScale->setIsSecret(false);
+    } else {
+        _proxyThreshold->setIsSecret(true);
+        _enableCustomScale->setIsSecret(true);
+    }
+    
+    
 }
 
 bool
