@@ -2371,7 +2371,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kParamFrameModeOptionStartingTime);
         assert(param->getNOptions() == eFrameModeTimeOffset);
         param->appendOption(kParamFrameModeOptionTimeOffset);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setDefault(eFrameModeStartingTime);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         page->addChild(*param);
@@ -2383,7 +2383,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamStartingTimeLabel);
         param->setHint(kParamStartingTimeHint);
         param->setDefault(0);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         page->addChild(*param);
     }
@@ -2394,7 +2394,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamTimeOffsetLabel);
         param->setHint(kParamTimeOffsetHint);
         param->setDefault(0);
-        param->setAnimates(true);
+        param->setAnimates(false);
         //param->setIsSecret(true); // done in the plugin constructor
         page->addChild(*param);
     }
