@@ -345,8 +345,9 @@ GenericReaderPlugin::restoreStateFromParameters()
         
         bool timeDomainUserEdited;
         _timeDomainUserSet->getValue(timeDomainUserEdited);
-        
-        timeDomainFromSequenceTimeDomain(tmp, !timeDomainUserEdited, !timeDomainUserEdited);
+        if (!timeDomainUserEdited) {
+            timeDomainFromSequenceTimeDomain(tmp, true, true);
+        }
     }
     ///We call restoreState with the first frame of the sequence so we're almost sure it will work
     ///unless the user did a mistake. We are also safe to assume that images specs are the same for
