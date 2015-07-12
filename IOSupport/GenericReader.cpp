@@ -612,6 +612,8 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     bool filenameGood = true;
     int offset = 0;
 
+    sequenceTime = std::floor(sequenceTime + 0.5); // round to the nearest frame
+
     const bool searchOtherFrame = ((missingFrame == eMissingPrevious) ||
                                    (missingFrame == eMissingNearest) ||
                                    (missingFrame == eMissingNext) ||
@@ -2121,16 +2123,26 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
             return false;
 
         case eGetSequenceTimeBeforeSequence:
-        case eGetSequenceTimeAfterSequence:
+        case eGetSequenceTimeAfterSequence: {
             ///Transform the sequence time to "real" time
             int timeOffset;
             _timeOffset->getValue(timeOffset);
             identityTime = sequenceTime + timeOffset;
             identityClip = _outputClip;
             return true;
-
-        case eGetSequenceTimeWithinSequence:
-            return false;
+        }
+        case eGetSequenceTimeWithinSequence: {
+            if (sequenceTime == (int)sequenceTime) {
+                return false;
+            }
+            // fractional time, round to nearest frame
+            sequenceTime = std::floor(sequenceTime + 0.5); // round to the nearest frame
+            ///Transform the sequence time to "real" time
+            int timeOffset;
+            _timeOffset->getValue(timeOffset);
+            identityTime = sequenceTime + timeOffset;
+            identityClip = _outputClip;
+            return true;
     }
     return false;
 }
