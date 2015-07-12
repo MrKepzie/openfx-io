@@ -2143,6 +2143,7 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
             identityTime = sequenceTime + timeOffset;
             identityClip = _outputClip;
             return true;
+        }
     }
     return false;
 }
