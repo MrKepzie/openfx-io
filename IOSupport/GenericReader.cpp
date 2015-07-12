@@ -2127,7 +2127,7 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
             ///Transform the sequence time to "real" time
             int timeOffset;
             _timeOffset->getValue(timeOffset);
-            identityTime = sequenceTime + timeOffset;
+            identityTime = std::floor(sequenceTime + 0.5) + timeOffset; // round to the nearest frame
             identityClip = _outputClip;
             return true;
         }
