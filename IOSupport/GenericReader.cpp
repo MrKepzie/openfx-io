@@ -1365,7 +1365,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     ///We only support downscaling at a power of two.
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
-    unsigned int proxyMipMapThresholdLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
+    unsigned int proxyMipMapThresholdLevel = (proxyScaleThreshold.x == 0 || proxyScaleThreshold.y == 0) ? renderMipmapLevel :  getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
     unsigned int originalProxyMipMapLevel = getLevelFromScale(std::min(proxyOriginalScale.x, proxyOriginalScale.y));
     
     if (kSupportsRenderScale && (renderMipmapLevel >= proxyMipMapThresholdLevel)) {
@@ -2452,6 +2452,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamProxyThreshold);
         param->setLabel(kParamProxyThresholdLabel);
         param->setDefault(1., 1.);
+        param->setRange(0.01, 0.01, 1., 1.);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
