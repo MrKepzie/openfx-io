@@ -1895,7 +1895,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _firstFrame->getValue(firstFrame);
         
         _timeOffset->setValue(startingTime - firstFrame);
-        
+         _timeDomainUserSet->setValue(true);
     } else if (paramName == kParamTimeOffset && args.reason == OFX::eChangeUserEdit) {
 
         //also update the starting frame
@@ -1905,7 +1905,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _firstFrame->getValue(first);
         
         _startingTime->setValue(offset + first);
-
+         _timeDomainUserSet->setValue(true);
     } else if (paramName == kParamOutputComponents) {
         OFX::PixelComponentEnum comps = getOutputComponents();
     
