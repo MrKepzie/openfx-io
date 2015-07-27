@@ -1439,7 +1439,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     // When in proxy mode renderWindowFullRes is the render window at the proxy mip map level
     int downscaleLevels = renderMipmapLevel; // the number of mipmap levels from the actual file (proxy or not) to the renderWindow
 
-    if (_supportsTiles && useProxy && !proxyFile.empty()) {
+    if (useProxy && !proxyFile.empty()) {
         filename = proxyFile;
         downscaleLevels -= originalProxyMipMapLevel;
     }
@@ -1479,12 +1479,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     
     for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
-        
-        
-        // force premult for non-RGBA pixelComponents
-        if (it->comps == OFX::ePixelComponentCustom) {
-            
-        }
+
         
         bool isOCIOIdentity;
         // Read into a temporary image, apply colorspace conversion, then copy
