@@ -45,7 +45,7 @@
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
 #include "ofxsFormatResolution.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 #include <OpenImageIO/imageio.h>
 /*
@@ -496,7 +496,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             OfxPointD rsOne;
             rsOne.x = rsOne.y = 1.;
             OfxRectI srcRoDPixel;
-            OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+            OFX::Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
             if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == (int)w && srcRoD.y2 == (int)h) {
                 identityClip = _srcClip;
                 return true;
@@ -510,7 +510,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             OfxPointD rsOne;
             rsOne.x = rsOne.y = 1.;
             OfxRectI srcRoDPixel;
-            OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+            OFX::Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
 
             int w,h;
             _size->getValue(w, h);
@@ -621,7 +621,7 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             rodPixel.y2 = h;
             OfxPointD rsOne;
             rsOne.x = rsOne.y = 1.;
-            OFX::MergeImages2D::toCanonical(rodPixel, rsOne, par, &rod);
+            OFX::Coords::toCanonical(rodPixel, rsOne, par, &rod);
         }   break;
 
         case eResizeTypeSize: {

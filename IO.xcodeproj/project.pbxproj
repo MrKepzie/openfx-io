@@ -435,6 +435,7 @@
 		1E2F4D95189295DA00F4CE25 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2F4D96189295DA00F4CE25 /* PluginRegistrationCombined.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistrationCombined.cpp; sourceTree = "<group>"; };
 		1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E3060261B70DA1600A9B507 /* ofxsCoords.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsCoords.h; sourceTree = "<group>"; };
 		1E4E58331AB24365004D6E04 /* INRIA.IO.manifest */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = INRIA.IO.manifest; sourceTree = "<group>"; };
 		1E4E58341AB24365004D6E04 /* IO.sln */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IO.sln; sourceTree = "<group>"; };
 		1E4E58351AB24365004D6E04 /* IOPluginProperty.props */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = IOPluginProperty.props; sourceTree = "<group>"; };
@@ -790,11 +791,12 @@
 		1E9B5F21198A50250095C8AA /* SupportExt */ = {
 			isa = PBXGroup;
 			children = (
-				ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */,
-				ACE90FFC1AB7433D007A49F8 /* ofxsGenerator.h */,
+				1E3060261B70DA1600A9B507 /* ofxsCoords.h */,
 				1E9B5F22198A505E0095C8AA /* ofxsCopier.h */,
 				1E9B5F23198A505E0095C8AA /* ofxsFilter.h */,
 				1E9B5F24198A505E0095C8AA /* ofxsFormatResolution.h */,
+				ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */,
+				ACE90FFC1AB7433D007A49F8 /* ofxsGenerator.h */,
 				1E9B5F25198A505E0095C8AA /* ofxsMaskMix.h */,
 				1E9B5F26198A505E0095C8AA /* ofxsMatrix2D.h */,
 				1E9B5F27198A505E0095C8AA /* ofxsMerging.h */,

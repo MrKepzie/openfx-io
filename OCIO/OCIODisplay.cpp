@@ -47,7 +47,7 @@
 
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 #include "IOUtility.h"
 #include "GenericOCIO.h"

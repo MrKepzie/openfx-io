@@ -84,7 +84,7 @@
 
 #include "ofxsMacros.h"
 #include "ofxsCopier.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMultiThread.h"
 #include "ofxsFormatResolution.h"
 #include "ofxsRectangleInteract.h"
@@ -1640,7 +1640,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
             OfxRectD rod = _srcClip[i]->getRegionOfDefinition(args.time);
             double par = _srcClip[i]->getPixelAspectRatio();
             OfxRectI pixelRod;
-            OFX::MergeImages2D::toPixelEnclosing(rod, args.renderScale, par, &pixelRod);
+            OFX::Coords::toPixelEnclosing(rod, args.renderScale, par, &pixelRod);
             inputSizes[i].x = pixelRod.x2 - pixelRod.x1;
             inputSizes[i].y = pixelRod.y2 - pixelRod.y1;
         } else {
@@ -1658,7 +1658,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     
     double par = dst->getPixelAspectRatio();
     
-    OFX::MergeImages2D::toPixelEnclosing(outputRod, args.renderScale, par, &outputPixelRod);
+    OFX::Coords::toPixelEnclosing(outputRod, args.renderScale, par, &outputPixelRod);
     OfxPointI outputSize;
     outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
     outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
@@ -1866,9 +1866,9 @@ SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip[0];
                 return true;
             }
@@ -2245,7 +2245,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
         for (int i = 0; i < kSourceClipCount; ++i) {
             if (_srcClip[i]->isConnected()) {
                 OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                OFX::MergeImages2D::rectBoundingBox(srcRod, rod, &rod);
+                OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
                 rodSet = true;
             }
         }
@@ -2257,7 +2257,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
             if (_srcClip[i]->isConnected()) {
                 OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
                 if (rodSet) {
-                    OFX::MergeImages2D::rectIntersection<OfxRectD>(srcRod, rod, &rod);
+                    OFX::Coords::rectIntersection<OfxRectD>(srcRod, rod, &rod);
                 } else {
                     rod = srcRod;
                 }
