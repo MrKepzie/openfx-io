@@ -11,7 +11,6 @@ PLUGINOBJECTS = \
 	OCIOFileTransform.o \
 	OCIOLogConvert.o \
 	OCIOLookTransform.o \
-	RunScript.o \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
@@ -19,6 +18,10 @@ PLUGINOBJECTS = \
 	ofxsGenerator.o \
 	ofxsRectangleInteract.o \
 	PluginRegistrationCombined.o
+	
+ifneq ($(MINGW),1)
+    PLUGINOBJECTS += RunScript.o
+endif
 
 PLUGINNAME = IO
 
@@ -45,9 +48,12 @@ RESOURCES = \
 ../PFM/fr.inria.openfx.ReadPFM.png \
 ../PFM/fr.inria.openfx.ReadPFM.svg \
 ../PFM/fr.inria.openfx.WritePFM.png \
-../PFM/fr.inria.openfx.WritePFM.svg \
-../RunScript/fr.inria.openfx.RunScript.png \
-../RunScript/fr.inria.openfx.RunScript.svg \
+../PFM/fr.inria.openfx.WritePFM.svg 
+
+ifneq ($(MINGW),1)
+	VPATH += ../RunScript/fr.inria.openfx.RunScript.png \
+			 ../RunScript/fr.inria.openfx.RunScript.svg 
+endif
 
 VPATH += \
 ../EXR \
@@ -55,13 +61,20 @@ VPATH += \
 ../OCIO \
 ../OIIO \
 ../PFM \
-../RunScript \
 ../SeExpr \
 ../IOSupport/SequenceParsing
 
+ifneq ($(MINGW),1)
+	VPATH += ../RunScript
+endif
+
 include ../Makefile.master
 
-CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../RunScript -I../SeExpr
+CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../SeExpr
+
+ifneq ($(MINGW),1)
+	CXXFLAGS += -I../RunScript
+endif
 
 CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS) $(OCIO_CXXFLAGS)
 LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS) $(OCIO_LINKFLAGS)
