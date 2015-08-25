@@ -20,7 +20,7 @@
 #include "OCIOLookTransform.h"
 #endif
 //#include "ReadRaw.h"
-#ifndef _WINDOWS
+#if !defined(_WIN32) && !defined(__MINGW__)
 #include "RunScript.h"
 #endif
 #include "SeExpr.h"
@@ -52,7 +52,7 @@ namespace OFX
             getOCIOLogConvertPluginID(ids);
             getOCIOLookTransformPluginID(ids);
 #endif
-#ifndef _WINDOWS
+#if !defined(_WIN32) && !defined(__MINGW__)
             getRunScriptPluginID(ids);
 #endif
 			getSeExprPluginID(ids);

@@ -47,7 +47,9 @@
 #include <string>
 #include <windows.h>
 #include <fstream>
+#ifndef __MINGW32__
 #include <ImfStdIO.h>
+#endif
 #endif
 
 #include <ImfPixelType.h>
@@ -297,7 +299,7 @@ namespace Exr {
         OfxRectI displayWindow;
         OfxRectI dataWindow;
         float pixelAspectRatio;
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
         std::ifstream* inputStr;
         Imf::StdIFStream* inputStdStream;
 #endif
@@ -327,7 +329,7 @@ namespace Exr {
     , displayWindow()
     , dataWindow()
     , pixelAspectRatio(1.)
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
     , inputStr(0)
     , inputStdStream(0)
 #endif
@@ -337,7 +339,7 @@ namespace Exr {
     {
         
         try{
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
             inputStr = new std::ifstream(s2ws(filename),std::ios_base::binary);
             inputStdStream = new Imf_::StdIFStream(*inputStr,filename.c_str());
             inputfile = new Imf_::InputFile(*inputStdStream);
@@ -411,7 +413,7 @@ namespace Exr {
 
             pixelAspectRatio = inputfile->header().pixelAspectRatio();
         }catch(const std::exception& e) {
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
             delete inputStr;
             delete inputStdStream;
 #endif
@@ -422,7 +424,7 @@ namespace Exr {
     }
     
     File::~File(){
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
         delete inputStr;
         delete inputStdStream;
 #endif
