@@ -19,7 +19,7 @@ PLUGINOBJECTS = \
 	ofxsRectangleInteract.o \
 	PluginRegistrationCombined.o
 	
-ifneq ($(MINGW),1)
+ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
     PLUGINOBJECTS += RunScript.o
 endif
 
@@ -50,7 +50,7 @@ RESOURCES = \
 ../PFM/fr.inria.openfx.WritePFM.png \
 ../PFM/fr.inria.openfx.WritePFM.svg 
 
-ifneq ($(MINGW),1)
+ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
 	VPATH += ../RunScript/fr.inria.openfx.RunScript.png \
 			 ../RunScript/fr.inria.openfx.RunScript.svg 
 endif
@@ -64,7 +64,7 @@ VPATH += \
 ../SeExpr \
 ../IOSupport/SequenceParsing
 
-ifneq ($(MINGW),1)
+ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
 	VPATH += ../RunScript
 endif
 
@@ -72,7 +72,7 @@ include ../Makefile.master
 
 CXXFLAGS += -I../EXR -I../FFmpeg -I../OIIO -I../PFM -I../OCIO -I../SeExpr
 
-ifneq ($(MINGW),1)
+ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
 	CXXFLAGS += -I../RunScript
 endif
 
