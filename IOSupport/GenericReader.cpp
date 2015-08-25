@@ -52,6 +52,7 @@
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 
 #ifdef OFX_EXTENSIONS_TUTTLE
@@ -942,7 +943,8 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
          dstPixelComponents != OFX::ePixelComponentAlpha &&
          dstPixelComponents != OFX::ePixelComponentCustom) ||
         dstPixelDepth != srcPixelDepth ||
-        dstPixelComponents != srcPixelComponents) {
+        dstPixelComponents != srcPixelComponents ||
+        dstPixelComponentCount != srcPixelComponentCount) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
@@ -1238,7 +1240,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     assert(kSupportsRenderScale || (args.renderScale.x == 1. && args.renderScale.y == 1.));
     ///The image will have the appropriate size since we support the render scale (multi-resolution)
-    
+
     OutputImagesHolder_RAII outputImagesHolder;
 #ifdef OFX_EXTENSIONS_NUKE
     if (!isMultiPlanar()) {
@@ -1249,6 +1251,21 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
+#ifndef NDEBUG
+        if (!_supportsTiles) {
+            // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
+            //  If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one.
+            OfxRectI dstRod; // = dst->getRegionOfDefinition(); //  Nuke's image RoDs are wrong
+            OFX::Coords::toPixelEnclosing(_outputClip->getRegionOfDefinition(args.time), args.renderScale, _outputClip->getPixelAspectRatio(), &dstRod);
+            const OfxRectI& dstBounds = dstImg->getBounds();
+
+            assert(dstRod.x1 == dstBounds.x1);
+            assert(dstRod.x2 == dstBounds.x2);
+            assert(dstRod.y1 == dstBounds.y1);
+            assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
+        }
+#endif
+
         outputImagesHolder.appendImage(dstImg);
 #ifdef OFX_EXTENSIONS_NUKE
     } else {

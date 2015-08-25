@@ -36,16 +36,10 @@
 
 #include "OIIOText.h"
 
-
-#include "ofxsProcessing.H"
-#include "ofxsCopier.h"
-#include "ofxsPositionInteract.h"
-
-#include "IOUtility.h"
-#include "ofxNatron.h"
 #include "ofxsMacros.h"
-#include <OpenImageIO/imageio.h>
 
+GCC_DIAG_OFF(unused-parameter)
+#include <OpenImageIO/imageio.h>
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
  which includes boost/thread.hpp,
@@ -57,6 +51,15 @@
 #define OPENIMAGEIO_THREAD_H
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
+GCC_DIAG_ON(unused-parameter)
+
+#include "ofxsProcessing.H"
+#include "ofxsCopier.h"
+#include "ofxsPositionInteract.h"
+
+#include "IOUtility.h"
+#include "ofxNatron.h"
+
 
 #define kPluginName "TextOIIO"
 #define kPluginGrouping "Draw"

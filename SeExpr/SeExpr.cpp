@@ -1855,7 +1855,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
 bool
 SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
                          OFX::Clip * &identityClip,
-                         double &identityTime)
+                         double &/*identityTime*/)
 {
     // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
     clearPersistentMessage();

@@ -296,6 +296,7 @@ namespace Exr {
         std::vector<std::string> views;
         OfxRectI displayWindow;
         OfxRectI dataWindow;
+        float pixelAspectRatio;
 #ifdef _WIN32
         std::ifstream* inputStr;
         Imf::StdIFStream* inputStdStream;
@@ -325,6 +326,7 @@ namespace Exr {
     , views()
     , displayWindow()
     , dataWindow()
+    , pixelAspectRatio(1.)
 #ifdef _WIN32
     , inputStr(0)
     , inputStdStream(0)
@@ -406,7 +408,8 @@ namespace Exr {
             dataWindow.x2 = right + 1;
             dataWindow.y1 = bottom;
             dataWindow.y2 = top + 1;
-            
+
+            pixelAspectRatio = inputfile->header().pixelAspectRatio();
         }catch(const std::exception& e) {
 #ifdef _WIN32
             delete inputStr;
@@ -542,7 +545,7 @@ ReadEXRPlugin::decode(const std::string& filename,
                       int rowBytes)
 {
     /// we only support RGBA output clip
-    if (pixelComponents != OFX::ePixelComponentRGBA) {
+    if (pixelComponents != OFX::ePixelComponentRGBA || pixelComponentCount != 4) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
@@ -669,8 +672,7 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
     bounds->x2 = file->dataWindow.x2;
     bounds->y1 = file->dataWindow.y1;
     bounds->y2 = file->dataWindow.y2;
-#pragma message WARN("TODO: get PAR for EXR")
-    *par = 1.0;
+    *par = file->pixelAspectRatio;
 
     return true;
 }

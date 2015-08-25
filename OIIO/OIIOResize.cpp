@@ -42,24 +42,28 @@
 #include <limits>
 #include <algorithm>
 
-#include "ofxsProcessing.H"
-#include "ofxsCopier.h"
-#include "ofxsFormatResolution.h"
-#include "ofxsCoords.h"
 #include "ofxsMacros.h"
+
+GCC_DIAG_OFF(unused-parameter)
 #include <OpenImageIO/imageio.h>
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
  which includes boost/thread.hpp,
  which includes boost/system/error_code.hpp,
  which requires the library boost_system to get the symbol boost::system::system_category().
- 
+
  the following define prevents including error_code.hpp, which is not used anyway.
  */
 #define OPENIMAGEIO_THREAD_H
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 #include <OpenImageIO/filter.h>
+GCC_DIAG_ON(unused-parameter)
+
+#include "ofxsProcessing.H"
+#include "ofxsCopier.h"
+#include "ofxsFormatResolution.h"
+#include "ofxsCoords.h"
 
 #include "IOUtility.h"
 

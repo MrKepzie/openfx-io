@@ -39,8 +39,6 @@
 
 
 #include "ReadOIIO.h"
-#include "GenericOCIO.h"
-#include "GenericReader.h"
 
 #include <iostream>
 #include <set>
@@ -51,11 +49,17 @@
 #include <climits>
 #include <algorithm>
 
+#include "ofxsMacros.h"
+
+GCC_DIAG_OFF(unused-parameter)
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
+GCC_DIAG_ON(unused-parameter)
 
 #include <ofxNatron.h>
 
+#include "GenericOCIO.h"
+#include "GenericReader.h"
 #include "IOUtility.h"
 
 OIIO_NAMESPACE_USING

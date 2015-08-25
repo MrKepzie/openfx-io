@@ -128,11 +128,11 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImagePreMultiplied; }
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
 
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _bitDepth;
@@ -157,9 +157,14 @@ WriteEXRPlugin::~WriteEXRPlugin(){
 //}
 
 
-void WriteEXRPlugin::encode(const std::string& filename,
-                            OfxTime /*time*/,
-                            const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void
+WriteEXRPlugin::encode(const std::string& filename,
+                       OfxTime /*time*/,
+                       const float *pixelData,
+                       const OfxRectI& bounds,
+                       float pixelAspectRatio,
+                       OFX::PixelComponentEnum pixelComponents,
+                       int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
@@ -206,7 +211,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
         exrDispW.max.x = (bounds.x2 - bounds.x1);
         exrDispW.max.y = (bounds.y2 - bounds.y1);
 
-        Imf_::Header exrheader(exrDispW, exrDataW, 1.f,
+        Imf_::Header exrheader(exrDispW, exrDataW, pixelAspectRatio,
                                Imath::V2f(0, 0), 1, Imf_::INCREASING_Y, compression);
         
         Imf_::PixelType pixelType;

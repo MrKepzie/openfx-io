@@ -163,7 +163,7 @@ public:
 
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL
+    virtual bool isIdentity(const OFX::IsIdentityArguments &/*args*/, OFX::Clip * &/*identityClip*/, double &/*identityTime*/) OVERRIDE FINAL
     {
         // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
         clearPersistentMessage();

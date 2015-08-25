@@ -38,11 +38,16 @@
  */
 
 #include "WriteOIIO.h"
-#include "GenericOCIO.h"
-#include "GenericWriter.h"
 
+#include "ofxsMacros.h"
+
+GCC_DIAG_OFF(unused-parameter)
 #include <OpenImageIO/imageio.h>
 #include <OpenImageIO/filesystem.h>
+GCC_DIAG_ON(unused-parameter)
+
+#include "GenericOCIO.h"
+#include "GenericWriter.h"
 
 OIIO_NAMESPACE_USING
 
@@ -221,11 +226,11 @@ public:
 private:
     virtual void onOutputFileChanged(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
     
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImagePreMultiplied; }
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
 
 private:
     OFX::ChoiceParam* _bitDepth;
@@ -304,7 +309,7 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
 #endif
 }
 
-void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
@@ -507,6 +512,9 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
 	spec.attribute("Orientation", orientation + 1);
     if (!compression.empty()) { // some formats have a good value for the default compression
         spec.attribute("compression", compression);
+    }
+    if (pixelAspectRatio != 1.) {
+        spec.attribute("PixelAspectRatio", pixelAspectRatio);
     }
 
     // by default, the channel names are R, G, B, A, which is OK except for Alpha images

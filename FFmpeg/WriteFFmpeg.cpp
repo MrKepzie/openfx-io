@@ -909,11 +909,11 @@ private:
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
     virtual void beginEdit(void) OVERRIDE FINAL;
 
-    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
+    virtual void beginEncode(const std::string& filename, const OfxRectI& rod, float pixelAspectRatio, const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
 
     virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
@@ -2329,7 +2329,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     int height = _rod.y2-_rod.y1;
     int picSize = avpicture_get_size(pixelFormatCodec, width, height);
 
-    AVPicture avPicture = {{0}};
+    AVPicture avPicture = {{0}, {0}};
     AVFrame* avFrame = NULL;
 
     if (!flush) {
@@ -2612,6 +2612,7 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
 //
 void WriteFFmpegPlugin::beginEncode(const std::string& filename,
                                     const OfxRectI& rod,
+                                    float pixelAspectRatio,
                                     const OFX::BeginSequenceRenderArguments& args)
 {
     if (!args.sequentialRenderStatus || _formatContext || _streamVideo) {
@@ -2856,7 +2857,14 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
                     }
 
 
-void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void
+WriteFFmpegPlugin::encode(const std::string& filename,
+                          OfxTime time,
+                          const float *pixelData,
+                          const OfxRectI& bounds,
+                          float /*pixelAspectRatio*/, // ignored, since this setting is per-file, not per-frame
+                          OFX::PixelComponentEnum pixelComponents,
+                          int rowBytes)
 {
     
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
@@ -2979,11 +2987,11 @@ WriteFFmpegPlugin::updateVisibility()
     _codecShortName->getValue(codecShortName);
     //assert(index < (int)codecsShortNames.size());
     // codecShortName may be empty if this was configured in an old version
-    if (!codecShortName.empty() && (codecsShortNames.size() <= index || codecShortName != codecsShortNames[index])) {
+    if (!codecShortName.empty() && ((int)codecsShortNames.size() <= index || codecShortName != codecsShortNames[index])) {
         _codecShortName->setIsSecret(false); // something may be wrong. Make it visible, at least
     } else {
         _codecShortName->setIsSecret(true);
-        if (codecsShortNames.size() <= index) {
+        if ((int)codecsShortNames.size() <= index) {
             codecShortName = codecsShortNames[index];
         }
     }
@@ -3059,7 +3067,7 @@ WriteFFmpegPlugin::checkCodec()
     std::string codecShortName;
     _codecShortName->getValue(codecShortName);
     // codecShortName may be empty if this was configured in an old version
-    if (!codecShortName.empty() && (codecsShortNames.size() <= codec || codecShortName != codecsShortNames[codec])) {
+    if (!codecShortName.empty() && ((int)codecsShortNames.size() <= codec || codecShortName != codecsShortNames[codec])) {
         // maybe it's another one but the label changed, if yes select it
         std::vector<std::string>::const_iterator it;
 
@@ -3076,7 +3084,7 @@ WriteFFmpegPlugin::checkCodec()
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-    } else if (codecsShortNames.size() <= codec) {
+    } else if ((int)codecsShortNames.size() <= codec) {
         setPersistentMessage(OFX::Message::eMessageError, "", "writer was configured for unavailable codec.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;

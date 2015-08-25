@@ -283,7 +283,7 @@ void
 OCIOLogConvertPlugin::loadConfig(double time)
 {
     std::string filename;
-    _ocioConfigFile->getValue(filename);
+    _ocioConfigFile->getValueAtTime(time, filename);
 
     if (filename == _ocioConfigFileName) {
         return;

@@ -315,8 +315,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
-
-    
+    float pixelAspectRatio = srcImg->getPixelAspectRatio();
     
     ///This is automatically the same generally as inputClip premultiplication but can differ is the user changed it.
     int userPremult_i;
@@ -360,7 +359,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         // Render window is of the same size as the input image and we don't need to apply colorspace conversion
         // or premultiplication operations.
 
-        encode(filename, args.time, (const float*)srcPixelData, args.renderWindow, pixelComponents, srcRowBytes);
+        encode(filename, args.time, (const float*)srcPixelData, args.renderWindow, pixelAspectRatio, pixelComponents, srcRowBytes);
         // copy to dstImg if necessary
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
@@ -456,7 +455,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             }
         }
         // write the image file
-        encode(filename, args.time, tmpPixelData, args.renderWindow, pixelComponents, tmpRowBytes);
+        encode(filename, args.time, tmpPixelData, args.renderWindow, pixelAspectRatio, pixelComponents, tmpRowBytes);
         // copy to dstImg if necessary
         if (_outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
@@ -504,8 +503,9 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     rodI.y1 = (int)std::floor(rod.y1);
     rodI.x2 = (int)std::ceil(rod.x2);
     rodI.y2 = (int)std::ceil(rod.y2);
+    float pixelAspectRatio = _inputClip->getPixelAspectRatio();
     
-    beginEncode(filename, rodI, args);
+    beginEncode(filename, rodI, pixelAspectRatio, args);
 }
 
 

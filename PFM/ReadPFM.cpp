@@ -250,7 +250,7 @@ ReadPFMPlugin::decode(const std::string& filename,
     const int x2 = renderWindow.x2;
 
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
-        int numread = std::fread(image.data(), 4, numpixels, nfile);
+        std::size_t numread = std::fread(image.data(), 4, numpixels, nfile);
         if (numread < numpixels) {
             std::fclose(nfile);
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");

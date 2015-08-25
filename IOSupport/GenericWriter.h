@@ -151,10 +151,14 @@ protected:
                         OfxTime time,
                         const float *pixelData,
                         const OfxRectI& bounds,
+                        float pixelAspectRatio,
                         OFX::PixelComponentEnum pixelComponents,
                         int rowBytes) = 0;
     
-    virtual void beginEncode(const std::string& /*filename*/,const OfxRectI& /*rod*/,const OFX::BeginSequenceRenderArguments &/*args*/) {}
+    virtual void beginEncode(const std::string& /*filename*/,
+                             const OfxRectI& /*rod*/,
+                             float /*pixelAspectRatio*/,
+                             const OFX::BeginSequenceRenderArguments &/*args*/) {}
     
     virtual void endEncode(const OFX::EndSequenceRenderArguments &/*args*/) {}
 

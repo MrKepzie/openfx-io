@@ -75,6 +75,7 @@
 		1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */; };
 		1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C5188EE90A003BC7F3 /* ReadEXR.cpp */; };
 		1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3C7188EE90A003BC7F3 /* WriteEXR.cpp */; };
+		1E326D841B8C52EA00C6AE8F /* OCIODisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */; };
 		1E378A87194DE23F00800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 		1E378A88194DE27400800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 		1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
@@ -1253,6 +1254,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1E326D841B8C52EA00C6AE8F /* OCIODisplay.cpp in Sources */,
 				1E9B5EA91986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */,
 				1E864EBF19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */,
@@ -1709,7 +1711,10 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
-				WARNING_CFLAGS = "-Wall";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+				);
 			};
 			name = Debug;
 		};
@@ -1745,7 +1750,10 @@
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
-				WARNING_CFLAGS = "-Wall";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+				);
 			};
 			name = Release;
 		};
