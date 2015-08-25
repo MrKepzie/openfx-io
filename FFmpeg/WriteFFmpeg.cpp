@@ -2761,7 +2761,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         AVCodecContext* avCodecContext = _streamVideo->codec;
         avCodecContext->pix_fmt = targetPixelFormat;
         avCodecContext->bits_per_raw_sample = outBitDepth;
-
+        avCodecContext->sample_aspect_ratio = av_d2q(pixelAspectRatio, 255);
+        
         // Now that the stream has been created, and the pixel format
         // is known, for DNxHD, set the YUV range.
         if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
