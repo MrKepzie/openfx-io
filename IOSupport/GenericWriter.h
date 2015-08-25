@@ -156,7 +156,7 @@ protected:
                         int rowBytes) = 0;
     
     virtual void beginEncode(const std::string& /*filename*/,
-                             const OfxRectI& /*rod*/,
+                             const OfxRectI& /*rodPixel*/,
                              float /*pixelAspectRatio*/,
                              const OFX::BeginSequenceRenderArguments &/*args*/) {}
     

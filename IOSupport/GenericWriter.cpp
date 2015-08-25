@@ -82,6 +82,7 @@
 
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
+#include "ofxsCoords.h"
 
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
@@ -498,14 +499,11 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     
     ////Since the generic writer doesn't support tiles and multi-resolution, the RoD is necesserarily the
     ////output image size.
-    OfxRectI rodI;
-    rodI.x1 = (int)std::floor(rod.x1);
-    rodI.y1 = (int)std::floor(rod.y1);
-    rodI.x2 = (int)std::ceil(rod.x2);
-    rodI.y2 = (int)std::ceil(rod.y2);
+    OfxRectI rodPixel;
     float pixelAspectRatio = _inputClip->getPixelAspectRatio();
-    
-    beginEncode(filename, rodI, pixelAspectRatio, args);
+    OFX::Coords::toPixelEnclosing(rod, args.renderScale, pixelAspectRatio, &rodPixel);
+
+    beginEncode(filename, rodPixel, pixelAspectRatio, args);
 }
 
 

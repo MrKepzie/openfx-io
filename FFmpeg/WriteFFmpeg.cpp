@@ -909,7 +909,7 @@ private:
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
     virtual void beginEdit(void) OVERRIDE FINAL;
 
-    virtual void beginEncode(const std::string& filename, const OfxRectI& rod, float pixelAspectRatio, const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
+    virtual void beginEncode(const std::string& filename, const OfxRectI& rodPixel, float pixelAspectRatio, const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
 
     virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
 
@@ -971,7 +971,8 @@ private:
 
     ///These members are not protected and only read/written by/to by the same thread.
     std::string _filename;
-    OfxRectI _rod;
+    OfxRectI _rodPixel;
+    float _pixelAspectRatio;
     bool _isOpen; // Flag for the configuration state of the FFmpeg components.
     WriterError _error;
     AVFormatContext*  _formatContext;
@@ -1148,6 +1149,7 @@ using namespace OFX;
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 , _filename()
+, _pixelAspectRatio(1.)
 , _isOpen(false)
 , _error(IGNORE_FINISH)
 , _formatContext(0)
@@ -1177,8 +1179,8 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 , _mbDecision(0)
 #endif
 {
-    _rod.x1 = _rod.y1 = 0;
-    _rod.x2 = _rod.y2 = -1;
+    _rodPixel.x1 = _rodPixel.y1 = 0;
+    _rodPixel.x2 = _rodPixel.y2 = -1;
     _format = fetchChoiceParam(kParamFormat);
     _fps = fetchDoubleParam(kParamFPS);
 #if OFX_FFMPEG_DNXHD
@@ -1680,8 +1682,8 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         avCodecContext->qmax = qMax;
     }
 
-    avCodecContext->width = (_rod.x2 - _rod.x1);
-    avCodecContext->height = (_rod.y2 - _rod.y1);
+    avCodecContext->width = (_rodPixel.x2 - _rodPixel.x1);
+    avCodecContext->height = (_rodPixel.y2 - _rodPixel.y1);
 
     avCodecContext->color_trc = getColorTransferCharacteristic();
 
@@ -2234,8 +2236,8 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
 {
     int ret = 0;
 
-    int width = (_rod.x2 - _rod.x1);
-    int height = (_rod.y2 - _rod.y1);
+    int width = (_rodPixel.x2 - _rodPixel.x1);
+    int height = (_rodPixel.y2 - _rodPixel.y1);
 
     int dstRange = IsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
     dstRange |= handle_jpeg(&dstPixelFormat); // may modify dstPixelFormat
@@ -2325,8 +2327,8 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     // Create another buffer to convert from either 16-bit or 8-bit RGB
     // to the input pixel format required by the encoder.
     AVPixelFormat pixelFormatCodec = avCodecContext->pix_fmt;
-    int width = _rod.x2-_rod.x1;
-    int height = _rod.y2-_rod.y1;
+    int width = _rodPixel.x2-_rodPixel.x1;
+    int height = _rodPixel.y2-_rodPixel.y1;
     int picSize = avpicture_get_size(pixelFormatCodec, width, height);
 
     AVPicture avPicture = {{0}, {0}};
@@ -2611,7 +2613,7 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
 //         false otherwise.
 //
 void WriteFFmpegPlugin::beginEncode(const std::string& filename,
-                                    const OfxRectI& rod,
+                                    const OfxRectI& rodPixel,
                                     float pixelAspectRatio,
                                     const OFX::BeginSequenceRenderArguments& args)
 {
@@ -2636,7 +2638,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         //////////////////// INTIALIZE FORMAT       ////////////////////
     
     _filename = filename;
-    _rod = rod;
+    _rodPixel = rodPixel;
+    _pixelAspectRatio = pixelAspectRatio;
 
     AVOutputFormat* avOutputFormat = initFormat(/* reportErrors = */ true);
     if (!avOutputFormat) {
@@ -2863,11 +2866,10 @@ WriteFFmpegPlugin::encode(const std::string& filename,
                           OfxTime time,
                           const float *pixelData,
                           const OfxRectI& bounds,
-                          float /*pixelAspectRatio*/, // ignored, since this setting is per-file, not per-frame
+                          float pixelAspectRatio,
                           OFX::PixelComponentEnum pixelComponents,
                           int rowBytes)
 {
-    
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
         setPersistentMessage(OFX::Message::eMessageError, "", "can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -2892,6 +2894,12 @@ WriteFFmpegPlugin::encode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
 
+    }
+
+    if (pixelAspectRatio != _pixelAspectRatio) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "all images in the sequence do not have the same pixel aspect ratio");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
     }
 
     _error = IGNORE_FINISH;
