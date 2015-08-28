@@ -534,6 +534,7 @@
 		1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOText.png; sourceTree = "<group>"; };
 		1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.RunScript.png; sourceTree = "<group>"; };
 		1EE4A8CC19C6F06700E6E3AE /* pstream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pstream.h; sourceTree = "<group>"; };
+		1EF940C21B9093370028AF8A /* gpl-header-c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "gpl-header-c.txt"; sourceTree = "<group>"; };
 		AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExpr.png; sourceTree = "<group>"; };
 		AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOResize.png; sourceTree = "<group>"; };
 		AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOResize.svg; sourceTree = "<group>"; };
@@ -878,11 +879,11 @@
 		AC2B24D41ABF0A7200D8F04C /* Raw */ = {
 			isa = PBXGroup;
 			children = (
+				AC2B24D81ABF0A7200D8F04C /* ReadRaw.cpp */,
+				AC2B24D91ABF0A7200D8F04C /* ReadRaw.h */,
 				AC2B24D51ABF0A7200D8F04C /* Info.plist */,
 				AC2B24D61ABF0A7200D8F04C /* Makefile */,
 				AC2B24D71ABF0A7200D8F04C /* PluginRegistration.cpp */,
-				AC2B24D81ABF0A7200D8F04C /* ReadRaw.cpp */,
-				AC2B24D91ABF0A7200D8F04C /* ReadRaw.h */,
 			);
 			path = Raw;
 			sourceTree = "<group>";
@@ -890,12 +891,12 @@
 		ACE084981AB4AB7E00BE558C /* SeExpr */ = {
 			isa = PBXGroup;
 			children = (
+				ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */,
+				ACE0849D1AB4AB7E00BE558C /* SeExpr.h */,
 				ACE084991AB4AB7E00BE558C /* Info.plist */,
 				ACE0849A1AB4AB7E00BE558C /* Makefile */,
 				ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */,
 				AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */,
-				ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */,
-				ACE0849D1AB4AB7E00BE558C /* SeExpr.h */,
 			);
 			path = SeExpr;
 			sourceTree = "<group>";
@@ -904,6 +905,7 @@
 			isa = PBXGroup;
 			children = (
 				1E9B5F6D198A557A0095C8AA /* LICENSE */,
+				1EF940C21B9093370028AF8A /* gpl-header-c.txt */,
 				1E9B5F6E198A557A0095C8AA /* Makefile.master */,
 				1EC04CAF193C8E4100E47D42 /* Makefile */,
 				1E9B5F6F198A557A0095C8AA /* README.md */,
