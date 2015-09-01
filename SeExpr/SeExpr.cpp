@@ -161,15 +161,9 @@ enum RegionOfDefinitionEnum {
 #define kParamOutputComponentsLabel "Output components"
 #define kParamOutputComponentsHint "Specify what components to output. In RGB only, the alpha script will not be executed. Similarily, in alpha only, the RGB script " \
 "will not be executed."
-
-#define kParamOutputComponentsRGB "RGB"
-#define kParamOutputComponentsRGBA "RGBA"
-#define kParamOutputComponentsAlpha "Alpha"
-enum OutputComponentsEnum {
-    eOutputComponentsRGB,
-    eOutputComponentsRGBA,
-    eOutputComponentsAlpha,
-};
+#define kParamOutputComponentsOptionRGBA "RGBA"
+#define kParamOutputComponentsOptionRGB "RGB"
+#define kParamOutputComponentsOptionAlpha "Alpha"
 
 #define kParamLayerInput "layerInput%d"
 #define kParamLayerInputLabel "Input Layer %d"
@@ -219,8 +213,12 @@ enum OutputComponentsEnum {
 #define kSeExprDisparityLeftPlaneName "DisparityLeft"
 #define kSeExprDisparityRightPlaneName "DisparityRight"
 
-static bool gHostIsMultiPlanar;
-static bool gHostIsNatron;
+static bool gHostIsMultiPlanar = false;
+static bool gHostIsNatron = false;
+static bool gHostSupportsRGBA   = false;
+static bool gHostSupportsRGB    = false;
+static bool gHostSupportsAlpha  = false;
+static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
 class SeExprProcessorBase;
 
@@ -272,7 +270,9 @@ private:
     void buildChannelMenus();
     
     void setupAndProcess(SeExprProcessorBase & processor, const OFX::RenderArguments &args);
-    
+
+    OFX::PixelComponentEnum getOutputComponents() const;
+
     std::string getOfxComponentsForClip(int inputNumber) const;
     
     std::string getOfxPlaneForClip(int inputNumber) const;
@@ -311,6 +311,14 @@ private:
     
 
 };
+
+OFX::PixelComponentEnum
+SeExprPlugin::getOutputComponents() const
+{
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    return gOutputComponentsMap[outputComponents_i];
+}
 
 class OFXSeExpression;
 
@@ -1453,15 +1461,13 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _interactive->setEnabled(hasSize);
     _interactive->setIsSecret(!hasSize);
     
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
-    if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) { // RGB || RGBA
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
         _rgbScript->setIsSecret(false);
     } else {
         _rgbScript->setIsSecret(true);
     }
-    if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
+    if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
         _alphaScript->setIsSecret(false);
     } else {
         _alphaScript->setIsSecret(true);
@@ -1522,8 +1528,6 @@ SeExprPlugin::getOfxPlaneForClip(int inputNumber) const
     } else if (opt == kSeExprDisparityRightPlaneName) {
         return kFnOfxImagePlaneStereoDisparityRight;
     } else {
-        
-        
         std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
         for (std::list<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
             std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
@@ -1800,15 +1804,13 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _interactive->setEnabled(hasSize);
         _interactive->setIsSecret(!hasSize);
     } else if (paramName == kParamOutputComponents) {
-        int outputComponents_i;
-        _outputComponents->getValue(outputComponents_i);
-        OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
-        if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) { // RGB || RGBA
+        OFX::PixelComponentEnum outputComponents = getOutputComponents();
+        if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
             _rgbScript->setIsSecret(false);
         } else {
             _rgbScript->setIsSecret(true);
         }
-        if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
+        if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
             _alphaScript->setIsSecret(false);
         } else {
             _alphaScript->setIsSecret(true);
@@ -1949,24 +1951,11 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     //We're frame varying since we don't know what the user may output at any frame
     clipPreferences.setOutputFrameVarying(true);
 
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
-    switch (outputComponents) {
-        case eOutputComponentsRGB: { // RGB
-            clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-            clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGB);
-            break;
-        }
-        case eOutputComponentsRGBA: { // RGBA
-            clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGBA);
-            break;
-        }
-        case eOutputComponentsAlpha: { // Alpha
-            clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentAlpha);
-            break;
-        }
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB) {
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
     }
+    clipPreferences.setClipComponents(*_dstClip, outputComponents);
 }
 
 void
@@ -2007,10 +1996,8 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
      */
     FramesNeeded framesNeeded;
     
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
-    if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) {// RGB || RGBA
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) {// RGB || RGBA
         std::string rgbScript;
         _rgbScript->getValue(rgbScript);
         
@@ -2042,7 +2029,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
             
         }
     }
-    if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
+    if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
         std::string alphaScript;
         _alphaScript->getValue(alphaScript);
         
@@ -2145,10 +2132,8 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
         
         std::set<OFX::Clip*> processedClips;
         
-        int outputComponents_i;
-        _outputComponents->getValue(outputComponents_i);
-        OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
-        if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) { // RGB || RGBA
+        OFX::PixelComponentEnum outputComponents = getOutputComponents();
+        if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
             std::string rgbScript;
             _rgbScript->getValue(rgbScript);
             
@@ -2176,7 +2161,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
                 }
             }
         }
-        if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
+        if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
             std::string alphaScript;
             _alphaScript->getValue(alphaScript);
             
@@ -2496,7 +2481,7 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedBitDepth(eBitDepthUShort);
     desc.addSupportedBitDepth(eBitDepthHalf);
     desc.addSupportedBitDepth(eBitDepthFloat);
-    desc.addSupportedBitDepth(eBitDepthCustom);
+    //desc.addSupportedBitDepth(eBitDepthCustom);
 
     // set a few flags
     desc.setSingleInstance(false);
@@ -2537,6 +2522,27 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+
+    for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
+         it != getImageEffectHostDescription()->_supportedComponents.end();
+         ++it) {
+        switch (*it) {
+            case ePixelComponentRGBA:
+                gHostSupportsRGBA  = true;
+                break;
+            case ePixelComponentRGB:
+                gHostSupportsRGB = true;
+                break;
+            case ePixelComponentAlpha:
+                gHostSupportsAlpha = true;
+                break;
+            default:
+                // other components are not supported by this plugin
+                break;
+        }
+    }
+
     char name[256];
     char help[256];
     // Source clip only in the filter context
@@ -2549,10 +2555,16 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         } else {
             srcClip = desc.defineClip(name);
         }
-        srcClip->addSupportedComponent(ePixelComponentRGB);
-        srcClip->addSupportedComponent(ePixelComponentRGBA);
-        srcClip->addSupportedComponent(ePixelComponentAlpha);
-        srcClip->addSupportedComponent(ePixelComponentCustom);
+        if (gHostSupportsRGBA) {
+            srcClip->addSupportedComponent(ePixelComponentRGBA);
+        }
+        if (gHostSupportsRGB) {
+            srcClip->addSupportedComponent(ePixelComponentRGB);
+        }
+        if (gHostSupportsAlpha) {
+            srcClip->addSupportedComponent(ePixelComponentAlpha);
+        }
+        //srcClip->addSupportedComponent(ePixelComponentCustom);
         srcClip->setTemporalClipAccess(true);
         srcClip->setSupportsTiles(true);
         srcClip->setIsMask(false);
@@ -2570,10 +2582,16 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-    dstClip->addSupportedComponent(ePixelComponentRGB);
-    dstClip->addSupportedComponent(ePixelComponentRGBA);
-    dstClip->addSupportedComponent(ePixelComponentAlpha);
-    dstClip->addSupportedComponent(ePixelComponentCustom);
+    if (gHostSupportsRGBA) {
+        dstClip->addSupportedComponent(ePixelComponentRGBA);
+    }
+    if (gHostSupportsRGB) {
+        dstClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (gHostSupportsAlpha) {
+        dstClip->addSupportedComponent(ePixelComponentAlpha);
+    }
+    //dstClip->addSupportedComponent(ePixelComponentCustom);
     dstClip->setSupportsTiles(true);
 
     // make some pages and to things in
@@ -2612,14 +2630,33 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputComponents);
         param->setLabel(kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
-        assert(param->getNOptions() == eOutputComponentsRGB);
-        param->appendOption(kParamOutputComponentsRGB);
-        assert(param->getNOptions() == eOutputComponentsRGBA);
-        param->appendOption(kParamOutputComponentsRGBA);
-        assert(param->getNOptions() == eOutputComponentsAlpha);
-        param->appendOption(kParamOutputComponentsAlpha);
+        int i = 0;
+
+        if (gHostSupportsRGBA) {
+            gOutputComponentsMap[i] = ePixelComponentRGBA;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
+            param->appendOption(kParamOutputComponentsOptionRGBA);
+        }
+        if (gHostSupportsRGB) {
+            gOutputComponentsMap[i] = ePixelComponentRGB;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
+            param->appendOption(kParamOutputComponentsOptionRGB);
+        }
+        if (gHostSupportsAlpha) {
+            gOutputComponentsMap[i] = ePixelComponentAlpha;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
+            param->appendOption(kParamOutputComponentsOptionAlpha);
+        }
+        gOutputComponentsMap[i] = ePixelComponentNone;
+
+        param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
-        param->setDefault(0);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
