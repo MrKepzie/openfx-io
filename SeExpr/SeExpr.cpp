@@ -130,20 +130,28 @@
 
 #define kParamRegionOfDefinition "rod"
 #define kParamRegionOfDefinitionLabel "Region of Definition"
-#define kParamRegionOfDefinitionHint "The region of definition of the output."
+#define kParamRegionOfDefinitionHint "Region of definition (extent) of the output."
 
-#define kParamRegionOfDefinitionOptionFormat "Format"
-#define kParamRegionOfDefinitionOptionFormatHelp "The output region will be of the specified format."
-#define kParamRegionOfDefinitionOptionProject "Project"
-#define kParamRegionOfDefinitionOptionProjectHelp "The output region will be of the size of the project."
-#define kParamRegionOfDefinitionOptionSize "Size"
-#define kParamRegionOfDefinitionOptionSizeHelp "The output region will be of the size of the rectangle overlay."
 #define kParamRegionOfDefinitionOptionUnion "Union"
-#define kParamRegionOfDefinitionOptionUnionHelp "The output region will be the union of the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionUnionHelp "The output region is the union of the regions of definition of all connected inputs."
 #define kParamRegionOfDefinitionOptionIntersection "Intersection"
-#define kParamRegionOfDefinitionOptionIntersectionHelp "The output region will be the intersection the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionIntersectionHelp "The output region is the intersection the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionSize "Size"
+#define kParamRegionOfDefinitionOptionSizeHelp "The output region is the size of the rectangle overlay."
+#define kParamRegionOfDefinitionOptionFormat "Format"
+#define kParamRegionOfDefinitionOptionFormatHelp "The output region is the specified format."
+#define kParamRegionOfDefinitionOptionProject "Project"
+#define kParamRegionOfDefinitionOptionProjectHelp "The output region is the size of the project."
 #define kParamRegionOfDefinitionOptionCustomInput "Input%d"
-#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region will be the regions of definition of input %d."
+#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region is the region of definition of input %d."
+enum RegionOfDefinitionEnum {
+    eRegionOfDefinitionOptionUnion,
+    eRegionOfDefinitionOptionIntersection,
+    eRegionOfDefinitionOptionSize,
+    eRegionOfDefinitionOptionFormat,
+    eRegionOfDefinitionOptionProject,
+    eRegionOfDefinitionOptionCustom,
+};
 
 #define kParamGeneratorFormat "format"
 #define kParamGeneratorFormatLabel "Format"
@@ -154,9 +162,14 @@
 #define kParamOutputComponentsHint "Specify what components to output. In RGB only, the alpha script will not be executed. Similarily, in alpha only, the RGB script " \
 "will not be executed."
 
-#define kParamOutputComponentsAlpha "Alpha"
 #define kParamOutputComponentsRGB "RGB"
 #define kParamOutputComponentsRGBA "RGBA"
+#define kParamOutputComponentsAlpha "Alpha"
+enum OutputComponentsEnum {
+    eOutputComponentsRGB,
+    eOutputComponentsRGBA,
+    eOutputComponentsAlpha,
+};
 
 #define kParamLayerInput "layerInput%d"
 #define kParamLayerInputLabel "Input Layer %d"
@@ -1425,10 +1438,11 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
         _colorParams[i]->setIsSecret(!visible);
     }
 
-    int boundingbox_i;
-    _boundingBox->getValue(boundingbox_i);
-    bool hasFormat = (boundingbox_i == 3);
-    bool hasSize = (boundingbox_i == 2);
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    bool hasFormat = (boundingBox == eRegionOfDefinitionOptionFormat);
+    bool hasSize = (boundingBox == eRegionOfDefinitionOptionSize);
     
     _format->setEnabled(hasFormat);
     _format->setIsSecret(!hasFormat);
@@ -1441,12 +1455,13 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     
     int outputComponents_i;
     _outputComponents->getValue(outputComponents_i);
-    if (outputComponents_i == 0 || outputComponents_i == 1) { // RGB || RGBA
+    OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
+    if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) { // RGB || RGBA
         _rgbScript->setIsSecret(false);
     } else {
         _rgbScript->setIsSecret(true);
     }
-    if (outputComponents_i == 1 || outputComponents_i == 2) { // RGBA || alpha
+    if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
         _alphaScript->setIsSecret(false);
     } else {
         _alphaScript->setIsSecret(true);
@@ -1767,16 +1782,15 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             _rgbScript->setEvaluateOnChange(validated);
             _alphaScript->setEnabled(!validated);
             _alphaScript->setEvaluateOnChange(validated);
-            if (validated) {
-                clearPersistentMessage();
-            }
+            clearPersistentMessage();
         }
     } else if (paramName == kParamRegionOfDefinition && args.reason == OFX::eChangeUserEdit) {
-        int boundingbox_i;
-        _boundingBox->getValue(boundingbox_i);
-        bool hasFormat = (boundingbox_i == 3);
-        bool hasSize = (boundingbox_i == 2);
-        
+        int boundingBox_i;
+        _boundingBox->getValue(boundingBox_i);
+        RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+        bool hasFormat = (boundingBox == eRegionOfDefinitionOptionFormat);
+        bool hasSize = (boundingBox == eRegionOfDefinitionOptionSize);
+
         _format->setEnabled(hasFormat);
         _format->setIsSecret(!hasFormat);
         _size->setEnabled(hasSize);
@@ -1786,14 +1800,15 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _interactive->setEnabled(hasSize);
         _interactive->setIsSecret(!hasSize);
     } else if (paramName == kParamOutputComponents) {
-        int outputComps_i;
-        _outputComponents->getValue(outputComps_i);
-        if (outputComps_i == 0 || outputComps_i == 1) { // RGB || RGBA
+        int outputComponents_i;
+        _outputComponents->getValue(outputComponents_i);
+        OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
+        if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) { // RGB || RGBA
             _rgbScript->setIsSecret(false);
         } else {
             _rgbScript->setIsSecret(true);
         }
-        if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+        if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
             _alphaScript->setIsSecret(false);
         } else {
             _alphaScript->setIsSecret(true);
@@ -1898,43 +1913,59 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    switch (boundingBox) {
+        case eRegionOfDefinitionOptionSize: {
+            //size
+            break;
+        }
+        case eRegionOfDefinitionOptionFormat: {
+            //format
+            int index;
+            _format->getValue(index);
+            size_t w,h;
+            getFormatResolution( (OFX::EParamFormat)index, &w, &h, &par );
+            break;
+        }
+        case eRegionOfDefinitionOptionProject: {
+            //project format
 
-    
-    if (boundingBox_i == 2) {
-        //size
-    } else if (boundingBox_i == 3) {
-        //format
-        int index;
-        _format->getValue(index);
-        size_t w,h;
-        getFormatResolution( (OFX::EParamFormat)index, &w, &h, &par );
-    } else if (boundingBox_i == 4) {
-        //project format
-        
-        /// this should be the defalut value given by the host, no need to set it.
-        /// @see Instance::setupClipPreferencesArgs() in HostSupport, it should have
-        /// the line:
-        /// double inputPar = getProjectPixelAspectRatio();
-        
-        //par = getProjectPixelAspectRatio();
+            /// this should be the defalut value given by the host, no need to set it.
+            /// @see Instance::setupClipPreferencesArgs() in HostSupport, it should have
+            /// the line:
+            /// double inputPar = getProjectPixelAspectRatio();
+
+            //par = getProjectPixelAspectRatio();
+            break;
+        }
+        default:
+            break;
     }
     
     if (par != 0.) {
         clipPreferences.setPixelAspectRatio(*_dstClip, par);
     }
-    
+
     //We're frame varying since we don't know what the user may output at any frame
     clipPreferences.setOutputFrameVarying(true);
-    
-    int outputComp_i;
-    _outputComponents->getValue(outputComp_i);
-    if (outputComp_i == 0) { // RGB
-        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGB);
-    } else if (outputComp_i == 1) { // RGBA
-        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGBA);
-    } else if ( outputComp_i == 2) { // alpha
-        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentAlpha);
+
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
+    switch (outputComponents) {
+        case eOutputComponentsRGB: { // RGB
+            clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+            clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGB);
+            break;
+        }
+        case eOutputComponentsRGBA: { // RGBA
+            clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGBA);
+            break;
+        }
+        case eOutputComponentsAlpha: { // Alpha
+            clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentAlpha);
+            break;
+        }
     }
 }
 
@@ -1976,10 +2007,10 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
      */
     FramesNeeded framesNeeded;
     
-    int outputComps_i;
-    _outputComponents->getValue(outputComps_i);
-    
-    if (outputComps_i == 0 || outputComps_i == 1) {// RGB || RGBA
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
+    if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) {// RGB || RGBA
         std::string rgbScript;
         _rgbScript->getValue(rgbScript);
         
@@ -2011,7 +2042,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
             
         }
     }
-    if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+    if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
         std::string alphaScript;
         _alphaScript->getValue(alphaScript);
         
@@ -2114,10 +2145,10 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
         
         std::set<OFX::Clip*> processedClips;
         
-        int outputComps_i;
-        _outputComponents->getValue(outputComps_i);
-        
-        if (outputComps_i == 0 || outputComps_i == 1) { // RGB || RGBA
+        int outputComponents_i;
+        _outputComponents->getValue(outputComponents_i);
+        OutputComponentsEnum outputComponents = (OutputComponentsEnum)outputComponents_i;
+        if (outputComponents == eOutputComponentsRGB || outputComponents == eOutputComponentsRGBA) { // RGB || RGBA
             std::string rgbScript;
             _rgbScript->getValue(rgbScript);
             
@@ -2145,7 +2176,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
                 }
             }
         }
-        if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+        if (outputComponents == eOutputComponentsRGBA || outputComponents == eOutputComponentsAlpha) { // RGBA || alpha
             std::string alphaScript;
             _alphaScript->getValue(alphaScript);
             
@@ -2190,75 +2221,86 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
     
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
-    
-    if (boundingBox_i == 0) {
-        //union of inputs
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            if (_srcClip[i]->isConnected()) {
-                OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
-                rodSet = true;
-            }
-        }
-        
-    } else if (boundingBox_i == 1) {
-        //intersection of inputs
-        bool rodSet = false;
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            if (_srcClip[i]->isConnected()) {
-                OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                if (rodSet) {
-                    OFX::Coords::rectIntersection<OfxRectD>(srcRod, rod, &rod);
-                } else {
-                    rod = srcRod;
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    switch (boundingBox) {
+        case eRegionOfDefinitionOptionUnion: {
+            //union of inputs
+            for (int i = 0; i < kSourceClipCount; ++i) {
+                if (_srcClip[i]->isConnected()) {
+                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
+                    OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
+                    rodSet = true;
                 }
-                rodSet = true;
             }
+            break;
         }
-    } else if (boundingBox_i == 2) {
-      // custom size
-        _size->getValue(rod.x2, rod.y2);
-        _btmLeft->getValue(rod.x1, rod.y1);
-        rod.x2 += rod.x1;
-        rod.y2 += rod.y1;
-        
-        rodSet = true;
-    } else if (boundingBox_i == 3) {
-      // format
-        
-        int format_i;
-        _format->getValue(format_i);
-        double par;
-        size_t w,h;
-        getFormatResolution( (OFX::EParamFormat)format_i, &w, &h, &par );
-        rod.x1 = rod.y1 = 0;
-        rod.x2 = w;
-        rod.y2 = h;
-        
-        rodSet = true;
-    } else if (boundingBox_i == 4) {
-      // project
-        OfxPointD extent = getProjectExtent();
-        OfxPointD offset = getProjectOffset();
-        rod.x1 = offset.x;
-        rod.y1 = offset.y;
-        rod.x2 = extent.x;
-        rod.y2 = extent.y;
-        rodSet =true;
-    } else {
-        int inputIndex = boundingBox_i - 2;
-        assert(inputIndex >= 0 && inputIndex < kSourceClipCount);
-        rod = _srcClip[inputIndex]->getRegionOfDefinition(args.time);
-        rodSet = true;
+        case eRegionOfDefinitionOptionIntersection: {
+            //intersection of inputs
+            bool rodSet = false;
+            for (int i = 0; i < kSourceClipCount; ++i) {
+                if (_srcClip[i]->isConnected()) {
+                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
+                    if (rodSet) {
+                        OFX::Coords::rectIntersection<OfxRectD>(srcRod, rod, &rod);
+                    } else {
+                        rod = srcRod;
+                    }
+                    rodSet = true;
+                }
+            }
+            break;
+        }
+        case eRegionOfDefinitionOptionSize: {
+            // custom size
+            _size->getValue(rod.x2, rod.y2);
+            _btmLeft->getValue(rod.x1, rod.y1);
+            rod.x2 += rod.x1;
+            rod.y2 += rod.y1;
+
+            rodSet = true;
+            break;
+        }
+        case eRegionOfDefinitionOptionFormat: {
+            // format
+
+            int format_i;
+            _format->getValue(format_i);
+            double par;
+            size_t w,h;
+            getFormatResolution( (OFX::EParamFormat)format_i, &w, &h, &par );
+            rod.x1 = rod.y1 = 0;
+            rod.x2 = w;
+            rod.y2 = h;
+
+            rodSet = true;
+            break;
+        }
+        case eRegionOfDefinitionOptionProject: {
+            // project
+            OfxPointD size = getProjectSize();
+            OfxPointD offset = getProjectOffset();
+            rod.x1 = offset.x;
+            rod.y1 = offset.y;
+            rod.x2 = offset.x + size.x;
+            rod.y2 = offset.y + size.y;
+            rodSet =true;
+            break;
+        }
+        default: {
+            int inputIndex = boundingBox_i - (int)eRegionOfDefinitionOptionCustom;
+            assert(inputIndex >= 0 && inputIndex < kSourceClipCount);
+            rod = _srcClip[inputIndex]->getRegionOfDefinition(args.time);
+            rodSet = true;
+            break;
+        }
     }
-    
     if (!rodSet) {
-        OfxPointD extent = getProjectExtent();
+        OfxPointD size = getProjectSize();
         OfxPointD offset = getProjectOffset();
         rod.x1 = offset.x;
         rod.y1 = offset.y;
-        rod.x2 = extent.x;
-        rod.y2 = extent.y;
+        rod.x2 = offset.x + size.x;
+        rod.y2 = offset.y + size.y;
     }
     return true;
 }
@@ -2292,14 +2334,14 @@ private:
     virtual bool allowCenterInteraction() const OVERRIDE FINAL;
     
     OFX::ChoiceParam* _boundingBox;
-    int _bboxType;
+    RegionOfDefinitionEnum _bboxType;
 };
 
 SeExprInteract::SeExprInteract(OfxInteractHandle handle,
                                      OFX::ImageEffect* effect)
 : RectangleInteract(handle,effect)
 , _boundingBox(0)
-, _bboxType(0)
+, _bboxType(eRegionOfDefinitionOptionUnion)
 {
     _boundingBox = effect->fetchChoiceParam(kParamRegionOfDefinition);
     assert(_boundingBox);
@@ -2309,46 +2351,46 @@ void SeExprInteract::aboutToCheckInteractivity(OfxTime /*time*/)
 {
     int type_i;
     _boundingBox->getValue(type_i);
-    _bboxType = type_i;
+    _bboxType = (RegionOfDefinitionEnum)type_i;
 }
 
 bool SeExprInteract::allowTopLeftInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowBtmRightInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowBtmLeftInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowBtmMidInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowMidLeftInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowCenterInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool
 SeExprInteract::draw(const OFX::DrawArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2358,10 +2400,10 @@ SeExprInteract::draw(const OFX::DrawArgs &args)
 bool
 SeExprInteract::penMotion(const OFX::PenArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2371,10 +2413,10 @@ SeExprInteract::penMotion(const OFX::PenArgs &args)
 bool
 SeExprInteract::penDown(const OFX::PenArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2384,10 +2426,10 @@ SeExprInteract::penDown(const OFX::PenArgs &args)
 bool
 SeExprInteract::penUp(const OFX::PenArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2405,10 +2447,10 @@ SeExprInteract::loseFocus(const OFX::FocusArgs &args)
 bool
 SeExprInteract::keyDown(const OFX::KeyArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2418,10 +2460,10 @@ SeExprInteract::keyDown(const OFX::KeyArgs &args)
 bool
 SeExprInteract::keyUp(const OFX::KeyArgs & args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2542,13 +2584,19 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setLabel(kParamRegionOfDefinitionLabel);
         param->setHint(kParamRegionOfDefinitionHint);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        
+
+        assert(param->getNOptions() == eRegionOfDefinitionOptionUnion);
         param->appendOption(kParamRegionOfDefinitionOptionUnion, kParamRegionOfDefinitionOptionUnionHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionIntersection);
         param->appendOption(kParamRegionOfDefinitionOptionIntersection, kParamRegionOfDefinitionOptionIntersectionHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionSize);
         param->appendOption(kParamRegionOfDefinitionOptionSize, kParamRegionOfDefinitionOptionSizeHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionFormat);
         param->appendOption(kParamRegionOfDefinitionOptionFormat, kParamRegionOfDefinitionOptionFormatHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionProject);
         param->appendOption(kParamRegionOfDefinitionOptionProject, kParamRegionOfDefinitionOptionProjectHelp);
 
+        assert(param->getNOptions() == eRegionOfDefinitionOptionCustom);
         for (int i = 0; i < kSourceClipCount; ++i) {
             snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput, i+1);
             snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp, i+1);
@@ -2564,9 +2612,11 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputComponents);
         param->setLabel(kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
-        
+        assert(param->getNOptions() == eOutputComponentsRGB);
         param->appendOption(kParamOutputComponentsRGB);
+        assert(param->getNOptions() == eOutputComponentsRGBA);
         param->appendOption(kParamOutputComponentsRGBA);
+        assert(param->getNOptions() == eOutputComponentsAlpha);
         param->appendOption(kParamOutputComponentsAlpha);
         param->setAnimates(false);
         param->setDefault(0);
