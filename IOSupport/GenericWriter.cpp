@@ -586,12 +586,12 @@ GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
         // use the default RoD
         rod = _inputClip->getRegionOfDefinition(time);
     } else if (formatType == 1) {
-        OfxPointD extent = getProjectExtent();
+        OfxPointD size = getProjectSize();
         OfxPointD offset = getProjectOffset();
         rod.x1 = offset.x;
         rod.y1 = offset.y;
-        rod.x2 = extent.x;
-        rod.y2 = extent.y;
+        rod.x2 = offset.x + size.x;
+        rod.y2 = offset.y + size.y;
     } else {
         int formatIndex;
         _outputFormat->getValueAtTime(time, formatIndex);
