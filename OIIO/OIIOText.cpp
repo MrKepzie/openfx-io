@@ -23,6 +23,8 @@
 
 #include "OIIOText.h"
 
+#ifdef DEBUG
+
 #include "ofxsMacros.h"
 
 GCC_DIAG_OFF(unused-parameter)
@@ -517,6 +519,8 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderThreadSafety(kRenderThreadSafety);
 
     desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
+
+    desc.setIsDeprecated(true); // this effect was superseeded by the text plugin in openfx-arena
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -610,6 +614,7 @@ ImageEffect* OIIOTextPluginFactory::createInstance(OfxImageEffectHandle handle, 
     return new OIIOTextPlugin(handle);
 }
 
+#endif // DEBUG
 
 void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
 {
