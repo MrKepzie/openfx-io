@@ -498,6 +498,9 @@ struct PositionInteractParam {
 /** @brief The basic describe function, passed a plugin descriptor */
 void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
+    //No longer useful since we have a better text plug-in in openfx-arena
+    desc.setIsDeprecated(true);
+    
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
@@ -517,7 +520,7 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setSupportsTiles(kSupportsTiles); // may be switched to true later?
     desc.setSupportsMultiResolution(kSupportsMultiResolution); // may be switch to true later? don't forget to reduce font size too
     desc.setRenderThreadSafety(kRenderThreadSafety);
-
+    
     desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
 
     desc.setIsDeprecated(true); // this effect was superseeded by the text plugin in openfx-arena
