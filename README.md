@@ -35,6 +35,37 @@ In order to get a specific tag, corresponding to a source release, do `git tag -
 to get the list of tags, and then `git checkout tags/<tag_name>`
 to checkout a given tag.
 
+## Compiling (Unix/Linux/FreeBSD/OS X, using Makefiles)
+
+On Unix-like systems, the plugins can be compiled by typing in a
+terminal:
+- `make [options]` to compile as a single combined plugin (see below
+  for valid options).
+- `make nomulti [options]` to compile as separate plugins (useful if
+only a few plugins are is needed, for example). `make` can also be
+executed in any plugin's directory.
+
+The most common options are `CONFIG=release` to compile a release
+version, `CONFIG=debug` to compile a debug version. Or
+`CONFIG=relwithdebinfo` to compile an optimized version with debugging
+symbols.
+
+Another common option is `BITS=32`for compiling a 32-bits version,
+`BITS=64` for a 64-bits version, and `BITS=Universal` for a universal
+binary (OS X only).
+
+See the file `Makefile.master`in the toplevel directory for other useful
+flags/variables.
+
+The compiled plugins are placed in subdirectories named after the
+configuration, for example Linux-64-realease for a 64-bits Linux
+compilation. In each of these directories, a `*.bundle` directory is
+created, which has to be moved to the proper place
+(`/usr/OFX/Plugins`on Linux, or `/Library/OFX/Plugins`on OS X), using
+a command like the following, with the *same* options used for
+compiling:
+
+	sudo make install [options]
 
 ## Compiling on Ubuntu 12.04 LTS
 
