@@ -23,8 +23,6 @@
 
 #include "OIIOText.h"
 
-//#ifdef DEBUG
-
 #include "ofxsMacros.h"
 
 GCC_DIAG_OFF(unused-parameter)
@@ -614,7 +612,6 @@ ImageEffect* OIIOTextPluginFactory::createInstance(OfxImageEffectHandle handle, 
     return new OIIOTextPlugin(handle);
 }
 
-//#endif // DEBUG
 
 void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
 {
