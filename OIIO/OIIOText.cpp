@@ -23,7 +23,7 @@
 
 #include "OIIOText.h"
 
-#ifdef DEBUG
+//#ifdef DEBUG
 
 #include "ofxsMacros.h"
 
@@ -614,7 +614,7 @@ ImageEffect* OIIOTextPluginFactory::createInstance(OfxImageEffectHandle handle, 
     return new OIIOTextPlugin(handle);
 }
 
-#endif // DEBUG
+//#endif // DEBUG
 
 void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
 {
