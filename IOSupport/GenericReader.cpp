@@ -1985,6 +1985,7 @@ GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
         // not found, set the first supported component
         i = 0;
     }
+    assert(i < _outputComponents->getNOptions());
     _outputComponents->setValue(i);
 }
 
