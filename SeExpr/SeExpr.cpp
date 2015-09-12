@@ -29,6 +29,7 @@
 #include <set>
 
 #ifdef __MINGW32__
+#define SEEXPR_NO_SNPRINTF
 #include <sstream>
 #else
 #include <stdio.h> // for snprintf & _snprintf
@@ -476,7 +477,7 @@ private:
             SeVec3d val;
             node->child(i)->eval(val);
             if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
 				std::stringstream ss;
 				ss << "Argument " << i + 1 << " should be an integer.";  
 				node->addError(ss.str().c_str());
@@ -936,7 +937,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
     
     for (int i = 0; i < kSourceClipCount; ++i) {
 	    _inputWidths[i] = new SimpleScalar;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kSeExprInputWidthVarName << i + 1;
@@ -952,7 +953,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         }
 		_inputHeights[i] = new SimpleScalar;
 
- #ifdef __MINGW32__
+ #ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kSeExprInputHeightVarName << i + 1;
@@ -968,7 +969,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         }
          _inputColors[i] = new SimpleVec;
 
- #ifdef __MINGW32__
+ #ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kSeExprColorVarName << i + 1;
@@ -986,7 +987,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         
 		_inputAlphas[i] = new SimpleScalar;
 		
- #ifdef __MINGW32__
+ #ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kSeExprAlphaVarName << i + 1;
@@ -1014,7 +1015,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
         _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
 		
- #ifdef __MINGW32__
+ #ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kParamDouble << i + 1;
@@ -1025,7 +1026,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _variables.insert(std::make_pair(std::string(name), _doubleRef[i]));
 #endif
         
- #ifdef __MINGW32__
+ #ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kParamDouble2D << i + 1;
@@ -1037,7 +1038,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 #endif
 		
         
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
 		{
 			std::stringstream ss;
 			ss << kParamColor << i + 1;
@@ -1129,7 +1130,7 @@ StubGetPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
         node->child(i)->eval(val);
         if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
 		
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
 		std::stringstream ss;
 		ss << "Argument " << i + 1 << " should be an integer.";;
 	    node->addError(ss.str());
@@ -1429,7 +1430,7 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
 			
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
 			  std::stringstream ss;
 		  	  ss  << i + 1;
 			  _srcClip[i] = fetchClip(ss.str());
@@ -1455,11 +1456,11 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
-                ss  << i + 1;
-                _srcClip[i] = fetchClip(ss.str());
+                ss << kParamLayerInput << i + 1;
+                _clipLayerToFetch[i] = fetchChoiceParam(ss.str());
             }
 #else
             snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
@@ -1470,33 +1471,33 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
             _clipLayerToFetch[i] = 0;
         }
         
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
         {
             std::stringstream ss;
             ss  << kParamDouble << i + 1;
-            _srcClip[i] = fetchClip(ss.str());
+            _doubleParams[i] = fetchDoubleParam(ss.str());
         }
 #else
         snprintf(name, sizeof(name), kParamDouble "%d", i+1 );
         _doubleParams[i] = fetchDoubleParam(name);
 #endif
         
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
         {
             std::stringstream ss;
             ss  << kParamDouble2D << i + 1;
-            _srcClip[i] = fetchClip(ss.str());
+            _double2DParams[i] = fetchDouble2DParam(ss.str());
         }
 #else
         snprintf(name, sizeof(name), kParamDouble2D "%d", i+1 );
         _double2DParams[i] = fetchDouble2DParam(name);
 #endif
         
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
         {
             std::stringstream ss;
             ss  << kParamColor << i + 1;
-            _srcClip[i] = fetchClip(ss.str());
+            _colorParams[i] = fetchRGBParam(ss.str());
         }
 #else
         snprintf(name, sizeof(name), kParamColor "%d", i+1 );
@@ -1967,7 +1968,7 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
         std::string strName;
         for (int i = 0; i < kSourceClipCount; ++i) {
             
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
                 ss  << i + 1;
@@ -2672,7 +2673,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     for (int i = 0; i < kSourceClipCount; ++i) {
         
         std::string clipName;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
         {
             std::stringstream ss;
             ss  << i + 1;
@@ -2754,7 +2755,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         for (int i = 0; i < kSourceClipCount; ++i) {
             
             std::string strName,strHelp;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
                 ss << kParamRegionOfDefinitionOptionCustomInput << i + 1;
@@ -2919,7 +2920,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         for (int i = 0; i < kSourceClipCount; ++i) {
             
             std::string strName,strHelp,strLabel;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
                 ss << kParamLayerInput << i + 1;
@@ -2987,7 +2988,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         for (int i = 0; i < kSourceClipCount; ++i) {
             
             std::string strName,strHelp,strLabel;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
                 ss << kParamDouble << i + 1;
@@ -3056,7 +3057,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         for (int i = 0; i < kSourceClipCount; ++i) {
             
             std::string strName,strHelp,strLabel;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
                 ss << kParamDouble2D << i + 1;
@@ -3122,7 +3123,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         for (int i = 0; i < kSourceClipCount; ++i) {
             
             std::string strName,strHelp,strLabel;
-#ifdef __MINGW32__
+#ifdef SEEXPR_NO_SNPRINTF
             {
                 std::stringstream ss;
                 ss << kParamColor << i + 1;
