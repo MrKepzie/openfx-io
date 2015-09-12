@@ -147,8 +147,8 @@
 #define kParamRegionOfDefinitionOptionFormatHelp "The output region is the specified format."
 #define kParamRegionOfDefinitionOptionProject "Project"
 #define kParamRegionOfDefinitionOptionProjectHelp "The output region is the size of the project."
-#define kParamRegionOfDefinitionOptionCustomInput "Input%d"
-#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region is the region of definition of input %d."
+#define kParamRegionOfDefinitionOptionCustomInput "Input"
+#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region is the region of definition of input "
 enum RegionOfDefinitionEnum {
     eRegionOfDefinitionOptionUnion,
     eRegionOfDefinitionOptionIntersection,
@@ -170,33 +170,33 @@ enum RegionOfDefinitionEnum {
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
 
-#define kParamLayerInput "layerInput%d"
-#define kParamLayerInputLabel "Input Layer %d"
-#define kParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on input %d."
+#define kParamLayerInput "layerInput"
+#define kParamLayerInputLabel "Input Layer "
+#define kParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on input "
 
 #define kParamDoubleParamNumber "doubleParamsNb"
 #define kParamDoubleParamNumberLabel "No. of Scalar Params"
 #define kParamDoubleParamNumberHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
-#define kParamDouble "x%d"
-#define kParamDoubleLabel "x%d"
-#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, x%d"
+#define kParamDouble "x"
+#define kParamDoubleLabel "x"
+#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, x"
 
 #define kParamDouble2DParamNumber "double2DParamsNb"
 #define kParamDouble2DParamNumberLabel "No. of 2D Params"
 #define kParamDouble2DParamNumberHint "Use this to control how many 2D (position) parameters should be exposed to the SeExpr expression."
 
-#define kParamDouble2D "pos%d"
-#define kParamDouble2DLabel "pos%d"
-#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, pos%d"
+#define kParamDouble2D "pos"
+#define kParamDouble2DLabel "pos"
+#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, pos"
 
 #define kParamColorNumber "colorParamsNb"
 #define kParamColorNumberLabel "No. of Color Params"
 #define kParamColorNumberHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
-#define kParamColor "color%d"
-#define kParamColorLabel "color%d"
-#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color%d"
+#define kParamColor "color"
+#define kParamColorLabel "color"
+#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color"
 
 #define kParamScript "script"
 #define kParamScriptLabel "RGB Script"
@@ -1021,7 +1021,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 			_variables.insert(std::make_pair(ss.str(), _doubleRef[i]));
 		}
 #else
-       snprintf(name, sizeof(name), kParamDouble, i+1);
+       snprintf(name, sizeof(name), kParamDouble "%d", i+1);
         _variables.insert(std::make_pair(std::string(name), _doubleRef[i]));
 #endif
         
@@ -1032,7 +1032,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 			_variables.insert(std::make_pair(ss.str(), _double2DRef[i]));
 		}
 #else
-       snprintf(name, sizeof(name), kParamDouble2D, i+1);
+       snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
         _variables.insert(std::make_pair(std::string(name), _double2DRef[i]));
 #endif
 		
@@ -1044,7 +1044,7 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 			_variables.insert(std::make_pair(ss.str(), _colorRef[i]));
 		}
 #else
-       snprintf(name, sizeof(name), kParamColor, i+1);
+       snprintf(name, sizeof(name), kParamColor "%d", i+1);
         _variables.insert(std::make_pair(std::string(name), _colorRef[i]));
 #endif
         
@@ -1456,23 +1456,52 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
 #ifdef __MINGW32__
-			  std::stringstream ss;
-		  	  ss  << i + 1;
-			  _srcClip[i] = fetchClip(ss.str());
+            {
+                std::stringstream ss;
+                ss  << i + 1;
+                _srcClip[i] = fetchClip(ss.str());
+            }
 #else
-		    snprintf(name, sizeof(name), kParamLayerInput, i+1 );
+            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
 #endif
            
         } else {
             _clipLayerToFetch[i] = 0;
         }
-        snprintf(name, sizeof(name), kParamDouble, i+1 );
+        
+#ifdef __MINGW32__
+        {
+            std::stringstream ss;
+            ss  << kParamDouble << i + 1;
+            _srcClip[i] = fetchClip(ss.str());
+        }
+#else
+        snprintf(name, sizeof(name), kParamDouble "%d", i+1 );
         _doubleParams[i] = fetchDoubleParam(name);
-        snprintf(name, sizeof(name), kParamDouble2D, i+1 );
+#endif
+        
+#ifdef __MINGW32__
+        {
+            std::stringstream ss;
+            ss  << kParamDouble2D << i + 1;
+            _srcClip[i] = fetchClip(ss.str());
+        }
+#else
+        snprintf(name, sizeof(name), kParamDouble2D "%d", i+1 );
         _double2DParams[i] = fetchDouble2DParam(name);
-        snprintf(name, sizeof(name), kParamColor, i+1 );
+#endif
+        
+#ifdef __MINGW32__
+        {
+            std::stringstream ss;
+            ss  << kParamColor << i + 1;
+            _srcClip[i] = fetchClip(ss.str());
+        }
+#else
+        snprintf(name, sizeof(name), kParamColor "%d", i+1 );
         _colorParams[i] = fetchRGBParam(name);
+#endif
     }
     _rgbScript = fetchStringParam(kParamScript);
     assert(_rgbScript);
@@ -1935,10 +1964,23 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
         return;
     }
     if (args.reason == OFX::eChangeUserEdit) {
-        char name[256];
+        std::string strName;
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), "%d", i+1);
-            if (name == clipName) {
+            
+#ifdef __MINGW32__
+            {
+                std::stringstream ss;
+                ss  << i + 1;
+                strName = ss.str();
+            }
+#else
+            {
+                char name[256];
+                snprintf(name, sizeof(name), "%d", i+1);
+                strName.append(name);
+            }
+#endif
+            if (strName == clipName) {
                 assert(_srcClip[i]);
                 _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
             }
@@ -2625,17 +2667,29 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
     }
 
-    char name[256];
-    char help[256];
     // Source clip only in the filter context
     // create the mandated source clip
     for (int i = 0; i < kSourceClipCount; ++i) {
-        snprintf(name, sizeof(name), "%d", i+1);
+        
+        std::string clipName;
+#ifdef __MINGW32__
+        {
+            std::stringstream ss;
+            ss  << i + 1;
+            clipName = ss.str();
+        }
+#else
+        {
+            char name[256];
+            snprintf(name, sizeof(name), "%d", i+1);
+            clipName.append(name);
+        }
+#endif
         ClipDescriptor *srcClip;
         if (i == 0 && context == eContextFilter) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
         } else {
-            srcClip = desc.defineClip(name);
+            srcClip = desc.defineClip(clipName);
         }
         if (gHostSupportsRGBA) {
             srcClip->addSupportedComponent(ePixelComponentRGBA);
@@ -2698,9 +2752,31 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
 
         assert(param->getNOptions() == eRegionOfDefinitionOptionCustom);
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput, i+1);
-            snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp, i+1);
-            param->appendOption(name, help);
+            
+            std::string strName,strHelp;
+#ifdef __MINGW32__
+            {
+                std::stringstream ss;
+                ss << kParamRegionOfDefinitionOptionCustomInput << i + 1;
+                strName = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamRegionOfDefinitionOptionCustomInputHelp << i + 1;
+                strHelp = ss.str();
+            }
+#else
+            {
+                char name[256];
+                snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput "%d", i+1);
+                strName.append(name);
+                
+                snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInputHelp "%d", i+1);
+                strHelp.append(name);
+
+            }
+#endif
+            param->appendOption(strName, strHelp);
         }
         param->setAnimates(false);
         if (page) {
@@ -2841,12 +2917,42 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
 
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamLayerInput, i+1);
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
-            snprintf(name, sizeof(name), kParamLayerInputLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamLayerInputHint, i+1);
-            param->setHint(name);
+            
+            std::string strName,strHelp,strLabel;
+#ifdef __MINGW32__
+            {
+                std::stringstream ss;
+                ss << kParamLayerInput << i + 1;
+                strName = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamLayerInputLabel << i + 1;
+                strLabel = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamLayerInputHint << i + 1;
+                strHelp = ss.str();
+            }
+#else
+            {
+                char name[256];
+                snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
+                strName.append(name);
+                
+                snprintf(name, sizeof(name), kParamLayerInputHint "%d", i+1);
+                strHelp.append(name);
+                
+                snprintf(name, sizeof(name), kParamLayerInputLabel "%d", i+1);
+                strLabel.append(name);
+                
+            }
+#endif
+
+            ChoiceParamDescriptor *param = desc.defineChoiceParam(strName);
+            param->setLabel(strLabel);
+            param->setHint(strHelp);
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
             //param->setIsSecret(true); // done in the plugin constructor
@@ -2879,12 +2985,42 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamDouble, i+1);
-            DoubleParamDescriptor *param = desc.defineDoubleParam(name);
-            snprintf(name, sizeof(name), kParamDoubleLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamDoubleHint, i+1);
-            param->setHint(name);
+            
+            std::string strName,strHelp,strLabel;
+#ifdef __MINGW32__
+            {
+                std::stringstream ss;
+                ss << kParamDouble << i + 1;
+                strName = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamDoubleLabel << i + 1;
+                strLabel = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamDoubleHint << i + 1;
+                strHelp = ss.str();
+            }
+#else
+            {
+                char name[256];
+                snprintf(name, sizeof(name), kParamDouble "%d", i+1);
+                strName.append(name);
+                
+                snprintf(name, sizeof(name), kParamDoubleHint "%d", i+1);
+                strHelp.append(name);
+                
+                snprintf(name, sizeof(name), kParamDoubleLabel "%d", i+1);
+                strLabel.append(name);
+                
+            }
+#endif
+
+            DoubleParamDescriptor *param = desc.defineDoubleParam(strName);
+            param->setLabel(strLabel);
+            param->setHint(strHelp);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDisplayRange(-1000.,1000.);
@@ -2918,12 +3054,41 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamDouble2D, i+1);
-            Double2DParamDescriptor *param = desc.defineDouble2DParam(name);
-            snprintf(name, sizeof(name), kParamDouble2DLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamDouble2DHint, i+1);
-            param->setHint(name);
+            
+            std::string strName,strHelp,strLabel;
+#ifdef __MINGW32__
+            {
+                std::stringstream ss;
+                ss << kParamDouble2D << i + 1;
+                strName = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamDouble2DLabel << i + 1;
+                strLabel = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamDouble2DHint << i + 1;
+                strHelp = ss.str();
+            }
+#else
+            {
+                char name[256];
+                snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
+                strName.append(name);
+                
+                snprintf(name, sizeof(name), kParamDouble2DHint "%d", i+1);
+                strHelp.append(name);
+                
+                snprintf(name, sizeof(name), kParamDouble2DLabel "%d", i+1);
+                strLabel.append(name);
+                
+            }
+#endif
+            Double2DParamDescriptor *param = desc.defineDouble2DParam(strName);
+            param->setLabel(strLabel);
+            param->setHint(strHelp);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
@@ -2955,12 +3120,41 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamColor, i+1);
-            RGBParamDescriptor *param = desc.defineRGBParam(name);
-            snprintf(name, sizeof(name), kParamColorLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamColorHint, i+1);
-            param->setHint(name);
+            
+            std::string strName,strHelp,strLabel;
+#ifdef __MINGW32__
+            {
+                std::stringstream ss;
+                ss << kParamColor << i + 1;
+                strName = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamColorLabel << i + 1;
+                strLabel = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << kParamColorHint << i + 1;
+                strHelp = ss.str();
+            }
+#else
+            {
+                char name[256];
+                snprintf(name, sizeof(name), kParamColor "%d", i+1);
+                strName.append(name);
+                
+                snprintf(name, sizeof(name), kParamColorHint "%d", i+1);
+                strHelp.append(name);
+                
+                snprintf(name, sizeof(name), kParamColorLabel "%d", i+1);
+                strLabel.append(name);
+                
+            }
+#endif
+            RGBParamDescriptor *param = desc.defineRGBParam(strName);
+            param->setLabel(strLabel);
+            param->setHint(strHelp);
             param->setAnimates(true);
             param->setParent(*group);
             //param->setIsSecret(true); // done in the plugin constructor
