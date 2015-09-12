@@ -27,10 +27,15 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+
+#ifdef __MINGW32__
+#include <sstream>
+#else
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
 #include <windows.h>
 #define snprintf _snprintf
+#endif
 #endif
 
 #include "ofxsMacros.h"
@@ -471,9 +476,15 @@ private:
             SeVec3d val;
             node->child(i)->eval(val);
             if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
+#ifdef __MINGW32__
+				std::stringstream ss;
+				ss << "Argument " << i + 1 << " should be an integer.";  
+				node->addError(ss.str().c_str());
+#else			
                 char name[256];
                 snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
                 node->addError(name);
+#endif
                 return false;
             }
 
@@ -924,32 +935,69 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
     _variables.insert(std::make_pair(std::string(kSeExprOutputHeightVarName), _outputHeight));
     
     for (int i = 0; i < kSourceClipCount; ++i) {
+	    _inputWidths[i] = new SimpleScalar;
+#ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kSeExprInputWidthVarName << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _inputWidths[i]));
+		}
+#else
         snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
-        _inputWidths[i] = new SimpleScalar;
-        _variables.insert(std::make_pair(std::string(name), _inputWidths[i]));
+		_variables.insert(std::make_pair(std::string(name), _inputWidths[i]));
+#endif
+        
         if (i == 0) {
             _variables.insert(std::make_pair(std::string(kSeExprInputWidthVarName), _inputWidths[i]));
         }
-        
+		_inputHeights[i] = new SimpleScalar;
+
+ #ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kSeExprInputHeightVarName << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _inputHeights[i]));
+		}
+#else
         snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
-        _inputHeights[i] = new SimpleScalar;
-        _variables.insert(std::make_pair(std::string(name), _inputHeights[i]));
+		_variables.insert(std::make_pair(std::string(name), _inputHeights[i]));
+#endif
         
         if (i == 0) {
             _variables.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputHeights[i]));
         }
-        
+         _inputColors[i] = new SimpleVec;
+
+ #ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kSeExprColorVarName << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _inputColors[i]));
+		}
+#else
         snprintf(name, sizeof(name), kSeExprColorVarName "%d", i+1);
-        _inputColors[i] = new SimpleVec;
         _variables.insert(std::make_pair(std::string(name), _inputColors[i]));
+#endif
+        
         
         if (i == 0) {
             _variables.insert(std::make_pair(std::string(kSeExprColorVarName), _inputColors[i]));
         }
         
+		_inputAlphas[i] = new SimpleScalar;
+		
+ #ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kSeExprAlphaVarName << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _inputAlphas[i]));
+		}
+#else
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
-        _inputAlphas[i] = new SimpleScalar;
         _variables.insert(std::make_pair(std::string(name), _inputAlphas[i]));
+#endif
+		
+       
         
         if (i == 0) {
             _variables.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputAlphas[i]));
@@ -965,12 +1013,41 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _doubleRef[i] = new DoubleParamVarRef(doubleParams[i]);
         _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
         _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
-        snprintf(name, sizeof(name), kParamDouble, i+1);
+		
+ #ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kParamDouble << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _doubleRef[i]));
+		}
+#else
+       snprintf(name, sizeof(name), kParamDouble, i+1);
         _variables.insert(std::make_pair(std::string(name), _doubleRef[i]));
-        snprintf(name, sizeof(name), kParamDouble2D, i+1);
+#endif
+        
+ #ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kParamDouble2D << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _double2DRef[i]));
+		}
+#else
+       snprintf(name, sizeof(name), kParamDouble2D, i+1);
         _variables.insert(std::make_pair(std::string(name), _double2DRef[i]));
-        snprintf(name, sizeof(name), kParamColor, i+1);
+#endif
+		
+        
+#ifdef __MINGW32__
+		{
+			std::stringstream ss;
+			ss << kParamColor << i + 1;
+			_variables.insert(std::make_pair(ss.str(), _colorRef[i]));
+		}
+#else
+       snprintf(name, sizeof(name), kParamColor, i+1);
         _variables.insert(std::make_pair(std::string(name), _colorRef[i]));
+#endif
+        
     }
     
     
@@ -1051,9 +1128,16 @@ StubGetPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
         SeVec3d val;
         node->child(i)->eval(val);
         if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-            char name[256];
+		
+#ifdef __MINGW32__
+		std::stringstream ss;
+		ss << "Argument " << i + 1 << " should be an integer.";;
+	    node->addError(ss.str());
+#else
+			char name[256];
             snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
             node->addError(name);
+#endif
             return false;
         }
         
@@ -1344,8 +1428,16 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
             if (i == 0 && getContext() == OFX::eContextFilter) {
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
-                snprintf(name, sizeof(name), "%d", i+1);
-                _srcClip[i] = fetchClip(name);
+			
+#ifdef __MINGW32__
+			  std::stringstream ss;
+		  	  ss  << i + 1;
+			  _srcClip[i] = fetchClip(ss.str());
+#else
+			  snprintf(name, sizeof(name), "%d", i+1);
+			  _srcClip[i] = fetchClip(name);
+#endif
+                
             }
         }
     }
@@ -1363,8 +1455,15 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-            snprintf(name, sizeof(name), kParamLayerInput, i+1 );
+#ifdef __MINGW32__
+			  std::stringstream ss;
+		  	  ss  << i + 1;
+			  _srcClip[i] = fetchClip(ss.str());
+#else
+		    snprintf(name, sizeof(name), kParamLayerInput, i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
+#endif
+           
         } else {
             _clipLayerToFetch[i] = 0;
         }
