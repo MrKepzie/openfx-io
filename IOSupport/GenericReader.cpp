@@ -1751,7 +1751,9 @@ GenericReaderPlugin::inputFileChanged()
             } else if (components == OFX::ePixelComponentAlpha) {
                 premult = OFX::eImagePreMultiplied;
             }
-            setOutputComponents(components);
+            if (components != OFX::ePixelComponentNone) {
+                setOutputComponents(components);
+            }
             _premult->setValue((int)premult);
             
             bool customFps;
