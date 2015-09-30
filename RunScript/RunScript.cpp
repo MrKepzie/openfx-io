@@ -56,10 +56,10 @@
 "This is mostly useful to execute an external program on a set of input images files, which outputs image files.\n" \
 "Writers should be connected to each input, so that the image files are written before running the script, and the output of this node should be fed into one or more Readers, which read the images written by the script.\n" \
 "Sample node graph:\n" \
-"... <- WriteOIIO(scriptinput#####.png) <- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) <- ReadOIIO(scriptoutput#####.png) <- ...\n" \
+"... +- WriteOIIO(scriptinput#####.png) +- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) +- ReadOIIO(scriptoutput#####.png) +- ...\n" \
 "Keep in mind that the input and output files are never removed in the above graph.\n" \
 "The output of RunScript is a copy of its first input, so that it can be used to execute a script at some point, e.g. to cleanup temporary files, as in:\n" \
-"... <- WriteOIIO(scriptinput#####.png) <- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) <- ReadOIIO(scriptoutput#####.png) <- RunScript(deletes temporary files scriptinput#####.png and scriptoutput#####.png, optional) <- ...\n" \
+"... +- WriteOIIO(scriptinput#####.png) +- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) +- ReadOIIO(scriptoutput#####.png) +- RunScript(deletes temporary files scriptinput#####.png and scriptoutput#####.png, optional) +- ...\n" \
 "Each argument may be:\n" \
 "- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n" \
 "- A floating-point value (which can be linked to any plugin)\n" \
@@ -67,7 +67,7 @@
 "- A string\n" \
 "Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
 "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces).\n" \
-"This plugin uses pstream <http://pstreams.sourceforge.net>, which is distributed under the GNU LGPLv3.\n"
+"This plugin uses pstream (http://pstreams.sourceforge.net), which is distributed under the GNU LGPLv3.\n"
 
 #define kPluginIdentifier "fr.inria.openfx.RunScript"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.

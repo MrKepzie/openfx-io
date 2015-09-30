@@ -67,12 +67,12 @@
 "effects that need to be invariant to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
 "image is being rendered at half of its original size.\n\n " \
 "- frame: This is the current frame being rendered\n\n" \
-"- Each input has 2 variables named Cs<index> and As<index> which respectively references the color (RGB vector) " \
-"and the alpha (scalar) of the image originated from the input at the given index. For the first input, you do not need to add " \
+"- Each input has 2 variables named CsN and AsN which respectively references the color (RGB vector) " \
+"and the alpha (scalar) of the image originated from the input at the given index, e.g. Cs2 and As2 for input 2. For the first input, you do not need to add " \
 "the index after Cs and As. See usage example below.\n\n" \
 "- output_width: This is the width of the output image being rendered. This is useful to normalize x coordinates into the range [0,1]\n\n" \
 "- output_height: This is the height of the output image being rendered. This is useful to normalize y coordinates into the range [0,1]\n\n" \
-"- Each input has a variable named input_width<index> and input_height<index> indicating respectively the width and height of the input. " \
+"- Each input has a variable named input_widthN and input_heightN indicating respectively the width and height of input N, e.g. input_width2 and input_height2 for input 2. " \
 "For the first input you do not need to add the index after input_width and input_height." \
 "For example, the input 2 will have the variables input_width2 and input_height2.\n\n" \
 "To fetch an arbitraty input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for " \
