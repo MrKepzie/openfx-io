@@ -161,6 +161,9 @@
 		1EB6CCF31993B98D000DDB1A /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
 		1ED1A80E18BB4FC200E095DD /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */; };
 		1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
+		1ED3A2611BBC30A3008128B1 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
+		1ED3A2621BBC30A5008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */; };
+		1ED3A2631BBC30AF008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */; };
 		1ED499A018A00B66008A2D91 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
 		1ED499A218A00B66008A2D91 /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1ED499A418A00B66008A2D91 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -387,6 +390,7 @@
 				1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */,
 				1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */,
 				AC0626691ABDC1D800B3D105 /* fr.inria.openfx.SeExpr.png in CopyFiles */,
+				1ED3A2631BBC30AF008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -396,6 +400,8 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
+				1ED3A2611BBC30A3008128B1 /* fr.inria.openfx.SeExpr.png in CopyFiles */,
+				1ED3A2621BBC30A5008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -519,6 +525,7 @@
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
 		1EC7C7F418BF4D4F002A246F /* fnPublicOfxExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fnPublicOfxExtensions.h; sourceTree = "<group>"; };
 		1EC7C7F618BF4D75002A246F /* ofxReadWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxReadWrite.h; sourceTree = "<group>"; };
+		1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.SeExpr.svg; sourceTree = "<group>"; };
 		1ED499CC18A00B66008A2D91 /* OCIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OCIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOColorSpace.cpp; sourceTree = "<group>"; };
 		1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -880,6 +887,7 @@
 				ACE0849A1AB4AB7E00BE558C /* Makefile */,
 				ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */,
 				AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */,
+				1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */,
 			);
 			path = SeExpr;
 			sourceTree = "<group>";
