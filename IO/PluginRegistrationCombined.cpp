@@ -51,9 +51,6 @@ namespace OFX
             getRunScriptPluginID(ids);
 #endif
 			getSeExprPluginID(ids);
-#ifdef DEBUG
-            //getReadRawPluginID(ids);
-#endif
         }
     }
 }
