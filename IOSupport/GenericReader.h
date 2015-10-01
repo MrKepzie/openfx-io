@@ -338,7 +338,9 @@ protected:
     OFX::BooleanParam* _customFPS;
     OFX::DoubleParam* _fps;
     
+#ifdef OFX_IO_USING_OCIO
     std::auto_ptr<GenericOCIO> _ocio;
+#endif
     
     std::string _oldFileName; //< used to determine if we need to call inputFileChanged or not
 

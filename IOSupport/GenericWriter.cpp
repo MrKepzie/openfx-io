@@ -953,6 +953,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         page->addChild(*param);
     }
 
+#ifdef OFX_IO_USING_OCIO
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault, kParamOutputSpaceLabel);
@@ -962,7 +963,8 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         pb->setHint(kOCIOHelpButtonHint);
         page->addChild(*pb);
     }
-
+#endif
+    
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamInputPremult);
         param->setLabel(kParamInputPremultLabel);

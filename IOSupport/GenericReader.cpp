@@ -46,7 +46,9 @@
 #include <ofxNatron.h>
 
 #include "SequenceParsing/SequenceParsing.h"
+#ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
+#endif
 #include "IOUtility.h"
 
 #define kPluginGrouping "Image/Readers"
@@ -264,7 +266,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _timeDomainUserSet(0)
 , _customFPS(0)
 , _fps(0)
+#ifdef OFX_IO_USING_OCIO
 , _ocio(new GenericOCIO(this))
+#endif
 , _sequenceFromFiles()
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
@@ -1497,7 +1501,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             isColor = channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B";
             isCustom = true;
             if (isColor) {
+#ifdef OFX_IO_USING_OCIO
                 isOCIOIdentity = _ocio->isIdentity(args.time);
+#else
+                isOCIOIdentity = true;
+#endif
             } else {
                 isOCIOIdentity = true;
                 premult = OFX::eImageUnPreMultiplied;
@@ -1516,7 +1524,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         } else {
             isColor = true;
             isCustom = false;
+#ifdef OFX_IO_USING_OCIO
             isOCIOIdentity = _ocio->isIdentity(args.time);
+#else
+            isOCIOIdentity = true;
+#endif
             remappedComponents = it->comps;
         }
         
@@ -1594,8 +1606,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
+#ifdef OFX_IO_USING_OCIO
                 DBG(std::printf("OCIO (tmp in-place)\n"));
                 _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, tmpRowBytes);
+#endif
             }
             
             if (kSupportsRenderScale && downscaleLevels > 0) {
@@ -1965,7 +1979,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         }
         
     } else {
+#ifdef OFX_IO_USING_OCIO
         _ocio->changedParam(args, paramName);
+#endif
     }
 }
 
@@ -2092,7 +2108,9 @@ void
 GenericReaderPlugin::purgeCaches()
 {
     clearAnyCache();
+#ifdef OFX_IO_USING_OCIO
     _ocio->purgeCaches();
+#endif
 }
 
 bool
@@ -2617,6 +2635,7 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
                                   const char* inputSpaceNameDefault,
                                   const char* outputSpaceNameDefault)
 {
+#ifdef OFX_IO_USING_OCIO
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault, kParamInputSpaceLabel);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault);
@@ -2626,6 +2645,7 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
         pb->setHint(kOCIOHelpButtonHint);
         page->addChild(*pb);
     }
+#endif
 }
 
 
