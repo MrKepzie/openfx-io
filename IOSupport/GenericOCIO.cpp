@@ -282,13 +282,18 @@ GenericOCIO::loadConfig()
 bool
 GenericOCIO::configIsDefault()
 {
+#ifdef OFX_IO_USING_OCIO
     std::string filename;
     _ocioConfigFile->getValue(filename);
     std::string defaultFilename;
     _ocioConfigFile->getDefault(defaultFilename);
     return (filename == defaultFilename);
+#else
+    return true;
+#endif
 }
 
+#ifdef OFX_IO_USING_OCIO
 OCIO::ConstContextRcPtr
 GenericOCIO::getLocalContext(double time)
 {
@@ -353,6 +358,7 @@ GenericOCIO::getLocalContext(double time)
     }
     return context;
 }
+#endif
 
 bool
 GenericOCIO::isIdentity(double time)

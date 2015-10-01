@@ -90,8 +90,10 @@ public:
     bool hasColorspace(const char* name) const;
     void setInputColorspace(const char* name);
     void setOutputColorspace(const char* name);
+#ifdef OFX_IO_USING_OCIO
     OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
     OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
+#endif
     bool configIsDefault();
 
     // Each of the following functions re-reads the OCIO config: Not optimal but more clear.
