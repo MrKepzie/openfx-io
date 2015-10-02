@@ -46,7 +46,9 @@
 #include <ofxNatron.h>
 
 #include "SequenceParsing/SequenceParsing.h"
+#ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
+#endif
 #include "IOUtility.h"
 
 #define kPluginGrouping "Image/Readers"
@@ -264,7 +266,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _timeDomainUserSet(0)
 , _customFPS(0)
 , _fps(0)
+#ifdef OFX_IO_USING_OCIO
 , _ocio(new GenericOCIO(this))
+#endif
 , _sequenceFromFiles()
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
@@ -1497,7 +1501,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             isColor = channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B";
             isCustom = true;
             if (isColor) {
+#ifdef OFX_IO_USING_OCIO
                 isOCIOIdentity = _ocio->isIdentity(args.time);
+#else
+                isOCIOIdentity = true;
+#endif
             } else {
                 isOCIOIdentity = true;
                 premult = OFX::eImageUnPreMultiplied;
@@ -1516,7 +1524,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         } else {
             isColor = true;
             isCustom = false;
+#ifdef OFX_IO_USING_OCIO
             isOCIOIdentity = _ocio->isIdentity(args.time);
+#else
+            isOCIOIdentity = true;
+#endif
             remappedComponents = it->comps;
         }
         
@@ -1594,8 +1606,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
+#ifdef OFX_IO_USING_OCIO
                 DBG(std::printf("OCIO (tmp in-place)\n"));
                 _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, tmpRowBytes);
+#endif
             }
             
             if (kSupportsRenderScale && downscaleLevels > 0) {
@@ -1751,7 +1765,9 @@ GenericReaderPlugin::inputFileChanged()
             } else if (components == OFX::ePixelComponentAlpha) {
                 premult = OFX::eImagePreMultiplied;
             }
-            setOutputComponents(components);
+            if (components != OFX::ePixelComponentNone) {
+                setOutputComponents(components);
+            }
             _premult->setValue((int)premult);
             
             bool customFps;
@@ -1963,7 +1979,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         }
         
     } else {
+#ifdef OFX_IO_USING_OCIO
         _ocio->changedParam(args, paramName);
+#endif
     }
 }
 
@@ -1985,6 +2003,7 @@ GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
         // not found, set the first supported component
         i = 0;
     }
+    assert(i < _outputComponents->getNOptions());
     _outputComponents->setValue(i);
 }
 
@@ -2010,9 +2029,10 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     }
     clipPreferences.setOutputFrameVarying(frameVarying); // true for readers and frame-varying generators/effects @see kOfxImageEffectFrameVarying
 
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB) {
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+    }
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
 
     // the output of the GenericReader plugin is *always* premultiplied (as long as only float is supported)
@@ -2088,7 +2108,9 @@ void
 GenericReaderPlugin::purgeCaches()
 {
     clearAnyCache();
+#ifdef OFX_IO_USING_OCIO
     _ocio->purgeCaches();
+#endif
 }
 
 bool
@@ -2288,7 +2310,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     //////////First-frame
@@ -2299,7 +2323,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0);
         param->setAnimates(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ///////////Before first
@@ -2319,7 +2345,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
         param->setAnimates(true);
         param->setDefault(eBeforeAfterHold);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //////////Last-frame
@@ -2330,7 +2358,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0);
         param->setAnimates(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////After first
@@ -2350,7 +2380,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
         param->setAnimates(true);
         param->setDefault(eBeforeAfterHold);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Missing frame choice
@@ -2370,7 +2402,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
         param->setAnimates(true);
         param->setDefault(eMissingError);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Frame-mode
@@ -2384,7 +2418,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setAnimates(false);
         param->setDefault(eFrameModeStartingTime);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Starting frame
@@ -2395,7 +2431,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0);
         param->setAnimates(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Time offset
@@ -2406,7 +2444,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0);
         param->setAnimates(false);
         //param->setIsSecret(true); // done in the plugin constructor
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     /////////// Secret param set to true if the time domain was edited by the user
@@ -2416,7 +2456,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setIsSecret(true); // always secret
         param->setDefault(false);
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Original frame range
@@ -2427,7 +2469,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setAnimates(true);
         param->setIsSecret(true); // always secret
         param->setIsPersistant(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //////////Input proxy file
@@ -2441,7 +2485,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamProxy);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////Proxy original scale
@@ -2454,7 +2500,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamOriginalProxyScaleHint);
         // param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////Proxy  scale threshold
@@ -2468,7 +2516,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamOriginalProxyScaleHint);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///Enable custom proxy scale
@@ -2480,7 +2530,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamCustomProxyScaleHint);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //// File premult
@@ -2499,7 +2551,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
             param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         }
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //// Output components
@@ -2535,7 +2589,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ///Frame rate
@@ -2550,7 +2606,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setEnabled(false);
         param->setDefault(24.);
         param->setDisplayRange(0.,300.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ///Custom FPS
@@ -2561,7 +2619,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     return page;
@@ -2575,6 +2635,7 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
                                   const char* inputSpaceNameDefault,
                                   const char* outputSpaceNameDefault)
 {
+#ifdef OFX_IO_USING_OCIO
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault, kParamInputSpaceLabel);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault);
@@ -2584,6 +2645,7 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
         pb->setHint(kOCIOHelpButtonHint);
         page->addChild(*pb);
     }
+#endif
 }
 
 

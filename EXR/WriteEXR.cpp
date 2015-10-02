@@ -280,6 +280,8 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(10);
 #endif
+
+    desc.setIsDeprecated(true); // This plugin was superseeded by WriteOIIO
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */

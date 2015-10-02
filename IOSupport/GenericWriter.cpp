@@ -586,12 +586,12 @@ GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
         // use the default RoD
         rod = _inputClip->getRegionOfDefinition(time);
     } else if (formatType == 1) {
-        OfxPointD extent = getProjectExtent();
+        OfxPointD size = getProjectSize();
         OfxPointD offset = getProjectOffset();
         rod.x1 = offset.x;
         rod.y1 = offset.y;
-        rod.x2 = extent.x;
-        rod.y2 = extent.y;
+        rod.x2 = offset.x + size.x;
+        rod.y2 = offset.y + size.y;
     } else {
         int formatIndex;
         _outputFormat->getValueAtTime(time, formatIndex);
@@ -953,6 +953,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         page->addChild(*param);
     }
 
+#ifdef OFX_IO_USING_OCIO
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault, kParamOutputSpaceLabel);
@@ -962,7 +963,8 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         pb->setHint(kOCIOHelpButtonHint);
         page->addChild(*pb);
     }
-
+#endif
+    
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamInputPremult);
         param->setLabel(kParamInputPremultLabel);

@@ -685,6 +685,8 @@ ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(10);
 #endif
+
+    desc.setIsDeprecated(true); // This plugin was superseeded by ReadOIIO
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */

@@ -268,6 +268,13 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     //Don't try to restore any state in here, do so in restoreState instead which is called
     //right away after the constructor.
     
+    
+    ///Set OIIO to use as many threads as there are cores
+    if (!attribute("threads", 0)) {
+#     ifdef DEBUG
+        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
+#     endif
+    }
 
 }
 
@@ -1753,11 +1760,6 @@ void ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, kSupportsTiles, kIsMultiPlanar);
 
-    if (!attribute("threads", 1)) {
-#     ifdef DEBUG
-        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
-#     endif
-    }
 
     std::string extensions_list;
     getattribute("extension_list", extensions_list);

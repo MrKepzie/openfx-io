@@ -1,8 +1,6 @@
 #include "ofxsImageEffect.h"
-#ifdef OFX_IO_USE_DEPRECATED_EXR
 #include "ReadEXR.h"
 #include "WriteEXR.h"
-#endif
 #include "ReadFFmpeg.h"
 #include "WriteFFmpeg.h"
 #include "ReadPFM.h"
@@ -31,11 +29,8 @@ namespace OFX
     {
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
-#ifdef OFX_IO_USE_DEPRECATED_EXR
-            // EXR plugins are deprecated and should be revised/rewritten
-            getReadEXRPluginID(ids);
-            getWriteEXRPluginID(ids);
-#endif
+            getReadEXRPluginID(ids);// EXR plugins are deprecated and should be revised/rewritten
+            getWriteEXRPluginID(ids);// EXR plugins are deprecated and should be revised/rewritten
             getReadFFmpegPluginID(ids);
             getWriteFFmpegPluginID(ids);
             getReadPFMPluginID(ids);
@@ -56,9 +51,6 @@ namespace OFX
             getRunScriptPluginID(ids);
 #endif
 			getSeExprPluginID(ids);
-#ifdef DEBUG
-            //getReadRawPluginID(ids);
-#endif
         }
     }
 }
