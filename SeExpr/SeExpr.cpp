@@ -111,17 +111,15 @@
 "Note that for expressions that span multiple lines, you must end each instruction by a semicolumn (';') as you would do in C/C++. The last line " \
 "of your expression will always be considered as the final value of the pixel and must not be terminated by a semicolumn.\n" \
 "More documentation is available on the SeExpr website: \n\n" \
-"Limitations:\n\n" \
-"In order to be efficient getPixel(inputNumber,frame,x,y) works only under certain circumstances:\n" \
-"- the inputNumber must be in the correct range\n" \
-"- frame must not depend on the color or alpha of a pixel, nor on the result of another call to getPixel\n" \
-"- A call to getPixel must not depend on the color or alpha of a pixel, e.g this is not correct:\n\n" \
+"The input frame range used to render a given output frame is computed automatically if the following conditions hold:\n"\
+"- The 'frame' parameter to cpixel/apixel must not depend on the color or alpha of a pixel, nor on the result of another call to cpixel/apixel\n" \
+"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, e.g. this is not correct:\n\n" \
 "if (As > 0.1) {\n" \
 "    src = getPixel(1,frame,x,y);\n" \
 "} else {\n" \
 "    src = [0,0,0];\n" \
 "}\n" \
-"but the coordinates of the accessed pixel may depend on color values.\n"
+"If one of these conditions does not hold, all frames from the specified input frame range are asked for.\n"
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
 #define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -224,6 +222,16 @@ enum RegionOfDefinitionEnum {
 #define kParamColor "color"
 #define kParamColorLabel "color"
 #define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color"
+
+#define kParamFrameRange "frameRange"
+#define kParamFrameRangeLabel "Input Frame Range"
+#define kParamFrameRangeHint "Default input frame range to fetch images from (may be relative or absolute, depending on the \"frameRangeAbsolute\" parameter). Only used if the frame range cannot be statically computed from the expression."
+#define kParamFrameRangeDefault 0,0
+
+#define kParamFrameRangeAbsolute "frameRangeAbsolute"
+#define kParamFrameRangeAbsoluteLabel "Absolute Frame Range"
+#define kParamFrameRangeAbsoluteHint "If checked, the frame range is relative to the current frame."
+#define kParamFrameRangeAbsoluteDefault false
 
 #define kParamScript "script"
 #define kParamScriptLabel "RGB Script"
@@ -331,7 +339,10 @@ private:
     
     OFX::IntParam *_colorParamCount;
     OFX::RGBParam* _colorParams[kParamsCount];
-    
+
+    OFX::Int2DParam *_frameRange;
+    OFX::BooleanParam *_frameRangeAbsolute;
+
     OFX::StringParam *_rgbScript;
     OFX::StringParam *_alphaScript;
     OFX::BooleanParam *_validate;
@@ -1520,6 +1531,11 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
         _colorParams[i] = fetchRGBParam(name);
 #endif
     }
+
+    _frameRange = fetchInt2DParam(kParamFrameRange);
+    _frameRangeAbsolute = fetchBooleanParam(kParamFrameRangeAbsolute);
+    assert(_frameRange && _frameRangeAbsolute);
+
     _rgbScript = fetchStringParam(kParamScript);
     assert(_rgbScript);
     _alphaScript = fetchStringParam(kParamAlphaScript);
@@ -2109,6 +2125,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
      srcCol = [0,0,0]
      }
      */
+    const double time = args.time;
     FramesNeeded framesNeeded;
     
     OFX::PixelComponentEnum outputComponents = getOutputComponents();
@@ -2116,7 +2133,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         std::string rgbScript;
         _rgbScript->getValue(rgbScript);
         
-        StubSeExpression expr(rgbScript,args.time);
+        StubSeExpression expr(rgbScript, time);
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2147,7 +2164,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         std::string alphaScript;
         _alphaScript->getValue(alphaScript);
         
-        StubSeExpression expr(alphaScript,args.time);
+        StubSeExpression expr(alphaScript, time);
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2174,25 +2191,32 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
             
         }
     }
-    
+
+    bool useDefaultRange[kSourceClipCount];
+    std::fill(useDefaultRange, useDefaultRange + kSourceClipCount, false);
     for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
-        
         assert(it->first >= 0  && it->first < kSourceClipCount);
-        OFX::Clip* clip = getClip(it->first);
-        assert(clip);
-        
-        bool hasFetchedCurrentTime = false;
         for (std::size_t i = 0; i < it->second.size(); ++i) {
-            
             if (it->second[i] != it->second[i]) {
                 //This number is NaN! The user probably used something dependant on a pixel value as a time for the getPixel function
-                setPersistentMessage(OFX::Message::eMessageError, "", "Invalid frame for getPixel, see the Limitations in the description.");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
+                // we fall back on using the default frame range
+                useDefaultRange[it->first] = true;
             }
-            
+        }
+    }
+
+    for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+        if (useDefaultRange[it->first]) {
+            continue;
+        }
+        OFX::Clip* clip = getClip(it->first);
+        assert(clip);
+
+        bool hasFetchedCurrentTime = false;
+        for (std::size_t i = 0; i < it->second.size(); ++i) {
+            assert (it->second[i] == it->second[i]);
             OfxRangeD range;
-            if (it->second[i] == args.time) {
+            if (it->second[i] == time) {
                 hasFetchedCurrentTime = true;
             }
             range.min = range.max = it->second[i];
@@ -2200,12 +2224,33 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         }
         if (!hasFetchedCurrentTime) {
             OfxRangeD range;
-            range.min = range.max = args.time;
+            range.min = range.max = time;
             frames.setFramesNeeded(*clip, range);
         }
-        
     }
 
+    // for clips that could not have their range computed from the expression,
+    // use the default range
+    OfxRangeD range;
+    int t1, t2;
+    _frameRange->getValueAtTime(time, t1, t2);
+    bool absolute;
+    _frameRangeAbsolute->getValueAtTime(time, absolute);
+    if (absolute) {
+        range.min = std::min(t1, t2);
+        range.max = std::max(t1, t2);
+    } else {
+        range.min = time + std::min(t1, t2);
+        range.max = time + std::max(t1, t2);
+    }
+
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        if (useDefaultRange[i]) {
+            OFX::Clip* clip = getClip(i);
+            assert(clip);
+            frames.setFramesNeeded(*clip, range);
+        }
+    }
 }
 
 // override the roi call
@@ -3160,6 +3205,25 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             if (page) {
                 page->addChild(*param);
             }
+        }
+    }
+    {
+        Int2DParamDescriptor *param = desc.defineInt2DParam(kParamFrameRange);
+        param->setDefault(kParamFrameRangeDefault);
+        param->setHint(kParamFrameRangeHint);
+        param->setLabel(kParamFrameRangeLabel);
+        param->setDimensionLabels("min", "max");
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        BooleanParamDescriptor *param = desc.defineBooleanParam(kParamFrameRangeAbsolute);
+        param->setDefault(kParamFrameRangeAbsoluteDefault);
+        param->setHint(kParamFrameRangeAbsoluteHint);
+        param->setLabel(kParamFrameRangeAbsoluteLabel);
+        if (page) {
+            page->addChild(*param);
         }
     }
 
