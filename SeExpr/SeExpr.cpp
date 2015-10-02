@@ -60,25 +60,25 @@
 "SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
 "Some extensions were added to the language for filtering and blending several input images. " \
 "The following pre-defined variables can be used in the script:\n\n" \
-"- $x: X coordinate (in pixel units) of the pixel to render.\n\n" \
-"- $y: Y coordinate (in pixel units) of the pixel to render.\n\n" \
-"- $u: X coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
-"- $v: Y coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
-"- $sx, $sy: Scale at which the image is being rendered. Depending on the zoom level " \
+"- x: X coordinate (in pixel units) of the pixel to render.\n\n" \
+"- y: Y coordinate (in pixel units) of the pixel to render.\n\n" \
+"- u: X coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
+"- v: Y coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
+"- sx, sy: Scale at which the image is being rendered. Depending on the zoom level " \
 "of the viewer, the image might be rendered at a lower scale than usual. This parameter is useful when producing spatial " \
 "effects that need to be invariant to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
 "image is being rendered at half of its original size.\n\n" \
-"- $par: The pixel aspect ratio.\n\n" \
-"- $cx, $cy: Shortcuts for ($x + 0.5)/$par/$sx and ($y + 0.5)/$sy, a.k.a. the canonical coordinates of the current pixel.\n\n" \
-"- $frame: Current frame being rendered\n\n" \
-"- $Cs, $As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
+"- par: The pixel aspect ratio.\n\n" \
+"- cx, cy: Shortcuts for (x + 0.5)/par/sx and (y + 0.5)/sy, a.k.a. the canonical coordinates of the current pixel.\n\n" \
+"- frame: Current frame being rendered\n\n" \
+"- Cs, $As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
 "- $CsN, $AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. $Cs2 and $As2 for input 2.\n\n" \
 "- $output_width: Width of the output image being rendered.\n\n" \
 "- $output_height: Height of the output image being rendered.\n\n" \
 "- $input_width, $input_height: Size of image from input 1, in pixels.\n\n" \
 "- $input_widthN, $input_heightN: Size of image from input N, e.g. $input_width2 and $input_height2 for input 2.\n\n" \
-"- getPixel(i,f,x,y): fetches an arbitraty input pixel from input i at the pixel position (x,y) in the image, at frame f. " \
-"Note that i starts from 1 and that x,y are integer pixel coordinates.\n\n" \
+"- float getPixel(int i, int f, int x, int y): fetches an arbitraty input pixel from input i at the pixel position (x,y) in the image, at frame f. " \
+"First input has index i=1.\n"\
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
 "$Cs * $Cs2\n\n" \
 "Another merge operator example (over):\n\n" \
@@ -107,7 +107,21 @@
 "    src = [0,0,0];\n" \
 "}\n" \
 "but the coordinates of the accessed pixel may depend on color values.\n"
-
+/*
+"- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"'interp' controls the interpolation filter, and can take one of the following values:\n"\
+"0: impulse - (nearest neighbor / box) Use original values\n"\
+"1: bilinear - (tent / triangle) Bilinear interpolation between original values\n"\
+"2: cubic - (cubic spline) Some smoothing\n"\
+"3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n"\
+"4: Simon - Some smoothing, plus medium sharpening (*)\n"\
+"5: Rifman - Some smoothing, plus significant sharpening (*)\n"\
+"6: Mitchell - Some smoothing, plus blurring to hide pixelation (*+)\n"\
+"7: Parzen - (cubic B-spline) Greatest smoothing of all filters (+)\n"\
+"8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
+"Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
+*/
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
 #define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -125,6 +139,8 @@
 #define kParamsCount 10
 
 #define kSeExprGetPixelFuncName "getPixel"
+#define kSeExprCPixelFuncName "cpixel"
+#define kSeExprAPixelFuncName "apixel"
 #define kSeExprCurrentTimeVarName "frame"
 #define kSeExprXCoordVarName "x"
 #define kSeExprYCoordVarName "y"
@@ -213,12 +229,20 @@ enum RegionOfDefinitionEnum {
 #define kParamScript "script"
 #define kParamScriptLabel "RGB Script"
 #define kParamScriptHint "Contents of the SeExpr expression. This expression should output the RGB components. See the description of the plug-in and " \
-"http://www.disneyanimation.com/technology/seexpr.html for documentation."
+"http://www.disneyanimation.com/technology/seexpr.html for documentation. On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
+
+#define kParamShowScript "showScript"
+#define kParamShowScriptLabel "Show RGB Script"
+#define kParamShowScriptHint "Show the contents of the RGB script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform vcariable or expression substitution on the RGB script parameter."
 
 #define kParamAlphaScript "alphaScript"
 #define kParamAlphaScriptLabel "Alpha Script"
 #define kParamAlphaScriptHint "Contents of the SeExpr expression. This expression should output the alpha component only. See the description of the plug-in and " \
-"http://www.disneyanimation.com/technology/seexpr.html for documentation."
+"http://www.disneyanimation.com/technology/seexpr.html for documentation. On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
+
+#define kParamShowAlphaScript "showAlphaScript"
+#define kParamShowAlphaScriptLabel "Show Alpha Script"
+#define kParamShowAlphaScriptHint "Show the contents of the Alpha script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform vcariable or expression substitution on the Alpha script parameter."
 
 #define kParamValidate                  "validate"
 #define kParamValidateLabel             "Validate"
@@ -439,6 +463,7 @@ public:
 };
 
 
+// implementation of the "getPixel" function
 template <typename PIX, int maxValue>
 static void getPixInternal(int nComps, const void* data, SeVec3d& result)
 {
@@ -568,6 +593,7 @@ private:
     }
     
 };
+
 
 class DoubleParamVarRef : public SeExprVarRef
 {
@@ -772,8 +798,8 @@ class StubSeExpression : public SeExpression
     
     
     mutable SimpleScalar _nanScalar,_zeroScalar;
-    mutable StubGetPixelFuncX _getPix;
-    mutable SeExprFunc _getPixFunction;
+    mutable StubGetPixelFuncX _getPixel;
+    mutable SeExprFunc _getPixelFunction;
     mutable SimpleScalar _currentTime;
 
     mutable FramesNeeded _images;
@@ -818,8 +844,8 @@ public:
 
 class OFXSeExpression : public SeExpression
 {
-    mutable GetPixelFuncX _getPix;
-    mutable SeExprFunc _getPixFunction;
+    mutable GetPixelFuncX _getPixel;
+    mutable SeExprFunc _getPixelFunction;
     OfxRectI _dstPixelRod;
     typedef std::map<std::string,SeExprVarRef*> VariablesMap;
     VariablesMap _variables;
@@ -896,8 +922,8 @@ public:
 OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::string& expr, OfxTime time,
                                  const OfxPointD& renderScale, double par, const OfxRectI& outputRod)
 : SeExpression(expr)
-, _getPix(processor)
-, _getPixFunction(_getPix, _getPix.numArgs(), _getPix.numArgs())
+, _getPixel(processor)
+, _getPixelFunction(_getPixel, _getPixel.numArgs(), _getPixel.numArgs())
 , _dstPixelRod(outputRod)
 , _variables()
 , _scalex()
@@ -1062,7 +1088,7 @@ SeExprFunc* OFXSeExpression::resolveFunc(const std::string& funcName) const
     }
     
     if (funcName == kSeExprGetPixelFuncName) {
-        return &_getPixFunction;
+        return &_getPixelFunction;
     }
     return 0;
 }
@@ -1136,8 +1162,8 @@ StubSeExpression::StubSeExpression(const std::string& expr, OfxTime time)
 : SeExpression(expr)
 , _nanScalar()
 , _zeroScalar()
-, _getPix(this)
-, _getPixFunction(_getPix, 4, 4)
+, _getPixel(this)
+, _getPixelFunction(_getPixel, 4, 4)
 , _currentTime()
 {
     _nanScalar._value = std::numeric_limits<double>::quiet_NaN();
@@ -1197,7 +1223,7 @@ StubSeExpression::resolveFunc(const std::string& funcName) const
         return 0;
     }
     if (funcName == kSeExprGetPixelFuncName) {
-        return &_getPixFunction;
+        return &_getPixelFunction;
     }
     return 0;
 }
@@ -1495,52 +1521,13 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     assert(_format && _btmLeft && _size && _interactive);
     
     // update visibility
-    int numVisible;
-    _doubleParamCount->getValue(numVisible);
-    assert(numVisible <= kParamsCount && numVisible >=0);
-    for (int i = 0; i < kParamsCount; ++i) {
-        bool visible = i < numVisible;
-        _doubleParams[i]->setIsSecret(!visible);
-    }
-    _double2DParamCount->getValue(numVisible);
-    assert(numVisible <= kParamsCount && numVisible >=0);
-    for (int i = 0; i < kParamsCount; ++i) {
-        bool visible = i < numVisible;
-        _double2DParams[i]->setIsSecret(!visible);
-    }
-    _colorParamCount->getValue(numVisible);
-    assert(numVisible <= kParamsCount && numVisible >=0);
-    for (int i = 0; i < kParamsCount; ++i) {
-        bool visible = i < numVisible;
-        _colorParams[i]->setIsSecret(!visible);
-    }
-
-    int boundingBox_i;
-    _boundingBox->getValue(boundingBox_i);
-    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
-    bool hasFormat = (boundingBox == eRegionOfDefinitionOptionFormat);
-    bool hasSize = (boundingBox == eRegionOfDefinitionOptionSize);
-    
-    _format->setEnabled(hasFormat);
-    _format->setIsSecret(!hasFormat);
-    _size->setEnabled(hasSize);
-    _size->setIsSecret(!hasSize);
-    _btmLeft->setEnabled(hasSize);
-    _btmLeft->setIsSecret(!hasSize);
-    _interactive->setEnabled(hasSize);
-    _interactive->setIsSecret(!hasSize);
-    
-    OFX::PixelComponentEnum outputComponents = getOutputComponents();
-    if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
-        _rgbScript->setIsSecret(false);
-    } else {
-        _rgbScript->setIsSecret(true);
-    }
-    if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
-        _alphaScript->setIsSecret(false);
-    } else {
-        _alphaScript->setIsSecret(true);
-    }
+    OFX::InstanceChangedArgs args = { OFX::eChangeUserEdit, 0, {1,1} };
+    changedParam(args, kParamDoubleParamNumber);
+    changedParam(args, kParamDouble2DParamNumber);
+    changedParam(args, kParamColorNumber);
+    changedParam(args, kParamValidate);
+    changedParam(args, kParamRegionOfDefinition);
+    changedParam(args, kParamOutputComponents);
 }
 
 std::string
@@ -1725,9 +1712,6 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
         return;
     }
     
-    OFX::BitDepthEnum       dstBitDepth    = _dstClip->getPixelDepth();
-    OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
-    
     if (!gHostIsNatron) {
         bool validated;
         _validate->getValue(validated);
@@ -1737,6 +1721,9 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
             return;
         }
     }
+
+    OFX::BitDepthEnum       dstBitDepth    = _dstClip->getPixelDepth();
+    OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
 
     assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentAlpha);
 
@@ -1816,16 +1803,16 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
 
 }
 
+
 void
 SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
 
-    if (paramName == kParamDoubleParamNumber) {
+    if (paramName == kParamDoubleParamNumber && args.reason == OFX::eChangeUserEdit) {
         int numVisible;
         _doubleParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1833,7 +1820,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _doubleParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kParamDouble2DParamNumber) {
+    } else if (paramName == kParamDouble2DParamNumber && args.reason == OFX::eChangeUserEdit) {
         int numVisible;
         _double2DParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1841,7 +1828,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _double2DParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kParamColorNumber) {
+    } else if (paramName == kParamColorNumber && args.reason == OFX::eChangeUserEdit) {
         int numVisible;
         _colorParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1849,7 +1836,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _colorParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kParamValidate) {
+    } else if (paramName == kParamValidate && args.reason == OFX::eChangeUserEdit) {
         if (!gHostIsNatron) {
             bool validated;
             _validate->getValue(validated);
@@ -1881,7 +1868,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _btmLeft->setIsSecret(!hasSize);
         _interactive->setEnabled(hasSize);
         _interactive->setIsSecret(!hasSize);
-    } else if (paramName == kParamOutputComponents) {
+    } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) {
         OFX::PixelComponentEnum outputComponents = getOutputComponents();
         if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
             _rgbScript->setIsSecret(false);
@@ -1893,8 +1880,15 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         } else {
             _alphaScript->setIsSecret(true);
         }
+    } else if (paramName == kParamShowScript && args.reason == OFX::eChangeUserEdit) {
+        std::string script;
+        _rgbScript->getValueAtTime(args.time, script);
+        sendMessage(OFX::Message::eMessageMessage, "", "RGB Script:\n" + script);
+    } else if (paramName == kParamShowAlphaScript && args.reason == OFX::eChangeUserEdit) {
+        std::string script;
+        _alphaScript->getValueAtTime(args.time, script);
+        sendMessage(OFX::Message::eMessageMessage, "", "Alpha Script:\n" + script);
     }
-
 }
 
 
@@ -1905,6 +1899,7 @@ SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
 {
     // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
     clearPersistentMessage();
+
 
     bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
     if (doMasking) {
@@ -1958,7 +1953,6 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
 void
 SeExprPlugin::buildChannelMenus()
 {
-    
     for (int i = 0; i < kSourceClipCount; ++i) {
         _clipLayerToFetch[i]->resetOptions();
         _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
@@ -2070,7 +2064,16 @@ SeExprPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX::C
 void
 SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::FramesNeededSetter &frames)
 {
-    
+    if (!gHostIsNatron) {
+        bool validated;
+        _validate->getValue(validated);
+        if (!validated) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+    }
+
     //To determine the frames needed of the expression, we just execute the expression for 1 pixel
     //and record what are the calls made to getPixel in order to figure out the Roi.
     //We trust that only evaluating the expression for 1 pixel will make all the calls to getPixel
@@ -2189,6 +2192,16 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
+    }
+
+    if (!gHostIsNatron) {
+        bool validated;
+        _validate->getValue(validated);
+        if (!validated) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
     }
 
     if (!kSupportsTiles) {
@@ -3137,7 +3150,15 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             page->addChild(*param);
         }
     }
-    
+    if (!gHostIsNatron) {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowScript);
+        param->setLabel(kParamShowScriptLabel);
+        param->setHint(kParamShowScriptHint);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamAlphaScript);
         param->setLabel(kParamAlphaScriptLabel);
@@ -3145,6 +3166,14 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault(kSeExprDefaultAlphaScript);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    if (!gHostIsNatron) {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowAlphaScript);
+        param->setLabel(kParamShowAlphaScriptLabel);
+        param->setHint(kParamShowAlphaScriptHint);
         if (page) {
             page->addChild(*param);
         }
