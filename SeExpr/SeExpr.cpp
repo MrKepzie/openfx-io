@@ -45,10 +45,12 @@
 #include "ofxsMultiThread.h"
 #include "ofxsFormatResolution.h"
 #include "ofxsRectangleInteract.h"
+#include "ofxsFilter.h"
 
 #include <SeExpression.h>
 #include <SeExprFunc.h>
 #include <SeExprNode.h>
+#include <SeExprBuiltins.h>
 #include <SeMutex.h>
 
 #define kPluginName "SeExpr"
@@ -77,8 +79,21 @@
 "- $output_height: Height of the output image being rendered.\n\n" \
 "- $input_width, $input_height: Size of image from input 1, in pixels.\n\n" \
 "- $input_widthN, $input_heightN: Size of image from input N, e.g. $input_width2 and $input_height2 for input 2.\n\n" \
-"- float getPixel(int i, int f, int x, int y): fetches an arbitraty input pixel from input i at the pixel position (x,y) in the image, at frame f. " \
+"- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"The pixel position of the center of the bottom-left pixel is (0., 0.).\n"\
 "First input has index i=1.\n"\
+"'interp' controls the interpolation filter, and can take one of the following values:\n"\
+"0: impulse - (nearest neighbor / box) Use original values\n"\
+"1: bilinear - (tent / triangle) Bilinear interpolation between original values\n"\
+"2: cubic - (cubic spline) Some smoothing\n"\
+"3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n"\
+"4: Simon - Some smoothing, plus medium sharpening (*)\n"\
+"5: Rifman - Some smoothing, plus significant sharpening (*)\n"\
+"6: Mitchell - Some smoothing, plus blurring to hide pixelation (*+)\n"\
+"7: Parzen - (cubic B-spline) Greatest smoothing of all filters (+)\n"\
+"8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
+"Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
 "$Cs * $Cs2\n\n" \
 "Another merge operator example (over):\n\n" \
@@ -86,9 +101,9 @@
 "Generating a time-varying colored Perlin noise with size $x1:\n" \
 "cnoise([$cx/$x1,$cy/$x1,$frame])\n\n" \
 "A more complex example used to average pixels over the previous, current and next frame:\n\n" \
-"$prev = getPixel(1,$frame - 1,x,y);\n" \
+"$prev = cpixel(1,$frame - 1,x,y);\n" \
 "$cur = $Cs;\n" \
-"$next = getPixel(1,$frame + 1,x,y);\n" \
+"$next = cpixel(1,$frame + 1,x,y);\n" \
 "($prev + $cur + $next) / 3;\n\n" \
 "To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
 "using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n\n" \
@@ -107,28 +122,13 @@
 "    src = [0,0,0];\n" \
 "}\n" \
 "but the coordinates of the accessed pixel may depend on color values.\n"
-/*
-"- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
-"- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
-"'interp' controls the interpolation filter, and can take one of the following values:\n"\
-"0: impulse - (nearest neighbor / box) Use original values\n"\
-"1: bilinear - (tent / triangle) Bilinear interpolation between original values\n"\
-"2: cubic - (cubic spline) Some smoothing\n"\
-"3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n"\
-"4: Simon - Some smoothing, plus medium sharpening (*)\n"\
-"5: Rifman - Some smoothing, plus significant sharpening (*)\n"\
-"6: Mitchell - Some smoothing, plus blurring to hide pixelation (*+)\n"\
-"7: Parzen - (cubic B-spline) Greatest smoothing of all filters (+)\n"\
-"8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
-"Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
-*/
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
 #define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 // History:
 // version 1: initial version
-// version 2: $scale replaced with $scalex, $scaley; added $par, $cx, $cy
+// version 2: $scale replaced with $scalex, $scaley; added $par, $cx, $cy; getPixel replaced by cpixel/apixel
 
 #define kSupportsTiles 1
 #define kSupportsMultiResolution 1
@@ -138,7 +138,6 @@
 #define kSourceClipCount 10
 #define kParamsCount 10
 
-#define kSeExprGetPixelFuncName "getPixel"
 #define kSeExprCPixelFuncName "cpixel"
 #define kSeExprAPixelFuncName "apixel"
 #define kSeExprCurrentTimeVarName "frame"
@@ -200,7 +199,7 @@ enum RegionOfDefinitionEnum {
 
 #define kParamLayerInput "layerInput"
 #define kParamLayerInputLabel "Input Layer "
-#define kParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on input "
+#define kParamLayerInputHint "Select which layer from the input to use when calling cpixel/apixel on input "
 
 #define kParamDoubleParamNumber "doubleParamsNb"
 #define kParamDoubleParamNumberLabel "No. of Scalar Params"
@@ -463,133 +462,186 @@ public:
 };
 
 
-// implementation of the "getPixel" function
-template <typename PIX, int maxValue>
-static void getPixInternal(int nComps, const void* data, SeVec3d& result)
+// implementation of the "apixel" function
+template <typename PIX, int nComps, OFX::FilterEnum interp, bool alpha>
+static void pixelForDepthCompsFilter(const OFX::Image* img, double x, double y, SeVec3d& result)
 {
-    const PIX* pix = (const PIX*)data;
-    for (int i = 0; i < nComps; ++i) {
-        result[i] = pix[i] / (double)maxValue;
+    result.setValue(0., 0., 0.);
+    if ((alpha && nComps != 1 && nComps != 4) ||
+        (!alpha && nComps <= 1)) {
+        // no value
+        return;
+    }
+    float pix[4];
+    // In OFX pixel coordinates, the center of pixel (0,0) has coordinates (0.5,0.5)
+    OFX::ofxsFilterInterpolate2D<PIX,nComps,interp,/*clamp=*/true>(x+0.5, y+0.5, img, /*blackOutside=*/false, pix);
+    if (alpha) {
+        if (nComps == 1) {
+            // alpha input
+            result.setValue(pix[0], 0., 0.);
+        } else if (nComps == 4) {
+            // RGBA input
+            result.setValue(pix[3], 0., 0.);
+        }
+    } else {
+        if (nComps == 2) {
+            // XY input: no B color
+            result.setValue(pix[0], pix[1], 0.);
+        } else if (nComps >= 3) {
+            // alpha input: no color
+            result.setValue(pix[0], pix[1], pix[2]);
+        }
     }
 }
 
-class GetPixelFuncX : public SeExprFuncX
+template <typename PIX, int nComps, bool alpha>
+static void pixelForDepthComps(const OFX::Image* img, OFX::FilterEnum interp, double x, double y,  SeVec3d& result)
+{
+    switch (interp) {
+        case OFX::eFilterImpulse:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterImpulse,alpha>(img, x, y, result);
+        case OFX::eFilterBilinear:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterBilinear,alpha>(img, x, y, result);
+        case OFX::eFilterCubic:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterCubic,alpha>(img, x, y, result);
+        case OFX::eFilterKeys:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterKeys,alpha>(img, x, y, result);
+        case OFX::eFilterSimon:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterSimon,alpha>(img, x, y, result);
+        case OFX::eFilterRifman:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterRifman,alpha>(img, x, y, result);
+        case OFX::eFilterMitchell:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterMitchell,alpha>(img, x, y, result);
+        case OFX::eFilterParzen:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterParzen,alpha>(img, x, y, result);
+        case OFX::eFilterNotch:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterNotch,alpha>(img, x, y, result);
+        default:
+            result.setValue(0., 0., 0.);
+    }
+}
+
+template <typename PIX, bool alpha>
+static void pixelForDepth(const OFX::Image* img, OFX::FilterEnum interp, double x, double y, SeVec3d& result)
+{
+    int nComponents = img->getPixelComponentCount();
+    switch (nComponents) {
+        case 1:
+            return pixelForDepthComps<PIX,1,alpha>(img, interp, x, y, result);
+        case 2:
+            return pixelForDepthComps<PIX,2,alpha>(img, interp, x, y, result);
+        case 3:
+            return pixelForDepthComps<PIX,3,alpha>(img, interp, x, y, result);
+        case 4:
+            return pixelForDepthComps<PIX,4,alpha>(img, interp, x, y, result);
+        default:
+            result.setValue(0., 0., 0.);
+    }
+}
+
+template<bool alpha>
+class PixelFuncX : public SeExprFuncX
 {
     SeExprProcessorBase* _processor;
-    
+
 public:
-    
-    
-    GetPixelFuncX(SeExprProcessorBase* processor)
+
+
+    PixelFuncX(SeExprProcessorBase* processor)
     : SeExprFuncX(true)  // Thread Safe
     , _processor(processor)
     {}
-    
-    virtual ~GetPixelFuncX() {}
-    
-    static int numArgs() { return 4; }
+
+    virtual ~PixelFuncX() {}
+
 private:
-    
-    
+
     virtual bool prep(SeExprFuncNode* node, bool /*wantVec*/)
     {
         // check number of arguments
         int nargs = node->nargs();
-        if (nargs != numArgs()) {
-            node->addError("Wrong number of arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+        if (nargs < 4 || 5 < nargs) {
+            node->addError("Wrong number of arguments, should be 4 or 5");
             return false;
         }
-        
-        for (int i = 0; i < numArgs(); ++i) {
-            
+
+        for (int i = 0; i < nargs; ++i) {
+
             if (node->child(i)->isVec()) {
-                node->addError("Wrong arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+                node->addError("Wrong arguments, should be all scalars");
                 return false;
             }
             if (!node->child(i)->prep(false)) {
                 return false;
             }
-            
-            SeVec3d val;
-            node->child(i)->eval(val);
-            if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-#ifdef SEEXPR_NO_SNPRINTF
-				std::stringstream ss;
-				ss << "Argument " << i + 1 << " should be an integer.";  
-				node->addError(ss.str().c_str());
-#else			
-                char name[256];
-                snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
-                node->addError(name);
-#endif
-                return false;
-            }
-
         }
-        
-        SeVec3d inputIndex;
-        node->child(0)->eval(inputIndex);
-        if (inputIndex[0] < 0 || inputIndex[0] >= kSourceClipCount) {
+
+        SeVec3d v;
+        node->child(0)->eval(v);
+        int inputIndex = (int)SeExpr::round(v[0]) - 1;
+        if (inputIndex < 0 || inputIndex >= kSourceClipCount) {
             node->addError("Invalid input index");
             return false;
         }
-        
-//        GetPixelFuncData* data = new GetPixelFuncData;
-//        data->index = inputIndex[0];
-//        data->frame = frame[0];
-//        data->x = xCoord[0];
-//        data->y = yCoord[0];
-//        
-//        node->setData((SeExprFuncNode::Data*)(data));
         return true;
     }
-    
 
-    
+
+
     virtual void eval(const SeExprFuncNode* node, SeVec3d& result) const
     {
-    
-        SeVec3d inputIndex;
-        node->child(0)->eval(inputIndex);
-        
-        SeVec3d frame;
-        node->child(1)->eval(frame);
-        
-        SeVec3d xCoord;
-        node->child(2)->eval(xCoord);
-
-        SeVec3d yCoord;
-        node->child(3)->eval(yCoord);
-        
-        _processor->prefetchImage(inputIndex[0] - 1, frame[0]);
-        const OFX::Image* img = _processor->getImage(inputIndex[0] - 1, frame[0]);
-        int nComponents = img ? img->getPixelComponentCount() : 0;
-        if (!img || nComponents == 0) {
-            result[0] = result[1] = result[2] = 0.;
-        } else {
-            const void* data = img->getPixelAddress(xCoord[0], yCoord[0]);
-            if (!data) {
-                result[0] = result[1] = result[2] = 0.;
-                return;
+        SeVec3d v;
+        node->child(0)->eval(v);
+        int inputIndex = (int)SeExpr::round(v[0]) - 1;
+        if (inputIndex < 0) {
+            inputIndex = 0;
+        } else if (inputIndex >= kSourceClipCount) {
+            inputIndex = kSourceClipCount - 1;
+        }
+        node->child(1)->eval(v);
+        OfxTime frame = SeExpr::round(v[0]);
+        node->child(2)->eval(v);
+        double x = v[0];
+        node->child(3)->eval(v);
+        double y = v[0];
+        OFX::FilterEnum interp = OFX::eFilterImpulse;
+        if (node->nargs() == 5) {
+            node->child(4)->eval(v);
+            int interp_i = SeExpr::round(v[0]);
+            if (interp_i < 0) {
+                interp_i = 0;
+            } else if (interp_i > (int)OFX::eFilterNotch) {
+                interp_i = (int)OFX::eFilterNotch;
             }
+            interp = (OFX::FilterEnum)interp_i;
+        }
+        if (frame != frame || x != x || y != y) {
+            // one of the parameters is NaN
+            result.setValue(0., 0., 0.);
+            return;
+        }
+        _processor->prefetchImage(inputIndex, frame);
+        const OFX::Image* img = _processor->getImage(inputIndex, frame);
+        if (!img) {
+            // be black and transparent
+            result.setValue(0., 0., 0.);
+        } else {
             OFX::BitDepthEnum depth = img->getPixelDepth();
             switch (depth) {
                 case OFX::eBitDepthFloat:
-                    getPixInternal<float, 1>(nComponents, data, result);
+                    pixelForDepth<float, alpha>(img, interp, x, y, result);
                     break;
                 case OFX::eBitDepthUByte:
-                    getPixInternal<unsigned char, 255>(nComponents, data, result);
+                    pixelForDepth<unsigned char, 255>(img, interp, x, y, result);
                     break;
                 case OFX::eBitDepthUShort:
-                    getPixInternal<unsigned short, 65535>(nComponents, data, result);
+                    pixelForDepth<unsigned short, 65535>(img, interp, x, y, result);
                     break;
                 default:
-                    result[0] = result[1] = result[2] = 0.;
+                    result.setValue(0., 0., 0.);
                     break;
             }
         }
-        //GetPixelFuncData *data = (GetPixelFuncData*) node->getData();
-    
     }
     
 };
@@ -597,7 +649,6 @@ private:
 
 class DoubleParamVarRef : public SeExprVarRef
 {
-    
     //Used to call getValue only once per expression evaluation and not once per pixel
     //Using SeExpr lock is faster than calling the multi-thread suite to get a mutex
     SeExprInternal::Mutex _lock;
@@ -638,7 +689,6 @@ public:
 
 class Double2DParamVarRef : public SeExprVarRef
 {
-    
     //Used to call getValue only once per expression evaluation and not once per pixel
     //Using SeExpr lock is faster than calling the multi-thread suite to get a mutex
     SeExprInternal::Mutex _lock;
@@ -680,7 +730,6 @@ public:
 
 class ColorParamVarRef : public SeExprVarRef
 {
-    
     //Used to call getValue only once per expression evaluation and not once per pixel
     //Using SeExpr lock is faster than calling the multi-thread suite to get a mutex
     SeExprInternal::Mutex _lock;
@@ -723,9 +772,7 @@ public:
 
 class SimpleScalar : public SeExprVarRef
 {
-    
 public:
-    
     double _value;
     
     SimpleScalar() : SeExprVarRef(), _value(0) {}
@@ -738,15 +785,11 @@ public:
     {
         result[0] = _value;
     }
-
-    
 };
 
 class SimpleVec : public SeExprVarRef
 {
-    
 public:
-    
     double _value[3];
     
     SimpleVec() : SeExprVarRef(), _value() { _value[0] = _value[1] = _value[2] = 0.; }
@@ -761,31 +804,28 @@ public:
         result[1] = _value[1];
         result[2] = _value[2];
     }
-    
-    
 };
 
 class StubSeExpression;
-class StubGetPixelFuncX : public SeExprFuncX
+
+class StubPixelFuncX : public SeExprFuncX
 {
     StubSeExpression* _expr;
-    
+
 public:
-    
-    StubGetPixelFuncX(StubSeExpression* expr)
+
+    StubPixelFuncX(StubSeExpression* expr)
     : SeExprFuncX(true)  // Thread Safe
     , _expr(expr)
     {}
-    
-    virtual ~StubGetPixelFuncX() {}
-    
-    static int numArgs() { return 4; }
+
+    virtual ~StubPixelFuncX() {}
 private:
-    
-    
+
+
     virtual bool prep(SeExprFuncNode* node, bool /*wantVec*/);
     virtual void eval(const SeExprFuncNode* node, SeVec3d& result) const;
-    
+
 };
 
 typedef std::map<int,std::vector<OfxTime> > FramesNeeded;
@@ -798,8 +838,8 @@ class StubSeExpression : public SeExpression
     
     
     mutable SimpleScalar _nanScalar,_zeroScalar;
-    mutable StubGetPixelFuncX _getPixel;
-    mutable SeExprFunc _getPixelFunction;
+    mutable StubPixelFuncX _pixel;
+    mutable SeExprFunc _pixelFunction;
     mutable SimpleScalar _currentTime;
 
     mutable FramesNeeded _images;
@@ -816,24 +856,20 @@ public:
     /** override resolveFunc to add external functions */
     virtual SeExprFunc* resolveFunc(const std::string& name) const OVERRIDE FINAL;
     
-    void onGetPixelCalled(int inputIndex, OfxTime time) {
-        
-        {
-            //Register image needed
-            FramesNeeded::iterator foundInput = _images.find(inputIndex);
-            if (foundInput == _images.end()) {
-                std::vector<OfxTime> times;
-                times.push_back(time);
-                _images.insert(std::make_pair(inputIndex, times));
-            } else {
-                if (std::find(foundInput->second.begin(), foundInput->second.end(), time) == foundInput->second.end()) {
-                    foundInput->second.push_back(time);
-                }
+    void onPixelCalled(int inputIndex, OfxTime time) {
+        //Register image needed
+        FramesNeeded::iterator foundInput = _images.find(inputIndex);
+        if (foundInput == _images.end()) {
+            std::vector<OfxTime> times;
+            times.push_back(time);
+            _images.insert(std::make_pair(inputIndex, times));
+        } else {
+            if (std::find(foundInput->second.begin(), foundInput->second.end(), time) == foundInput->second.end()) {
+                foundInput->second.push_back(time);
             }
         }
-        
     }
-    
+
     const FramesNeeded& getFramesNeeded() const
     {
         return _images;
@@ -844,8 +880,10 @@ public:
 
 class OFXSeExpression : public SeExpression
 {
-    mutable GetPixelFuncX _getPixel;
-    mutable SeExprFunc _getPixelFunction;
+    mutable PixelFuncX<false> _cpixel;
+    mutable SeExprFunc _cpixelFunction;
+    mutable PixelFuncX<true> _apixel;
+    mutable SeExprFunc _apixelFunction;
     OfxRectI _dstPixelRod;
     typedef std::map<std::string,SeExprVarRef*> VariablesMap;
     VariablesMap _variables;
@@ -922,8 +960,10 @@ public:
 OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::string& expr, OfxTime time,
                                  const OfxPointD& renderScale, double par, const OfxRectI& outputRod)
 : SeExpression(expr)
-, _getPixel(processor)
-, _getPixelFunction(_getPixel, _getPixel.numArgs(), _getPixel.numArgs())
+, _cpixel(processor)
+, _cpixelFunction(_cpixel, 4, 5)
+, _apixel(processor)
+, _apixelFunction(_apixel, 4, 5)
 , _dstPixelRod(outputRod)
 , _variables()
 , _scalex()
@@ -1086,75 +1126,58 @@ SeExprFunc* OFXSeExpression::resolveFunc(const std::string& funcName) const
     if (SeExprFunc::lookup(funcName)) {
         return 0;
     }
-    
-    if (funcName == kSeExprGetPixelFuncName) {
-        return &_getPixelFunction;
+    if (funcName == kSeExprCPixelFuncName) {
+        return &_cpixelFunction;
+    }
+    if (funcName == kSeExprAPixelFuncName) {
+        return &_apixelFunction;
     }
     return 0;
 }
 
 
 bool
-StubGetPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
+StubPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
 {
     // check number of arguments
     int nargs = node->nargs();
-    if (nargs != numArgs()) {
-        node->addError("Wrong number of arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+    if (nargs < 4 || 5 < nargs) {
+        node->addError("Wrong number of arguments, should be 4 or 5");
         return false;
     }
-    
-    for (int i = 0; i < numArgs(); ++i) {
-        
+
+    for (int i = 0; i < nargs; ++i) {
+
         if (node->child(i)->isVec()) {
-            node->addError("Wrong arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+            node->addError("Wrong arguments, should be all scalars");
             return false;
         }
         if (!node->child(i)->prep(false)) {
             return false;
         }
-        
-        SeVec3d val;
-        node->child(i)->eval(val);
-        if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-		
-#ifdef SEEXPR_NO_SNPRINTF
-		std::stringstream ss;
-		ss << "Argument " << i + 1 << " should be an integer.";;
-	    node->addError(ss.str());
-#else
-			char name[256];
-            snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
-            node->addError(name);
-#endif
-            return false;
-        }
-        
     }
-    
-    SeVec3d inputIndex;
-    node->child(0)->eval(inputIndex);
-    if (inputIndex[0] < 0 || inputIndex[0] >= kSourceClipCount) {
+
+    SeVec3d v;
+    node->child(0)->eval(v);
+    int inputIndex = (int)SeExpr::round(v[0]) - 1;
+    if (inputIndex < 0 || inputIndex >= kSourceClipCount) {
         node->addError("Invalid input index");
         return false;
     }
     return true;
 }
 
-
-
 void
-StubGetPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
+StubPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
 {
-    
-    SeVec3d inputIndex;
-    node->child(0)->eval(inputIndex);
-    
-    SeVec3d frame;
-    node->child(1)->eval(frame);
-    
-    
-    _expr->onGetPixelCalled(inputIndex[0] - 1, frame[0]);
+    SeVec3d v;
+    node->child(0)->eval(v);
+    int inputIndex = (int)SeExpr::round(v[0]) - 1;
+    node->child(1)->eval(v);
+    OfxTime frame = SeExpr::round(v[0]);
+
+
+    _expr->onPixelCalled(inputIndex, frame);
     result[0] = result[1] = result[2] = std::numeric_limits<double>::quiet_NaN();
 }
 
@@ -1162,8 +1185,8 @@ StubSeExpression::StubSeExpression(const std::string& expr, OfxTime time)
 : SeExpression(expr)
 , _nanScalar()
 , _zeroScalar()
-, _getPixel(this)
-, _getPixelFunction(_getPixel, 4, 4)
+, _pixel(this)
+, _pixelFunction(_pixel, 4, 5)
 , _currentTime()
 {
     _nanScalar._value = std::numeric_limits<double>::quiet_NaN();
@@ -1222,9 +1245,10 @@ StubSeExpression::resolveFunc(const std::string& funcName) const
     if (SeExprFunc::lookup(funcName)) {
         return 0;
     }
-    if (funcName == kSeExprGetPixelFuncName) {
-        return &_getPixelFunction;
+    if (funcName == kSeExprCPixelFuncName || funcName == kSeExprAPixelFuncName) {
+        return &_pixelFunction;
     }
+
     return 0;
 }
 
