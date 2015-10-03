@@ -24,6 +24,7 @@
 #include "OCIOFileTransform.h"
 
 #ifdef OFX_IO_USING_OCIO
+
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
 #  include <windows.h>
@@ -31,7 +32,6 @@
 #    define snprintf _snprintf
 #  endif
 #endif // _WINDOWS
-#endif
 
 #include <OpenColorIO/OpenColorIO.h>
 
@@ -843,4 +843,4 @@ void getOCIOFileTransformPluginID(OFX::PluginFactoryArray &ids)
 {
 }
 
-#endif
+#endif // !OFX_IO_USING_OCIO

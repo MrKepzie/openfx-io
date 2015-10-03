@@ -1021,7 +1021,9 @@ void getOCIODisplayPluginID(OFX::PluginFactoryArray &ids)
 }
 
 #else // !OFX_IO_USING_OCIO
+
 void getOCIODisplayPluginID(OFX::PluginFactoryArray &ids)
 {
 }
-#endif
+
+#endif // !OFX_IO_USING_OCIO

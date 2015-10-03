@@ -24,6 +24,7 @@
 #include "OCIOLogConvert.h"
 
 #ifdef OFX_IO_USING_OCIO
+
 #include <OpenColorIO/OpenColorIO.h>
 
 #include <cstdlib>
@@ -820,4 +821,4 @@ void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
 {
 }
 
-#endif
+#endif // !OFX_IO_USING_OCIO

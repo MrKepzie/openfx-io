@@ -24,6 +24,7 @@
 #include "OCIOColorSpace.h"
 
 #ifdef OFX_IO_USING_OCIO
+
 //#include <iostream>
 #include <memory>
 
@@ -659,7 +660,9 @@ void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
 }
 
 #else // !OFX_IO_USING_OCIO
+
 void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
 {
 }
-#endif
+
+#endif // !OFX_IO_USING_OCIO

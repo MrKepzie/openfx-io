@@ -24,6 +24,7 @@
 #include "OCIOLookTransform.h"
 
 #ifdef OFX_IO_USING_OCIO
+
 //#include <iostream>
 #include <memory>
 
