@@ -225,7 +225,7 @@ enum RegionOfDefinitionEnum {
 
 #define kParamFrameRange "frameRange"
 #define kParamFrameRangeLabel "Input Frame Range"
-#define kParamFrameRangeHint "Default input frame range to fetch images from (may be relative or absolute, depending on the \"frameRangeAbsolute\" parameter). Only used if the frame range cannot be statically computed from the expression."
+#define kParamFrameRangeHint "Default input frame range to fetch images from (may be relative or absolute, depending on the \"frameRangeAbsolute\" parameter). Only used if the frame range cannot be statically computed from the expression. This parameter can be animated."
 #define kParamFrameRangeDefault 0,0
 
 #define kParamFrameRangeAbsolute "frameRangeAbsolute"
@@ -3213,6 +3213,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setHint(kParamFrameRangeHint);
         param->setLabel(kParamFrameRangeLabel);
         param->setDimensionLabels("min", "max");
+        param->setAnimates(true);
         if (page) {
             page->addChild(*param);
         }
@@ -3222,6 +3223,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setDefault(kParamFrameRangeAbsoluteDefault);
         param->setHint(kParamFrameRangeAbsoluteHint);
         param->setLabel(kParamFrameRangeAbsoluteLabel);
+        param->setAnimates(true);
         if (page) {
             page->addChild(*param);
         }
