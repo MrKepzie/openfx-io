@@ -38,9 +38,6 @@
 #include <algorithm>
 #include <locale>
 #include <cstdio>
-#if _WIN32
-#define snprintf sprintf_s
-#endif
 extern "C" {
 #include <errno.h>
 #include <libavformat/avformat.h>
