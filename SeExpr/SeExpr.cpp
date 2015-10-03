@@ -28,16 +28,18 @@
 #include <limits>
 #include <set>
 
-#ifdef __MINGW32__
-#define SEEXPR_NO_SNPRINTF
-#include <sstream>
-#else
+//#ifdef __MINGW32__
+//#define SEEXPR_NO_SNPRINTF
+//#include <sstream>
+//#else
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
-#include <windows.h>
-#define snprintf _snprintf
-#endif
-#endif
+#  include <windows.h>
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif // _WINDOWS
+//#endif
 
 #include "ofxsMacros.h"
 #include "ofxsCopier.h"
