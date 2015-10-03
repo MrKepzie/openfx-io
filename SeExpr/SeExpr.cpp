@@ -2381,8 +2381,12 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
             for (int i = 0; i < kSourceClipCount; ++i) {
                 if (_srcClip[i]->isConnected()) {
                     OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                    OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
-                    rodSet = true;
+                    if (rodSet) {
+                        OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
+                    } else {
+                        rod = srcRod;
+                        rodSet = true;
+                    }
                 }
             }
             break;
