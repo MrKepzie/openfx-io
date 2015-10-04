@@ -1,0 +1,1232 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
+/*
+ * OFX SeNoise plugin.
+ */
+
+#include "SeNoisePlugin.h"
+
+#include <cmath>
+#include <algorithm>
+//#include <iostream>
+#ifdef _WINDOWS
+#    define NOMINMAX 1
+// windows - defined for both Win32 and Win64
+#    include <windows.h>
+// the following must be included before SePlatform.h tries to include
+// them with _CRT_NONSTDC_NO_DEPRECATE=1 and _CRT_SECURE_NO_DEPRECATE=1
+#    include <malloc.h>
+#    include <io.h>
+#    include <tchar.h>
+#    include <process.h>
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif // _WINDOWS
+
+#include <SeNoise.h>
+#include <SeExprBuiltins.h>
+#ifdef _WINDOWS
+// fix SePlatform.h's bad behavior
+#undef snprintf
+#undef strtok_r
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#  if defined(_MSC_VER) && _MSC_VER >= 1400
+#    define strtok_r(s,d,p) strtok_s(s,d,p)
+#  endif
+#endif // _WINDOWS
+
+#include "ofxsProcessing.H"
+#include "ofxsMaskMix.h"
+#include "ofxsCoords.h"
+#include "ofxsMacros.h"
+#include "ofxsRamp.h"
+#include "ofxsPositionInteract.h"
+
+#define kPluginName "SeNoise"
+#define kPluginGrouping "Draw"
+#define kPluginDescription "Generate noise."
+#define kPluginIdentifier "net.sf.openfx.SeNoise"
+// History:
+// version 1.0: initial version
+// version 2.0: use kNatronOfxParamProcess* parameters
+#define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+
+#define kSupportsTiles 1
+#define kSupportsMultiResolution 1
+#define kSupportsRenderScale 1
+#define kSupportsMultipleClipPARs false
+#define kSupportsMultipleClipDepths false
+#define kRenderThreadSafety eRenderFullySafe
+
+#define kParamNoiseType "noiseType"
+#define kParamNoiseTypeLabel "Noise Type"
+#define kParamNoiseTypeHint "Kind of noise."
+#define kParamNoiseTypeCellNoise "Cell Noise"
+#define kParamNoiseTypeCellNoiseHint "Cell noise generates a field of constant colored cubes based on the integer location.  This is the same as the prman cellnoise function."
+#define kParamNoiseTypeNoise "Noise"
+#define kParamNoiseTypeNoiseHint "Noise is a random function that smoothly blends between samples at integer locations.  This is Ken Perlin's original noise function."
+#ifdef SENOISE_PERLIN
+#define kParamNoiseTypePerlin "Perlin"
+#define kParamNoiseTypePerlinHint "\"Improved Perlin Noise\", based on Ken Perlin's 2002 Java reference code."
+#endif
+#define kParamNoiseTypeFBM "FBM"
+#define kParamNoiseTypeFBMHint "FBM (Fractal Brownian Motion) is a multi-frequency noise function.  The base frequency is the same as the \"Noise\" function.  The total number of frequencies is controlled by octaves.  The lacunarity is the spacing between the frequencies - a value of 2 means each octave is twice the previous frequency.  The gain controls how much each frequency is scaled relative to the previous frequency."
+#define kParamNoiseTypeTurbulence "Turbulence"
+#define kParamNoiseTypeTurbulenceHint "turbulence is a variant of fbm where the absolute value of each noise term is taken.  This gives a more billowy appearance."
+#ifdef SENOISE_VORONOI
+#define kParamNoiseTypeVoronoi "Voronoi"
+#define kParamNoiseTypeVoronoiHint "Voronoi is a cellular noise pattern. It is a jittered variant of cellnoise. cvoronoi returns a random color for each cell and pvoronoi returns the point location of the center of the cell. The type parameter describes different variants of the noise function.  The jitter param controls how irregular the pattern is (jitter = 0 is like ordinary cellnoise).  The fbm* params can be used to distort the noise field.  When fbmScale is zero (the default), there is no distortion.  The remaining params are the same as for the fbm function."
+#endif
+enum NoiseTypeEnum {
+    eNoiseTypeCellNoise,
+    eNoiseTypeNoise,
+#ifdef SENOIS_PERLIN
+    eNoiseTypePerlin,
+#endif
+    eNoiseTypeFBM,
+    eNoiseTypeTurbulence,
+#ifdef SENOISE_VORONOI
+    eNoiseTypeVoronoi,
+#endif
+};
+#define kParamNoiseTypeDefault eNoiseTypeCellNoise
+
+#define kParamNoiseSize "noiseSize"
+#define kParamNoiseSizeLabel "Noise Size"
+#define kParamNoiseSizeHint "Size of noise in pixels, corresponding to its lowest frequency."
+#define kParamNoiseSizeDefault 350.,350.
+
+#define kParamNoiseZ "noiseZ"
+#define kParamNoiseZLabel "Z0"
+#define kParamNoiseZHint "Z coordinate on the noise at frame=0. The noise pattern is different for every integer value of Z, so this can be used as a random seed."
+#define kParamNoiseZDefault 0.
+
+#define kParamNoiseZSlope "noiseZSlope"
+#define kParamNoiseZSlopeLabel "Z Slope"
+#define kParamNoiseZSlopeHint "Z is computed as Z = Z0 + frame * Z_slope. 0 means a constant noise, 1 means a different noise pattern at every frame."
+#define kParamNoiseZSlopeDefault 0.
+
+#ifdef SENOISE_VORONOI
+#define kParamVoronoiType "voronoiType"
+#define kParamVoronoiTypeLabel "Voronoi Type"
+#define kParamVoronoiTypeHint "Different variants of the Voronoi noise function."
+#define kParamVoronoiTypeCell "Cell"
+#define kParamVoronoiType2 "Type 2"
+#define kParamVoronoiType3 "Type 3"
+#define kParamVoronoiType4 "Type 4"
+#define kParamVoronoiType5 "Type 5"
+enum VoronoiTypeEnum {
+    eVoronoiTypeCell,
+    eVoronoiType2,
+    eVoronoiType3,
+    eVoronoiType4,
+    eVoronoiType5,
+};
+#define kParamVoronoiTypeDefault eVoronoiTypeCell
+
+#define kParamJitter "jitter"
+#define kParamJitterLabel "Jitter"
+#define kParamJitterHint "The jitter param controls how irregular the pattern is (jitter = 0 is like ordinary cellnoise)."
+#define kParamJitterDefault 0.5
+
+#define kParamFBMScale "fbmScale"
+#define kParamFBMScaleLabel "FBM Scale"
+#define kParamFBMScaleHint "The fbm* params can be used to distort the noise field.  When fbmScale is zero (the default), there is no distortion."
+#define kParamFBMScaleDefault 0.
+
+#endif
+
+#define kParamOctaves "fbmOctaves"
+#define kParamOctavesLabel "Octaves"
+#define kParamOctavesHint "The total number of frequencies is controlled by octaves."
+#define kParamOctavesDefault 6
+
+#define kParamLacunarity "fbmLacunarity"
+#define kParamLacunarityLabel "Lacunarity"
+#define kParamLacunarityHint "The lacunarity is the spacing between the frequencies - a value of 2 means each octave is twice the previous frequency."
+#define kParamLacunarityDefault 2.
+
+#define kParamGain "fbmGain"
+#define kParamGainLabel "Gain"
+#define kParamGainHint "The gain controls how much each frequency is scaled relative to the previous frequency."
+#define kParamGainDefault 0.5
+
+#define kPageColor "colorPage"
+#define kPageColorLabel "Color"
+#define kPageColorHint "Color properties of the noise"
+
+#define kGroupColor "colorGroup"
+
+using namespace OFX;
+
+
+static bool gHostIsNatron   = false;
+
+class SeNoiseProcessorBase : public OFX::ImageProcessor
+{
+protected:
+    const OFX::Image *_srcImg;
+    const OFX::Image *_maskImg;
+    bool _premult;
+    int _premultChannel;
+    bool  _doMasking;
+    double _mix;
+    bool _maskInvert;
+    bool _processR, _processG, _processB, _processA;
+    // plugin parameter values
+    NoiseTypeEnum _noiseType;
+    OfxPointD _noiseSize;
+    double _noiseZ;
+#ifdef SENOISE_VORONOI
+    VoronoiTypeEnum _voronoiType;
+    double _jitter;
+    double _fbmScale;
+#endif
+    int _octaves;
+    double _lacunarity;
+    double _gain;
+    RampTypeEnum _type;
+    OfxPointD _point0;
+    OfxRGBAColourD _color0;
+    OfxPointD _point1;
+    OfxRGBAColourD _color1;
+    OfxPointD _renderScale;
+
+public:
+    SeNoiseProcessorBase(OFX::ImageEffect &instance, const OFX::RenderArguments &args)
+    : OFX::ImageProcessor(instance)
+    , _srcImg(0)
+    , _maskImg(0)
+    , _premult(false)
+    , _premultChannel(3)
+    , _doMasking(false)
+    , _mix(1.)
+    , _maskInvert(false)
+    , _processR(false)
+    , _processG(false)
+    , _processB(false)
+    , _processA(false)
+    // initialize plugin parameter values
+    , _noiseType(eNoiseTypeCellNoise)
+    , _noiseSize()
+    , _noiseZ(0.)
+#ifdef SENOISE_VORONOI
+    , _voronoiType(eVoronoiTypeCell)
+    , _jitter(0.5)
+    , _fbmScale(0.)
+#endif
+    , _octaves(6)
+    , _lacunarity(2.)
+    , _gain(0.5)
+    , _type(eRampTypeNone)
+    , _point0()
+    , _color0()
+    , _point1()
+    , _color1()
+    , _renderScale(args.renderScale)
+    {
+    }
+
+    void setSrcImg(const OFX::Image *v) {_srcImg = v;}
+
+    void setMaskImg(const OFX::Image *v, bool maskInvert) {_maskImg = v; _maskInvert = maskInvert;}
+
+    void doMasking(bool v) {_doMasking = v;}
+
+    void setValues(bool premult,
+                   int premultChannel,
+                   double mix,
+                   bool processR,
+                   bool processG,
+                   bool processB,
+                   bool processA,
+                   NoiseTypeEnum noiseType,
+                   const OfxPointD& noiseSize,
+                   double noiseZ,
+#ifdef SENOISE_VORONOI
+                   VoronoiTypeEnum voronoiType,
+                   double jitter,
+                   double fbmScale,
+#endif
+                   int octaves,
+                   double lacunarity,
+                   double gain,
+                   RampTypeEnum type,
+                   const OfxPointD& point0,
+                   const OfxRGBAColourD& color0,
+                   const OfxPointD& point1,
+                   const OfxRGBAColourD& color1)
+    {
+        _premult = premult;
+        _premultChannel = premultChannel;
+        _mix = mix;
+        _processR = processR;
+        _processG = processG;
+        _processB = processB;
+        _processA = processA;
+        // set plugin parameter values
+        _noiseType = noiseType;
+        _noiseSize = noiseSize;
+        _noiseZ = noiseZ;
+#ifdef SENOISE_VORONOI
+        _voronoiType = voronoiType;
+        _jitter = jitter;
+        _fbmScale = fbmScale;
+#endif
+        _octaves = octaves;
+        _lacunarity = lacunarity;
+        _gain = gain;
+        _type = type;
+        _point0 = point0;
+        _color0 = color0;
+        _point1 = point1;
+        _color1 = color1;
+    }
+
+};
+
+
+
+template <class PIX, int nComponents, int maxValue>
+class SeNoiseProcessor : public SeNoiseProcessorBase
+{
+    
+public:
+    SeNoiseProcessor(OFX::ImageEffect &instance, const OFX::RenderArguments &args)
+    : SeNoiseProcessorBase(instance,args)
+    {
+        //const double time = args.time;
+
+        // TODO: any pre-computation goes here (such as computing a LUT)
+    }
+
+    void multiThreadProcessImages(OfxRectI procWindow)
+    {
+#     ifndef __COVERITY__ // too many coverity[dead_error_line] errors
+        const bool r = _processR && (nComponents != 1);
+        const bool g = _processG && (nComponents >= 2);
+        const bool b = _processB && (nComponents >= 3);
+        const bool a = _processA && (nComponents == 1 || nComponents == 4);
+        if (r) {
+            if (g) {
+                if (b) {
+                    if (a) {
+                        return process<true ,true ,true ,true >(procWindow); // RGBA
+                    } else {
+                        return process<true ,true ,true ,false>(procWindow); // RGBa
+                    }
+                } else {
+                    if (a) {
+                        return process<true ,true ,false,true >(procWindow); // RGbA
+                    } else {
+                        return process<true ,true ,false,false>(procWindow); // RGba
+                    }
+                }
+            } else {
+                if (b) {
+                    if (a) {
+                        return process<true ,false,true ,true >(procWindow); // RgBA
+                    } else {
+                        return process<true ,false,true ,false>(procWindow); // RgBa
+                    }
+                } else {
+                    if (a) {
+                        return process<true ,false,false,true >(procWindow); // RgbA
+                    } else {
+                        return process<true ,false,false,false>(procWindow); // Rgba
+                    }
+                }
+            }
+        } else {
+            if (g) {
+                if (b) {
+                    if (a) {
+                        return process<false,true ,true ,true >(procWindow); // rGBA
+                    } else {
+                        return process<false,true ,true ,false>(procWindow); // rGBa
+                    }
+                } else {
+                    if (a) {
+                        return process<false,true ,false,true >(procWindow); // rGbA
+                    } else {
+                        return process<false,true ,false,false>(procWindow); // rGba
+                    }
+                }
+            } else {
+                if (b) {
+                    if (a) {
+                        return process<false,false,true ,true >(procWindow); // rgBA
+                    } else {
+                        return process<false,false,true ,false>(procWindow); // rgBa
+                    }
+                } else {
+                    if (a) {
+                        return process<false,false,false,true >(procWindow); // rgbA
+                    } else {
+                        return process<false,false,false,false>(procWindow); // rgba
+                    }
+                }
+            }
+        }
+#     endif
+    }
+
+private:
+    
+    
+    template<bool processR, bool processG, bool processB, bool processA>
+    void process(OfxRectI procWindow)
+    {
+        assert((!processR && !processG && !processB) || (nComponents == 3 || nComponents == 4));
+        assert(!processA || (nComponents == 1 || nComponents == 4));
+        assert(nComponents == 3 || nComponents == 4);
+        float unpPix[4];
+        float tmpPix[4];
+        for (int y = procWindow.y1; y < procWindow.y2; y++) {
+            if (_effect.abort()) {
+                break;
+            }
+
+            PIX *dstPix = (PIX *) _dstImg->getPixelAddress(procWindow.x1, y);
+            for (int x = procWindow.x1; x < procWindow.x2; x++) {
+                const PIX *srcPix = (const PIX *)  (_srcImg ? _srcImg->getPixelAddress(x, y) : 0);
+                ofxsUnPremult<PIX, nComponents, maxValue>(srcPix, unpPix, _premult, _premultChannel);
+                double t_r = unpPix[0];
+                double t_g = unpPix[1];
+                double t_b = unpPix[2];
+                double t_a = unpPix[3];
+
+                // TODO: process the pixel (the actual computation goes here)
+                double result;
+                switch (_noiseType) {
+                    case eNoiseTypeCellNoise: {
+                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
+                        SeExpr::CellNoise<3,1>(args,&result);
+                        break;
+                    }
+                    case eNoiseTypeNoise: {
+                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
+                        SeExpr::Noise<3,1>(args,&result);
+                        break;
+                    }
+#ifdef SENOISE_PERLIN
+                    case eNoiseTypePerlin: {
+                        SeVec3d p((x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ);
+                        n = SeExpr::noise(1, &p);
+                        break;
+                    }
+#endif
+                    case eNoiseTypeFBM: {
+                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
+                        SeExpr::FBM<3,1,false>(args, &result, _octaves, _lacunarity, _gain);
+                        break;
+                    }
+                    case eNoiseTypeTurbulence: {
+                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
+                        SeExpr::FBM<3,1,true>(args, &result, _octaves, _lacunarity, _gain);
+                        break;
+                    }
+#ifdef SENOISE_VORONOI
+                    case eNoiseTypeVoronoi: {
+                        int type = (int)_voronoiType + 1;
+
+                    } break;
+#endif
+                }
+                t_r = t_r*(1.-result) + _color1.r*result;
+                t_g = t_g*(1.-result) + _color1.g*result;
+                t_b = t_b*(1.-result) + _color1.b*result;
+                t_a = t_a*(1.-result) + _color1.a*result;
+
+                tmpPix[0] = (float)t_r;
+                tmpPix[1] = (float)t_g;
+                tmpPix[2] = (float)t_b;
+                tmpPix[3] = (float)t_a;
+                ofxsPremultMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, _premult, _premultChannel, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
+                dstPix += nComponents;
+            }
+        }
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/** @brief The plugin that does our work */
+class SeNoisePlugin : public OFX::ImageEffect
+{
+public:
+
+    /** @brief ctor */
+    SeNoisePlugin(OfxImageEffectHandle handle)
+    : ImageEffect(handle)
+    , _dstClip(0)
+    , _srcClip(0)
+    , _maskClip(0)
+    , _processR(0)
+    , _processG(0)
+    , _processB(0)
+    , _processA(0)
+    , _premult(0)
+    , _premultChannel(0)
+    , _mix(0)
+    , _maskApply(0)
+    , _maskInvert(0)
+    , _noiseType(0)
+    , _noiseSize(0)
+    , _noiseZ(0)
+    , _noiseZSlope(0)
+#ifdef SENOISE_VORONOI
+    , _voronoiType(0)
+    , _jitter(0)
+    , _fbmScale(0)
+#endif
+    , _octaves(0)
+    , _lacunarity(0)
+    , _gain(0)
+    , _point0(0)
+    , _color0(0)
+    , _point1(0)
+    , _color1(0)
+    , _type(0)
+    , _interactive(0)
+    {
+        _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+        assert(_dstClip && (_dstClip->getPixelComponents() == ePixelComponentRGB ||
+                            _dstClip->getPixelComponents() == ePixelComponentRGBA ||
+                            _dstClip->getPixelComponents() == ePixelComponentAlpha));
+        _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+        assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+               (_srcClip && (_srcClip->getPixelComponents() == ePixelComponentRGB ||
+                             _srcClip->getPixelComponents() == ePixelComponentRGBA ||
+                             _srcClip->getPixelComponents() == ePixelComponentAlpha)));
+        _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+        assert(!_maskClip || _maskClip->getPixelComponents() == ePixelComponentAlpha);
+
+        // TODO: fetch noise parameters
+
+        _premult = fetchBooleanParam(kParamPremult);
+        _premultChannel = fetchChoiceParam(kParamPremultChannel);
+        assert(_premult && _premultChannel);
+        _mix = fetchDoubleParam(kParamMix);
+        _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
+        _maskInvert = fetchBooleanParam(kParamMaskInvert);
+        assert(_mix && _maskInvert);
+        
+        _processR = fetchBooleanParam(kNatronOfxParamProcessR);
+        _processG = fetchBooleanParam(kNatronOfxParamProcessG);
+        _processB = fetchBooleanParam(kNatronOfxParamProcessB);
+        _processA = fetchBooleanParam(kNatronOfxParamProcessA);
+        assert(_processR && _processG && _processB && _processA);
+
+        _noiseType = fetchChoiceParam(kParamNoiseType);
+        _noiseSize = fetchDouble2DParam(kParamNoiseSize);
+        _noiseZ = fetchDoubleParam(kParamNoiseZ);
+        _noiseZSlope = fetchDoubleParam(kParamNoiseZSlope);
+#ifdef SENOISE_VORONOI
+        _voronoiType = fetchChoiceParam(kParamVoronoiType);
+        _jitter = fetchDoubleParam(kParamJitter);
+        _fbmScale = fetchDoubleParam(kParamFBMScale);
+#endif
+        _octaves = fetchIntParam(kParamOctaves);
+        _lacunarity = fetchDoubleParam(kParamLacunarity);
+        _gain = fetchDoubleParam(kParamGain);
+        assert(_noiseType && _noiseSize && _noiseZ && _noiseZSlope &&
+#ifdef SENOISE_VORONOI
+               _voronoiType && _jitter && _fbmScale &&
+#endif
+               _octaves && _lacunarity && _gain);
+
+        _point0 = fetchDouble2DParam(kParamRampPoint0);
+        _point1 = fetchDouble2DParam(kParamRampPoint1);
+        _color0 = fetchRGBAParam(kParamRampColor0);
+        _color1 = fetchRGBAParam(kParamRampColor1);
+        _type = fetchChoiceParam(kParamRampType);
+        _interactive = fetchBooleanParam(kParamRampInteractive);
+        assert(_point0 && _point1 && _color0 && _color1 && _type && _interactive);
+
+        // update visibility
+        OFX::InstanceChangedArgs args = { OFX::eChangeUserEdit, 0., {0., 0.}};
+        changedParam(args, kParamNoiseType);
+        changedParam(args, kParamRampType);
+        _type->setIsSecret(true); // TODO: enable ramp types
+        _type->setEnabled(false);
+    }
+    
+private:
+    /* Override the render */
+    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
+
+    template<int nComponents>
+    void renderForComponents(const OFX::RenderArguments &args);
+
+    template <class PIX, int nComponents, int maxValue>
+    void renderForBitDepth(const OFX::RenderArguments &args);
+
+    /* set up and run a processor */
+    void setupAndProcess(SeNoiseProcessorBase &, const OFX::RenderArguments &args);
+
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+
+    /** @brief called when a clip has just been changed in some way (a rewire maybe) */
+    virtual void changedClip(const InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
+
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+
+private:
+    // do not need to delete these, the ImageEffect is managing them for us
+    OFX::Clip *_dstClip;
+    OFX::Clip *_srcClip;
+    OFX::Clip *_maskClip;
+
+    BooleanParam* _processR;
+    BooleanParam* _processG;
+    BooleanParam* _processB;
+    BooleanParam* _processA;
+    OFX::BooleanParam* _premult;
+    OFX::ChoiceParam* _premultChannel;
+    OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
+    OFX::BooleanParam* _maskInvert;
+
+    ChoiceParam* _noiseType;
+    Double2DParam* _noiseSize;
+    DoubleParam* _noiseZ;
+    DoubleParam* _noiseZSlope;
+#ifdef SENOISE_VORONOI
+    ChoiceParam* _voronoiType;
+    DoubleParam* _jitter;
+    DoubleParam* _fbmScale;
+#endif
+    IntParam* _octaves;
+    DoubleParam* _lacunarity;
+    DoubleParam* _gain;
+
+    Double2DParam* _point0;
+    RGBAParam* _color0;
+    Double2DParam* _point1;
+    RGBAParam* _color1;
+    ChoiceParam* _type;
+    BooleanParam* _interactive;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/** @brief render for the filter */
+
+////////////////////////////////////////////////////////////////////////////////
+// basic plugin render function, just a skelington to instantiate templates from
+
+/* set up and run a processor */
+void
+SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::RenderArguments &args)
+{
+    const double time = args.time;
+    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(args.time));
+    if (!dst.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    OFX::BitDepthEnum         dstBitDepth    = dst->getPixelDepth();
+    OFX::PixelComponentEnum   dstComponents  = dst->getPixelComponents();
+    if (dstBitDepth != _dstClip->getPixelDepth() ||
+        dstComponents != _dstClip->getPixelComponents()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong depth or components");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    if (dst->getRenderScale().x != args.renderScale.x ||
+        dst->getRenderScale().y != args.renderScale.y ||
+        (dst->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && dst->getField() != args.fieldToRender)) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+    std::auto_ptr<const OFX::Image> src((_srcClip && _srcClip->isConnected()) ?
+                                        _srcClip->fetchImage(args.time) : 0);
+    if (src.get()) {
+        if (src->getRenderScale().x != args.renderScale.x ||
+            src->getRenderScale().y != args.renderScale.y ||
+            (src->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && src->getField() != args.fieldToRender)) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        OFX::BitDepthEnum    srcBitDepth      = src->getPixelDepth();
+        OFX::PixelComponentEnum srcComponents = src->getPixelComponents();
+        if (srcBitDepth != dstBitDepth || srcComponents != dstComponents) {
+            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+        }
+    }
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(args.time) : 0);
+    if (mask.get()) {
+        if (mask->getRenderScale().x != args.renderScale.x ||
+            mask->getRenderScale().y != args.renderScale.y ||
+            (mask->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && mask->getField() != args.fieldToRender)) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+    }
+    if (doMasking) {
+        bool maskInvert;
+        _maskInvert->getValueAtTime(args.time, maskInvert);
+        processor.doMasking(true);
+        processor.setMaskImg(mask.get(), maskInvert);
+    }
+    
+    processor.setDstImg(dst.get());
+    processor.setSrcImg(src.get());
+    processor.setRenderWindow(args.renderWindow);
+
+    // fetch noise parameter values
+    int noiseType_i;
+    _noiseType->getValueAtTime(args.time, noiseType_i);
+    NoiseTypeEnum noiseType = (NoiseTypeEnum)noiseType_i;
+
+    OfxPointD noiseSize;
+    _noiseSize->getValueAtTime(time, noiseSize.x, noiseSize.y);
+
+    double noiseZ;
+    _noiseZ->getValueAtTime(time, noiseZ);
+    double noiseZSlope;
+    _noiseZSlope->getValueAtTime(time, noiseZSlope);
+#ifdef SENOISE_VORONOI
+    VoronoiTypeEnum voronoiType = eVoronoiTypeCell;
+    double jitter = 0.5;
+    double fbmScale = 0.;
+    if (noiseType == eNoiseTypeVoronoi) {
+        int voronoiType_i;
+        _voronoiType->getValueAtTime(time, voronoiType_i);
+        voronoiType = (VoronoiTypeEnum)voronoiType_i;
+        _jitter->getValueAtTime(time, jitter);
+        _fbmScale->getValueAtTime(time, fbmScale);
+    }
+#endif
+    int octaves = 6;
+    double lacunarity = 2.;
+    double gain = 0.5;
+    if (noiseType == eNoiseTypeFBM || noiseType == eNoiseTypeTurbulence
+#ifdef SENOISE_VORONOI
+        || noiseType == eNoiseTypeVoronoi
+#endif
+        ) {
+        _octaves->getValueAtTime(time, octaves);
+        _lacunarity->getValueAtTime(time, lacunarity);
+        _gain->getValueAtTime(time, gain);
+    }
+
+    // TODO: transform parameters
+
+    // Ramp parameters
+    int type_i;
+    _type->getValueAtTime(time, type_i);
+    RampTypeEnum type = (RampTypeEnum)type_i;
+    OfxPointD point0;
+    _point0->getValueAtTime(time, point0.x, point0.x);
+    OfxRGBAColourD color0;
+    _color0->getValueAtTime(time, color0.r, color0.g, color0.b, color0.a);
+    OfxPointD point1;
+    _point1->getValueAtTime(time, point1.x, point1.x);
+    OfxRGBAColourD color1;
+    _color0->getValueAtTime(time, color1.r, color1.g, color1.b, color1.a);
+
+    bool premult;
+    int premultChannel;
+    _premult->getValueAtTime(args.time, premult);
+    _premultChannel->getValueAtTime(args.time, premultChannel);
+    double mix;
+    _mix->getValueAtTime(args.time, mix);
+    
+    bool processR, processG, processB, processA;
+    _processR->getValueAtTime(time, processR);
+    _processG->getValueAtTime(time, processG);
+    _processB->getValueAtTime(time, processB);
+    _processA->getValueAtTime(time, processA);
+
+    processor.setValues(premult, premultChannel, mix,
+                        processR,processG,processB,processA,
+                        noiseType, noiseSize, noiseZ + time * noiseZSlope,
+#ifdef SENOISE_VORONOI
+                        voronoiType, jitter, fbmScale,
+#endif
+                        octaves, lacunarity, gain,
+                        type, point0, color0, point1, color1);
+    processor.process();
+}
+
+// the overridden render function
+void
+SeNoisePlugin::render(const OFX::RenderArguments &args)
+{
+    //std::cout << "render!\n";
+    // instantiate the render code based on the pixel depth of the dst clip
+    OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
+    
+    assert(kSupportsMultipleClipPARs   || !_srcClip || _srcClip->getPixelAspectRatio() == _dstClip->getPixelAspectRatio());
+    assert(kSupportsMultipleClipDepths || !_srcClip || _srcClip->getPixelDepth()       == _dstClip->getPixelDepth());
+    assert(dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentXY || dstComponents == OFX::ePixelComponentAlpha);
+    // do the rendering
+    switch (dstComponents) {
+        case OFX::ePixelComponentRGBA:
+            renderForComponents<4>(args);
+            break;
+        case OFX::ePixelComponentRGB:
+            renderForComponents<3>(args);
+            break;
+        case OFX::ePixelComponentXY:
+            renderForComponents<2>(args);
+            break;
+        case OFX::ePixelComponentAlpha:
+            renderForComponents<1>(args);
+            break;
+        default:
+            //std::cout << "components usupported\n";
+            OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+            break;
+    } // switch
+    //std::cout << "render! OK\n";
+}
+
+template<int nComponents>
+void
+SeNoisePlugin::renderForComponents(const OFX::RenderArguments &args)
+{
+    OFX::BitDepthEnum dstBitDepth    = _dstClip->getPixelDepth();
+    switch (dstBitDepth) {
+        case OFX::eBitDepthUByte:
+            renderForBitDepth<unsigned char, nComponents, 255>(args);
+            break;
+
+        case OFX::eBitDepthUShort:
+            renderForBitDepth<unsigned short, nComponents, 65535>(args);
+            break;
+
+        case OFX::eBitDepthFloat:
+            renderForBitDepth<float, nComponents, 1>(args);
+            break;
+        default:
+            //std::cout << "depth usupported\n";
+            OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+    }
+}
+
+template <class PIX, int nComponents, int maxValue>
+void
+SeNoisePlugin::renderForBitDepth(const OFX::RenderArguments &args)
+{
+    SeNoiseProcessor<PIX, nComponents, maxValue> fred(*this, args);
+    setupAndProcess(fred, args);
+}
+
+
+bool
+SeNoisePlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &/*identityTime*/)
+{
+    //std::cout << "isIdentity!\n";
+    double mix;
+    _mix->getValueAtTime(args.time, mix);
+
+    if (mix == 0. /*|| (!processR && !processG && !processB && !processA)*/) {
+        identityClip = _srcClip;
+        return true;
+    }
+    
+    {
+        bool processR;
+        bool processG;
+        bool processB;
+        bool processA;
+        _processR->getValueAtTime(args.time, processR);
+        _processG->getValueAtTime(args.time, processG);
+        _processB->getValueAtTime(args.time, processB);
+        _processA->getValueAtTime(args.time, processA);
+        if (!processR && !processG && !processB && !processA) {
+            identityClip = _srcClip;
+            return true;
+        }
+    }
+
+    // TODO: which plugin parameter values give identity?
+    //if (...) {
+    //    identityClip = _srcClip;
+    //    //std::cout << "isIdentity! true\n";
+    //    return true;
+    //}
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
+        bool maskInvert;
+        _maskInvert->getValueAtTime(args.time, maskInvert);
+        if (!maskInvert) {
+            OfxRectI maskRoD;
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            // effect is identity if the renderWindow doesn't intersect the mask RoD
+            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+                identityClip = _srcClip;
+                return true;
+            }
+        }
+    }
+
+    //std::cout << "isIdentity! false\n";
+    return false;
+}
+
+void
+SeNoisePlugin::changedClip(const InstanceChangedArgs &args, const std::string &clipName)
+{
+    //std::cout << "changedClip!\n";
+    if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
+        switch (_srcClip->getPreMultiplication()) {
+            case eImageOpaque:
+                _premult->setValue(false);
+                break;
+            case eImagePreMultiplied:
+                _premult->setValue(true);
+                break;
+            case eImageUnPreMultiplied:
+                _premult->setValue(false);
+                break;
+        }
+    }
+    //std::cout << "changedClip OK!\n";
+}
+
+void
+SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
+                         const std::string &paramName)
+{
+    if (paramName == kParamNoiseType && args.reason == OFX::eChangeUserEdit) {
+        int noiseType_i;
+        _noiseType->getValue(noiseType_i);
+        NoiseTypeEnum noiseType = (NoiseTypeEnum)noiseType_i;
+        bool isfbm = (noiseType == eNoiseTypeFBM) || (noiseType == eNoiseTypeTurbulence)
+#ifdef SENOISE_VORONOI
+        || (noiseType == eNoiseTypeVoronoi)
+#endif
+        ;
+#ifdef SENOISE_VORONOI
+        bool isvoronoi = (noiseType == eNoiseTypeVoronoi);
+        _voronoiType->setIsSecret(!isvoronoi);
+        _jitter->setIsSecret(!isvoronoi);
+        _fbmScale->setIsSecret(!isvoronoi);
+#endif
+        _octaves->setIsSecret(!isfbm);
+        _lacunarity->setIsSecret(!isfbm);
+        _gain->setIsSecret(!isfbm);
+    } else if (paramName == kParamRampType && args.reason == OFX::eChangeUserEdit) {
+        int type_i;
+        _type->getValue(type_i);
+        RampTypeEnum type = (RampTypeEnum)type_i;
+        bool noramp = (type == eRampTypeNone);
+        _color0->setIsSecret(noramp);
+        _point0->setIsSecret(noramp);
+        _point1->setIsSecret(noramp);
+        _interactive->setIsSecret(noramp);
+        _color0->setEnabled(!noramp);
+        _point0->setEnabled(!noramp);
+        _point1->setEnabled(!noramp);
+        _interactive->setEnabled(!noramp);
+    }
+}
+
+mDeclarePluginFactory(SeNoisePluginFactory, {}, {});
+
+void SeNoisePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+{
+    //std::cout << "describe!\n";
+    // basic labels
+    desc.setLabel(kPluginName);
+    desc.setPluginGrouping(kPluginGrouping);
+    desc.setPluginDescription(kPluginDescription);
+
+    desc.addSupportedContext(eContextFilter);
+    desc.addSupportedContext(eContextGeneral);
+    desc.addSupportedContext(eContextPaint);
+    desc.addSupportedBitDepth(eBitDepthUByte);
+    desc.addSupportedBitDepth(eBitDepthUShort);
+    desc.addSupportedBitDepth(eBitDepthFloat);
+    
+    // set a few flags
+    desc.setSingleInstance(false);
+    desc.setHostFrameThreading(false);
+    desc.setSupportsMultiResolution(kSupportsMultiResolution);
+    desc.setSupportsTiles(kSupportsTiles);
+    desc.setTemporalClipAccess(false);
+    desc.setRenderTwiceAlways(false);
+    desc.setSupportsMultipleClipPARs(kSupportsMultipleClipPARs);
+    desc.setSupportsMultipleClipDepths(kSupportsMultipleClipDepths);
+    desc.setRenderThreadSafety(kRenderThreadSafety);
+    desc.setOverlayInteractDescriptor(new RampOverlayDescriptor);
+
+#ifdef OFX_EXTENSIONS_NATRON
+    desc.setChannelSelector(OFX::ePixelComponentNone); // we have our own channel selector
+#endif
+    //std::cout << "describe! OK\n";
+}
+
+
+void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
+{
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+
+    //std::cout << "describeInContext!\n";
+    // Source clip only in the filter context
+    // create the mandated source clip
+    ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
+    srcClip->addSupportedComponent(ePixelComponentRGBA);
+    srcClip->addSupportedComponent(ePixelComponentRGB);
+    srcClip->addSupportedComponent(ePixelComponentXY);
+    srcClip->addSupportedComponent(ePixelComponentAlpha);
+    srcClip->setTemporalClipAccess(false);
+    srcClip->setSupportsTiles(kSupportsTiles);
+    srcClip->setIsMask(false);
+    
+    // create the mandated output clip
+    ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
+    dstClip->addSupportedComponent(ePixelComponentRGBA);
+    dstClip->addSupportedComponent(ePixelComponentRGB);
+    dstClip->addSupportedComponent(ePixelComponentAlpha);
+    dstClip->setSupportsTiles(kSupportsTiles);
+    
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
+    }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
+
+    // make some pages and to things in
+    PageParamDescriptor *page = desc.definePageParam("Controls");
+    
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessR);
+        param->setLabel(kNatronOfxParamProcessRLabel);
+        param->setHint(kNatronOfxParamProcessRHint);
+        param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessG);
+        param->setLabel(kNatronOfxParamProcessGLabel);
+        param->setHint(kNatronOfxParamProcessGHint);
+        param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessB);
+        param->setLabel(kNatronOfxParamProcessBLabel);
+        param->setHint(kNatronOfxParamProcessBHint);
+        param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessA);
+        param->setLabel(kNatronOfxParamProcessALabel);
+        param->setHint(kNatronOfxParamProcessAHint);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+
+    // describe plugin params
+    {
+        OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamNoiseSize);
+        param->setLabel(kParamNoiseSizeLabel);
+        param->setHint(kParamNoiseSizeHint);
+        param->setRange(0., 0., kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+        param->setDisplayRange(1., 1., 1000., 1000.);
+        param->setDefault(kParamNoiseSizeDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamNoiseZ);
+        param->setLabel(kParamNoiseZLabel);
+        param->setHint(kParamNoiseZHint);
+        param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+        param->setDisplayRange(0., 5.);
+        param->setDefault(kParamNoiseZDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamNoiseZSlope);
+        param->setLabel(kParamNoiseZSlopeLabel);
+        param->setHint(kParamNoiseZSlopeHint);
+        param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+        param->setDisplayRange(0., 1.);
+        param->setDefault(kParamNoiseZSlopeDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamNoiseType);
+        param->setLabel(kParamNoiseTypeLabel);
+        param->setHint(kParamNoiseTypeHint);
+        assert(param->getNOptions() == eNoiseTypeCellNoise);
+        param->appendOption(kParamNoiseTypeCellNoise, kParamNoiseTypeCellNoiseHint);
+        assert(param->getNOptions() == eNoiseTypeNoise);
+        param->appendOption(kParamNoiseTypeNoise, kParamNoiseTypeNoiseHint);
+#ifdef SENOISE_PERLIN
+        assert(param->getNOptions() == eNoiseTypePerlin);
+        param->appendOption(kParamNoiseTypePerlin, kParamNoiseTypePerlinHint);
+#endif
+        assert(param->getNOptions() == eNoiseTypeFBM);
+        param->appendOption(kParamNoiseTypeFBM, kParamNoiseTypeFBMHint);
+        assert(param->getNOptions() == eNoiseTypeTurbulence);
+        param->appendOption(kParamNoiseTypeTurbulence, kParamNoiseTypeTurbulenceHint);
+#ifdef SENOISE_VORONOI
+        assert(param->getNOptions() == eNoiseTypeVoronoi);
+        param->appendOption(kParamNoiseTypeVoronoi, kParamNoiseTypeVoronoiHint);
+#endif
+        param->setDefault(kParamNoiseTypeDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+#ifdef SENOISE_VORONOI
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamVoronoiType);
+        param->setLabel(kParamVoronoiTypeLabel);
+        param->setHint(kParamVoronoiTypeHint);
+        assert(param->getNOptions() == eVoronoiTypeCell);
+        param->appendOption(kParamVoronoiTypeCell);
+        assert(param->getNOptions() == eVoronoiType2);
+        param->appendOption(kParamVoronoiType2);
+        assert(param->getNOptions() == eVoronoiType3);
+        param->appendOption(kParamVoronoiType3);
+        assert(param->getNOptions() == eVoronoiType4);
+        param->appendOption(kParamVoronoiType4);
+        assert(param->getNOptions() == eVoronoiType5);
+        param->appendOption(kParamVoronoiType5);
+        param->setDefault(kParamVoronoiTypeDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamJitter);
+        param->setLabel(kParamJitterLabel);
+        param->setHint(kParamJitterHint);
+        param->setRange(0., 1.);
+        param->setDisplayRange(0., 1.);
+        param->setDefault(kParamJitterDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFBMScale);
+        param->setLabel(kParamFBMScaleLabel);
+        param->setHint(kParamFBMScaleHint);
+        param->setRange(0., 1.);
+        param->setDisplayRange(0., 1.);
+        param->setDoubleType(eDoubleTypeScale);
+        param->setDefault(kParamFBMScaleDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+#endif
+    {
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOctaves);
+        param->setLabel(kParamOctavesLabel);
+        param->setHint(kParamOctavesHint);
+        param->setRange(1, 1000);
+        param->setDisplayRange(1, 10);
+        param->setDefault(kParamOctavesDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamLacunarity);
+        param->setLabel(kParamLacunarityLabel);
+        param->setHint(kParamLacunarityHint);
+        param->setRange(1., kOfxFlagInfiniteMax);
+        param->setDisplayRange(1., 10.);
+        param->setDoubleType(eDoubleTypeScale);
+        param->setDefault(kParamLacunarityDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamGain);
+        param->setLabel(kParamGainLabel);
+        param->setHint(kParamGainHint);
+        param->setRange(0., 1.);
+        param->setDisplayRange(0.1, 1.);
+        param->setDoubleType(eDoubleTypeScale);
+        param->setDefault(kParamLacunarityDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        PageParamDescriptor *page = desc.definePageParam(kPageColor);
+        page->setLabel(kPageColorLabel);
+        page->setHint(kPageColorHint);
+        OFX::GroupParamDescriptor* group = NULL;
+        if (!gHostIsNatron) {
+            // Natron makes separate tabs for each parameter page,
+            // but we have to use a group for Nuke and possibly others
+            group = desc.defineGroupParam(kGroupColor);
+            group->setLabel(kPageColorLabel);
+            group->setHint(kPageColorHint);
+            group->setOpen(false);
+        }
+        ofxsRampDescribeParams(desc, page, group, eRampTypeNone);
+        if (page && group) {
+            page->addChild(*group);
+        }
+    }
+
+    ofxsPremultDescribeParams(desc, page);
+    ofxsMaskMixDescribeParams(desc, page);
+    //std::cout << "describeInContext! OK\n";
+}
+
+OFX::ImageEffect* SeNoisePluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum /*context*/)
+{
+    return new SeNoisePlugin(handle);
+}
+
+void getSeNoisePluginID(OFX::PluginFactoryArray &ids)
+{
+    static SeNoisePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+    ids.push_back(&p);
+}
+

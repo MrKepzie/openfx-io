@@ -22,6 +22,7 @@
 #include "RunScript.h"
 #endif
 #include "SeExpr.h"
+#include "SeNoisePlugin.h"
 
 namespace OFX
 {
@@ -51,6 +52,7 @@ namespace OFX
             getRunScriptPluginID(ids);
 #endif
 			getSeExprPluginID(ids);
+            getSeNoisePluginID(ids);
         }
     }
 }

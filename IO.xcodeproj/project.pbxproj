@@ -192,6 +192,10 @@
 		1EE4A8CF19C6F08A00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D119C6F0EA00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */; };
+		1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; settings = {ASSET_TAGS = (); }; };
+		1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; settings = {ASSET_TAGS = (); }; };
+		1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; settings = {ASSET_TAGS = (); }; };
+		1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; settings = {ASSET_TAGS = (); }; };
 		AC0626691ABDC1D800B3D105 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
 		AC0626701ABDC4A400B3D105 /* fr.inria.openfx.OIIOResize.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */; };
 		AC0626711ABDC4A500B3D105 /* fr.inria.openfx.OIIOResize.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */; };
@@ -480,6 +484,12 @@
 		1E77070D1977D87700E3F68D /* ofxNatron.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxNatron.h; path = include/ofxNatron.h; sourceTree = "<group>"; };
 		1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.RunScript.svg; sourceTree = "<group>"; };
 		1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOText.svg; sourceTree = "<group>"; };
+		1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsImageBlenderMasked.h; sourceTree = "<group>"; };
+		1E84DC5A1BC1663C006E7E64 /* ofxsLut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsLut.h; sourceTree = "<group>"; };
+		1E84DC5B1BC1663C006E7E64 /* ofxsMacros.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsMacros.h; sourceTree = "<group>"; };
+		1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsMipmap.h; sourceTree = "<group>"; };
+		1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsShutter.h; sourceTree = "<group>"; };
+		1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsTransformInteract.h; sourceTree = "<group>"; };
 		1E864EBC19FC09D50016D4FF /* OCIOLookTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOLookTransform.cpp; sourceTree = "<group>"; };
 		1E864EBD19FC09D50016D4FF /* OCIOLookTransform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIOLookTransform.h; sourceTree = "<group>"; };
 		1E8B5D9D18B79E8100C31FDC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -541,6 +551,10 @@
 		1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOText.png; sourceTree = "<group>"; };
 		1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.RunScript.png; sourceTree = "<group>"; };
 		1EE4A8CC19C6F06700E6E3AE /* pstream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pstream.h; sourceTree = "<group>"; };
+		1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeNoise.cpp; sourceTree = "<group>"; };
+		1EEAA6BE1BBD183800D397F5 /* SeNoisePlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeNoisePlugin.h; sourceTree = "<group>"; };
+		1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsRamp.cpp; sourceTree = "<group>"; };
+		1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsRamp.h; sourceTree = "<group>"; };
 		1EF940C21B9093370028AF8A /* gpl-header-c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "gpl-header-c.txt"; sourceTree = "<group>"; };
 		AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExpr.png; sourceTree = "<group>"; };
 		AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOResize.png; sourceTree = "<group>"; };
@@ -795,6 +809,12 @@
 		1E9B5F21198A50250095C8AA /* SupportExt */ = {
 			isa = PBXGroup;
 			children = (
+				1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */,
+				1E84DC5A1BC1663C006E7E64 /* ofxsLut.h */,
+				1E84DC5B1BC1663C006E7E64 /* ofxsMacros.h */,
+				1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */,
+				1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */,
+				1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */,
 				1E3060261B70DA1600A9B507 /* ofxsCoords.h */,
 				1E9B5F22198A505E0095C8AA /* ofxsCopier.h */,
 				1E9B5F23198A505E0095C8AA /* ofxsFilter.h */,
@@ -810,6 +830,8 @@
 				1E9B5F2B198A505E0095C8AA /* ofxsOGLTextRenderer.h */,
 				1E9B5F2C198A505E0095C8AA /* ofxsPixelProcessor.h */,
 				1E9B5F2D198A505E0095C8AA /* ofxsPositionInteract.h */,
+				1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */,
+				1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */,
 				1E9B5F2E198A505E0095C8AA /* ofxsRectangleInteract.cpp */,
 				1E9B5F2F198A505E0095C8AA /* ofxsRectangleInteract.h */,
 				1E9B5F30198A505E0095C8AA /* ofxsTracking.cpp */,
@@ -883,6 +905,8 @@
 			children = (
 				ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */,
 				ACE0849D1AB4AB7E00BE558C /* SeExpr.h */,
+				1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */,
+				1EEAA6BE1BBD183800D397F5 /* SeNoisePlugin.h */,
 				ACE084991AB4AB7E00BE558C /* Info.plist */,
 				ACE0849A1AB4AB7E00BE558C /* Makefile */,
 				ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */,
@@ -1215,6 +1239,8 @@
 				1E2F4D9F189295F600F4CE25 /* ofxsImageEffect.cpp in Sources */,
 				1E2F4DA1189295F600F4CE25 /* ofxsPropertyValidation.cpp in Sources */,
 				1E2F4DA6189295F600F4CE25 /* ofxsLog.cpp in Sources */,
+				1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */,
+				1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
 				1E2F4DA8189295F600F4CE25 /* ofxsInteract.cpp in Sources */,
 				1E2F4DA9189295F600F4CE25 /* ofxsMultiThread.cpp in Sources */,
 			);
@@ -1287,7 +1313,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				ACE084A21AB4AB9B00BE558C /* ofxsProperty.cpp in Sources */,
+				1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */,
 				ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */,
+				1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
 				ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */,
 				ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */,
 				ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */,

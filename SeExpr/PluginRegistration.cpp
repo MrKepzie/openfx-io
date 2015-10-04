@@ -1,4 +1,5 @@
 #include "SeExpr.h"
+#include "SeNoisePlugin.h"
 
 namespace OFX
 {
@@ -7,6 +8,7 @@ namespace OFX
         void getPluginIDs(OFX::PluginFactoryArray &ids)
         {
             getSeExprPluginID(ids);
+            getSeNoisePluginID(ids);
         }
     }
 }
