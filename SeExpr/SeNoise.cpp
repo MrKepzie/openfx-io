@@ -194,8 +194,6 @@ class SeNoiseProcessorBase : public OFX::ImageProcessor
 protected:
     const OFX::Image *_srcImg;
     const OFX::Image *_maskImg;
-    //bool _premult;
-    //int _premultChannel;
     bool  _doMasking;
     double _mix;
     bool _maskInvert;
@@ -224,8 +222,6 @@ public:
     : OFX::ImageProcessor(instance)
     , _srcImg(0)
     , _maskImg(0)
-    //, _premult(false)
-    //, _premultChannel(3)
     , _doMasking(false)
     , _mix(1.)
     , _maskInvert(false)
@@ -260,9 +256,7 @@ public:
 
     void doMasking(bool v) {_doMasking = v;}
 
-    void setValues(//bool premult,
-                   //int premultChannel,
-                   double mix,
+    void setValues(double mix,
                    bool processR,
                    bool processG,
                    bool processB,
@@ -284,8 +278,6 @@ public:
                    const OfxPointD& point1,
                    const OfxRGBAColourD& color1)
     {
-        //_premult = premult;
-        //_premultChannel = premultChannel;
         _mix = mix;
         _processR = processR;
         _processG = processG;
@@ -409,6 +401,11 @@ private:
         assert(nComponents == 3 || nComponents == 4);
         float unpPix[4];
         float tmpPix[4];
+
+        const double norm2 = (_point1.x - _point0.x)*(_point1.x - _point0.x) + (_point1.y - _point0.y)*(_point1.y - _point0.y);
+        const double nx = norm2 == 0. ? 0. : (_point1.x - _point0.x)/ norm2;
+        const double ny = norm2 == 0. ? 0. : (_point1.y - _point0.y)/ norm2;
+
         for (int y = procWindow.y1; y < procWindow.y2; y++) {
             if (_effect.abort()) {
                 break;
@@ -417,13 +414,13 @@ private:
             PIX *dstPix = (PIX *) _dstImg->getPixelAddress(procWindow.x1, y);
             for (int x = procWindow.x1; x < procWindow.x2; x++) {
                 const PIX *srcPix = (const PIX *)  (_srcImg ? _srcImg->getPixelAddress(x, y) : 0);
-                //ofxsUnPremult<PIX, nComponents, maxValue>(srcPix, unpPix, _premult, _premultChannel);
+                ofxsToRGBA<PIX, nComponents, maxValue>(srcPix, unpPix);
                 double t_r = unpPix[0];
                 double t_g = unpPix[1];
                 double t_b = unpPix[2];
                 double t_a = unpPix[3];
 
-                // TODO: process the pixel (the actual computation goes here)
+                // process the pixel (the actual computation goes here)
                 double result;
                 switch (_noiseType) {
                     case eNoiseTypeCellNoise: {
@@ -475,16 +472,34 @@ private:
 #endif
                 }
                 //result = result*result; // gamma = 0.5 (TODO: gamma param)
-                t_r = t_r*(1.-result) + _color1.r*result;
-                t_g = t_g*(1.-result) + _color1.g*result;
-                t_b = t_b*(1.-result) + _color1.b*result;
-                t_a = t_a*(1.-result) + _color1.a*result;
+
+                // combine with ramp color
+                OfxRGBAColourD rampColor;
+                if (_type == eRampTypeNone) {
+                    rampColor = _color1;
+                } else {
+                    OfxPointI p_pixel;
+                    OfxPointD p;
+                    p_pixel.x = x;
+                    p_pixel.y = y;
+                    OFX::Coords::toCanonical(p_pixel, _dstImg->getRenderScale(), _dstImg->getPixelAspectRatio(), &p);
+
+                    double t = ofxsRampFunc(_point0, nx, ny, _type, p);
+
+                    rampColor.r = _color0.r * (1 - t) + _color1.r * t;
+                    rampColor.g = _color0.g * (1 - t) + _color1.g * t;
+                    rampColor.b = _color0.b * (1 - t) + _color1.b * t;
+                    rampColor.a = _color0.a * (1 - t) + _color1.a * t;
+                }
+                t_r = t_r*(1.-result) + rampColor.r*result;
+                t_g = t_g*(1.-result) + rampColor.g*result;
+                t_b = t_b*(1.-result) + rampColor.b*result;
+                t_a = t_a*(1.-result) + rampColor.a*result;
 
                 tmpPix[0] = (float)t_r;
                 tmpPix[1] = (float)t_g;
                 tmpPix[2] = (float)t_b;
                 tmpPix[3] = (float)t_a;
-                //ofxsPremultMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, _premult, _premultChannel, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 dstPix += nComponents;
             }
@@ -508,8 +523,6 @@ public:
     , _processG(0)
     , _processB(0)
     , _processA(0)
-    //, _premult(0)
-    //, _premultChannel(0)
     , _mix(0)
     , _maskApply(0)
     , _maskInvert(0)
@@ -525,6 +538,7 @@ public:
     , _octaves(0)
     , _lacunarity(0)
     , _gain(0)
+    , _groupColor(0)
     , _point0(0)
     , _color0(0)
     , _point1(0)
@@ -544,11 +558,8 @@ public:
         _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
         assert(!_maskClip || _maskClip->getPixelComponents() == ePixelComponentAlpha);
 
-        // TODO: fetch noise parameters
+        // fetch noise parameters
 
-        //_premult = fetchBooleanParam(kParamPremult);
-        //_premultChannel = fetchChoiceParam(kParamPremultChannel);
-        //assert(_premult && _premultChannel);
         _mix = fetchDoubleParam(kParamMix);
         _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
         _maskInvert = fetchBooleanParam(kParamMaskInvert);
@@ -578,6 +589,10 @@ public:
 #endif
                _octaves && _lacunarity && _gain);
 
+        if (!gHostIsNatron) {
+            _groupColor = fetchGroupParam(kGroupColor);
+            assert(_groupColor);
+        }
         _point0 = fetchDouble2DParam(kParamRampPoint0);
         _point1 = fetchDouble2DParam(kParamRampPoint1);
         _color0 = fetchRGBAParam(kParamRampColor0);
@@ -590,8 +605,6 @@ public:
         OFX::InstanceChangedArgs args = { OFX::eChangeUserEdit, 0., {0., 0.}};
         changedParam(args, kParamNoiseType);
         changedParam(args, kParamRampType);
-        _type->setIsSecret(true); // TODO: enable ramp types
-        _type->setEnabled(false);
     }
     
 private:
@@ -608,9 +621,6 @@ private:
     void setupAndProcess(SeNoiseProcessorBase &, const OFX::RenderArguments &args);
 
     virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
-
-    /** @brief called when a clip has just been changed in some way (a rewire maybe) */
-    virtual void changedClip(const InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
@@ -630,8 +640,6 @@ private:
     BooleanParam* _processG;
     BooleanParam* _processB;
     BooleanParam* _processA;
-    //OFX::BooleanParam* _premult;
-    //OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
@@ -649,6 +657,7 @@ private:
     DoubleParam* _lacunarity;
     DoubleParam* _gain;
 
+    GroupParam* _groupColor;
     Double2DParam* _point0;
     RGBAParam* _color0;
     Double2DParam* _point1;
@@ -766,18 +775,14 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     _type->getValueAtTime(time, type_i);
     RampTypeEnum type = (RampTypeEnum)type_i;
     OfxPointD point0;
-    _point0->getValueAtTime(time, point0.x, point0.x);
+    _point0->getValueAtTime(time, point0.x, point0.y);
     OfxRGBAColourD color0;
     _color0->getValueAtTime(time, color0.r, color0.g, color0.b, color0.a);
     OfxPointD point1;
-    _point1->getValueAtTime(time, point1.x, point1.x);
+    _point1->getValueAtTime(time, point1.x, point1.y);
     OfxRGBAColourD color1;
     _color1->getValueAtTime(time, color1.r, color1.g, color1.b, color1.a);
 
-    //bool premult;
-    //int premultChannel;
-    //_premult->getValueAtTime(args.time, premult);
-    //_premultChannel->getValueAtTime(args.time, premultChannel);
     double mix;
     _mix->getValueAtTime(args.time, mix);
     
@@ -787,8 +792,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     _processB->getValueAtTime(time, processB);
     _processA->getValueAtTime(time, processA);
 
-    processor.setValues(//premult, premultChannel,
-                        mix,
+    processor.setValues(mix,
                         processR,processG,processB,processA,
                         noiseType, noiseSize, noiseZ + time * noiseZSlope,
 #ifdef SENOISE_VORONOI
@@ -915,28 +919,6 @@ SeNoisePlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip,
 
     //std::cout << "isIdentity! false\n";
     return false;
-}
-
-void
-SeNoisePlugin::changedClip(const InstanceChangedArgs &args, const std::string &clipName)
-{
-    //std::cout << "changedClip!\n";
-#if 0
-    if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_srcClip->getPreMultiplication()) {
-            case eImageOpaque:
-                _premult->setValue(false);
-                break;
-            case eImagePreMultiplied:
-                _premult->setValue(true);
-                break;
-            case eImageUnPreMultiplied:
-                _premult->setValue(false);
-                break;
-        }
-    }
-#endif
-    //std::cout << "changedClip OK!\n";
 }
 
 void
@@ -1260,7 +1242,6 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         }
     }
 
-    //ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
     //std::cout << "describeInContext! OK\n";
 }
