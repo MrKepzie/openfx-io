@@ -62,6 +62,17 @@
 #include <SeExprNode.h>
 #include <SeExprBuiltins.h>
 #include <SeMutex.h>
+#ifdef _WINDOWS
+// fix SePlatform.h's bad behavior
+#undef snprintf
+#undef strtok_r
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#  if defined(_MSC_VER) && _MSC_VER >= 1400
+#    define strtok_r(s,d,p) strtok_s(s,d,p)
+#  endif
+#endif // _WINDOWS
 
 #define kPluginName "SeExpr"
 #define kPluginGrouping "Merge"
