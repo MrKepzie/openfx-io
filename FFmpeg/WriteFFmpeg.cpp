@@ -34,12 +34,13 @@
 #include <cstring>
 #include <sstream>
 
-#if _WIN32
-#define snprintf sprintf_s
-#endif
-
-#if defined(_WIN32) || defined(WIN64)
-#  include <windows.h> // for GetSystemInfo()
+#ifdef _WINDOWS
+#    define NOMINMAX 1
+// windows - defined for both Win32 and Win64
+#    include <windows.h> // for GetSystemInfo()
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
 #else
 #  include <unistd.h> // for sysconf()
 #endif
