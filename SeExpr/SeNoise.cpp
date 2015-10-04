@@ -61,6 +61,8 @@
 #include "ofxsRamp.h"
 #include "ofxsPositionInteract.h"
 
+//#define SENOISE_VORONOI
+
 #define kPluginName "SeNoise"
 #define kPluginGrouping "Draw"
 #define kPluginDescription "Generate noise."
@@ -109,7 +111,7 @@ enum NoiseTypeEnum {
     eNoiseTypeVoronoi,
 #endif
 };
-#define kParamNoiseTypeDefault eNoiseTypeCellNoise
+#define kParamNoiseTypeDefault eNoiseTypeFBM
 
 #define kParamNoiseSize "noiseSize"
 #define kParamNoiseSizeLabel "Noise Size"
@@ -171,6 +173,11 @@ enum VoronoiTypeEnum {
 #define kParamGainHint "The gain controls how much each frequency is scaled relative to the previous frequency."
 #define kParamGainDefault 0.5
 
+#define kParamGamma "gamma"
+#define kParamGammaLabel "Gamma"
+#define kParamGammaHint "The gamma output for noide."
+#define kParamGammaDefault 1.
+
 #define kPageColor "colorPage"
 #define kPageColorLabel "Color"
 #define kPageColorHint "Color properties of the noise"
@@ -187,8 +194,8 @@ class SeNoiseProcessorBase : public OFX::ImageProcessor
 protected:
     const OFX::Image *_srcImg;
     const OFX::Image *_maskImg;
-    bool _premult;
-    int _premultChannel;
+    //bool _premult;
+    //int _premultChannel;
     bool  _doMasking;
     double _mix;
     bool _maskInvert;
@@ -217,8 +224,8 @@ public:
     : OFX::ImageProcessor(instance)
     , _srcImg(0)
     , _maskImg(0)
-    , _premult(false)
-    , _premultChannel(3)
+    //, _premult(false)
+    //, _premultChannel(3)
     , _doMasking(false)
     , _mix(1.)
     , _maskInvert(false)
@@ -253,8 +260,8 @@ public:
 
     void doMasking(bool v) {_doMasking = v;}
 
-    void setValues(bool premult,
-                   int premultChannel,
+    void setValues(//bool premult,
+                   //int premultChannel,
                    double mix,
                    bool processR,
                    bool processG,
@@ -277,8 +284,8 @@ public:
                    const OfxPointD& point1,
                    const OfxRGBAColourD& color1)
     {
-        _premult = premult;
-        _premultChannel = premultChannel;
+        //_premult = premult;
+        //_premultChannel = premultChannel;
         _mix = mix;
         _processR = processR;
         _processG = processG;
@@ -410,7 +417,7 @@ private:
             PIX *dstPix = (PIX *) _dstImg->getPixelAddress(procWindow.x1, y);
             for (int x = procWindow.x1; x < procWindow.x2; x++) {
                 const PIX *srcPix = (const PIX *)  (_srcImg ? _srcImg->getPixelAddress(x, y) : 0);
-                ofxsUnPremult<PIX, nComponents, maxValue>(srcPix, unpPix, _premult, _premultChannel);
+                //ofxsUnPremult<PIX, nComponents, maxValue>(srcPix, unpPix, _premult, _premultChannel);
                 double t_r = unpPix[0];
                 double t_g = unpPix[1];
                 double t_b = unpPix[2];
@@ -420,13 +427,16 @@ private:
                 double result;
                 switch (_noiseType) {
                     case eNoiseTypeCellNoise: {
+                        // double cellnoise(const SeVec3d& p)
                         double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::CellNoise<3,1>(args,&result);
                         break;
                     }
                     case eNoiseTypeNoise: {
+                        // double noise(int n, const SeVec3d* args)
                         double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::Noise<3,1>(args,&result);
+                        result = result+.5;
                         break;
                     }
 #ifdef SENOISE_PERLIN
@@ -437,22 +447,34 @@ private:
                     }
 #endif
                     case eNoiseTypeFBM: {
+                        // double fbm(int n, const SeVec3d* args) in SeExprBuiltins.cpp
                         double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::FBM<3,1,false>(args, &result, _octaves, _lacunarity, _gain);
+                        result = .5*result+.5;
                         break;
                     }
                     case eNoiseTypeTurbulence: {
+                        // double turbulence(int n, const SeVec3d* args)
                         double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::FBM<3,1,true>(args, &result, _octaves, _lacunarity, _gain);
                         break;
+                        //result = .5*result+.5;
                     }
 #ifdef SENOISE_VORONOI
                     case eNoiseTypeVoronoi: {
-                        int type = (int)_voronoiType + 1;
-
+                        SeVec3d p[7];
+                        p[0].setValue((x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ);
+                        p[1][0] = (int)_voronoiType + 1;
+                        p[2][0] = _jitter;
+                        p[3][0] = _fbmScale;
+                        p[4][0] = _octaves;
+                        p[5][0] = _lacunarity;
+                        p[6][0] = _gain;
+                        ????
                     } break;
 #endif
                 }
+                //result = result*result; // gamma = 0.5 (TODO: gamma param)
                 t_r = t_r*(1.-result) + _color1.r*result;
                 t_g = t_g*(1.-result) + _color1.g*result;
                 t_b = t_b*(1.-result) + _color1.b*result;
@@ -462,7 +484,8 @@ private:
                 tmpPix[1] = (float)t_g;
                 tmpPix[2] = (float)t_b;
                 tmpPix[3] = (float)t_a;
-                ofxsPremultMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, _premult, _premultChannel, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
+                //ofxsPremultMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, _premult, _premultChannel, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
+                ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 dstPix += nComponents;
             }
         }
@@ -485,8 +508,8 @@ public:
     , _processG(0)
     , _processB(0)
     , _processA(0)
-    , _premult(0)
-    , _premultChannel(0)
+    //, _premult(0)
+    //, _premultChannel(0)
     , _mix(0)
     , _maskApply(0)
     , _maskInvert(0)
@@ -523,9 +546,9 @@ public:
 
         // TODO: fetch noise parameters
 
-        _premult = fetchBooleanParam(kParamPremult);
-        _premultChannel = fetchChoiceParam(kParamPremultChannel);
-        assert(_premult && _premultChannel);
+        //_premult = fetchBooleanParam(kParamPremult);
+        //_premultChannel = fetchChoiceParam(kParamPremultChannel);
+        //assert(_premult && _premultChannel);
         _mix = fetchDoubleParam(kParamMix);
         _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
         _maskInvert = fetchBooleanParam(kParamMaskInvert);
@@ -591,6 +614,12 @@ private:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
+    /* Override the clip preferences, we need to say we are setting the frame varying flag */
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL
+    {
+        clipPreferences.setOutputFrameVarying(true);
+    }
+
 private:
     // do not need to delete these, the ImageEffect is managing them for us
     OFX::Clip *_dstClip;
@@ -601,8 +630,8 @@ private:
     BooleanParam* _processG;
     BooleanParam* _processB;
     BooleanParam* _processA;
-    OFX::BooleanParam* _premult;
-    OFX::ChoiceParam* _premultChannel;
+    //OFX::BooleanParam* _premult;
+    //OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
@@ -743,12 +772,12 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     OfxPointD point1;
     _point1->getValueAtTime(time, point1.x, point1.x);
     OfxRGBAColourD color1;
-    _color0->getValueAtTime(time, color1.r, color1.g, color1.b, color1.a);
+    _color1->getValueAtTime(time, color1.r, color1.g, color1.b, color1.a);
 
-    bool premult;
-    int premultChannel;
-    _premult->getValueAtTime(args.time, premult);
-    _premultChannel->getValueAtTime(args.time, premultChannel);
+    //bool premult;
+    //int premultChannel;
+    //_premult->getValueAtTime(args.time, premult);
+    //_premultChannel->getValueAtTime(args.time, premultChannel);
     double mix;
     _mix->getValueAtTime(args.time, mix);
     
@@ -758,7 +787,8 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     _processB->getValueAtTime(time, processB);
     _processA->getValueAtTime(time, processA);
 
-    processor.setValues(premult, premultChannel, mix,
+    processor.setValues(//premult, premultChannel,
+                        mix,
                         processR,processG,processB,processA,
                         noiseType, noiseSize, noiseZ + time * noiseZSlope,
 #ifdef SENOISE_VORONOI
@@ -891,6 +921,7 @@ void
 SeNoisePlugin::changedClip(const InstanceChangedArgs &args, const std::string &clipName)
 {
     //std::cout << "changedClip!\n";
+#if 0
     if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
         switch (_srcClip->getPreMultiplication()) {
             case eImageOpaque:
@@ -904,6 +935,7 @@ SeNoisePlugin::changedClip(const InstanceChangedArgs &args, const std::string &c
                 break;
         }
     }
+#endif
     //std::cout << "changedClip OK!\n";
 }
 
@@ -996,6 +1028,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     srcClip->setTemporalClipAccess(false);
     srcClip->setSupportsTiles(kSupportsTiles);
     srcClip->setIsMask(false);
+    srcClip->setOptional(true);
     
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
@@ -1050,7 +1083,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessA);
         param->setLabel(kNatronOfxParamProcessALabel);
         param->setHint(kNatronOfxParamProcessAHint);
-        param->setDefault(false);
+        param->setDefault(true);
         if (page) {
             page->addChild(*param);
         }
@@ -1140,8 +1173,8 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamJitter);
         param->setLabel(kParamJitterLabel);
         param->setHint(kParamJitterHint);
-        param->setRange(0., 1.);
-        param->setDisplayRange(0., 1.);
+        param->setRange(1.e-3, 1.);
+        param->setDisplayRange(1.e-3, 1.);
         param->setDefault(kParamJitterDefault);
         if (page) {
             page->addChild(*param);
@@ -1190,7 +1223,20 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setRange(0., 1.);
         param->setDisplayRange(0.1, 1.);
         param->setDoubleType(eDoubleTypeScale);
-        param->setDefault(kParamLacunarityDefault);
+        param->setDefault(kParamGainDefault);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamGamma);
+        param->setLabel(kParamGammaLabel);
+        param->setHint(kParamGammaHint);
+        param->setRange(0., 1.);
+        param->setDisplayRange(0., 1.);
+        param->setDefault(kParamGammaDefault);
+        param->setEnabled(false); // TODO: gamma parameter
+        param->setIsSecret(true);
         if (page) {
             page->addChild(*param);
         }
@@ -1214,7 +1260,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         }
     }
 
-    ofxsPremultDescribeParams(desc, page);
+    //ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
     //std::cout << "describeInContext! OK\n";
 }
