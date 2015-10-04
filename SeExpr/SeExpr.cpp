@@ -34,7 +34,15 @@
 //#else
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
-#  include <windows.h>
+#    define NOMINMAX 1
+// windows - defined for both Win32 and Win64
+#    include <windows.h>
+// the following must be included before SePlatform.h tries to include
+// them with _CRT_NONSTDC_NO_DEPRECATE=1 and _CRT_SECURE_NO_DEPRECATE=1
+#    include <malloc.h>
+#    include <io.h>
+#    include <tchar.h>
+#    include <process.h>
 #  if defined(_MSC_VER) && _MSC_VER < 1900
 #    define snprintf _snprintf
 #  endif
@@ -75,12 +83,12 @@
 "- par: The pixel aspect ratio.\n\n" \
 "- cx, cy: Shortcuts for (x + 0.5)/par/sx and (y + 0.5)/sy, a.k.a. the canonical coordinates of the current pixel.\n\n" \
 "- frame: Current frame being rendered\n\n" \
-"- Cs, $As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
-"- $CsN, $AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. $Cs2 and $As2 for input 2.\n\n" \
-"- $output_width: Width of the output image being rendered.\n\n" \
-"- $output_height: Height of the output image being rendered.\n\n" \
-"- $input_width, $input_height: Size of image from input 1, in pixels.\n\n" \
-"- $input_widthN, $input_heightN: Size of image from input N, e.g. $input_width2 and $input_height2 for input 2.\n\n" \
+"- Cs, As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
+"- CsN, AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. Cs2 and As2 for input 2.\n\n" \
+"- output_width: Width of the output image being rendered.\n\n" \
+"- output_height: Height of the output image being rendered.\n\n" \
+"- input_width, input_height: Size of image from input 1, in pixels.\n\n" \
+"- input_widthN, input_heightN: Size of image from input N, e.g. input_width2 and input_height2 for input 2.\n\n" \
 "- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
 "- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
 "The pixel position of the center of the bottom-left pixel is (0., 0.).\n"\
@@ -97,27 +105,27 @@
 "8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
 "Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
-"$Cs * $Cs2\n\n" \
+"Cs * Cs2\n\n" \
 "Another merge operator example (over):\n\n" \
-"$Cs + $Cs2 * (1 -  $As)\n\n" \
-"Generating a time-varying colored Perlin noise with size $x1:\n" \
-"cnoise([$cx/$x1,$cy/$x1,$frame])\n\n" \
+"Cs + Cs2 * (1 -  As)\n\n" \
+"Generating a time-varying colored Perlin noise with size x1:\n" \
+"cnoise([cx/x1,cy/x1,frame])\n\n" \
 "A more complex example used to average pixels over the previous, current and next frame:\n\n" \
-"$prev = cpixel(1,$frame - 1,x,y);\n" \
-"$cur = $Cs;\n" \
-"$next = cpixel(1,$frame + 1,x,y);\n" \
-"($prev + $cur + $next) / 3;\n\n" \
+"prev = cpixel(1,frame - 1,x,y);\n" \
+"cur = Cs;\n" \
+"next = cpixel(1,frame + 1,x,y);\n" \
+"(prev + cur + next) / 3;\n\n" \
 "To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
 "using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n\n" \
-"$Cs + $x1\n\n" \
+"Cs + x1\n\n" \
 "Note that for expressions that span multiple lines, you must end each instruction by a semicolumn (';') as you would do in C/C++. The last line " \
 "of your expression will always be considered as the final value of the pixel and must not be terminated by a semicolumn.\n" \
 "More documentation is available on the SeExpr website: \n\n" \
 "The input frame range used to render a given output frame is computed automatically if the following conditions hold:\n"\
 "- The 'frame' parameter to cpixel/apixel must not depend on the color or alpha of a pixel, nor on the result of another call to cpixel/apixel\n" \
-"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, e.g. this is not correct:\n\n" \
+"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, as in the following:\n\n" \
 "if (As > 0.1) {\n" \
-"    src = getPixel(1,frame,x,y);\n" \
+"    src = cpixel(1,frame,x,y);\n" \
 "} else {\n" \
 "    src = [0,0,0];\n" \
 "}\n" \
