@@ -28,10 +28,6 @@
 #include <limits>
 #include <set>
 
-//#ifdef __MINGW32__
-//#define SEEXPR_NO_SNPRINTF
-//#include <sstream>
-//#else
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
 #    define NOMINMAX 1
@@ -47,7 +43,6 @@
 #    define snprintf _snprintf
 #  endif
 #endif // _WINDOWS
-//#endif
 
 #include "ofxsMacros.h"
 #include "ofxsCopier.h"
@@ -1048,33 +1043,9 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 
     _variables[kSeExprOutputHeightVarName] = &_outputHeight;
 
-#ifndef SEEXPR_NO_SNPRINTF
     char name[256];
-#endif
 
     for (int i = 0; i < kSourceClipCount; ++i) {
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss << kSeExprInputWidthVarName << i + 1;
-            _variables[ss.str()] = &_inputWidths[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kSeExprInputHeightVarName << i + 1;
-            _variables[ss.str()] = &_inputHeights[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kSeExprColorVarName << i + 1;
-            _variables[ss.str()] = &_inputColors[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kSeExprAlphaVarName << i + 1;
-            _variables[ss.str()] = &_inputAlphas[i];
-        }
-#else
         snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
         _variables[name] = &_inputWidths[i];
         snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
@@ -1083,7 +1054,6 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _variables[name] = &_inputColors[i];
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
         _variables[name] = &_inputAlphas[i];
-#endif
         if (i == 0) {
             // default names for the first input
             _variables[kSeExprInputWidthVarName] = &_inputWidths[i];
@@ -1104,31 +1074,12 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _doubleRef[i] = new DoubleParamVarRef(doubleParams[i]);
         _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
         _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss << kParamDouble << i + 1;
-            _variables[ss.str()] = _doubleRef[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kParamDouble2D << i + 1;
-            _variables[ss.str()] = _double2DRef[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kParamColor << i + 1;
-            _variables[ss.str()] = _colorRef[i];
-        }
-#else
         snprintf(name, sizeof(name), kParamDouble "%d", i+1);
         _variables[name] = _doubleRef[i];
         snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
         _variables[name] = _double2DRef[i];
         snprintf(name, sizeof(name), kParamColor "%d", i+1);
         _variables[name] = _colorRef[i];
-#endif
-        
     }
 }
 
@@ -1477,16 +1428,8 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
             if (i == 0 && getContext() == OFX::eContextFilter) {
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
-			
-#ifdef SEEXPR_NO_SNPRINTF
-			  std::stringstream ss;
-		  	  ss  << i + 1;
-			  _srcClip[i] = fetchClip(ss.str());
-#else
 			  snprintf(name, sizeof(name), "%d", i+1);
 			  _srcClip[i] = fetchClip(name);
-#endif
-                
             }
         }
     }
@@ -1504,53 +1447,18 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamLayerInput << i + 1;
-                _clipLayerToFetch[i] = fetchChoiceParam(ss.str());
-            }
-#else
             snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
-#endif
-           
         } else {
             _clipLayerToFetch[i] = 0;
         }
         
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << kParamDouble << i + 1;
-            _doubleParams[i] = fetchDoubleParam(ss.str());
-        }
-#else
         snprintf(name, sizeof(name), kParamDouble "%d", i+1 );
         _doubleParams[i] = fetchDoubleParam(name);
-#endif
-        
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << kParamDouble2D << i + 1;
-            _double2DParams[i] = fetchDouble2DParam(ss.str());
-        }
-#else
         snprintf(name, sizeof(name), kParamDouble2D "%d", i+1 );
         _double2DParams[i] = fetchDouble2DParam(name);
-#endif
-        
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << kParamColor << i + 1;
-            _colorParams[i] = fetchRGBParam(ss.str());
-        }
-#else
         snprintf(name, sizeof(name), kParamColor "%d", i+1 );
         _colorParams[i] = fetchRGBParam(name);
-#endif
     }
 
     _frameRange = fetchInt2DParam(kParamFrameRange);
@@ -1988,22 +1896,10 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
     }
     if (args.reason == OFX::eChangeUserEdit) {
         std::string strName;
+        char name[256];
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss  << i + 1;
-                strName = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), "%d", i+1);
-                strName.append(name);
-            }
-#endif
-            if (strName == clipName) {
+            snprintf(name, sizeof(name), "%d", i+1);
+            if (name == clipName) {
                 assert(_srcClip[i]);
                 _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
             }
@@ -2820,32 +2716,11 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->appendOption(kParamRegionOfDefinitionOptionProject, kParamRegionOfDefinitionOptionProjectHelp);
 
         assert(param->getNOptions() == eRegionOfDefinitionOptionCustom);
+        char name[256], help[256];
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamRegionOfDefinitionOptionCustomInput << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamRegionOfDefinitionOptionCustomInputHelp << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInputHelp "%d", i+1);
-                strHelp.append(name);
-
-            }
-#endif
-            param->appendOption(strName, strHelp);
+            snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput "%d", i+1);
+            snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp "%d", i+1);
+            param->appendOption(name, help);
         }
         param->setAnimates(false);
         if (page) {
@@ -2977,6 +2852,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
     }
 
+    char name[1024], label[1024], hint[1024];
+
     if (gHostIsMultiPlanar) {
         GroupParamDescriptor *group = desc.defineGroupParam("Input layers");
         group->setLabel("Input layers");
@@ -2984,44 +2861,13 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         if (page) {
             page->addChild(*group);
         }
-
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamLayerInput << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamLayerInputLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamLayerInputHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamLayerInputHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamLayerInputLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
+            snprintf(label, sizeof(label), kParamLayerInputLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamLayerInputHint "%d", i+1);
+            ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
             //param->setIsSecret(true); // done in the plugin constructor
@@ -3054,42 +2900,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamDouble << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDoubleLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDoubleHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamDouble "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamDoubleHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamDoubleLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-
-            DoubleParamDescriptor *param = desc.defineDoubleParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamDouble "%d", i+1);
+            snprintf(label, sizeof(label), kParamDoubleLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamDoubleHint "%d", i+1);
+            DoubleParamDescriptor *param = desc.defineDoubleParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDisplayRange(-1000.,1000.);
@@ -3123,41 +2939,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamDouble2D << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDouble2DLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDouble2DHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamDouble2DHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamDouble2DLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-            Double2DParamDescriptor *param = desc.defineDouble2DParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
+            snprintf(label, sizeof(label), kParamDouble2DLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamDouble2DHint "%d", i+1);
+            Double2DParamDescriptor *param = desc.defineDouble2DParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
@@ -3189,41 +2976,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamColor << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamColorLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamColorHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamColor "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamColorHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamColorLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-            RGBParamDescriptor *param = desc.defineRGBParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamColor "%d", i+1);
+            snprintf(label, sizeof(label), kParamColorLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamColorHint "%d", i+1);
+            RGBParamDescriptor *param = desc.defineRGBParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             param->setParent(*group);
             //param->setIsSecret(true); // done in the plugin constructor
