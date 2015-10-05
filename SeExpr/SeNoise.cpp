@@ -60,9 +60,9 @@
 #include "ofxsMacros.h"
 #include "ofxsRamp.h"
 #include "ofxsTransformInteract.h"
+#include "ofxsMatrix2D.h"
 
 //#define SENOISE_VORONOI
-//#define SENOISE_TRANSFORM
 
 #define kPluginName "SeNoise"
 #define kPluginGrouping "Draw"
@@ -70,8 +70,7 @@
 #define kPluginIdentifier "net.sf.openfx.SeNoise"
 // History:
 // version 1.0: initial version
-// version 2.0: use kNatronOfxParamProcess* parameters
-#define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
 #define kSupportsTiles 1
@@ -176,8 +175,18 @@ enum VoronoiTypeEnum {
 
 #define kParamGamma "gamma"
 #define kParamGammaLabel "Gamma"
-#define kParamGammaHint "The gamma output for noide."
+#define kParamGammaHint "The gamma output for noise."
 #define kParamGammaDefault 1.
+
+#define kParamXRotate "XRotate"
+#define kParamXRotateLabel "X Rotate"
+#define kParamXRotateHint "Rotation about the X axis in the 3D noise space (X,Y,Z). Noise artifacts may appear if it is 0 or a multiple of 90."
+#define kParamXRotateDefault 30.
+
+#define kParamYRotate "YRotate"
+#define kParamYRotateLabel "Y Rotate"
+#define kParamYRotateHint "Rotation about the Y axis in the 3D noise space (X,Y,Z). Noise artifacts may appear if it is 0 or a multiple of 90."
+#define kParamYRotateDefault 30.
 
 #define kPageTransform "transformPage"
 #define kPageTransformLabel "Transform"
@@ -207,7 +216,6 @@ protected:
     bool _processR, _processG, _processB, _processA;
     // plugin parameter values
     NoiseTypeEnum _noiseType;
-    OfxPointD _noiseSize;
     double _noiseZ;
 #ifdef SENOISE_VORONOI
     VoronoiTypeEnum _voronoiType;
@@ -217,6 +225,7 @@ protected:
     int _octaves;
     double _lacunarity;
     double _gain;
+    OFX::Matrix3x3 _invtransform;
     RampTypeEnum _type;
     OfxPointD _point0;
     OfxRGBAColourD _color0;
@@ -238,7 +247,6 @@ public:
     , _processA(false)
     // initialize plugin parameter values
     , _noiseType(eNoiseTypeCellNoise)
-    , _noiseSize()
     , _noiseZ(0.)
 #ifdef SENOISE_VORONOI
     , _voronoiType(eVoronoiTypeCell)
@@ -248,6 +256,7 @@ public:
     , _octaves(6)
     , _lacunarity(2.)
     , _gain(0.5)
+    , _invtransform()
     , _type(eRampTypeNone)
     , _point0()
     , _color0()
@@ -269,7 +278,6 @@ public:
                    bool processB,
                    bool processA,
                    NoiseTypeEnum noiseType,
-                   const OfxPointD& noiseSize,
                    double noiseZ,
 #ifdef SENOISE_VORONOI
                    VoronoiTypeEnum voronoiType,
@@ -279,6 +287,7 @@ public:
                    int octaves,
                    double lacunarity,
                    double gain,
+                   const OFX::Matrix3x3& invtransform,
                    RampTypeEnum type,
                    const OfxPointD& point0,
                    const OfxRGBAColourD& color0,
@@ -292,7 +301,6 @@ public:
         _processA = processA;
         // set plugin parameter values
         _noiseType = noiseType;
-        _noiseSize = noiseSize;
         _noiseZ = noiseZ;
 #ifdef SENOISE_VORONOI
         _voronoiType = voronoiType;
@@ -302,6 +310,7 @@ public:
         _octaves = octaves;
         _lacunarity = lacunarity;
         _gain = gain;
+        _invtransform = invtransform;
         _type = type;
         _point0 = point0;
         _color0 = color0;
@@ -427,39 +436,37 @@ private:
                 double t_b = unpPix[2];
                 double t_a = unpPix[3];
 
+                Point3D p(x + 0.5, y + 0.5, _noiseZ);
+                p = _invtransform * p;
+                double args[3] = { p.x, p.y, p.z };
                 // process the pixel (the actual computation goes here)
                 double result;
                 switch (_noiseType) {
                     case eNoiseTypeCellNoise: {
                         // double cellnoise(const SeVec3d& p)
-                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::CellNoise<3,1>(args,&result);
                         break;
                     }
                     case eNoiseTypeNoise: {
                         // double noise(int n, const SeVec3d* args)
-                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::Noise<3,1>(args,&result);
                         result = result+.5;
                         break;
                     }
 #ifdef SENOISE_PERLIN
                     case eNoiseTypePerlin: {
-                        SeVec3d p((x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ);
                         n = SeExpr::noise(1, &p);
                         break;
                     }
 #endif
                     case eNoiseTypeFBM: {
                         // double fbm(int n, const SeVec3d* args) in SeExprBuiltins.cpp
-                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::FBM<3,1,false>(args, &result, _octaves, _lacunarity, _gain);
                         result = .5*result+.5;
                         break;
                     }
                     case eNoiseTypeTurbulence: {
                         // double turbulence(int n, const SeVec3d* args)
-                        double args[3] = { (x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ };
                         SeExpr::FBM<3,1,true>(args, &result, _octaves, _lacunarity, _gain);
                         break;
                         //result = .5*result+.5;
@@ -467,7 +474,7 @@ private:
 #ifdef SENOISE_VORONOI
                     case eNoiseTypeVoronoi: {
                         SeVec3d p[7];
-                        p[0].setValue((x + 0.5)/_renderScale.x/_noiseSize.x, (y + 0.5)/_renderScale.y/_noiseSize.y, _noiseZ);
+                        p[0].setValue(p.x, p.y, p.z);
                         p[1][0] = (int)_voronoiType + 1;
                         p[2][0] = _jitter;
                         p[3][0] = _fbmScale;
@@ -545,13 +552,25 @@ public:
     , _octaves(0)
     , _lacunarity(0)
     , _gain(0)
+    , _groupTransform(0)
+    , _translate(0)
+    , _rotate(0)
+    , _scale(0)
+    , _scaleUniform(0)
+    , _skewX(0)
+    , _skewY(0)
+    , _skewOrder(0)
+    , _center(0)
+    , _transformInteractive(0)
+    , _xRotate(0)
+    , _yRotate(0)
     , _groupColor(0)
     , _point0(0)
     , _color0(0)
     , _point1(0)
     , _color1(0)
     , _type(0)
-    , _interactive(0)
+    , _rampInteractive(0)
     {
         _dstClip = fetchClip(kOfxImageEffectOutputClipName);
         assert(_dstClip && (_dstClip->getPixelComponents() == ePixelComponentRGB ||
@@ -597,6 +616,23 @@ public:
                _octaves && _lacunarity && _gain);
 
         if (!gHostIsNatron) {
+            _groupTransform = fetchGroupParam(kGroupTransform);
+            assert(_groupTransform);
+        }
+        _translate = fetchDouble2DParam(kParamTransformTranslate);
+        _rotate = fetchDoubleParam(kParamTransformRotate);
+        _scale = fetchDouble2DParam(kParamTransformScale);
+        _scaleUniform = fetchBooleanParam(kParamTransformScaleUniform);
+        _skewX = fetchDoubleParam(kParamTransformSkewX);
+        _skewY = fetchDoubleParam(kParamTransformSkewY);
+        _skewOrder = fetchChoiceParam(kParamTransformSkewOrder);
+        _center = fetchDouble2DParam(kParamTransformCenter);
+        _transformInteractive = fetchBooleanParam(kParamTransformInteractive);
+        assert(_translate && _rotate && _scale && _scaleUniform && _skewX && _skewY && _skewOrder && _center && _transformInteractive);
+        _xRotate = fetchDoubleParam(kParamXRotate);
+        _yRotate = fetchDoubleParam(kParamYRotate);
+
+        if (!gHostIsNatron) {
             _groupColor = fetchGroupParam(kGroupColor);
             assert(_groupColor);
         }
@@ -605,8 +641,8 @@ public:
         _color0 = fetchRGBAParam(kParamRampColor0);
         _color1 = fetchRGBAParam(kParamRampColor1);
         _type = fetchChoiceParam(kParamRampType);
-        _interactive = fetchBooleanParam(kParamRampInteractive);
-        assert(_point0 && _point1 && _color0 && _color1 && _type && _interactive);
+        _rampInteractive = fetchBooleanParam(kParamRampInteractive);
+        assert(_point0 && _point1 && _color0 && _color1 && _type && _rampInteractive);
 
         // update visibility
         OFX::InstanceChangedArgs args = { OFX::eChangeUserEdit, 0., {0., 0.}};
@@ -627,6 +663,8 @@ private:
     /* set up and run a processor */
     void setupAndProcess(SeNoiseProcessorBase &, const OFX::RenderArguments &args);
 
+    bool getInverseTransformCanonical(double time, OFX::Matrix3x3* invtransform) const;
+
     virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
@@ -634,7 +672,13 @@ private:
     /* Override the clip preferences, we need to say we are setting the frame varying flag */
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL
     {
-        clipPreferences.setOutputFrameVarying(true);
+        if (!_noiseZSlope->getIsAnimating()) {
+            double noiseZSlope;
+            _noiseZSlope->getValue(noiseZSlope);
+            if (noiseZSlope != 0.) {
+                clipPreferences.setOutputFrameVarying(true);
+            }
+        }
     }
 
 private:
@@ -664,13 +708,26 @@ private:
     DoubleParam* _lacunarity;
     DoubleParam* _gain;
 
+    GroupParam* _groupTransform;
+    OFX::Double2DParam* _translate;
+    OFX::DoubleParam* _rotate;
+    OFX::Double2DParam* _scale;
+    OFX::BooleanParam* _scaleUniform;
+    OFX::DoubleParam* _skewX;
+    OFX::DoubleParam* _skewY;
+    OFX::ChoiceParam* _skewOrder;
+    OFX::Double2DParam* _center;
+    OFX::BooleanParam* _transformInteractive;
+    OFX::DoubleParam* _xRotate;
+    OFX::DoubleParam* _yRotate;
+
     GroupParam* _groupColor;
     Double2DParam* _point0;
     RGBAParam* _color0;
     Double2DParam* _point1;
     RGBAParam* _color1;
     ChoiceParam* _type;
-    BooleanParam* _interactive;
+    BooleanParam* _rampInteractive;
 };
 
 
@@ -799,15 +856,64 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     _processB->getValueAtTime(time, processB);
     _processA->getValueAtTime(time, processA);
 
+    Matrix3x3 sizeMat(1./args.renderScale.x/noiseSize.x, 0., 0., 0., 1./args.renderScale.x/noiseSize.y, 0., 0., 0., 1.);
+    Matrix3x3 invtransform;
+    getInverseTransformCanonical(time, &invtransform);
+
+    double xRotate, yRotate, rads, c, s;
+    _xRotate->getValueAtTime(time, xRotate);
+    rads = xRotate * M_PI / 180.;
+    c = std::cos(rads);
+    s = std::sin(rads);
+    Matrix3x3 rotX(1, 0, 0,
+                   0, c, s,
+                   0,-s, c);
+    _yRotate->getValueAtTime(time, yRotate);
+    rads = xRotate * M_PI / 180.;
+    c = std::cos(rads);
+    s = std::sin(rads);
+    Matrix3x3 rotY(0, 1, 0,
+                   s, 0, c,
+                   c, 0, -s);
+
     processor.setValues(mix,
                         processR,processG,processB,processA,
-                        noiseType, noiseSize, noiseZ + time * noiseZSlope,
+                        noiseType, noiseZ + time * noiseZSlope,
 #ifdef SENOISE_VORONOI
                         voronoiType, jitter, fbmScale,
 #endif
                         octaves, lacunarity, gain,
+                        rotY * rotX * invtransform * sizeMat,
                         type, point0, color0, point1, color1);
     processor.process();
+}
+
+bool
+SeNoisePlugin::getInverseTransformCanonical(double time, OFX::Matrix3x3* invtransform) const
+{
+    // NON-GENERIC
+    OfxPointD center;
+    _center->getValueAtTime(time, center.x, center.y);
+    OfxPointD translate;
+    _translate->getValueAtTime(time, translate.x, translate.y);
+    OfxPointD scaleParam;
+    _scale->getValueAtTime(time, scaleParam.x, scaleParam.y);
+    bool scaleUniform;
+    _scaleUniform->getValueAtTime(time, scaleUniform);
+    double rotate;
+    _rotate->getValueAtTime(time, rotate);
+    double skewX, skewY;
+    int skewOrder;
+    _skewX->getValueAtTime(time, skewX);
+    _skewY->getValueAtTime(time, skewY);
+    _skewOrder->getValueAtTime(time, skewOrder);
+
+    OfxPointD scale;
+    ofxsTransformGetScale(scaleParam, scaleUniform, &scale);
+
+    double rot = OFX::ofxsToRadians(rotate);
+    *invtransform = OFX::ofxsMatInverseTransformCanonical(translate.x, translate.y, scale.x, scale.y, skewX, skewY, (bool)skewOrder, rot, center.x, center.y);
+    return true;
 }
 
 // the overridden render function
@@ -958,19 +1064,15 @@ SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _color0->setIsSecret(noramp);
         _point0->setIsSecret(noramp);
         _point1->setIsSecret(noramp);
-        _interactive->setIsSecret(noramp);
+        _rampInteractive->setIsSecret(noramp);
         _color0->setEnabled(!noramp);
         _point0->setEnabled(!noramp);
         _point1->setEnabled(!noramp);
-        _interactive->setEnabled(!noramp);
+        _rampInteractive->setEnabled(!noramp);
     }
 }
 
-#ifdef SENOISE_TRANSFORM
 class SeNoiseOverlayDescriptor : public DefaultEffectOverlayDescriptor<SeNoiseOverlayDescriptor, OFX::OverlayInteractFromHelpers2<TransformInteractHelper, RampInteractHelper> > {};
-#else
-class SeNoiseOverlayDescriptor : public DefaultEffectOverlayDescriptor<SeNoiseOverlayDescriptor, OFX::OverlayInteractFromHelper<RampInteractHelper> > {};
-#endif
 
 mDeclarePluginFactory(SeNoisePluginFactory, {}, {});
 
@@ -1236,7 +1338,6 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             page->addChild(*param);
         }
     }
-#ifdef SENOISE_TRANSFORM
     {
         PageParamDescriptor *page = desc.definePageParam(kPageTransform);
         page->setLabel(kPageTransformLabel);
@@ -1251,11 +1352,35 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             group->setOpen(false);
         }
         ofxsTransformDescribeParams(desc, page, group);
+        {
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamXRotate);
+            param->setLabel(kParamXRotateLabel);
+            param->setHint(kParamXRotateHint);
+            param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+            param->setDisplayRange(0., 90.);
+            param->setDoubleType(eDoubleTypeAngle);
+            param->setDefault(kParamXRotateDefault);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+        {
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamYRotate);
+            param->setLabel(kParamYRotateLabel);
+            param->setHint(kParamYRotateHint);
+            param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+            param->setDisplayRange(0., 90.);
+            param->setDoubleType(eDoubleTypeAngle);
+            param->setDefault(kParamYRotateDefault);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+
         if (page && group) {
             page->addChild(*group);
         }
     }
-#endif
     {
         PageParamDescriptor *page = desc.definePageParam(kPageColor);
         page->setLabel(kPageColorLabel);
