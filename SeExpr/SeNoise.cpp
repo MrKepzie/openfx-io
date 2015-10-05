@@ -59,9 +59,10 @@
 #include "ofxsCoords.h"
 #include "ofxsMacros.h"
 #include "ofxsRamp.h"
-#include "ofxsPositionInteract.h"
+#include "ofxsTransformInteract.h"
 
 //#define SENOISE_VORONOI
+//#define SENOISE_TRANSFORM
 
 #define kPluginName "SeNoise"
 #define kPluginGrouping "Draw"
@@ -177,6 +178,12 @@ enum VoronoiTypeEnum {
 #define kParamGammaLabel "Gamma"
 #define kParamGammaHint "The gamma output for noide."
 #define kParamGammaDefault 1.
+
+#define kPageTransform "transformPage"
+#define kPageTransformLabel "Transform"
+#define kPageTransformHint "Transform applied to the noise"
+
+#define kGroupTransform "transformGroup"
 
 #define kPageColor "colorPage"
 #define kPageColorLabel "Color"
@@ -959,6 +966,12 @@ SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
     }
 }
 
+#ifdef SENOISE_TRANSFORM
+class SeNoiseOverlayDescriptor : public DefaultEffectOverlayDescriptor<SeNoiseOverlayDescriptor, OFX::OverlayInteractFromHelpers2<TransformInteractHelper, RampInteractHelper> > {};
+#else
+class SeNoiseOverlayDescriptor : public DefaultEffectOverlayDescriptor<SeNoiseOverlayDescriptor, OFX::OverlayInteractFromHelper<RampInteractHelper> > {};
+#endif
+
 mDeclarePluginFactory(SeNoisePluginFactory, {}, {});
 
 void SeNoisePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
@@ -986,7 +999,7 @@ void SeNoisePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setSupportsMultipleClipPARs(kSupportsMultipleClipPARs);
     desc.setSupportsMultipleClipDepths(kSupportsMultipleClipDepths);
     desc.setRenderThreadSafety(kRenderThreadSafety);
-    desc.setOverlayInteractDescriptor(new RampOverlayDescriptor);
+    desc.setOverlayInteractDescriptor(new SeNoiseOverlayDescriptor);
 
 #ifdef OFX_EXTENSIONS_NATRON
     desc.setChannelSelector(OFX::ePixelComponentNone); // we have our own channel selector
@@ -1223,6 +1236,26 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             page->addChild(*param);
         }
     }
+#ifdef SENOISE_TRANSFORM
+    {
+        PageParamDescriptor *page = desc.definePageParam(kPageTransform);
+        page->setLabel(kPageTransformLabel);
+        page->setHint(kPageTransformHint);
+        OFX::GroupParamDescriptor* group = NULL;
+        if (!gHostIsNatron) {
+            // Natron makes separate tabs for each parameter page,
+            // but we have to use a group for Nuke and possibly others
+            group = desc.defineGroupParam(kGroupTransform);
+            group->setLabel(kPageTransformLabel);
+            group->setHint(kPageTransformHint);
+            group->setOpen(false);
+        }
+        ofxsTransformDescribeParams(desc, page, group);
+        if (page && group) {
+            page->addChild(*group);
+        }
+    }
+#endif
     {
         PageParamDescriptor *page = desc.definePageParam(kPageColor);
         page->setLabel(kPageColorLabel);

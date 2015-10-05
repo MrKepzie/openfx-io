@@ -177,6 +177,8 @@
 		1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
 		1ED499D118A00BD6008A2D91 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */; };
 		1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
+		1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; settings = {ASSET_TAGS = (); }; };
+		1ED94FC21BC2652F008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; settings = {ASSET_TAGS = (); }; };
 		1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA018B79E8100C31FDC /* ReadPFM.cpp */; };
 		1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA218B79E8100C31FDC /* WritePFM.cpp */; };
 		1EDECBB218B9F8040093B6FC /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
@@ -542,6 +544,7 @@
 		1ED499D218A00BE1008A2D91 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1ED499D318A00BE1008A2D91 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1ED499D418A00BE1008A2D91 /* OCIOColorSpace.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OCIOColorSpace.h; sourceTree = "<group>"; };
+		1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsTransformInteract.cpp; sourceTree = "<group>"; };
 		1EDECBAB18B9F7F10093B6FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1EDECBAC18B9F7F10093B6FC /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -809,21 +812,19 @@
 		1E9B5F21198A50250095C8AA /* SupportExt */ = {
 			isa = PBXGroup;
 			children = (
-				1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */,
-				1E84DC5A1BC1663C006E7E64 /* ofxsLut.h */,
-				1E84DC5B1BC1663C006E7E64 /* ofxsMacros.h */,
-				1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */,
-				1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */,
-				1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */,
 				1E3060261B70DA1600A9B507 /* ofxsCoords.h */,
 				1E9B5F22198A505E0095C8AA /* ofxsCopier.h */,
 				1E9B5F23198A505E0095C8AA /* ofxsFilter.h */,
 				1E9B5F24198A505E0095C8AA /* ofxsFormatResolution.h */,
 				ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */,
 				ACE90FFC1AB7433D007A49F8 /* ofxsGenerator.h */,
+				1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */,
+				1E84DC5A1BC1663C006E7E64 /* ofxsLut.h */,
+				1E84DC5B1BC1663C006E7E64 /* ofxsMacros.h */,
 				1E9B5F25198A505E0095C8AA /* ofxsMaskMix.h */,
 				1E9B5F26198A505E0095C8AA /* ofxsMatrix2D.h */,
 				1E9B5F27198A505E0095C8AA /* ofxsMerging.h */,
+				1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */,
 				1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */,
 				1E9B5F29198A505E0095C8AA /* ofxsOGLFontUtils.h */,
 				1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */,
@@ -834,11 +835,14 @@
 				1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */,
 				1E9B5F2E198A505E0095C8AA /* ofxsRectangleInteract.cpp */,
 				1E9B5F2F198A505E0095C8AA /* ofxsRectangleInteract.h */,
+				1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */,
 				1E9B5F30198A505E0095C8AA /* ofxsTracking.cpp */,
 				1E9B5F31198A505E0095C8AA /* ofxsTracking.h */,
 				1E9B5F32198A505E0095C8AA /* ofxsTransform3x3.cpp */,
 				1E9B5F33198A505E0095C8AA /* ofxsTransform3x3.h */,
 				1E9B5F34198A505E0095C8AA /* ofxsTransform3x3Processor.h */,
+				1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */,
+				1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */,
 				1E9B5F35198A505E0095C8AA /* README.md */,
 			);
 			path = SupportExt;
@@ -1225,6 +1229,7 @@
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E9B5EF7198A2B9A0095C8AA /* OIIOText.cpp in Sources */,
 				1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */,
+				1ED94FC21BC2652F008680C0 /* ofxsTransformInteract.cpp in Sources */,
 				1E9DF4711B0B5F29008C7055 /* OCIODisplay.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
@@ -1314,6 +1319,7 @@
 			files = (
 				ACE084A21AB4AB9B00BE558C /* ofxsProperty.cpp in Sources */,
 				1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */,
+				1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */,
 				ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */,
 				1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
 				ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */,
