@@ -15,6 +15,7 @@ PLUGINOBJECTS = \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
         SeExpr.o \
+	SeNoise.o \
 	ofxsGenerator.o \
 	ofxsRectangleInteract.o \
 	PluginRegistrationCombined.o
