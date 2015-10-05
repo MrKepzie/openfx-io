@@ -18,6 +18,7 @@ PLUGINOBJECTS = \
 	SeNoise.o \
 	ofxsRamp.o \
 	ofxsGenerator.o \
+	ofxsTransformInteract.o \
 	ofxsRectangleInteract.o \
 	PluginRegistrationCombined.o
 	
