@@ -216,7 +216,6 @@ protected:
     bool _processR, _processG, _processB, _processA;
     // plugin parameter values
     NoiseTypeEnum _noiseType;
-    double _noiseZ;
 #ifdef SENOISE_VORONOI
     VoronoiTypeEnum _voronoiType;
     double _jitter;
@@ -247,7 +246,6 @@ public:
     , _processA(false)
     // initialize plugin parameter values
     , _noiseType(eNoiseTypeCellNoise)
-    , _noiseZ(0.)
 #ifdef SENOISE_VORONOI
     , _voronoiType(eVoronoiTypeCell)
     , _jitter(0.5)
@@ -278,7 +276,6 @@ public:
                    bool processB,
                    bool processA,
                    NoiseTypeEnum noiseType,
-                   double noiseZ,
 #ifdef SENOISE_VORONOI
                    VoronoiTypeEnum voronoiType,
                    double jitter,
@@ -301,7 +298,6 @@ public:
         _processA = processA;
         // set plugin parameter values
         _noiseType = noiseType;
-        _noiseZ = noiseZ;
 #ifdef SENOISE_VORONOI
         _voronoiType = voronoiType;
         _jitter = jitter;
@@ -436,7 +432,7 @@ private:
                 double t_b = unpPix[2];
                 double t_a = unpPix[3];
 
-                Point3D p(x + 0.5, y + 0.5, 1);//_noiseZ);
+                Point3D p(x + 0.5, y + 0.5, 1);
                 p = _invtransform * p;
                 double args[3] = { p.x, p.y, p.z };
                 // process the pixel (the actual computation goes here)
@@ -450,7 +446,7 @@ private:
                     case eNoiseTypeNoise: {
                         // double noise(int n, const SeVec3d* args)
                         SeExpr::Noise<3,1>(args,&result);
-                        result = result+.5;
+                        result = .5*result+.5;
                         break;
                     }
 #ifdef SENOISE_PERLIN
@@ -856,12 +852,11 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     _processB->getValueAtTime(time, processB);
     _processA->getValueAtTime(time, processA);
 
-    Matrix3x3 sizeMat(1./args.renderScale.x/noiseSize.x, 0., 0., 0., 1./args.renderScale.x/noiseSize.y, 0., 0., 0., 1.);
+    Matrix3x3 sizeMat(1./args.renderScale.x/noiseSize.x, 0., 0.,
+                      0., 1./args.renderScale.x/noiseSize.y, 0.,
+                      0., 0., noiseZ + time * noiseZSlope);
     Matrix3x3 invtransform;
     getInverseTransformCanonical(time, &invtransform);
-    Matrix3x3 zMat(1., 0., 0.,
-                   0., 1., 0.,
-                   0., 0., noiseZ + time * noiseZSlope);
 
     double xRotate, yRotate, rads, c, s;
     _xRotate->getValueAtTime(time, xRotate);
@@ -881,12 +876,12 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
 
     processor.setValues(mix,
                         processR,processG,processB,processA,
-                        noiseType, 0,//noiseZ + time * noiseZSlope,
+                        noiseType,
 #ifdef SENOISE_VORONOI
                         voronoiType, jitter, fbmScale,
 #endif
                         octaves, lacunarity, gain,
-                        rotY * rotX * zMat * sizeMat * invtransform,
+                        rotY * rotX * sizeMat * invtransform,
                         type, point0, color0, point1, color1);
     processor.process();
 }
