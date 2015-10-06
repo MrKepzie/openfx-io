@@ -1082,7 +1082,7 @@ SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
 {
     if (gHostIsNatron && paramName == kPageTransform && args.reason == OFX::eChangeUserEdit) {
         bool isOpen = _pageTransform->getIsEnable() && !_pageTransform->getIsSecret();
-        printf("kPageTransform=%d\n",(int)isOpen);
+        //printf("kPageTransform=%d\n",(int)isOpen);
         _transformInteractOpen->setValue(isOpen);
     } else if (!gHostIsNatron && paramName == kGroupTransform && args.reason == OFX::eChangeUserEdit) {
         // we have to track the group state by ourselves:
@@ -1090,7 +1090,7 @@ SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _transformInteractOpen->setValue(!_transformInteractOpen->getValue());
     } else if (gHostIsNatron && paramName == kPageColor && args.reason == OFX::eChangeUserEdit) {
         bool isOpen = _pageColor->getIsEnable() && !_pageColor->getIsSecret();
-        printf("kPageColor=%d\n",(int)isOpen);
+        //printf("kPageColor=%d\n",(int)isOpen);
         _rampInteractOpen->setValue(isOpen);
     } else if (!gHostIsNatron && paramName == kGroupColor && args.reason == OFX::eChangeUserEdit) {
         // we have to track the group state by ourselves:
