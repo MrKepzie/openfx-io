@@ -1236,6 +1236,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
         param->setDisplayRange(0., 1.);
         param->setDefault(kParamNoiseZSlopeDefault);
+        desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
         }
