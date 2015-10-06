@@ -20,6 +20,9 @@
  * OFX SeNoise plugin.
  */
 
+//#define SENOISE_PERLIN // perlin() is not in the open source version of SeExpr, although it is mentionned in the SeExpr doc
+#define SENOISE_VORONOI
+
 #include "SeNoisePlugin.h"
 
 #include <cmath>
@@ -42,6 +45,24 @@
 
 #include <SeNoise.h>
 #include <SeExprBuiltins.h>
+
+#ifdef SENOISE_VORONOI
+// SeExprBuiltins.cpp doesn't export Voronoi functions and data structures, see https://github.com/wdas/SeExpr/issues/32
+#include <SeExprNode.h>
+namespace SeExpr {
+    struct VoronoiPointData : public SeExprFuncNode::Data
+    {
+        SeVec3d points[27];
+        SeVec3d cell;
+        double jitter;
+        VoronoiPointData() : jitter(-1) {}
+    };    
+    SeVec3d voronoiFn(VoronoiPointData& data, int n, const SeVec3d* args);
+    SeVec3d cvoronoiFn(VoronoiPointData& data, int n, const SeVec3d* args);
+    SeVec3d pvoronoiFn(VoronoiPointData& data, int n, const SeVec3d* args);
+}
+#endif
+
 #ifdef _WINDOWS
 // fix SePlatform.h's bad behavior
 #undef snprintf
@@ -61,8 +82,6 @@
 #include "ofxsRamp.h"
 #include "ofxsTransformInteract.h"
 #include "ofxsMatrix2D.h"
-
-//#define SENOISE_VORONOI
 
 #define kPluginName "SeNoise"
 #define kPluginGrouping "Draw"
@@ -97,7 +116,7 @@
 #define kParamNoiseTypeTurbulenceHint "turbulence is a variant of fbm where the absolute value of each noise term is taken.  This gives a more billowy appearance."
 #ifdef SENOISE_VORONOI
 #define kParamNoiseTypeVoronoi "Voronoi"
-#define kParamNoiseTypeVoronoiHint "Voronoi is a cellular noise pattern. It is a jittered variant of cellnoise. cvoronoi returns a random color for each cell and pvoronoi returns the point location of the center of the cell. The type parameter describes different variants of the noise function.  The jitter param controls how irregular the pattern is (jitter = 0 is like ordinary cellnoise).  The fbm* params can be used to distort the noise field.  When fbmScale is zero (the default), there is no distortion.  The remaining params are the same as for the fbm function."
+#define kParamNoiseTypeVoronoiHint "Voronoi is a cellular noise pattern. It is a jittered variant of cellnoise. The type parameter describes different variants of the noise function.  The jitter param controls how irregular the pattern is (jitter = 0 is like ordinary cellnoise).  The fbm* params can be used to distort the noise field.  When fbmScale is zero (the default), there is no distortion.  The remaining params are the same as for the fbm function. NOTE: This does not necessarily return [0,1] value, because it can return arbitrary distance."
 #endif
 enum NoiseTypeEnum {
     eNoiseTypeCellNoise,
@@ -413,6 +432,7 @@ private:
         assert(nComponents == 3 || nComponents == 4);
         float unpPix[4];
         float tmpPix[4];
+        SeExpr::VoronoiPointData voronoiPointData;
 
         const double norm2 = (_point1.x - _point0.x)*(_point1.x - _point0.x) + (_point1.y - _point0.y)*(_point1.y - _point0.y);
         const double nx = norm2 == 0. ? 0. : (_point1.x - _point0.x)/ norm2;
@@ -451,7 +471,7 @@ private:
                     }
 #ifdef SENOISE_PERLIN
                     case eNoiseTypePerlin: {
-                        n = SeExpr::noise(1, &p);
+                        n = SeExpr::perlin(1, &p);
                         break;
                     }
 #endif
@@ -469,15 +489,16 @@ private:
                     }
 #ifdef SENOISE_VORONOI
                     case eNoiseTypeVoronoi: {
-                        SeVec3d p[7];
-                        p[0].setValue(p.x, p.y, p.z);
-                        p[1][0] = (int)_voronoiType + 1;
-                        p[2][0] = _jitter;
-                        p[3][0] = _fbmScale;
-                        p[4][0] = _octaves;
-                        p[5][0] = _lacunarity;
-                        p[6][0] = _gain;
-                        ????
+                        SeVec3d args[7];
+                        args[0].setValue(p.x, p.y, p.z);
+                        args[1][0] = (int)_voronoiType + 1;
+                        args[2][0] = _jitter;
+                        args[3][0] = _fbmScale;
+                        args[4][0] = _octaves;
+                        args[5][0] = _lacunarity;
+                        args[6][0] = _gain;
+                        result = SeExpr::voronoiFn(voronoiPointData, 7, args)[0];
+
                     } break;
 #endif
                 }
