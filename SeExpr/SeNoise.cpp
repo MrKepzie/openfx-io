@@ -64,7 +64,7 @@ namespace SeExpr {
 #endif
 
 #ifdef _WINDOWS
-// fix SePlatform.h's bad behavior
+// fix SePlatform.h's bad defines, see https://github.com/wdas/SeExpr/issues/33
 #undef snprintf
 #undef strtok_r
 #  if defined(_MSC_VER) && _MSC_VER < 1900
