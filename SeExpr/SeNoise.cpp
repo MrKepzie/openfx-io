@@ -84,7 +84,7 @@
 #define kParamNoiseTypeLabel "Noise Type"
 #define kParamNoiseTypeHint "Kind of noise."
 #define kParamNoiseTypeCellNoise "Cell Noise"
-#define kParamNoiseTypeCellNoiseHint "Cell noise generates a field of constant colored cubes based on the integer location.  This is the same as the prman cellnoise function."
+#define kParamNoiseTypeCellNoiseHint "Cell noise generates a field of constant colored cubes based on the integer location.  This is the same as the prman cellnoise function. You may want to set xRotate and yRotate to 0 in the Transform tab to get square cells."
 #define kParamNoiseTypeNoise "Noise"
 #define kParamNoiseTypeNoiseHint "Noise is a random function that smoothly blends between samples at integer locations.  This is Ken Perlin's original noise function."
 #ifdef SENOISE_PERLIN
@@ -436,7 +436,7 @@ private:
                 double t_b = unpPix[2];
                 double t_a = unpPix[3];
 
-                Point3D p(x + 0.5, y + 0.5, _noiseZ);
+                Point3D p(x + 0.5, y + 0.5, 1);//_noiseZ);
                 p = _invtransform * p;
                 double args[3] = { p.x, p.y, p.z };
                 // process the pixel (the actual computation goes here)
@@ -859,6 +859,9 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     Matrix3x3 sizeMat(1./args.renderScale.x/noiseSize.x, 0., 0., 0., 1./args.renderScale.x/noiseSize.y, 0., 0., 0., 1.);
     Matrix3x3 invtransform;
     getInverseTransformCanonical(time, &invtransform);
+    Matrix3x3 zMat(1., 0., 0.,
+                   0., 1., 0.,
+                   0., 0., noiseZ + time * noiseZSlope);
 
     double xRotate, yRotate, rads, c, s;
     _xRotate->getValueAtTime(time, xRotate);
@@ -878,12 +881,12 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
 
     processor.setValues(mix,
                         processR,processG,processB,processA,
-                        noiseType, noiseZ + time * noiseZSlope,
+                        noiseType, 0,//noiseZ + time * noiseZSlope,
 #ifdef SENOISE_VORONOI
                         voronoiType, jitter, fbmScale,
 #endif
                         octaves, lacunarity, gain,
-                        rotY * rotX * invtransform * sizeMat,
+                        rotY * rotX * zMat * sizeMat * invtransform,
                         type, point0, color0, point1, color1);
     processor.process();
 }
