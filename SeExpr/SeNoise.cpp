@@ -569,6 +569,7 @@ public:
     , _octaves(0)
     , _lacunarity(0)
     , _gain(0)
+    , _pageTransform(0)
     , _groupTransform(0)
     , _translate(0)
     , _rotate(0)
@@ -578,15 +579,18 @@ public:
     , _skewY(0)
     , _skewOrder(0)
     , _center(0)
+    , _transformInteractOpen(0)
     , _transformInteractive(0)
     , _xRotate(0)
     , _yRotate(0)
+    , _pageColor(0)
     , _groupColor(0)
     , _point0(0)
     , _color0(0)
     , _point1(0)
     , _color1(0)
     , _type(0)
+    , _rampInteractOpen(0)
     , _rampInteractive(0)
     {
         _dstClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -632,7 +636,11 @@ public:
 #endif
                _octaves && _lacunarity && _gain);
 
-        if (!gHostIsNatron) {
+        if (paramExists(kPageTransform)) {
+            _pageTransform = fetchPageParam(kPageTransform);
+            assert(_pageTransform);
+        }
+        if (paramExists(kGroupTransform)) {
             _groupTransform = fetchGroupParam(kGroupTransform);
             assert(_groupTransform);
         }
@@ -644,20 +652,29 @@ public:
         _skewY = fetchDoubleParam(kParamTransformSkewY);
         _skewOrder = fetchChoiceParam(kParamTransformSkewOrder);
         _center = fetchDouble2DParam(kParamTransformCenter);
+        _transformInteractOpen = fetchBooleanParam(kParamTransformInteractOpen);
         _transformInteractive = fetchBooleanParam(kParamTransformInteractive);
         assert(_translate && _rotate && _scale && _scaleUniform && _skewX && _skewY && _skewOrder && _center && _transformInteractive);
         _xRotate = fetchDoubleParam(kParamXRotate);
         _yRotate = fetchDoubleParam(kParamYRotate);
 
-        if (!gHostIsNatron) {
+        if (paramExists(kPageColor)) {
+            _pageColor = fetchPageParam(kPageColor);
+            assert(_pageColor);
+        }
+        if (paramExists(kGroupColor)) {
             _groupColor = fetchGroupParam(kGroupColor);
             assert(_groupColor);
+             // get the initial state
+            //_groupColor->setOpen(_groupColor->getIsOpen());
+            _groupColorIsOpen = _groupColor->getIsOpen();
         }
         _point0 = fetchDouble2DParam(kParamRampPoint0);
         _point1 = fetchDouble2DParam(kParamRampPoint1);
         _color0 = fetchRGBAParam(kParamRampColor0);
         _color1 = fetchRGBAParam(kParamRampColor1);
         _type = fetchChoiceParam(kParamRampType);
+        _rampInteractOpen = fetchBooleanParam(kParamRampInteractOpen);
         _rampInteractive = fetchBooleanParam(kParamRampInteractive);
         assert(_point0 && _point1 && _color0 && _color1 && _type && _rampInteractive);
 
@@ -666,7 +683,7 @@ public:
         changedParam(args, kParamNoiseType);
         changedParam(args, kParamRampType);
     }
-    
+
 private:
     /* Override the render */
     virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
@@ -725,25 +742,31 @@ private:
     DoubleParam* _lacunarity;
     DoubleParam* _gain;
 
+    PageParam* _pageTransform;
     GroupParam* _groupTransform;
-    OFX::Double2DParam* _translate;
-    OFX::DoubleParam* _rotate;
-    OFX::Double2DParam* _scale;
-    OFX::BooleanParam* _scaleUniform;
-    OFX::DoubleParam* _skewX;
-    OFX::DoubleParam* _skewY;
-    OFX::ChoiceParam* _skewOrder;
-    OFX::Double2DParam* _center;
-    OFX::BooleanParam* _transformInteractive;
-    OFX::DoubleParam* _xRotate;
-    OFX::DoubleParam* _yRotate;
+    bool _groupTransformIsOpen;
+    Double2DParam* _translate;
+    DoubleParam* _rotate;
+    Double2DParam* _scale;
+    BooleanParam* _scaleUniform;
+    DoubleParam* _skewX;
+    DoubleParam* _skewY;
+    ChoiceParam* _skewOrder;
+    Double2DParam* _center;
+    BooleanParam* _transformInteractOpen;
+    BooleanParam* _transformInteractive;
+    DoubleParam* _xRotate;
+    DoubleParam* _yRotate;
 
+    PageParam* _pageColor;
     GroupParam* _groupColor;
+    bool _groupColorIsOpen;
     Double2DParam* _point0;
     RGBAParam* _color0;
     Double2DParam* _point1;
     RGBAParam* _color1;
     ChoiceParam* _type;
+    BooleanParam* _rampInteractOpen;
     BooleanParam* _rampInteractive;
 };
 
@@ -1057,7 +1080,23 @@ void
 SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
                          const std::string &paramName)
 {
-    if (paramName == kParamNoiseType && args.reason == OFX::eChangeUserEdit) {
+    if (gHostIsNatron && paramName == kPageTransform && args.reason == OFX::eChangeUserEdit) {
+        bool isOpen = _pageTransform->getIsEnable() && !_pageTransform->getIsSecret();
+        printf("kPageTransform=%d\n",(int)isOpen);
+        _transformInteractOpen->setValue(isOpen);
+    } else if (!gHostIsNatron && paramName == kGroupTransform && args.reason == OFX::eChangeUserEdit) {
+        // we have to track the group state by ourselves:
+        // as per the specs, getIsOpen() only returns the initial state
+        _transformInteractOpen->setValue(!_transformInteractOpen->getValue());
+    } else if (gHostIsNatron && paramName == kPageColor && args.reason == OFX::eChangeUserEdit) {
+        bool isOpen = _pageColor->getIsEnable() && !_pageColor->getIsSecret();
+        printf("kPageColor=%d\n",(int)isOpen);
+        _rampInteractOpen->setValue(isOpen);
+    } else if (!gHostIsNatron && paramName == kGroupColor && args.reason == OFX::eChangeUserEdit) {
+        // we have to track the group state by ourselves:
+        // as per the specs, getIsOpen() only returns the initial state
+        _rampInteractOpen->setValue(!_rampInteractOpen->getValue());
+    } else if (paramName == kParamNoiseType && args.reason == OFX::eChangeUserEdit) {
         int noiseType_i;
         _noiseType->getValue(noiseType_i);
         NoiseTypeEnum noiseType = (NoiseTypeEnum)noiseType_i;
@@ -1083,10 +1122,12 @@ SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _color0->setIsSecret(noramp);
         _point0->setIsSecret(noramp);
         _point1->setIsSecret(noramp);
+        _rampInteractOpen->setIsSecret(noramp);
         _rampInteractive->setIsSecret(noramp);
         _color0->setEnabled(!noramp);
         _point0->setEnabled(!noramp);
         _point1->setEnabled(!noramp);
+        _rampInteractOpen->setEnabled(!noramp);
         _rampInteractive->setEnabled(!noramp);
     }
 }
@@ -1359,9 +1400,12 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         }
     }
     {
-        PageParamDescriptor *page = desc.definePageParam(kPageTransform);
-        page->setLabel(kPageTransformLabel);
-        page->setHint(kPageTransformHint);
+        PageParamDescriptor *subpage = page;
+        if (gHostIsNatron) {
+            subpage = desc.definePageParam(kPageTransform);
+            subpage->setLabel(kPageTransformLabel);
+            subpage->setHint(kPageTransformHint);
+        }
         OFX::GroupParamDescriptor* group = NULL;
         if (!gHostIsNatron) {
             // Natron makes separate tabs for each parameter page,
@@ -1371,7 +1415,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             group->setHint(kPageTransformHint);
             group->setOpen(false);
         }
-        ofxsTransformDescribeParams(desc, page, group);
+        ofxsTransformDescribeParams(desc, subpage, group, /*isOpen=*/false, /*oldParams=*/false);
         {
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamXRotate);
             param->setLabel(kParamXRotateLabel);
@@ -1380,8 +1424,11 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setDisplayRange(0., 90.);
             param->setDoubleType(eDoubleTypeAngle);
             param->setDefault(kParamXRotateDefault);
-            if (page) {
-                page->addChild(*param);
+            if (group) {
+                param->setParent(*group);
+            }
+            if (subpage) {
+                subpage->addChild(*param);
             }
         }
         {
@@ -1392,19 +1439,25 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setDisplayRange(0., 90.);
             param->setDoubleType(eDoubleTypeAngle);
             param->setDefault(kParamYRotateDefault);
-            if (page) {
-                page->addChild(*param);
+            if (group) {
+                param->setParent(*group);
+            }
+            if (subpage) {
+                subpage->addChild(*param);
             }
         }
 
-        if (page && group) {
-            page->addChild(*group);
+        if (subpage && group) {
+            subpage->addChild(*group);
         }
     }
     {
-        PageParamDescriptor *page = desc.definePageParam(kPageColor);
-        page->setLabel(kPageColorLabel);
-        page->setHint(kPageColorHint);
+        PageParamDescriptor *subpage = page;
+        if (gHostIsNatron) {
+            subpage = desc.definePageParam(kPageColor);
+            subpage->setLabel(kPageColorLabel);
+            subpage->setHint(kPageColorHint);
+        }
         OFX::GroupParamDescriptor* group = NULL;
         if (!gHostIsNatron) {
             // Natron makes separate tabs for each parameter page,
@@ -1414,9 +1467,9 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             group->setHint(kPageColorHint);
             group->setOpen(false);
         }
-        ofxsRampDescribeParams(desc, page, group, eRampTypeNone);
-        if (page && group) {
-            page->addChild(*group);
+        ofxsRampDescribeParams(desc, subpage, group, eRampTypeNone, /*isOpen=*/false, /*oldParams=*/false);
+        if (subpage && group) {
+            subpage->addChild(*group);
         }
     }
 
