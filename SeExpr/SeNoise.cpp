@@ -99,6 +99,10 @@ namespace SeExpr {
 #define kSupportsMultipleClipDepths false
 #define kRenderThreadSafety eRenderFullySafe
 
+#define kParamReplace "replace"
+#define kParamReplaceLabel "Replace"
+#define kParamReplaceHint "Clear the selected channel(s) before drawing into them."
+
 #define kParamNoiseType "noiseType"
 #define kParamNoiseTypeLabel "Noise Type"
 #define kParamNoiseTypeHint "Kind of noise."
@@ -234,6 +238,7 @@ protected:
     bool _maskInvert;
     bool _processR, _processG, _processB, _processA;
     // plugin parameter values
+    bool _replace;
     NoiseTypeEnum _noiseType;
 #ifdef SENOISE_VORONOI
     VoronoiTypeEnum _voronoiType;
@@ -264,6 +269,7 @@ public:
     , _processB(false)
     , _processA(false)
     // initialize plugin parameter values
+    , _replace(false)
     , _noiseType(eNoiseTypeCellNoise)
 #ifdef SENOISE_VORONOI
     , _voronoiType(eVoronoiTypeCell)
@@ -294,6 +300,7 @@ public:
                    bool processG,
                    bool processB,
                    bool processA,
+                   bool replace,
                    NoiseTypeEnum noiseType,
 #ifdef SENOISE_VORONOI
                    VoronoiTypeEnum voronoiType,
@@ -316,6 +323,7 @@ public:
         _processB = processB;
         _processA = processA;
         // set plugin parameter values
+        _replace = replace;
         _noiseType = noiseType;
 #ifdef SENOISE_VORONOI
         _voronoiType = voronoiType;
@@ -352,81 +360,10 @@ public:
 
     void multiThreadProcessImages(OfxRectI procWindow)
     {
-#     ifndef __COVERITY__ // too many coverity[dead_error_line] errors
-        const bool r = _processR && (nComponents != 1);
-        const bool g = _processG && (nComponents >= 2);
-        const bool b = _processB && (nComponents >= 3);
-        const bool a = _processA && (nComponents == 1 || nComponents == 4);
-        if (r) {
-            if (g) {
-                if (b) {
-                    if (a) {
-                        return process<true ,true ,true ,true >(procWindow); // RGBA
-                    } else {
-                        return process<true ,true ,true ,false>(procWindow); // RGBa
-                    }
-                } else {
-                    if (a) {
-                        return process<true ,true ,false,true >(procWindow); // RGbA
-                    } else {
-                        return process<true ,true ,false,false>(procWindow); // RGba
-                    }
-                }
-            } else {
-                if (b) {
-                    if (a) {
-                        return process<true ,false,true ,true >(procWindow); // RgBA
-                    } else {
-                        return process<true ,false,true ,false>(procWindow); // RgBa
-                    }
-                } else {
-                    if (a) {
-                        return process<true ,false,false,true >(procWindow); // RgbA
-                    } else {
-                        return process<true ,false,false,false>(procWindow); // Rgba
-                    }
-                }
-            }
-        } else {
-            if (g) {
-                if (b) {
-                    if (a) {
-                        return process<false,true ,true ,true >(procWindow); // rGBA
-                    } else {
-                        return process<false,true ,true ,false>(procWindow); // rGBa
-                    }
-                } else {
-                    if (a) {
-                        return process<false,true ,false,true >(procWindow); // rGbA
-                    } else {
-                        return process<false,true ,false,false>(procWindow); // rGba
-                    }
-                }
-            } else {
-                if (b) {
-                    if (a) {
-                        return process<false,false,true ,true >(procWindow); // rgBA
-                    } else {
-                        return process<false,false,true ,false>(procWindow); // rgBa
-                    }
-                } else {
-                    if (a) {
-                        return process<false,false,false,true >(procWindow); // rgbA
-                    } else {
-                        return process<false,false,false,false>(procWindow); // rgba
-                    }
-                }
-            }
-        }
-#     endif
-    }
-
-private:
-    
-    
-    template<bool processR, bool processG, bool processB, bool processA>
-    void process(OfxRectI procWindow)
-    {
+        const bool processR = _processR && (nComponents != 1);
+        const bool processG = _processG && (nComponents >= 2);
+        const bool processB = _processB && (nComponents >= 3);
+        const bool processA = _processA && (nComponents == 1 || nComponents == 4);
         assert((!processR && !processG && !processB) || (nComponents == 3 || nComponents == 4));
         assert(!processA || (nComponents == 1 || nComponents == 4));
         assert(nComponents == 3 || nComponents == 4);
@@ -448,10 +385,10 @@ private:
             for (int x = procWindow.x1; x < procWindow.x2; x++) {
                 const PIX *srcPix = (const PIX *)  (_srcImg ? _srcImg->getPixelAddress(x, y) : 0);
                 ofxsToRGBA<PIX, nComponents, maxValue>(srcPix, unpPix);
-                double t_r = unpPix[0];
-                double t_g = unpPix[1];
-                double t_b = unpPix[2];
-                double t_a = unpPix[3];
+                double t_r = _replace ? 0. : unpPix[0];
+                double t_g = _replace ? 0. : unpPix[1];
+                double t_b = _replace ? 0. : unpPix[2];
+                double t_a = _replace ? 0. : unpPix[3];
 
                 Point3D p(x + 0.5, y + 0.5, 1);
                 p = _invtransform * p;
@@ -523,15 +460,11 @@ private:
                     rampColor.b = _color0.b * (1 - t) + _color1.b * t;
                     rampColor.a = _color0.a * (1 - t) + _color1.a * t;
                 }
-                t_r = t_r*(1.-result) + rampColor.r*result;
-                t_g = t_g*(1.-result) + rampColor.g*result;
-                t_b = t_b*(1.-result) + rampColor.b*result;
-                t_a = t_a*(1.-result) + rampColor.a*result;
+                tmpPix[0] = processR ? t_r*(1.-result) + rampColor.r*result : unpPix[0];
+                tmpPix[1] = processG ? t_g*(1.-result) + rampColor.g*result : unpPix[1];
+                tmpPix[2] = processB ? t_b*(1.-result) + rampColor.b*result : unpPix[2];
+                tmpPix[3] = processA ? t_a*(1.-result) + rampColor.a*result : unpPix[3];
 
-                tmpPix[0] = (float)t_r;
-                tmpPix[1] = (float)t_g;
-                tmpPix[2] = (float)t_b;
-                tmpPix[3] = (float)t_a;
                 ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 dstPix += nComponents;
             }
@@ -555,6 +488,7 @@ public:
     , _processG(0)
     , _processB(0)
     , _processA(0)
+    , _replace(0)
     , _mix(0)
     , _maskApply(0)
     , _maskInvert(0)
@@ -618,6 +552,8 @@ public:
         _processB = fetchBooleanParam(kNatronOfxParamProcessB);
         _processA = fetchBooleanParam(kNatronOfxParamProcessA);
         assert(_processR && _processG && _processB && _processA);
+        _replace = fetchBooleanParam(kParamReplace);
+        assert(_replace);
 
         _noiseType = fetchChoiceParam(kParamNoiseType);
         _noiseSize = fetchDouble2DParam(kParamNoiseSize);
@@ -726,6 +662,7 @@ private:
     BooleanParam* _processG;
     BooleanParam* _processB;
     BooleanParam* _processA;
+    BooleanParam* _replace;
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
@@ -745,7 +682,6 @@ private:
 
     PageParam* _pageTransform;
     GroupParam* _groupTransform;
-    bool _groupTransformIsOpen;
     Double2DParam* _translate;
     DoubleParam* _rotate;
     Double2DParam* _scale;
@@ -891,11 +827,12 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     double mix;
     _mix->getValueAtTime(time, mix);
     
-    bool processR, processG, processB, processA;
+    bool processR, processG, processB, processA, replace;
     _processR->getValueAtTime(time, processR);
     _processG->getValueAtTime(time, processG);
     _processB->getValueAtTime(time, processB);
     _processA->getValueAtTime(time, processA);
+    _replace->getValueAtTime(time, replace);
 
     Matrix3x3 sizeMat(1./args.renderScale.x/noiseSize.x, 0., 0.,
                       0., 1./args.renderScale.x/noiseSize.y, 0.,
@@ -920,7 +857,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
                    c, 0, -s);
 
     processor.setValues(mix,
-                        processR,processG,processB,processA,
+                        processR,processG,processB,processA,replace,
                         noiseType,
 #ifdef SENOISE_VORONOI
                         voronoiType, jitter, fbmScale,
@@ -1244,6 +1181,16 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kNatronOfxParamProcessALabel);
         param->setHint(kNatronOfxParamProcessAHint);
         param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamReplace);
+        param->setLabel(kParamReplaceLabel);
+        param->setHint(kParamReplaceHint);
+        param->setDefault(false);
         if (page) {
             page->addChild(*param);
         }
