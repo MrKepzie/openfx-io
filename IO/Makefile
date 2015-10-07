@@ -38,6 +38,12 @@ RESOURCES = \
 ../FFmpeg/fr.inria.openfx.ReadFFmpeg.svg \
 ../FFmpeg/fr.inria.openfx.WriteFFmpeg.png \
 ../FFmpeg/fr.inria.openfx.WriteFFmpeg.svg \
+../OCIO/fr.inria.openfx.OCIOCDLTransform.png \
+../OCIO/fr.inria.openfx.OCIOColorSpace.png \
+../OCIO/fr.inria.openfx.OCIODisplay.png \
+../OCIO/fr.inria.openfx.OCIOFileTransform.png \
+../OCIO/fr.inria.openfx.OCIOLogConvert.png \
+../OCIO/fr.inria.openfx.OCIOLookTransform.png \
 ../OIIO/fr.inria.openfx.OIIOText.png \
 ../OIIO/fr.inria.openfx.OIIOText.svg \
 ../OIIO/fr.inria.openfx.ReadOIIO.png \
@@ -51,7 +57,7 @@ RESOURCES = \
 ../PFM/fr.inria.openfx.ReadPFM.png \
 ../PFM/fr.inria.openfx.ReadPFM.svg \
 ../PFM/fr.inria.openfx.WritePFM.png \
-../PFM/fr.inria.openfx.WritePFM.svg 
+../PFM/fr.inria.openfx.WritePFM.svg
 
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
 	VPATH += ../RunScript/fr.inria.openfx.RunScript.png \

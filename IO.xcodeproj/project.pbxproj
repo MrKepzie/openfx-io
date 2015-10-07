@@ -177,8 +177,8 @@
 		1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
 		1ED499D118A00BD6008A2D91 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */; };
 		1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
-		1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; settings = {ASSET_TAGS = (); }; };
-		1ED94FC21BC2652F008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; settings = {ASSET_TAGS = (); }; };
+		1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; };
+		1ED94FC21BC2652F008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; };
 		1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA018B79E8100C31FDC /* ReadPFM.cpp */; };
 		1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA218B79E8100C31FDC /* WritePFM.cpp */; };
 		1EDECBB218B9F8040093B6FC /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
@@ -194,13 +194,19 @@
 		1EE4A8CF19C6F08A00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D119C6F0EA00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */; };
-		1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; settings = {ASSET_TAGS = (); }; };
-		1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; settings = {ASSET_TAGS = (); }; };
-		1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; settings = {ASSET_TAGS = (); }; };
-		1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; settings = {ASSET_TAGS = (); }; };
+		1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; };
+		1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; };
+		1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; };
+		1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; };
 		AC0626691ABDC1D800B3D105 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
 		AC0626701ABDC4A400B3D105 /* fr.inria.openfx.OIIOResize.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */; };
 		AC0626711ABDC4A500B3D105 /* fr.inria.openfx.OIIOResize.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */; };
+		AC5B9D091BC5301D007A650D /* fr.inria.openfx.OCIOCDLTransform.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */; };
+		AC5B9D0A1BC5301D007A650D /* fr.inria.openfx.OCIOColorSpace.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D041BC5300C007A650D /* fr.inria.openfx.OCIOColorSpace.png */; };
+		AC5B9D0B1BC5301D007A650D /* fr.inria.openfx.OCIODisplay.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D051BC5300C007A650D /* fr.inria.openfx.OCIODisplay.png */; };
+		AC5B9D0C1BC5301D007A650D /* fr.inria.openfx.OCIOFileTransform.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D061BC5300C007A650D /* fr.inria.openfx.OCIOFileTransform.png */; };
+		AC5B9D0D1BC5301D007A650D /* fr.inria.openfx.OCIOLogConvert.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D071BC5300C007A650D /* fr.inria.openfx.OCIOLogConvert.png */; };
+		AC5B9D0E1BC5301D007A650D /* fr.inria.openfx.OCIOLookTransform.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D081BC5300C007A650D /* fr.inria.openfx.OCIOLookTransform.png */; };
 		AC6486FA1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */; };
 		AC6486FB1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */; };
 		AC6486FC1A41BDFD0088844F /* fr.inria.openfx.WriteFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */; };
@@ -373,6 +379,12 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
+				AC5B9D091BC5301D007A650D /* fr.inria.openfx.OCIOCDLTransform.png in CopyFiles */,
+				AC5B9D0A1BC5301D007A650D /* fr.inria.openfx.OCIOColorSpace.png in CopyFiles */,
+				AC5B9D0B1BC5301D007A650D /* fr.inria.openfx.OCIODisplay.png in CopyFiles */,
+				AC5B9D0C1BC5301D007A650D /* fr.inria.openfx.OCIOFileTransform.png in CopyFiles */,
+				AC5B9D0D1BC5301D007A650D /* fr.inria.openfx.OCIOLogConvert.png in CopyFiles */,
+				AC5B9D0E1BC5301D007A650D /* fr.inria.openfx.OCIOLookTransform.png in CopyFiles */,
 				AC6487061A41BE120088844F /* fr.inria.openfx.ReadPFM.png in CopyFiles */,
 				AC6487071A41BE120088844F /* fr.inria.openfx.ReadPFM.svg in CopyFiles */,
 				AC6487081A41BE120088844F /* fr.inria.openfx.WritePFM.png in CopyFiles */,
@@ -562,6 +574,12 @@
 		AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExpr.png; sourceTree = "<group>"; };
 		AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOResize.png; sourceTree = "<group>"; };
 		AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOResize.svg; sourceTree = "<group>"; };
+		AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOCDLTransform.png; sourceTree = "<group>"; };
+		AC5B9D041BC5300C007A650D /* fr.inria.openfx.OCIOColorSpace.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOColorSpace.png; sourceTree = "<group>"; };
+		AC5B9D051BC5300C007A650D /* fr.inria.openfx.OCIODisplay.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIODisplay.png; sourceTree = "<group>"; };
+		AC5B9D061BC5300C007A650D /* fr.inria.openfx.OCIOFileTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOFileTransform.png; sourceTree = "<group>"; };
+		AC5B9D071BC5300C007A650D /* fr.inria.openfx.OCIOLogConvert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOLogConvert.png; sourceTree = "<group>"; };
+		AC5B9D081BC5300C007A650D /* fr.inria.openfx.OCIOLookTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOLookTransform.png; sourceTree = "<group>"; };
 		AC6486EA1A41BDD40088844F /* fr.inria.openfx.ReadPFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadPFM.png; sourceTree = "<group>"; };
 		AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadPFM.svg; sourceTree = "<group>"; };
 		AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WritePFM.png; sourceTree = "<group>"; };
@@ -885,6 +903,12 @@
 				1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */,
 				1ED499D218A00BE1008A2D91 /* Info.plist */,
 				1ED499D318A00BE1008A2D91 /* Makefile */,
+				AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */,
+				AC5B9D041BC5300C007A650D /* fr.inria.openfx.OCIOColorSpace.png */,
+				AC5B9D051BC5300C007A650D /* fr.inria.openfx.OCIODisplay.png */,
+				AC5B9D061BC5300C007A650D /* fr.inria.openfx.OCIOFileTransform.png */,
+				AC5B9D071BC5300C007A650D /* fr.inria.openfx.OCIOLogConvert.png */,
+				AC5B9D081BC5300C007A650D /* fr.inria.openfx.OCIOLookTransform.png */,
 			);
 			path = OCIO;
 			sourceTree = "<group>";
