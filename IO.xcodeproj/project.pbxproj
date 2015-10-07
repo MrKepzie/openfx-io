@@ -108,6 +108,8 @@
 		1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
+		1E784D911BC562CE00F7278C /* SeGrain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E784D901BC562B300F7278C /* SeGrain.cpp */; settings = {ASSET_TAGS = (); }; };
+		1E784D921BC562D000F7278C /* SeGrain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E784D901BC562B300F7278C /* SeGrain.cpp */; settings = {ASSET_TAGS = (); }; };
 		1E814C8E19C9813600C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */; };
 		1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
 		1E814C9119C9815400C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
@@ -496,6 +498,8 @@
 		1E74D84E1891137B00E9034B /* GenericOCIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GenericOCIO.h; sourceTree = "<group>"; };
 		1E74D84F189115BC00E9034B /* GenericOCIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIO.cpp; sourceTree = "<group>"; };
 		1E77070D1977D87700E3F68D /* ofxNatron.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxNatron.h; path = include/ofxNatron.h; sourceTree = "<group>"; };
+		1E784D8F1BC562B300F7278C /* SeGrain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeGrain.h; sourceTree = "<group>"; };
+		1E784D901BC562B300F7278C /* SeGrain.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeGrain.cpp; sourceTree = "<group>"; };
 		1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.RunScript.svg; sourceTree = "<group>"; };
 		1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOText.svg; sourceTree = "<group>"; };
 		1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsImageBlenderMasked.h; sourceTree = "<group>"; };
@@ -933,6 +937,8 @@
 			children = (
 				ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */,
 				ACE0849D1AB4AB7E00BE558C /* SeExpr.h */,
+				1E784D901BC562B300F7278C /* SeGrain.cpp */,
+				1E784D8F1BC562B300F7278C /* SeGrain.h */,
 				1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */,
 				1EEAA6BE1BBD183800D397F5 /* SeNoisePlugin.h */,
 				ACE084991AB4AB7E00BE558C /* Info.plist */,
@@ -1238,6 +1244,7 @@
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
 				1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */,
+				1E784D911BC562CE00F7278C /* SeGrain.cpp in Sources */,
 				1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */,
 				1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */,
 				1E2F4D9C189295F600F4CE25 /* FFmpegFile.cpp in Sources */,
@@ -1346,6 +1353,7 @@
 				1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */,
 				ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */,
 				1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
+				1E784D921BC562D000F7278C /* SeGrain.cpp in Sources */,
 				ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */,
 				ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */,
 				ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */,

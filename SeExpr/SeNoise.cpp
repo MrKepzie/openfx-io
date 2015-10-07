@@ -121,7 +121,7 @@ namespace SeExpr {
 enum NoiseTypeEnum {
     eNoiseTypeCellNoise,
     eNoiseTypeNoise,
-#ifdef SENOIS_PERLIN
+#ifdef SENOISE_PERLIN
     eNoiseTypePerlin,
 #endif
     eNoiseTypeFBM,
@@ -432,8 +432,9 @@ private:
         assert(nComponents == 3 || nComponents == 4);
         float unpPix[4];
         float tmpPix[4];
+#ifdef SENOISE_VORONOI
         SeExpr::VoronoiPointData voronoiPointData;
-
+#endif
         const double norm2 = (_point1.x - _point0.x)*(_point1.x - _point0.x) + (_point1.y - _point0.y)*(_point1.y - _point0.y);
         const double nx = norm2 == 0. ? 0. : (_point1.x - _point0.x)/ norm2;
         const double ny = norm2 == 0. ? 0. : (_point1.y - _point0.y)/ norm2;
@@ -782,7 +783,7 @@ void
 SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::RenderArguments &args)
 {
     const double time = args.time;
-    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(args.time));
+    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(time));
     if (!dst.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -800,7 +801,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     std::auto_ptr<const OFX::Image> src((_srcClip && _srcClip->isConnected()) ?
-                                        _srcClip->fetchImage(args.time) : 0);
+                                        _srcClip->fetchImage(time) : 0);
     if (src.get()) {
         if (src->getRenderScale().x != args.renderScale.x ||
             src->getRenderScale().y != args.renderScale.y ||
@@ -814,8 +815,8 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
             OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
         }
     }
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
-    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(args.time) : 0);
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     if (mask.get()) {
         if (mask->getRenderScale().x != args.renderScale.x ||
             mask->getRenderScale().y != args.renderScale.y ||
@@ -826,7 +827,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     }
     if (doMasking) {
         bool maskInvert;
-        _maskInvert->getValueAtTime(args.time, maskInvert);
+        _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
         processor.setMaskImg(mask.get(), maskInvert);
     }
@@ -837,7 +838,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
 
     // fetch noise parameter values
     int noiseType_i;
-    _noiseType->getValueAtTime(args.time, noiseType_i);
+    _noiseType->getValueAtTime(time, noiseType_i);
     NoiseTypeEnum noiseType = (NoiseTypeEnum)noiseType_i;
 
     OfxPointD noiseSize;
@@ -888,7 +889,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor, const OFX::Rende
     _color1->getValueAtTime(time, color1.r, color1.g, color1.b, color1.a);
 
     double mix;
-    _mix->getValueAtTime(args.time, mix);
+    _mix->getValueAtTime(time, mix);
     
     bool processR, processG, processB, processA;
     _processR->getValueAtTime(time, processR);
@@ -1027,8 +1028,9 @@ bool
 SeNoisePlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &/*identityTime*/)
 {
     //std::cout << "isIdentity!\n";
+    const double time = args.time;
     double mix;
-    _mix->getValueAtTime(args.time, mix);
+    _mix->getValueAtTime(time, mix);
 
     if (mix == 0. /*|| (!processR && !processG && !processB && !processA)*/) {
         identityClip = _srcClip;
@@ -1040,10 +1042,10 @@ SeNoisePlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip,
         bool processG;
         bool processB;
         bool processA;
-        _processR->getValueAtTime(args.time, processR);
-        _processG->getValueAtTime(args.time, processG);
-        _processB->getValueAtTime(args.time, processB);
-        _processA->getValueAtTime(args.time, processA);
+        _processR->getValueAtTime(time, processR);
+        _processG->getValueAtTime(time, processG);
+        _processB->getValueAtTime(time, processB);
+        _processA->getValueAtTime(time, processA);
         if (!processR && !processG && !processB && !processA) {
             identityClip = _srcClip;
             return true;
@@ -1057,13 +1059,13 @@ SeNoisePlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip,
     //    return true;
     //}
 
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
     if (doMasking) {
         bool maskInvert;
-        _maskInvert->getValueAtTime(args.time, maskInvert);
+        _maskInvert->getValueAtTime(time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
             if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip;
@@ -1191,6 +1193,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
     dstClip->addSupportedComponent(ePixelComponentRGB);
+    dstClip->addSupportedComponent(ePixelComponentXY);
     dstClip->addSupportedComponent(ePixelComponentAlpha);
     dstClip->setSupportsTiles(kSupportsTiles);
     

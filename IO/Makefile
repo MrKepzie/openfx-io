@@ -14,7 +14,8 @@ PLUGINOBJECTS = \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
-        SeExpr.o \
+	SeExpr.o \
+	SeGrain.o \
 	SeNoise.o \
 	ofxsRamp.o \
 	ofxsGenerator.o \

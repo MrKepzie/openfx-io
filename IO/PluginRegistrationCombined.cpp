@@ -22,6 +22,7 @@
 #include "RunScript.h"
 #endif
 #include "SeExpr.h"
+#include "SeGrain.h"
 #include "SeNoisePlugin.h"
 
 namespace OFX
@@ -51,7 +52,8 @@ namespace OFX
 #if !defined(_WIN32) && !defined(__MINGW__)
             getRunScriptPluginID(ids);
 #endif
-			getSeExprPluginID(ids);
+            getSeExprPluginID(ids);
+            getSeGrainPluginID(ids);
             getSeNoisePluginID(ids);
         }
     }
