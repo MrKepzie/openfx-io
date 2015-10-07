@@ -122,7 +122,7 @@ static struct PresetStruct gPresets[NUMPRESETS] =
 
 #define kParamSizeAll "grainSizeAll"
 #define kParamSizeAllLabel "All"
-#define kParamSizeAllHint "Global factor on grain size."
+#define kParamSizeAllHint "Global factor on grain size. Useful if working with scans which are not 2K (the preset sizes are computed for 2K scans)."
 #define kParamSizeAllDefault 1.
 
 #define kParamSizeRed "grainSizeRed"
