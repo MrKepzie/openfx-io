@@ -28,16 +28,21 @@
 #include <limits>
 #include <set>
 
-#ifdef __MINGW32__
-#define SEEXPR_NO_SNPRINTF
-#include <sstream>
-#else
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
-#include <windows.h>
-#define snprintf _snprintf
-#endif
-#endif
+#    define NOMINMAX 1
+// windows - defined for both Win32 and Win64
+#    include <windows.h>
+// the following must be included before SePlatform.h tries to include
+// them with _CRT_NONSTDC_NO_DEPRECATE=1 and _CRT_SECURE_NO_DEPRECATE=1
+#    include <malloc.h>
+#    include <io.h>
+#    include <tchar.h>
+#    include <process.h>
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif // _WINDOWS
 
 #include "ofxsMacros.h"
 #include "ofxsCopier.h"
@@ -52,6 +57,17 @@
 #include <SeExprNode.h>
 #include <SeExprBuiltins.h>
 #include <SeMutex.h>
+#ifdef _WINDOWS
+// fix SePlatform.h's bad defines, see https://github.com/wdas/SeExpr/issues/33
+#undef snprintf
+#undef strtok_r
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#  if defined(_MSC_VER) && _MSC_VER >= 1400
+#    define strtok_r(s,d,p) strtok_s(s,d,p)
+#  endif
+#endif // _WINDOWS
 
 #define kPluginName "SeExpr"
 #define kPluginGrouping "Merge"
@@ -73,12 +89,12 @@
 "- par: The pixel aspect ratio.\n\n" \
 "- cx, cy: Shortcuts for (x + 0.5)/par/sx and (y + 0.5)/sy, a.k.a. the canonical coordinates of the current pixel.\n\n" \
 "- frame: Current frame being rendered\n\n" \
-"- Cs, $As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
-"- $CsN, $AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. $Cs2 and $As2 for input 2.\n\n" \
-"- $output_width: Width of the output image being rendered.\n\n" \
-"- $output_height: Height of the output image being rendered.\n\n" \
-"- $input_width, $input_height: Size of image from input 1, in pixels.\n\n" \
-"- $input_widthN, $input_heightN: Size of image from input N, e.g. $input_width2 and $input_height2 for input 2.\n\n" \
+"- Cs, As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
+"- CsN, AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. Cs2 and As2 for input 2.\n\n" \
+"- output_width: Width of the output image being rendered.\n\n" \
+"- output_height: Height of the output image being rendered.\n\n" \
+"- input_width, input_height: Size of image from input 1, in pixels.\n\n" \
+"- input_widthN, input_heightN: Size of image from input N, e.g. input_width2 and input_height2 for input 2.\n\n" \
 "- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
 "- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
 "The pixel position of the center of the bottom-left pixel is (0., 0.).\n"\
@@ -95,33 +111,31 @@
 "8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
 "Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
-"$Cs * $Cs2\n\n" \
+"Cs * Cs2\n\n" \
 "Another merge operator example (over):\n\n" \
-"$Cs + $Cs2 * (1 -  $As)\n\n" \
-"Generating a time-varying colored Perlin noise with size $x1:\n" \
-"cnoise([$cx/$x1,$cy/$x1,$frame])\n\n" \
+"Cs + Cs2 * (1 -  As)\n\n" \
+"Generating a time-varying colored Perlin noise with size x1:\n" \
+"cnoise([cx/x1,cy/x1,frame])\n\n" \
 "A more complex example used to average pixels over the previous, current and next frame:\n\n" \
-"$prev = cpixel(1,$frame - 1,x,y);\n" \
-"$cur = $Cs;\n" \
-"$next = cpixel(1,$frame + 1,x,y);\n" \
-"($prev + $cur + $next) / 3;\n\n" \
+"prev = cpixel(1,frame - 1,x,y);\n" \
+"cur = Cs;\n" \
+"next = cpixel(1,frame + 1,x,y);\n" \
+"(prev + cur + next) / 3;\n\n" \
 "To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
 "using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n\n" \
-"$Cs + $x1\n\n" \
+"Cs + x1\n\n" \
 "Note that for expressions that span multiple lines, you must end each instruction by a semicolumn (';') as you would do in C/C++. The last line " \
 "of your expression will always be considered as the final value of the pixel and must not be terminated by a semicolumn.\n" \
 "More documentation is available on the SeExpr website: \n\n" \
-"Limitations:\n\n" \
-"In order to be efficient getPixel(inputNumber,frame,x,y) works only under certain circumstances:\n" \
-"- the inputNumber must be in the correct range\n" \
-"- frame must not depend on the color or alpha of a pixel, nor on the result of another call to getPixel\n" \
-"- A call to getPixel must not depend on the color or alpha of a pixel, e.g this is not correct:\n\n" \
+"The input frame range used to render a given output frame is computed automatically if the following conditions hold:\n"\
+"- The 'frame' parameter to cpixel/apixel must not depend on the color or alpha of a pixel, nor on the result of another call to cpixel/apixel\n" \
+"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, as in the following:\n\n" \
 "if (As > 0.1) {\n" \
-"    src = getPixel(1,frame,x,y);\n" \
+"    src = cpixel(1,frame,x,y);\n" \
 "} else {\n" \
 "    src = [0,0,0];\n" \
 "}\n" \
-"but the coordinates of the accessed pixel may depend on color values.\n"
+"If one of these conditions does not hold, all frames from the specified input frame range are asked for.\n"
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
 #define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -224,6 +238,16 @@ enum RegionOfDefinitionEnum {
 #define kParamColor "color"
 #define kParamColorLabel "color"
 #define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color"
+
+#define kParamFrameRange "frameRange"
+#define kParamFrameRangeLabel "Input Frame Range"
+#define kParamFrameRangeHint "Default input frame range to fetch images from (may be relative or absolute, depending on the \"frameRangeAbsolute\" parameter). Only used if the frame range cannot be statically computed from the expression. This parameter can be animated."
+#define kParamFrameRangeDefault 0,0
+
+#define kParamFrameRangeAbsolute "frameRangeAbsolute"
+#define kParamFrameRangeAbsoluteLabel "Absolute Frame Range"
+#define kParamFrameRangeAbsoluteHint "If checked, the frame range is relative to the current frame."
+#define kParamFrameRangeAbsoluteDefault false
 
 #define kParamScript "script"
 #define kParamScriptLabel "RGB Script"
@@ -331,7 +355,10 @@ private:
     
     OFX::IntParam *_colorParamCount;
     OFX::RGBParam* _colorParams[kParamsCount];
-    
+
+    OFX::Int2DParam *_frameRange;
+    OFX::BooleanParam *_frameRangeAbsolute;
+
     OFX::StringParam *_rgbScript;
     OFX::StringParam *_alphaScript;
     OFX::BooleanParam *_validate;
@@ -1016,33 +1043,9 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 
     _variables[kSeExprOutputHeightVarName] = &_outputHeight;
 
-#ifndef SEEXPR_NO_SNPRINTF
     char name[256];
-#endif
 
     for (int i = 0; i < kSourceClipCount; ++i) {
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss << kSeExprInputWidthVarName << i + 1;
-            _variables[ss.str()] = &_inputWidths[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kSeExprInputHeightVarName << i + 1;
-            _variables[ss.str()] = &_inputHeights[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kSeExprColorVarName << i + 1;
-            _variables[ss.str()] = &_inputColors[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kSeExprAlphaVarName << i + 1;
-            _variables[ss.str()] = &_inputAlphas[i];
-        }
-#else
         snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
         _variables[name] = &_inputWidths[i];
         snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
@@ -1051,7 +1054,6 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _variables[name] = &_inputColors[i];
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
         _variables[name] = &_inputAlphas[i];
-#endif
         if (i == 0) {
             // default names for the first input
             _variables[kSeExprInputWidthVarName] = &_inputWidths[i];
@@ -1072,31 +1074,12 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         _doubleRef[i] = new DoubleParamVarRef(doubleParams[i]);
         _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
         _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss << kParamDouble << i + 1;
-            _variables[ss.str()] = _doubleRef[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kParamDouble2D << i + 1;
-            _variables[ss.str()] = _double2DRef[i];
-        }
-        {
-            std::stringstream ss;
-            ss << kParamColor << i + 1;
-            _variables[ss.str()] = _colorRef[i];
-        }
-#else
         snprintf(name, sizeof(name), kParamDouble "%d", i+1);
         _variables[name] = _doubleRef[i];
         snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
         _variables[name] = _double2DRef[i];
         snprintf(name, sizeof(name), kParamColor "%d", i+1);
         _variables[name] = _colorRef[i];
-#endif
-        
     }
 }
 
@@ -1445,16 +1428,8 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
             if (i == 0 && getContext() == OFX::eContextFilter) {
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
-			
-#ifdef SEEXPR_NO_SNPRINTF
-			  std::stringstream ss;
-		  	  ss  << i + 1;
-			  _srcClip[i] = fetchClip(ss.str());
-#else
 			  snprintf(name, sizeof(name), "%d", i+1);
 			  _srcClip[i] = fetchClip(name);
-#endif
-                
             }
         }
     }
@@ -1472,54 +1447,24 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamLayerInput << i + 1;
-                _clipLayerToFetch[i] = fetchChoiceParam(ss.str());
-            }
-#else
             snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
-#endif
-           
         } else {
             _clipLayerToFetch[i] = 0;
         }
         
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << kParamDouble << i + 1;
-            _doubleParams[i] = fetchDoubleParam(ss.str());
-        }
-#else
         snprintf(name, sizeof(name), kParamDouble "%d", i+1 );
         _doubleParams[i] = fetchDoubleParam(name);
-#endif
-        
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << kParamDouble2D << i + 1;
-            _double2DParams[i] = fetchDouble2DParam(ss.str());
-        }
-#else
         snprintf(name, sizeof(name), kParamDouble2D "%d", i+1 );
         _double2DParams[i] = fetchDouble2DParam(name);
-#endif
-        
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << kParamColor << i + 1;
-            _colorParams[i] = fetchRGBParam(ss.str());
-        }
-#else
         snprintf(name, sizeof(name), kParamColor "%d", i+1 );
         _colorParams[i] = fetchRGBParam(name);
-#endif
     }
+
+    _frameRange = fetchInt2DParam(kParamFrameRange);
+    _frameRangeAbsolute = fetchBooleanParam(kParamFrameRangeAbsolute);
+    assert(_frameRange && _frameRangeAbsolute);
+
     _rgbScript = fetchStringParam(kParamScript);
     assert(_rgbScript);
     _alphaScript = fetchStringParam(kParamAlphaScript);
@@ -1951,22 +1896,10 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
     }
     if (args.reason == OFX::eChangeUserEdit) {
         std::string strName;
+        char name[256];
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss  << i + 1;
-                strName = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), "%d", i+1);
-                strName.append(name);
-            }
-#endif
-            if (strName == clipName) {
+            snprintf(name, sizeof(name), "%d", i+1);
+            if (name == clipName) {
                 assert(_srcClip[i]);
                 _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
             }
@@ -2109,6 +2042,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
      srcCol = [0,0,0]
      }
      */
+    const double time = args.time;
     FramesNeeded framesNeeded;
     
     OFX::PixelComponentEnum outputComponents = getOutputComponents();
@@ -2116,7 +2050,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         std::string rgbScript;
         _rgbScript->getValue(rgbScript);
         
-        StubSeExpression expr(rgbScript,args.time);
+        StubSeExpression expr(rgbScript, time);
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2147,7 +2081,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         std::string alphaScript;
         _alphaScript->getValue(alphaScript);
         
-        StubSeExpression expr(alphaScript,args.time);
+        StubSeExpression expr(alphaScript, time);
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2174,25 +2108,32 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
             
         }
     }
-    
+
+    bool useDefaultRange[kSourceClipCount];
+    std::fill(useDefaultRange, useDefaultRange + kSourceClipCount, false);
     for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
-        
         assert(it->first >= 0  && it->first < kSourceClipCount);
-        OFX::Clip* clip = getClip(it->first);
-        assert(clip);
-        
-        bool hasFetchedCurrentTime = false;
         for (std::size_t i = 0; i < it->second.size(); ++i) {
-            
             if (it->second[i] != it->second[i]) {
                 //This number is NaN! The user probably used something dependant on a pixel value as a time for the getPixel function
-                setPersistentMessage(OFX::Message::eMessageError, "", "Invalid frame for getPixel, see the Limitations in the description.");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
+                // we fall back on using the default frame range
+                useDefaultRange[it->first] = true;
             }
-            
+        }
+    }
+
+    for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+        if (useDefaultRange[it->first]) {
+            continue;
+        }
+        OFX::Clip* clip = getClip(it->first);
+        assert(clip);
+
+        bool hasFetchedCurrentTime = false;
+        for (std::size_t i = 0; i < it->second.size(); ++i) {
+            assert (it->second[i] == it->second[i]);
             OfxRangeD range;
-            if (it->second[i] == args.time) {
+            if (it->second[i] == time) {
                 hasFetchedCurrentTime = true;
             }
             range.min = range.max = it->second[i];
@@ -2200,12 +2141,33 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         }
         if (!hasFetchedCurrentTime) {
             OfxRangeD range;
-            range.min = range.max = args.time;
+            range.min = range.max = time;
             frames.setFramesNeeded(*clip, range);
         }
-        
     }
 
+    // for clips that could not have their range computed from the expression,
+    // use the default range
+    OfxRangeD range;
+    int t1, t2;
+    _frameRange->getValueAtTime(time, t1, t2);
+    bool absolute;
+    _frameRangeAbsolute->getValueAtTime(time, absolute);
+    if (absolute) {
+        range.min = std::min(t1, t2);
+        range.max = std::max(t1, t2);
+    } else {
+        range.min = time + std::min(t1, t2);
+        range.max = time + std::max(t1, t2);
+    }
+
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        if (useDefaultRange[i]) {
+            OFX::Clip* clip = getClip(i);
+            assert(clip);
+            frames.setFramesNeeded(*clip, range);
+        }
+    }
 }
 
 // override the roi call
@@ -2336,8 +2298,12 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
             for (int i = 0; i < kSourceClipCount; ++i) {
                 if (_srcClip[i]->isConnected()) {
                     OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                    OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
-                    rodSet = true;
+                    if (rodSet) {
+                        OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
+                    } else {
+                        rod = srcRod;
+                        rodSet = true;
+                    }
                 }
             }
             break;
@@ -2750,32 +2716,11 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->appendOption(kParamRegionOfDefinitionOptionProject, kParamRegionOfDefinitionOptionProjectHelp);
 
         assert(param->getNOptions() == eRegionOfDefinitionOptionCustom);
+        char name[256], help[256];
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamRegionOfDefinitionOptionCustomInput << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamRegionOfDefinitionOptionCustomInputHelp << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInputHelp "%d", i+1);
-                strHelp.append(name);
-
-            }
-#endif
-            param->appendOption(strName, strHelp);
+            snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput "%d", i+1);
+            snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp "%d", i+1);
+            param->appendOption(name, help);
         }
         param->setAnimates(false);
         if (page) {
@@ -2907,6 +2852,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
     }
 
+    char name[1024], label[1024], hint[1024];
+
     if (gHostIsMultiPlanar) {
         GroupParamDescriptor *group = desc.defineGroupParam("Input layers");
         group->setLabel("Input layers");
@@ -2914,44 +2861,13 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         if (page) {
             page->addChild(*group);
         }
-
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamLayerInput << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamLayerInputLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamLayerInputHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamLayerInputHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamLayerInputLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
+            snprintf(label, sizeof(label), kParamLayerInputLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamLayerInputHint "%d", i+1);
+            ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(false);
             param->appendOption(kSeExprColorPlaneName);
             //param->setIsSecret(true); // done in the plugin constructor
@@ -2984,42 +2900,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamDouble << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDoubleLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDoubleHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamDouble "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamDoubleHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamDoubleLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-
-            DoubleParamDescriptor *param = desc.defineDoubleParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamDouble "%d", i+1);
+            snprintf(label, sizeof(label), kParamDoubleLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamDoubleHint "%d", i+1);
+            DoubleParamDescriptor *param = desc.defineDoubleParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDisplayRange(-1000.,1000.);
@@ -3053,41 +2939,12 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamDouble2D << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDouble2DLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamDouble2DHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamDouble2DHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamDouble2DLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-            Double2DParamDescriptor *param = desc.defineDouble2DParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
+            snprintf(label, sizeof(label), kParamDouble2DLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamDouble2DHint "%d", i+1);
+            Double2DParamDescriptor *param = desc.defineDouble2DParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
@@ -3119,47 +2976,39 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            
-            std::string strName,strHelp,strLabel;
-#ifdef SEEXPR_NO_SNPRINTF
-            {
-                std::stringstream ss;
-                ss << kParamColor << i + 1;
-                strName = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamColorLabel << i + 1;
-                strLabel = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << kParamColorHint << i + 1;
-                strHelp = ss.str();
-            }
-#else
-            {
-                char name[256];
-                snprintf(name, sizeof(name), kParamColor "%d", i+1);
-                strName.append(name);
-                
-                snprintf(name, sizeof(name), kParamColorHint "%d", i+1);
-                strHelp.append(name);
-                
-                snprintf(name, sizeof(name), kParamColorLabel "%d", i+1);
-                strLabel.append(name);
-                
-            }
-#endif
-            RGBParamDescriptor *param = desc.defineRGBParam(strName);
-            param->setLabel(strLabel);
-            param->setHint(strHelp);
+            snprintf(name, sizeof(name), kParamColor "%d", i+1);
+            snprintf(label, sizeof(label), kParamColorLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamColorHint "%d", i+1);
+            RGBParamDescriptor *param = desc.defineRGBParam(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             param->setParent(*group);
             //param->setIsSecret(true); // done in the plugin constructor
             if (page) {
                 page->addChild(*param);
             }
+        }
+    }
+    {
+        Int2DParamDescriptor *param = desc.defineInt2DParam(kParamFrameRange);
+        param->setDefault(kParamFrameRangeDefault);
+        param->setHint(kParamFrameRangeHint);
+        param->setLabel(kParamFrameRangeLabel);
+        param->setDimensionLabels("min", "max");
+        param->setAnimates(true);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        BooleanParamDescriptor *param = desc.defineBooleanParam(kParamFrameRangeAbsolute);
+        param->setDefault(kParamFrameRangeAbsoluteDefault);
+        param->setHint(kParamFrameRangeAbsoluteHint);
+        param->setLabel(kParamFrameRangeAbsoluteLabel);
+        param->setAnimates(true);
+        if (page) {
+            page->addChild(*param);
         }
     }
 

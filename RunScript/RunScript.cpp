@@ -41,9 +41,11 @@
 #include <sys/stat.h>
 #include <stdio.h> // for snprintf & _snprintf
 #ifdef _WINDOWS
-#include <windows.h>
-#define snprintf _snprintf
-#endif
+#  include <windows.h>
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif // _WINDOWS
 
 #include "ofxsCopier.h"
 

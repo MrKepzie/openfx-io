@@ -24,6 +24,7 @@
 #include "OCIOCDLTransform.h"
 
 #ifdef OFX_IO_USING_OCIO
+
 #include <cstdio> // fopen...
 #include <OpenColorIO/OpenColorIO.h>
 
@@ -1130,4 +1131,4 @@ void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
 {
 }
 
-#endif
+#endif // !OFX_IO_USING_OCIO

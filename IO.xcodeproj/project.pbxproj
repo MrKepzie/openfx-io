@@ -108,6 +108,8 @@
 		1E74D850189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
 		1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D84F189115BC00E9034B /* GenericOCIO.cpp */; };
+		1E784D911BC562CE00F7278C /* SeGrain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E784D901BC562B300F7278C /* SeGrain.cpp */; settings = {ASSET_TAGS = (); }; };
+		1E784D921BC562D000F7278C /* SeGrain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E784D901BC562B300F7278C /* SeGrain.cpp */; settings = {ASSET_TAGS = (); }; };
 		1E814C8E19C9813600C2C668 /* fr.inria.openfx.RunScript.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */; };
 		1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
 		1E814C9119C9815400C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */; };
@@ -177,6 +179,8 @@
 		1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
 		1ED499D118A00BD6008A2D91 /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */; };
 		1ED499D618A03BCF008A2D91 /* OCIOColorSpace.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */; };
+		1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; };
+		1ED94FC21BC2652F008680C0 /* ofxsTransformInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */; };
 		1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA018B79E8100C31FDC /* ReadPFM.cpp */; };
 		1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E8B5DA218B79E8100C31FDC /* WritePFM.cpp */; };
 		1EDECBB218B9F8040093B6FC /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
@@ -192,9 +196,19 @@
 		1EE4A8CF19C6F08A00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D119C6F0EA00E6E3AE /* fr.inria.openfx.RunScript.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */; };
 		1EE4A8D219C6F0F300E6E3AE /* fr.inria.openfx.OIIOText.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */; };
+		1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; };
+		1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; };
+		1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; };
+		1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; };
 		AC0626691ABDC1D800B3D105 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
 		AC0626701ABDC4A400B3D105 /* fr.inria.openfx.OIIOResize.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */; };
 		AC0626711ABDC4A500B3D105 /* fr.inria.openfx.OIIOResize.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */; };
+		AC5B9D091BC5301D007A650D /* fr.inria.openfx.OCIOCDLTransform.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */; };
+		AC5B9D0A1BC5301D007A650D /* fr.inria.openfx.OCIOColorSpace.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D041BC5300C007A650D /* fr.inria.openfx.OCIOColorSpace.png */; };
+		AC5B9D0B1BC5301D007A650D /* fr.inria.openfx.OCIODisplay.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D051BC5300C007A650D /* fr.inria.openfx.OCIODisplay.png */; };
+		AC5B9D0C1BC5301D007A650D /* fr.inria.openfx.OCIOFileTransform.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D061BC5300C007A650D /* fr.inria.openfx.OCIOFileTransform.png */; };
+		AC5B9D0D1BC5301D007A650D /* fr.inria.openfx.OCIOLogConvert.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D071BC5300C007A650D /* fr.inria.openfx.OCIOLogConvert.png */; };
+		AC5B9D0E1BC5301D007A650D /* fr.inria.openfx.OCIOLookTransform.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC5B9D081BC5300C007A650D /* fr.inria.openfx.OCIOLookTransform.png */; };
 		AC6486FA1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */; };
 		AC6486FB1A41BDFD0088844F /* fr.inria.openfx.ReadFFmpeg.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */; };
 		AC6486FC1A41BDFD0088844F /* fr.inria.openfx.WriteFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */; };
@@ -367,6 +381,12 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
+				AC5B9D091BC5301D007A650D /* fr.inria.openfx.OCIOCDLTransform.png in CopyFiles */,
+				AC5B9D0A1BC5301D007A650D /* fr.inria.openfx.OCIOColorSpace.png in CopyFiles */,
+				AC5B9D0B1BC5301D007A650D /* fr.inria.openfx.OCIODisplay.png in CopyFiles */,
+				AC5B9D0C1BC5301D007A650D /* fr.inria.openfx.OCIOFileTransform.png in CopyFiles */,
+				AC5B9D0D1BC5301D007A650D /* fr.inria.openfx.OCIOLogConvert.png in CopyFiles */,
+				AC5B9D0E1BC5301D007A650D /* fr.inria.openfx.OCIOLookTransform.png in CopyFiles */,
 				AC6487061A41BE120088844F /* fr.inria.openfx.ReadPFM.png in CopyFiles */,
 				AC6487071A41BE120088844F /* fr.inria.openfx.ReadPFM.svg in CopyFiles */,
 				AC6487081A41BE120088844F /* fr.inria.openfx.WritePFM.png in CopyFiles */,
@@ -478,8 +498,16 @@
 		1E74D84E1891137B00E9034B /* GenericOCIO.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GenericOCIO.h; sourceTree = "<group>"; };
 		1E74D84F189115BC00E9034B /* GenericOCIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIO.cpp; sourceTree = "<group>"; };
 		1E77070D1977D87700E3F68D /* ofxNatron.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxNatron.h; path = include/ofxNatron.h; sourceTree = "<group>"; };
+		1E784D8F1BC562B300F7278C /* SeGrain.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeGrain.h; sourceTree = "<group>"; };
+		1E784D901BC562B300F7278C /* SeGrain.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeGrain.cpp; sourceTree = "<group>"; };
 		1E814C8D19C9813200C2C668 /* fr.inria.openfx.RunScript.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.RunScript.svg; sourceTree = "<group>"; };
 		1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOText.svg; sourceTree = "<group>"; };
+		1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsImageBlenderMasked.h; sourceTree = "<group>"; };
+		1E84DC5A1BC1663C006E7E64 /* ofxsLut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsLut.h; sourceTree = "<group>"; };
+		1E84DC5B1BC1663C006E7E64 /* ofxsMacros.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsMacros.h; sourceTree = "<group>"; };
+		1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsMipmap.h; sourceTree = "<group>"; };
+		1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsShutter.h; sourceTree = "<group>"; };
+		1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsTransformInteract.h; sourceTree = "<group>"; };
 		1E864EBC19FC09D50016D4FF /* OCIOLookTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOLookTransform.cpp; sourceTree = "<group>"; };
 		1E864EBD19FC09D50016D4FF /* OCIOLookTransform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OCIOLookTransform.h; sourceTree = "<group>"; };
 		1E8B5D9D18B79E8100C31FDC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -532,6 +560,7 @@
 		1ED499D218A00BE1008A2D91 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1ED499D318A00BE1008A2D91 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1ED499D418A00BE1008A2D91 /* OCIOColorSpace.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OCIOColorSpace.h; sourceTree = "<group>"; };
+		1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsTransformInteract.cpp; sourceTree = "<group>"; };
 		1EDECBAB18B9F7F10093B6FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1EDECBAC18B9F7F10093B6FC /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
@@ -541,10 +570,20 @@
 		1EE4A8C819C6F01F00E6E3AE /* fr.inria.openfx.OIIOText.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOText.png; sourceTree = "<group>"; };
 		1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.RunScript.png; sourceTree = "<group>"; };
 		1EE4A8CC19C6F06700E6E3AE /* pstream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pstream.h; sourceTree = "<group>"; };
+		1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeNoise.cpp; sourceTree = "<group>"; };
+		1EEAA6BE1BBD183800D397F5 /* SeNoisePlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SeNoisePlugin.h; sourceTree = "<group>"; };
+		1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsRamp.cpp; sourceTree = "<group>"; };
+		1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsRamp.h; sourceTree = "<group>"; };
 		1EF940C21B9093370028AF8A /* gpl-header-c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "gpl-header-c.txt"; sourceTree = "<group>"; };
 		AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExpr.png; sourceTree = "<group>"; };
 		AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOResize.png; sourceTree = "<group>"; };
 		AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = fr.inria.openfx.OIIOResize.svg; sourceTree = "<group>"; };
+		AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOCDLTransform.png; sourceTree = "<group>"; };
+		AC5B9D041BC5300C007A650D /* fr.inria.openfx.OCIOColorSpace.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOColorSpace.png; sourceTree = "<group>"; };
+		AC5B9D051BC5300C007A650D /* fr.inria.openfx.OCIODisplay.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIODisplay.png; sourceTree = "<group>"; };
+		AC5B9D061BC5300C007A650D /* fr.inria.openfx.OCIOFileTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOFileTransform.png; sourceTree = "<group>"; };
+		AC5B9D071BC5300C007A650D /* fr.inria.openfx.OCIOLogConvert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOLogConvert.png; sourceTree = "<group>"; };
+		AC5B9D081BC5300C007A650D /* fr.inria.openfx.OCIOLookTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOLookTransform.png; sourceTree = "<group>"; };
 		AC6486EA1A41BDD40088844F /* fr.inria.openfx.ReadPFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.ReadPFM.png; sourceTree = "<group>"; };
 		AC6486EB1A41BDD40088844F /* fr.inria.openfx.ReadPFM.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.ReadPFM.svg; sourceTree = "<group>"; };
 		AC6486EC1A41BDD40088844F /* fr.inria.openfx.WritePFM.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.WritePFM.png; sourceTree = "<group>"; };
@@ -801,22 +840,31 @@
 				1E9B5F24198A505E0095C8AA /* ofxsFormatResolution.h */,
 				ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */,
 				ACE90FFC1AB7433D007A49F8 /* ofxsGenerator.h */,
+				1E84DC591BC1663C006E7E64 /* ofxsImageBlenderMasked.h */,
+				1E84DC5A1BC1663C006E7E64 /* ofxsLut.h */,
+				1E84DC5B1BC1663C006E7E64 /* ofxsMacros.h */,
 				1E9B5F25198A505E0095C8AA /* ofxsMaskMix.h */,
 				1E9B5F26198A505E0095C8AA /* ofxsMatrix2D.h */,
 				1E9B5F27198A505E0095C8AA /* ofxsMerging.h */,
+				1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */,
 				1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */,
 				1E9B5F29198A505E0095C8AA /* ofxsOGLFontUtils.h */,
 				1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */,
 				1E9B5F2B198A505E0095C8AA /* ofxsOGLTextRenderer.h */,
 				1E9B5F2C198A505E0095C8AA /* ofxsPixelProcessor.h */,
 				1E9B5F2D198A505E0095C8AA /* ofxsPositionInteract.h */,
+				1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */,
+				1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */,
 				1E9B5F2E198A505E0095C8AA /* ofxsRectangleInteract.cpp */,
 				1E9B5F2F198A505E0095C8AA /* ofxsRectangleInteract.h */,
+				1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */,
 				1E9B5F30198A505E0095C8AA /* ofxsTracking.cpp */,
 				1E9B5F31198A505E0095C8AA /* ofxsTracking.h */,
 				1E9B5F32198A505E0095C8AA /* ofxsTransform3x3.cpp */,
 				1E9B5F33198A505E0095C8AA /* ofxsTransform3x3.h */,
 				1E9B5F34198A505E0095C8AA /* ofxsTransform3x3Processor.h */,
+				1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */,
+				1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */,
 				1E9B5F35198A505E0095C8AA /* README.md */,
 			);
 			path = SupportExt;
@@ -859,6 +907,12 @@
 				1ED499CF18A00BD6008A2D91 /* PluginRegistration.cpp */,
 				1ED499D218A00BE1008A2D91 /* Info.plist */,
 				1ED499D318A00BE1008A2D91 /* Makefile */,
+				AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */,
+				AC5B9D041BC5300C007A650D /* fr.inria.openfx.OCIOColorSpace.png */,
+				AC5B9D051BC5300C007A650D /* fr.inria.openfx.OCIODisplay.png */,
+				AC5B9D061BC5300C007A650D /* fr.inria.openfx.OCIOFileTransform.png */,
+				AC5B9D071BC5300C007A650D /* fr.inria.openfx.OCIOLogConvert.png */,
+				AC5B9D081BC5300C007A650D /* fr.inria.openfx.OCIOLookTransform.png */,
 			);
 			path = OCIO;
 			sourceTree = "<group>";
@@ -883,6 +937,10 @@
 			children = (
 				ACE0849C1AB4AB7E00BE558C /* SeExpr.cpp */,
 				ACE0849D1AB4AB7E00BE558C /* SeExpr.h */,
+				1E784D901BC562B300F7278C /* SeGrain.cpp */,
+				1E784D8F1BC562B300F7278C /* SeGrain.h */,
+				1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */,
+				1EEAA6BE1BBD183800D397F5 /* SeNoisePlugin.h */,
 				ACE084991AB4AB7E00BE558C /* Info.plist */,
 				ACE0849A1AB4AB7E00BE558C /* Makefile */,
 				ACE0849B1AB4AB7E00BE558C /* PluginRegistration.cpp */,
@@ -1186,6 +1244,7 @@
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
 				1E2F4DE01892977800F4CE25 /* ReadEXR.cpp in Sources */,
+				1E784D911BC562CE00F7278C /* SeGrain.cpp in Sources */,
 				1E2F4DE11892977800F4CE25 /* WriteEXR.cpp in Sources */,
 				1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */,
 				1E2F4D9C189295F600F4CE25 /* FFmpegFile.cpp in Sources */,
@@ -1201,6 +1260,7 @@
 				1E2F4DDF1892977800F4CE25 /* WriteOIIO.cpp in Sources */,
 				1E9B5EF7198A2B9A0095C8AA /* OIIOText.cpp in Sources */,
 				1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */,
+				1ED94FC21BC2652F008680C0 /* ofxsTransformInteract.cpp in Sources */,
 				1E9DF4711B0B5F29008C7055 /* OCIODisplay.cpp in Sources */,
 				1E2F4DDD1892977800F4CE25 /* PluginRegistrationCombined.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
@@ -1215,6 +1275,8 @@
 				1E2F4D9F189295F600F4CE25 /* ofxsImageEffect.cpp in Sources */,
 				1E2F4DA1189295F600F4CE25 /* ofxsPropertyValidation.cpp in Sources */,
 				1E2F4DA6189295F600F4CE25 /* ofxsLog.cpp in Sources */,
+				1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */,
+				1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
 				1E2F4DA8189295F600F4CE25 /* ofxsInteract.cpp in Sources */,
 				1E2F4DA9189295F600F4CE25 /* ofxsMultiThread.cpp in Sources */,
 			);
@@ -1287,7 +1349,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				ACE084A21AB4AB9B00BE558C /* ofxsProperty.cpp in Sources */,
+				1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */,
+				1ED94FC11BC2652D008680C0 /* ofxsTransformInteract.cpp in Sources */,
 				ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */,
+				1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
+				1E784D921BC562D000F7278C /* SeGrain.cpp in Sources */,
 				ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */,
 				ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */,
 				ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */,
