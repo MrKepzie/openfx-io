@@ -89,6 +89,8 @@
 #define kParamPresetsHint "Presets for common types of film."
 #define kParamPresetsOptionOther "Other"
 
+#define kSizeMin 0.001 // minimum grain size
+
 struct PresetStruct {
     // Size:
     double red_size;
@@ -180,6 +182,11 @@ static struct PresetStruct gPresets[NUMPRESETS] =
 #define kParamIntensityBlueHint "Amount of blue grain to add to a white pixel."
 #define kParamIntensityBlueDefault (gPresets[0].blue_m)
 
+#define kParamColorCorr "colorCorr"
+#define kParamColorCorrLabel "Correlation"
+#define kParamColorCorrHint "This parameter specifies the apparent colorfulness of the grain.  The value represents how closely the grain in each channel overlaps. This means that negative color correlation values decrease the amount of overlap, which increases the apparent color of the grain, while positive values decrease its colorfulness."
+#define kParamColorCorrDefault 0.
+
 #define kParamIntensityBlack "grainBlack"
 #define kParamIntensityBlackLabel "Black"
 #define kParamIntensityBlackHint "Amount of grain to add everywhere."
@@ -209,6 +216,7 @@ protected:
     //double _size[3];
     //double _irregularity[3];
     double _intensity[3];
+    double _colorCorr;
     double _black[3];
     double _minimum[3];
     OFX::Matrix3x3 _invtransform[3];
@@ -223,6 +231,8 @@ public:
     , _maskInvert(false)
     , _renderScale(args.renderScale)
     , _time(args.time)
+    , _seed(0)
+    , _colorCorr(0.)
     {
     }
 
@@ -237,12 +247,14 @@ public:
                    double size[3],
                    double irregularity[3],
                    double intensity[3],
+                   double colorCorr,
                    double black[3],
                    double minimum[3])
     {
         _mix = mix;
         // set plugin parameter values
         _seed = seed;
+        _colorCorr = colorCorr;
         for (int c = 0;c < 3; ++c) {
             //_size[c] = size[c];
             //_irregularity[c] = irregularity[c];
@@ -250,8 +262,8 @@ public:
             _black[c] = black[c];
             _minimum[c] = minimum[c];
 
-            Matrix3x3 sizeMat(1./_renderScale.x/size[c], 0., 0.,
-                              0., 1./_renderScale.x/size[c], 0.,
+            Matrix3x3 sizeMat(1./_renderScale.x/std::max(size[c], kSizeMin), 0., 0.,
+                              0., 1./_renderScale.x/std::max(size[c], kSizeMin), 0.,
                               0., 0., _time + (1+c) * seed + irregularity[c]/2.);
             double rads = irregularity[c] * 45. * M_PI / 180.;
             double ca = std::cos(rads);
@@ -301,15 +313,25 @@ public:
                 const PIX *srcPix = (const PIX *)  (_srcImg ? _srcImg->getPixelAddress(x, y) : 0);
                 ofxsToRGBA<PIX, nComponents, maxValue>(srcPix, unpPix);
 
+                double result[3];
                 for (int c = 0; c < 3; ++c) {
                     Point3D pc = _invtransform[c] * p;
                     double args[3] = { pc.x, pc.y, pc.z };
                     // process the pixel (the actual computation goes here)
-                    double result;
                     // double fbm(int n, const SeVec3d* args) in SeExprBuiltins.cpp
-                    SeExpr::FBM<3,1,false>(args, &result, octaves, lacunarity, gain);
-
-                    unpPix[c] = std::max(_minimum[c], unpPix[c] + result *(unpPix[c] * _intensity[c] + _black[c]));
+                    SeExpr::FBM<3,1,false>(args, &result[c], octaves, lacunarity, gain);
+                }
+                if (_colorCorr != 0.) {
+                    // apply color correction:
+                    // "The value represents how closely the grain in each channel overlaps. This means that negative color correlation values decrease the amount of overlap, which increases the apparent color of the grain, while positive values decrease its colorfulness."
+                    double l = 0.2126 * result[0] + 0.7152 * result[1] + 0.0722 * result[2]; // Rec709 color math
+                    //double l = (result[0] + result[1] + result[2])/3; // average color math
+                    for (int c = 0; c < 3; ++c) {
+                        result[c] = result[c] * (1. - _colorCorr) + l * _colorCorr;
+                    }
+                }
+                for (int c = 0; c < 3; ++c) {
+                    unpPix[c] = std::max(_minimum[c], unpPix[c] + result[c] *(unpPix[c] * _intensity[c] + _black[c]));
                 }
                 ofxsMaskMixPix<PIX, nComponents, maxValue, true>(unpPix, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 dstPix += nComponents;
@@ -365,9 +387,10 @@ public:
         _intensityRed = fetchDoubleParam(kParamIntensityRed);
         _intensityGreen = fetchDoubleParam(kParamIntensityGreen);
         _intensityBlue = fetchDoubleParam(kParamIntensityBlue);
+        _colorCorr = fetchDoubleParam(kParamColorCorr);
         _intensityBlack = fetchRGBParam(kParamIntensityBlack);
         _intensityMinimum = fetchRGBParam(kParamIntensityMinimum);
-        assert(_seed && _presets && _sizeAll && _sizeRed && _sizeGreen && _sizeBlue && _irregularityRed && _irregularityGreen && _irregularityBlue && _intensityRed && _intensityGreen && _intensityBlue && _intensityBlack && _intensityMinimum);
+        assert(_seed && _presets && _sizeAll && _sizeRed && _sizeGreen && _sizeBlue && _irregularityRed && _irregularityGreen && _irregularityBlue && _intensityRed && _intensityGreen && _intensityBlue && _colorCorr && _intensityBlack && _intensityMinimum);
         _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
         assert(_sublabel);
     }
@@ -419,6 +442,7 @@ private:
     DoubleParam* _intensityRed;
     DoubleParam* _intensityGreen;
     DoubleParam* _intensityBlue;
+    DoubleParam* _colorCorr;
     RGBParam* _intensityBlack;
     RGBParam* _intensityMinimum;
     StringParam* _sublabel;
@@ -513,12 +537,14 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
     _intensityRed->getValueAtTime(time, intensity[0]);
     _intensityGreen->getValueAtTime(time, intensity[1]);
     _intensityBlue->getValueAtTime(time, intensity[2]);
+    double colorCorr;
+    _colorCorr->getValueAtTime(time, colorCorr);
     double black[3];
     _intensityBlack->getValueAtTime(time, black[0], black[1], black[2]);
     double minimum[3];
     _intensityMinimum->getValueAtTime(time, minimum[0], minimum[1], minimum[2]);
 
-    processor.setValues(mix, seed, size, irregularity, intensity, black, minimum);
+    processor.setValues(mix, seed, size, irregularity, intensity, colorCorr, black, minimum);
     processor.process();
 }
 
@@ -647,6 +673,7 @@ SeGrainPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             _intensityRed->setValue(gPresets[preset].red_m);
             _intensityGreen->setValue(gPresets[preset].green_m);
             _intensityBlue->setValue(gPresets[preset].blue_m);
+            _colorCorr->setValue(0.);
             _intensityBlack->setValue(0., 0., 0.);
             _intensityMinimum->setValue(0., 0., 0.);
         }
@@ -832,6 +859,8 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setLabel(kParamIrregularityRedLabel);
             param->setHint(kParamIrregularityRedHint);
             param->setDefault(kParamIrregularityRedDefault);
+            param->setRange(0., 1.);
+            param->setDisplayRange(0., 1.);
             if (group) {
                 param->setParent(*group);
             }
@@ -844,6 +873,8 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setLabel(kParamIrregularityGreenLabel);
             param->setHint(kParamIrregularityGreenHint);
             param->setDefault(kParamIrregularityGreenDefault);
+            param->setRange(0., 1.);
+            param->setDisplayRange(0., 1.);
             if (group) {
                 param->setParent(*group);
             }
@@ -856,6 +887,8 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setLabel(kParamIrregularityBlueLabel);
             param->setHint(kParamIrregularityBlueHint);
             param->setDefault(kParamIrregularityBlueDefault);
+            param->setRange(0., 1.);
+            param->setDisplayRange(0., 1.);
             if (group) {
                 param->setParent(*group);
             }
@@ -880,6 +913,8 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setLabel(kParamIntensityRedLabel);
             param->setHint(kParamIntensityRedHint);
             param->setDefault(kParamIntensityRedDefault);
+            param->setRange(0., 1.);
+            param->setDisplayRange(0., 1.);
             if (group) {
                 param->setParent(*group);
             }
@@ -892,6 +927,8 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setLabel(kParamIntensityGreenLabel);
             param->setHint(kParamIntensityGreenHint);
             param->setDefault(kParamIntensityGreenDefault);
+            param->setRange(0., 1.);
+            param->setDisplayRange(0., 1.);
             if (group) {
                 param->setParent(*group);
             }
@@ -904,6 +941,23 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             param->setLabel(kParamIntensityBlueLabel);
             param->setHint(kParamIntensityBlueHint);
             param->setDefault(kParamIntensityBlueDefault);
+            param->setRange(0., 1.);
+            param->setDisplayRange(0., 1.);
+            if (group) {
+                param->setParent(*group);
+            }
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+        {
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamColorCorr);
+            param->setLabel(kParamColorCorrLabel);
+            param->setHint(kParamColorCorrHint);
+            param->setDefault(kParamColorCorrDefault);
+            param->setRange(-1., 1.);
+            param->setDisplayRange(-1., 1.);
+
             if (group) {
                 param->setParent(*group);
             }
