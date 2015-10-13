@@ -2247,7 +2247,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                                     bool supportsAlpha,
                                     bool supportsTiles)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
          it != getImageEffectHostDescription()->_supportedComponents.end();

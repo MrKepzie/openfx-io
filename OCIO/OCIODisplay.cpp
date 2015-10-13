@@ -893,7 +893,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");

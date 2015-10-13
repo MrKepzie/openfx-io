@@ -1009,7 +1009,7 @@ void
 GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* inputSpaceLabel)
 {
 #ifdef OFX_IO_USING_OCIO
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     char* file = std::getenv("OCIO");
     OCIO::ConstConfigRcPtr config;
@@ -1092,7 +1092,7 @@ void
 GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum /*context*/, OFX::PageParamDescriptor *page, const char* outputSpaceNameDefault, const char* outputSpaceLabel)
 {
 #ifdef OFX_IO_USING_OCIO
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     char* file = std::getenv("OCIO");
     OCIO::ConstConfigRcPtr config;

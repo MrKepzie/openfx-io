@@ -813,7 +813,7 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     maskClip->setSupportsTiles(kSupportsTiles);
     maskClip->setIsMask(true);
 
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");

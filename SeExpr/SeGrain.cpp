@@ -720,7 +720,7 @@ void SeGrainPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     //std::cout << "describeInContext!\n";
     // Source clip only in the filter context

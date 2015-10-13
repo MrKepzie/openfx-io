@@ -1116,7 +1116,7 @@ void SeNoisePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     //std::cout << "describeInContext!\n";
     // Source clip only in the filter context
