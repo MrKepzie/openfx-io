@@ -2857,21 +2857,27 @@ WriteFFmpegPlugin::encode(const std::string& filename,
         return;
     }
     
-    if (!_isOpen) {
+    if (!_isOpen || !_formatContext) {
         setPersistentMessage(OFX::Message::eMessageError, "", "file is not open");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
 
-    if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Another render is currently active");
+    if (_formatContext && filename != std::string(_formatContext->filename)) {
+        std::stringstream ss;
+        ss << "Trying to render " << filename << " but another active render is rendering " << std::string(_formatContext->filename);
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
     ///Check that we're really encoding in sequential order
     if (_lastTimeEncoded != -1 && _lastTimeEncoded != time -1 && _lastTimeEncoded != time + 1) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Another render is currently active");
+        std::stringstream ss;
+        ss << "The render does not seem sequential, another render must be currently active: ";
+        ss << "Last time encoded = " <<  _lastTimeEncoded;
+        ss << " whereas current time = " << time;
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
 
