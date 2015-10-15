@@ -25,6 +25,9 @@
 
 #include <cstring>
 #include <cstdlib>
+#ifdef DEBUG
+#include <cstdio>
+#endif
 #include <string>
 #include <stdexcept>
 #include <ofxsParam.h>
