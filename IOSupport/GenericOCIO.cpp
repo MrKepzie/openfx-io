@@ -42,8 +42,37 @@ static bool gWasOCIOEnvVarFound = false;
 static bool gHostIsNatron   = false;
 #endif
 
-// define to disable hiding parameters
+// define to disable hiding parameters (useful for debugging)
 //#define OFX_OCIO_NOSECRET
+
+static std::string
+trim(std::string const & str)
+{
+    const std::string whitespace = " \t\f\v\n\r";
+    std::size_t first = str.find_first_not_of(whitespace);
+
+    // If there is no non-whitespace character, both first and last will be std::string::npos (-1)
+    // There is no point in checking both, since if either doesn't work, the
+    // other won't work, either.
+    if (first == std::string::npos) {
+        return "";
+    }
+
+    std::size_t last  = str.find_last_not_of(whitespace);
+
+    return str.substr(first, last - first + 1);
+}
+
+static std::string
+whitespacify(std::string str)
+{
+    std::replace( str.begin(), str.end(), '\t', ' ');
+    std::replace( str.begin(), str.end(), '\f', ' ');
+    std::replace( str.begin(), str.end(), '\v', ' ');
+    std::replace( str.begin(), str.end(), '\n', ' ');
+    std::replace( str.begin(), str.end(), '\r', ' ');
+    return str;
+}
 
 #ifdef OFX_IO_USING_OCIO
 static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const char* colorSpaceNameDefault)
@@ -261,7 +290,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
                 const std::string& name = "")
 {
 #ifdef DEBUG
-    printf("%p->resetOptions\n", (void*)choice);
+    //printf("%p->resetOptions\n", (void*)choice);
 #endif
     choice->resetOptions();
     assert(choice->getNOptions() == 0);
@@ -293,7 +322,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
             }
         }
         std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
-        csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+        csdesc = whitespacify(trim(csdesc));
         int csdesclen = csdesc.size();
         if ( csdesclen > 0 ) {
             msg += csdesc;
@@ -358,7 +387,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
             msg += ')';
         }
 #ifdef DEBUG
-        printf("%p->appendOption(\"%s\",\"%s\") (%d->%d options)\n", (void*)choice, csname.c_str(), msg.c_str(), i, i+1);
+        //printf("%p->appendOption(\"%s\",\"%s\") (%d->%d options)\n", (void*)choice, csname.c_str(), msg.c_str(), i, i+1);
 #endif
         assert(choice->getNOptions() == i);
         choice->appendOption(csname, msg);
@@ -818,14 +847,12 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         msg += OCIO_NAMESPACE::GetVersion();
         msg += '\n';
         if (_config) {
-            const char* configdesc = _config->getDescription();
-            int configdesclen = std::strlen(configdesc);
-            if ( configdesclen > 0 ) {
+            std::string configdesc = _config->getDescription();
+            configdesc = whitespacify(trim(configdesc));
+            if ( configdesc.size() > 0 ) {
                 msg += "\nThis OCIO configuration is ";
                 msg += configdesc;
-                if (configdesc[configdesclen-1] != '\n') {
-                    msg += '\n';
-                }
+                msg += '\n';
             }
             msg += '\n';
             if (paramName == kOCIOHelpLooksButton) {
@@ -951,7 +978,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                     msg += ')';
                 }
                 std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
-                csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
+                csdesc = whitespacify(trim(csdesc));
                 if ( !csdesc.empty() ) {
                     msg += ": ";
                     msg += csdesc;
