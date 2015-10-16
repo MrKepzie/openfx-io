@@ -2930,6 +2930,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
                 page->addChild(*param);
             }
         }
+
         for (int i = 0; i < kSourceClipCount; ++i) {
             snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
             snprintf(label, sizeof(label), kParamDouble2DLabel "%d", i+1);
@@ -2940,6 +2941,10 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
+            bool hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
+            if (hostHasNativeOverlayForPosition) {
+                param->setUseHostNativeOverlayHandle(true);
+            }
             param->setParent(*group);
             if (page) {
                 page->addChild(*param);
