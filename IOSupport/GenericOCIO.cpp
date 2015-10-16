@@ -137,7 +137,7 @@ static std::string
 canonicalizeColorSpace(OCIO_NAMESPACE::ConstConfigRcPtr config, const std::string &csname)
 {
     if (!config) {
-        return;
+        return csname;
     }
     const int defaultcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
     const int referencecs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
@@ -1038,7 +1038,6 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         std::string outputSpaceOld;
         getOutputColorspaceAtTime(args.time, outputSpaceOld);
         std::string outputSpace = canonicalizeColorSpace(_config, _config->getColorSpaceNameByIndex(outputSpaceIndex));
-#warning canonicalize outputSpace
         _outputSpace->setValue(outputSpace);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
         if (outputSpace != outputSpaceOld) {
