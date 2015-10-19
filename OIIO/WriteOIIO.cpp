@@ -198,6 +198,19 @@ enum EParamCompression
     eParamCompressionPACKBITS
 };
 
+#define kParamTileSize "tileSize"
+#define kParamTileSizeLabel "Tile Size"
+#define kParamTileSizeHint "Size of a tile in the output file for formats that support tiles. If Untiled, the whole image will have a single tile."
+
+enum EParamTileSize
+{
+    eParamTileSizeUntiled = 0,
+    eParamTileSize64,
+    eParamTileSize128,
+    eParamTileSize256,
+    eParamTileSize512
+};
+
 class WriteOIIOPlugin : public GenericWriterPlugin
 {
 public:
@@ -216,20 +229,25 @@ private:
     
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
 
+    virtual bool displayWindowSupportedByFormat(const std::string& filename) const OVERRIDE FINAL;
+
+    
 private:
     OFX::ChoiceParam* _bitDepth;
     OFX::IntParam* _quality;
     OFX::ChoiceParam* _orientation;
     OFX::ChoiceParam* _compression;
+    OFX::ChoiceParam* _tileSize;
 };
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 {
-  _bitDepth = fetchChoiceParam(kParamBitDepth);
-  _quality     = fetchIntParam(kParamOutputQualityName);
-  _orientation = fetchChoiceParam(kParamOutputOrientationName);
-  _compression = fetchChoiceParam(kParamOutputCompressionName);
+    _bitDepth = fetchChoiceParam(kParamBitDepth);
+    _quality     = fetchIntParam(kParamOutputQualityName);
+    _orientation = fetchChoiceParam(kParamOutputOrientationName);
+    _compression = fetchChoiceParam(kParamOutputCompressionName);
+    _tileSize = fetchChoiceParam(kParamTileSize);
 }
 
 
@@ -268,6 +286,17 @@ ETuttlePluginBitDepth getDefaultBitDepth(const std::string& filepath, ETuttlePlu
     return bitDepth;
 }
 
+bool
+WriteOIIOPlugin::displayWindowSupportedByFormat(const std::string& filename) const
+{
+    std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
+    if (output.get()) {
+        return output->supports("displaywindow");
+    } else {
+        return false;
+    }
+}
+
 void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
     ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
 
@@ -291,6 +320,13 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
         }
     }
 #endif
+    
+    std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
+    if (output.get()) {
+        _tileSize->setIsSecret(output->supports("tiles"));
+    } else {
+        _tileSize->setIsSecret(false);
+    }
 }
 
 void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes)
@@ -507,13 +543,51 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
         spec.channelnames.push_back ("A");
         spec.alpha_channel = 0;
     }
-    bool supportsRectangles = output->supports("rectangles");
     
-    if (supportsRectangles) {
+    if (output->supports("tiles")) {
         spec.x = bounds.x1;
         spec.y = bounds.y1;
         spec.full_x = bounds.x1;
         spec.full_y = bounds.y1;
+        
+        bool clipToProject = true;
+        if (_clipToProject && !_clipToProject->getIsSecret()) {
+            _clipToProject->getValue(clipToProject);
+        }
+        if (!clipToProject) {
+            //Spec has already been set to bounds which are the input RoD, so post-fix by setting display window to project size
+            OfxPointD size = getProjectSize();
+            OfxPointD offset = getProjectOffset();
+            spec.full_x = offset.x;
+            spec.full_y = offset.y;
+            spec.full_width = size.x;
+            spec.full_height = size.y;
+        }
+        
+        int tileSize_i;
+        _tileSize->getValue(tileSize_i);
+        EParamTileSize tileSizeE = (EParamTileSize)tileSize_i;
+        switch (tileSizeE) {
+            case eParamTileSize64:
+                spec.tile_width = std::min(64,spec.full_width);
+                spec.tile_height = std::min(64,spec.full_height);
+                break;
+            case eParamTileSize128:
+                spec.tile_width = std::min(128,spec.full_width);
+                spec.tile_height = std::min(128,spec.full_height);
+                break;
+            case eParamTileSize256:
+                spec.tile_width = std::min(256,spec.full_width);
+                spec.tile_height = std::min(256,spec.full_height);
+                break;
+            case eParamTileSize512:
+                spec.tile_width = std::min(512,spec.full_width);
+                spec.tile_height = std::min(512,spec.full_height);
+                break;
+            case eParamTileSizeUntiled:
+            default:
+                break;
+        }
     }
     
     if (!output->open(filename, spec)) {
@@ -522,27 +596,13 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
         return;
     }
     
-    if (supportsRectangles) {
-        output->write_rectangle(spec.x, //xmin
-                                spec.x + spec.width, //xmax
-                                spec.y, //ymin
-                                spec.y + spec.height, //ymax
-                                0, //zmin
-                                1, //zmax
-                                TypeDesc::FLOAT, //datatype
-                                (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
-                                AutoStride, //xstride
-                                -rowBytes, //ystride
-                                AutoStride //zstride
-                                );
-    } else {
-        output->write_image(TypeDesc::FLOAT,
-                            (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
-                            AutoStride, //xstride
-                            -rowBytes, //ystride
-                            AutoStride //zstride
-                            );
-    }
+    output->write_image(TypeDesc::FLOAT,
+                        (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
+                        AutoStride, //xstride
+                        -rowBytes, //ystride
+                        AutoStride //zstride
+                        );
+    
     
     output->close();
 }
@@ -664,8 +724,24 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
-                                                                    "reference", "reference");
-
+                                                                    "reference", "reference", true);
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamTileSize);
+        param->setLabel(kParamTileSizeLabel);
+        param->setHint(kParamTileSizeHint);
+        assert(param->getNOptions() == eParamTileSizeUntiled);
+        param->appendOption("Untiled");
+        assert(param->getNOptions() == eParamTileSize64);
+        param->appendOption("64");
+        assert(param->getNOptions() == eParamTileSize128);
+        param->appendOption("128");
+        assert(param->getNOptions() == eParamTileSize256);
+        param->appendOption("256");
+        assert(param->getNOptions() == eParamTileSize512);
+        param->appendOption("512");
+        param->setDefault(eParamTileSize256);
+        page->addChild(*param);
+    }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBitDepth);
         param->setLabel(kParamBitDepthLabel);

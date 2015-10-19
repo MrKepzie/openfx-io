@@ -720,7 +720,7 @@ void SeGrainPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     //std::cout << "describeInContext!\n";
     // Source clip only in the filter context
@@ -850,10 +850,11 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
 
     {
         OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupIrregularity);
-        group->setLabel(kParamGroupIrregularityLabel);
-        group->setHint(kParamGroupIrregularityHint);
-        group->setOpen(true);
-
+        if (group) {
+            group->setLabel(kParamGroupIrregularityLabel);
+            group->setHint(kParamGroupIrregularityHint);
+            group->setOpen(true);
+        }
         {
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityRed);
             param->setLabel(kParamIrregularityRedLabel);
@@ -904,10 +905,11 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
 
     {
         OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupIntensity);
-        group->setLabel(kParamGroupIntensityLabel);
-        group->setHint(kParamGroupIntensityHint);
-        group->setOpen(true);
-
+        if (group) {
+            group->setLabel(kParamGroupIntensityLabel);
+            group->setHint(kParamGroupIntensityHint);
+            group->setOpen(true);
+        }
         {
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityRed);
             param->setLabel(kParamIntensityRedLabel);

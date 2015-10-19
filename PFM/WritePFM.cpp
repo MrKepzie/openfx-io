@@ -201,7 +201,7 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
-                                                                    "reference", "reference");
+                                                                    "reference", "reference", false);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

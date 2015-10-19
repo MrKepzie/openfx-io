@@ -204,12 +204,12 @@ enum VoronoiTypeEnum {
 #define kParamXRotate "XRotate"
 #define kParamXRotateLabel "X Rotate"
 #define kParamXRotateHint "Rotation about the X axis in the 3D noise space (X,Y,Z). Noise artifacts may appear if it is 0 or a multiple of 90."
-#define kParamXRotateDefault 30.
+#define kParamXRotateDefault 27.
 
 #define kParamYRotate "YRotate"
 #define kParamYRotateLabel "Y Rotate"
 #define kParamYRotateHint "Rotation about the Y axis in the 3D noise space (X,Y,Z). Noise artifacts may appear if it is 0 or a multiple of 90."
-#define kParamYRotateDefault 30.
+#define kParamYRotateDefault 37.
 
 #define kPageTransform "transformPage"
 #define kPageTransformLabel "Transform"
@@ -460,9 +460,13 @@ public:
                     rampColor.b = _color0.b * (1 - t) + _color1.b * t;
                     rampColor.a = _color0.a * (1 - t) + _color1.a * t;
                 }
+                // coverity[dead_error_line]
                 tmpPix[0] = processR ? t_r*(1.-result) + rampColor.r*result : unpPix[0];
+                // coverity[dead_error_line]
                 tmpPix[1] = processG ? t_g*(1.-result) + rampColor.g*result : unpPix[1];
+                // coverity[dead_error_line]
                 tmpPix[2] = processB ? t_b*(1.-result) + rampColor.b*result : unpPix[2];
+                // coverity[dead_error_line]
                 tmpPix[3] = processA ? t_a*(1.-result) + rampColor.a*result : unpPix[3];
 
                 ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
@@ -520,6 +524,7 @@ public:
     , _yRotate(0)
     , _pageColor(0)
     , _groupColor(0)
+    , _groupColorIsOpen(false)
     , _point0(0)
     , _color0(0)
     , _point1(0)
@@ -1111,7 +1116,7 @@ void SeNoisePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     //std::cout << "describeInContext!\n";
     // Source clip only in the filter context

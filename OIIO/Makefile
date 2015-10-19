@@ -1,7 +1,9 @@
 PLUGINOBJECTS = \
 	ReadOIIO.o WriteOIIO.o \
+	OIIOText.o OIIOResize.o \
 	PluginRegistration.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
+	ofxsOGLTextRenderer.o ofxsOGLFontData.o
 
 PLUGINNAME = OIIO
 

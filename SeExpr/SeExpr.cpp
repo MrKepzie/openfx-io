@@ -2611,7 +2611,7 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
          it != getImageEffectHostDescription()->_supportedComponents.end();
@@ -2637,19 +2637,11 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     for (int i = 0; i < kSourceClipCount; ++i) {
         
         std::string clipName;
-#ifdef SEEXPR_NO_SNPRINTF
-        {
-            std::stringstream ss;
-            ss  << i + 1;
-            clipName = ss.str();
-        }
-#else
         {
             char name[256];
             snprintf(name, sizeof(name), "%d", i+1);
             clipName.append(name);
         }
-#endif
         ClipDescriptor *srcClip;
         if (i == 0 && context == eContextFilter) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
@@ -2938,6 +2930,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
                 page->addChild(*param);
             }
         }
+
         for (int i = 0; i < kSourceClipCount; ++i) {
             snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
             snprintf(label, sizeof(label), kParamDouble2DLabel "%d", i+1);
@@ -2948,6 +2941,10 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
+            bool hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
+            if (hostHasNativeOverlayForPosition) {
+                param->setUseHostNativeOverlayHandle(true);
+            }
             param->setParent(*group);
             if (page) {
                 page->addChild(*param);

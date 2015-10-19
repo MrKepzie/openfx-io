@@ -102,6 +102,11 @@
 
 #define kParamOutputSpaceLabel "File Colorspace"
 
+#define kParamClipToProject "clipToProject"
+#define kParamClipToProjectLabel "Clip To Project"
+#define kParamClipToProjectHint "When checked, the portion of the image written will be the size of the image in input and not the format of the project. " \
+"For the EXR file format, this will distinguish the data window (size of the image in input) from the display window (size of the project)."
+
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
@@ -113,6 +118,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _outputFormatType(0)
 , _outputFormat(0)
 , _premult(0)
+, _clipToProject(0)
 , _ocio(new GenericOCIO(this))
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
@@ -127,6 +133,13 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _outputFormat = fetchChoiceParam(kParamOutputFormat);
     
     _premult = fetchChoiceParam(kParamInputPremult);
+    
+    try {
+        ///Param does not necessarily exist for all IO plugins
+        _clipToProject = fetchBooleanParam(kParamClipToProject);
+    } catch (...) {
+        
+    }
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -443,7 +456,7 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     getOutputFileNameAndExtension(args.frameRange.min, filename);
     
     OfxRectD rod;
-    getRegionOfDefinitionInternal(args.frameRange.min, rod);
+    getOutputFormat(args.frameRange.min, rod);
     
     ////Since the generic writer doesn't support tiles and multi-resolution, the RoD is necesserarily the
     ////output image size.
@@ -576,7 +589,7 @@ GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
 }
 
 void
-GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
+GenericWriterPlugin::getOutputFormat(OfxTime time,OfxRectD& rod)
 {
     
     int formatType;
@@ -586,12 +599,22 @@ GenericWriterPlugin::getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod)
         // use the default RoD
         rod = _inputClip->getRegionOfDefinition(time);
     } else if (formatType == 1) {
-        OfxPointD size = getProjectSize();
-        OfxPointD offset = getProjectOffset();
-        rod.x1 = offset.x;
-        rod.y1 = offset.y;
-        rod.x2 = offset.x + size.x;
-        rod.y2 = offset.y + size.y;
+        
+        
+        bool clipToProject = true;
+        if (_clipToProject && !_clipToProject->getIsSecret()) {
+            _clipToProject->getValue(clipToProject);
+        }
+        if (!clipToProject) {
+            rod = _inputClip->getRegionOfDefinition(time);
+        } else {
+            OfxPointD size = getProjectSize();
+            OfxPointD offset = getProjectOffset();
+            rod.x1 = offset.x;
+            rod.y1 = offset.y;
+            rod.x2 = offset.x + size.x;
+            rod.y2 = offset.y + size.y;
+        }
     } else {
         int formatIndex;
         _outputFormat->getValueAtTime(time, formatIndex);
@@ -611,7 +634,7 @@ GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return false;
     }
-    getRegionOfDefinitionInternal(args.time, rod);
+    getOutputFormat(args.time, rod);
     return true;
 }
 
@@ -740,14 +763,29 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
 
         ///let the derive class a chance to initialize any data structure it may need
         onOutputFileChanged(filename);
+        
+        if (_clipToProject) {
+            int type;
+            _outputFormatType->getValue(type);
+            _clipToProject->setIsSecret(type != 1 || !displayWindowSupportedByFormat(filename));
+        }
+        
     } else if (paramName == kParamFormatType) {
         int type;
         _outputFormatType->getValue(type);
+        if (_clipToProject) {
+            std::string filename;
+            _fileParam->getValue(filename);
+            _clipToProject->setIsSecret(type != 1 || !displayWindowSupportedByFormat(filename));
+        }
         if (type == 0 || type == 1) {
             _outputFormat->setIsSecret(true);
         } else {
             _outputFormat->setIsSecret(false);
         }
+        
+        
+        
     } else if (paramName == kParamClipInfo && args.reason == OFX::eChangeUserEdit) {
         std::string msg;
         msg += "Input: ";
@@ -850,7 +888,7 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum saf
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
 PageParamDescriptor*
-GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault)
+GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow)
 {
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -910,6 +948,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         page->addChild(*param);
     }
     
+    
     //////////// Output format
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
@@ -950,6 +989,16 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         assert(param->getNOptions() == eParamFormatSquare2k);
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(eParamFormatHD);
+        page->addChild(*param);
+    }
+    
+    
+    /////////// Clip to project
+    if (supportsDisplayWindow) {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamClipToProject);
+        param->setLabel(kParamClipToProjectLabel);
+        param->setHint(kParamClipToProjectHint);
+        param->setDefault(true);
         page->addChild(*param);
     }
 

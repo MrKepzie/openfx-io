@@ -1489,7 +1489,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         
         bool isOCIOIdentity;
         // Read into a temporary image, apply colorspace conversion, then copy
-        OFX::PreMultiplicationEnum premult ;
+        OFX::PreMultiplicationEnum premult = OFX::eImageUnPreMultiplied;
         
         // if components are custom, remap it to a OFX components with the same number of channels
         OFX::PixelComponentEnum remappedComponents;
@@ -1508,7 +1508,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 #endif
             } else {
                 isOCIOIdentity = true;
-                premult = OFX::eImageUnPreMultiplied;
             }
             
             if (it->numChans == 3) {
@@ -1540,8 +1539,6 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             int premult_i;
             _premult->getValue(premult_i);
             premult = (OFX::PreMultiplicationEnum)premult_i;
-        } else {
-            premult = OFX::eImageUnPreMultiplied;
         }
         
         // we have to do the final premultiplication if:
@@ -2247,7 +2244,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                                     bool supportsAlpha,
                                     bool supportsTiles)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
          it != getImageEffectHostDescription()->_supportedComponents.end();
