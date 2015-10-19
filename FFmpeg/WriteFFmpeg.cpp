@@ -3241,7 +3241,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
-                                                                    "reference", "rec709");
+                                                                    "reference", "rec709", false);
 
     ///If the host doesn't support sequential render, fail.
     int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;

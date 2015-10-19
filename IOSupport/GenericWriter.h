@@ -160,6 +160,12 @@ protected:
      * properly into the file.
      **/
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const = 0;
+    
+    /**
+     * @brief To implement if you added supportsDisplayWindow = true to GenericWriterDescribe(). 
+     * Basically only EXR file format can handle this.
+     **/
+    virtual bool displayWindowSupportedByFormat(const std::string& /*filename*/) const  { return false; }
 
     
     OFX::Clip* _inputClip; //< Mantated input clip
@@ -171,6 +177,7 @@ protected:
     OFX::ChoiceParam* _outputFormatType; //< the type of output format
     OFX::ChoiceParam* _outputFormat; //< the output format to render
     OFX::ChoiceParam* _premult;
+    OFX::BooleanParam* _clipToProject;
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
@@ -192,7 +199,7 @@ private:
      **/
     virtual void clearAnyCache() {}
     
-    void getRegionOfDefinitionInternal(OfxTime time,OfxRectD& rod);
+    void getOutputFormat(OfxTime time,OfxRectD& rod);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
@@ -292,7 +299,7 @@ private:
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety);
-OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
+OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 
 #define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
