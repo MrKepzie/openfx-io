@@ -78,7 +78,7 @@ private:
 
     virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getSequenceTimeDomain(const std::string& filename, OfxRangeI &range) OVERRIDE FINAL;
 
@@ -210,6 +210,7 @@ fillWindow(const PIX* buffer,
 void
 ReadFFmpegPlugin::decode(const std::string& filename,
                          OfxTime time,
+                         bool /*isPlayback*/,
                          const OfxRectI& renderWindow,
                          float *pixelData,
                          const OfxRectI& imgBounds,

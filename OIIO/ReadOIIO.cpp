@@ -114,6 +114,12 @@ OIIO_NAMESPACE_USING
 #define kParamBChannelName "bChannelIndex"
 #define kParamAChannelName "aChannelIndex"
 
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+#define kParamUseDisplayWindowAsOrigin "originAtDisplayWindow"
+#define kParamUseDisplayWindowAsOriginLabel "Use Display Window As Origin"
+#define kParamUseDisplayWindowAsOriginHint "When checked, the bottom left corner (0,0) will shifted to the bottom left corner of the display window."
+#endif
+
 // number of channels for hosts that don't support modifying choice menus (e.g. Nuke)
 #define kDefaultChannelCount 16
 
@@ -141,11 +147,12 @@ public:
     virtual void clearAnyCache() OVERRIDE FINAL;
 private:
 
+    
     virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+    virtual void decode(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
                              OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL
     {
         std::string rawComps;
@@ -163,10 +170,10 @@ private:
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
         }
-        decodePlane(filename, time, renderWindow, pixelData, bounds, pixelComponents, pixelComponentCount, rawComps, rowBytes);
+        decodePlane(filename, time, isPlayback, renderWindow, pixelData, bounds, pixelComponents, pixelComponentCount, rawComps, rowBytes);
     }
     
-    virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+    virtual void decodePlane(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
                              OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
@@ -207,8 +214,20 @@ private:
 #else
     OFX::IntParam *_firstChannel;
 #endif
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+    OFX::BooleanParam* _useDisplayWindowAsOrigin;
+#endif
+    
+    //Only accessed on the main-thread
     ImageSpec _spec;
     bool _specValid; //!< does _spec contain anything valid?
+    
+    //We keep the name of the last file read when not in playback so that
+    //if it changes we can invalidate the last file read from the OIIO cache since it is no longer useful.
+    //The host cache will back it up on most case. The only useful case for the OIIO cache is when there are
+    //multiple threads trying to read the same image.
+    OFX::MultiThread::Mutex _lastFileReadNoPlaybackMutex;
+    std::string _lastFileReadNoPlayback;
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
@@ -234,8 +253,13 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
 #else
 , _firstChannel(0)
 #endif
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+, _useDisplayWindowAsOrigin(0)
+#endif
 , _spec()
 , _specValid(false)
+, _lastFileReadNoPlaybackMutex()
+, _lastFileReadNoPlayback()
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
     // Always keep unassociated alpha.
@@ -254,6 +278,11 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle)
     _gChannelName = fetchStringParam(kParamGChannelName);
     _bChannelName = fetchStringParam(kParamBChannelName);
     _aChannelName = fetchStringParam(kParamAChannelName);
+    
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+    _useDisplayWindowAsOrigin = fetchBooleanParam(kParamUseDisplayWindowAsOrigin);
+    assert(_useDisplayWindowAsOrigin);
+#endif
     assert(_outputComponents && _rChannel && _gChannel && _bChannel && _aChannel &&
            _rChannelName && _bChannelName && _gChannelName && _aChannelName);
 #else
@@ -293,7 +322,7 @@ void ReadOIIOPlugin::clearAnyCache()
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
     ///flush the OIIO cache
-    _cache->invalidate_all();
+    _cache->invalidate_all(true);
 #endif
 }
 
@@ -907,6 +936,11 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
     _spec = img->spec();
 # endif
     _specValid = true;
+    
+#ifdef OFX_READ_OIIO_USES_CACHE
+    //Only support tiles if tile size is set
+    setSupportsTiles(_spec.tile_width != 0 && _spec.tile_width != _spec.full_width && _spec.tile_height != 0 && _spec.tile_height != _spec.full_height);
+#endif
 }
 
 void
@@ -1189,36 +1223,57 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
             *premult = OFX::eImagePreMultiplied;
         }
     }
+
 }
 
-void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
                                  OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
-    ImageSpec spec;
-    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if(!_cache->get_imagespec(ustring(filename), spec)){
-        setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
+    bool useCache = !isPlayback;
 #else
-    // Always keep unassociated alpha.
-    // Don't let OIIO premultiply, because if the image is 8bits,
-    // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
-    // which causes a lot of precision loss.
-    // see also https://github.com/OpenImageIO/oiio/issues/960
-    ImageSpec config;
-    config.attribute("oiio:UnassociatedAlpha", 1);
-
-    std::auto_ptr<ImageInput> img(ImageInput::open(filename, &config));
-    if (!img.get()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    const ImageSpec &spec = img->spec();
+    bool useCache = false;
 #endif
+    
+    std::auto_ptr<ImageInput> img;
+    ImageSpec spec;
+    if (useCache) {
+#ifdef OFX_READ_OIIO_USES_CACHE
+        //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
+        if(!_cache->get_imagespec(ustring(filename), spec)){
+            setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+        if (!isPlayback) {
+            {
+                //Keep in OIIO cache only the current frame in case multiple threads try to access it
+                OFX::MultiThread::AutoMutex l(_lastFileReadNoPlaybackMutex);
+                if (!_lastFileReadNoPlayback.empty() && filename != _lastFileReadNoPlayback) {
+                    _cache->invalidate(ustring(filename));
+                }
+                _lastFileReadNoPlayback = filename;
+            }
+        }
+        
+#endif
+    } else {
+        // Always keep unassociated alpha.
+        // Don't let OIIO premultiply, because if the image is 8bits,
+        // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
+        // which causes a lot of precision loss.
+        // see also https://github.com/OpenImageIO/oiio/issues/960
+        ImageSpec config;
+        config.attribute("oiio:UnassociatedAlpha", 1);
+        
+        img.reset(ImageInput::open(filename, &config));
+        if (!img.get()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+        spec = img->spec();
+    }
     
     //assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == spec.full_width && renderWindow.y1 == 0 && renderWindow.y2 == spec.full_height));
     //assert((renderWindow.x2 - renderWindow.x1) <= spec.width && (renderWindow.y2 - renderWindow.y1) <= spec.height);
@@ -1325,6 +1380,12 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
     
     size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
 
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+    bool useDisplayWindowOrigin;
+    _useDisplayWindowAsOrigin->getValue(useDisplayWindowOrigin);
+#else
+    bool useDisplayWindowOrigin = true;
+#endif
     
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i+=incr) {
@@ -1348,62 +1409,65 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
             size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
+
+            if (useCache) {
 #ifdef OFX_READ_OIIO_USES_CACHE
-            if (!_cache->get_pixels(ustring(filename),
-                                    0, //subimage
-                                    0, //miplevel
-                                    spec.full_x + renderWindow.x1, //x begin
-                                    spec.full_x + renderWindow.x2, //x end
-                                    spec.full_y + spec.full_height - renderWindow.y2, //y begin
-                                    spec.full_y + spec.full_height - renderWindow.y1, //y end
-                                    0, //z begin
-                                    1, //z end
-                                    chbegin, //chan begin
-                                    chend, // chan end
-                                    TypeDesc::FLOAT, // data type
-                                    //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
-                                    (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,// output buffer
-                                    numChannels * sizeof(float), //x stride
-                                    -rowBytes, //y stride < make it invert Y
-                                    AutoStride //z stride
-                                    )) {
-                setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
-                return;
-            }
-#else
-            assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
-            if (spec.tile_width == 0) {
-                ///read by scanlines
-                img->read_scanlines(spec.height - renderWindow.y2, //y begin
-                                    spec.height - renderWindow.y1, //y end
-                                    0, // z
+                if (!_cache->get_pixels(ustring(filename),
+                                        0, //subimage
+                                        0, //miplevel
+                                        useDisplayWindowOrigin ? spec.full_x + renderWindow.x1 : renderWindow.x1, //x begin
+                                        useDisplayWindowOrigin ? spec.full_x + renderWindow.x2 : renderWindow.x2, //x end
+                                        useDisplayWindowOrigin ? spec.full_y + spec.full_height - renderWindow.y2 : renderWindow.y2, //y begin
+                                        useDisplayWindowOrigin ? spec.full_y + spec.full_height - renderWindow.y1 : renderWindow.y1, //y end
+                                        0, //z begin
+                                        1, //z end
+                                        chbegin, //chan begin
+                                        chend, // chan end
+                                        TypeDesc::FLOAT, // data type
+                                        //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                                        (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,// output buffer
+                                        numChannels * sizeof(float), //x stride
+                                        -rowBytes, //y stride < make it invert Y
+                                        AutoStride, //z stride
+                                        chbegin,
+                                        chend)) {
+                    setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
+                    return;
+                }
+#endif
+            } else {
+                assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
+                if (spec.tile_width == 0) {
+                    ///read by scanlines
+                    img->read_scanlines(spec.height - renderWindow.y2, //y begin
+                                        spec.height - renderWindow.y1, //y end
+                                        0, // z
+                                        chbegin, // chan begin
+                                        chend, // chan end
+                                        TypeDesc::FLOAT, // data type
+                                        (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                        numChannels * sizeof(float), //x stride
+                                        -rowBytes); //y stride < make it invert Y;
+                } else {
+                    img->read_tiles(renderWindow.x1, //x begin
+                                    renderWindow.x2,//x end
+                                    spec.height - renderWindow.y2,//y begin
+                                    spec.height - renderWindow.y1,//y end
+                                    0, // z begin
+                                    1, // z end
                                     chbegin, // chan begin
                                     chend, // chan end
-                                    TypeDesc::FLOAT, // data type
+                                    TypeDesc::FLOAT,  // data type
                                     (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
                                     numChannels * sizeof(float), //x stride
-                                    -rowBytes); //y stride < make it invert Y;
-            } else {
-                img->read_tiles(renderWindow.x1, //x begin
-                                renderWindow.x2,//x end
-                                spec.height - renderWindow.y2,//y begin
-                                spec.height - renderWindow.y1,//y end
-                                0, // z begin
-                                1, // z end
-                                chbegin, // chan begin
-                                chend, // chan end
-                                TypeDesc::FLOAT,  // data type
-                                (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                                numChannels * sizeof(float), //x stride
-                                -rowBytes, //y stride < make it invert Y
-                                AutoStride); //z stride
-            }
-#endif
+                                    -rowBytes, //y stride < make it invert Y
+                                    AutoStride); //z stride
+                }
+            } // useCache
         }
-#ifdef OFX_READ_OIIO_USES_CACHE
-#else
-        img->close();
-#endif
+        if (!useCache) {
+            img->close();
+        }
     }
     // read
 
@@ -1473,9 +1537,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
             chend = chbegin + numChannels;
             break;
         default:
-#ifndef OFX_READ_OIIO_USES_CACHE
-            img->close();
-#endif
+            if (!useCache) {
+                img->close();
+            }
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
             return;
     }
@@ -1512,60 +1576,63 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, cons
     if (chbegin != -1 && chend != -1) {
         assert(0 <= chbegin && chbegin < spec.nchannels && chbegin < chend && 0 < chend && chend <= spec.nchannels);
         size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+        
+        if (useCache) {
 #ifdef OFX_READ_OIIO_USES_CACHE
-        // offset for line y2-1
-        if (!_cache->get_pixels(ustring(filename),
-                               0, //subimage
-                               0, //miplevel
-                               renderWindow.x1, //x begin
-                               renderWindow.x2, //x end
-                               spec.height - renderWindow.y2, //y begin
-                               spec.height - renderWindow.y1, //y end
-                               0, //z begin
-                               1, //z end
-                               chbegin, //chan begin
-                               chend, // chan end
-                               TypeDesc::FLOAT, // data type
-                               //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
-                               (float*)((char*)pixelData + pixelDataOffset2)
-                               + outputChannelBegin,// output buffer
-                               numChannels * sizeof(float), //x stride
-                               -rowBytes, //y stride < make it invert Y
-                               AutoStride //z stride
-                               )) {
-            setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
-            return;
-        }
-#else
-        assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
-        if (spec.tile_width == 0) {
-           ///read by scanlines
-            img->read_scanlines(spec.height - renderWindow.y2, //y begin
-                                spec.height - renderWindow.y1, //y end
-                                0, // z
+            // offset for line y2-1
+            if (!_cache->get_pixels(ustring(filename),
+                                    0, //subimage
+                                    0, //miplevel
+                                    renderWindow.x1, //x begin
+                                    renderWindow.x2, //x end
+                                    spec.height - renderWindow.y2, //y begin
+                                    spec.height - renderWindow.y1, //y end
+                                    0, //z begin
+                                    1, //z end
+                                    chbegin, //chan begin
+                                    chend, // chan end
+                                    TypeDesc::FLOAT, // data type
+                                    //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
+                                    (float*)((char*)pixelData + pixelDataOffset2)
+                                    + outputChannelBegin,// output buffer
+                                    numChannels * sizeof(float), //x stride
+                                    -rowBytes, //y stride < make it invert Y
+                                    AutoStride //z stride
+                                    )) {
+                setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
+                return;
+            }
+#endif
+        } else {
+            assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
+            if (spec.tile_width == 0) {
+                ///read by scanlines
+                img->read_scanlines(spec.height - renderWindow.y2, //y begin
+                                    spec.height - renderWindow.y1, //y end
+                                    0, // z
+                                    chbegin, // chan begin
+                                    chend, // chan end
+                                    TypeDesc::FLOAT, // data type
+                                    (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                    numChannels * sizeof(float), //x stride
+                                    -rowBytes); //y stride < make it invert Y;
+            } else {
+                img->read_tiles(renderWindow.x1, //x begin
+                                renderWindow.x2,//x end
+                                spec.height - renderWindow.y2,//y begin
+                                spec.height - renderWindow.y1,//y end
+                                0, // z begin
+                                1, // z end
                                 chbegin, // chan begin
                                 chend, // chan end
-                                TypeDesc::FLOAT, // data type
+                                TypeDesc::FLOAT,  // data type
                                 (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
                                 numChannels * sizeof(float), //x stride
-                                -rowBytes); //y stride < make it invert Y;
-        } else {
-            img->read_tiles(renderWindow.x1, //x begin
-                            renderWindow.x2,//x end
-                            spec.height - renderWindow.y2,//y begin
-                            spec.height - renderWindow.y1,//y end
-                            0, // z begin
-                            1, // z end
-                            chbegin, // chan begin
-                            chend, // chan end
-                            TypeDesc::FLOAT,  // data type
-                            (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                            numChannels * sizeof(float), //x stride
-                            -rowBytes, //y stride < make it invert Y
-                            AutoStride); //z stride
+                                -rowBytes, //y stride < make it invert Y
+                                AutoStride); //z stride
+            }
+            img->close();
         }
-        img->close();
-#endif
     }
     if (moveAlpha) {
         // move alpha channel to the right place
@@ -1624,12 +1691,27 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     }
     const ImageSpec &spec = img->spec();
 #endif
-    // the image coordinates are expressed in the "full/display" image.
-    // The RoD are the coordinates of the data window with respect to that full window
-    bounds->x1 = (spec.x - spec.full_x);
-    bounds->x2 = (spec.x + spec.width - spec.full_x);
-    bounds->y1 = spec.full_y + spec.full_height - (spec.y + spec.height);
-    bounds->y2 = (spec.full_height) + (spec.full_y - spec.y);
+    
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+    bool originAtDisplayWindow;
+    _useDisplayWindowAsOrigin->getValue(originAtDisplayWindow);
+#else
+    bool originAtDisplayWindow = true;
+#endif
+    
+    if (originAtDisplayWindow) {
+        // the image coordinates are expressed in the "full/display" image.
+        // The RoD are the coordinates of the data window with respect to that full window
+        bounds->x1 = (spec.x - spec.full_x);
+        bounds->x2 = (spec.x + spec.width - spec.full_x);
+        bounds->y1 = spec.full_y + spec.full_height - (spec.y + spec.height);
+        bounds->y2 = (spec.full_height) + (spec.full_y - spec.y);
+    } else {
+        bounds->x1 = spec.x;
+        bounds->x2 = spec.x + spec.width;
+        bounds->y1 =  spec.y;
+        bounds->y2 =  spec.y + spec.height;
+    }
     *par = spec.get_float_attribute("PixelAspectRatio", 1);
 #ifdef OFX_READ_OIIO_USES_CACHE
 #else
@@ -1968,6 +2050,15 @@ void ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
 #endif
 
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+    {
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kParamUseDisplayWindowAsOrigin);
+        param->setLabel(kParamUseDisplayWindowAsOriginLabel);
+        param->setHint(kParamUseDisplayWindowAsOriginHint);
+        param->setDefault(true);
+        page->addChild(*param);
+    }
+#endif
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
 

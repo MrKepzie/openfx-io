@@ -81,7 +81,7 @@ private:
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
     virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
@@ -524,6 +524,7 @@ struct DecodingChannelsMap {
 void
 ReadEXRPlugin::decode(const std::string& filename,
                       OfxTime /*time*/,
+                      bool /*isPlayback*/,
                       const OfxRectI& renderWindow,
                       float *pixelData,
                       const OfxRectI& bounds,

@@ -1558,9 +1558,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             DBG(std::printf("decode (to dst)\n"));
             
             if (!_isMultiPlanar) {
-                decode(filename, sequenceTime, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rowBytes);
+                decode(filename, sequenceTime, args.sequentialRenderStatus, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rowBytes);
             } else {
-                decodePlane(filename, sequenceTime, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rawComps, it->rowBytes);
+                decodePlane(filename, sequenceTime, args.sequentialRenderStatus, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rawComps, it->rowBytes);
             }
             
         } else {
@@ -1580,9 +1580,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             DBG(std::printf("decode (to tmp)\n"));
             
             if (!_isMultiPlanar) {
-                decode(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, tmpRowBytes);
+                decode(filename, sequenceTime, args.sequentialRenderStatus, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, tmpRowBytes);
             } else {
-                decodePlane(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, it->rawComps, tmpRowBytes);
+                decodePlane(filename, sequenceTime, args.sequentialRenderStatus, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, it->rawComps, tmpRowBytes);
             }
             
             if (abort()) {
@@ -1663,13 +1663,13 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 }
 
 void
-GenericReaderPlugin::decode(const std::string& /*filename*/, OfxTime /*time*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/, OFX::PixelComponentEnum /*pixelComponents*/, int /*pixelComponentCount*/, int /*rowBytes*/)
+GenericReaderPlugin::decode(const std::string& /*filename*/, OfxTime /*time*/, bool /*isPlayback*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/, OFX::PixelComponentEnum /*pixelComponents*/, int /*pixelComponentCount*/, int /*rowBytes*/)
 {
     //does nothing
 }
 
 void
-GenericReaderPlugin::decodePlane(const std::string& /*filename*/, OfxTime /*time*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/,
+GenericReaderPlugin::decodePlane(const std::string& /*filename*/, OfxTime /*time*/, bool /*isPlayback*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/,
                                  OFX::PixelComponentEnum /*pixelComponents*/, int /*pixelComponentCount*/,  const std::string& /*rawComponents*/, int /*rowBytes*/)
 {
     //does nothing
