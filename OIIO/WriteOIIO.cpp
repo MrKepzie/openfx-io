@@ -323,7 +323,7 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
     
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (output.get()) {
-        _tileSize->setIsSecret(output->supports("tiles"));
+        _tileSize->setIsSecret(!output->supports("tiles"));
     } else {
         _tileSize->setIsSecret(false);
     }
