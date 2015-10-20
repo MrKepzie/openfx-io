@@ -1231,14 +1231,12 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
     bool useCache = !isPlayback;
-#else
-    bool useCache = false;
 #endif
     
     std::auto_ptr<ImageInput> img;
     ImageSpec spec;
-    if (useCache) {
 #ifdef OFX_READ_OIIO_USES_CACHE
+    if (useCache) {
         //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
         if(!_cache->get_imagespec(ustring(filename), spec)){
             setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
@@ -1255,9 +1253,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
                 _lastFileReadNoPlayback = filename;
             }
         }
-        
+    } else // warning: '{' must follow #endif
 #endif
-    } else {
+    { // !useCache
         // Always keep unassociated alpha.
         // Don't let OIIO premultiply, because if the image is 8bits,
         // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
@@ -1410,8 +1408,8 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
             const int chend = chbegin + incr; // last channel + 1
             size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
 
+#         ifdef OFX_READ_OIIO_USES_CACHE
             if (useCache) {
-#ifdef OFX_READ_OIIO_USES_CACHE
                 if (!_cache->get_pixels(ustring(filename),
                                         0, //subimage
                                         0, //miplevel
@@ -1428,14 +1426,19 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
                                         (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,// output buffer
                                         numChannels * sizeof(float), //x stride
                                         -rowBytes, //y stride < make it invert Y
-                                        AutoStride, //z stride
-                                        chbegin,
-                                        chend)) {
+                                        AutoStride //z stride
+#                                     if OIIO_VERSION > 10605
+                                        ,
+                                        chbegin, // only cache these channels
+                                        chend
+#                                     endif
+                                        )) {
                     setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
                     return;
                 }
-#endif
-            } else {
+            } else // warning: '{' must follow #endif
+#         endif
+            { // !useCache
                 assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
                 if (spec.tile_width == 0) {
                     ///read by scanlines
@@ -1463,9 +1466,12 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
                                     -rowBytes, //y stride < make it invert Y
                                     AutoStride); //z stride
                 }
-            } // useCache
+            } // !useCache
         }
-        if (!useCache) {
+#     ifdef OFX_READ_OIIO_USES_CACHE
+        if (!useCache) // warning: '{' must follow #endif
+#     endif
+        {
             img->close();
         }
     }
@@ -1537,7 +1543,10 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
             chend = chbegin + numChannels;
             break;
         default:
-            if (!useCache) {
+#         ifdef OFX_READ_OIIO_USES_CACHE
+            if (!useCache) // warning: '{' must follow #endif
+#         endif
+            {
                 img->close();
             }
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -1577,8 +1586,8 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
         assert(0 <= chbegin && chbegin < spec.nchannels && chbegin < chend && 0 < chend && chend <= spec.nchannels);
         size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
         
+#     ifdef OFX_READ_OIIO_USES_CACHE
         if (useCache) {
-#ifdef OFX_READ_OIIO_USES_CACHE
             // offset for line y2-1
             if (!_cache->get_pixels(ustring(filename),
                                     0, //subimage
@@ -1602,8 +1611,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
                 setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
                 return;
             }
-#endif
-        } else {
+        } else // warning: '{' must follow #endif
+#     endif // OFX_READ_OIIO_USES_CACHE
+        { // !useCache
             assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
             if (spec.tile_width == 0) {
                 ///read by scanlines
@@ -1659,9 +1669,10 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
     }
 #endif // !OFX_READ_OIIO_NEWMENU
 
-#ifndef OFX_READ_OIIO_USES_CACHE
+#ifdef OFX_READ_OIIO_USES_CACHE
+#else
     img->close();
-#endif
+#endif // !OFX_READ_OIIO_USES_CACHE
 }
 
 bool
