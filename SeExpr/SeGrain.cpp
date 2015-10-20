@@ -781,10 +781,12 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
 
     {
         OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupSize);
-        group->setLabel(kParamGroupSizeLabel);
-        group->setHint(kParamGroupSizeHint);
-        group->setOpen(true);
-
+        if (group) {
+            group->setLabel(kParamGroupSizeLabel);
+            group->setHint(kParamGroupSizeHint);
+            group->setOpen(true);
+        }
+        
         {
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeAll);
             param->setLabel(kParamSizeAllLabel);
