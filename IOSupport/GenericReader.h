@@ -342,7 +342,6 @@ protected:
     std::auto_ptr<GenericOCIO> _ocio;
 #endif
     
-    std::string _oldFileName; //< used to determine if we need to call inputFileChanged or not
 
 private:
     

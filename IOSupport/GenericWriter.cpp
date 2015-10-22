@@ -107,6 +107,8 @@
 #define kParamClipToProjectHint "When checked, the portion of the image written will be the size of the image in input and not the format of the project. " \
 "For the EXR file format, this will distinguish the data window (size of the image in input) from the display window (size of the project)."
 
+static bool gisMultiPlane;
+
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
@@ -252,32 +254,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     std::string filename;
     getOutputFileNameAndExtension(args.time, filename);
     
-    std::auto_ptr<const OFX::Image> srcImg(_inputClip->fetchImage(args.time));
-    if (!srcImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    if (srcImg->getRenderScale().x != args.renderScale.x ||
-        srcImg->getRenderScale().y != args.renderScale.y ||
-        srcImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-
-
-    const void* srcPixelData = NULL;
-    OfxRectI bounds;
-    OFX::PixelComponentEnum pixelComponents;
-    OFX::BitDepthEnum bitDepth;
-    int srcRowBytes;
-    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
-    int pixelComponentCount = srcImg->getPixelComponentCount();
-    if (bitDepth != OFX::eBitDepthFloat) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        return;
-    }
-    float pixelAspectRatio = srcImg->getPixelAspectRatio();
+    float pixelAspectRatio = _inputClip->getPixelAspectRatio();
     
     ///This is automatically the same generally as inputClip premultiplication but can differ is the user changed it.
     int userPremult_i;
@@ -305,141 +282,244 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     // and finally copy the result.
     //
     
-    bool renderWindowIsBounds = args.renderWindow.x1 == bounds.x1 &&
-    args.renderWindow.y1 == bounds.y1 &&
-    args.renderWindow.x2 == bounds.x2 &&
-    args.renderWindow.y2 == bounds.y2;
-    
+   
     bool isOCIOIdentity = _ocio->isIdentity(args.time);
 
-    // premultiplication/unpremultiplication is only useful for RGBA data
-    bool noPremult = (pixelComponents != OFX::ePixelComponentRGBA) || (userPremult == OFX::eImageOpaque);
 
-    if (renderWindowIsBounds &&
-        isOCIOIdentity &&
-        (noPremult || userPremult == pluginExpectedPremult)) {
-        // Render window is of the same size as the input image and we don't need to apply colorspace conversion
-        // or premultiplication operations.
-
-        encode(filename, args.time, (const float*)srcPixelData, args.renderWindow, pixelAspectRatio, pixelComponents, srcRowBytes);
-        // copy to dstImg if necessary
-        if (_outputClip && _outputClip->isConnected()) {
-            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-            if (!dstImg.get()) {
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
-            }
-            if (dstImg->getRenderScale().x != args.renderScale.x ||
-                dstImg->getRenderScale().y != args.renderScale.y ||
-                dstImg->getField() != args.fieldToRender) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
-            }
-            
-            // copy the source image (the writer is a no-op)
-            copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, dstImg.get());
-        }
-    } else {
-        // generic case: some conversions are needed.
-
-        // allocate
-        int pixelBytes = pixelComponentCount * getComponentBytes(bitDepth);
-        int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
-        size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
-        OFX::ImageMemory mem(memSize,this);
-        float *tmpPixelData = (float*)mem.lock();
+    std::auto_ptr<EncodePlanesLocalData_RAII> encodeData;
+    if (gisMultiPlane && args.planes.size() > 1) {
+        encodeData.reset(new EncodePlanesLocalData_RAII(this));
+        beginEncodePlanes(encodeData->getData(), filename, args.time, pixelAspectRatio, args.planes, args.renderWindow);
+    }
+    int planeIndex = 0;
+    for (std::list<std::string>::const_iterator plane = args.planes.begin(); plane!=args.planes.end(); ++plane,++planeIndex) {
         
-        // Set to black and transparant so that outside the portion defined by the image there's nothing.
-        if (!renderWindowIsBounds) {
-            std::memset(tmpPixelData, 0, memSize);
+        const void* srcPixelData = 0;
+        OfxRectI bounds;
+        OFX::PixelComponentEnum pixelComponents;
+        OFX::BitDepthEnum bitDepth;
+        int srcRowBytes;
+        
+       
+
+        std::auto_ptr<const OFX::Image> srcImg(_inputClip->fetchImagePlane(args.time, args.renderView, plane->c_str()));
+        if (!srcImg.get()) {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+        if (srcImg->getRenderScale().x != args.renderScale.x ||
+            srcImg->getRenderScale().y != args.renderScale.y ||
+            srcImg->getField() != args.fieldToRender) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+  
+        getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+        
+        if (bitDepth != OFX::eBitDepthFloat) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
         }
         
-        // Clip the render window to the bounds of the source image.
-        OfxRectI renderWindowClipped;
-        intersect(args.renderWindow, bounds, &renderWindowClipped);
         
-        if (isOCIOIdentity) {
-            // bypass OCIO
+        // premultiplication/unpremultiplication is only useful for RGBA data
+        bool noPremult = (pixelComponents != OFX::ePixelComponentRGBA) || (userPremult == OFX::eImageOpaque);
 
-            if (noPremult || userPremult == pluginExpectedPremult) {
-                if (userPremult == OFX::eImageOpaque && (pixelComponents == OFX::ePixelComponentRGBA ||
-                                                         pixelComponents == OFX::ePixelComponentAlpha)) {
-                    // Opaque: force the alpha channel to 1
-                    copyPixelsOpaque(*this, renderWindowClipped,
-                                             srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
-                                             tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-                } else {
-                    // copy the whole raw src image
-                    copyPixels(*this, renderWindowClipped,
-                               srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
-                               tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-                }
-            } else if (userPremult == OFX::eImagePreMultiplied) {
-                assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
-                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-            } else {
-                assert(userPremult == OFX::eImageUnPreMultiplied);
-                assert(pluginExpectedPremult == OFX::eImagePreMultiplied);
-                premultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
-                                 , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+        bool isColorPlane;
+        int pixelComponentsCount;
+        std::string rawComponents = srcImg->getPixelComponentsProperty();
+        OFX::PixelComponentEnum mappedComponents;
+        if (pixelComponents != OFX::ePixelComponentCustom) {
+            isColorPlane = true;
+            mappedComponents = pixelComponents;
+            switch (pixelComponents) {
+                case OFX::ePixelComponentAlpha:
+                    pixelComponentsCount = 1;
+                    break;
+                case OFX::ePixelComponentXY:
+                    pixelComponentsCount = 2;
+                    break;
+                case OFX::ePixelComponentRGB:
+                    pixelComponentsCount = 3;
+                    break;
+                case OFX::ePixelComponentRGBA:
+                    pixelComponentsCount = 4;
+                    break;
+                default:
+                    OFX::throwSuiteStatusException(kOfxStatErrFormat);
+                    break;
             }
         } else {
-            assert(!isOCIOIdentity);
-            // OCIO expects unpremultiplied input
-            if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
-                if (userPremult == OFX::eImageOpaque && (pixelComponents == OFX::ePixelComponentRGBA ||
-                                                         pixelComponents == OFX::ePixelComponentAlpha)) {
-                    // Opaque: force the alpha channel to 1
-                    copyPixelsOpaque(*this, renderWindowClipped,
-                               srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
-                               tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-                } else {
-                    // copy the whole raw src image
-                    copyPixels(*this, renderWindowClipped,
-                               srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes,
-                               tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-                }
-            } else {
-                assert(userPremult == OFX::eImagePreMultiplied);
-                unPremultPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount
-                                   , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+            isColorPlane = false;
+            std::vector<std::string> channelNames = OFX::mapPixelComponentCustomToLayerChannels(rawComponents);
+            pixelComponentsCount = (int)channelNames.size() - 1;
+            
+            //Remap pixelComponents to something known by encode() and copyPixelData/unpremult/premult
+            switch (pixelComponentsCount) {
+                case 1:
+                    mappedComponents = OFX::ePixelComponentAlpha;
+                    break;
+                case 2:
+                    mappedComponents = OFX::ePixelComponentXY;
+                    break;
+                case 3:
+                    mappedComponents = OFX::ePixelComponentRGB;
+                    break;
+                case 4:
+                    mappedComponents = OFX::ePixelComponentRGBA;
+                    break;
+                default:
+                    break;
             }
-            // do the color-space conversion
-            _ocio->apply(args.time, renderWindowClipped, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
-
-            ///If needed, re-premult the image for the plugin to work correctly
-            if (pluginExpectedPremult == OFX::eImagePreMultiplied && pixelComponents == OFX::ePixelComponentRGBA) {
-                
-                premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount
-                                 , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-            }
-        }
-        // write the image file
-        encode(filename, args.time, tmpPixelData, args.renderWindow, pixelAspectRatio, pixelComponents, tmpRowBytes);
-        // copy to dstImg if necessary
-        if (_outputClip && _outputClip->isConnected()) {
-            std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImage(args.time));
-            if (!dstImg.get()) {
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
-            }
-            if (dstImg->getRenderScale().x != args.renderScale.x ||
-                dstImg->getRenderScale().y != args.renderScale.y ||
-                dstImg->getField() != args.fieldToRender) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
-            }
-
-            // copy the source image (the writer is a no-op)
-            copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, dstImg.get());
         }
         
-        // mem is freed at destruction
+        
+        bool renderWindowIsBounds = args.renderWindow.x1 == bounds.x1 &&
+        args.renderWindow.y1 == bounds.y1 &&
+        args.renderWindow.x2 == bounds.x2 &&
+        args.renderWindow.y2 == bounds.y2;
+        
+        
+        
+        if (renderWindowIsBounds &&
+            isOCIOIdentity &&
+            (noPremult || userPremult == pluginExpectedPremult)) {
+            // Render window is of the same size as the input image and we don't need to apply colorspace conversion
+            // or premultiplication operations.
+            if (encodeData.get()) {
+                encodePlane(encodeData->getData(), *plane, (const float*)srcPixelData, planeIndex, srcRowBytes);
+            } else {
+                encode(filename, args.time, (const float*)srcPixelData, args.renderWindow, pixelAspectRatio, mappedComponents, srcRowBytes);
+            }
+            // copy to dstImg if necessary
+            if (_outputClip && _outputClip->isConnected()) {
+                std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImagePlane(args.time,args.renderView,plane->c_str()));
+                if (!dstImg.get()) {
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
+                if (dstImg->getRenderScale().x != args.renderScale.x ||
+                    dstImg->getRenderScale().y != args.renderScale.y ||
+                    dstImg->getField() != args.fieldToRender) {
+                    setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
+                
+                // copy the source image (the writer is a no-op)
+                copyPixelData(args.renderWindow, srcPixelData, args.renderWindow, pixelComponents, pixelComponentsCount, bitDepth, srcRowBytes, dstImg.get());
+                
+            }
+        } else {
+            // generic case: some conversions are needed.
+            
+            // allocate
+            int pixelBytes = pixelComponentsCount * getComponentBytes(bitDepth);
+            int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
+            size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
+            OFX::ImageMemory mem(memSize,this);
+            float *tmpPixelData = (float*)mem.lock();
+            
+            // Set to black and transparant so that outside the portion defined by the image there's nothing.
+            if (!renderWindowIsBounds) {
+                std::memset(tmpPixelData, 0, memSize);
+            }
+            
+            // Clip the render window to the bounds of the source image.
+            OfxRectI renderWindowClipped;
+            intersect(args.renderWindow, bounds, &renderWindowClipped);
+            
+            if (isOCIOIdentity) {
+                // bypass OCIO
+                
+                if (noPremult || userPremult == pluginExpectedPremult) {
+                    if (userPremult == OFX::eImageOpaque && (mappedComponents == OFX::ePixelComponentRGBA ||
+                                                             mappedComponents == OFX::ePixelComponentAlpha)) {
+                        // Opaque: force the alpha channel to 1
+                        copyPixelsOpaque(*this, renderWindowClipped,
+                                         srcPixelData, bounds, mappedComponents, pixelComponentsCount, bitDepth, srcRowBytes,
+                                         tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                    } else {
+                        // copy the whole raw src image
+                        copyPixels(*this, renderWindowClipped,
+                                   srcPixelData, bounds, mappedComponents, pixelComponentsCount, bitDepth, srcRowBytes,
+                                   tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                    }
+                } else if (userPremult == OFX::eImagePreMultiplied) {
+                    assert(pluginExpectedPremult == OFX::eImageUnPreMultiplied);
+                    unPremultPixelData(args.renderWindow, srcPixelData, bounds, mappedComponents, pixelComponentsCount
+                                       , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                } else {
+                    assert(userPremult == OFX::eImageUnPreMultiplied);
+                    assert(pluginExpectedPremult == OFX::eImagePreMultiplied);
+                    premultPixelData(args.renderWindow, srcPixelData, bounds, mappedComponents, pixelComponentsCount
+                                     , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                }
+            } else {
+                assert(!isOCIOIdentity);
+                // OCIO expects unpremultiplied input
+                if (noPremult || userPremult == OFX::eImageUnPreMultiplied) {
+                    if (userPremult == OFX::eImageOpaque && (mappedComponents == OFX::ePixelComponentRGBA ||
+                                                             mappedComponents == OFX::ePixelComponentAlpha)) {
+                        // Opaque: force the alpha channel to 1
+                        copyPixelsOpaque(*this, renderWindowClipped,
+                                         srcPixelData, bounds, mappedComponents, pixelComponentsCount, bitDepth, srcRowBytes,
+                                         tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                    } else {
+                        // copy the whole raw src image
+                        copyPixels(*this, renderWindowClipped,
+                                   srcPixelData, bounds, mappedComponents, pixelComponentsCount, bitDepth, srcRowBytes,
+                                   tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                    }
+                } else {
+                    assert(userPremult == OFX::eImagePreMultiplied);
+                    unPremultPixelData(args.renderWindow, srcPixelData, bounds, mappedComponents, pixelComponentsCount
+                                       , bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                }
+                // do the color-space conversion
+                _ocio->apply(args.time, renderWindowClipped, tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, tmpRowBytes);
+                
+                ///If needed, re-premult the image for the plugin to work correctly
+                if (pluginExpectedPremult == OFX::eImagePreMultiplied && mappedComponents == OFX::ePixelComponentRGBA) {
+                    
+                    premultPixelData(args.renderWindow, tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount
+                                     , bitDepth, tmpRowBytes, tmpPixelData, args.renderWindow, mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
+                }
+            }
+            // write the image file
+            if (encodeData.get()) {
+                encodePlane(encodeData->getData(), filename, tmpPixelData, planeIndex, tmpRowBytes);
+            } else {
+                encode(filename, args.time, tmpPixelData, args.renderWindow, pixelAspectRatio, mappedComponents, tmpRowBytes);
+            }
+            // copy to dstImg if necessary
+            if (_outputClip && _outputClip->isConnected()) {
+                std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImagePlane(args.time,args.renderView,plane->c_str()));
+                if (!dstImg.get()) {
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
+                if (dstImg->getRenderScale().x != args.renderScale.x ||
+                    dstImg->getRenderScale().y != args.renderScale.y ||
+                    dstImg->getField() != args.fieldToRender) {
+                    setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
+                
+                // copy the source image (the writer is a no-op)
+                copyPixelData(args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentsCount, bitDepth, srcRowBytes, dstImg.get());
+                
+            }
+            
+            // mem is freed at destruction
+        }
+        
     }
-    
+    if (encodeData.get()) {
+        endEncodePlanes(encodeData->getData());
+    }
     clearPersistentMessage();
 }
 
@@ -478,6 +558,7 @@ GenericWriterPlugin::endSequenceRender(const OFX::EndSequenceRenderArguments &ar
 
     endEncode(args);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /** @brief render for the filter */
@@ -654,6 +735,36 @@ GenericWriterPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments 
     }
 }
 
+void
+GenericWriterPlugin::encode(const std::string& /*filename*/,
+                            OfxTime /*time*/,
+                    const float */*pixelData*/,
+                    const OfxRectI& /*bounds*/,
+                    float /*pixelAspectRatio*/,
+                    OFX::PixelComponentEnum /*pixelComponents*/,
+                    int /*rowBytes*/)
+{
+    /// Does nothing
+}
+
+
+void
+GenericWriterPlugin::beginEncodePlanes(void* /*user_data*/,
+                                       const std::string& /*filename*/,
+                                       OfxTime /*time*/,
+                                       float /*pixelAspectRatio*/,
+                                       const std::list<std::string>& /*planes*/,
+                                       const OfxRectI& /*bounds*/)
+{
+     /// Does nothing
+}
+
+
+void
+GenericWriterPlugin::encodePlane(void* /*user_data*/, const std::string& /*filename*/, const float */*pixelData*/, int /*planeIndex*/, int /*rowBytes*/)
+{
+    /// Does nothing
+}
 
 bool
 GenericWriterPlugin::getTimeDomain(OfxRangeD &range)
@@ -823,7 +934,8 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
         OFX::PixelComponentEnum components = _inputClip->getPixelComponents();
         assert((components == OFX::ePixelComponentAlpha && premult != OFX::eImageOpaque) ||
                (components == OFX::ePixelComponentRGB && premult == OFX::eImageOpaque) ||
-               (components == OFX::ePixelComponentRGBA));
+               (components == OFX::ePixelComponentRGBA) ||
+               (components == OFX::ePixelComponentCustom && gisMultiPlane));
 #      endif
         _premult->setValue(premult);
         
@@ -857,7 +969,7 @@ using namespace OFX;
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
 void
-GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety)
+GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety,bool isMultiPlanar)
 {
     desc.setPluginGrouping(kPluginGrouping);
     
@@ -880,6 +992,20 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum saf
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
     desc.setRenderThreadSafety(safety);
+    
+    gisMultiPlane = false;
+    
+#ifdef OFX_EXTENSIONS_NUKE
+    if (OFX::getImageEffectHostDescription()
+        && OFX::getImageEffectHostDescription()->isMultiPlanar) {
+        desc.setIsMultiPlanar(isMultiPlanar);
+        gisMultiPlane = true;
+        if (isMultiPlanar) {
+            //We let all un-rendered planes pass-through so that they can be retrieved below by a shuffle node
+            desc.setPassThroughForNotProcessedPlanes(ePassThroughLevelPassThroughNonRenderedPlanes);
+        }
+    }
+#endif
 }
 
 /**

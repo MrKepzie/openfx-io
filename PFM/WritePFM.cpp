@@ -183,7 +183,7 @@ mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);

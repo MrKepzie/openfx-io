@@ -3204,7 +3204,7 @@ static std::string ffmpeg_versions()
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe);
+    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription("Write images or video file using "

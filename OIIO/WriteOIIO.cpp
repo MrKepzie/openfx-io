@@ -73,6 +73,7 @@ OIIO_NAMESPACE_USING
 #define kParamBitDepthOption64f    "64f"
 #define kParamBitDepthOption64fHint "64 bits floating point"
 
+
 enum ETuttlePluginBitDepth
 {
 	eTuttlePluginBitDepthAuto = 0,
@@ -211,6 +212,19 @@ enum EParamTileSize
     eParamTileSize512
 };
 
+#define kParamOutputLayer "outputLayers"
+#define kParamOutputLayerChoice kParamOutputLayer "Choice"
+#define kParamOutputLayerLabel "Layer(s)"
+#define kParamOutputLayerHint "Select which layer to write to the file. This is either All or a single layer. " \
+"This is not yet possible to append a layer to an existing file."
+
+#define kParamOutputLayerAll "All"
+#define kWriteOIIOColorAlpha "Alpha"
+#define kWriteOIIOColorRGB "RGB"
+#define kWriteOIIOColorRGBA "RGBA"
+
+static bool g_enableMultiPlaneFeature;
+
 class WriteOIIOPlugin : public GenericWriterPlugin
 {
 public:
@@ -220,17 +234,69 @@ public:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
+    
+    virtual void getClipComponents(const OFX::ClipComponentsArguments& args, OFX::ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
+    
 private:
     virtual void onOutputFileChanged(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL
+    {
+        std::string rawComps;
+        switch (pixelComponents) {
+            case OFX::ePixelComponentAlpha:
+                rawComps = kOfxImageComponentAlpha;
+                break;
+            case OFX::ePixelComponentRGB:
+                rawComps = kOfxImageComponentRGB;
+                break;
+            case OFX::ePixelComponentRGBA:
+                rawComps = kOfxImageComponentRGBA;
+                break;
+            case OFX::ePixelComponentXY:
+                rawComps = kFnOfxImageComponentMotionVectors;
+                break;
+            default:
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
+        }
+        
+        std::list<std::string> comps;
+        comps.push_back(rawComps);
+        EncodePlanesLocalData_RAII data(this);
+        beginEncodePlanes(data.getData(), filename, time, pixelAspectRatio, comps, bounds);
+        encodePlane(data.getData(), filename, pixelData, 0, rowBytes);
+        endEncodePlanes(data.getData());
+    }
+    
+    virtual void encodePlane(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes) OVERRIDE FINAL;
+    
+    virtual void beginEncodePlanes(void* user_data,
+                                   const std::string& filename,
+                                   OfxTime time,
+                                   float pixelAspectRatio,
+                                   const std::list<std::string>& planes,
+                                   const OfxRectI& bounds) OVERRIDE FINAL;
+    
+    void endEncodePlanes(void* user_data) OVERRIDE FINAL;
+    
+    virtual void* allocateEncodePlanesUserData() OVERRIDE FINAL;
+    virtual void destroyEncodePlanesUserData(void* data) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
     
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
 
     virtual bool displayWindowSupportedByFormat(const std::string& filename) const OVERRIDE FINAL;
-
+    
+    void buildChannelMenus();
+    
+    bool getPlaneNeededInOutput(const std::list<std::string>& components,
+                                OFX::ChoiceParam* param,
+                                std::string* ofxPlane,
+                                std::string* ofxComponents) const;
+    
     
 private:
     OFX::ChoiceParam* _bitDepth;
@@ -238,16 +304,31 @@ private:
     OFX::ChoiceParam* _orientation;
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _tileSize;
+    OFX::ChoiceParam* _outputLayers;
+    OFX::StringParam* _outputLayerString;
+    std::list<std::string> _currentInputComponents;
 };
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
+, _bitDepth(0)
+, _quality(0)
+, _orientation(0)
+, _compression(0)
+, _tileSize(0)
+, _outputLayers(0)
+, _outputLayerString(0)
+, _currentInputComponents()
 {
     _bitDepth = fetchChoiceParam(kParamBitDepth);
     _quality     = fetchIntParam(kParamOutputQualityName);
     _orientation = fetchChoiceParam(kParamOutputOrientationName);
     _compression = fetchChoiceParam(kParamOutputCompressionName);
     _tileSize = fetchChoiceParam(kParamTileSize);
+    if (g_enableMultiPlaneFeature) {
+        _outputLayers = fetchChoiceParam(kParamOutputLayer);
+        _outputLayerString = fetchStringParam(kParamOutputLayerChoice);
+    }
 }
 
 
@@ -256,7 +337,263 @@ WriteOIIOPlugin::~WriteOIIOPlugin() {
 }
 
 void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
+    if (paramName == kParamOutputLayer && args.reason == OFX::eChangeUserEdit) {
+        int cur_i;
+        _outputLayers->getValue(cur_i);
+        std::string opt;
+        _outputLayers->getOption(cur_i, opt);
+        _outputLayerString->setValue(opt);
+    }
     GenericWriterPlugin::changedParam(args, paramName);
+}
+
+void
+WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+{
+    
+    buildChannelMenus();
+    GenericWriterPlugin::getClipPreferences(clipPreferences);
+    if (g_enableMultiPlaneFeature) {
+        
+        std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
+        std::string ofxPlane,ofxComp;
+        getPlaneNeededInOutput(inputComponents, _outputLayers, &ofxPlane, &ofxComp);
+        OFX::PixelComponentEnum dstPixelComps;
+        if (ofxComp != kParamOutputLayerAll) {
+            
+            dstPixelComps = OFX::mapStrToPixelComponentEnum(ofxComp);
+            if (dstPixelComps == OFX::ePixelComponentCustom) {
+                int nComps = std::max((int)OFX::mapPixelComponentCustomToLayerChannels(ofxComp).size() - 1, 0);
+                switch (nComps) {
+                    case 1:
+                        dstPixelComps = OFX::ePixelComponentAlpha;
+                        break;
+                    case 2:
+                        dstPixelComps = OFX::ePixelComponentXY;
+                        break;
+                    case 3:
+                        dstPixelComps = OFX::ePixelComponentRGB;
+                        break;
+                    case 4:
+                        dstPixelComps = OFX::ePixelComponentRGBA;
+                    default:
+                        break;
+                }
+            }
+            //Set output pixel components to match what will be output if the choice is not All
+            clipPreferences.setClipComponents(*_inputClip, dstPixelComps);
+            clipPreferences.setClipComponents(*_outputClip, dstPixelComps);
+        }
+    }
+}
+
+
+bool
+WriteOIIOPlugin::getPlaneNeededInOutput(const std::list<std::string>& components,
+                                      OFX::ChoiceParam* param,
+                                      std::string* ofxPlane,
+                                      std::string* ofxComponents) const
+{
+    int layer_i;
+    param->getValue(layer_i);
+    std::string layerName;
+    param->getOption(layer_i, layerName);
+    
+    if (layerName.empty() ||
+        layerName == kWriteOIIOColorRGBA ||
+        layerName == kWriteOIIOColorRGB ||
+        layerName == kWriteOIIOColorAlpha) {
+        std::string comp = _outputClip->getPixelComponentsProperty();
+        *ofxComponents = comp;
+        *ofxPlane = kFnOfxImagePlaneColour;
+        return true;
+    } else if (layerName == kParamOutputLayerAll) {
+        *ofxPlane = kParamOutputLayerAll;
+        *ofxComponents = kParamOutputLayerAll;
+#ifdef OFX_EXTENSIONS_NATRON
+    } else {
+        //Find in aComponents or bComponents a layer matching the name of the layer
+        for (std::list<std::string>::const_iterator it = components.begin(); it!=components.end(); ++it) {
+            if (it->find(layerName) != std::string::npos) {
+                //We found a matching layer
+                std::string realLayerName;
+                std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
+                if (layerChannels.empty()) {
+                    // ignore it
+                    continue;
+                }
+                *ofxPlane = *it;
+                *ofxComponents = *it;
+                return true;
+            }
+        }
+#endif // OFX_EXTENSIONS_NATRON
+    }
+    return false;
+}
+
+void
+WriteOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& /*args*/, OFX::ClipComponentsSetter& clipComponents)
+{
+    
+    if (g_enableMultiPlaneFeature) {
+        std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
+        std::string ofxPlane,ofxComp;
+        getPlaneNeededInOutput(inputComponents, _outputLayers, &ofxPlane, &ofxComp);
+        if (ofxPlane == kParamOutputLayerAll) {
+            for (std::list<std::string>::iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
+                clipComponents.addClipComponents(*_inputClip, *it);
+                clipComponents.addClipComponents(*_outputClip, *it);
+            }
+            
+        } else {
+            clipComponents.addClipComponents(*_inputClip, ofxComp);
+            clipComponents.addClipComponents(*_outputClip, ofxComp);
+        }
+    } else {
+        OFX::PixelComponentEnum inputComponents = _inputClip->getPixelComponents();
+        clipComponents.addClipComponents(*_inputClip, inputComponents);
+        OFX::PixelComponentEnum outputComponents = _outputClip->getPixelComponents();
+        clipComponents.addClipComponents(*_outputClip, outputComponents);
+    }
+    
+    
+}
+
+namespace  {
+    
+    static bool hasListChanged(const std::list<std::string>& oldList, const std::list<std::string>& newList)
+    {
+        if (oldList.size() != newList.size()) {
+            return true;
+        }
+        
+        std::list<std::string>::const_iterator itNew = newList.begin();
+        for (std::list<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
+            if (*it != *itNew) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    static void extractChannelsFromComponentString(const std::string& comp,
+                                                   std::string* layer,
+                                                   std::string* pairedLayer, //< if disparity or motion vectors
+                                                   std::vector<std::string>* channels)
+    {
+        if (comp == kOfxImageComponentAlpha) {
+            channels->push_back("A");
+        } else if (comp == kOfxImageComponentRGB) {
+            channels->push_back("R");
+            channels->push_back("G");
+            channels->push_back("B");
+        } else if (comp == kOfxImageComponentRGBA) {
+            channels->push_back("R");
+            channels->push_back("G");
+            channels->push_back("B");
+            channels->push_back("A");
+        } else if (comp == kFnOfxImageComponentMotionVectors) {
+            *layer = "Backward";
+            *pairedLayer = "Forward";
+            channels->push_back("U");
+            channels->push_back("V");
+        } else if (comp == kFnOfxImageComponentStereoDisparity) {
+            *layer = "DisparityLeft";
+            *pairedLayer = "DisparityRight";
+            channels->push_back("X");
+            channels->push_back("Y");
+#ifdef OFX_EXTENSIONS_NATRON
+        } else if (comp == kNatronOfxImageComponentXY) {
+            channels->push_back("X");
+            channels->push_back("Y");
+        } else {
+            std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(comp);
+            if (layerChannels.size() >= 1) {
+                *layer = layerChannels[0];
+                channels->assign(layerChannels.begin() + 1, layerChannels.end());
+            }
+#endif
+        }
+    }
+}
+
+void
+WriteOIIOPlugin::buildChannelMenus()
+{
+    if (!g_enableMultiPlaneFeature || _outputLayers->getIsSecret()) {
+        return;
+    }
+    
+    std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
+    if (hasListChanged(_currentInputComponents, inputComponents)) {
+        
+        _currentInputComponents = inputComponents;
+        
+        std::vector<std::string> options;
+        _outputLayers->resetOptions();
+        options.push_back(kParamOutputLayerAll);
+        ///Pre-process to add color comps first
+        std::list<std::string> compsToAdd;
+        bool foundColor = false;
+        for (std::list<std::string>::const_iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
+            std::string layer, secondLayer;
+            std::vector<std::string> channels;
+            extractChannelsFromComponentString(*it, &layer, &secondLayer, &channels);
+            if (channels.empty()) {
+                continue;
+            }
+            if (layer.empty()) {
+                if (*it == kOfxImageComponentRGBA) {
+                    options.push_back(kWriteOIIOColorRGBA);
+                    foundColor = true;
+                } else if (*it == kOfxImageComponentRGB) {
+                    options.push_back(kWriteOIIOColorRGB);
+                    foundColor = true;
+                } else if (*it == kOfxImageComponentAlpha) {
+                    options.push_back(kWriteOIIOColorAlpha);
+                    foundColor = true;
+                }
+                
+                continue;
+            }
+            compsToAdd.push_back(layer);
+        }
+        if (!foundColor) {
+            options.push_back(kWriteOIIOColorRGBA);
+        }
+        options.insert(options.end(), compsToAdd.begin(), compsToAdd.end());
+        
+        for (std::vector<std::string>::const_iterator it = options.begin(); it!=options.end(); ++it) {
+            _outputLayers->appendOption(*it);
+        }
+        
+        std::string outputComponentsStr;
+        _outputLayerString->getValue(outputComponentsStr);
+        if (outputComponentsStr.empty()) {
+            int cur_i;
+            _outputLayers->getValue(cur_i);
+            _outputLayers->getOption(cur_i, outputComponentsStr);
+            _outputLayerString->setValue(outputComponentsStr);
+        } else {
+            int foundOption = -1;
+            for (int i = 0; i < (int)options.size(); ++i) {
+                if (options[i] == outputComponentsStr) {
+                    foundOption = i;
+                    break;
+                }
+            }
+            if (foundOption != -1) {
+                _outputLayers->setValue(foundOption);
+            } else {
+                _outputLayers->setValue(1);
+                _outputLayerString->setValue(options[1]);
+            }
+        }
+        
+
+    }
+    
 }
 
 /**
@@ -323,105 +660,115 @@ void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
     
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (output.get()) {
-        _tileSize->setIsSecret(output->supports("tiles"));
+        _tileSize->setIsSecret(!output->supports("tiles"));
+        _outputLayers->setIsSecret(!output->supports("nchannels"));
     } else {
-        _tileSize->setIsSecret(false);
+        _tileSize->setIsSecret(true);
+        _outputLayers->setIsSecret(true);
     }
 }
 
-void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+struct WriteOIIOEncodePlanesData
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only write RGBA, RGB or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        return;
-    }
+    std::auto_ptr<ImageOutput> output;
+    std::vector<ImageSpec> specs;
+};
 
-    int numChannels = 0;
-    switch(pixelComponents)
-    {
-        case OFX::ePixelComponentRGBA:
-            numChannels = 4;
-            break;
-        case OFX::ePixelComponentRGB:
-            numChannels = 3;
-            break;
-        case OFX::ePixelComponentAlpha:
-            numChannels = 1;
-            break;
-        default:
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            return;
-    }
+void*
+WriteOIIOPlugin::allocateEncodePlanesUserData()
+{
+    WriteOIIOEncodePlanesData* data = new WriteOIIOEncodePlanesData;
+    return data;
+}
 
-    std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
-    if (!output.get()) {
+void
+WriteOIIOPlugin::destroyEncodePlanesUserData(void* data)
+{
+    assert(data);
+    WriteOIIOEncodePlanesData* d = (WriteOIIOEncodePlanesData*)data;
+    delete d;
+}
+
+void
+WriteOIIOPlugin::beginEncodePlanes(void* user_data,
+                                   const std::string& filename,
+                                   OfxTime time,
+                                   float pixelAspectRatio,
+                                   const std::list<std::string>& planes,
+                                   const OfxRectI& bounds)
+{
+    assert(user_data);
+    WriteOIIOEncodePlanesData* data = (WriteOIIOEncodePlanesData*)user_data;
+    data->output.reset(ImageOutput::create(filename));
+    if (!data->output.get()) {
         // output is NULL
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot create output file ")+filename);
         return;
     }
     
-	OpenImageIO::TypeDesc oiioBitDepth;
-	//size_t sizeOfChannel = 0;
-	int    bitsPerSample  = 0;
-
-	int finalBitDepth_i;
+    OpenImageIO::TypeDesc oiioBitDepth;
+    //size_t sizeOfChannel = 0;
+    int    bitsPerSample  = 0;
+    
+    int finalBitDepth_i;
     _bitDepth->getValue(finalBitDepth_i);
     ETuttlePluginBitDepth finalBitDepth = getDefaultBitDepth(filename,(ETuttlePluginBitDepth)finalBitDepth_i);
-
-	switch (finalBitDepth) {
-		case eTuttlePluginBitDepthAuto:
+    
+    switch (finalBitDepth) {
+        case eTuttlePluginBitDepthAuto:
             OFX::throwSuiteStatusException(kOfxStatErrUnknown);
             return;
-		case eTuttlePluginBitDepth8:
-			oiioBitDepth = TypeDesc::UINT8;
-			bitsPerSample = 8;
-			//sizeOfChannel = 1;
-			break;
-		case eTuttlePluginBitDepth10:
-			oiioBitDepth = TypeDesc::UINT16;
-			bitsPerSample = 10;
-			//sizeOfChannel = 2;
-			break;
-		case eTuttlePluginBitDepth12:
-			oiioBitDepth = TypeDesc::UINT16;
-			bitsPerSample = 12;
-			//sizeOfChannel = 2;
-			break;
-		case eTuttlePluginBitDepth16:
-			oiioBitDepth = TypeDesc::UINT16;
-			bitsPerSample = 16;
-			//sizeOfChannel = 2;
-			break;
-		case eTuttlePluginBitDepth16f:
-			oiioBitDepth = TypeDesc::HALF;
-			bitsPerSample = 16;
-			//sizeOfChannel = 2;
-			break;
-		case eTuttlePluginBitDepth32:
-			oiioBitDepth = TypeDesc::UINT32;
-			bitsPerSample = 32;
-			//sizeOfChannel = 4;
-			break;
-		case eTuttlePluginBitDepth32f:
-			oiioBitDepth = TypeDesc::FLOAT;
-			bitsPerSample = 32;
-			//sizeOfChannel = 4;
-			break;
-		case eTuttlePluginBitDepth64:
-			oiioBitDepth = TypeDesc::UINT64;
-			bitsPerSample = 64;
-			//sizeOfChannel = 8;
-			break;
-		case eTuttlePluginBitDepth64f:
-			oiioBitDepth = TypeDesc::DOUBLE;
-			bitsPerSample = 64;
-			//sizeOfChannel = 8;
-			break;
-	}
-    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, numChannels, oiioBitDepth);
+        case eTuttlePluginBitDepth8:
+            oiioBitDepth = TypeDesc::UINT8;
+            bitsPerSample = 8;
+            //sizeOfChannel = 1;
+            break;
+        case eTuttlePluginBitDepth10:
+            oiioBitDepth = TypeDesc::UINT16;
+            bitsPerSample = 10;
+            //sizeOfChannel = 2;
+            break;
+        case eTuttlePluginBitDepth12:
+            oiioBitDepth = TypeDesc::UINT16;
+            bitsPerSample = 12;
+            //sizeOfChannel = 2;
+            break;
+        case eTuttlePluginBitDepth16:
+            oiioBitDepth = TypeDesc::UINT16;
+            bitsPerSample = 16;
+            //sizeOfChannel = 2;
+            break;
+        case eTuttlePluginBitDepth16f:
+            oiioBitDepth = TypeDesc::HALF;
+            bitsPerSample = 16;
+            //sizeOfChannel = 2;
+            break;
+        case eTuttlePluginBitDepth32:
+            oiioBitDepth = TypeDesc::UINT32;
+            bitsPerSample = 32;
+            //sizeOfChannel = 4;
+            break;
+        case eTuttlePluginBitDepth32f:
+            oiioBitDepth = TypeDesc::FLOAT;
+            bitsPerSample = 32;
+            //sizeOfChannel = 4;
+            break;
+        case eTuttlePluginBitDepth64:
+            oiioBitDepth = TypeDesc::UINT64;
+            bitsPerSample = 64;
+            //sizeOfChannel = 8;
+            break;
+        case eTuttlePluginBitDepth64f:
+            oiioBitDepth = TypeDesc::DOUBLE;
+            bitsPerSample = 64;
+            //sizeOfChannel = 8;
+            break;
+    }
+    
+    //Base spec with a stub nChannels
+    ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, 4, oiioBitDepth);
 
-
+    
     int quality;
     _quality->getValue(quality);
     int orientation;
@@ -467,12 +814,12 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
             compression = "packbits";
             break;
     }
-
-	spec.attribute("oiio:BitsPerSample", bitsPerSample);
+    
+    spec.attribute("oiio:BitsPerSample", bitsPerSample);
     // oiio:UnassociatedAlpha should be set if the data buffer in unassociated/unpremultiplied.
     // However, WriteOIIO::getExpectedInputPremultiplication() stated that input to the encode()
     // function should always be premultiplied/associated
-	//spec.attribute("oiio:UnassociatedAlpha", premultiply);
+    //spec.attribute("oiio:UnassociatedAlpha", premultiply);
 #ifdef OFX_IO_USING_OCIO
     std::string ocioColorspace;
     _ocio->getOutputColorspaceAtTime(time, ocioColorspace);
@@ -528,23 +875,16 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
         spec.attribute("oiio:Gamma", gamma);
     }
 #endif
-	spec.attribute("CompressionQuality", quality);
-	spec.attribute("Orientation", orientation + 1);
+    spec.attribute("CompressionQuality", quality);
+    spec.attribute("Orientation", orientation + 1);
     if (!compression.empty()) { // some formats have a good value for the default compression
         spec.attribute("compression", compression);
     }
     if (pixelAspectRatio != 1.) {
         spec.attribute("PixelAspectRatio", pixelAspectRatio);
     }
-
-    // by default, the channel names are R, G, B, A, which is OK except for Alpha images
-    if (pixelComponents == OFX::ePixelComponentAlpha) {
-        spec.channelnames.clear();
-        spec.channelnames.push_back ("A");
-        spec.alpha_channel = 0;
-    }
     
-    if (output->supports("tiles")) {
+    if (data->output->supports("tiles")) {
         spec.x = bounds.x1;
         spec.y = bounds.y1;
         spec.full_x = bounds.x1;
@@ -589,22 +929,87 @@ void WriteOIIOPlugin::encode(const std::string& filename, OfxTime time, const fl
                 break;
         }
     }
+
     
-    if (!output->open(filename, spec)) {
-        setPersistentMessage(OFX::Message::eMessageError, "", output->geterror());
+    assert(!planes.empty());
+    int nChannels = 0;
+    data->specs.resize(planes.size());
+    
+    int specIndex = 0;
+    for (std::list<std::string>::const_iterator it = planes.begin(); it!=planes.end(); ++it,++specIndex) {
+        std::string layer,pairedLayer;
+        std::vector<std::string> channels;
+        
+        std::string rawComponents;
+        if (*it == kFnOfxImagePlaneColour) {
+            rawComponents = _inputClip->getPixelComponentsProperty();
+        } else {
+            rawComponents = *it;
+        }
+        extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &channels);
+        nChannels += channels.size();
+        ImageSpec partSpec = spec;
+        
+        if (!layer.empty()) {
+            for (std::size_t i = 0; i < channels.size(); ++i) {
+                channels[i] = layer + "." + channels[i];
+            }
+        }
+        if (channels.size() == 4) {
+            partSpec.alpha_channel = 3;
+        } else {
+            if (layer.empty() && channels.size() == 1) {
+                ///Alpha component only
+                partSpec.alpha_channel = 0;
+            } else {
+                ///no alpha
+                partSpec.alpha_channel = -1;
+            }
+        }
+        partSpec.nchannels = channels.size();
+        partSpec.channelnames = channels;
+        data->specs[specIndex] = partSpec;
+    }
+    
+    
+    
+    if (!data->output->open(filename, planes.size(), data->specs.data())) {
+        setPersistentMessage(OFX::Message::eMessageError, "", data->output->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
-    output->write_image(TypeDesc::FLOAT,
-                        (char*)pixelData + (spec.height - 1) * rowBytes, //invert y
+}
+
+void WriteOIIOPlugin::encodePlane(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes)
+{
+   
+    assert(user_data);
+    WriteOIIOEncodePlanesData* data = (WriteOIIOEncodePlanesData*)user_data;
+    if (planeIndex != 0) {
+        if (!data->output->open(filename, data->specs[planeIndex], ImageOutput::AppendSubimage)) {
+            setPersistentMessage(OFX::Message::eMessageError, "", data->output->geterror());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+    }
+  
+    data->output->write_image(TypeDesc::FLOAT,
+                        (char*)pixelData + (data->specs[planeIndex].height - 1) * rowBytes, //invert y
                         AutoStride, //xstride
                         -rowBytes, //ystride
                         AutoStride //zstride
                         );
     
     
-    output->close();
+}
+
+void
+WriteOIIOPlugin::endEncodePlanes(void* user_data)
+{
+    assert(user_data);
+    WriteOIIOEncodePlanesData* data = (WriteOIIOEncodePlanesData*)user_data;
+    data->output->close();
 }
 
 bool WriteOIIOPlugin::isImageFile(const std::string& /*fileExtension*/) const {
@@ -629,7 +1034,7 @@ mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, true);
     
     if (!attribute("threads", 1)) {
 #     ifdef DEBUG
@@ -720,7 +1125,9 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
-{    
+{
+    g_enableMultiPlaneFeature = OFX::getImageEffectHostDescription()->supportsDynamicChoices && OFX::getImageEffectHostDescription()->isMultiPlanar;
+    
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
@@ -831,6 +1238,28 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kParamOutputCompressionOptionPACKBITS, kParamOutputCompressionOptionPACKBITSHint);
         param->setDefault(eParamCompressionAuto);
         page->addChild(*param);
+    }
+    
+    if (g_enableMultiPlaneFeature) {
+        {
+            OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputLayer);
+            param->setLabel(kParamOutputLayerLabel);
+            param->setHint(kParamOutputLayerHint);
+            param->appendOption(kParamOutputLayerAll);
+            param->appendOption(kWriteOIIOColorRGBA);
+            param->setDefault(1);
+            param->setEvaluateOnChange(false);
+            param->setIsPersistant(false);
+            desc.addClipPreferencesSlaveParam(*param);
+            page->addChild(*param);
+        }
+        {
+            //Add a hidden string param that will remember the value of the choice
+            OFX::StringParamDescriptor* param = desc.defineStringParam(kParamOutputLayerChoice);
+            param->setLabel(kParamOutputLayerLabel "Choice");
+            param->setIsSecret(true);
+            page->addChild(*param);
+        }
     }
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

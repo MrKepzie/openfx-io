@@ -116,8 +116,9 @@ public:
     void purgeCaches(void) OVERRIDE FINAL;
 
     
-    
 protected:
+    
+    
     
     /**
      * @brief Override this function to actually encode the image in the file pointed to by filename.
@@ -138,7 +139,8 @@ protected:
                         const OfxRectI& bounds,
                         float pixelAspectRatio,
                         OFX::PixelComponentEnum pixelComponents,
-                        int rowBytes) = 0;
+                        int rowBytes);
+    
     
     virtual void beginEncode(const std::string& /*filename*/,
                              const OfxRectI& /*rodPixel*/,
@@ -147,6 +149,26 @@ protected:
     
     virtual void endEncode(const OFX::EndSequenceRenderArguments &/*args*/) {}
 
+    friend class EncodePlanesLocalData_RAII;
+    ///Used to allocate/free userdata passed to beginEncodePlanes,endEncodePlanes and encodePlane
+    virtual void* allocateEncodePlanesUserData() { return (void*)0; }
+    virtual void destroyEncodePlanesUserData(void* /*data*/) {}
+    
+    /**
+     * @brief When writing multiple planes, should allocate data that are shared amongst all planes
+     **/
+    virtual void beginEncodePlanes(void* user_data,
+                                   const std::string& filename,
+                                   OfxTime time,
+                                   float pixelAspectRatio,
+                                   const std::list<std::string>& planes,
+                                   const OfxRectI& bounds);
+    
+    virtual void endEncodePlanes(void* /*user_data*/) {}
+    
+    virtual void encodePlane(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes);
+    
+    
     /**
      * @brief Overload to return false if the given file extension is a video file extension or
      * true if this is an image file extension.
@@ -298,7 +320,28 @@ private:
                           int dstRowBytes);
 };
 
-void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety);
+class EncodePlanesLocalData_RAII
+{
+    GenericWriterPlugin* _w;
+    void* data;
+public:
+    
+    EncodePlanesLocalData_RAII(GenericWriterPlugin* w)
+    : _w(w)
+    , data(0)
+    {
+        data = w->allocateEncodePlanesUserData();
+    }
+    
+    ~EncodePlanesLocalData_RAII()
+    {
+        _w->destroyEncodePlanesUserData(data);
+    }
+    
+    void* getData() const  { return data; }
+};
+
+void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety, bool isMultiPlanar);
 OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 

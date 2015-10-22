@@ -324,7 +324,6 @@ GenericReaderPlugin::restoreStateFromParameters()
     }
     
 
-    _oldFileName.clear();
     
     OfxRangeI tmp;
 
@@ -1751,33 +1750,31 @@ GenericReaderPlugin::inputFileChanged()
         OFX::PixelComponentEnum components;
         int componentCount;
         OFX::PreMultiplicationEnum premult;
-        if (filename != _oldFileName) {
-            
-            _oldFileName = filename;
-            
-            onInputFileChanged(filename, &premult, &components, &componentCount);
-            // RGB is always Opaque, Alpha is always PreMultiplied
-            if (components == OFX::ePixelComponentRGB) {
-                premult = OFX::eImageOpaque;
-            } else if (components == OFX::ePixelComponentAlpha) {
-                premult = OFX::eImagePreMultiplied;
-            }
-            if (components != OFX::ePixelComponentNone) {
-                setOutputComponents(components);
-            }
-            _premult->setValue((int)premult);
-            
-            bool customFps;
-            _customFPS->getValue(customFps);
-            if (!customFps) {
-                double fps;
-                bool gotFps = getFrameRate(filename, &fps);
-                if (gotFps) {
-                    _fps->setValue(fps);
-                }
+        
+        
+        onInputFileChanged(filename, &premult, &components, &componentCount);
+        // RGB is always Opaque, Alpha is always PreMultiplied
+        if (components == OFX::ePixelComponentRGB) {
+            premult = OFX::eImageOpaque;
+        } else if (components == OFX::ePixelComponentAlpha) {
+            premult = OFX::eImagePreMultiplied;
+        }
+        if (components != OFX::ePixelComponentNone) {
+            setOutputComponents(components);
+        }
+        _premult->setValue((int)premult);
+        
+        bool customFps;
+        _customFPS->getValue(customFps);
+        if (!customFps) {
+            double fps;
+            bool gotFps = getFrameRate(filename, &fps);
+            if (gotFps) {
+                _fps->setValue(fps);
             }
         }
     }
+    
 }
 
 void

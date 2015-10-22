@@ -1065,7 +1065,6 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         std::string outputSpaceOld;
         getOutputColorspaceAtTime(args.time, outputSpaceOld);
         std::string outputSpace = canonicalizeColorSpace(_config, _config->getColorSpaceNameByIndex(outputSpaceIndex));
-        _outputSpace->setValue(outputSpace);
         // avoid an infinite loop on bad hosts (for examples those which don't set args.reason correctly)
         if (outputSpace != outputSpaceOld) {
             _outputSpace->setValue(outputSpace);
