@@ -212,6 +212,7 @@ enum RegionOfDefinitionEnum {
 #define kParamOutputComponentsOptionAlpha "Alpha"
 
 #define kParamLayerInput "layerInput"
+#define kParamLayerInputChoice kParamLayerInput "Choice"
 #define kParamLayerInputLabel "Input Layer "
 #define kParamLayerInputHint "Select which layer from the input to use when calling cpixel/apixel on input "
 
@@ -345,7 +346,9 @@ private:
     OFX::Clip* _maskClip;
     OFX::Clip *_dstClip;
     
+    std::vector<std::list<std::string> > _clipLayerOptions;
     OFX::ChoiceParam *_clipLayerToFetch[kSourceClipCount];
+    OFX::StringParam *_clipLayerToFetchString[kSourceClipCount];
     
     OFX::IntParam *_doubleParamCount;
     OFX::DoubleParam* _doubleParams[kParamsCount];
@@ -1433,6 +1436,7 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
             }
         }
     }
+    _clipLayerOptions.resize(kSourceClipCount);
     
     _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
@@ -1449,8 +1453,11 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
         if (gHostIsMultiPlanar) {
             snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
+            snprintf(name, sizeof(name), kParamLayerInputChoice "%d", i+1 );
+            _clipLayerToFetchString[i] = fetchStringParam(name);
         } else {
             _clipLayerToFetch[i] = 0;
+            _clipLayerToFetchString[i] = 0;
         }
         
         snprintf(name, sizeof(name), kParamDouble "%d", i+1 );
@@ -1857,6 +1864,20 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         std::string script;
         _alphaScript->getValueAtTime(args.time, script);
         sendMessage(OFX::Message::eMessageMessage, "", "Alpha Script:\n" + script);
+    } else {
+        
+        char name[256];
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
+            if (paramName == std::string(name) && args.reason == OFX::eChangeUserEdit) {
+                int cur_i;
+                _clipLayerToFetch[i]->getValue(cur_i);
+                std::string opt;
+                _clipLayerToFetch[i]->getOption(cur_i, opt);
+                _clipLayerToFetchString[i]->setValue(opt);
+                break;
+            }
+        }
     }
 }
 
@@ -1907,14 +1928,38 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
     }
 }
 
+namespace {
+    static bool hasListChanged(const std::list<std::string>& oldList, const std::list<std::string>& newList)
+    {
+        if (oldList.size() != newList.size()) {
+            return true;
+        }
+        
+        std::list<std::string>::const_iterator itNew = newList.begin();
+        for (std::list<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
+            if (*it != *itNew) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 void
 SeExprPlugin::buildChannelMenus()
 {
     for (int i = 0; i < kSourceClipCount; ++i) {
-        _clipLayerToFetch[i]->resetOptions();
-        _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
-
         std::list<std::string> components = _srcClip[i]->getComponentsPresent();
+        if (!hasListChanged(_clipLayerOptions[i], components)) {
+            continue;
+        }
+        _clipLayerToFetch[i]->resetOptions();
+
+        _clipLayerOptions[i] = components;
+        
+        std::vector<std::string> options;
+        options.push_back(kSeExprColorPlaneName);
+        
         for (std::list<std::string> ::iterator it = components.begin(); it!=components.end(); ++it) {
             const std::string& comp = *it;
             if (comp == kOfxImageComponentAlpha) {
@@ -1924,11 +1969,11 @@ SeExprPlugin::buildChannelMenus()
             } else if (comp == kOfxImageComponentRGBA) {
                 continue;
             } else if (comp == kFnOfxImageComponentMotionVectors) {
-                _clipLayerToFetch[i]->appendOption(kSeExprBackwardMotionPlaneName);
-                _clipLayerToFetch[i]->appendOption(kSeExprForwardMotionPlaneName);
+                options.push_back(kSeExprBackwardMotionPlaneName);
+                options.push_back(kSeExprForwardMotionPlaneName);
             } else if (comp == kFnOfxImageComponentStereoDisparity) {
-                _clipLayerToFetch[i]->appendOption(kSeExprDisparityLeftPlaneName);
-                _clipLayerToFetch[i]->appendOption(kSeExprDisparityRightPlaneName);
+                options.push_back(kSeExprDisparityLeftPlaneName);
+                options.push_back(kSeExprDisparityRightPlaneName);
 #ifdef OFX_EXTENSIONS_NATRON
             } else {
                 std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
@@ -1936,8 +1981,33 @@ SeExprPlugin::buildChannelMenus()
                     continue;
                 }
                 // first element is layer name
-                _clipLayerToFetch[i]->appendOption(layerChannels[0]);
+                options.push_back(layerChannels[0]);
 #endif
+            }
+        }
+        for (std::size_t j = 0; j < options.size(); ++j) {
+            _clipLayerToFetch[i]->appendOption(options[j]);
+        }
+        std::string valueStr;
+        _clipLayerToFetchString[i]->getValue(valueStr);
+        if (valueStr.empty()) {
+            int cur_i;
+            _clipLayerToFetch[i]->getValue(cur_i);
+            _clipLayerToFetch[i]->getOption(cur_i, valueStr);
+            _clipLayerToFetchString[i]->setValue(valueStr);
+        } else {
+            int foundOption = -1;
+            for (int i = 0; i < (int)options.size(); ++i) {
+                if (options[i] == valueStr) {
+                    foundOption = i;
+                    break;
+                }
+            }
+            if (foundOption != -1) {
+                _clipLayerToFetch[i]->setValue(foundOption);
+            } else {
+                _clipLayerToFetch[i]->setValue(0);
+                _clipLayerToFetchString[i]->setValue(options[0]);
             }
         }
     }
@@ -2854,18 +2924,33 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             page->addChild(*group);
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
-            snprintf(label, sizeof(label), kParamLayerInputLabel "%d", i+1);
-            snprintf(hint, sizeof(hint), kParamLayerInputHint "%d", i+1);
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
-            param->setLabel(label);
-            param->setHint(hint);
-            param->setAnimates(false);
-            param->appendOption(kSeExprColorPlaneName);
-            //param->setIsSecret(true); // done in the plugin constructor
-            param->setParent(*group);
-            if (page) {
-                page->addChild(*param);
+            {
+                snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
+                snprintf(label, sizeof(label), kParamLayerInputLabel "%d", i+1);
+                snprintf(hint, sizeof(hint), kParamLayerInputHint "%d", i+1);
+                ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
+                param->setLabel(label);
+                param->setHint(hint);
+                param->setAnimates(false);
+                param->appendOption(kSeExprColorPlaneName);
+                //param->setIsSecret(true); // done in the plugin constructor
+                param->setParent(*group);
+                param->setEvaluateOnChange(false);
+                param->setIsPersistant(false);
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                snprintf(name, sizeof(name), kParamLayerInputChoice "%d", i+1);
+                snprintf(label, sizeof(label), kParamLayerInputLabel "Choice %d", i+1);
+                StringParamDescriptor *param = desc.defineStringParam(name);
+                param->setLabel(label);
+                param->setIsSecret(true);
+                param->setParent(*group);
+                if (page) {
+                    page->addChild(*param);
+                }
             }
         }
     }
