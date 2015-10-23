@@ -1248,7 +1248,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
                 //Keep in OIIO cache only the current frame in case multiple threads try to access it
                 OFX::MultiThread::AutoMutex l(_lastFileReadNoPlaybackMutex);
                 if (!_lastFileReadNoPlayback.empty() && filename != _lastFileReadNoPlayback) {
-                    _cache->invalidate(ustring(filename));
+                    _cache->invalidate(ustring(_lastFileReadNoPlayback));
                 }
                 _lastFileReadNoPlayback = filename;
             }
