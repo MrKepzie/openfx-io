@@ -1427,7 +1427,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, bool
                                         numChannels * sizeof(float), //x stride
                                         -rowBytes, //y stride < make it invert Y
                                         AutoStride //z stride
-#                                     if OIIO_VERSION > 10605
+#                                     if OIIO_VERSION >= 10605
                                         ,
                                         chbegin, // only cache these channels
                                         chend
