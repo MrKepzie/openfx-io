@@ -327,9 +327,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         bool noPremult = (pixelComponents != OFX::ePixelComponentRGBA) || (userPremult == OFX::eImageOpaque);
 
         bool isColorPlane;
-        int pixelComponentsCount;
+        int pixelComponentsCount = 0;
         std::string rawComponents = srcImg->getPixelComponentsProperty();
-        OFX::PixelComponentEnum mappedComponents;
+        OFX::PixelComponentEnum mappedComponents = OFX::ePixelComponentNone;
         if (pixelComponents != OFX::ePixelComponentCustom) {
             isColorPlane = true;
             mappedComponents = pixelComponents;
@@ -348,6 +348,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                     break;
                 default:
                     OFX::throwSuiteStatusException(kOfxStatErrFormat);
+                    return;
                     break;
             }
         } else {
@@ -370,6 +371,8 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                     mappedComponents = OFX::ePixelComponentRGBA;
                     break;
                 default:
+                    OFX::throwSuiteStatusException(kOfxStatErrFormat);
+                    return;
                     break;
             }
         }
@@ -380,7 +383,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         args.renderWindow.x2 == bounds.x2 &&
         args.renderWindow.y2 == bounds.y2;
         
-        
+        assert(pixelComponentsCount != 0 && mappedComponents != OFX::ePixelComponentNone);
         
         if (renderWindowIsBounds &&
             isOCIOIdentity &&
