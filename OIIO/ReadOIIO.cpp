@@ -1273,14 +1273,16 @@ ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput*
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-        {
+        
+#pragma message WARN("Uncomment this block when https://github.com/OpenImageIO/oiio/issues/1239 (race-condition) is REALLY fixed")
+        /*{
             //Keep in OIIO cache only the current frame in case multiple threads try to access it
             OFX::MultiThread::AutoMutex l(_lastFileReadNoPlaybackMutex);
             if (!_lastFileReadNoPlayback.empty() && filename != _lastFileReadNoPlayback) {
                 _cache->invalidate(ustring(_lastFileReadNoPlayback));
             }
             _lastFileReadNoPlayback = filename;
-        }
+        }*/
         
     } else // warning: '{' must follow #endif
 #endif
