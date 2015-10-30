@@ -45,7 +45,7 @@
 #include <ofxsMultiThread.h>
 #endif
 
-
+#include "GenericOCIO.h"
 #include "GenericReader.h"
 
 
@@ -85,7 +85,7 @@ private:
 
     virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -602,10 +602,17 @@ ReadEXRPlugin::decode(const std::string& filename,
 
 void
 ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
+                                  bool setColorSpace, //!< true is colorspace was not set from the filename
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,
                                   int *componentCount)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, exr files are assumed to be linear.
+        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
     assert(premult && components);
     Exr::File* file = Exr::FileManager::s_readerManager.get(newFile);
     bool hasRed;
@@ -640,6 +647,7 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
 #pragma message WARN("This is probably wrong, I just set it for the sake of making it compile.")
     // where can we get premult information in EXR data?
     *premult = OFX::eImagePreMultiplied;
+
 }
 
 bool

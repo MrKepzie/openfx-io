@@ -214,7 +214,7 @@ private:
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
      **/
-    virtual void onOutputFileChanged(const std::string& /*newFile*/) {}
+    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) = 0;
 
     /**
      * @brief Override to clear any cache you may have.

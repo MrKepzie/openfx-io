@@ -885,7 +885,7 @@ private:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
-    virtual void onOutputFileChanged(const std::string &filename) OVERRIDE FINAL;
+    virtual void onOutputFileChanged(const std::string &filename, bool setColorSpace) OVERRIDE FINAL;
 
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
     virtual void beginEdit(void) OVERRIDE FINAL;
@@ -3096,8 +3096,35 @@ WriteFFmpegPlugin::beginEdit()
 }
 
 void
-WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
+WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename, bool setColorSpace)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, video files are assumed to be rec709.
+        if (_ocio->hasColorspace("Rec709")) {
+            // nuke-default
+            _ocio->setInputColorspace("Rec709");
+        } else if (_ocio->hasColorspace("nuke_rec709")) {
+            // blender
+            _ocio->setInputColorspace("nuke_rec709");
+        } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            _ocio->setInputColorspace("Rec.709 - Full");
+        } else if (_ocio->hasColorspace("out_rec709full")) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            _ocio->setInputColorspace("out_rec709full");
+        } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+            // rrt_rec709_full_100nits in aces 0.7.1
+            _ocio->setInputColorspace("rrt_rec709_full_100nits");
+        } else if (_ocio->hasColorspace("rrt_rec709")) {
+            // rrt_rec709 in aces 0.1.1
+            _ocio->setInputColorspace("rrt_rec709");
+        } else if (_ocio->hasColorspace("hd10")) {
+            // hd10 in spi-anim and spi-vfx
+            _ocio->setInputColorspace("hd10");
+        }
+#     endif
+    }
     // Switch the 'format' knob based on the new filename suffix
     std::string suffix = filename.substr(filename.find_last_of(".") + 1);
     if (!suffix.empty()) {

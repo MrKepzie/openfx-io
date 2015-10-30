@@ -874,9 +874,23 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else if (paramName == kParamFilename) {
         std::string filename;
         _fileParam->getValue(filename);
+        bool setColorSpace = true;
+# ifdef OFX_IO_USING_OCIO
+        // Always try to parse from string first,
+        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+        const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
+        if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+            colorSpaceStr = NULL;
+        }
+        if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+            // we're lucky
+            _ocio->setOutputColorspace(colorSpaceStr);
+            setColorSpace = false;
+        }
+# endif
 
         ///let the derive class a chance to initialize any data structure it may need
-        onOutputFileChanged(filename);
+        onOutputFileChanged(filename, setColorSpace);
         
         if (_clipToProject) {
             int type;

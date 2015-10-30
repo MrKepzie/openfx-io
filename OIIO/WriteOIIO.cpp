@@ -239,7 +239,7 @@ public:
     virtual void getClipComponents(const OFX::ClipComponentsArguments& args, OFX::ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
     
 private:
-    virtual void onOutputFileChanged(const std::string& filename) OVERRIDE FINAL;
+    virtual void onOutputFileChanged(const std::string& filename, bool setColorSpace) OVERRIDE FINAL;
 
     virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL
     {
@@ -636,30 +636,102 @@ WriteOIIOPlugin::displayWindowSupportedByFormat(const std::string& filename) con
     }
 }
 
-void WriteOIIOPlugin::onOutputFileChanged(const std::string &filename) {
-    ///uncomment to use OCIO meta-data as a hint to set the correct color-space for the file.
 
-#ifdef OFX_IO_USING_OCIO
-	int finalBitDepth_i;
-    _bitDepth->getValue(finalBitDepth_i);
-    ETuttlePluginBitDepth finalBitDepth = getDefaultBitDepth(filename, (ETuttlePluginBitDepth)finalBitDepth_i);
+static bool has_suffix(const std::string &str, const std::string &suffix)
+{
+    return (str.size() >= suffix.size() &&
+            str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0);
+}
 
-    if (finalBitDepth == eTuttlePluginBitDepth64f || finalBitDepth == eTuttlePluginBitDepth32f || finalBitDepth == eTuttlePluginBitDepth16f) {
-        _ocio->setOutputColorspace("scene_linear");
-    } else {
-        if (_ocio->hasColorspace("sRGB")) {
-            // nuke-default
-            _ocio->setOutputColorspace("sRGB");
-        } else if (_ocio->hasColorspace("rrt_srgb")) {
-            // rrt_srgb in aces
-            _ocio->setOutputColorspace("rrt_srgb");
-        } else if (_ocio->hasColorspace("srgb8")) {
-            // srgb8 in spi-vfx
-            _ocio->setOutputColorspace("srgb8");
+
+void
+WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
+                                     bool setColorSpace)
+{
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        int finalBitDepth_i;
+        _bitDepth->getValue(finalBitDepth_i);
+        ETuttlePluginBitDepth finalBitDepth = getDefaultBitDepth(filename, (ETuttlePluginBitDepth)finalBitDepth_i);
+
+        // no colorspace... we'll probably have to try something else, then.
+        // we set the following defaults:
+        // sRGB for 8-bit images
+        // Rec709 for 10-bits, 12-bits or 16-bits integer images
+        // Linear for anything else
+        switch (finalBitDepth) {
+            case eTuttlePluginBitDepth8: {
+                if (_ocio->hasColorspace("sRGB")) {
+                    // nuke-default
+                    _ocio->setOutputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("rrt_srgb")) {
+                    // rrt_srgb in aces
+                    _ocio->setOutputColorspace("rrt_srgb");
+                } else if (_ocio->hasColorspace("srgb8")) {
+                    // srgb8 in spi-vfx
+                    _ocio->setOutputColorspace("srgb8");
+                }
+                break;
+            }
+            case eTuttlePluginBitDepth10:
+            case eTuttlePluginBitDepth12:
+            case eTuttlePluginBitDepth16: {
+                if (has_suffix(filename, ".cin") || has_suffix(filename, ".dpx") ||
+                    has_suffix(filename, ".CIN") || has_suffix(filename, ".DPX")) {
+                    // Cineon or DPX file
+                    if (_ocio->hasColorspace("Cineon")) {
+                        // Cineon in nuke-default
+                        _ocio->setInputColorspace("Cineon");
+                    } else if (_ocio->hasColorspace("REDlogFilm")) {
+                        // REDlogFilm in aces 1.0.0
+                        _ocio->setInputColorspace("REDlogFilm");
+                    } else if (_ocio->hasColorspace("cineon")) {
+                        // cineon in aces 0.7.1
+                        _ocio->setInputColorspace("cineon");
+                    } else if (_ocio->hasColorspace("adx10")) {
+                        // adx10 in aces 0.1.1
+                        _ocio->setInputColorspace("adx10");
+                    } else if (_ocio->hasColorspace("lg10")) {
+                        // lg10 in spi-vfx
+                        _ocio->setInputColorspace("lg10");
+                    } else if (_ocio->hasColorspace("lm10")) {
+                        // lm10 in spi-anim
+                        _ocio->setInputColorspace("lm10");
+                    } else {
+                        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                    }
+                } else {
+                    if (_ocio->hasColorspace("Rec709")) {
+                        // nuke-default
+                        _ocio->setInputColorspace("Rec709");
+                    } else if (_ocio->hasColorspace("nuke_rec709")) {
+                        // blender
+                        _ocio->setInputColorspace("nuke_rec709");
+                    } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+                        // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                        _ocio->setInputColorspace("Rec.709 - Full");
+                    } else if (_ocio->hasColorspace("out_rec709full")) {
+                        // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                        _ocio->setInputColorspace("out_rec709full");
+                    } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+                        // rrt_rec709_full_100nits in aces 0.7.1
+                        _ocio->setInputColorspace("rrt_rec709_full_100nits");
+                    } else if (_ocio->hasColorspace("rrt_rec709")) {
+                        // rrt_rec709 in aces 0.1.1
+                        _ocio->setInputColorspace("rrt_rec709");
+                    } else if (_ocio->hasColorspace("hd10")) {
+                        // hd10 in spi-anim and spi-vfx
+                        _ocio->setInputColorspace("hd10");
+                    }
+                }
+                break;
+            }
+            default:
+                _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
         }
+#     endif
     }
-#endif
-    
+
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (output.get()) {
         _tileSize->setIsSecret(!output->supports("tiles"));

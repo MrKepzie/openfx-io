@@ -1750,9 +1750,23 @@ GenericReaderPlugin::inputFileChanged()
         OFX::PixelComponentEnum components;
         int componentCount;
         OFX::PreMultiplicationEnum premult;
-        
-        
-        onInputFileChanged(filename, &premult, &components, &componentCount);
+
+        bool setColorSpace = true;
+# ifdef OFX_IO_USING_OCIO
+        // Always try to parse from string first,
+        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+        const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
+        if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+            colorSpaceStr = NULL;
+        }
+        if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+            // we're lucky
+            _ocio->setInputColorspace(colorSpaceStr);
+            setColorSpace = false;
+        }
+# endif
+
+        onInputFileChanged(filename, setColorSpace, &premult, &components, &componentCount);
         // RGB is always Opaque, Alpha is always PreMultiplied
         if (components == OFX::ePixelComponentRGB) {
             premult = OFX::eImageOpaque;

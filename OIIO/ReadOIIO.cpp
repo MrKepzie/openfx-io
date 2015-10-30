@@ -191,7 +191,7 @@ public:
 private:
 
     
-    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
@@ -1628,13 +1628,10 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
 }
 
 void
-ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
-{
-    assert(_specValid);
-    if (!_specValid) {
-        return;
-    }
-# ifdef OFX_IO_USING_OCIO
+ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
+    
+    
+#     ifdef OFX_IO_USING_OCIO
     ///find-out the image color-space
     const ParamValue* colorSpaceValue = _subImagesSpec[0].find_attribute("oiio:ColorSpace", TypeDesc::STRING);
     const ParamValue* photoshopICCProfileValue = _subImagesSpec[0].find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
@@ -1801,10 +1798,10 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
                 // lm10 in spi-anim
                 _ocio->setInputColorspace("lm10");
             } else {
-                _ocio->setInputColorspace("compositing_log");
+                _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
             }
         } else if(!strcmp(colorSpaceStr, "Linear")) {
-            _ocio->setInputColorspace("scene_linear");
+            _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
             // lnf in spi-vfx
         } else if (_ocio->hasColorspace(colorSpaceStr)) {
             // maybe we're lucky
@@ -1813,12 +1810,13 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
             // unknown color-space or Linear, don't do anything
         }
     }
-    
-# endif // OFX_IO_USING_OCIO
+
+#     endif // OFX_IO_USING_OCIO
 }
 
 void
 ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
+                                   bool setColorSpace,
                                    OFX::PreMultiplicationEnum *premult,
                                    OFX::PixelComponentEnum *components,
                                    int *componentCount)
@@ -1830,7 +1828,9 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
         return;
     }
     
-    setOCIOColorspacesFromSpec(filename);
+    if (setColorSpace) {
+        setOCIOColorspacesFromSpec(filename);
+    }
     
     if (_useRGBAChoices) {
         

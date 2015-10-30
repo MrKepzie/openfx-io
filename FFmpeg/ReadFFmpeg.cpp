@@ -35,6 +35,7 @@
 
 #include "IOUtility.h"
 
+#include "GenericOCIO.h"
 #include "GenericReader.h"
 #include "FFmpegFile.h"
 
@@ -76,7 +77,7 @@ private:
 
     virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& filename, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
@@ -135,10 +136,38 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
 void
 ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
+                                     bool setColorSpace,
                                      OFX::PreMultiplicationEnum *premult,
                                      OFX::PixelComponentEnum *components,
                                      int *componentCount)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, video files are assumed to be rec709.
+        if (_ocio->hasColorspace("Rec709")) {
+            // nuke-default
+            _ocio->setInputColorspace("Rec709");
+        } else if (_ocio->hasColorspace("nuke_rec709")) {
+            // blender
+            _ocio->setInputColorspace("nuke_rec709");
+        } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            _ocio->setInputColorspace("Rec.709 - Full");
+        } else if (_ocio->hasColorspace("out_rec709full")) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            _ocio->setInputColorspace("out_rec709full");
+        } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+            // rrt_rec709_full_100nits in aces 0.7.1
+            _ocio->setInputColorspace("rrt_rec709_full_100nits");
+        } else if (_ocio->hasColorspace("rrt_rec709")) {
+            // rrt_rec709 in aces 0.1.1
+            _ocio->setInputColorspace("rrt_rec709");
+        } else if (_ocio->hasColorspace("hd10")) {
+            // hd10 in spi-anim and spi-vfx
+            _ocio->setInputColorspace("hd10");
+        }
+#     endif
+    }
     assert(premult && components && componentCount);
     //Clear all opened files by this plug-in since the user changed the selected file/sequence
     _manager.clear(this);

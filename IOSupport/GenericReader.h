@@ -146,7 +146,11 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) = 0;
+    virtual void onInputFileChanged(const std::string& newFile,
+                                    bool setColorSpace, //!< true is colorspace was not set from the filename
+                                    OFX::PreMultiplicationEnum *premult,
+                                    OFX::PixelComponentEnum *components,
+                                    int *componentCount) = 0;
     
     /**
      * @brief Called when the Output Components param changes
