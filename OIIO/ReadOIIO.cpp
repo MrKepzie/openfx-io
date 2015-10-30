@@ -1979,18 +1979,15 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
     if (foundView == _layersMap.end()) {
         /*
          We did not find the view by name. To offer some sort of compatibility and not fail, just load the view corresponding to the given
-         index, even though the names do not match
+         index, even though the names do not match. 
+         If the index is out of range, just load the main view (index 0)
          */
-        if (view < 0 || view >= (int)_layersMap.size()) {
-            std::stringstream ss;
-            ss << "Could not find view " << viewName << " in " << filename;
-            setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
-        } else {
-            foundView = _layersMap.begin();
+        
+        foundView = _layersMap.begin();
+        if (view >= 0 && view < (int)_layersMap.size()) {
             std::advance(foundView, view);
         }
+        
         
     }
     
