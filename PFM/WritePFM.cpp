@@ -67,6 +67,8 @@ private:
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImageUnPreMultiplied; }
+
+    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
 };
 
 WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle)
@@ -175,6 +177,17 @@ bool WritePFMPlugin::isImageFile(const std::string& /*fileExtension*/) const {
     return true;
 }
 
+void
+WritePFMPlugin::onOutputFileChanged(const std::string &/*filename*/,
+                                    bool setColorSpace)
+{
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, pfm files are assumed to be linear.
+        _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
+}
 
 using namespace OFX;
 

@@ -62,7 +62,7 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
 };
 
@@ -347,10 +347,17 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
 
 void
 ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
+                                  bool setColorSpace,
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,
                                   int *componentCount)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, pfm files are assumed to be linear.
+        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
     assert(premult && components);
     int startingTime = getStartingTime();
     std::string filename;

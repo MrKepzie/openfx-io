@@ -149,10 +149,10 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
             // lm10 in spi-anim
             return cs->getName();
         } else {
-            return "compositing_log"; // reasonable default
+            return OCIO_NAMESPACE::ROLE_COMPOSITING_LOG; // reasonable default
         }
     } else if (!strcmp(colorSpaceNameDefault, "Linear") || !strcmp(colorSpaceNameDefault, "linear")) {
-        return "scene_linear";
+        return OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
         // lnf in spi-vfx
     } else if ((cs = config->getColorSpace(colorSpaceNameDefault))) {
         // maybe we're lucky

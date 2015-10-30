@@ -35,6 +35,7 @@
 #include <ImfOutputFile.h>
 #include <half.h>
 
+#include "GenericOCIO.h"
 #include "GenericWriter.h"
 
 #define kPluginName "WriteEXR"
@@ -118,6 +119,8 @@ private:
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
+
+    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
 
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _bitDepth;
@@ -261,6 +264,17 @@ bool WriteEXRPlugin::isImageFile(const std::string& /*fileExtension*/) const{
     return true;
 }
 
+void
+WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
+                                    bool setColorSpace)
+{
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, exr files are assumed to be linear.
+        _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
+}
 
 using namespace OFX;
 
