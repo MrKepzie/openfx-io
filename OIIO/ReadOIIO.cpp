@@ -1032,76 +1032,100 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     }
     if (setColorSpace) {
 #     ifdef OFX_IO_USING_OCIO
-    ///find-out the image color-space
-    const ParamValue* colorSpaceValue = _subImagesSpec[0].find_attribute("oiio:ColorSpace", TypeDesc::STRING);
-    const ParamValue* photoshopICCProfileValue = _subImagesSpec[0].find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
-    //photoshop:ICCProfile: "HDTV (Rec. 709)"
+        ///find-out the image color-space
+        const ParamValue* colorSpaceValue = _subImagesSpec[0].find_attribute("oiio:ColorSpace", TypeDesc::STRING);
+        const ParamValue* photoshopICCProfileValue = _subImagesSpec[0].find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
+        //photoshop:ICCProfile: "HDTV (Rec. 709)"
 
-    //we found a color-space hint, use it to do the color-space conversion
-    const char* colorSpaceStr = NULL;
-    if (colorSpaceValue) {
-        colorSpaceStr = *(const char**)colorSpaceValue->data();
-    } else if (photoshopICCProfileValue) {
-        const char* ICCProfileStr = *(const char**)photoshopICCProfileValue->data();
-        if (!strcmp(ICCProfileStr, "HDTV (Rec. 709)") ||
-            !strcmp(ICCProfileStr, "SDTV NTSC") ||
-            !strcmp(ICCProfileStr, "SDTV PAL") ||
-            !strcmp(ICCProfileStr, "HDTV (Rec. 709) 16-235") ||
-            !strcmp(ICCProfileStr, "SDTV NTSC 16-235") ||
-            !strcmp(ICCProfileStr, "SDTV PAL 16-235") ||
-            !strcmp(ICCProfileStr, "SDTV NTSC 16-235")) {
-            colorSpaceStr = "Rec709";
-        } else if (!strcmp(ICCProfileStr, "sRGB IEC61966-2.1")) {
-            colorSpaceStr = "sRGB";
-        } else if (!strcmp(ICCProfileStr, "Universal Camera Film Printing Density)")) {
-            colorSpaceStr = "KodakLog";
-        }
-    }
-    if (!colorSpaceStr) {
-        // no colorspace... we'll probably have to try something else, then.
-        // we set the following defaults:
-        // sRGB for 8-bit images
-        // Rec709 for 10-bits, 12-bits or 16-bits integer images
-        // Linear for anything else
-        switch (_subImagesSpec[0].format.basetype) {
-            case TypeDesc::UCHAR:
-            case TypeDesc::CHAR:
+        //we found a color-space hint, use it to do the color-space conversion
+        const char* colorSpaceStr = NULL;
+        if (colorSpaceValue) {
+            colorSpaceStr = *(const char**)colorSpaceValue->data();
+        } else if (photoshopICCProfileValue) {
+            const char* ICCProfileStr = *(const char**)photoshopICCProfileValue->data();
+            if (!strcmp(ICCProfileStr, "HDTV (Rec. 709)") ||
+                !strcmp(ICCProfileStr, "SDTV NTSC") ||
+                !strcmp(ICCProfileStr, "SDTV PAL") ||
+                !strcmp(ICCProfileStr, "HDTV (Rec. 709) 16-235") ||
+                !strcmp(ICCProfileStr, "SDTV NTSC 16-235") ||
+                !strcmp(ICCProfileStr, "SDTV PAL 16-235") ||
+                !strcmp(ICCProfileStr, "SDTV NTSC 16-235")) {
+                colorSpaceStr = "Rec709";
+            } else if (!strcmp(ICCProfileStr, "sRGB IEC61966-2.1")) {
                 colorSpaceStr = "sRGB";
-                break;
-            case TypeDesc::USHORT:
-            case TypeDesc::SHORT:
-                if (has_suffix(filename, ".cin") || has_suffix(filename, ".dpx") ||
-                    has_suffix(filename, ".CIN") || has_suffix(filename, ".DPX")) {
-                    // Cineon or DPX file
-                    colorSpaceStr = "KodakLog";
-                } else {
-                    colorSpaceStr = "Rec709";
-                }
-                break;
-            default:
-                colorSpaceStr = "Linear";
-                break;
+            } else if (!strcmp(ICCProfileStr, "Universal Camera Film Printing Density)")) {
+                colorSpaceStr = "KodakLog";
+            }
         }
-    }
-    if (colorSpaceStr) {
-        if (!strcmp(colorSpaceStr, "GammaCorrected")) {
-            float gamma = _subImagesSpec[0].get_float_attribute("oiio:Gamma");
-            if (std::fabs(gamma-1.8) < 0.01) {
-                if (_ocio->hasColorspace("Gamma1.8")) {
-                    // nuke-default
-                    _ocio->setInputColorspace("Gamma1.8");
+        if (!colorSpaceStr) {
+            // no colorspace... we'll probably have to try something else, then.
+            // we set the following defaults:
+            // sRGB for 8-bit images
+            // Rec709 for 10-bits, 12-bits or 16-bits integer images
+            // Linear for anything else
+            switch (_subImagesSpec[0].format.basetype) {
+                case TypeDesc::UCHAR:
+                case TypeDesc::CHAR:
+                    colorSpaceStr = "sRGB";
+                    break;
+                case TypeDesc::USHORT:
+                case TypeDesc::SHORT:
+                    if (has_suffix(filename, ".cin") || has_suffix(filename, ".dpx") ||
+                        has_suffix(filename, ".CIN") || has_suffix(filename, ".DPX")) {
+                        // Cineon or DPX file
+                        colorSpaceStr = "KodakLog";
+                    } else {
+                        colorSpaceStr = "Rec709";
+                    }
+                    break;
+                default:
+                    colorSpaceStr = "Linear";
+                    break;
+            }
+        }
+        if (colorSpaceStr) {
+            if (!strcmp(colorSpaceStr, "GammaCorrected")) {
+                float gamma = _subImagesSpec[0].get_float_attribute("oiio:Gamma");
+                if (std::fabs(gamma-1.8) < 0.01) {
+                    if (_ocio->hasColorspace("Gamma1.8")) {
+                        // nuke-default
+                        _ocio->setInputColorspace("Gamma1.8");
+                    }
+                } else if (std::fabs(gamma-2.2) < 0.01) {
+                    if (_ocio->hasColorspace("Gamma2.2")) {
+                        // nuke-default
+                        _ocio->setInputColorspace("Gamma2.2");
+                    } else if (_ocio->hasColorspace("VD16")) {
+                        // VD16 in blender
+                        _ocio->setInputColorspace("VD16");
+                    } else if (_ocio->hasColorspace("vd16")) {
+                        // vd16 in spi-anim and spi-vfx
+                        _ocio->setInputColorspace("vd16");
+                    } else if (_ocio->hasColorspace("sRGB")) {
+                        // nuke-default and blender
+                        _ocio->setInputColorspace("sRGB");
+                    } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
+                        // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                        _ocio->setInputColorspace("sRGB (D60 sim.)");
+                    } else if (_ocio->hasColorspace("out_srgbd60sim")) {
+                        // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                        _ocio->setInputColorspace("out_srgbd60sim");
+                    } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
+                        // rrt_Gamma2.2 in aces 0.7.1
+                        _ocio->setInputColorspace("rrt_Gamma2.2");
+                    } else if (_ocio->hasColorspace("rrt_srgb")) {
+                        // rrt_srgb in aces 0.1.1
+                        _ocio->setInputColorspace("rrt_srgb");
+                    } else if (_ocio->hasColorspace("srgb8")) {
+                        // srgb8 in spi-vfx
+                        _ocio->setInputColorspace("srgb8");
+                    } else if (_ocio->hasColorspace("vd16")) {
+                        // vd16 in spi-anim
+                        _ocio->setInputColorspace("vd16");
+                    }
                 }
-            } else if (std::fabs(gamma-2.2) < 0.01) {
-                if (_ocio->hasColorspace("Gamma2.2")) {
-                    // nuke-default
-                    _ocio->setInputColorspace("Gamma2.2");
-                } else if (_ocio->hasColorspace("VD16")) {
-                    // VD16 in blender
-                    _ocio->setInputColorspace("VD16");
-                } else if (_ocio->hasColorspace("vd16")) {
-                    // vd16 in spi-anim and spi-vfx
-                    _ocio->setInputColorspace("vd16");
-                } else if (_ocio->hasColorspace("sRGB")) {
+            } else if(!strcmp(colorSpaceStr, "sRGB")) {
+                if (_ocio->hasColorspace("sRGB")) {
                     // nuke-default and blender
                     _ocio->setInputColorspace("sRGB");
                 } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
@@ -1119,97 +1143,73 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
                 } else if (_ocio->hasColorspace("srgb8")) {
                     // srgb8 in spi-vfx
                     _ocio->setInputColorspace("srgb8");
+                } else if (_ocio->hasColorspace("Gamma2.2")) {
+                    // nuke-default
+                    _ocio->setInputColorspace("Gamma2.2");
+                } else if (_ocio->hasColorspace("srgb8")) {
+                    // srgb8 in spi-vfx
+                    _ocio->setInputColorspace("srgb8");
                 } else if (_ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim
                     _ocio->setInputColorspace("vd16");
                 }
-            }
-        } else if(!strcmp(colorSpaceStr, "sRGB")) {
-            if (_ocio->hasColorspace("sRGB")) {
-                // nuke-default and blender
-                _ocio->setInputColorspace("sRGB");
-            } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
-                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                _ocio->setInputColorspace("sRGB (D60 sim.)");
-            } else if (_ocio->hasColorspace("out_srgbd60sim")) {
-                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                _ocio->setInputColorspace("out_srgbd60sim");
-            } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
-                // rrt_Gamma2.2 in aces 0.7.1
-                _ocio->setInputColorspace("rrt_Gamma2.2");
-            } else if (_ocio->hasColorspace("rrt_srgb")) {
-                // rrt_srgb in aces 0.1.1
-                _ocio->setInputColorspace("rrt_srgb");
-            } else if (_ocio->hasColorspace("srgb8")) {
-                // srgb8 in spi-vfx
-                _ocio->setInputColorspace("srgb8");
-            } else if (_ocio->hasColorspace("Gamma2.2")) {
-                // nuke-default
-                _ocio->setInputColorspace("Gamma2.2");
-            } else if (_ocio->hasColorspace("srgb8")) {
-                // srgb8 in spi-vfx
-                _ocio->setInputColorspace("srgb8");
-            } else if (_ocio->hasColorspace("vd16")) {
-                // vd16 in spi-anim
-                _ocio->setInputColorspace("vd16");
-            }
-        } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
-            // ???
-        } else if(!strcmp(colorSpaceStr, "Rec709")) {
-            if (_ocio->hasColorspace("Rec709")) {
-                // nuke-default
-                _ocio->setInputColorspace("Rec709");
-            } else if (_ocio->hasColorspace("nuke_rec709")) {
-                // blender
-                _ocio->setInputColorspace("nuke_rec709");
-            } else if (_ocio->hasColorspace("Rec.709 - Full")) {
-                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                _ocio->setInputColorspace("Rec.709 - Full");
-            } else if (_ocio->hasColorspace("out_rec709full")) {
-                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                _ocio->setInputColorspace("out_rec709full");
-            } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
-                // rrt_rec709_full_100nits in aces 0.7.1
-                _ocio->setInputColorspace("rrt_rec709_full_100nits");
-            } else if (_ocio->hasColorspace("rrt_rec709")) {
-                // rrt_rec709 in aces 0.1.1
-                _ocio->setInputColorspace("rrt_rec709");
-            } else if (_ocio->hasColorspace("hd10")) {
-                // hd10 in spi-anim and spi-vfx
-                _ocio->setInputColorspace("hd10");
-            }
-        } else if(!strcmp(colorSpaceStr, "KodakLog")) {
-            if (_ocio->hasColorspace("Cineon")) {
-                // Cineon in nuke-default
-                _ocio->setInputColorspace("Cineon");
-            } else if (_ocio->hasColorspace("REDlogFilm")) {
-                // REDlogFilm in aces 1.0.0
-                _ocio->setInputColorspace("REDlogFilm");
-            } else if (_ocio->hasColorspace("cineon")) {
-                // cineon in aces 0.7.1
-                _ocio->setInputColorspace("cineon");
-            } else if (_ocio->hasColorspace("adx10")) {
-                // adx10 in aces 0.1.1
-                _ocio->setInputColorspace("adx10");
-            } else if (_ocio->hasColorspace("lg10")) {
-                // lg10 in spi-vfx
-                _ocio->setInputColorspace("lg10");
-            } else if (_ocio->hasColorspace("lm10")) {
-                // lm10 in spi-anim
-                _ocio->setInputColorspace("lm10");
+            } else if(!strcmp(colorSpaceStr, "AdobeRGB")) {
+                // ???
+            } else if(!strcmp(colorSpaceStr, "Rec709")) {
+                if (_ocio->hasColorspace("Rec709")) {
+                    // nuke-default
+                    _ocio->setInputColorspace("Rec709");
+                } else if (_ocio->hasColorspace("nuke_rec709")) {
+                    // blender
+                    _ocio->setInputColorspace("nuke_rec709");
+                } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+                    // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                    _ocio->setInputColorspace("Rec.709 - Full");
+                } else if (_ocio->hasColorspace("out_rec709full")) {
+                    // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                    _ocio->setInputColorspace("out_rec709full");
+                } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+                    // rrt_rec709_full_100nits in aces 0.7.1
+                    _ocio->setInputColorspace("rrt_rec709_full_100nits");
+                } else if (_ocio->hasColorspace("rrt_rec709")) {
+                    // rrt_rec709 in aces 0.1.1
+                    _ocio->setInputColorspace("rrt_rec709");
+                } else if (_ocio->hasColorspace("hd10")) {
+                    // hd10 in spi-anim and spi-vfx
+                    _ocio->setInputColorspace("hd10");
+                }
+            } else if(!strcmp(colorSpaceStr, "KodakLog")) {
+                if (_ocio->hasColorspace("Cineon")) {
+                    // Cineon in nuke-default
+                    _ocio->setInputColorspace("Cineon");
+                } else if (_ocio->hasColorspace("REDlogFilm")) {
+                    // REDlogFilm in aces 1.0.0
+                    _ocio->setInputColorspace("REDlogFilm");
+                } else if (_ocio->hasColorspace("cineon")) {
+                    // cineon in aces 0.7.1
+                    _ocio->setInputColorspace("cineon");
+                } else if (_ocio->hasColorspace("adx10")) {
+                    // adx10 in aces 0.1.1
+                    _ocio->setInputColorspace("adx10");
+                } else if (_ocio->hasColorspace("lg10")) {
+                    // lg10 in spi-vfx
+                    _ocio->setInputColorspace("lg10");
+                } else if (_ocio->hasColorspace("lm10")) {
+                    // lm10 in spi-anim
+                    _ocio->setInputColorspace("lm10");
+                } else {
+                    _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                }
+            } else if(!strcmp(colorSpaceStr, "Linear")) {
+                _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                // lnf in spi-vfx
+            } else if (_ocio->hasColorspace(colorSpaceStr)) {
+                // maybe we're lucky
+                _ocio->setInputColorspace(colorSpaceStr);
             } else {
-                _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                // unknown color-space or Linear, don't do anything
             }
-        } else if(!strcmp(colorSpaceStr, "Linear")) {
-            _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
-            // lnf in spi-vfx
-        } else if (_ocio->hasColorspace(colorSpaceStr)) {
-            // maybe we're lucky
-            _ocio->setInputColorspace(colorSpaceStr);
-        } else {
-            // unknown color-space or Linear, don't do anything
         }
-    }
 #     endif // OFX_IO_USING_OCIO
     } // if (setColorSpace)
 
