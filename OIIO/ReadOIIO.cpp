@@ -1615,7 +1615,9 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
         //Restore channels from the channel strings serialized
         restoreChannelMenusFromStringParams();
     } else {
-        buildLayersMenu(filename);
+        if (_specValid) {
+            buildLayersMenu(filename);
+        }
     }
     
     _lastInputFilechangedFile = filename;
