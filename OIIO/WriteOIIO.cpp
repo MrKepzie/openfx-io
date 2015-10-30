@@ -573,7 +573,9 @@ WriteOIIOPlugin::buildChannelMenus()
         if (outputComponentsStr.empty()) {
             int cur_i;
             _outputLayers->getValue(cur_i);
-            _outputLayers->getOption(cur_i, outputComponentsStr);
+            if (cur_i >= 0 && cur_i < (int)options.size()) {
+                outputComponentsStr = options[cur_i];
+            }
             _outputLayerString->setValue(outputComponentsStr);
         } else {
             int foundOption = -1;

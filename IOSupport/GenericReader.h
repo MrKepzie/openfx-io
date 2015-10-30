@@ -95,7 +95,7 @@ public:
      * @brief Set the output components and premultiplication state for the input image automatically.
      * This is filled from directly the info returned by onInputFileChanged
      **/
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
 
     /**
      * @brief Overriden to clear any OCIO cache. 
@@ -122,6 +122,9 @@ protected:
     
     OFX::PixelComponentEnum getOutputComponents() const;
     
+    void setOutputComponents(OFX::PixelComponentEnum comps);
+
+    
 
     struct PlaneToRender
     {
@@ -135,8 +138,6 @@ protected:
 private:
     
     
-    void setOutputComponents(OFX::PixelComponentEnum comps);
-
     /**
      * @brief Called when the input image/video file changed.
      * You shouldn't do any strong processing as this is called on the main thread and
@@ -181,10 +182,10 @@ private:
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.
      **/
-    virtual void decode(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
+    virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
     
    
-    virtual void decodePlane(const std::string& filename, OfxTime time, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+    virtual void decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
                              OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes);
     
     
