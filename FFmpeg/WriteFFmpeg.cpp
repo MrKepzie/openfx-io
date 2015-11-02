@@ -3104,25 +3104,25 @@ WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename, bool setColo
         // Unless otherwise specified, video files are assumed to be rec709.
         if (_ocio->hasColorspace("Rec709")) {
             // nuke-default
-            _ocio->setInputColorspace("Rec709");
+            _ocio->setOutputColorspace("Rec709");
         } else if (_ocio->hasColorspace("nuke_rec709")) {
             // blender
-            _ocio->setInputColorspace("nuke_rec709");
+            _ocio->setOutputColorspace("nuke_rec709");
         } else if (_ocio->hasColorspace("Rec.709 - Full")) {
             // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-            _ocio->setInputColorspace("Rec.709 - Full");
+            _ocio->setOutputColorspace("Rec.709 - Full");
         } else if (_ocio->hasColorspace("out_rec709full")) {
             // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-            _ocio->setInputColorspace("out_rec709full");
+            _ocio->setOutputColorspace("out_rec709full");
         } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
             // rrt_rec709_full_100nits in aces 0.7.1
-            _ocio->setInputColorspace("rrt_rec709_full_100nits");
+            _ocio->setOutputColorspace("rrt_rec709_full_100nits");
         } else if (_ocio->hasColorspace("rrt_rec709")) {
             // rrt_rec709 in aces 0.1.1
-            _ocio->setInputColorspace("rrt_rec709");
+            _ocio->setOutputColorspace("rrt_rec709");
         } else if (_ocio->hasColorspace("hd10")) {
             // hd10 in spi-anim and spi-vfx
-            _ocio->setInputColorspace("hd10");
+            _ocio->setOutputColorspace("hd10");
         }
 #     endif
     }
