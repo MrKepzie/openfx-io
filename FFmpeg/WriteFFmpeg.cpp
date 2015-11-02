@@ -894,7 +894,7 @@ private:
 
     virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
@@ -2845,6 +2845,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 void
 WriteFFmpegPlugin::encode(const std::string& filename,
                           OfxTime time,
+                          const std::string& /*viewName*/,
                           const float *pixelData,
                           const OfxRectI& bounds,
                           float pixelAspectRatio,
@@ -3231,7 +3232,7 @@ static std::string ffmpeg_versions()
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe, false);
+    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription("Write images or video file using "

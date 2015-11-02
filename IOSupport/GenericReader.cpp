@@ -194,7 +194,8 @@ enum MissingEnum
 
 #define kParamOutputComponents "outputComponents"
 #define kParamOutputComponentsLabel "Output Components"
-#define kParamOutputComponentsHint "Components present in the output. The default value is set from the first frame in the sequence."
+#define kParamOutputComponentsHint "What type of components this effect should output when the main color plane is requested." \
+" For the Read node it will map (in number of components) the Output Layer choice to these."
 #define kParamOutputComponentsOptionRGBA "RGBA"
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
@@ -1303,7 +1304,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         } else {
             if (firstBounds.x1 != bounds.x1 || firstBounds.x2 != bounds.x2 || firstBounds.y1 != bounds.y1 || firstBounds.y2 != bounds.y2
                 || firstDepth != bitDepth) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image plane with wrong properites");
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image plane with wrong bounds/bitdepth");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
             }

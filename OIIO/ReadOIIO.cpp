@@ -45,6 +45,8 @@ GCC_DIAG_ON(unused-parameter)
 #include "GenericReader.h"
 #include "IOUtility.h"
 
+#include <ofxsCoords.h>
+
 OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
@@ -2346,25 +2348,49 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
                                std::string *error)
 {
     assert(bounds && par);
-#ifdef OFX_READ_OIIO_USES_CACHE
-    ImageSpec spec;
+    std::vector<ImageSpec> specs;
+# ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if(!_cache->get_imagespec(ustring(filename), spec)) {
+    {
+        ImageSpec spec;
+        int subImageIndex = 0;
+        while (_cache->get_imagespec(ustring(filename), spec, subImageIndex)) {
+            specs.push_back(spec);
+            ++subImageIndex;
+#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
+            break;
+#endif
+        }
+    }
+    if (specs.empty()) {
         if (error) {
             *error = _cache->geterror();
         }
         return false;
     }
-#else 
+# else
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
         if (error) {
             *error = std::string("ReadOIIO: cannot open file ") + filename;
         }
-        return false;
+        return;
     }
-    const ImageSpec &spec = img->spec();
+    {
+        int subImageIndex = 0;
+        ImageSpec spec;
+        while (img->seek_subimage(subImageIndex, 0, spec)) {
+            specs.push_back(spec);
+            ++subImageIndex;
+#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
+            break;
 #endif
+        }
+    }
+    if (specs.empty()) {
+        return;
+    }
+# endif
     
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
     bool originAtDisplayWindow;
@@ -2373,20 +2399,46 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     bool originAtDisplayWindow = true;
 #endif
     
-    if (originAtDisplayWindow) {
-        // the image coordinates are expressed in the "full/display" image.
-        // The RoD are the coordinates of the data window with respect to that full window
-        bounds->x1 = (spec.x - spec.full_x);
-        bounds->x2 = (spec.x + spec.width - spec.full_x);
-        bounds->y1 = spec.full_y + spec.full_height - (spec.y + spec.height);
-        bounds->y2 = (spec.full_height) + (spec.full_y - spec.y);
-    } else {
-        bounds->x1 = spec.x;
-        bounds->x2 = spec.x + spec.width;
-        bounds->y1 =  spec.y;
-        bounds->y2 =  spec.y + spec.height;
+    /*
+     Union bounds across all specs
+     */
+    
+    OfxRectD mergeBounds;
+    OfxRectD specBounds;
+    bool boundsSet = false;
+    for (std::size_t i = 0; i < specs.size(); ++i) {
+        
+        
+        if (originAtDisplayWindow) {
+            // the image coordinates are expressed in the "full/display" image.
+            // The RoD are the coordinates of the data window with respect to that full window
+            
+            specBounds.x1 = (specs[i].x - specs[i].full_x);
+            specBounds.x2 = (specs[i].x + specs[i].width - specs[i].full_x);
+            specBounds.y1 = specs[i].full_y + specs[i].full_height - (specs[i].y + specs[i].height);
+            specBounds.y2 = (specs[i].full_height) + (specs[i].full_y - specs[i].y);
+        } else {
+            specBounds.x1 = specs[i].x;
+            specBounds.x2 = specs[i].x + specs[i].width;
+            specBounds.y1 =  specs[i].y;
+            specBounds.y2 =  specs[i].y + specs[i].height;
+        }
+        
+        if (!boundsSet) {
+            mergeBounds = specBounds;
+            boundsSet = true;
+        } else {
+            OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
+        }
+        
     }
-    *par = spec.get_float_attribute("PixelAspectRatio", 1);
+    
+    bounds->x1 = mergeBounds.x1;
+    bounds->x2 = mergeBounds.x2;
+    bounds->y1 = mergeBounds.y1;
+    bounds->y2 = mergeBounds.y2;
+    
+    *par = specs[0].get_float_attribute("PixelAspectRatio", 1);
 #ifdef OFX_READ_OIIO_USES_CACHE
 #else
     img->close();
@@ -2436,7 +2488,7 @@ ReadOIIOPlugin::metadata(const std::string& filename)
             ss << "Part " << sIt << ":" << std::endl;
         }
         
-        ss << "    channel list: ";
+        ss << "Channels list: " << std::endl;
         for (int i = 0;  i < subImages[sIt].nchannels;  ++i) {
             if (i < (int)subImages[sIt].channelnames.size()) {
                 ss << subImages[sIt].channelnames[i];

@@ -114,7 +114,7 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
@@ -148,6 +148,7 @@ WriteEXRPlugin::~WriteEXRPlugin(){
 void
 WriteEXRPlugin::encode(const std::string& filename,
                        OfxTime /*time*/,
+                       const std::string& /*viewName*/,
                        const float *pixelData,
                        const OfxRectI& bounds,
                        float pixelAspectRatio,
@@ -284,7 +285,7 @@ mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);

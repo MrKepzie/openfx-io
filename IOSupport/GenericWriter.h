@@ -36,6 +36,13 @@ namespace OFX {
 }
 class GenericOCIO;
 
+enum LayerViewsPartsEnum
+{
+    eLayerViewsSinglePart = 0,
+    eLayerViewsSplitViews,
+    eLayerViewsSplitViewsLayers
+};
+
 /**
  * @brief A generic writer plugin, derive this to create a new writer for a specific file format.
  * This class propose to handle the common stuff among writers:
@@ -110,6 +117,11 @@ public:
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
     
     /**
+     * @brief Overriden to request the views needed to render.
+     **/
+    virtual void getFrameViewsNeeded(const OFX::FrameViewsNeededArguments& args, OFX::FrameViewsNeededSetter& frameViews) OVERRIDE FINAL;
+    
+    /**
      * @brief Overriden to clear any OCIO cache.
      * This function calls clearAnyCache() if you have any cache to clear.
      **/
@@ -135,6 +147,7 @@ protected:
      **/
     virtual void encode(const std::string& filename,
                         OfxTime time,
+                        const std::string& viewName, 
                         const float *pixelData,
                         const OfxRectI& bounds,
                         float pixelAspectRatio,
@@ -157,17 +170,29 @@ protected:
     /**
      * @brief When writing multiple planes, should allocate data that are shared amongst all planes
      **/
-    virtual void beginEncodePlanes(void* user_data,
+    virtual void beginEncodeParts(void* user_data,
                                    const std::string& filename,
                                    OfxTime time,
                                    float pixelAspectRatio,
+                                   LayerViewsPartsEnum partsSplitting,
+                                   const std::map<int,std::string>& viewsToRender,
                                    const std::list<std::string>& planes,
                                    const OfxRectI& bounds);
     
-    virtual void endEncodePlanes(void* /*user_data*/) {}
+    virtual void endEncodeParts(void* /*user_data*/) {}
     
-    virtual void encodePlane(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes);
+    virtual void encodePart(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes);
     
+    /**
+     * @brief Should return the view index needed to render. 
+     * Possible return values:
+     * -2: Indicates that we want to render what the host request via the render action (the default)
+     * -1: Indicates that we want to render all views in a single file
+     * >= 0: Indicates the view index to render
+     **/
+    virtual int getViewToRender() const { return -2; }
+    
+    virtual LayerViewsPartsEnum getPartsSplittingPreference() const { return eLayerViewsSinglePart; }
     
     /**
      * @brief Overload to return false if the given file extension is a video file extension or
@@ -203,6 +228,54 @@ protected:
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:
+    
+    
+    class InputImagesHolder
+    {
+        std::list<const OFX::Image*> _imgs;
+        std::list<OFX::ImageMemory*> _mems;
+    public:
+        
+        InputImagesHolder();
+        void addImage(const OFX::Image* img);
+        void addMemory(OFX::ImageMemory* mem);
+        ~InputImagesHolder();
+    };
+    
+    /*
+     * @brief Fetch the given plane for the given view at the given time and convert into suited color-space
+     * using OCIO if needed. 
+     *
+     * If view == renderRequestedView the output image will be fetched on the output clip
+     * and written to aswell.
+     *
+     * Post-condition:
+     * - srcImgsHolder had the srcImg appended to it so it gets correctly released when it is
+     * destroyed.
+     * - tmpMemPtr is never NULL and points to either srcImg buffer or tmpMem buffer
+     * - If a color-space conversion occured, tmpMem/tmpMemPtr is non-null and tmpMem was added to srcImgsHolder
+     * so it gets correctly released upon destruction.
+     *
+     * This function MAY throw exceptions aborting the action, that is why we use the InputImagesHolder RAII style class
+     * that will properly release resources.
+     */
+    void fetchPlaneConvertAndCopy(const std::string& plane,
+                              int view,
+                              int renderRequestedView,
+                              double time,
+                              const OfxRectI& renderWindow,
+                              const OfxPointD& renderScale,
+                              OFX::FieldEnum fieldToRender,
+                              OFX::PreMultiplicationEnum pluginExpectedPremult,
+                              OFX::PreMultiplicationEnum userPremult,
+                              bool isOCIOIdentity,
+                              InputImagesHolder* srcImgsHolder,
+                              OfxRectI* bounds,
+                              OFX::ImageMemory** tmpMem,
+                              const OFX::Image** inputImage,
+                              float** tmpMemPtr,
+                              int* rowBytes,
+                              OFX::PixelComponentEnum* mappedComponents);
     
     /**
      * @brief Retrieves the output filename at the given time and checks if the extension is supported.
@@ -290,6 +363,19 @@ private:
                    srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                    dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     }
+    
+    void interleavePixelBuffers(const OfxRectI& renderWindow,
+                                const void *srcPixelData,
+                                const OfxRectI& bounds,
+                                OFX::PixelComponentEnum srcPixelComponents,
+                                int srcPixelComponentCount,
+                                OFX::BitDepthEnum bitDepth,
+                                int srcRowBytes,
+                                const OfxRectI& dstBounds,
+                                int dstPixelComponentStartIndex,
+                                int dstPixelComponentCount,
+                                int dstRowBytes,
+                                void* dstPixelData);
 
     void unPremultPixelData(const OfxRectI &renderWindow,
                             const void *srcPixelData,
@@ -341,7 +427,7 @@ public:
     void* getData() const  { return data; }
 };
 
-void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety, bool isMultiPlanar);
+void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety, bool isMultiPlanar, bool isMultiView);
 OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 

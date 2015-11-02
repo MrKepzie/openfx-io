@@ -223,7 +223,29 @@ enum EParamTileSize
 #define kWriteOIIOColorRGB "RGB"
 #define kWriteOIIOColorRGBA "RGBA"
 
-static bool g_enableMultiPlaneFeature;
+#define kParamPartsSplitting "partSplitting"
+#define kParamPartsSplittingLabel "Parts"
+#define kParamPartsSplittingHint "Defines whether to separate views/layers in different EXR parts or not. " \
+"Note that multi-part files are only supported by OpenEXR >= 2"
+
+#define kParamPartsSinglePart "Single Part"
+#define kParamPartsSinglePartHint "All views and layers will be in the same part, ensuring compatibility with OpenEXR 1.x"
+
+#define kParamPartsSlitViews "Split Views"
+#define kParamPartsSlitViewsHint "All views will have its own part, and each part will contain all layers. This will produce an EXR optimized in size that " \
+"can be opened only with applications supporting OpenEXR 2"
+
+#define kParamPartsSplitViewsLayers "Split Views,Layers"
+#define kParamPartsSplitViewsLayersHint "Each layer of each view will have its own part. This will produce an EXR optimized for decoding speed that " \
+"can be opened only with applications supporting OpenEXR 2"
+
+
+#define kParamViewsSelector "viewsSelector"
+#define kParamViewsSelectorLabel "Views"
+#define kParamViewsSelectorHint "Select the views to render. When choosing All, make sure the output filename does not have a %v or %V view " \
+"pattern in which case each view would be written to a separate file."
+
+static bool g_enableMultiPlaneFeature = false;
 
 class WriteOIIOPlugin : public GenericWriterPlugin
 {
@@ -238,10 +260,16 @@ public:
     
     virtual void getClipComponents(const OFX::ClipComponentsArguments& args, OFX::ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
     
+    
 private:
+    
+    virtual LayerViewsPartsEnum getPartsSplittingPreference() const OVERRIDE FINAL;
+    
+    virtual int getViewToRender() const OVERRIDE FINAL;
+    
     virtual void onOutputFileChanged(const std::string& filename, bool setColorSpace) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL
+    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL
     {
         std::string rawComps;
         switch (pixelComponents) {
@@ -265,21 +293,25 @@ private:
         std::list<std::string> comps;
         comps.push_back(rawComps);
         EncodePlanesLocalData_RAII data(this);
-        beginEncodePlanes(data.getData(), filename, time, pixelAspectRatio, comps, bounds);
-        encodePlane(data.getData(), filename, pixelData, 0, rowBytes);
-        endEncodePlanes(data.getData());
+        std::map<int,std::string> viewsToRender;
+        viewsToRender[0] = viewName;
+        beginEncodeParts(data.getData(), filename, time, pixelAspectRatio, eLayerViewsSinglePart, viewsToRender, comps, bounds);
+        encodePart(data.getData(), filename, pixelData, 0, rowBytes);
+        endEncodeParts(data.getData());
     }
     
-    virtual void encodePlane(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes) OVERRIDE FINAL;
+    virtual void encodePart(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes) OVERRIDE FINAL;
     
-    virtual void beginEncodePlanes(void* user_data,
+    virtual void beginEncodeParts(void* user_data,
                                    const std::string& filename,
                                    OfxTime time,
                                    float pixelAspectRatio,
+                                   LayerViewsPartsEnum partsSplitting,
+                                   const std::map<int,std::string>& viewsToRender,
                                    const std::list<std::string>& planes,
                                    const OfxRectI& bounds) OVERRIDE FINAL;
     
-    void endEncodePlanes(void* user_data) OVERRIDE FINAL;
+    void endEncodeParts(void* user_data) OVERRIDE FINAL;
     
     virtual void* allocateEncodePlanesUserData() OVERRIDE FINAL;
     virtual void destroyEncodePlanesUserData(void* data) OVERRIDE FINAL;
@@ -306,7 +338,10 @@ private:
     OFX::ChoiceParam* _tileSize;
     OFX::ChoiceParam* _outputLayers;
     OFX::StringParam* _outputLayerString;
+    OFX::ChoiceParam* _parts;
+    OFX::ChoiceParam* _views;
     std::list<std::string> _currentInputComponents;
+    std::list<std::string> _availableViews;
 };
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
@@ -318,7 +353,10 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 , _tileSize(0)
 , _outputLayers(0)
 , _outputLayerString(0)
+, _parts(0)
+, _views(0)
 , _currentInputComponents()
+, _availableViews()
 {
     _bitDepth = fetchChoiceParam(kParamBitDepth);
     _quality     = fetchIntParam(kParamOutputQualityName);
@@ -328,11 +366,43 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
     if (g_enableMultiPlaneFeature) {
         _outputLayers = fetchChoiceParam(kParamOutputLayer);
         _outputLayerString = fetchStringParam(kParamOutputLayerChoice);
+        _parts = fetchChoiceParam(kParamPartsSplitting);
+        _views = fetchChoiceParam(kParamViewsSelector);
     }
+    
+    ///Set OIIO to use as many threads as there are cores
+    if (!attribute("threads", 0)) {
+#     ifdef DEBUG
+        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
+#     endif
+    }
+    
+    //Anticipate,
+    //See https://github.com/lgritz/oiio/commit/7f7934fafc127a9f3bc51b6aa5e2e77b1b8a26db
+    attribute("exr_threads",0);
 }
 
 
 WriteOIIOPlugin::~WriteOIIOPlugin() {
+    
+}
+
+namespace  {
+    
+    static bool hasListChanged(const std::list<std::string>& oldList, const std::list<std::string>& newList)
+    {
+        if (oldList.size() != newList.size()) {
+            return true;
+        }
+        
+        std::list<std::string>::const_iterator itNew = newList.begin();
+        for (std::list<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
+            if (*it != *itNew) {
+                return true;
+            }
+        }
+        return false;
+    }
     
 }
 
@@ -384,6 +454,23 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
             clipPreferences.setClipComponents(*_inputClip, dstPixelComps);
             clipPreferences.setClipComponents(*_outputClip, dstPixelComps);
         }
+        
+        //Now build the views choice
+        std::list<std::string> views;
+        int nViews = getViewCount();
+        for (int i = 0; i < nViews; ++i) {
+            std::string view = getViewName(i);
+            views.push_back(view);
+        }
+        if (hasListChanged(_availableViews, views)) {
+            _availableViews = views;
+            _views->resetOptions();
+            _views->appendOption("All");
+            for (std::list<std::string>::iterator it = views.begin(); it!=views.end();++it) {
+                _views->appendOption(*it);
+            }
+        }
+        
     }
 }
 
@@ -399,7 +486,7 @@ WriteOIIOPlugin::getPlaneNeededInOutput(const std::list<std::string>& components
     std::string layerName;
     param->getOption(layer_i, layerName);
     
-    if (layerName.empty() ||
+    if (param->getIsSecret() || layerName.empty() ||
         layerName == kWriteOIIOColorRGBA ||
         layerName == kWriteOIIOColorRGB ||
         layerName == kWriteOIIOColorAlpha) {
@@ -460,22 +547,40 @@ WriteOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& /*args*/,
     
 }
 
-namespace  {
+int
+WriteOIIOPlugin::getViewToRender() const
+{
     
-    static bool hasListChanged(const std::list<std::string>& oldList, const std::list<std::string>& newList)
-    {
-        if (oldList.size() != newList.size()) {
-            return true;
-        }
-        
-        std::list<std::string>::const_iterator itNew = newList.begin();
-        for (std::list<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
-            if (*it != *itNew) {
-                return true;
-            }
-        }
-        return false;
+    if (!_views || _views->getIsSecret()) {
+        return -1;
+    } else {
+        int view_i;
+        _views->getValue(view_i);
+        return view_i - 1;
     }
+}
+
+LayerViewsPartsEnum
+WriteOIIOPlugin::getPartsSplittingPreference() const
+{
+    if (!_parts || _parts->getIsSecret()) {
+        return eLayerViewsSinglePart;
+    }
+    int index;
+    _parts->getValue(index);
+    std::string option;
+    _parts->getOption(index, option);
+    if (option == kParamPartsSinglePart) {
+        return eLayerViewsSinglePart;
+    } else if (option == kParamPartsSlitViews) {
+        return eLayerViewsSplitViews;
+    } else if (option == kParamPartsSplitViewsLayers) {
+        return eLayerViewsSplitViewsLayers;
+    }
+    return eLayerViewsSinglePart;
+}
+
+namespace  {
     
     static void extractChannelsFromComponentString(const std::string& comp,
                                                    std::string* layer,
@@ -736,10 +841,18 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
     if (output.get()) {
         _tileSize->setIsSecret(!output->supports("tiles"));
         _outputLayers->setIsSecret(!output->supports("nchannels"));
+        bool isEXR = strcmp(output->format_name(),"openexr") == 0;
+        _views->setIsSecret(!isEXR);
+        _parts->setIsSecret(!output->supports("multiimage"));
     } else {
         _tileSize->setIsSecret(true);
         _outputLayers->setIsSecret(true);
+        _views->setIsSecret(true);
+        _parts->setIsSecret(true);
     }
+    
+    
+    
 }
 
 struct WriteOIIOEncodePlanesData
@@ -764,21 +877,43 @@ WriteOIIOPlugin::destroyEncodePlanesUserData(void* data)
 }
 
 void
-WriteOIIOPlugin::beginEncodePlanes(void* user_data,
+WriteOIIOPlugin::beginEncodeParts(void* user_data,
                                    const std::string& filename,
                                    OfxTime time,
                                    float pixelAspectRatio,
+                                   LayerViewsPartsEnum partsSplitting,
+                                   const std::map<int,std::string>& viewsToRender,
                                    const std::list<std::string>& planes,
                                    const OfxRectI& bounds)
 {
+    assert(!viewsToRender.empty());
     assert(user_data);
     WriteOIIOEncodePlanesData* data = (WriteOIIOEncodePlanesData*)user_data;
     data->output.reset(ImageOutput::create(filename));
     if (!data->output.get()) {
         // output is NULL
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot create output file ")+filename);
+        OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
+    
+    if (!data->output->supports("multiimage") && partsSplitting != eLayerViewsSinglePart) {
+        std::stringstream ss;
+        ss << data->output->format_name() << " does not support writing multiple views/layers into a single file.";
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+    
+    bool isEXR = strcmp(data->output->format_name(),"openexr") == 0;
+    if (!isEXR && viewsToRender.size() > 1) {
+        std::stringstream ss;
+        ss << data->output->format_name() << " format cannot render multiple views in a single file, use %v or %V in filename to render separate files per view";
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+    
     
     OpenImageIO::TypeDesc oiioBitDepth;
     //size_t sizeOfChannel = 0;
@@ -1003,51 +1138,175 @@ WriteOIIOPlugin::beginEncodePlanes(void* user_data,
                 break;
         }
     }
-
+    
+    
     
     assert(!planes.empty());
-    int nChannels = 0;
-    data->specs.resize(planes.size());
-    
-    int specIndex = 0;
-    for (std::list<std::string>::const_iterator it = planes.begin(); it!=planes.end(); ++it,++specIndex) {
-        std::string layer,pairedLayer;
-        std::vector<std::string> channels;
-        
-        std::string rawComponents;
-        if (*it == kFnOfxImagePlaneColour) {
-            rawComponents = _inputClip->getPixelComponentsProperty();
-        } else {
-            rawComponents = *it;
-        }
-        extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &channels);
-        nChannels += channels.size();
-        ImageSpec partSpec = spec;
-        
-        if (!layer.empty()) {
-            for (std::size_t i = 0; i < channels.size(); ++i) {
-                channels[i] = layer + "." + channels[i];
+    switch (partsSplitting) {
+        case eLayerViewsSinglePart: {
+            data->specs.resize(1);
+            
+            ImageSpec partSpec = spec;
+            TypeDesc tv(TypeDesc::STRING, viewsToRender.size());
+            
+            std::vector<ustring> ustrvec (viewsToRender.size());
+            {
+                int i = 0;
+                for (std::map<int,std::string>::const_iterator it = viewsToRender.begin(); it!=viewsToRender.end();++it,++i) {
+                    ustrvec[i] = it->second;
+                }
             }
-        }
-        if (channels.size() == 4) {
-            partSpec.alpha_channel = 3;
-        } else {
-            if (layer.empty() && channels.size() == 1) {
-                ///Alpha component only
-                partSpec.alpha_channel = 0;
+
+            partSpec.attribute("multiView", tv, &ustrvec[0]);
+            std::vector<std::string>  channels;
+
+            for (std::map<int,std::string>::const_iterator view = viewsToRender.begin(); view!=viewsToRender.end();++view) {
+                for (std::list<std::string>::const_iterator it = planes.begin(); it!=planes.end(); ++it) {
+                    std::string layer,pairedLayer;
+                    std::vector<std::string> planeChannels;
+                    
+                    std::string rawComponents;
+                    if (*it == kFnOfxImagePlaneColour) {
+                        rawComponents = _inputClip->getPixelComponentsProperty();
+                    } else {
+                        rawComponents = *it;
+                    }
+                    extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
+                    
+                    if (!layer.empty()) {
+                        for (std::size_t i = 0; i < planeChannels.size(); ++i) {
+                            planeChannels[i] = layer + "." + planeChannels[i];
+                        }
+                    }
+                    if (viewsToRender.size() > 1 && view != viewsToRender.begin()) {
+                        ///Prefix the view name for all views except the main
+                        for (std::size_t i = 0; i < planeChannels.size(); ++i) {
+                            planeChannels[i] = view->second + "." + planeChannels[i];
+                        }
+                    }
+                    
+                    channels.insert(channels.end(), planeChannels.begin(), planeChannels.end());
+                    
+                }
+            } //  for (std::size_t v = 0; v < viewsToRender.size(); ++v) {
+            if (channels.size() == 4) {
+                partSpec.alpha_channel = 3;
             } else {
-                ///no alpha
-                partSpec.alpha_channel = -1;
+                if (channels.size() == 1) {
+                    ///Alpha component only
+                    partSpec.alpha_channel = 0;
+                } else {
+                    ///no alpha
+                    partSpec.alpha_channel = -1;
+                }
             }
-        }
-        partSpec.nchannels = channels.size();
-        partSpec.channelnames = channels;
-        data->specs[specIndex] = partSpec;
+            
+            partSpec.nchannels = channels.size();
+            partSpec.channelnames = channels;
+            data->specs[0] = partSpec;
+            
+        }   break;
+        case eLayerViewsSplitViews: {
+            data->specs.resize(viewsToRender.size());
+            
+            int specIndex = 0;
+            for (std::map<int,std::string>::const_iterator view = viewsToRender.begin(); view!=viewsToRender.end();++view) {
+                
+                ImageSpec partSpec = spec;
+                partSpec.attribute("view",view->second);
+                std::vector<std::string>  channels;
+                
+                for (std::list<std::string>::const_iterator it = planes.begin(); it!=planes.end(); ++it) {
+                    std::string layer,pairedLayer;
+                    std::vector<std::string> planeChannels;
+                    
+                    std::string rawComponents;
+                    if (*it == kFnOfxImagePlaneColour) {
+                        rawComponents = _inputClip->getPixelComponentsProperty();
+                    } else {
+                        rawComponents = *it;
+                    }
+                    extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
+                    
+                    if (!layer.empty()) {
+                        for (std::size_t i = 0; i < planeChannels.size(); ++i) {
+                            planeChannels[i] = layer + "." + planeChannels[i];
+                        }
+                    }
+                 
+                    channels.insert(channels.end(), planeChannels.begin(), planeChannels.end());
+                    
+                }
+                if (channels.size() == 4) {
+                    partSpec.alpha_channel = 3;
+                } else {
+                    if (channels.size() == 1) {
+                        ///Alpha component only
+                        partSpec.alpha_channel = 0;
+                    } else {
+                        ///no alpha
+                        partSpec.alpha_channel = -1;
+                    }
+                }
+                
+                partSpec.nchannels = channels.size();
+                partSpec.channelnames = channels;
+                
+                data->specs[specIndex] = partSpec;
+                ++specIndex;
+
+            } //  for (std::size_t v = 0; v < viewsToRender.size(); ++v) {
+        }   break;
+        case eLayerViewsSplitViewsLayers: {
+            data->specs.resize(viewsToRender.size() * planes.size());
+            
+            int specIndex = 0;
+            for (std::map<int,std::string>::const_iterator view = viewsToRender.begin(); view!=viewsToRender.end();++view) {
+                
+                for (std::list<std::string>::const_iterator it = planes.begin(); it!=planes.end(); ++it) {
+                    std::string layer,pairedLayer;
+                    std::vector<std::string> channels;
+                    
+                    std::string rawComponents;
+                    if (*it == kFnOfxImagePlaneColour) {
+                        rawComponents = _inputClip->getPixelComponentsProperty();
+                    } else {
+                        rawComponents = *it;
+                    }
+                    extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &channels);
+                    ImageSpec partSpec = spec;
+                    
+                    if (!layer.empty()) {
+                        for (std::size_t i = 0; i < channels.size(); ++i) {
+                            channels[i] = layer + "." + channels[i];
+                        }
+                    }
+                    if (channels.size() == 4) {
+                        partSpec.alpha_channel = 3;
+                    } else {
+                        if (layer.empty() && channels.size() == 1) {
+                            ///Alpha component only
+                            partSpec.alpha_channel = 0;
+                        } else {
+                            ///no alpha
+                            partSpec.alpha_channel = -1;
+                        }
+                    }
+                    partSpec.nchannels = channels.size();
+                    partSpec.channelnames = channels;
+                    partSpec.attribute("view",view->second);
+                    data->specs[specIndex] = partSpec;
+                    
+                    ++specIndex;
+                }
+            } //  for (std::size_t v = 0; v < viewsToRender.size(); ++v) {
+            
+
+        }   break;
     }
+
     
-    
-    
-    if (!data->output->open(filename, planes.size(), data->specs.data())) {
+    if (!data->output->open(filename, data->specs.size(), data->specs.data())) {
         setPersistentMessage(OFX::Message::eMessageError, "", data->output->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -1055,7 +1314,7 @@ WriteOIIOPlugin::beginEncodePlanes(void* user_data,
     
 }
 
-void WriteOIIOPlugin::encodePlane(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes)
+void WriteOIIOPlugin::encodePart(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes)
 {
    
     assert(user_data);
@@ -1079,7 +1338,7 @@ void WriteOIIOPlugin::encodePlane(void* user_data, const std::string& filename, 
 }
 
 void
-WriteOIIOPlugin::endEncodePlanes(void* user_data)
+WriteOIIOPlugin::endEncodeParts(void* user_data)
 {
     assert(user_data);
     WriteOIIOEncodePlanesData* data = (WriteOIIOEncodePlanesData*)user_data;
@@ -1108,13 +1367,8 @@ mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, true);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, true, true);
     
-    if (!attribute("threads", 1)) {
-#     ifdef DEBUG
-        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
-#     endif
-    }
 
     std::string extensions_list;
     getattribute("extension_list", extensions_list);
@@ -1141,6 +1395,7 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
             extensions_pretty += "; ";
         }
     }
+
 
     // basic labels
     desc.setLabel(kPluginName);
@@ -1200,7 +1455,10 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    g_enableMultiPlaneFeature = OFX::getImageEffectHostDescription()->supportsDynamicChoices && OFX::getImageEffectHostDescription()->isMultiPlanar;
+#ifdef OFX_EXTENSIONS_NATRON
+    g_enableMultiPlaneFeature = OFX::getImageEffectHostDescription()->supportsDynamicChoices && OFX::getImageEffectHostDescription()->isMultiPlanar &&
+    OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2);
+#endif
     
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
@@ -1332,6 +1590,26 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             OFX::StringParamDescriptor* param = desc.defineStringParam(kParamOutputLayerChoice);
             param->setLabel(kParamOutputLayerLabel "Choice");
             param->setIsSecret(true);
+            page->addChild(*param);
+        }
+        {
+            OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPartsSplitting);
+            param->setLabel(kParamPartsSplittingLabel);
+            param->setHint(kParamPartsSplittingHint);
+            param->appendOption(kParamPartsSinglePart,kParamPartsSinglePartHint);
+            param->appendOption(kParamPartsSlitViews,kParamPartsSlitViewsHint);
+            param->appendOption(kParamPartsSplitViewsLayers,kParamPartsSplitViewsLayersHint);
+            param->setDefault(0);
+            param->setAnimates(false);
+            page->addChild(*param);
+        }
+        {
+            OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamViewsSelector);
+            param->setLabel(kParamViewsSelectorLabel);
+            param->setHint(kParamViewsSelectorHint);
+            param->appendOption("All");
+            param->setAnimates(false);
+            param->setDefault(0);
             page->addChild(*param);
         }
     }

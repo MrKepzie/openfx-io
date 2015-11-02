@@ -62,7 +62,7 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
@@ -112,7 +112,7 @@ static void copyLine(const PIX* pixelData, int rowbytes, int W, int /*H*/, int C
 }
 
 
-void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const float *pixelData, const OfxRectI& bounds, float /*pixelAspectRatio*/, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const std::string& /*viewName*/, const float *pixelData, const OfxRectI& bounds, float /*pixelAspectRatio*/, OFX::PixelComponentEnum pixelComponents, int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
@@ -196,7 +196,7 @@ mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
 /** @brief The basic describe function, passed a plugin descriptor */
 void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
