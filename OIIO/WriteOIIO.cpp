@@ -329,6 +329,8 @@ private:
                                 std::string* ofxPlane,
                                 std::string* ofxComponents) const;
     
+    void refreshParamsVisibility(const std::string& filename);
+    
     
 private:
     OFX::ChoiceParam* _bitDepth;
@@ -380,6 +382,12 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
     //Anticipate,
     //See https://github.com/lgritz/oiio/commit/7f7934fafc127a9f3bc51b6aa5e2e77b1b8a26db
     attribute("exr_threads",0);
+    
+    
+    std::string filename;
+    _fileParam->getValue(filename);
+    refreshParamsVisibility(filename);
+    
 }
 
 
@@ -527,7 +535,7 @@ WriteOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& /*args*/,
         std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
         std::string ofxPlane,ofxComp;
         getPlaneNeededInOutput(inputComponents, _outputLayers, &ofxPlane, &ofxComp);
-        if (ofxPlane == kParamOutputLayerAll) {
+        if (ofxPlane == kParamOutputLayerAll && _outputLayers && !_outputLayers->getIsSecret()) {
             for (std::list<std::string>::iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
                 clipComponents.addClipComponents(*_inputClip, *it);
                 clipComponents.addClipComponents(*_outputClip, *it);
@@ -552,7 +560,7 @@ WriteOIIOPlugin::getViewToRender() const
 {
     
     if (!_views || _views->getIsSecret()) {
-        return -1;
+        return -2;
     } else {
         int view_i;
         _views->getValue(view_i);
@@ -631,17 +639,34 @@ WriteOIIOPlugin::buildChannelMenus()
     }
     
     std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
+    
+    std::string filename;
+    _fileParam->getValue(filename);
+    std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
+    bool supportsNChannels = false;
+    if (output.get()) {
+        supportsNChannels = output->supports("nchannels");
+    }
+    
+    if (supportsNChannels) {
+        inputComponents.push_front(kParamOutputLayerAll);
+    }
     if (hasListChanged(_currentInputComponents, inputComponents)) {
         
         _currentInputComponents = inputComponents;
         
         std::vector<std::string> options;
         _outputLayers->resetOptions();
-        options.push_back(kParamOutputLayerAll);
+
         ///Pre-process to add color comps first
         std::list<std::string> compsToAdd;
         bool foundColor = false;
         for (std::list<std::string>::const_iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
+            
+            if (*it == kParamOutputLayerAll) {
+                options.push_back(kParamOutputLayerAll);
+                continue;
+            }
             std::string layer, secondLayer;
             std::vector<std::string> channels;
             extractChannelsFromComponentString(*it, &layer, &secondLayer, &channels);
@@ -693,8 +718,9 @@ WriteOIIOPlugin::buildChannelMenus()
             if (foundOption != -1) {
                 _outputLayers->setValue(foundOption);
             } else {
-                _outputLayers->setValue(1);
-                _outputLayerString->setValue(options[1]);
+                int defIndex = supportsNChannels ? 1 : 0;
+                _outputLayers->setValue(defIndex);
+                _outputLayerString->setValue(options[defIndex]);
             }
         }
         
@@ -786,47 +812,47 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
                     // Cineon or DPX file
                     if (_ocio->hasColorspace("Cineon")) {
                         // Cineon in nuke-default
-                        _ocio->setInputColorspace("Cineon");
+                        _ocio->setOutputColorspace("Cineon");
                     } else if (_ocio->hasColorspace("REDlogFilm")) {
                         // REDlogFilm in aces 1.0.0
-                        _ocio->setInputColorspace("REDlogFilm");
+                        _ocio->setOutputColorspace("REDlogFilm");
                     } else if (_ocio->hasColorspace("cineon")) {
                         // cineon in aces 0.7.1
-                        _ocio->setInputColorspace("cineon");
+                        _ocio->setOutputColorspace("cineon");
                     } else if (_ocio->hasColorspace("adx10")) {
                         // adx10 in aces 0.1.1
-                        _ocio->setInputColorspace("adx10");
+                        _ocio->setOutputColorspace("adx10");
                     } else if (_ocio->hasColorspace("lg10")) {
                         // lg10 in spi-vfx
-                        _ocio->setInputColorspace("lg10");
+                        _ocio->setOutputColorspace("lg10");
                     } else if (_ocio->hasColorspace("lm10")) {
                         // lm10 in spi-anim
-                        _ocio->setInputColorspace("lm10");
+                        _ocio->setOutputColorspace("lm10");
                     } else {
-                        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                        _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
                     }
                 } else {
                     if (_ocio->hasColorspace("Rec709")) {
                         // nuke-default
-                        _ocio->setInputColorspace("Rec709");
+                        _ocio->setOutputColorspace("Rec709");
                     } else if (_ocio->hasColorspace("nuke_rec709")) {
                         // blender
-                        _ocio->setInputColorspace("nuke_rec709");
+                        _ocio->setOutputColorspace("nuke_rec709");
                     } else if (_ocio->hasColorspace("Rec.709 - Full")) {
                         // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                        _ocio->setInputColorspace("Rec.709 - Full");
+                        _ocio->setOutputColorspace("Rec.709 - Full");
                     } else if (_ocio->hasColorspace("out_rec709full")) {
                         // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                        _ocio->setInputColorspace("out_rec709full");
+                        _ocio->setOutputColorspace("out_rec709full");
                     } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
                         // rrt_rec709_full_100nits in aces 0.7.1
-                        _ocio->setInputColorspace("rrt_rec709_full_100nits");
+                        _ocio->setOutputColorspace("rrt_rec709_full_100nits");
                     } else if (_ocio->hasColorspace("rrt_rec709")) {
                         // rrt_rec709 in aces 0.1.1
-                        _ocio->setInputColorspace("rrt_rec709");
+                        _ocio->setOutputColorspace("rrt_rec709");
                     } else if (_ocio->hasColorspace("hd10")) {
                         // hd10 in spi-anim and spi-vfx
-                        _ocio->setInputColorspace("hd10");
+                        _ocio->setOutputColorspace("hd10");
                     }
                 }
                 break;
@@ -837,22 +863,28 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
 #     endif
     }
 
+    refreshParamsVisibility(filename);
+    
+    
+}
+
+void
+WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
+{
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (output.get()) {
         _tileSize->setIsSecret(!output->supports("tiles"));
-        _outputLayers->setIsSecret(!output->supports("nchannels"));
+        //_outputLayers->setIsSecret(!output->supports("nchannels"));
         bool isEXR = strcmp(output->format_name(),"openexr") == 0;
         _views->setIsSecret(!isEXR);
         _parts->setIsSecret(!output->supports("multiimage"));
     } else {
         _tileSize->setIsSecret(true);
-        _outputLayers->setIsSecret(true);
+        //_outputLayers->setIsSecret(true);
         _views->setIsSecret(true);
         _parts->setIsSecret(true);
     }
-    
-    
-    
+
 }
 
 struct WriteOIIOEncodePlanesData

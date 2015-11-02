@@ -497,7 +497,9 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
                                    , bitDepth, srcRowBytes, tmpPixelData, renderWindow, *mappedComponents, pixelComponentsCount, bitDepth, tmpRowBytes);
             }
             // do the color-space conversion
-            _ocio->apply(time, renderWindowClipped, tmpPixelData, renderWindow, *mappedComponents, pixelComponentsCount, tmpRowBytes);
+            if (*mappedComponents == OFX::ePixelComponentRGB || *mappedComponents == OFX::ePixelComponentRGBA) {
+                _ocio->apply(time, renderWindowClipped, tmpPixelData, renderWindow, *mappedComponents, pixelComponentsCount, tmpRowBytes);
+            }
             
             ///If needed, re-premult the image for the plugin to work correctly
             if (pluginExpectedPremult == OFX::eImagePreMultiplied && *mappedComponents == OFX::ePixelComponentRGBA) {
