@@ -1045,6 +1045,10 @@ ReadOIIOPlugin::buildLayersMenu()
         _outputLayer->getValue(cur_i);
         if (cur_i >= 0 && cur_i < (int)options.size()) {
             valueStr = options[cur_i].first;
+        } else if (!options.empty()) {
+            //No choice but to change the chocie value
+            valueStr = options[0].first;
+            _outputLayer->setValue(0);
         }
         _outputLayerString->setValue(valueStr);
     } else {

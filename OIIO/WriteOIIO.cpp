@@ -705,6 +705,10 @@ WriteOIIOPlugin::buildChannelMenus()
             _outputLayers->getValue(cur_i);
             if (cur_i >= 0 && cur_i < (int)options.size()) {
                 outputComponentsStr = options[cur_i];
+            } else if (!options.empty()) {
+                //No choice but to set a different value
+                outputComponentsStr = options[0];
+                _outputLayers->setValue(0);
             }
             _outputLayerString->setValue(outputComponentsStr);
         } else {
