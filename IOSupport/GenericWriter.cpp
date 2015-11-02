@@ -614,12 +614,20 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         
     } else {
         int viewToRender = getViewToRender();
-        if (viewToRender == -1 || (viewToRender >= 0 && viewToRender != args.renderView)) {
+        if (viewToRender >= 0 && viewToRender != args.renderView) {
             setPersistentMessage(OFX::Message::eMessageError, "", "Inconsistent view to render requested");
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-        if (viewToRender == -2) {
+        
+        if (viewToRender == -1) {
+            /*
+             We might be in this situation if the user requested %V or %v in the filename, so the host didn't request -1 as render view.
+             We might also be here if the host never requests -1 as render view
+             Just fallback to the default view
+             */
+            doDefaultView = true;
+        } else if (viewToRender == -2) {
             doDefaultView = true;
         } else {
             std::string view;

@@ -242,7 +242,7 @@ private:
     void buildChannelMenus();
     
     ///This may warn the user if some views do not exist in the project
-    void buildLayersMenu(const std::string& filename);
+    void buildLayersMenu();
 
     void setDefaultChannels(OFX::PixelComponentEnum *components);
     
@@ -297,11 +297,7 @@ private:
     ///This is because we cannot provide a choice with different entries across views, so if there are some disparities,
     ///let the render action just return a black image if the layer requested cannot be found for the given view.
     LayersUnionVect _layersUnion;
-    
-    
-    ///Only accessed on the main-thread
-    std::string _lastInputFilechangedFile;
-    std::string _viewsToCreateWarning;
+
 };
 
 ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,OfxImageEffectHandle handle)
@@ -735,7 +731,7 @@ static std::string toLowerString(const std::string& str)
     std::string ret;
     std::locale loc;
     for (std::size_t i = 0; i < str.size(); ++i) {
-        ret.push_back(std::tolower(str[i]));
+        ret.push_back(std::tolower(str[i],loc));
     }
     return ret;
 }
@@ -750,7 +746,7 @@ static bool caseInsensitiveCompare(const std::string& lhs, const std::string& rh
 } // anon namespace
 
 void
-ReadOIIOPlugin::buildLayersMenu(const std::string& filename)
+ReadOIIOPlugin::buildLayersMenu()
 {
     assert(gHostSupportsMultiPlane && gHostSupportsDynamicChoices);
     assert(!_useRGBAChoices);
@@ -814,30 +810,10 @@ ReadOIIOPlugin::buildLayersMenu(const std::string& filename)
                 }
             }
         }
-        
-        /*
-         Check if the project has necessary views
-         */
-        int projectNViews = getViewCount();
-        std::vector<std::string> projectViews;
-        for (int i = 0; i < projectNViews; ++i) {
-            projectViews.push_back(getViewName(i));
-        }
-        
-        std::vector<std::string> missingViews;
-        
+   
         std::string viewsEncoded;
         for (std::size_t i = 0; i < views.size(); ++i) {
-            bool found = false;
-            for (std::vector<std::string>::iterator it = projectViews.begin(); it!=projectViews.end(); ++it) {
-                if (caseInsensitiveCompare(*it,views[i])) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                missingViews.push_back(views[i]);
-            }
+
             viewsEncoded.append(views[i]);
             if (i < views.size() - 1) {
                 viewsEncoded.push_back(',');
@@ -851,28 +827,7 @@ ReadOIIOPlugin::buildLayersMenu(const std::string& filename)
             _layersMap.push_back(std::make_pair("Main", LayersMap()));
         }
         
-        if (!missingViews.empty()) {
-            std::stringstream ss;
-            for (std::size_t i = 0; i < missingViews.size(); ++i) {
-                ss << missingViews[i];
-                if (i < missingViews.size() - 1) {
-                    ss << ", ";
-                }
-            }
-            ss << std::endl;
-            ss << std::endl;
-            ss << "These views are in " << filename << " but are not present in the project." << std::endl;
-            ss << "Please adjust your project settings to retrieve them correctly.";
-            std::string warning  = ss.str();
-            if (warning != _viewsToCreateWarning || _lastInputFilechangedFile != filename) {
-                sendMessage(OFX::Message::eMessageWarning, "", ss.str());
-                _viewsToCreateWarning = warning;
-            } else {
-                _viewsToCreateWarning.clear();
-            }
-        } else {
-            _viewsToCreateWarning.clear();
-        }
+      
         
         ///Layers are considered to be named as view.layer.channels. If no view prefix then it is considered to be part of the "main" view
         ///that is, the first view declared.
@@ -1618,11 +1573,9 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
         restoreChannelMenusFromStringParams();
     } else {
         if (_specValid) {
-            buildLayersMenu(filename);
+            buildLayersMenu();
         }
     }
-    
-    _lastInputFilechangedFile = filename;
     
     ///http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
     ///The Create instance action is in the list of actions where you can set param values
@@ -1869,7 +1822,7 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
         
         restoreChannelMenusFromStringParams();
     } else {
-        buildLayersMenu(filename);
+        buildLayersMenu();
         if (!_layersUnion.empty()) {
             switch (_layersUnion[0].second.layer.channelNames.size()) {
                 case 0:
@@ -1908,7 +1861,6 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
         }
     }
     
-    _lastInputFilechangedFile = filename;
 }
 
 void
