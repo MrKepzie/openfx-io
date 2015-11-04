@@ -1186,6 +1186,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kNatronOfxParamProcessALabel);
         param->setHint(kNatronOfxParamProcessAHint);
         param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine);
         if (page) {
             page->addChild(*param);
         }
