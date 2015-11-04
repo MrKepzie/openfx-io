@@ -724,9 +724,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                     assert(interleaveIndex < nChannels);
                     
                     OfxRectI intersection;
-                    OFX::Coords::rectIntersection(args.renderWindow, it->bounds, &intersection);
-                    
-                    interleavePixelBuffers(intersection, it->srcPixelData, it->bounds, it->pixelComponents, it->pixelComponentsCount, OFX::eBitDepthFloat, it->rowBytes, args.renderWindow, interleaveIndex, nChannels, tmpRowBytes, tmpMemPtr);
+                    if (OFX::Coords::rectIntersection(args.renderWindow, it->bounds, &intersection)) {
+                        interleavePixelBuffers(intersection, it->srcPixelData, it->bounds, it->pixelComponents, it->pixelComponentsCount, OFX::eBitDepthFloat, it->rowBytes, args.renderWindow, interleaveIndex, nChannels, tmpRowBytes, tmpMemPtr);
+                    }
                     interleaveIndex += it->pixelComponentsCount;
                 }
                 
@@ -779,9 +779,12 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         assert(interleaveIndex < nChannels);
                         
                         OfxRectI intersection;
-                        OFX::Coords::rectIntersection(args.renderWindow, it->bounds, &intersection);
-                        
-                        interleavePixelBuffers(intersection, it->srcPixelData, it->bounds, it->pixelComponents, it->pixelComponentsCount, OFX::eBitDepthFloat, it->rowBytes, args.renderWindow, interleaveIndex, nChannels, tmpRowBytes, tmpMemPtr);
+                        if (OFX::Coords::rectIntersection(args.renderWindow, it->bounds, &intersection)) {
+                            interleavePixelBuffers(intersection, it->srcPixelData, it->bounds,
+                                                   it->pixelComponents, it->pixelComponentsCount,
+                                                   OFX::eBitDepthFloat, it->rowBytes, args.renderWindow,
+                                                   interleaveIndex, nChannels, tmpRowBytes, tmpMemPtr);
+                        }
                         interleaveIndex += it->pixelComponentsCount;
                     }
                     
@@ -826,8 +829,8 @@ protected:
 public:
     InterleaveProcessorBase(OFX::ImageEffect& instance)
     : OFX::PixelProcessorFilterBase(instance)
+    , _dstStartIndex(-1)
     {
-        
     }
     
     void setDstPixelComponentStartIndex(int dstStartIndex)
@@ -844,13 +847,12 @@ public:
     InterleaveProcessor(OFX::ImageEffect& instance)
     : InterleaveProcessorBase(instance)
     {
-        
     }
     
     virtual void multiThreadProcessImages(OfxRectI procWindow) OVERRIDE FINAL
     {
         assert(_srcBounds.x1 < _srcBounds.x2 && _srcBounds.y1 < _srcBounds.y2);
-        
+        assert(_dstStartIndex >= 0);
         PIX *dstPix = (PIX *)getDstPixelAddress(procWindow.x1, procWindow.y1);
         assert(dstPix);
         dstPix += _dstStartIndex;
@@ -877,8 +879,8 @@ public:
                  srcPix += srcNComps,
                  dstPix += _dstPixelComponentCount
                  ) {
-                assert(dstPix = ((PIX*)getDstPixelAddress(x, y)) + _dstStartIndex);
-                assert(srcPix = ((const PIX*)getSrcPixelAddress(x, y)));
+                assert(dstPix == ((PIX*)getDstPixelAddress(x, y)) + _dstStartIndex);
+                assert(srcPix == ((const PIX*)getSrcPixelAddress(x, y)));
                 memcpy(dstPix, srcPix, _srcPixelBytes);
                 
             }

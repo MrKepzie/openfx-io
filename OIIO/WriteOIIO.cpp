@@ -245,8 +245,6 @@ enum EParamTileSize
 #define kParamViewsSelectorHint "Select the views to render. When choosing All, make sure the output filename does not have a %v or %V view " \
 "pattern in which case each view would be written to a separate file."
 
-static bool g_enableMultiPlaneFeature = false;
-
 class WriteOIIOPlugin : public GenericWriterPlugin
 {
 public:
@@ -360,12 +358,19 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 , _currentInputComponents()
 , _availableViews()
 {
+# ifdef OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
+    const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
+                                          OFX::getImageEffectHostDescription()->isMultiPlanar &&
+                                          OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2));
+# else
+    const bool enableMultiPlaneFeature = false;
+# endif
     _bitDepth = fetchChoiceParam(kParamBitDepth);
     _quality     = fetchIntParam(kParamOutputQualityName);
     _orientation = fetchChoiceParam(kParamOutputOrientationName);
     _compression = fetchChoiceParam(kParamOutputCompressionName);
     _tileSize = fetchChoiceParam(kParamTileSize);
-    if (g_enableMultiPlaneFeature) {
+    if (enableMultiPlaneFeature) {
         _outputLayers = fetchChoiceParam(kParamOutputLayer);
         _outputLayerString = fetchStringParam(kParamOutputLayerChoice);
         _parts = fetchChoiceParam(kParamPartsSplitting);
@@ -431,8 +436,7 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     
     buildChannelMenus();
     GenericWriterPlugin::getClipPreferences(clipPreferences);
-    if (g_enableMultiPlaneFeature) {
-        
+    if (_outputLayers) {
         std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
         std::string ofxPlane,ofxComp;
         getPlaneNeededInOutput(inputComponents, _outputLayers, &ofxPlane, &ofxComp);
@@ -531,11 +535,11 @@ void
 WriteOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& /*args*/, OFX::ClipComponentsSetter& clipComponents)
 {
     
-    if (g_enableMultiPlaneFeature) {
+    if (_outputLayers) {
         std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
         std::string ofxPlane,ofxComp;
         getPlaneNeededInOutput(inputComponents, _outputLayers, &ofxPlane, &ofxComp);
-        if (ofxPlane == kParamOutputLayerAll && _outputLayers && !_outputLayers->getIsSecret()) {
+        if (ofxPlane == kParamOutputLayerAll && !_outputLayers->getIsSecret()) {
             for (std::list<std::string>::iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
                 clipComponents.addClipComponents(*_inputClip, *it);
                 clipComponents.addClipComponents(*_outputClip, *it);
@@ -634,7 +638,7 @@ namespace  {
 void
 WriteOIIOPlugin::buildChannelMenus()
 {
-    if (!g_enableMultiPlaneFeature || _outputLayers->getIsSecret()) {
+    if (!_outputLayers || _outputLayers->getIsSecret()) {
         return;
     }
     
@@ -1491,11 +1495,6 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-#ifdef OFX_EXTENSIONS_NATRON
-    g_enableMultiPlaneFeature = OFX::getImageEffectHostDescription()->supportsDynamicChoices && OFX::getImageEffectHostDescription()->isMultiPlanar &&
-    OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2);
-#endif
-    
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
@@ -1608,7 +1607,15 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         page->addChild(*param);
     }
     
-    if (g_enableMultiPlaneFeature) {
+# ifdef OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
+    const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
+                                          OFX::getImageEffectHostDescription()->isMultiPlanar &&
+                                          OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2));
+# else
+    const bool enableMultiPlaneFeature = false;
+# endif
+
+    if (enableMultiPlaneFeature) {
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputLayer);
             param->setLabel(kParamOutputLayerLabel);

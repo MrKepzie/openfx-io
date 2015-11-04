@@ -496,6 +496,7 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
                         break;
                     case 3:
                         comps = OFX::ePixelComponentRGB;
+                        break;
                     case 4:
                     default:
                         comps = OFX::ePixelComponentRGBA;
@@ -2202,7 +2203,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     bool useDisplayWindowOrigin;
     _useDisplayWindowAsOrigin->getValue(useDisplayWindowOrigin);
 #else
-    bool useDisplayWindowOrigin = true;
+    const bool useDisplayWindowOrigin = true;
 #endif
     
     std::size_t incr; // number of channels processed
@@ -2359,11 +2360,9 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
      Union bounds across all specs
      */
     
-    OfxRectD mergeBounds;
-    OfxRectD specBounds;
-    bool boundsSet = false;
+    OfxRectD mergeBounds = {0., 0., 0., 0.}; // start with empty bounds - rectBoundingBox grows them
     for (std::size_t i = 0; i < specs.size(); ++i) {
-        
+        OfxRectD specBounds;
         
         if (originAtDisplayWindow) {
             // the image coordinates are expressed in the "full/display" image.
@@ -2380,13 +2379,7 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
             specBounds.y2 =  specs[i].y + specs[i].height;
         }
         
-        if (!boundsSet) {
-            mergeBounds = specBounds;
-            boundsSet = true;
-        } else {
-            OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
-        }
-        
+        OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
     }
     
     bounds->x1 = mergeBounds.x1;
