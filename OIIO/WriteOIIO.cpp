@@ -358,7 +358,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 , _currentInputComponents()
 , _availableViews()
 {
-# ifdef OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
+# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
     const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
                                           OFX::getImageEffectHostDescription()->isMultiPlanar &&
                                           OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2));
@@ -1607,7 +1607,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         page->addChild(*param);
     }
     
-# ifdef OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
+# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
     const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
                                           OFX::getImageEffectHostDescription()->isMultiPlanar &&
                                           OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2));
