@@ -860,10 +860,9 @@ public:
         const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, procWindow.y1);
         assert(srcPix);
         
-        int srcRowElements = (_srcBounds.x2 - _srcBounds.x1) * srcNComps;
-        int dstRowElements = (_dstBounds.x2 - _dstBounds.x1) * _dstPixelComponentCount;
-        
-        int procWidth = procWindow.x2 - procWindow.x1;
+        const int srcRowElements = _srcRowBytes / sizeof(PIX);
+        const int dstRowElements = _dstRowBytes / sizeof(PIX);
+        const int procWidth = procWindow.x2 - procWindow.x1;
         
         for (int y = procWindow.y1; y < procWindow.y2; ++y,
              srcPix += (srcRowElements - procWidth * srcNComps), // Move to next row and substract what was done on last iteration
