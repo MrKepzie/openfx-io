@@ -2188,7 +2188,6 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     
     ///Open the appropriate subimage index if needed
     if (!img.get() || useCache) {
-        assert(!_useRGBAChoices && _outputLayer);
         ImageInput* rawImg = 0;
         openFile(filename, useCache, &rawImg, & spec, subImageIndex);
         if (rawImg) {
