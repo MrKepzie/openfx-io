@@ -357,6 +357,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
     const OFX::Image* srcImg = _inputClip->fetchImagePlane(time, view, plane.c_str());
     *inputImage = srcImg;
     if (!srcImg) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Input image could not be fetched");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     } else {
@@ -406,6 +407,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         if (renderRequestedView == view && _outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImagePlane(time,renderRequestedView,plane.c_str()));
             if (!dstImg.get()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Output image could not be fetched");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
             }
@@ -512,6 +514,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         if (renderRequestedView == view && _outputClip && _outputClip->isConnected()) {
             std::auto_ptr<OFX::Image> dstImg(_outputClip->fetchImagePlane(time,renderRequestedView,plane.c_str()));
             if (!dstImg.get()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Output image could not be fetched");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
             }
