@@ -155,7 +155,6 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
         _firstFrame->setIsSecret(true);
         _lastFrame->setIsSecret(true);
     }
-    _outputFormat->setIsSecret(true);
 }
 
 GenericWriterPlugin::~GenericWriterPlugin()
