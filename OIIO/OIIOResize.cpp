@@ -419,7 +419,7 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
 
     if (filter == 0) {
         ///Use nearest neighboor
-        if (!ImageBufAlgo::resample(dstBuf, srcBuf, /*interpolate*/false)) {
+        if (!ImageBufAlgo::resample(dstBuf, srcBuf, /*interpolate*/false, ROI::All(), OFX::MultiThread::getNumCPUs())) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     } else {
@@ -432,7 +432,8 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
         float w = fd.width * std::max(1.0f, wratio);
         float h = fd.width * std::max(1.0f, hratio);
         std::auto_ptr<Filter2D> filter(Filter2D::create(fd.name, w, h));
-        if (!ImageBufAlgo::resize(dstBuf, srcBuf, filter.get())) {
+        
+        if (!ImageBufAlgo::resize(dstBuf, srcBuf, filter.get(), ROI::All(), OFX::MultiThread::getNumCPUs())) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     }
