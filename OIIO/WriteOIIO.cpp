@@ -25,15 +25,14 @@
 
 #include "ofxsMacros.h"
 
+#include "OIIOGlobal.h"
 GCC_DIAG_OFF(unused-parameter)
-#include <OpenImageIO/imageio.h>
 #include <OpenImageIO/filesystem.h>
 GCC_DIAG_ON(unused-parameter)
 
 #include "GenericOCIO.h"
 #include "GenericWriter.h"
 
-OIIO_NAMESPACE_USING
 
 #define kPluginName "WriteOIIOOFX"
 #define kPluginGrouping "Image/Writers"
@@ -377,22 +376,11 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
         _views = fetchChoiceParam(kParamViewsSelector);
     }
     
-    ///Set OIIO to use as many threads as there are cores
-    if (!attribute("threads", 0)) {
-#     ifdef DEBUG
-        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
-#     endif
-    }
-    
-    //Anticipate,
-    //See https://github.com/lgritz/oiio/commit/7f7934fafc127a9f3bc51b6aa5e2e77b1b8a26db
-    attribute("exr_threads",0);
-    
-    
     std::string filename;
     _fileParam->getValue(filename);
     refreshParamsVisibility(filename);
     
+    setOIIOThreads();
 }
 
 

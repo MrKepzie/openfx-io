@@ -39,6 +39,7 @@ GCC_DIAG_OFF(unused-parameter)
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 GCC_DIAG_ON(unused-parameter)
+#include "OIIOGlobal.h"
 
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
@@ -162,6 +163,8 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     _fontName = fetchStringParam(kParamFontName);
     _textColor = fetchRGBAParam(kParamTextColor);
     assert(_position && _text && _fontSize && _fontName && _textColor);
+    
+    setOIIOThreads();
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()

@@ -34,8 +34,8 @@
 
 #include "ofxsMacros.h"
 
+#include "OIIOGlobal.h"
 GCC_DIAG_OFF(unused-parameter)
-#include <OpenImageIO/imageio.h>
 #include <OpenImageIO/imagecache.h>
 GCC_DIAG_ON(unused-parameter)
 
@@ -47,7 +47,6 @@ GCC_DIAG_ON(unused-parameter)
 
 #include <ofxsCoords.h>
 
-OIIO_NAMESPACE_USING
 
 #define OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SUPPORTS_SUBIMAGES
@@ -375,17 +374,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,OfxImageEffectHandle handle)
     //Don't try to restore any state in here, do so in restoreState instead which is called
     //right away after the constructor.
     
-    
-    ///Set OIIO to use as many threads as there are cores
-    if (!attribute("threads", 0)) {
-#     ifdef DEBUG
-        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
-#     endif
-    }
-    
-    //Anticipate,
-    //See https://github.com/lgritz/oiio/commit/7f7934fafc127a9f3bc51b6aa5e2e77b1b8a26db
-    attribute("exr_threads",0);
+    setOIIOThreads();
 
 }
 

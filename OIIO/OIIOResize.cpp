@@ -28,8 +28,8 @@
 
 #include "ofxsMacros.h"
 
+#include "OIIOGlobal.h"
 GCC_DIAG_OFF(unused-parameter)
-#include <OpenImageIO/imageio.h>
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
  which includes boost/thread.hpp,
@@ -217,6 +217,8 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
             _format->setIsSecret(true);
             break;
     }
+    
+    setOIIOThreads();
 }
 
 OIIOResizePlugin::~OIIOResizePlugin()
@@ -708,14 +710,7 @@ mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
 void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     
-    ///Set number of threads to 1 and let the host do multi-threading
-    if (!attribute("threads", 1)) {
-#     ifdef DEBUG
-        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
-#     endif
-    }
-
-    
+   
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
