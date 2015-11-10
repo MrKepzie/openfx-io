@@ -20,6 +20,7 @@
 #ifndef IO_GLOBAL_OIIO_H
 #define IO_GLOBAL_OIIO_H
 
+#include <iostream>
 #include "ofxsMacros.h"
 
 GCC_DIAG_OFF(unused-parameter)
@@ -39,14 +40,23 @@ inline void setOIIOThreads()
         //This version of OIIO does not have the exr_threads attribute, fallback on the "threads" attribute...
         if (!attribute("threads", 0)) {
 #     ifdef DEBUG
-            std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
+            std::cerr << "OIIO: Failed to set exr_threads and threads attribute" << std::endl;
 #     endif
-        }
+        } 
+#	  ifdef DEBUG
+		else {
+			std::cout << "Failed to set exr_threads to 0 fallback to OIIO threads=0" << std::endl;
+		}
+#	  endif
     } else {
         //This version of OIIO has the exr_threads attribute. Set the "threads" attribute to limit image processing functions
-        if (!attribute("threads", 1)) {
+	  static const int oiio_threads = 0;
+#	  ifdef DEBUG
+		std::cout << "Successfully set exr_threads to 0, setting OIIO threads=" <<  oiio_threads << std::endl;
+#	  endif
+        if (!attribute("threads",  oiio_threads)) {
 #     ifdef DEBUG
-            std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
+            std::cerr << "Failed to set the threads attribute for OIIO" << std::endl;
 #     endif
         }
     }
