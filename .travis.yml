@@ -27,9 +27,8 @@ matrix:
   fast_finish: true
 
 # Travis CI has 1.5 cores per VM, take advantage of it
-# But first, the makefiles have to be fixed: all plugins are using the same .o's
-#env:
-#  - MAKEFLAGS="-j 2"
+env:
+  - MAKEFLAGS="-j 2"
 
 # requires boost >= 1.49 to compile in C++11 mode
 # see http://stackoverflow.com/questions/11302758/error-while-copy-constructing-boostshared-ptr-using-c11
