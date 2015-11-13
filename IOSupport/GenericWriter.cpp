@@ -155,6 +155,18 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
         _firstFrame->setIsSecret(true);
         _lastFrame->setIsSecret(true);
     }
+    int outputFormat_i;
+    _outputFormatType->getValue(outputFormat_i);
+    if (_clipToProject) {
+        std::string filename;
+        _fileParam->getValue(filename);
+        _clipToProject->setIsSecret(outputFormat_i != 1 || !displayWindowSupportedByFormat(filename));
+    }
+    if (outputFormat_i == 0 || outputFormat_i == 1) {
+        _outputFormat->setIsSecret(true);
+    } else {
+        _outputFormat->setIsSecret(false);
+    }
 }
 
 GenericWriterPlugin::~GenericWriterPlugin()
