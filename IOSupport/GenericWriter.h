@@ -82,7 +82,7 @@ public:
     /**
      * @brief Don't override this. It returns the source region of definition.
      **/
-    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
+    //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
     /**
      * @brief Don't override this. It returns the frame range to render.
