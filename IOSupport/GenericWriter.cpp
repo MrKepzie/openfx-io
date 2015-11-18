@@ -445,7 +445,6 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         size_t memSize = (renderWindow.y2 - renderWindow.y1) * tmpRowBytes;
         *tmpMem = new OFX::ImageMemory(memSize,this);
         srcImgsHolder->addMemory(*tmpMem);
-        *bounds = renderWindow;
         *tmpMemPtr = (float*)(*tmpMem)->lock();
         if (!*tmpMemPtr) {
             OFX::throwSuiteStatusException(kOfxStatErrMemory);
@@ -543,6 +542,8 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
             copyPixelData(renderWindow, srcPixelData, *bounds, pixelComponents, pixelComponentsCount, bitDepth, srcRowBytes, dstImg.get());
             
         }
+        *bounds = renderWindow;
+
     } // if (renderWindowIsBounds && isOCIOIdentity && (noPremult || userPremult == pluginExpectedPremult))
     
 }
