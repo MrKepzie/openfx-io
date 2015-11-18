@@ -1167,7 +1167,7 @@ GenericWriterPlugin::getOutputFormat(OfxTime time,OfxRectD& rod)
     if (doDefaultBehaviour) {
         // union RoD across all views
         int viewsToRender = getViewToRender();
-        if (!gisMultiView) {
+        if (viewsToRender == -2 || !gisMultiView) {
             rod = _inputClip->getRegionOfDefinition(time);
         } else {
             if (viewsToRender == -1) {
@@ -1470,6 +1470,9 @@ GenericWriterPlugin::getFrameViewsNeeded(const OFX::FrameViewsNeededArguments& a
                 frameViews.addFrameViewsNeeded(*_inputClip, r, i);
             }
         } else {
+            if (viewsToRender == -2) {
+                viewsToRender = args.view;
+            }
             frameViews.addFrameViewsNeeded(*_inputClip, r, viewsToRender);
         }
     }
