@@ -152,21 +152,17 @@ Add the following line to `/opt/local/etc/macports/variants.conf`:
 (add +universal on OSX 10.5 and 10.6)
 
 * special portfiles:
-- graphics/openimageio
-- graphics/opencolorio
+  - graphics/openimageio
+  - graphics/opencolorio
 
 * external libraries
 
-	sudo port -v install \
-	openexr \
-	ffmpeg \
-	opencolorio \
-	openimageio
-	
+    sudo port -v install openexr ffmpeg opencolorio openimageio
+
 Then to compile...
 
     make CONFIG=release OCIO_HOME=/opt/local OIIO_HOME=/opt/local
-	
+
 where /opt/local is where the macports tree stores the includes and libs.
 
 ## Using Xcode on OSX
@@ -182,9 +178,7 @@ following definitions in the Xcode preferences
 
 ## Compiling on MS Windows
 
-We provide pre-compiled static binaries for dependencies here:
-
-https://www.dropbox.com/s/s5yuh9k3kum99jp/3rdparty_windows_32_and_64bits_msvc2010.zip
+We provide pre-compiled static binaries for dependencies here: [3rdparty_windows_32_and_64bits_msvc2010.zip](https://www.dropbox.com/s/s5yuh9k3kum99jp/3rdparty_windows_32_and_64bits_msvc2010.zip)
 
 On the other hand if you want to compile them yourself, you can do so :
 
@@ -194,7 +188,7 @@ Clone the repository from github:
 
     git clone https://github.com/imageworks/OpenColorIO
 	
-See (this page) [https://github.com/MrKepzie/Natron/wiki/Compiling-OpenColorIO-static-on-Windows]
+See [Compiling-OpenColorIO-static-on-Windows](https://github.com/MrKepzie/Natron/wiki/Compiling-OpenColorIO-static-on-Windows)
 
 ### OpenEXR
 
@@ -223,9 +217,7 @@ Note that on this website you can only get shared versions of the ffmpeg librari
 
 ### Boost
 
-You can downlad pre-built binaries for your visual studio version here:
-
-http://boost.teeks99.com/
+You can downlad pre-built binaries for your visual studio version from [teeks99](http://boost.teeks99.com/)
 
 
 ### Note about the external libraries
@@ -262,26 +254,19 @@ Make a new file called INRIA.IO.manifest right next to IO.ofx in the bundle (i.e
 In this file copy the following lines:
 
     <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-	<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-
-	<assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
-
-	<file name="avcodec-56.dll">
-	</file>
-
-	<file name="avformat-56.dll">
-	</file>
-
-	<file name="avutil-54.dll">
-	</file>
-
-	<file name="swscale-3.dll">
-	</file>
-
-	<file name="swresample-1.dll">
-	</file>
-
-	</assembly>
+    <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+    <assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
+    <file name="avcodec-56.dll">
+    </file>
+    <file name="avformat-56.dll">
+    </file>
+    <file name="avutil-54.dll">
+    </file>
+    <file name="swscale-3.dll">
+    </file>
+    <file name="swresample-1.dll">
+    </file>
+    </assembly>
 
 Now open the command line tool and navigate to `IO.ofx.bundle/Content/Win64/`
 Execute the following command:
