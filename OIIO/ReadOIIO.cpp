@@ -2617,8 +2617,8 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor 
     const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
         "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
         "pbm", "pgm", "ppm",
-#     if OIIO_VERSION >= 10400
-        "pfm",
+#     if OIIO_VERSION >= 10605
+        "pfm", // PFM was flipped before 1.6.5
 #     endif
         "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
 #else
@@ -2627,14 +2627,26 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor 
     {
         std::stringstream formatss(extensions_list);
         std::string format;
+        std::list<std::string> extensionsl;
         while (std::getline(formatss, format, ';')) {
             std::stringstream extensionss(format);
             std::string extension;
             std::getline(extensionss, extension, ':'); // extract the format
             while (std::getline(extensionss, extension, ',')) {
-                extensions.push_back(extension);
+                extensionsl.push_back(extension);
             }
         }
+        const char* extensions_blacklist[] = {
+#          if OIIO_VERSION < 10605
+            "pfm", // PFM was flipped before 1.6.5
+#          endif
+            "avi", "mov", "qt", "mp4", "m4a", "3gp", "3g2", "mj2", "m4v", "mpg", // FFmpeg extensions - better supported by ReadFFmpeg
+            NULL
+        };
+        for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
+            extensionsl.remove(*e);
+        }
+        extensions.assign(extensionsl.begin(), extensionsl.end());
     }
 
 #endif
