@@ -468,6 +468,7 @@ static std::string ffmpeg_versions()
     return oss.str();
 }
 
+#if 0
 static
 std::vector<std::string> &
 split(const std::string &s, char delim, std::vector<std::string> &elems)
@@ -479,7 +480,19 @@ split(const std::string &s, char delim, std::vector<std::string> &elems)
     }
     return elems;
 }
+#endif
 
+static
+std::list<std::string> &
+split(const std::string &s, char delim, std::list<std::string> &elems)
+{
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
 
 
 #ifdef OFX_IO_MT_FFMPEG
@@ -554,40 +567,151 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     _manager.init();
     
 #ifdef OFX_EXTENSIONS_TUTTLE
+#if 0
+    // hard-coded extensions list
+    const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+#else
     std::vector<std::string> extensions;
 	{
+        std::list<std::string> extensionsl;
 		AVInputFormat* iFormat = av_iformat_next(NULL);
-		while (iFormat != NULL) {
-			if (iFormat->extensions != NULL) {
-				std::string extStr( iFormat->extensions );
-                split(extStr, ',', extensions);
+        while (iFormat != NULL) {
+            if (iFormat->extensions != NULL) {
+                //printf("ReadFFmpeg: \"%s\", // %s (%s)\n", iFormat->extensions, iFormat->name, iFormat->long_name);
+                std::string extStr( iFormat->extensions );
+                split(extStr, ',', extensionsl);
 
-				// name's format defines (in general) extensions
-				// require to fix extension in LibAV/FFMpeg to don't use it.
-				extStr = iFormat->name;
-                split(extStr, ',', extensions);
-			}
-			iFormat = av_iformat_next( iFormat );
-		}
-	}
+                // name's format defines (in general) extensions
+                // require to fix extension in LibAV/FFMpeg to don't use it.
+                extStr = iFormat->name;
+                split(extStr, ',', extensionsl);
+            }
+            iFormat = av_iformat_next( iFormat );
+        }
 
-	// Hack: Add basic video container extensions
-	// as some versions of LibAV doesn't declare properly all extensions...
-	extensions.push_back("mov");
-	extensions.push_back("avi");
-    extensions.push_back("mp4");
-	extensions.push_back("mpg");
-	extensions.push_back("mkv");
-	extensions.push_back("flv");
-	extensions.push_back("m2ts");
-    extensions.push_back("mxf");
-
-	// sort / unique
-	std::sort(extensions.begin(), extensions.end());
-	extensions.erase(std::unique(extensions.begin(), extensions.end()), extensions.end());
+        // Hack: Add basic video container extensions
+        // as some versions of LibAV doesn't declare properly all extensions...
+        extensionsl.push_back("mov");
+        extensionsl.push_back("avi");
+        extensionsl.push_back("mp4");
+        extensionsl.push_back("mpg");
+        extensionsl.push_back("mkv");
+        extensionsl.push_back("flv");
+        extensionsl.push_back("m2ts");
+        extensionsl.push_back("mxf");
 
 
-    //const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+        // remove audio and subtitle-only formats
+        const char* extensions_blacklist[] = {
+            "aa", // aa (Audible AA format files)
+            "aac", // aac (raw ADTS AAC (Advanced Audio Coding))
+            "ac3", // ac3 (raw AC-3)
+            // "adf", // adf (Artworx Data Format)
+            "adp", "dtk", // adp (ADP) Audio format used on the Nintendo Gamecube.
+            "adx", // adx (CRI ADX) Audio-only format used in console video games.
+            "aea", // aea (MD STUDIO audio)
+            "afc", // afc (AFC) Audio format used on the Nintendo Gamecube.
+            "ape", "apl", "mac", // ape (Monkey's Audio)
+            "aqt", "aqtitle", // aqtitle (AQTitle subtitles)
+            "ast", // ast (AST (Audio Stream))
+            // "avi", // avi (AVI (Audio Video Interleaved))
+            "avr", // avr (AVR (Audio Visual Research)) Audio format used on Mac.
+            "bin", // bin (Binary text)
+            "bit", // bit (G.729 BIT file format)
+            // "bmv", // bmv (Discworld II BMV)
+            "bfstm", "bcstm", // bfstm (BFSTM (Binary Cafe Stream)) Audio format used on the Nintendo WiiU (based on BRSTM).
+            "brstm", // brstm (BRSTM (Binary Revolution Stream)) Audio format used on the Nintendo Wii.
+            // "cdg", // cdg (CD Graphics)
+            // "cdxl,xl", // cdxl (Commodore CDXL video)
+            "302", "daud", // daud (D-Cinema audio)
+            "dss", // dss (Digital Speech Standard (DSS))
+            "dts", // dts (raw DTS)
+            "dtshd", // dtshd (raw DTS-HD)
+            // "dv,dif", // dv (DV (Digital Video))
+            // "cdata", // ea_cdata (Electronic Arts cdata)
+            "eac3", // eac3 (raw E-AC-3)
+            "paf", "fap", "epaf", // epaf (Ensoniq Paris Audio File)
+            // "flm", // filmstrip (Adobe Filmstrip)
+            "flac", // flac (raw FLAC)
+            // "flv", // flv (FLV (Flash Video))
+            // "flv", // live_flv (live RTMP FLV (Flash Video))
+            "g722", "722", // g722 (raw G.722)
+            "tco", "rco", "g723_1", // g723_1 (G.723.1)
+            "g729", // g729 (G.729 raw format demuxer)
+            "gsm", // gsm (raw GSM)
+            // "h261", // h261 (raw H.261)
+            // "h26l,h264,264,avc", // h264 (raw H.264 video)
+            // "hevc,h265,265", // hevc (raw HEVC video)
+            // "idf", // idf (iCE Draw File)
+            // "cgi", // ingenient (raw Ingenient MJPEG)
+            "sf", "ircam", // ircam (Berkeley/IRCAM/CARL Sound Format)
+            "latm", // latm (raw LOAS/LATM)
+            // "lvf", // lvf (LVF)
+            // "m4v", // m4v (raw MPEG-4 video)
+            // "mkv,mk3d,mka,mks", // matroska,webm (Matroska / WebM)
+            // "mjpg,mjpeg,mpo", // mjpeg (raw MJPEG video)
+            "mlp", // mlp (raw MLP)
+            // "mov,mp4,m4a,3gp,3g2,mj2", // mov,mp4,m4a,3gp,3g2,mj2 (QuickTime / MOV)
+            "mp2", "mp3", "m2a", "mpa", // mp3 (MP2/3 (MPEG audio layer 2/3))
+            "mpc", // mpc (Musepack)
+            // "mjpg", // mpjpeg (MIME multipart JPEG)
+            "txt", "mpl2", // mpl2 (MPL2 subtitles)
+            "sub", "mpsub", // mpsub (MPlayer subtitles)
+            // "mvi", // mvi (Motion Pixels MVI)
+            // "mxg", // mxg (MxPEG clip)
+            // "v", // nc (NC camera feed)
+            "nist", "sph", "nistsphere", // nistsphere (NIST SPeech HEader REsources)
+            // "nut", // nut (NUT)
+            // "ogg", // ogg (Ogg)
+            "oma", "omg", "aa3", // oma (Sony OpenMG audio)
+            "al", "alaw", // alaw (PCM A-law)
+            "ul", "mulaw", // mulaw (PCM mu-law)
+            "sw", "s16le", // s16le (PCM signed 16-bit little-endian)
+            "sb", "s8", // s8 (PCM signed 8-bit)
+            "uw", "u16le", // u16le (PCM unsigned 16-bit little-endian)
+            "ub", "u8", // u8 (PCM unsigned 8-bit)
+            "pjs", // pjs (PJS (Phoenix Japanimation Society) subtitles)
+            "pvf", // pvf (PVF (Portable Voice Format))
+            // "yuv,cif,qcif,rgb", // rawvideo (raw video)
+            "rt", "realtext", // realtext (RealText subtitle format)
+            "rsd", "redspark", // redspark (RedSpark)
+            "rsd", // rsd (GameCube RSD)
+            "rso", // rso (Lego Mindstorms RSO)
+            "smi", "sami", // sami (SAMI subtitle format)
+            "sbg", // sbg (SBaGen binaural beats script)
+            // "sdr2", // sdr2 (SDR2)
+            "shn", // shn (raw Shorten)
+            // "vb,son", // siff (Beam Software SIFF)
+            // "sln", // sln (Asterisk raw pcm)
+            // "mjpg", // smjpeg (Loki SDL MJPEG)
+            "stl", // stl (Spruce subtitle format)
+            "sub", "subviewer1", // subviewer1 (SubViewer v1 subtitle format)
+            "sub", "subviewer", // subviewer (SubViewer subtitle format)
+            "sup", // sup (raw HDMV Presentation Graphic Stream subtitles)
+            "tak", // tak (raw TAK)
+            "thd", "truehd", // truehd (raw TrueHD)
+            "tta", // tta (TTA (True Audio))
+            "ans", "art", "asc", "diz", "ice", "nfo", "txt", "vt", // tty (Tele-typewriter)
+            // "vc1", // vc1 (raw VC-1)
+            // "viv", // vivo (Vivo)
+            "idx", "vobsub", // vobsub (VobSub subtitle format)
+            "txt", "vplayer", // vplayer (VPlayer subtitles)
+            "vqf", "vql", "vqe", // vqf (Nippon Telegraph and Telephone Corporation (NTT) TwinVQ)
+            "vtt", "webvtt", // webvtt (WebVTT subtitle)
+            // "yop", // yop (Psygnosis YOP)
+            // "y4m", // yuv4mpegpipe (YUV4MPEG pipe)
+            NULL
+        };
+        for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
+            extensionsl.remove(*e);
+        }
+
+        extensions.assign(extensionsl.begin(), extensionsl.end());
+        // sort / unique
+        std::sort(extensions.begin(), extensions.end());
+        extensions.erase(std::unique(extensions.begin(), extensions.end()), extensions.end());
+    }
+#endif
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(0);
 #endif
