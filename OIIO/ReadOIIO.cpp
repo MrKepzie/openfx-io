@@ -587,7 +587,8 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
             for (LayersUnionVect::iterator it = _layersUnion.begin(); it != _layersUnion.end(); ++it) {
                 std::string component;
                 if (it->first == kReadOIIOColorLayer) {
-                    switch (it->second.layer.channelNames.size()) {
+                    continue;
+                    /*switch (it->second.layer.channelNames.size()) {
                         case 1:
                             component = kOfxImageComponentAlpha;
                             break;
@@ -598,7 +599,7 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
                         default:
                             component = kOfxImageComponentRGBA;
                             break;
-                    };
+                    };*/
                 } else {
                     component = makeNatronCustomChannel(it->first, it->second.layer.channelNames);
                 }
