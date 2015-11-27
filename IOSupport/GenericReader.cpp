@@ -209,7 +209,8 @@ enum MissingEnum
 
 #define kParamCustomFps "customFps"
 #define kParamCustomFpsLabel "Custom FPS"
-#define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter."
+#define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter. The frame-rate is just the meta-data that will be passed " \
+"downstream to the graph, no retime will actually take place."
 
 #define MISSING_FRAME_NEAREST_RANGE 100
 
