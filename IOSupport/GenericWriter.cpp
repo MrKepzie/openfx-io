@@ -1433,11 +1433,13 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
     if (clipName == kOfxImageEffectSimpleSourceClipName && _inputClip && args.reason == OFX::eChangeUserEdit) {
         OFX::PreMultiplicationEnum premult = _inputClip->getPreMultiplication();
 #     ifdef DEBUG
-        OFX::PixelComponentEnum components = _inputClip->getPixelComponents();
-        assert((components == OFX::ePixelComponentAlpha && premult != OFX::eImageOpaque) ||
-               (components == OFX::ePixelComponentRGB && premult == OFX::eImageOpaque) ||
-               (components == OFX::ePixelComponentRGBA) ||
-               (components == OFX::ePixelComponentCustom && gisMultiPlane));
+        if (_inputClip->isConnected()) {
+            OFX::PixelComponentEnum components = _inputClip->getPixelComponents();
+            assert((components == OFX::ePixelComponentAlpha && premult != OFX::eImageOpaque) ||
+                   (components == OFX::ePixelComponentRGB && premult == OFX::eImageOpaque) ||
+                   (components == OFX::ePixelComponentRGBA) ||
+                   (components == OFX::ePixelComponentCustom && gisMultiPlane));
+        }
 #      endif
         _premult->setValue(premult);
         
