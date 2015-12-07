@@ -2341,8 +2341,6 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
     bool originAtDisplayWindow;
     _useDisplayWindowAsOrigin->getValue(originAtDisplayWindow);
-#else
-    bool originAtDisplayWindow = true;
 #endif
     
     /*
@@ -2353,7 +2351,10 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     for (std::size_t i = 0; i < specs.size(); ++i) {
         OfxRectD specBounds;
         
-        if (originAtDisplayWindow) {
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+        if (originAtDisplayWindow)
+#endif
+        {
             // the image coordinates are expressed in the "full/display" image.
             // The RoD are the coordinates of the data window with respect to that full window
             
@@ -2361,13 +2362,16 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
             specBounds.x2 = (specs[i].x + specs[i].width - specs[i].full_x);
             specBounds.y1 = specs[i].full_y + specs[i].full_height - (specs[i].y + specs[i].height);
             specBounds.y2 = (specs[i].full_height) + (specs[i].full_y - specs[i].y);
-        } else {
+        }
+#ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+        else {
             specBounds.x1 = specs[i].x;
             specBounds.x2 = specs[i].x + specs[i].width;
             specBounds.y1 =  specs[i].y;
             specBounds.y2 =  specs[i].y + specs[i].height;
         }
-        
+#endif
+
         OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
     }
     
