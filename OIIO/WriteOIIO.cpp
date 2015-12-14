@@ -742,10 +742,11 @@ ETuttlePluginBitDepth getDefaultBitDepth(const std::string& filepath, ETuttlePlu
               format.find("ico") != std::string::npos || format.find("jfi") != std::string::npos  ||
               format.find("pgm") != std::string::npos || format.find("pnm") != std::string::npos  ||
               format.find("ppm") != std::string::npos || format.find("pbm") != std::string::npos  ||
-              format.find("pic") != std::string::npos) {
+              format.find("pic") != std::string::npos || format.find("tga") != std::string::npos  ||
+              format.find("png") != std::string::npos) {
         return eTuttlePluginBitDepth8;
     } else {
-        //bmp, cin, dpx, fits, j2k, j2c, jp2, jpe, png, sgi, tga, tif, tiff, tpic, webp
+        //cin, dpx, fits, j2k, j2c, jp2, jpe, sgi, tif, tiff, tpic, webp
         return eTuttlePluginBitDepth16;
     }
 
