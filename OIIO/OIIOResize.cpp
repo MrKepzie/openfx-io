@@ -567,8 +567,8 @@ void
 OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit) {
-        OfxPointD projectSize = getProjectSize();
-        double projectPAR = getProjectPixelAspectRatio();
+        OfxRectD srcRod = _srcClip->getRegionOfDefinition(args.time);
+        double srcpar = _srcClip->getPixelAspectRatio();
 
         ///Try to find a format matching the project format in which case we switch to format mode otherwise
         ///switch to size mode and set the size accordingly
@@ -577,13 +577,13 @@ OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::s
             std::size_t w,h;
             double par;
             getFormatResolution((OFX::EParamFormat)i, &w, &h, &par);
-            if (w == projectSize.x && h == projectSize.y && par == projectPAR) {
+            if (w == (srcRod.x2 - srcRod.x1) && h == (srcRod.y2 - srcRod.y1) && par == srcpar) {
                 _format->setValue((OFX::EParamFormat)i);
                 _type->setValue((int)eResizeTypeFormat);
                 foundFormat = true;
             }
         }
-        _size->setValue((int)projectSize.x, (int)projectSize.y);
+        _size->setValue((int)srcRod.x2 - srcRod.x1, (int)srcRod.y2 - srcRod.y1);
         if (!foundFormat) {
             _type->setValue((int)eResizeTypeSize);
         }
