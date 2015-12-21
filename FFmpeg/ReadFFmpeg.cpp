@@ -39,7 +39,7 @@
 #include "GenericReader.h"
 #include "FFmpegFile.h"
 
-#define kPluginName "ReadFFmpegOFX"
+#define kPluginName "ReadFFmpeg"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read video using FFmpeg."
 #define kPluginIdentifier "fr.inria.openfx.ReadFFmpeg"
@@ -700,6 +700,14 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
             "vtt", "webvtt", // webvtt (WebVTT subtitle)
             // "yop", // yop (Psygnosis YOP)
             // "y4m", // yuv4mpegpipe (YUV4MPEG pipe)
+
+            // OIIO and PFM extensions:
+            "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
+            "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
+            "pbm", "pgm", "ppm",
+            "pfm",
+            "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile",
+
             NULL
         };
         for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
