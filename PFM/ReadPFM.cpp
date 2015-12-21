@@ -34,7 +34,7 @@
 #include "GenericOCIO.h"
 #include "ofxsMacros.h"
 
-#define kPluginName "ReadPFMOFX"
+#define kPluginName "ReadPFM"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read PFM (Portable Float Map) files."
 #define kPluginIdentifier "fr.inria.openfx.ReadPFM"

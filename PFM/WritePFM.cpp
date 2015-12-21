@@ -32,7 +32,7 @@
 #include "GenericWriter.h"
 #include "ofxsMacros.h"
 
-#define kPluginName "WritePFMOFX"
+#define kPluginName "WritePFM"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription "Write PFM (Portable Float Map) files."
 #define kPluginIdentifier "fr.inria.openfx.WritePFM"
