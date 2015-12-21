@@ -136,12 +136,11 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _outputFormat = fetchChoiceParam(kParamOutputFormat);
     
     _premult = fetchChoiceParam(kParamInputPremult);
-    
-    try {
-        ///Param does not necessarily exist for all IO plugins
+
+
+    ///Param does not necessarily exist for all IO plugins
+    if (paramExists(kParamClipToProject)) {
         _clipToProject = fetchBooleanParam(kParamClipToProject);
-    } catch (...) {
-        
     }
     
     int frameRangeChoice;
