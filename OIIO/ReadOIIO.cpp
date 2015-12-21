@@ -55,7 +55,7 @@ GCC_DIAG_ON(unused-parameter)
 #define OFX_READ_OIIO_SHARED_CACHE
 #endif
 
-#define kPluginName "ReadOIIOOFX"
+#define kPluginName "ReadOIIO"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription \
 "Read images using OpenImageIO.\n\n" \
