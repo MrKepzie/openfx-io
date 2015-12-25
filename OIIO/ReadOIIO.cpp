@@ -2250,7 +2250,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
 #         endif
             { // !useCache
                 assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
-                if (spec.tile_width == 0) {
+                if (spec.tile_width == 0 ||
+                    ((renderWindow.x1) % spec.tile_width) != 0 ||
+                    ((renderWindow.y1) % spec.tile_height) != 0) {
                     ///read by scanlines
                     img->read_scanlines(spec.height - renderWindow.y2, //y begin
                                         spec.height - renderWindow.y1, //y end
