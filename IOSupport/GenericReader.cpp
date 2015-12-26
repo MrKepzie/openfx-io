@@ -1164,7 +1164,8 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     std::string error;
     OfxRectI bounds;
     double par = 1.;
-    bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error);
+    int tile_width,tile_height;
+    bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error, &tile_width, &tile_height);
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -1460,13 +1461,14 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         return;
     }
 
-    OfxRectI renderWindowFullRes;
+    OfxRectI renderWindowFullRes, renderWindowNotRounded;
     OfxRectI frameBounds;
     double par = 1.;
+    int tile_width,tile_height;
     std::string error;
 
     ///if the plug-in doesn't support tiles, just render the full rod
-    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
+    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error, &tile_width, &tile_height);
     ///We shouldve checked above for any failure, now this is too late.
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
@@ -1484,6 +1486,8 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
            renderWindowFullRes.y2 <= frameBounds.y2 + std::pow(2.,(double)downscaleLevels) - 1);
     intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
 
+    //See below: we round the render window to the tile size
+    renderWindowNotRounded = renderWindowFullRes;
     
     for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
 
@@ -1572,6 +1576,41 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 pixelBytes = it->numChans * getComponentBytes(firstDepth);
             }
             assert(pixelBytes > 0);
+            
+            /*
+             If tile_width and tile_height is set, round the renderWindow to the enclosing tile size to make sure the plug-in has a buffer
+             large enough to decode tiles. This is needed for OpenImageIO. Note that 
+             */
+            if (tile_width > 0 && tile_height > 0) {
+                double frameHeight = frameBounds.y2 - frameBounds.y1;
+                if (isTileOrientationTopDown()) {
+                    //invert Y before rounding
+                    
+                    renderWindowFullRes.y1 = frameHeight -  renderWindowFullRes.y1;
+                    renderWindowFullRes.y2 = frameHeight  - renderWindowFullRes.y2;
+                    frameBounds.y1 = frameHeight  - frameBounds.y1;
+                    frameBounds.y2 = frameHeight  - frameBounds.y2;
+                    
+                    renderWindowFullRes.x1 = std::min((double)std::ceil((double)renderWindowFullRes.x1 / tile_width) * tile_width,(double)frameBounds.x1);
+                    renderWindowFullRes.y1 = std::min((double)std::ceil((double)renderWindowFullRes.y1 / tile_height) * tile_height,(double)frameBounds.y1);
+                    renderWindowFullRes.x2 = std::max((double)std::floor((double)renderWindowFullRes.x2 / tile_width) * tile_width,(double)frameBounds.x2);
+                    renderWindowFullRes.y2 = std::max((double)std::floor((double)renderWindowFullRes.y2 / tile_height) * tile_height,(double)frameBounds.y2);
+                } else {
+                    renderWindowFullRes.x1 = std::max((double)std::floor((double)renderWindowFullRes.x1 / tile_width) * tile_width,(double)frameBounds.x1);
+                    renderWindowFullRes.y1 = std::max((double)std::floor((double)renderWindowFullRes.y1 / tile_height) * tile_height,(double)frameBounds.y1);
+                    renderWindowFullRes.x2 = std::min((double)std::ceil((double)renderWindowFullRes.x2 / tile_width) * tile_width,(double)frameBounds.x2);
+                    renderWindowFullRes.y2 = std::min((double)std::ceil((double)renderWindowFullRes.y2 / tile_height) * tile_height,(double)frameBounds.y2);
+                }
+                
+                if (isTileOrientationTopDown()) {
+                    //invert back Y
+                    renderWindowFullRes.y1 = frameHeight - renderWindowFullRes.y1;
+                    renderWindowFullRes.y2 = frameHeight  - renderWindowFullRes.y2;
+                    frameBounds.y1 = frameHeight - frameBounds.y1;
+                    frameBounds.y2 = frameHeight - frameBounds.y2;
+                }
+            }
+            
             int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
             size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * tmpRowBytes;
             OFX::ImageMemory mem(memSize, this);
@@ -1596,7 +1635,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     assert(remappedComponents == OFX::ePixelComponentRGBA);
                     DBG(std::printf("unpremult (tmp in-place)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
-                    unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes);
+                    unPremultPixelData(renderWindowNotRounded, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes);
                     
                     if (abort()) {
                         return;
@@ -1615,7 +1654,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     // we can write directly to dstPixelData
                     /// adjust the scale to match the given output image
                     DBG(std::printf("scale (no premult, tmp to dst)\n"));
-                    scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, remappedComponents,
+                    scalePixelData(args.renderWindow,renderWindowNotRounded,(unsigned int)downscaleLevels, tmpPixelData, remappedComponents,
                                    it->numChans, firstDepth, renderWindowFullRes, tmpRowBytes, it->pixelData,
                                    remappedComponents, it->numChans, firstDepth, firstBounds, it->rowBytes);
                 } else {
@@ -1627,7 +1666,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     
                     /// adjust the scale to match the given output image
                     DBG(std::printf("scale (tmp to scaled)\n"));
-                    scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData,
+                    scalePixelData(args.renderWindow,renderWindowNotRounded,(unsigned int)downscaleLevels, tmpPixelData,
                                    remappedComponents, it->numChans, firstDepth,
                                    renderWindowFullRes, tmpRowBytes, scaledPixelData,
                                    remappedComponents, it->numChans, firstDepth,
@@ -2092,7 +2131,8 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             OfxRectI bounds;
             double par = 1.;
             std::string error;
-            bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error);
+            int tile_width,tile_height;
+            bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error,&tile_width, &tile_height);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
             }
@@ -2185,9 +2225,10 @@ GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
     OfxRectI originalBounds, proxyBounds;
     std::string error;
     double originalPAR = 1., proxyPAR = 1.;
-    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error);
+    int tile_width,tile_height;
+    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error,&tile_width,&tile_height);
     proxyBounds.x1 = proxyBounds.x2 = proxyBounds.y1 = proxyBounds.y2 = 0.f;
-    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error);
+    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error,&tile_width,&tile_height);
     OfxPointD ret;
     if (!success ||
         (originalBounds.x1 == originalBounds.x2) ||

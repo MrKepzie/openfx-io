@@ -83,7 +83,7 @@ private:
 
     virtual bool getSequenceTimeDomain(const std::string& filename, OfxRangeI &range) OVERRIDE FINAL;
 
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
     
     virtual bool getFrameRate(const std::string& filename, double* fps) OVERRIDE FINAL;
     
@@ -389,7 +389,9 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
                                  OfxTime /*time*/,
                                  OfxRectI *bounds,
                                  double *par,
-                                 std::string *error)
+                                 std::string *error,
+                                  int* tile_width,
+                                 int* tile_height)
 {
     assert(bounds && par);
     FFmpegFile* file = _manager.getOrCreate(this, filename);
@@ -412,6 +414,7 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
     bounds->y1 = 0;
     bounds->y2 = height;
     *par = ap;
+    *tile_width = *tile_height = 0;
     return true;
 }
 

@@ -224,7 +224,7 @@ private:
     
     void openFile(const std::string& filename, bool useCache, ImageInput** img, ImageSpec* spec, int subimage);
 
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error,  int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
     
@@ -2244,17 +2244,18 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
 #                                     endif
                                         )) {
                     setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
                     return;
                 }
             } else // warning: '{' must follow #endif
 #         endif
             { // !useCache
                 assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
+                
                 if (spec.tile_width == 0 ||
-                    ((renderWindow.x1) % spec.tile_width) != 0 ||
-                    ((renderWindow.y1) % spec.tile_height) != 0) {
+                    !spec.valid_tile_range(renderWindow.x1, renderWindow.x2, spec.height - renderWindow.y2, spec.height - renderWindow.y1, 0, 1)) {
                     ///read by scanlines
-                    img->read_scanlines(spec.height - renderWindow.y2, //y begin
+                    if (!img->read_scanlines(spec.height - renderWindow.y2, //y begin
                                         spec.height - renderWindow.y1, //y end
                                         0, // z
                                         chbegin, // chan begin
@@ -2262,9 +2263,14 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                                         TypeDesc::FLOAT, // data type
                                         (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
                                         numChannels * sizeof(float), //x stride
-                                        -rowBytes); //y stride < make it invert Y;
+                                        -rowBytes)) //y stride < make it invert Y;
+                    {
+                        setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
+                        OFX::throwSuiteStatusException(kOfxStatFailed);
+                        return;
+                    }
                 } else {
-                    img->read_tiles(renderWindow.x1, //x begin
+                    if (!img->read_tiles(renderWindow.x1, //x begin
                                     renderWindow.x2,//x end
                                     spec.height - renderWindow.y2,//y begin
                                     spec.height - renderWindow.y1,//y end
@@ -2276,7 +2282,12 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                                     (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
                                     numChannels * sizeof(float), //x stride
                                     -rowBytes, //y stride < make it invert Y
-                                    AutoStride); //z stride
+                                    AutoStride)) //z stride
+                    {
+                        setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
+                        OFX::throwSuiteStatusException(kOfxStatFailed);
+                        return;
+                    }
                 }
             } // !useCache
         } // if (channels[i] < kXChannelFirst) {
@@ -2293,7 +2304,9 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
                                OfxTime /*time*/,
                                OfxRectI *bounds,
                                double *par,
-                               std::string *error)
+                               std::string *error,
+                               int* tile_width,
+                               int* tile_height)
 {
     assert(bounds && par);
     std::vector<ImageSpec> specs;
@@ -2381,6 +2394,8 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     bounds->x2 = mergeBounds.x2;
     bounds->y1 = mergeBounds.y1;
     bounds->y2 = mergeBounds.y2;
+    *tile_width = specs[0].tile_width;
+    *tile_height = specs[0].tile_height;
     
     *par = specs[0].get_float_attribute("PixelAspectRatio", 1);
 #ifdef OFX_READ_OIIO_USES_CACHE

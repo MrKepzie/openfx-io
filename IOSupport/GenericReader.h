@@ -173,7 +173,19 @@ private:
      * in pixel coordinates and the pixel aspect ratio out of the header
      * of the image targeted by the filename.
      **/
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par,std::string *error) = 0;
+    virtual bool getFrameBounds(const std::string& filename,
+                                OfxTime time,
+                                OfxRectI *bounds,
+                                double *par,
+                                std::string *error,
+                                int* tile_width,
+                                int* tile_height) = 0;
+    
+    /*
+     * In case of plug-ins that can read tiled files, determines whether the image is oriented bottom up or top down.
+     * This is so that the rounding to the tile size is applied correctly. Currently this is only useful for the OIIO plug-in.
+     */
+    virtual bool isTileOrientationTopDown() const { return true; }
     
     virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) { return false; }
 
