@@ -1553,7 +1553,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         //   OR
         //   - premult is unpremultiplied
         bool mustPremult = ((remappedComponents == OFX::ePixelComponentRGBA) &&
-                            ((premult == OFX::eImagePreMultiplied && isOCIOIdentity) ||
+                            ((premult == OFX::eImagePreMultiplied && !isOCIOIdentity) ||
                              premult == OFX::eImageUnPreMultiplied));
         
         
