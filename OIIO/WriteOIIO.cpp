@@ -95,12 +95,19 @@ enum ETuttlePluginComponents
 	eTuttlePluginComponentsRGBA
 };
 
-#define kParamOutputQualityName    "quality"
+#define kParamOutputQuality        "quality"
 #define kParamOutputQualityLabel   "Quality"
 #define kParamOutputQualityHint \
-"Indicates the quality of compression to use (0–100), for those plugins and compression methods that allow a variable amount of compression, with higher numbers indicating higher image fidelity."
+"Indicates the quality of compression to use (0–100), for those plugins and compression methods that allow a variable amount of compression, with higher numbers indicating higher image fidelity. [JPEG, TIFF w/ JPEG comp., WEBP]"
+#define kParamOutputQualityDefault 100
 
-#define kParamOutputOrientationName    "orientation"
+#define kParamOutputDWACompressionLevel        "dwaCompressionLevel"
+#define kParamOutputDWACompressionLevelLabel   "DWA Compression Level"
+#define kParamOutputDWACompressionLevelHint \
+"Amount of compression when using Dreamworks DWAA or DWAB compression options. These lossy formats are variable in quality and can minimize the compression artifacts. Higher values will result in greater compression and likewise smaller file size, but increases the chance for artifacts. Values from 45 to 150 are usually correct for production shots, whereas HDR vacation photos could use up to 500. Values below 45 should give no visible imprrovement on photographs. [EXR w/ DWAa or DWAb comp.]"
+#define kParamOutputDWACompressionLevelDefault 45
+
+#define kParamOutputOrientation        "orientation"
 #define kParamOutputOrientationLabel   "Orientation"
 #define kParamOutputOrientationHint \
 "The orientation of the image data [DPX,TIFF,JPEG,HDR,FITS].\n" \
@@ -149,13 +156,14 @@ enum EOutputOrientation
     eOutputOrientationR90CounterClockwise,
 };
 
-#define kParamOutputCompressionName    "compression"
+#define kParamOutputCompression        "compression"
 #define kParamOutputCompressionLabel   "Compression"
 #define kParamOutputCompressionHint \
 "Compression type [TIFF,EXR,DDS,IFF,SGI,TGA]\n" \
 "Indicates the type of compression the file uses. Supported compression modes will vary from format to format. " \
-"As an example, the TIFF format supports \"none\", \"lzw\", \"ccittrle\", \"zip\" (the default), \"packbits\", "\
-"and the EXR format supports \"none\", \"rle\", \"zip\" (the default), \"piz\", \"pxr24\", \"b44\", or \"b44a\"."
+"As an example, the TIFF format supports \"none\", \"lzw\", \"ccittrle\", \"zip\" (the default), \"jpeg\", \"packbits\", "\
+"and the EXR format supports \"none\", \"rle\", \"zip\" (the default), \"piz\", \"pxr24\", \"b44\", \"b44a\", "\
+"\"dwaa\" or \"dwab\"."
 
 #define kParamOutputCompressionOptionAuto        "default"
 #define kParamOutputCompressionOptionAutoHint     "Guess from the output format"
@@ -175,10 +183,16 @@ enum EOutputOrientation
 #define kParamOutputCompressionOptionB44Hint      "Lossy 4-by-4 pixel block compression, fixed compression rate [EXR]"
 #define kParamOutputCompressionOptionB44a        "b44a"
 #define kParamOutputCompressionOptionB44aHint     "Lossy 4-by-4 pixel block compression, flat fields are compressed more [EXR]"
+#define kParamOutputCompressionOptionDWAa        "dwaa"
+#define kParamOutputCompressionOptionDWAaHint     "lossy DCT based compression, in blocks of 32 scanlines. More efficient for partial buffer access. [EXR]"
+#define kParamOutputCompressionOptionDWAb        "dwab"
+#define kParamOutputCompressionOptionDWAbHint     "lossy DCT based compression, in blocks of 256 scanlines. More efficient space wise and faster to decode full frames than DWAA. [EXR]"
 #define kParamOutputCompressionOptionLZW         "lzw"
 #define kParamOutputCompressionOptionLZWHint      "Lempel-Ziv Welsch compression (lossless) [TIFF]"
 #define kParamOutputCompressionOptionCCITTRLE    "ccittrle"
 #define kParamOutputCompressionOptionCCITTRLEHint "CCITT modified Huffman RLE (lossless) [TIFF]"
+#define kParamOutputCompressionOptionJPEG        "jpeg"
+#define kParamOutputCompressionOptionJPEGHint     "JPEG [TIFF]"
 #define kParamOutputCompressionOptionPACKBITS    "packbits"
 #define kParamOutputCompressionOptionPACKBITSHint "Macintosh RLE (lossless) [TIFF]"
 
@@ -192,9 +206,12 @@ enum EParamCompression
 	eParamCompressionPiz,
 	eParamCompressionPxr24,
 	eParamCompressionB44,
-	eParamCompressionB44a,
+    eParamCompressionB44a,
+    eParamCompressionDWAa,
+    eParamCompressionDWAb,
     eParamCompressionLZW,
     eParamCompressionCCITTRLE,
+    eParamCompressionJPEG,
     eParamCompressionPACKBITS
 };
 
@@ -332,6 +349,7 @@ private:
 private:
     OFX::ChoiceParam* _bitDepth;
     OFX::IntParam* _quality;
+    OFX::DoubleParam* _dwaCompressionLevel;
     OFX::ChoiceParam* _orientation;
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _tileSize;
@@ -347,6 +365,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 : GenericWriterPlugin(handle)
 , _bitDepth(0)
 , _quality(0)
+, _dwaCompressionLevel(0)
 , _orientation(0)
 , _compression(0)
 , _tileSize(0)
@@ -365,9 +384,10 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
     const bool enableMultiPlaneFeature = false;
 # endif
     _bitDepth = fetchChoiceParam(kParamBitDepth);
-    _quality     = fetchIntParam(kParamOutputQualityName);
-    _orientation = fetchChoiceParam(kParamOutputOrientationName);
-    _compression = fetchChoiceParam(kParamOutputCompressionName);
+    _quality     = fetchIntParam(kParamOutputQuality);
+    _dwaCompressionLevel = fetchDoubleParam(kParamOutputDWACompressionLevel);
+    _orientation = fetchChoiceParam(kParamOutputOrientation);
+    _compression = fetchChoiceParam(kParamOutputCompression);
     _tileSize = fetchChoiceParam(kParamTileSize);
     if (enableMultiPlaneFeature) {
         _outputLayers = fetchChoiceParam(kParamOutputLayer);
@@ -414,6 +434,10 @@ void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
         std::string opt;
         _outputLayers->getOption(cur_i, opt);
         _outputLayerString->setValue(opt);
+    } else if (paramName == kParamOutputCompression && args.reason == OFX::eChangeUserEdit) {
+        std::string filename;
+        _fileParam->getValue(filename);
+        refreshParamsVisibility(filename);
     }
     GenericWriterPlugin::changedParam(args, paramName);
 }
@@ -861,9 +885,8 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
     }
 
     refreshParamsVisibility(filename);
-    
-    
 }
+
 
 void
 WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
@@ -872,12 +895,30 @@ WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
     if (output.get()) {
         _tileSize->setIsSecret(!output->supports("tiles"));
         //_outputLayers->setIsSecret(!output->supports("nchannels"));
-        bool isEXR = strcmp(output->format_name(),"openexr") == 0;
+        bool hasQuality = (strcmp(output->format_name(), "jpeg") == 0 ||
+                           strcmp(output->format_name(), "webp") == 0);
+        if (!hasQuality && (strcmp(output->format_name(), "tiff") == 0)) {
+            int compression_i;
+            _compression->getValue(compression_i);
+            hasQuality = ((EParamCompression)compression_i == eParamCompressionJPEG);
+        }
+        _quality->setIsSecret(!hasQuality);
+        bool isEXR = strcmp(output->format_name(), "openexr") == 0;
+        bool hasDWA = isEXR;
+        if (hasDWA) {
+            int compression_i;
+            _compression->getValue(compression_i);
+            EParamCompression compression = (EParamCompression)compression_i;
+            hasDWA = (compression == eParamCompressionDWAa) || (compression == eParamCompressionDWAb);
+        }
+        _dwaCompressionLevel->setIsSecret(!hasDWA);
         _views->setIsSecret(!isEXR);
         _parts->setIsSecret(!output->supports("multiimage"));
     } else {
         _tileSize->setIsSecret(true);
         //_outputLayers->setIsSecret(true);
+        _quality->setIsSecret(true);
+        _dwaCompressionLevel->setIsSecret(true);
         _views->setIsSecret(true);
         _parts->setIsSecret(true);
     }
@@ -1007,8 +1048,14 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
     ImageSpec spec (bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, 4, oiioBitDepth);
 
     
-    int quality;
-    _quality->getValue(quality);
+    int quality = 100;
+    if (!_quality->getIsSecret()) {
+        _quality->getValue(quality);
+    }
+    double dwaCompressionLevel = 45.;
+    if (!_dwaCompressionLevel->getIsSecret()) {
+        _dwaCompressionLevel->getValue(dwaCompressionLevel);
+    }
     int orientation;
     _orientation->getValue(orientation);
     int compression_i;
@@ -1042,11 +1089,20 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         case eParamCompressionB44a: // EXR
             compression = "b44a";
             break;
+        case eParamCompressionDWAa: // EXR
+            compression = "dwaa";
+            break;
+        case eParamCompressionDWAb: // EXR
+            compression = "dwab";
+            break;
         case eParamCompressionLZW: // TIFF
             compression = "lzw";
             break;
         case eParamCompressionCCITTRLE: // TIFF
             compression = "ccittrle";
+            break;
+        case eParamCompressionJPEG: // TIFF
+            compression = "jpeg";
             break;
         case eParamCompressionPACKBITS: // TIFF
             compression = "packbits";
@@ -1113,7 +1169,12 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         spec.attribute("oiio:Gamma", gamma);
     }
 #endif
-    spec.attribute("CompressionQuality", quality);
+    if (!_quality->getIsSecret()) {
+        spec.attribute("CompressionQuality", quality);
+    }
+    if (!_dwaCompressionLevel->getIsSecret()) {
+        spec.attribute("openexr:dwaCompressionLevel", (float)dwaCompressionLevel);
+    }
     spec.attribute("Orientation", orientation + 1);
     if (!compression.empty()) { // some formats have a good value for the default compression
         spec.attribute("compression", compression);
@@ -1551,16 +1612,25 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         page->addChild(*param);
     }
     {
-        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOutputQualityName);
+        OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOutputQuality);
         param->setLabel(kParamOutputQualityLabel);
         param->setHint(kParamOutputQualityHint);
         param->setRange(0, 100);
         param->setDisplayRange(0, 100);
-        param->setDefault(80);
+        param->setDefault(kParamOutputQualityDefault);
         page->addChild(*param);
     }
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputOrientationName);
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamOutputDWACompressionLevel);
+        param->setLabel(kParamOutputDWACompressionLevelLabel);
+        param->setHint(kParamOutputDWACompressionLevelHint);
+        param->setRange(0, kOfxFlagInfiniteMax);
+        param->setDisplayRange(45, 200);
+        param->setDefault(kParamOutputDWACompressionLevelDefault);
+        page->addChild(*param);
+    }
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputOrientation);
         param->setLabel(kParamOutputOrientationLabel);
         param->setHint(kParamOutputOrientationHint);
         assert(param->getNOptions() == eOutputOrientationNormal);
@@ -1583,7 +1653,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         page->addChild(*param);
     }
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputCompressionName);
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputCompression);
         param->setLabel(kParamOutputCompressionLabel);
         param->setHint(kParamOutputCompressionHint);
         assert(param->getNOptions() == eParamCompressionAuto);
@@ -1604,10 +1674,16 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kParamOutputCompressionOptionB44, kParamOutputCompressionOptionB44Hint);
         assert(param->getNOptions() == eParamCompressionB44a);
         param->appendOption(kParamOutputCompressionOptionB44a, kParamOutputCompressionOptionB44aHint);
+        assert(param->getNOptions() == eParamCompressionDWAa);
+        param->appendOption(kParamOutputCompressionOptionDWAa, kParamOutputCompressionOptionDWAaHint);
+        assert(param->getNOptions() == eParamCompressionDWAb);
+        param->appendOption(kParamOutputCompressionOptionDWAb, kParamOutputCompressionOptionDWAbHint);
         assert(param->getNOptions() == eParamCompressionLZW);
         param->appendOption(kParamOutputCompressionOptionLZW, kParamOutputCompressionOptionLZWHint);
         assert(param->getNOptions() == eParamCompressionCCITTRLE);
         param->appendOption(kParamOutputCompressionOptionCCITTRLE, kParamOutputCompressionOptionCCITTRLEHint);
+        assert(param->getNOptions() == eParamCompressionJPEG);
+        param->appendOption(kParamOutputCompressionOptionJPEG, kParamOutputCompressionOptionJPEGHint);
         assert(param->getNOptions() == eParamCompressionPACKBITS);
         param->appendOption(kParamOutputCompressionOptionPACKBITS, kParamOutputCompressionOptionPACKBITSHint);
         param->setDefault(eParamCompressionAuto);
