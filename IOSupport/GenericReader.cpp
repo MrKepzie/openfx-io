@@ -527,10 +527,10 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
                     *sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
                 } else {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
                     *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
                 }
                 return eGetSequenceTimeBeforeSequence;
@@ -564,10 +564,10 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
                 int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
                 ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
                 if (sequenceIntervalsCount % 2 == 0) {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
                     *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
                 } else {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
                     *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
                 }
                 return eGetSequenceTimeAfterSequence;
