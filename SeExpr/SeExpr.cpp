@@ -21,8 +21,6 @@
  * Execute a SeExpr script.
  */
 
-#include "SeExpr.h"
-
 #include <vector>
 #include <algorithm>
 #include <limits>

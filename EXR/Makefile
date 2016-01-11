@@ -1,6 +1,5 @@
 PLUGINOBJECTS = \
 	ReadEXR.o WriteEXR.o \
-	PluginRegistration.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
 PLUGINNAME = EXR
 RESOURCES = fr.inria.openfx.WriteEXR.png \

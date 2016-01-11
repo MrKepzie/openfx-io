@@ -21,8 +21,6 @@
  * Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back).
  */
 
-#include "OCIOLogConvert.h"
-
 #ifdef OFX_IO_USING_OCIO
 
 #include <OpenColorIO/OpenColorIO.h>
@@ -809,16 +807,7 @@ ImageEffect* OCIOLogConvertPluginFactory::createInstance(OfxImageEffectHandle ha
 }
 
 
-void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
-
-void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif // !OFX_IO_USING_OCIO
+#endif // OFX_IO_USING_OCIO

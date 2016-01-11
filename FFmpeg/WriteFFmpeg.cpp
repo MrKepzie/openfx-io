@@ -28,7 +28,6 @@
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS // ...or stdint.h wont' define UINT64_C, needed by libavutil
 #endif
-#include "WriteFFmpeg.h"
 
 #include <cstdio>
 #include <cstring>
@@ -3702,9 +3701,5 @@ ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handl
 }
 
 
-void getWriteFFmpegPluginID(OFX::PluginFactoryArray &ids)
-{
-    static WriteFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
-
+static WriteFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

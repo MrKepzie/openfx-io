@@ -21,8 +21,6 @@
  * Write text on images using OIIO.
  */
 
-#include "OIIOText.h"
-
 #include "ofxsMacros.h"
 
 GCC_DIAG_OFF(unused-parameter)
@@ -616,8 +614,5 @@ ImageEffect* OIIOTextPluginFactory::createInstance(OfxImageEffectHandle handle, 
 }
 
 
-void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

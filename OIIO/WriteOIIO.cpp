@@ -21,8 +21,6 @@
  * Writes an image using the OpenImageIO library.
  */
 
-#include "WriteOIIO.h"
-
 #include "ofxsMacros.h"
 
 #include "OIIOGlobal.h"
@@ -1749,8 +1747,5 @@ ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle,
 }
 
 
-void getWriteOIIOPluginID(OFX::PluginFactoryArray &ids)
-{
-    static WriteOIIOPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static WriteOIIOPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

@@ -20,8 +20,7 @@ PLUGINOBJECTS = \
 	ofxsRamp.o \
 	ofxsGenerator.o \
 	ofxsTransformInteract.o \
-	ofxsRectangleInteract.o \
-	PluginRegistrationCombined.o
+	ofxsRectangleInteract.o
 	
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
     PLUGINOBJECTS += RunScript.o

@@ -21,8 +21,6 @@
  * Apply an ASC CDL grade.
  */
 
-#include "OCIOCDLTransform.h"
-
 #ifdef OFX_IO_USING_OCIO
 
 #include <cstdio> // fopen...
@@ -1119,16 +1117,7 @@ ImageEffect* OCIOCDLTransformPluginFactory::createInstance(OfxImageEffectHandle 
 }
 
 
-void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOCDLTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIOCDLTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
-
-void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif // !OFX_IO_USING_OCIO
+#endif // OFX_IO_USING_OCIO

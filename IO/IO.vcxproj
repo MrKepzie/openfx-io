@@ -288,7 +288,6 @@ xcopy $(SolutionDir)SeExpr\fr.inria.openfx.SeExpr.png $(OutDir)$(ProjectName).of
     <ClCompile Include="..\SupportExt\ofxsOGLFontData.cpp" />
     <ClCompile Include="..\SupportExt\ofxsOGLTextRenderer.cpp" />
     <ClCompile Include="..\SupportExt\ofxsRectangleInteract.cpp" />
-    <ClCompile Include="PluginRegistrationCombined.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EXR\ReadEXR.h" />

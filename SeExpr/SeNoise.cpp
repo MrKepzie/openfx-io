@@ -23,8 +23,6 @@
 //#define SENOISE_PERLIN // perlin() is not in the open source version of SeExpr, although it is mentionned in the SeExpr doc
 #define SENOISE_VORONOI
 
-#include "SeNoisePlugin.h"
-
 #include <cmath>
 #include <algorithm>
 //#include <iostream>
@@ -1437,9 +1435,6 @@ OFX::ImageEffect* SeNoisePluginFactory::createInstance(OfxImageEffectHandle hand
     return new SeNoisePlugin(handle);
 }
 
-void getSeNoisePluginID(OFX::PluginFactoryArray &ids)
-{
-    static SeNoisePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
 
+static SeNoisePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

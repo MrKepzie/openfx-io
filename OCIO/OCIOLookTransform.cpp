@@ -21,8 +21,6 @@
  * Apply a "look".
  */
 
-#include "OCIOLookTransform.h"
-
 #ifdef OFX_IO_USING_OCIO
 
 //#include <iostream>
@@ -888,18 +886,9 @@ ImageEffect* OCIOLookTransformPluginFactory::createInstance(OfxImageEffectHandle
 }
 
 
-void getOCIOLookTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOLookTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
 
+static OCIOLookTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
-
-void getOCIOLookTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif
+#endif // OFX_IO_USING_OCIO
 

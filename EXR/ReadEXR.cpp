@@ -21,8 +21,6 @@
  * Reads a an input image using the OpenEXR library.
  */
 
-#include "ReadEXR.h"
-
 #include <algorithm>
 #ifdef DEBUG
 #include <iostream>
@@ -724,8 +722,5 @@ ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*
 }
 
 
-void getReadEXRPluginID(OFX::PluginFactoryArray &ids)
-{
-    static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

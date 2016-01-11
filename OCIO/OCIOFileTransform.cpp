@@ -21,8 +21,6 @@
  * Apply a LUT conversion loaded from file.
  */
 
-#include "OCIOFileTransform.h"
-
 #ifdef OFX_IO_USING_OCIO
 
 #include <stdio.h> // for snprintf & _snprintf
@@ -831,16 +829,7 @@ ImageEffect* OCIOFileTransformPluginFactory::createInstance(OfxImageEffectHandle
 }
 
 
-void getOCIOFileTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOFileTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIOFileTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
-
-void getOCIOFileTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif // !OFX_IO_USING_OCIO
+#endif // OFX_IO_USING_OCIO

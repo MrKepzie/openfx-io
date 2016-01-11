@@ -33,8 +33,6 @@
 #include <iostream>
 #include <algorithm>
 
-#include "ReadFFmpeg.h"
-
 #if defined(_WIN32) || defined(WIN64)
 #  include <windows.h> // for GetSystemInfo()
 #define strncasecmp _strnicmp

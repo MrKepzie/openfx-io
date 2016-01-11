@@ -21,8 +21,6 @@
  * Reads an image using the OpenImageIO library.
  */
 
-#include "ReadOIIO.h"
-
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -2835,12 +2833,8 @@ ImageEffect* ReadOIIOPluginFactory<useRGBAChoices>::createInstance(OfxImageEffec
     return ret;
 }
 
-void getReadOIIOPluginID(OFX::PluginFactoryArray &ids)
-{
-    static ReadOIIOPluginFactory<false> p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    
-    //Keep the version 1 but deprecate it
-    static ReadOIIOPluginFactory<true> p2(kPluginIdentifier, 1, 0);
-    ids.push_back(&p);
-    ids.push_back(&p2);
-}
+
+static ReadOIIOPluginFactory<false> p1(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+static ReadOIIOPluginFactory<true> p2(kPluginIdentifier, 1, 0);
+mRegisterPluginFactoryInstance(p1)
+mRegisterPluginFactoryInstance(p2)

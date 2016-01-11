@@ -21,8 +21,6 @@
  * Resize images using OIIO.
  */
 
-#include "OIIOResize.h"
-
 #include <limits>
 #include <algorithm>
 
@@ -886,8 +884,5 @@ ImageEffect* OIIOResizePluginFactory::createInstance(OfxImageEffectHandle handle
 }
 
 
-void getOIIOResizePluginID(OFX::PluginFactoryArray &ids)
-{
-    static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

@@ -1,6 +1,5 @@
 PLUGINOBJECTS = \
 	ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
-	PluginRegistration.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
 PLUGINNAME = FFmpeg
 

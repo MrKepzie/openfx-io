@@ -21,8 +21,6 @@
  * Writes an image in the Portable Float Map (PFM) format.
  */
 
-#include "WritePFM.h"
-
 #include <cstdio> // fopen, fwrite...
 #include <vector>
 #include <algorithm>
@@ -226,8 +224,5 @@ ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, 
 }
 
 
-void getWritePFMPluginID(OFX::PluginFactoryArray &ids)
-{
-    static WritePFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static WritePFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

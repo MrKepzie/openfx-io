@@ -21,8 +21,6 @@
  * Writes a an output image using the OpenEXR library.
  */
 
-#include "WriteEXR.h"
-
 #include <memory>
 #include <ImfChannelList.h>
 #include <ImfArray.h>
@@ -338,8 +336,6 @@ ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, 
     return new WriteEXRPlugin(handle);
 }
 
-void getWriteEXRPluginID(OFX::PluginFactoryArray &ids)
-{
-    static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+
+static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

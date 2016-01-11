@@ -21,8 +21,6 @@
  * Convert from one colorspace to another.
  */
 
-#include "OCIOColorSpace.h"
-
 #ifdef OFX_IO_USING_OCIO
 
 //#include <iostream>
@@ -653,16 +651,7 @@ ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle ha
 }
 
 
-void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOColorSpacePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIOColorSpacePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
-
-void getOCIOColorSpacePluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif // !OFX_IO_USING_OCIO
+#endif // OFX_IO_USING_OCIO

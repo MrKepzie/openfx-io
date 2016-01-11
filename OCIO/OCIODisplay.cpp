@@ -21,8 +21,6 @@
  * Use OpenColorIO to convert for a display device.
  */
 
-#include "OCIODisplay.h"
-
 #ifdef OFX_IO_USING_OCIO
 //#include <iostream>
 #include <memory>
@@ -1014,16 +1012,8 @@ ImageEffect* OCIODisplayPluginFactory::createInstance(OfxImageEffectHandle handl
 }
 
 
-void getOCIODisplayPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIODisplayPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIODisplayPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
 
-void getOCIODisplayPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif // !OFX_IO_USING_OCIO
+#endif // OFX_IO_USING_OCIO

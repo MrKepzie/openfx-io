@@ -27,7 +27,6 @@
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS // ...or stdint.h wont' define UINT64_C, needed by libavutil
 #endif
-#include "ReadFFmpeg.h"
 
 #include <cmath>
 #include <sstream>
@@ -767,10 +766,5 @@ ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
 }
 
 
-
-void getReadFFmpegPluginID(OFX::PluginFactoryArray &ids)
-{
-    static ReadFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
-
+static ReadFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

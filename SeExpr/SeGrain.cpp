@@ -20,8 +20,6 @@
  * OFX SeGrain plugin.
  */
 
-#include "SeGrain.h"
-
 #include <cmath>
 #include <algorithm>
 //#include <iostream>
@@ -1023,9 +1021,6 @@ OFX::ImageEffect* SeGrainPluginFactory::createInstance(OfxImageEffectHandle hand
     return new SeGrainPlugin(handle);
 }
 
-void getSeGrainPluginID(OFX::PluginFactoryArray &ids)
-{
-    static SeGrainPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
 
+static SeGrainPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)

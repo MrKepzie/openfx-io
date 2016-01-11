@@ -1,6 +1,6 @@
 PLUGINOBJECTS = \
 	SeExpr.o SeNoise.o SeGrain.o \
-	ofxsGenerator.o ofxsRectangleInteract.o PluginRegistration.o ofxsRamp.o ofxsTransformInteract.o \
+	ofxsGenerator.o ofxsRectangleInteract.o ofxsRamp.o ofxsTransformInteract.o \
 	ofxsOGLTextRenderer.o ofxsOGLFontData.o
 
 PLUGINNAME = SeExpr

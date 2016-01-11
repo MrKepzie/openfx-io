@@ -21,8 +21,6 @@
  * Reads an image in the Portable Float Map (PFM) format.
  */
 
-#include "ReadPFM.h"
-
 #include <cstdio> // fopen, fread...
 #include <algorithm>
 
@@ -453,9 +451,5 @@ ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
 }
 
 
-void getReadPFMPluginID(OFX::PluginFactoryArray &ids)
-{
-    static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
-
+static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
