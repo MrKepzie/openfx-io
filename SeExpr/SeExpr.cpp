@@ -3154,10 +3154,5 @@ OFX::ImageEffect* SeExprPluginFactory::createInstance(OfxImageEffectHandle handl
     return new SeExprPlugin(handle);
 }
 
-
-
-void getSeExprPluginID(OFX::PluginFactoryArray &ids)
-{
-    static SeExprPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static SeExprPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
