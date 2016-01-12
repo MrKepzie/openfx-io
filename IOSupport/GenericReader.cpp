@@ -610,14 +610,14 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
         int beforeChoice_i;
         _beforeFirst->getValue(beforeChoice_i);
         BeforeAfterEnum beforeChoice = BeforeAfterEnum(beforeChoice_i);
-        getSequenceTimeBefore(sequenceTimeDomain, t, beforeChoice, sequenceTime);
+        return getSequenceTimeBefore(sequenceTimeDomain, t, beforeChoice, sequenceTime);
     } else {
         assert(*sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
         /////if we're after the last frame
         int afterChoice_i;
         _afterLast->getValue(afterChoice_i);
         BeforeAfterEnum afterChoice = BeforeAfterEnum(afterChoice_i);
-        getSequenceTimeAfter(sequenceTimeDomain, t, afterChoice, sequenceTime);
+        return getSequenceTimeAfter(sequenceTimeDomain, t, afterChoice, sequenceTime);
     }
     return eGetSequenceTimeError;
 }
