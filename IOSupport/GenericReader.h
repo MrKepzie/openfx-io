@@ -113,6 +113,16 @@ public:
         return _isMultiPlanar;
     }
     
+    
+    enum BeforeAfterEnum
+    {
+        eBeforeAfterHold,
+        eBeforeAfterLoop,
+        eBeforeAfterBounce,
+        eBeforeAfterBlack,
+        eBeforeAfterError,
+    };
+    
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
@@ -234,11 +244,17 @@ private:
         eGetSequenceTimeBlack,
         eGetSequenceTimeError,
     };
+    
+    
+    
     /**
      * @brief compute the sequence/file time from time
      */
     GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) WARN_UNUSED_RETURN;
-
+    GetSequenceTimeRetEnum getSequenceTimeHold(double t, double *sequenceTime) WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime);
+    
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
         eGetFileNameReturnedFullRes,

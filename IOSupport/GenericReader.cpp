@@ -137,14 +137,6 @@ enum FrameModeEnum
 
 #define kParamTimeDomainUserEdited "timeDomainUserEdited"
 
-enum BeforeAfterEnum
-{
-    eBeforeAfterHold,
-    eBeforeAfterLoop,
-    eBeforeAfterBounce,
-    eBeforeAfterBlack,
-    eBeforeAfterError,
-};
 
 enum MissingEnum
 {
@@ -490,6 +482,111 @@ fileExists(const std::string& filename)
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
+GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime)
+{
+    ///get the offset from the starting time of the sequence in case we bounce or loop
+    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
+    
+    switch (beforeChoice) {
+        case eBeforeAfterHold: //hold
+            *sequenceTime = sequenceTimeDomain.min;
+            return eGetSequenceTimeBeforeSequence;
+            
+        case eBeforeAfterLoop: //loop
+            timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+            *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
+            return eGetSequenceTimeBeforeSequence;
+            
+        case eBeforeAfterBounce: { //bounce
+            int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
+            ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
+            if (sequenceIntervalsCount % 2 == 0) {
+                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                *sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
+            } else {
+                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
+            }
+            return eGetSequenceTimeBeforeSequence;
+        }
+        case eBeforeAfterBlack: //black
+            return eGetSequenceTimeBlack;
+            
+        case eBeforeAfterError: //error
+            setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+            return eGetSequenceTimeError;
+    }
+
+}
+
+GenericReaderPlugin::GetSequenceTimeRetEnum
+GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime)
+{
+    ///get the offset from the starting time of the sequence in case we bounce or loop
+    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
+
+    
+    switch (afterChoice) {
+        case eBeforeAfterHold: //hold
+            *sequenceTime = sequenceTimeDomain.max;
+            return eGetSequenceTimeAfterSequence;
+            
+        case eBeforeAfterLoop: //loop
+            timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+            *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
+            return eGetSequenceTimeAfterSequence;
+            
+        case eBeforeAfterBounce: { //bounce
+            int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
+            ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
+            if (sequenceIntervalsCount % 2 == 0) {
+                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
+            } else {
+                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
+            }
+            return eGetSequenceTimeAfterSequence;
+        }
+        case eBeforeAfterBlack: //black
+            return eGetSequenceTimeBlack;
+            break;
+            
+        case eBeforeAfterError: //error
+            setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+            return eGetSequenceTimeError;
+    }
+}
+
+GenericReaderPlugin::GetSequenceTimeRetEnum
+GenericReaderPlugin::getSequenceTimeHold(double t, double *sequenceTime)
+{
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+    
+    
+    ///get the time sequence domain
+    OfxRangeI sequenceTimeDomain;
+    _firstFrame->getValue(sequenceTimeDomain.min);
+    _lastFrame->getValue(sequenceTimeDomain.max);
+    
+    
+    ///the return value
+    *sequenceTime = t - timeOffset ;
+    
+    ///if the time given is before the sequence
+    if (sequenceTimeDomain.min <= *sequenceTime && *sequenceTime <= sequenceTimeDomain.max) {
+        return eGetSequenceTimeWithinSequence;
+    } else if (*sequenceTime < sequenceTimeDomain.min) {
+        getSequenceTimeBefore(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
+    } else {
+        assert(*sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
+        getSequenceTimeAfter(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
+    }
+    return eGetSequenceTimeError;
+}
+
+GenericReaderPlugin::GetSequenceTimeRetEnum
 GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
 {
     int timeOffset;
@@ -504,10 +601,6 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
     
     ///the return value
     *sequenceTime = t - timeOffset ;
-
-    
-    ///get the offset from the starting time of the sequence in case we bounce or loop
-    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
     
     ///if the time given is before the sequence
     if (sequenceTimeDomain.min <= *sequenceTime && *sequenceTime <= sequenceTimeDomain.max) {
@@ -517,73 +610,14 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
         int beforeChoice_i;
         _beforeFirst->getValue(beforeChoice_i);
         BeforeAfterEnum beforeChoice = BeforeAfterEnum(beforeChoice_i);
-        switch (beforeChoice) {
-            case eBeforeAfterHold: //hold
-                *sequenceTime = sequenceTimeDomain.min;
-                return eGetSequenceTimeBeforeSequence;
-
-            case eBeforeAfterLoop: //loop
-                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
-                return eGetSequenceTimeBeforeSequence;
-
-            case eBeforeAfterBounce: { //bounce
-                int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
-                ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
-                if (sequenceIntervalsCount % 2 == 0) {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
-                    *sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
-                } else {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
-                    *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
-                }
-                return eGetSequenceTimeBeforeSequence;
-            }
-            case eBeforeAfterBlack: //black
-                return eGetSequenceTimeBlack;
-
-            case eBeforeAfterError: //error
-                setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
-                return eGetSequenceTimeError;
-        }
-
+        getSequenceTimeBefore(sequenceTimeDomain, t, beforeChoice, sequenceTime);
     } else {
         assert(*sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
         /////if we're after the last frame
         int afterChoice_i;
         _afterLast->getValue(afterChoice_i);
         BeforeAfterEnum afterChoice = BeforeAfterEnum(afterChoice_i);
-
-        switch (afterChoice) {
-            case eBeforeAfterHold: //hold
-                *sequenceTime = sequenceTimeDomain.max;
-                return eGetSequenceTimeAfterSequence;
-
-            case eBeforeAfterLoop: //loop
-                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
-                return eGetSequenceTimeAfterSequence;
-
-            case eBeforeAfterBounce: { //bounce
-                int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
-                ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
-                if (sequenceIntervalsCount % 2 == 0) {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
-                    *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
-                } else {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
-                    *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
-                }
-                return eGetSequenceTimeAfterSequence;
-            }
-            case eBeforeAfterBlack: //black
-                return eGetSequenceTimeBlack;
-                break;
-
-            case eBeforeAfterError: //error
-                setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
-                return eGetSequenceTimeError;
-        }
+        getSequenceTimeAfter(sequenceTimeDomain, t, afterChoice, sequenceTime);
     }
     return eGetSequenceTimeError;
 }
@@ -1852,8 +1886,11 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             inputFileChanged();
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
+
+            double sequenceTime;
+            (void)getSequenceTimeHold(args.time, &sequenceTime);
             std::string filename;
-            _fileParam->getValue(filename);
+            (void)getFilenameAtSequenceTime(sequenceTime, false, &filename);
             _sublabel->setValue(basename(filename));
         }
     } else if (paramName == kParamProxy) {
@@ -2394,18 +2431,18 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBefore);
         param->setLabel(kParamBeforeLabel);
         param->setHint(kParamBeforeHint);
-        assert(param->getNOptions() == eBeforeAfterHold);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterHold);
         param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
-        assert(param->getNOptions() == eBeforeAfterLoop);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterLoop);
         param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
-        assert(param->getNOptions() == eBeforeAfterBounce);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBounce);
         param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
-        assert(param->getNOptions() == eBeforeAfterBlack);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBlack);
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-        assert(param->getNOptions() == eBeforeAfterError);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterError);
         param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
         param->setAnimates(true);
-        param->setDefault(eBeforeAfterHold);
+        param->setDefault(GenericReaderPlugin::eBeforeAfterHold);
         if (page) {
             page->addChild(*param);
         }
@@ -2429,18 +2466,18 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamAfter);
         param->setLabel(kParamAfterLabel);
         param->setHint(kParamAfterHint);
-        assert(param->getNOptions() == eBeforeAfterHold);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterHold);
         param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
-        assert(param->getNOptions() == eBeforeAfterLoop);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterLoop);
         param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
-        assert(param->getNOptions() == eBeforeAfterBounce);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBounce);
         param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
-        assert(param->getNOptions() == eBeforeAfterBlack);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBlack);
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-        assert(param->getNOptions() == eBeforeAfterError);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterError);
         param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
         param->setAnimates(true);
-        param->setDefault(eBeforeAfterHold);
+        param->setDefault(GenericReaderPlugin::eBeforeAfterHold);
         if (page) {
             page->addChild(*param);
         }
