@@ -44,8 +44,29 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include <string>
 
 #include "ofxsImageEffect.h"
+
+struct MatchPathSeparator
+{
+    bool operator()( char ch ) const
+    {
+#if defined(_WIN32) || defined(WIN64)
+        return ch == '\\' || ch == '/';
+#else
+        return ch == '/';
+#endif
+    }
+};
+
+inline std::string
+basename( std::string const& pathname )
+{
+    return std::string(std::find_if(pathname.rbegin(), pathname.rend(),
+                                    MatchPathSeparator() ).base(),
+                       pathname.end() );
+}
 
 /// numvals should be 256 for byte, 65536 for 16-bits, etc.
 template<int numvals>

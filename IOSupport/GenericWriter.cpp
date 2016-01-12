@@ -107,8 +107,9 @@
 #define kParamClipToProjectHint "When checked, the portion of the image written will be the size of the image in input and not the format of the project. " \
 "For the EXR file format, this will distinguish the data window (size of the image in input) from the display window (size of the project)."
 
-static bool gisMultiPlane = false;
-static bool gisMultiView = false;
+static bool gHostIsNatron   = false;
+static bool gHostIsMultiPlanar = false;
+static bool gHostIsMultiView = false;
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 : OFX::ImageEffect(handle)
@@ -122,6 +123,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _outputFormat(0)
 , _premult(0)
 , _clipToProject(0)
+, _sublabel(0)
 , _ocio(new GenericOCIO(this))
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
@@ -142,7 +144,12 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     if (paramExists(kParamClipToProject)) {
         _clipToProject = fetchBooleanParam(kParamClipToProject);
     }
-    
+
+    if (gHostIsNatron) {
+        _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
+        assert(_sublabel);
+    }
+
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
     double first,last;
@@ -653,7 +660,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     
     if (viewNames.empty() || doDefaultView) {
         std::string view;
-        if (gisMultiView) {
+        if (gHostIsMultiView) {
             view = getViewName(args.renderView);
         } else {
             view = "Main";
@@ -681,7 +688,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
          Use the beginEncodeParts/encodePart/endEncodeParts API when there are multiple views/planes to render
          Note that the number of times that we call encodePart depends on the LayerViewsPartsEnum value
          */
-        assert(gisMultiPlane);
+        assert(gHostIsMultiPlanar);
         EncodePlanesLocalData_RAII encodeData(this);
         InputImagesHolder dataHolder;
         
@@ -1167,7 +1174,7 @@ GenericWriterPlugin::getOutputFormat(OfxTime time,OfxRectD& rod)
     if (doDefaultBehaviour) {
         // union RoD across all views
         int viewsToRender = getViewToRender();
-        if (viewsToRender == -2 || !gisMultiView) {
+        if (viewsToRender == -2 || !gHostIsMultiView) {
             rod = _inputClip->getRegionOfDefinition(time);
         } else {
             if (viewsToRender == -1) {
@@ -1356,6 +1363,9 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else if (paramName == kParamFilename) {
         std::string filename;
         _fileParam->getValue(filename);
+        if (_sublabel && args.reason != OFX::eChangePluginEdit) {
+            _sublabel->setValue(basename(filename));
+        }
         bool setColorSpace = true;
 # ifdef OFX_IO_USING_OCIO
         // Always try to parse from string first,
@@ -1437,7 +1447,7 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
             assert((components == OFX::ePixelComponentAlpha && premult != OFX::eImageOpaque) ||
                    (components == OFX::ePixelComponentRGB && premult == OFX::eImageOpaque) ||
                    (components == OFX::ePixelComponentRGBA) ||
-                   (components == OFX::ePixelComponentCustom && gisMultiPlane));
+                   (components == OFX::ePixelComponentCustom && gHostIsMultiPlanar));
         }
 #      endif
         _premult->setValue(premult);
@@ -1461,7 +1471,7 @@ GenericWriterPlugin::getFrameViewsNeeded(const OFX::FrameViewsNeededArguments& a
     OfxRangeD r;
     r.min = r.max = args.time;
     
-    if (!gisMultiView) {
+    if (!gHostIsMultiView) {
         //As whats requested
         frameViews.addFrameViewsNeeded(*_inputClip, r, args.view);
     } else {
@@ -1527,13 +1537,13 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum saf
         && OFX::getImageEffectHostDescription()->isMultiPlanar) {
         desc.setIsMultiPlanar(isMultiPlanar);
         if (isMultiPlanar) {
-            gisMultiPlane = true;
+            gHostIsMultiPlanar = true;
             //We let all un-rendered planes pass-through so that they can be retrieved below by a shuffle node
             desc.setPassThroughForNotProcessedPlanes(ePassThroughLevelPassThroughNonRenderedPlanes);
         }
     }
     if (isMultiView && OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2)) {
-        gisMultiView = true;
+        gHostIsMultiView = true;
         desc.setIsViewAware(true);
         desc.setIsViewInvariant(OFX::eViewInvarianceAllViewsVariant);
     }
@@ -1548,6 +1558,8 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum saf
 PageParamDescriptor*
 GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow)
 {
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
+
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
     if (supportsRGBA) {
@@ -1724,6 +1736,19 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
         page->addChild(*param);
+    }
+
+    // sublabel
+    if (gHostIsNatron) {
+        StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
+        param->setIsSecret(true); // always secret
+        param->setEnabled(false);
+        param->setIsPersistant(true);
+        param->setEvaluateOnChange(false);
+        //param->setDefault();
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     return page;

@@ -225,6 +225,9 @@ protected:
     OFX::ChoiceParam* _outputFormat; //< the output format to render
     OFX::ChoiceParam* _premult;
     OFX::BooleanParam* _clipToProject;
+
+    OFX::StringParam* _sublabel;
+
     std::auto_ptr<GenericOCIO> _ocio;
 
 private:

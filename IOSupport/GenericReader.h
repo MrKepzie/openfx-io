@@ -354,6 +354,8 @@ protected:
     
     OFX::BooleanParam* _customFPS;
     OFX::DoubleParam* _fps;
+
+    OFX::StringParam* _sublabel;
     
 #ifdef OFX_IO_USING_OCIO
     std::auto_ptr<GenericOCIO> _ocio;

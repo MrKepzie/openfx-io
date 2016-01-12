@@ -268,6 +268,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _timeDomainUserSet(0)
 , _customFPS(0)
 , _fps(0)
+, _sublabel(0)
 #ifdef OFX_IO_USING_OCIO
 , _ocio(new GenericOCIO(this))
 #endif
@@ -299,7 +300,10 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _premult = fetchChoiceParam(kParamFilePremult);
     _customFPS = fetchBooleanParam(kParamCustomFps);
     _fps = fetchDoubleParam(kParamFrameRate);
-
+    if (gHostIsNatron) {
+        _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
+        assert(_sublabel);
+    }
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -1767,7 +1771,7 @@ GenericReaderPlugin::inputFileChanged()
     if (!gHostIsNatron) {
         
         _fileParam->getValue(filename);
-        
+
         setSequenceFromFile(filename);
         
         clearPersistentMessage();
@@ -1847,7 +1851,11 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         if (args.reason != OFX::eChangeTime) {
             inputFileChanged();
         }
-
+        if (_sublabel && args.reason != OFX::eChangePluginEdit) {
+            std::string filename;
+            _fileParam->getValue(filename);
+            _sublabel->setValue(basename(filename));
+        }
     } else if (paramName == kParamProxy) {
         ///Detect the scale of the proxy.
         std::string proxyFile,originalFileName;
@@ -2672,6 +2680,19 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
         desc.addClipPreferencesSlaveParam(*param);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    // sublabel
+    if (gHostIsNatron) {
+        StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
+        param->setIsSecret(true); // always secret
+        param->setEnabled(false);
+        param->setIsPersistant(true);
+        param->setEvaluateOnChange(false);
+        //param->setDefault();
         if (page) {
             page->addChild(*param);
         }
