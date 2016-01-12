@@ -16,7 +16,8 @@ fr.inria.openfx.OIIOResize.svg \
 fr.inria.openfx.WriteOIIO.png \
 fr.inria.openfx.WriteOIIO.svg 
 
-include ../Makefile.master
+TOP_SRCDIR = ..
+include $(TOP_SRCDIR)/Makefile.master
 
 CXXFLAGS += $(OIIO_CXXFLAGS) $(OCIO_CXXFLAGS)
 LINKFLAGS += $(OIIO_LINKFLAGS) $(OCIO_LINKFLAGS)

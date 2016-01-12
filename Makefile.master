@@ -1,9 +1,13 @@
-PATHTOROOT = ../openfx/Support
+# These may be changed to $(TOP_SRCDIR)/../openfx and $(TOP_SRCDIR)/../openfx-supportext if openfx and openfx-supportext are not included as submodules
+OFXPATH ?= $(TOP_SRCDIR)/openfx
+OFXSEXTPATH ?= $(TOP_SRCDIR)/SupportExt
+
+PATHTOROOT = $(OFXPATH)/Support
 
 include $(PATHTOROOT)/Plugins/Makefile.master
 
-CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_TUTTLE -DOFX_EXTENSIONS_NATRON -I../IOSupport -I../SupportExt
-VPATH += ../IOSupport ../IOSupport/SequenceParsing ../SupportExt
+CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_TUTTLE -DOFX_EXTENSIONS_NATRON -I$(TOP_SRCDIR)/IOSupport -I$(OFXSEXTPATH)
+VPATH += $(TOP_SRCDIR)/IOSupport $(TOP_SRCDIR)/IOSupport/SequenceParsing $(OFXSEXTPATH)
 
 # Comment the following two lines to disable OpenColorIO support
 OCIO_CXXFLAGS += `pkg-config --cflags OpenColorIO` -DOFX_IO_USING_OCIO

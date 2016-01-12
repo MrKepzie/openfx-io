@@ -7,7 +7,8 @@ fr.inria.openfx.WriteEXR.svg \
 fr.inria.openfx.ReadEXR.png \
 fr.inria.openfx.ReadEXR.svg 
 
-include ../Makefile.master
+TOP_SRCDIR = ..
+include $(TOP_SRCDIR)/Makefile.master
 
 CXXFLAGS += $(OPENEXR_CXXFLAGS) $(OCIO_CXXFLAGS)
 LINKFLAGS += $(OPENEXR_LINKFLAGS) $(OCIO_LINKFLAGS)

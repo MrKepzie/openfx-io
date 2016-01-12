@@ -6,7 +6,8 @@ PLUGINOBJECTS = \
 PLUGINNAME = SeExpr
 RESOURCES = fr.inria.openfx.SeExpr.png fr.inria.openfx.SeExpr.svg
 
-include ../Makefile.master
+TOP_SRCDIR = ..
+include $(TOP_SRCDIR)/Makefile.master
 
 CXXFLAGS += $(SEEXPR_CXXFLAGS)
 LINKFLAGS += $(SEEXPR_LINKFLAGS)

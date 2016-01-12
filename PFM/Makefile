@@ -10,7 +10,8 @@ fr.inria.openfx.ReadPFM.svg \
 fr.inria.openfx.WritePFM.png \
 fr.inria.openfx.WritePFM.svg  
 
-include ../Makefile.master
+TOP_SRCDIR = ..
+include $(TOP_SRCDIR)/Makefile.master
 
 CXXFLAGS += $(OCIO_CXXFLAGS)
 LINKFLAGS += $(OCIO_LINKFLAGS)

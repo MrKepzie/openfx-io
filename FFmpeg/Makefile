@@ -3,7 +3,9 @@ PLUGINOBJECTS = \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
 PLUGINNAME = FFmpeg
 
-include ../Makefile.master
+TOP_SRCDIR = ..
+include $(TOP_SRCDIR)/Makefile.master
+
 RESOURCES = \
 fr.inria.openfx.ReadFFmpeg.png \
 fr.inria.openfx.ReadFFmpeg.svg \
