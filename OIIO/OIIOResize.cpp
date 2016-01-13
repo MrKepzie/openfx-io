@@ -747,6 +747,9 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // ask the host to render all planes
     desc.setPassThroughForNotProcessedPlanes(OFX::ePassThroughLevelRenderAllRequestedPlanes);
 #endif
+    
+    //Openfx-misc got the Reformat node which is much faster
+    desc.setIsDeprecated(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
