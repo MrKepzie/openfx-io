@@ -99,6 +99,8 @@ enum ResizeTypeEnum
 #define kParamFilterHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
 #define kParamFilterOptionImpulse "Impulse (no interpolation)"
 
+#define kSrcClipChanged "srcClipChanged"
+
 using namespace OFX;
 using namespace OpenImageIO;
 
@@ -155,7 +157,7 @@ private:
     OFX::Int2DParam *_size;
     OFX::Double2DParam *_scale;
     OFX::BooleanParam *_preservePAR;
-    
+    OFX::BooleanParam* _srcClipChanged; // set to true the first time the user connects src
 };
 
 OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
@@ -168,6 +170,7 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
 , _size(0)
 , _scale(0)
 , _preservePAR(0)
+, _srcClipChanged(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -185,6 +188,8 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     _size = fetchInt2DParam(kParamSize);
     _scale = fetchDouble2DParam(kParamScale);
     _preservePAR = fetchBooleanParam(kParamPreservePAR);
+    _srcClipChanged = fetchBooleanParam(kSrcClipChanged);
+    
     assert(_type && _format &&  _filter && _size && _scale && _preservePAR);
 
     int type_i;
@@ -564,7 +569,8 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
 void
 OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
-    if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit) {
+    if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit && !_srcClipChanged->getValue()) {
+        _srcClipChanged->setValue(true);
         OfxRectD srcRod = _srcClip->getRegionOfDefinition(args.time);
         double srcpar = _srcClip->getPixelAspectRatio();
 
@@ -874,6 +880,17 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         }
         param->setDefault(defIndex);
         page->addChild(*param);
+    }
+    
+    // srcClipChanged
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kSrcClipChanged);
+        param->setDefault(false);
+        param->setIsSecret(true);
+        param->setAnimates(false);
+        param->setEvaluateOnChange(false);
+        page->addChild(*param);
+        
     }
 }
 
