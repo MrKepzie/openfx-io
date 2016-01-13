@@ -986,16 +986,32 @@ ReadOIIOPlugin::buildLayersMenu()
         for (std::size_t i = 0; i < _layersUnion.size(); ++i) {
             const std::string& layerName = _layersUnion[i].first;
             std::string choice;
-            if (layerName == kReadOIIOColorLayer ||
-                (_layersUnion[i].second.layer.channelNames.size() == 1 && layerName == _layersUnion[i].second.layer.channelNames[0])) {
-                
-            } else {
+            if (layerName == kReadOIIOColorLayer) {
+                switch (_layersUnion[i].second.layer.channelNames.size()) {
+                    case 1:
+                        choice = kReadOIIOColorLayer ".Alpha";
+                        break;
+                    default: {
+                        choice.append(kReadOIIOColorLayer ".");
+                        for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
+                            choice.append(_layersUnion[i].second.layer.channelNames[j]);
+                        }
+                    }   break;
+                }
+            } else if (_layersUnion[i].second.layer.channelNames.size() == 1 && layerName == _layersUnion[i].second.layer.channelNames[0]) {
+                //Depth.Depth for instance
+                for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
+                    choice.append(_layersUnion[i].second.layer.channelNames[j]);
+                }
+
+            }   else {
                 choice.append(layerName);
                 choice.push_back('.');
+                for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
+                    choice.append(_layersUnion[i].second.layer.channelNames[j]);
+                }
             }
-            for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
-                choice.append(_layersUnion[i].second.layer.channelNames[j]);
-            }
+            
             
             std::string optionLabel;
             if (views.size() > 1) {
