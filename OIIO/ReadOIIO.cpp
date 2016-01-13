@@ -129,7 +129,7 @@ GCC_DIAG_ON(unused-parameter)
 #define kParamAvailableViewsLabel "Available Views"
 #define kParamAvailableViewsHint "Comma separated list of available views"
 
-#define kReadOIIOColorLayer "RGBA"
+#define kReadOIIOColorLayer "Color"
 #define kReadOIIOXYZLayer "XYZ"
 #define kReadOIIODepthLayer "depth"
 
