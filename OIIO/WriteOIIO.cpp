@@ -1394,7 +1394,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
     }
 
     
-    if (!data->output->open(filename, data->specs.size(), data->specs.data())) {
+    if (!data->output->open(filename, data->specs.size(), &data->specs.front())) {
         setPersistentMessage(OFX::Message::eMessageError, "", data->output->geterror());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;

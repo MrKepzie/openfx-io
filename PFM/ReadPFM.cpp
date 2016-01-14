@@ -233,7 +233,7 @@ ReadPFMPlugin::decode(const std::string& filename,
     const int x2 = renderWindow.x2;
 
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
-        std::size_t numread = std::fread(image.data(), 4, numpixels, nfile);
+        std::size_t numread = std::fread(&image.front(), 4, numpixels, nfile);
         if (numread < numpixels) {
             std::fclose(nfile);
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
@@ -242,7 +242,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         }
 
         if (is_inverted) {
-            invert_endianness(image.data(), numpixels);
+            invert_endianness(&image.front(), numpixels);
         }
 
         // now copy to the dstImg
@@ -250,16 +250,16 @@ ReadPFMPlugin::decode(const std::string& filename,
         if (C == 1) {
             switch (pixelComponentCount) {
                 case 1:
-                    copyLine<float,1,1>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,1>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 2:
-                    copyLine<float,1,2>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,2>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 3:
-                    copyLine<float,1,3>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,3>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 4:
-                    copyLine<float,1,4>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,4>(&image.front(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;
@@ -267,16 +267,16 @@ ReadPFMPlugin::decode(const std::string& filename,
         } else if (C == 3) {
             switch (pixelComponentCount) {
                 case 1:
-                    copyLine<float,3,1>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,1>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 2:
-                    copyLine<float,3,2>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,2>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 3:
-                    copyLine<float,3,3>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,3>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 4:
-                    copyLine<float,3,4>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,4>(&image.front(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;

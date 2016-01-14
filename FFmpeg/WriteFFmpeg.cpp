@@ -2436,7 +2436,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             av_init_packet(&pkt);
             // NOTE: If |flush| is true, then avFrame will be NULL at this point as
             //       alloc will not have been called.
-            const int bytesEncoded = encodeVideo(avCodecContext, outbuf.data(), picSize, avFrame);
+            const int bytesEncoded = encodeVideo(avCodecContext, &outbuf.front(), picSize, avFrame);
             const bool encodeSucceeded = (bytesEncoded > 0);
             if (encodeSucceeded) {
                 if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))

@@ -156,17 +156,17 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
         // now copy to the dstImg
         if (depth == 1) {
             assert(pixelComponents == OFX::ePixelComponentAlpha);
-            copyLine<float,1,1>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
+            copyLine<float,1,1>(pixelData, rowBytes, width, height, spectrum, y, &buffer.front());
         } else if (depth == 3) {
             assert(pixelComponents == OFX::ePixelComponentRGB || pixelComponents == OFX::ePixelComponentRGBA);
             if (pixelComponents == OFX::ePixelComponentRGB) {
-                copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
+                copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, &buffer.front());
             } else if (pixelComponents == OFX::ePixelComponentRGBA) {
-                copyLine<float,4,3>(pixelData, rowBytes, width, height, spectrum, y, buffer.data());
+                copyLine<float,4,3>(pixelData, rowBytes, width, height, spectrum, y, &buffer.front());
             }
         }
 
-        std::fwrite(buffer.data(), sizeof(float), buf_size, nfile);
+        std::fwrite(&buffer.front(), sizeof(float), buf_size, nfile);
     }
     std::fclose(nfile);
 }
