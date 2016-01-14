@@ -1995,9 +1995,9 @@ SeExprPlugin::buildChannelMenus()
             _clipLayerToFetchString[i]->setValue(valueStr);
         } else {
             int foundOption = -1;
-            for (int i = 0; i < (int)options.size(); ++i) {
-                if (options[i] == valueStr) {
-                    foundOption = i;
+            for (std::size_t j = 0; j < options.size(); ++j) {
+                if (options[j] == valueStr) {
+                    foundOption = j;
                     break;
                 }
             }
