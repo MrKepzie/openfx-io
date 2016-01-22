@@ -303,6 +303,17 @@ GenericReaderPlugin::~GenericReaderPlugin()
 }
 
 
+void
+GenericReaderPlugin::refreshSubLabel(OfxTime time)
+{
+    assert(_sublabel);
+    double sequenceTime;
+    (void)getSequenceTimeHold(time, &sequenceTime);
+    std::string filename;
+    (void)getFilenameAtSequenceTime(sequenceTime, false, &filename);
+    _sublabel->setValue(basename(filename));
+}
+
 
 void
 GenericReaderPlugin::restoreStateFromParameters()
@@ -375,6 +386,10 @@ GenericReaderPlugin::restoreStateFromParameters()
         _enableCustomScale->setIsSecret(true);
     }
     
+    
+    if (gHostIsNatron) {
+        refreshSubLabel(timeLineGetTime());
+    }
     
 }
 
@@ -1886,12 +1901,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             inputFileChanged();
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
-
-            double sequenceTime;
-            (void)getSequenceTimeHold(args.time, &sequenceTime);
-            std::string filename;
-            (void)getFilenameAtSequenceTime(sequenceTime, false, &filename);
-            _sublabel->setValue(basename(filename));
+            refreshSubLabel(args.time);
         }
     } else if (paramName == kParamProxy) {
         ///Detect the scale of the proxy.
