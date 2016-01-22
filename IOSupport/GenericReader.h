@@ -343,6 +343,7 @@ private:
     
     void setSequenceFromFile(const std::string& filename);
     
+    void refreshSubLabel(OfxTime time);
     
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
