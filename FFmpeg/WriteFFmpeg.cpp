@@ -94,7 +94,11 @@ extern "C" {
 
 #define kParamCodec "codec"
 #define kParamCodecName "Codec"
-#define kParamCodecHint "Output codec used for encoding."
+#define kParamCodecHint "Output codec used for encoding. " \
+"The general recommendation is to write either separate frames (using WriteOIIO), " \
+"or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
+"and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
+"command-line tools)."
 
 // a string param holding the short name of the codec (used to disambiguiate the codec choice when using different versions of FFmpeg)
 #define kParamCodecShortName "codecShortName"
@@ -134,16 +138,19 @@ extern "C" {
 #define kParamBitrate "bitrate"
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
-"The target bitrate the codec will attempt to reach, within the confines of the bitrate tolerance and " \
-"quality min/max settings. Only supported by certain codecs."
+"The target bitrate the codec will attempt to reach (in bits/s), within the confines of the bitrate tolerance and " \
+"quality min/max settings. Only supported by certain codecs (e.g. avc1, hev1, m2v1, MP42, 3IVD, but not mp4v)."
 
 #define kParamBitrateTolerance "bitrateTolerance"
 #define kParamBitrateToleranceLabel "Bitrate Tolerance"
 #define kParamBitrateToleranceHint \
-"The amount the codec is allowed to vary from the target bitrate based on image and quality settings. " \
-"Exercise caution with this control as too small a number for your image data will result in failed renders. " \
-"As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. " \
-"Only supported by certain codecs."
+"Set video bitrate tolerance (in bits/s). In 1-pass mode, bitrate " \
+"tolerance specifies how far ratecontrol is willing to deviate from " \
+"the target average bitrate value. This is not related to min/max " \
+"bitrate. Lowering tolerance too much has an adverse effect on "\
+"quality. " \
+"As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders." \
+"Only supported by certain codecs (e.g. MP42, 3IVD, but not av1c, hev1, m2v1 or mp4v)."
 
 #define kParamQuality "quality"
 #define kParamQualityLabel "Quality"
@@ -151,7 +158,7 @@ extern "C" {
 "The quality range the codec is allowed to vary the image data quantiser " \
 "between to attempt to hit the desired bitrate. Higher values mean increased " \
 "image degradation is possible, but with the upside of lower bit rates. " \
-"Only supported by certain codecs."
+"Only supported by certain codecs (e.g. VP80, VP90, avc1, but not hev1 or mp4v)."
 
 #define kParamGopSize "gopSize"
 #define kParamGopSizeLabel "GOP Size"

@@ -165,6 +165,7 @@ namespace
         { "huffyuv",        true,  UNSAFE }, // HuffYUV - write not supported as not official qt readable.
         { "jpeg2000",       true,  TERRIBLE }, // JPEG 2000 - write not supported as it looks terrible.
         { "jpegls",         true,  UNSAFE }, // JPEG-LS - write not supported as can't be read in in official qt.
+        { "libtheora",      true,  UNSAFE }, // libtheora Theora - write untested
         { "libvpx",         true,  SHOULDWORK }, // On2 VP8
         { "libvpx-vp9",     true,  TERRIBLE }, // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
         { "libx264",        true,  true }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
@@ -185,6 +186,7 @@ namespace
         { "rawvideo",       true,  UNSAFE }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
         { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
         { "targa",          true,  UNSAFE }, // Truevision Targa image - write not supported as not official qt readable.
+        { "theora",         true,  false }, // Theora (decoder).
         { "tiff",           true,  UNSAFE }, // TIFF Image - write not supported as not official qt readable.
         { "v210",           true,  true }, // Uncompressed 4:2:2 10-bit
         { "v308",           true,  UNSAFE }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
