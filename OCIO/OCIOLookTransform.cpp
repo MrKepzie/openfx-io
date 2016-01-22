@@ -828,7 +828,9 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
             param->setDefault(false);
             param->setEnabled(false);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamLookChoice);
@@ -840,7 +842,9 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
             param->setEnabled(false);
         }
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLookAppend);
@@ -849,13 +853,17 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         if (!config) {
             param->setEnabled(false);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kParamLookCombination);
         param->setLabel(kParamLookCombinationLabel);
         param->setHint(kParamLookCombinationHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
@@ -864,15 +872,19 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
         param->setDefault(0);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO::ROLE_REFERENCE);
     GenericOCIO::describeInContextContext(desc, context, page);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpLooksButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpLooksButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ofxsPremultDescribeParams(desc, page);

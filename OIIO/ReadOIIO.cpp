@@ -2718,7 +2718,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
         param->setLabel(kParamShowMetadataLabel);
         param->setHint(kParamShowMetadataHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
 
@@ -2730,7 +2732,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             appendDefaultChannelList(param);
             param->setAnimates(true);
             param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamGChannel);
@@ -2739,7 +2743,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             appendDefaultChannelList(param);
             param->setAnimates(true);
             param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamBChannel);
@@ -2748,7 +2754,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             appendDefaultChannelList(param);
             param->setAnimates(true);
             param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamAChannel);
@@ -2758,7 +2766,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setAnimates(true);
             param->setDefault(1); // opaque by default
             param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         
         {
@@ -2767,7 +2777,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamRChannelHint);
             param->setAnimates(false);
             param->setIsSecret(true); // never meant to be visible
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             StringParamDescriptor* param = desc.defineStringParam(kParamGChannelName);
@@ -2775,7 +2787,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamGChannelHint);
             param->setAnimates(false);
             param->setIsSecret(true); // never meant to be visible
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         
         {
@@ -2784,7 +2798,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamBChannelHint);
             param->setAnimates(false);
             param->setIsSecret(true); // never meant to be visible
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         
         {
@@ -2793,7 +2809,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamAChannelHint);
             param->setAnimates(false);
             param->setIsSecret(true); // never meant to be visible
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     } else { // if (useRGBAChoices) {
         
@@ -2805,14 +2823,18 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setEvaluateOnChange(false);
                 param->setIsPersistant(false);
                 param->setAnimates(false);
-                page->addChild(*param);
+                if (page) {
+                    page->addChild(*param);
+                }
             }
             {
                 StringParamDescriptor* param = desc.defineStringParam(kParamChannelOutputLayerChoice);
                 param->setLabel(kParamChannelOutputLayerChoice);
                 param->setIsSecret(true);
                 param->setAnimates(false);
-                page->addChild(*param);
+                if (page) {
+                    page->addChild(*param);
+                }
                 desc.addClipPreferencesSlaveParam(*param);
             }
             {
@@ -2823,7 +2845,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setIsSecret(true);
                 param->setEvaluateOnChange(false);
                 param->setIsPersistant(false);
-                page->addChild(*param);
+                if (page) {
+                    page->addChild(*param);
+                }
             }
         }
     }
@@ -2834,7 +2858,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
         param->setLabel(kParamUseDisplayWindowAsOriginLabel);
         param->setHint(kParamUseDisplayWindowAsOriginHint);
         param->setDefault(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 #endif
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");

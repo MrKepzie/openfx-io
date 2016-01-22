@@ -778,25 +778,33 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setLayoutHint(eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
         param->setLabel(kParamReloadLabel);
         param->setHint(kParamReloadHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         IntParamDescriptor *param = desc.defineIntParam(kParamVersion);
         param->setIsSecret(true); // always secret
         param->setDefault(1);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
         param->setLabel(kParamCCCIDLabel);
         param->setHint(kParamCCCIDHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
@@ -804,7 +812,9 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         param->setHint(kParamDirectionHint);
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamInterpolation);
@@ -815,7 +825,9 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         param->appendOption(kParamInterpolationOptionTetrahedral);
         param->appendOption(kParamInterpolationOptionBest);
         param->setDefault(1);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ofxsPremultDescribeParams(desc, page);

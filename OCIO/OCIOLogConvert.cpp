@@ -754,46 +754,52 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 
     ////////// OCIO config file
     {
-        OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFile);
-        ocioConfigFileParam->setLabel(kOCIOParamConfigFileLabel);
-        ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
-        ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-        ocioConfigFileParam->setFilePathExists(true);
-        ocioConfigFileParam->setAnimates(true);
-        desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamConfigFile);
+        param->setLabel(kOCIOParamConfigFileLabel);
+        param->setHint(kOCIOParamConfigFileHint);
+        param->setStringType(OFX::eStringTypeFilePath);
+        param->setFilePathExists(true);
+        param->setAnimates(true);
+        desc.addClipPreferencesSlaveParam(*param);
         // the OCIO config can only be set in a portable fashion using the environment variable.
         // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
         // disable it, and set the default from the env variable.
         assert(OFX::getImageEffectHostDescription());
-        ocioConfigFileParam->setEnabled(true);
+        param->setEnabled(true);
         if (file == NULL) {
-            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
+            param->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
         } else if (!config) {
             std::string s("ERROR: Invalid OCIO configuration '");
             s += file;
             s += '\'';
-            ocioConfigFileParam->setDefault(s);
+            param->setDefault(s);
         } else {
-            ocioConfigFileParam->setDefault(file);
+            param->setDefault(file);
         }
-        page->addChild(*ocioConfigFileParam);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
-        ChoiceParamDescriptor *mode = desc.defineChoiceParam(kParamOperation);
-        mode->setLabel(kParamOperationLabel);
-        mode->setHint(kParamOperationHint);
-        mode->appendOption(kParamOperationOptionLogToLin);
-        mode->appendOption(kParamOperationOptionLinToLog);
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOperation);
+        param->setLabel(kParamOperationLabel);
+        param->setHint(kParamOperationHint);
+        param->appendOption(kParamOperationOptionLogToLin);
+        param->appendOption(kParamOperationOptionLinToLog);
         if (!config) {
-            mode->setEnabled(false);
+            param->setEnabled(false);
         }
-        page->addChild(*mode);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ofxsPremultDescribeParams(desc, page);

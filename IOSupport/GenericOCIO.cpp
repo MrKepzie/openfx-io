@@ -1189,7 +1189,9 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
             s += '\'';
             param->setDefault(s);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Input Color-space
@@ -1203,7 +1205,9 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         } else {
             param->setEnabled(false);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
 #ifdef OFX_OCIO_CHOICE
@@ -1221,7 +1225,9 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setAnimates(true);
         param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
         param->setIsPersistant(false); // don't save/serialize
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 #endif
 #endif
@@ -1259,7 +1265,9 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
         } else {
             param->setEnabled(false);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 #ifdef OFX_OCIO_CHOICE
     {
@@ -1276,7 +1284,9 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
         param->setAnimates(true);
         param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
         param->setIsPersistant(false); // don't save/serialize
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 #endif
 #endif
@@ -1296,14 +1306,18 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setAnimates(true);
         param->setParent(*group);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue1);
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey2);
@@ -1311,14 +1325,18 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setAnimates(true);
         param->setParent(*group);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue2);
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey3);
@@ -1326,14 +1344,18 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setAnimates(true);
         param->setParent(*group);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue3);
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextKey4);
@@ -1341,16 +1363,22 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setAnimates(true);
         param->setParent(*group);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamContextValue4);
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
-    page->addChild(*group);
+    if (page) {
+        page->addChild(*group);
+    }
 #endif
 }
 

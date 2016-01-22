@@ -1600,8 +1600,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setScriptName(kParamFilename);
         param->setAnimates(!isVideoStreamPlugin);
         desc.addClipPreferencesSlaveParam(*param);
-        
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //////////// Output type
@@ -1615,7 +1616,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setAnimates(false);
         param->setHint(kParamFormatTypeHint);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     
@@ -1659,7 +1662,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         assert(param->getNOptions() == eParamFormatSquare2k);
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(eParamFormatHD);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     
@@ -1669,7 +1674,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setLabel(kParamClipToProjectLabel);
         param->setHint(kParamClipToProjectHint);
         param->setDefault(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
 #ifdef OFX_IO_USING_OCIO
@@ -1677,10 +1684,12 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault, kParamOutputSpaceLabel);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 #endif
     
@@ -1697,14 +1706,18 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->appendOption(premultString(eImageUnPreMultiplied), kParamInputPremultOptionUnPreMultipliedHint);
         param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamClipInfo);
         param->setLabel(kParamClipInfoLabel);
         param->setHint(kParamClipInfoHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Frame range choosal
@@ -1717,7 +1730,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
         param->setAnimates(true);
         param->setDefault(0);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     /////////////First frame
@@ -1726,7 +1741,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setLabel(kParamFirstFrameLabel);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////////////Last frame
@@ -1735,7 +1752,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setLabel(kParamLastFrameLabel);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // sublabel

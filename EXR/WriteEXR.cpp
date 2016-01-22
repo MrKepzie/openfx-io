@@ -313,7 +313,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
             param->appendOption(Exr::compressionNames[i]);
         }
         param->setDefault(3);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////////Data type
@@ -324,7 +326,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
             param->appendOption(Exr::depthNames[i]);
         }
         param->setDefault(1);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     GenericWriterDescribeInContextEnd(desc, context, page);

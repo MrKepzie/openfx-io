@@ -653,7 +653,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         GroupParamDescriptor *group = desc.defineGroupParam(kGroupRunScriptPlugin);
         group->setHint(kGroupRunScriptPluginHint);
         group->setLabel(kGroupRunScriptPluginLabel);
-        page->addChild(*group);
+        if (page) {
+            page->addChild(*group);
+        }
 
         {
             IntParamDescriptor *param = desc.defineIntParam(kParamCount);
@@ -661,8 +663,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->setAnimates(true);
             param->setRange(0, kRunScriptPluginArgumentsCount);
             param->setDisplayRange(0, kRunScriptPluginArgumentsCount);
-            param->setParent(*group);
-            page->addChild(*param);
+            if (group) {
+                param->setParent(*group);
+            }
+            if (page) {
+                page->addChild(*param);
+            }
         }
 
         // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
@@ -679,8 +685,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->appendOption(kParamTypeDoubleLabel,   kParamTypeDoubleHint);
                 param->appendOption(kParamTypeIntLabel,      kParamTypeIntHint);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -693,8 +703,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setFilePathExists(false); // the file may or may not exist
                 param->setAnimates(true); // the file name may change with time
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -705,8 +719,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -718,8 +736,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
                 param->setDisplayRange(-1000.,1000.);
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -730,8 +752,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
         }
     }
@@ -743,7 +769,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault("#!/bin/sh\n");
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     {
@@ -751,7 +779,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamValidateLabel);
         param->setHint(kParamValidateHint);
         param->setEvaluateOnChange(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 }
 

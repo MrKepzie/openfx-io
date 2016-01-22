@@ -788,7 +788,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setAnimates(false);
         param->setDefault(0);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
@@ -829,7 +831,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setDefault(0);
         param->setHint(kParamFormatHint);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         Int2DParamDescriptor* param = desc.defineInt2DParam(kParamSize);
@@ -841,7 +845,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         //param->setIsSecret(true); // done in the plugin constructor
         param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
         param->setLayoutHint(eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     {
@@ -852,7 +858,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setDefault(false);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamScale);
@@ -863,7 +871,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setDefault(1., 1.);
         param->setRange(0., 0., std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
         param->setIncrement(0.05);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamFilter);
@@ -882,7 +892,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
             }
         }
         param->setDefault(defIndex);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     // srcClipChanged
@@ -892,8 +904,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setIsSecret(true);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
-        page->addChild(*param);
-        
+        if (page) {
+            page->addChild(*param);
+        }
     }
 }
 

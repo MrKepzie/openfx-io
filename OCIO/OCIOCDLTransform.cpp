@@ -1021,7 +1021,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
         param->setDisplayRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
         param->setDefault(1., 1., 1.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamOffset);
@@ -1030,7 +1032,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
         param->setDisplayRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
         param->setDefault(0., 0., 0.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamPower);
@@ -1039,7 +1043,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
         param->setDisplayRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
         param->setDefault(1., 1., 1.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         DoubleParamDescriptor *param = desc.defineDoubleParam(kParamSaturation);
@@ -1048,7 +1054,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamSaturationMin, kParamSaturationMax);
         param->setDisplayRange(kParamSaturationMin, kParamSaturationMax);
         param->setDefault(1.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
@@ -1057,7 +1065,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
         param->setDefault(0);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         BooleanParamDescriptor *param = desc.defineBooleanParam(kParamReadFromFile);
@@ -1065,7 +1075,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setHint(kParamReadFromFileHint);
         param->setAnimates(false);
         param->setDefault(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamFile);
@@ -1074,25 +1086,33 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setLayoutHint(eLayoutHintNoNewLine);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
         param->setLabel(kParamReloadLabel);
         param->setHint(kParamReloadHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         IntParamDescriptor *param = desc.defineIntParam(kParamVersion);
         param->setIsSecret(true); // always secret
         param->setDefault(1);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
         param->setLabel(kParamCCCIDLabel);
         param->setHint(kParamCCCIDHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamExport);
@@ -1104,7 +1124,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setIsPersistant(false);
         param->setAnimates(false);
         param->setDefault(kParamExportDefault);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);

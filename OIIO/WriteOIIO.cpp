@@ -1580,7 +1580,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eParamTileSize512);
         param->appendOption("512");
         param->setDefault(eParamTileSize256);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBitDepth);
@@ -1607,7 +1609,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eTuttlePluginBitDepth64f);
         param->appendOption(kParamBitDepthOption64f, kParamBitDepthOption64fHint);
         param->setDefault(eTuttlePluginBitDepthAuto);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamOutputQuality);
@@ -1616,7 +1620,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setRange(0, 100);
         param->setDisplayRange(0, 100);
         param->setDefault(kParamOutputQualityDefault);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamOutputDWACompressionLevel);
@@ -1625,7 +1631,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setRange(0, kOfxFlagInfiniteMax);
         param->setDisplayRange(45, 200);
         param->setDefault(kParamOutputDWACompressionLevelDefault);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputOrientation);
@@ -1648,7 +1656,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eOutputOrientationR90CounterClockwise);
         param->appendOption(kParamOutputOrientationR90CounterClockwise, kParamOutputOrientationR90CounterClockwiseHint);
         param->setDefault(0);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputCompression);
@@ -1685,9 +1695,11 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eParamCompressionPACKBITS);
         param->appendOption(kParamOutputCompressionOptionPACKBITS, kParamOutputCompressionOptionPACKBITSHint);
         param->setDefault(eParamCompressionAuto);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
-    
+
 # if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
     const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
                                           OFX::getImageEffectHostDescription()->isMultiPlanar &&
@@ -1707,14 +1719,18 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->setEvaluateOnChange(false);
             param->setIsPersistant(false);
             desc.addClipPreferencesSlaveParam(*param);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             //Add a hidden string param that will remember the value of the choice
             OFX::StringParamDescriptor* param = desc.defineStringParam(kParamOutputLayerChoice);
             param->setLabel(kParamOutputLayerLabel "Choice");
             param->setIsSecret(true);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPartsSplitting);
@@ -1725,7 +1741,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->appendOption(kParamPartsSplitViewsLayers,kParamPartsSplitViewsLayersHint);
             param->setDefault(0);
             param->setAnimates(false);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         {
             OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamViewsSelector);
@@ -1734,7 +1752,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->appendOption("All");
             param->setAnimates(false);
             param->setDefault(0);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
     GenericWriterDescribeInContextEnd(desc, context, page);

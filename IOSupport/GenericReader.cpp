@@ -2751,10 +2751,12 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault, kParamInputSpaceLabel);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 #endif
 }

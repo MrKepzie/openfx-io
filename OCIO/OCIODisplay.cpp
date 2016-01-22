@@ -910,7 +910,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         if (display) {
             param->setDefault(display);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     if (gHostIsNatron) {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDisplayChoice);
@@ -922,7 +924,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             param->setEnabled(false);
         }
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // view transform
@@ -934,7 +938,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             param->setDefault(view);
         }
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     if (gHostIsNatron) {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamViewChoice);
@@ -946,7 +952,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             param->setEnabled(false);
         }
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // gain
@@ -957,7 +965,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         param->setDisplayRange(1./64., 64.);
         param->setDefault(1.);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // gamma
@@ -968,7 +978,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         param->setDisplayRange(0., 4.);
         param->setDefault(1.);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // channel view
@@ -991,15 +1003,19 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         //assert(param->getNOptions() == eChannelSelectorMatteOverlay);
         //param->appendOption(kParamChannelSelectorOptionMatteOverlay, kParamChannelSelectorOptionMatteOverlayHint);
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     GenericOCIO::describeInContextContext(desc, context, page);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpDisplaysButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpDisplaysButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ofxsPremultDescribeParams(desc, page);

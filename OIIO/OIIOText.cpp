@@ -558,18 +558,21 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         if (hostHasNativeOverlayForPosition) {
             param->setUseHostNativeOverlayHandle(true);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         BooleanParamDescriptor* param = desc.defineBooleanParam(kParamInteractive);
         param->setLabel(kParamInteractiveLabel);
         param->setHint(kParamInteractiveHint);
         param->setAnimates(false);
-        page->addChild(*param);
-        
         //Do not show this parameter if the host handles the interact
         if (hostHasNativeOverlayForPosition) {
             param->setIsSecret(true);
+        }
+        if (page) {
+            page->addChild(*param);
         }
     }
     
@@ -580,7 +583,9 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault("Enter text");
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         IntParamDescriptor* param = desc.defineIntParam(kParamFontSize);
@@ -588,14 +593,18 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamFontSizeHint);
         param->setDefault(16);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamFontName);
         param->setLabel(kParamFontNameLabel);
         param->setHint(kParamFontNameHint);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         RGBAParamDescriptor* param = desc.defineRGBAParam(kParamTextColor);
@@ -603,7 +612,9 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamTextColorHint);
         param->setDefault(1., 1., 1., 1.);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 }
 
