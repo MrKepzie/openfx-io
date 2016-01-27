@@ -1849,14 +1849,17 @@ GenericReaderPlugin::inputFileChanged()
 # ifdef OFX_IO_USING_OCIO
         // Always try to parse from string first,
         // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-        const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
-        if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
-            colorSpaceStr = NULL;
-        }
-        if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
-            // we're lucky
-            _ocio->setInputColorspace(colorSpaceStr);
-            setColorSpace = false;
+        OCIO_NAMESPACE::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
+        if (ocioConfig) {
+            const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
+            if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+                colorSpaceStr = NULL;
+            }
+            if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+                // we're lucky
+                _ocio->setInputColorspace(colorSpaceStr);
+                setColorSpace = false;
+            }
         }
 # endif
 
