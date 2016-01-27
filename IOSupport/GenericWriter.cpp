@@ -1420,7 +1420,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         //the host does not handle the format itself, do it ourselves
         int format_i;
         _outputFormat->getValue(format_i);
-        size_t w,h;
+        int w = 0, h = 0;
         double par = -1;
         getFormatResolution((OFX::EParamFormat)format_i, &w, &h, &par);
         assert(par != -1);
@@ -1633,7 +1633,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setDefault(1);
         param->setAnimates(false);
         param->setHint(kParamFormatTypeHint);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1686,9 +1686,10 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     }
     
     {
-        std::size_t w,h;
-        double par;
+        int w = 0, h = 0;
+        double par = -1;
         getFormatResolution(eParamFormatHD, &w, &h, &par);
+        assert(par != -1);
         {
             Int2DParamDescriptor* param = desc.defineInt2DParam(kNatronParamFormatSize);
             param->setLabel(kNatronParamFormatSize);
@@ -1745,7 +1746,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         assert(param->getNOptions() == eImageUnPreMultiplied);
         param->appendOption(premultString(eImageUnPreMultiplied), kParamInputPremultOptionUnPreMultipliedHint);
         param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }

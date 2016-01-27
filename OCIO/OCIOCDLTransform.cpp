@@ -1085,7 +1085,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setHint(kParamFileHint);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }

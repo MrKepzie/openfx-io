@@ -2032,7 +2032,7 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
             //format
             int index;
             _format->getValue(index);
-            size_t w,h;
+            int w, h;
             getFormatResolution( (OFX::EParamFormat)index, &w, &h, &par );
             break;
         }
@@ -2407,9 +2407,10 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
 
             int format_i;
             _format->getValue(format_i);
-            double par;
-            size_t w,h;
+            double par = -1;
+            int w = 0, h = 0;
             getFormatResolution( (OFX::EParamFormat)format_i, &w, &h, &par );
+            assert(par != -1);
             rod.x1 = rod.y1 = 0;
             rod.x2 = w;
             rod.y2 = h;
@@ -2762,7 +2763,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRegionOfDefinition);
         param->setLabel(kParamRegionOfDefinitionLabel);
         param->setHint(kParamRegionOfDefinitionHint);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
 
         assert(param->getNOptions() == eRegionOfDefinitionOptionUnion);
         param->appendOption(kParamRegionOfDefinitionOptionUnion, kParamRegionOfDefinitionOptionUnionHelp);

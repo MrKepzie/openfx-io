@@ -1154,7 +1154,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kNatronOfxParamProcessRLabel);
         param->setHint(kNatronOfxParamProcessRHint);
         param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1164,7 +1164,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kNatronOfxParamProcessGLabel);
         param->setHint(kNatronOfxParamProcessGHint);
         param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1174,7 +1174,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kNatronOfxParamProcessBLabel);
         param->setHint(kNatronOfxParamProcessBHint);
         param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1184,7 +1184,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kNatronOfxParamProcessALabel);
         param->setHint(kNatronOfxParamProcessAHint);
         param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }

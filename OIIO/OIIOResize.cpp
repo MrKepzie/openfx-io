@@ -482,7 +482,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             int index;
             _format->getValue(index);
             double par;
-            size_t w,h;
+            int w, h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             if (srcPAR != par) {
                 return false;
@@ -578,7 +578,7 @@ OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::s
         ///switch to size mode and set the size accordingly
         bool foundFormat = false;
         for (int i = (int)eParamFormatPCVideo; i < (int)eParamFormatSquare2k ; ++i) {
-            std::size_t w,h;
+            int w, h;
             double par;
             getFormatResolution((OFX::EParamFormat)i, &w, &h, &par);
             if (w == (srcRod.x2 - srcRod.x1) && h == (srcRod.y2 - srcRod.y1) && par == srcpar) {
@@ -608,7 +608,7 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             int index;
             _format->getValue(index);
             double par;
-            size_t w,h;
+            int w, h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             OfxRectI rodPixel;
             rodPixel.x1 = rodPixel.y1 = 0;
@@ -694,7 +694,7 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
             //specific output format
             int index;
             _format->getValue(index);
-            size_t w,h;
+            int w, h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             clipPreferences.setPixelAspectRatio(*_dstClip, par);
             break;
@@ -844,7 +844,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setAnimates(false);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }

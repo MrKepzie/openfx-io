@@ -3504,7 +3504,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         param->setDisplayRange(0., 100.);
         param->setDefault(24.f); // should be set from the input FPS
         param->setAnimates(false);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }

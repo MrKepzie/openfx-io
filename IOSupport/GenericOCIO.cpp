@@ -1305,7 +1305,7 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1324,7 +1324,7 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1343,7 +1343,7 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -1362,7 +1362,7 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
         param->setHint(kOCIOParamContextHint);
         param->setAnimates(true);
         param->setParent(*group);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }

@@ -2433,7 +2433,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamFirstFrameHint);
         param->setDefault(0);
         param->setAnimates(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -2468,7 +2468,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamLastFrameHint);
         param->setDefault(0);
         param->setAnimates(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -2528,7 +2528,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kParamFrameModeOptionTimeOffset);
         param->setAnimates(false);
         param->setDefault(eFrameModeStartingTime);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -2541,7 +2541,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamStartingTimeHint);
         param->setDefault(0);
         param->setAnimates(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -2609,7 +2609,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setIsSecret(true); // always secret
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
-        // param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        // param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setAnimates(true);
         if (page) {
             page->addChild(*param);
@@ -2625,7 +2625,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         //param->setIsSecret(true); // done in the plugin constructor
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setAnimates(true);
         if (page) {
             page->addChild(*param);
@@ -2712,7 +2712,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamFrameRateHint);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         desc.addClipPreferencesSlaveParam(*param);
         param->setEnabled(false);
         param->setDefault(24.);
