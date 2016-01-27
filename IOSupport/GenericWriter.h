@@ -223,6 +223,8 @@ protected:
     OFX::IntParam* _lastFrame; //< the last frame if the frame range type is "Manual"
     OFX::ChoiceParam* _outputFormatType; //< the type of output format
     OFX::ChoiceParam* _outputFormat; //< the output format to render
+    OFX::Int2DParam* _outputFormatSize;
+    OFX::DoubleParam* _outputFormatPar;
     OFX::ChoiceParam* _premult;
     OFX::BooleanParam* _clipToProject;
 

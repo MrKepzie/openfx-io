@@ -58,7 +58,7 @@
 "there will be at least 2 digits). The file name may not contain any # (hash) in which case it  will be overriden everytimes. " \
 "Views can be specified using the \"long\" view notation %V or the \"short\" notation using %v."
 
-#define kParamOutputFormat "outputFormat"
+#define kParamOutputFormat kNatronParamFormatChoice
 #define kParamOutputFormatLabel "Format"
 #define kParamOutputFormatHint \
 "The output format to render"
@@ -121,6 +121,8 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _lastFrame(0)
 , _outputFormatType(0)
 , _outputFormat(0)
+, _outputFormatSize(0)
+, _outputFormatPar(0)
 , _premult(0)
 , _clipToProject(0)
 , _sublabel(0)
@@ -135,7 +137,9 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _lastFrame = fetchIntParam(kParamLastFrame);
     
     _outputFormatType = fetchChoiceParam(kParamFormatType);
-    _outputFormat = fetchChoiceParam(kParamOutputFormat);
+    _outputFormat = fetchChoiceParam(kNatronParamFormatChoice);
+    _outputFormatSize = fetchInt2DParam(kNatronParamFormatSize);
+    _outputFormatPar = fetchDoubleParam(kNatronParamFormatPar);
     
     _premult = fetchChoiceParam(kParamInputPremult);
 
@@ -1162,14 +1166,18 @@ GenericWriterPlugin::getOutputFormat(OfxTime time,OfxRectD& rod)
             rod.y2 = offset.y + size.y;
         }
     } else if (formatType == 2) {
-        int formatIndex;
-        _outputFormat->getValueAtTime(time, formatIndex);
-        std::size_t w,h;
+
+        int w,h;
         double par;
-        getFormatResolution((OFX::EParamFormat)formatIndex, &w, &h, &par);
-        rod.x1 = rod.y1 = 0.;
-        rod.x2 = w;
-        rod.y2 = h;
+        _outputFormatSize->getValue(w,h);
+        _outputFormatPar->getValue(par);
+        
+        OfxRectI rodPixel;
+        rodPixel.x1 = rodPixel.y1 = 0;
+        rodPixel.x2 = w;
+        rodPixel.y2 = h;
+        OfxPointD renderScale = {1., 1.};
+        OFX::Coords::toCanonical(rodPixel, renderScale, par, &rod);
     }
     if (doDefaultBehaviour) {
         // union RoD across all views
@@ -1408,6 +1416,16 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         
         
         
+    } else if (paramName == kNatronParamFormatChoice) {
+        //the host does not handle the format itself, do it ourselves
+        int format_i;
+        _outputFormat->getValue(format_i);
+        size_t w,h;
+        double par = -1;
+        getFormatResolution((OFX::EParamFormat)format_i, &w, &h, &par);
+        assert(par != -1);
+        _outputFormatPar->setValue(par);
+        _outputFormatSize->setValue(w, h);
     } else if (paramName == kParamClipInfo && args.reason == OFX::eChangeUserEdit) {
         std::string msg;
         msg += "Input: ";
@@ -1624,7 +1642,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     
     //////////// Output format
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kNatronParamFormatChoice);
         param->setLabel(kParamOutputFormatLabel);
         param->setAnimates(true);
         //param->setIsSecret(true); // done in the plugin constructor
@@ -1666,6 +1684,28 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
             page->addChild(*param);
         }
     }
+    
+    {
+        std::size_t w,h;
+        double par;
+        getFormatResolution(eParamFormatHD, &w, &h, &par);
+        {
+            Int2DParamDescriptor* param = desc.defineInt2DParam(kNatronParamFormatSize);
+            param->setLabel(kNatronParamFormatSize);
+            param->setIsSecret(true);
+            param->setDefault(w, h);
+            page->addChild(*param);
+        }
+        
+        {
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kNatronParamFormatPar);
+            param->setLabel(kNatronParamFormatPar);
+            param->setIsSecret(true);
+            param->setDefault(par);
+            page->addChild(*param);
+        }
+    }
+
     
     
     /////////// Clip to project
