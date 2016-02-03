@@ -2655,7 +2655,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFilePremult);
         param->setLabel(kParamFilePremultLabel);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setHint(kParamFilePremultHint);
         assert(param->getNOptions() == eImageOpaque);
         param->appendOption(premultString(eImageOpaque), kParamFilePremultOptionOpaqueHint);
