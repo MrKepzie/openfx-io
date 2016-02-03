@@ -2877,6 +2877,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
         param->setDefaultCoordinateSystem(OFX::eCoordinatesNormalised);
         param->setDefault(0., 0.);
+        param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+        param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
         param->setIncrement(1.);
         param->setHint("Coordinates of the bottom left corner of the size rectangle.");
         param->setDigits(0);
@@ -2892,6 +2894,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setDoubleType(OFX::eDoubleTypeXY);
         param->setDefaultCoordinateSystem(OFX::eCoordinatesNormalised);
         param->setDefault(1., 1.);
+        param->setRange(0, 0, DBL_MAX, DBL_MAX);
+        param->setDisplayRange(0, 0, 10000., 10000.);
         param->setIncrement(1.);
         param->setDimensionLabels(kParamRectangleInteractSizeDim1, kParamRectangleInteractSizeDim1);
         param->setHint("Width and height of the size rectangle.");
@@ -2984,6 +2988,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setHint(hint);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
+            param->setRange(-DBL_MAX, DBL_MAX);
             param->setDisplayRange(-1000.,1000.);
             param->setDoubleType(OFX::eDoubleTypePlain);
             param->setParent(*group);
@@ -3023,6 +3028,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             param->setLabel(label);
             param->setHint(hint);
             param->setAnimates(true);
+            param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+            param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
             bool hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();

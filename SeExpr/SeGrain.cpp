@@ -758,6 +758,8 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setLabel(kParamSeedLabel);
         param->setHint(kParamSeedHint);
         param->setDefault(kParamSeedDefault);
+        param->setRange(-DBL_MAX, DBL_MAX);
+        param->setDisplayRange(-DBL_MAX, DBL_MAX);
         if (page) {
             page->addChild(*param);
         }
@@ -789,7 +791,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeAll);
             param->setLabel(kParamSizeAllLabel);
             param->setHint(kParamSizeAllHint);
-            param->setRange(0., kOfxFlagInfiniteMax);
+            param->setRange(0., DBL_MAX);
             param->setDisplayRange(0., 100.);
             param->setDefault(kParamSizeAllDefault);
             param->setDoubleType(eDoubleTypeScale);
@@ -804,7 +806,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeRed);
             param->setLabel(kParamSizeRedLabel);
             param->setHint(kParamSizeRedHint);
-            param->setRange(0., kOfxFlagInfiniteMax);
+            param->setRange(0., DBL_MAX);
             param->setDisplayRange(0., 100.);
             param->setDefault(kParamSizeRedDefault);
             if (group) {
@@ -818,7 +820,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeGreen);
             param->setLabel(kParamSizeGreenLabel);
             param->setHint(kParamSizeGreenHint);
-            param->setRange(0., kOfxFlagInfiniteMax);
+            param->setRange(0., DBL_MAX);
             param->setDisplayRange(0., 100.);
             param->setDefault(kParamSizeGreenDefault);
             if (group) {
@@ -832,7 +834,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeBlue);
             param->setLabel(kParamSizeBlueLabel);
             param->setHint(kParamSizeBlueHint);
-            param->setRange(0., kOfxFlagInfiniteMax);
+            param->setRange(0., DBL_MAX);
             param->setDisplayRange(0., 100.);
             param->setDefault(kParamSizeBlueDefault);
             if (group) {

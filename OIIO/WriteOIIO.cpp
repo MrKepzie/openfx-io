@@ -21,6 +21,8 @@
  * Writes an image using the OpenImageIO library.
  */
 
+#include <cfloat>
+
 #include "ofxsMacros.h"
 
 #include "OIIOGlobal.h"
@@ -377,7 +379,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
 # if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
     const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
                                           OFX::getImageEffectHostDescription()->isMultiPlanar &&
-                                          OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2));
+                                          OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true));
 # else
     const bool enableMultiPlaneFeature = false;
 # endif
@@ -1628,7 +1630,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamOutputDWACompressionLevel);
         param->setLabel(kParamOutputDWACompressionLevelLabel);
         param->setHint(kParamOutputDWACompressionLevelHint);
-        param->setRange(0, kOfxFlagInfiniteMax);
+        param->setRange(0, DBL_MAX);
         param->setDisplayRange(45, 200);
         param->setDefault(kParamOutputDWACompressionLevelDefault);
         if (page) {
@@ -1703,7 +1705,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 # if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
     const bool enableMultiPlaneFeature = (OFX::getImageEffectHostDescription()->supportsDynamicChoices &&
                                           OFX::getImageEffectHostDescription()->isMultiPlanar &&
-                                          OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2));
+                                          OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true));
 # else
     const bool enableMultiPlaneFeature = false;
 # endif

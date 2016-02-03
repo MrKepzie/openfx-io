@@ -329,7 +329,7 @@ GenericReaderPlugin::restoreStateFromParameters()
         }
         
         //reset the original range param only if the host is not Natron
-        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+        _originalFrameRange->setValue(INT_MIN, INT_MAX);
     }
     
 
@@ -422,7 +422,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSet
         ///case we don't bother calculating the frame range
         int originalMin,originalMax;
         _originalFrameRange->getValue(originalMin, originalMax);
-        if (originalMin != kOfxFlagInfiniteMin && originalMax != kOfxFlagInfiniteMax) {
+        if (originalMin != INT_MIN && originalMax != INT_MAX) {
             range.min = originalMin;
             range.max = originalMax;
             return true;
@@ -465,9 +465,11 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
         frameRangeLast = range.max;
         startingTime = frameRangeFirst;
         
-        _firstFrame->setRange(kOfxFlagInfiniteMin, range.min);
-        _lastFrame->setRange(range.min, kOfxFlagInfiniteMax);
-        
+        _firstFrame->setRange(INT_MIN, range.min);
+        _firstFrame->setDisplayRange(INT_MIN, range.min);
+        _lastFrame->setRange(range.min, INT_MAX);
+        _lastFrame->setDisplayRange(range.min, INT_MAX);
+
         if (setFirstLastFrame) {
             _firstFrame->setValue(range.min);
             _lastFrame->setValue(range.max);
@@ -1826,7 +1828,7 @@ GenericReaderPlugin::inputFileChanged()
         clearPersistentMessage();
         
         //reset the original range param only if not Natron
-        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+        _originalFrameRange->setValue(INT_MIN, INT_MAX);
     }
     
     
@@ -1955,9 +1957,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->setValue(oFirst);
         _lastFrame->setValue(oLast);
-        _firstFrame->setRange(kOfxFlagInfiniteMin, oLast);
+        _firstFrame->setRange(INT_MIN, oLast);
         _firstFrame->setDisplayRange(oFirst, oLast);
-        _lastFrame->setRange(oFirst, kOfxFlagInfiniteMax);
+        _lastFrame->setRange(oFirst, INT_MAX);
         _lastFrame->setDisplayRange(oFirst, oLast);
         _startingTime->setValue(oFirst);
     } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
@@ -1966,7 +1968,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int oFirst,oLast;
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
-        _lastFrame->setRange(first, kOfxFlagInfiniteMax);
+        _lastFrame->setRange(first, INT_MAX);
         _lastFrame->setDisplayRange(first, oLast);
 
         int offset;
@@ -1982,7 +1984,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
         _lastFrame->getValue(last);
-        _firstFrame->setRange(kOfxFlagInfiniteMin, last);
+        _firstFrame->setRange(INT_MIN, last);
         _firstFrame->setDisplayRange(oFirst, last);
         
         _timeDomainUserSet->setValue(true);
@@ -2576,7 +2578,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::Int2DParamDescriptor* param = desc.defineInt2DParam(kParamOriginalFrameRange);
         param->setLabel(kParamOriginalFrameRangeLabel);
-        param->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+        param->setDefault(INT_MIN, INT_MAX);
         param->setAnimates(true);
         param->setIsSecret(true); // always secret
         param->setIsPersistant(false);
@@ -2606,6 +2608,8 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamOriginalProxyScale);
         param->setLabel(kParamOriginalProxyScaleLabel);
         param->setDefault(1., 1.);
+        param->setRange(0., 0., 1., 1.);
+        param->setDisplayRange(0., 0., 1., 1.);
         param->setIsSecret(true); // always secret
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
@@ -2622,6 +2626,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamProxyThresholdLabel);
         param->setDefault(1., 1.);
         param->setRange(0.01, 0.01, 1., 1.);
+        param->setDisplayRange(0.01, 0.01, 1., 1.);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
@@ -2716,6 +2721,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         desc.addClipPreferencesSlaveParam(*param);
         param->setEnabled(false);
         param->setDefault(24.);
+        param->setRange(0., DBL_MAX);
         param->setDisplayRange(0.,300.);
         if (page) {
             page->addChild(*param);

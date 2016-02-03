@@ -23,6 +23,7 @@
 
 #include <limits>
 #include <algorithm>
+#include <cfloat>
 
 #include "ofxsMacros.h"
 
@@ -869,7 +870,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setAnimates(true);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(1., 1.);
-        param->setRange(0., 0., std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+        param->setRange(0., 0., DBL_MAX, DBL_MAX);
         param->setIncrement(0.05);
         if (page) {
             page->addChild(*param);

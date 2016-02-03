@@ -553,6 +553,8 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setDoubleType(eDoubleTypeXYAbsolute);
         param->setDefaultCoordinateSystem(eCoordinatesNormalised);
         param->setDefault(0.5, 0.5);
+        param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+        param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
         param->setAnimates(true);
         hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
         if (hostHasNativeOverlayForPosition) {

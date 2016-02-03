@@ -2709,7 +2709,7 @@ template <bool useRGBAChoices>
 void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     gHostSupportsDynamicChoices = (OFX::getImageEffectHostDescription()->supportsDynamicChoices);
-    gHostSupportsMultiPlane = (OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2)) != 0;
+    gHostSupportsMultiPlane = (OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true)) != 0;
     
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);

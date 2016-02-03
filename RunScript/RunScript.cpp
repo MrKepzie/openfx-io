@@ -26,6 +26,7 @@
 #include "RunScript.h"
 #include "ofxsMacros.h"
 
+#include <cfloat>
 #undef DEBUG
 #ifdef DEBUG
 #include <iostream>
@@ -736,6 +737,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
+                param->setRange(-DBL_MAX, DBL_MAX);
                 param->setDisplayRange(-1000.,1000.);
                 if (group) {
                     param->setParent(*group);

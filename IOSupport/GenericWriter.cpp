@@ -68,6 +68,10 @@
 #define kParamFormatTypeHint \
 "Whether to choose the input stream's format as output format or one from the drop-down menu"
 
+#define kParamFormatSize kNatronParamFormatSize
+
+#define kParamFormatPar kNatronParamFormatPar
+
 #define kParamFrameRange "frameRange"
 #define kParamFrameRangeLabel "Frame Range"
 #define kParamFrameRangeHint \
@@ -137,9 +141,9 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
     _lastFrame = fetchIntParam(kParamLastFrame);
     
     _outputFormatType = fetchChoiceParam(kParamFormatType);
-    _outputFormat = fetchChoiceParam(kNatronParamFormatChoice);
-    _outputFormatSize = fetchInt2DParam(kNatronParamFormatSize);
-    _outputFormatPar = fetchDoubleParam(kNatronParamFormatPar);
+    _outputFormat = fetchChoiceParam(kParamOutputFormat);
+    _outputFormatSize = fetchInt2DParam(kParamFormatSize);
+    _outputFormatPar = fetchDoubleParam(kParamFormatPar);
     
     _premult = fetchChoiceParam(kParamInputPremult);
 
@@ -1416,7 +1420,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         
         
         
-    } else if (paramName == kNatronParamFormatChoice) {
+    } else if (paramName == kParamOutputFormat) {
         //the host does not handle the format itself, do it ourselves
         int format_i;
         _outputFormat->getValue(format_i);
@@ -1560,7 +1564,7 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum saf
             desc.setPassThroughForNotProcessedPlanes(ePassThroughLevelPassThroughNonRenderedPlanes);
         }
     }
-    if (isMultiView && OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2)) {
+    if (isMultiView && OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true)) {
         gHostIsMultiView = true;
         desc.setIsViewAware(true);
         desc.setIsViewInvariant(OFX::eViewInvarianceAllViewsVariant);
@@ -1642,7 +1646,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     
     //////////// Output format
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kNatronParamFormatChoice);
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputFormat);
         param->setLabel(kParamOutputFormatLabel);
         param->setAnimates(true);
         //param->setIsSecret(true); // done in the plugin constructor
@@ -1691,17 +1695,17 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         getFormatResolution(eParamFormatHD, &w, &h, &par);
         assert(par != -1);
         {
-            Int2DParamDescriptor* param = desc.defineInt2DParam(kNatronParamFormatSize);
-            param->setLabel(kNatronParamFormatSize);
+            Int2DParamDescriptor* param = desc.defineInt2DParam(kParamFormatSize);
             param->setIsSecret(true);
             param->setDefault(w, h);
             page->addChild(*param);
         }
         
         {
-            DoubleParamDescriptor* param = desc.defineDoubleParam(kNatronParamFormatPar);
-            param->setLabel(kNatronParamFormatPar);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFormatPar);
             param->setIsSecret(true);
+            param->setRange(0., DBL_MAX);
+            param->setDisplayRange(0.5, 2.);
             param->setDefault(par);
             page->addChild(*param);
         }

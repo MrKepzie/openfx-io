@@ -962,6 +962,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamGain);
         param->setLabel(kParamGainLabel);
         param->setHint(kParamGainHint);
+        param->setRange(0., DBL_MAX);
         param->setDisplayRange(1./64., 64.);
         param->setDefault(1.);
         param->setAnimates(true);
@@ -975,6 +976,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamGamma);
         param->setLabel(kParamGammaLabel);
         param->setHint(kParamGammaHint);
+        param->setRange(0., DBL_MAX);
         param->setDisplayRange(0., 4.);
         param->setDefault(1.);
         param->setAnimates(true);

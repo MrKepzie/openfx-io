@@ -1205,7 +1205,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamNoiseSize);
         param->setLabel(kParamNoiseSizeLabel);
         param->setHint(kParamNoiseSizeHint);
-        param->setRange(0., 0., kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+        param->setRange(0., 0., DBL_MAX, DBL_MAX);
         param->setDisplayRange(1., 1., 1000., 1000.);
         param->setDefault(kParamNoiseSizeDefault);
         if (page) {
@@ -1216,7 +1216,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamNoiseZ);
         param->setLabel(kParamNoiseZLabel);
         param->setHint(kParamNoiseZHint);
-        param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+        param->setRange(-DBL_MAX, DBL_MAX);
         param->setDisplayRange(0., 5.);
         param->setDefault(kParamNoiseZDefault);
         if (page) {
@@ -1227,7 +1227,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamNoiseZSlope);
         param->setLabel(kParamNoiseZSlopeLabel);
         param->setHint(kParamNoiseZSlopeHint);
-        param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+        param->setRange(-DBL_MAX, DBL_MAX);
         param->setDisplayRange(0., 1.);
         param->setDefault(kParamNoiseZSlopeDefault);
         desc.addClipPreferencesSlaveParam(*param);
@@ -1319,7 +1319,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamLacunarity);
         param->setLabel(kParamLacunarityLabel);
         param->setHint(kParamLacunarityHint);
-        param->setRange(1., kOfxFlagInfiniteMax);
+        param->setRange(1., DBL_MAX);
         param->setDisplayRange(1., 10.);
         param->setDoubleType(eDoubleTypeScale);
         param->setDefault(kParamLacunarityDefault);
@@ -1373,7 +1373,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamXRotate);
             param->setLabel(kParamXRotateLabel);
             param->setHint(kParamXRotateHint);
-            param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+            param->setRange(-DBL_MAX, DBL_MAX);
             param->setDisplayRange(0., 90.);
             param->setDoubleType(eDoubleTypeAngle);
             param->setDefault(kParamXRotateDefault);
@@ -1388,7 +1388,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamYRotate);
             param->setLabel(kParamYRotateLabel);
             param->setHint(kParamYRotateHint);
-            param->setRange(-kOfxFlagInfiniteMax, kOfxFlagInfiniteMax);
+            param->setRange(-DBL_MAX, DBL_MAX);
             param->setDisplayRange(0., 90.);
             param->setDoubleType(eDoubleTypeAngle);
             param->setDefault(kParamYRotateDefault);
