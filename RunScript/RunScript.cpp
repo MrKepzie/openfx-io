@@ -651,12 +651,13 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     {
         GroupParamDescriptor *group = desc.defineGroupParam(kGroupRunScriptPlugin);
-        group->setHint(kGroupRunScriptPluginHint);
-        group->setLabel(kGroupRunScriptPluginLabel);
-        if (page) {
-            page->addChild(*group);
+        if (group) {
+            group->setHint(kGroupRunScriptPluginHint);
+            group->setLabel(kGroupRunScriptPluginLabel);
+            if (page) {
+                page->addChild(*group);
+            }
         }
-
         {
             IntParamDescriptor *param = desc.defineIntParam(kParamCount);
             param->setLabel(kParamCountLabel);
