@@ -674,8 +674,11 @@ void
 OCIOLogConvertPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_srcClip->getPreMultiplication()) {
+        if (_srcClip->getPixelComponents() != OFX::ePixelComponentRGBA) {
+            _premult->setValue(false);
+        } else switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
+                _premult->setValue(false);
                 break;
             case OFX::eImagePreMultiplied:
                 _premult->setValue(true);
