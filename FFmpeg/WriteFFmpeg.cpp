@@ -83,6 +83,7 @@ extern "C" {
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 0 // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -883,7 +884,7 @@ private:
 
 public:
 
-    WriteFFmpegPlugin(OfxImageEffectHandle handle);
+    WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~WriteFFmpegPlugin();
 
@@ -1133,8 +1134,8 @@ FFmpegSingleton::~FFmpegSingleton(){
 
 using namespace OFX;
 
-WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericWriterPlugin(handle, extensions)
 , _filename()
 , _pixelAspectRatio(1.)
 , _isOpen(false)
@@ -3206,7 +3207,7 @@ void WriteFFmpegPlugin::freeFormat()
 
 using namespace OFX;
 
-mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, {}, true);
+mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, true);
 
 static
 std::list<std::string> &
@@ -3249,26 +3250,17 @@ ffmpeg_versions()
     return oss.str();
 }
 
-/** @brief The basic describe function, passed a plugin descriptor */
-void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+WriteFFmpegPluginFactory::load()
 {
-    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe, false, false);
-    // basic labels
-    desc.setLabel(kPluginName);
-    desc.setPluginDescription("Write images or video file using "
-#                             ifdef FFMS_USE_FFMPEG_COMPAT
-                              "FFmpeg"
-#                             else
-                              "libav"
-#                             endif
-                              ".\n\n" + ffmpeg_versions());
-
-#ifdef OFX_EXTENSIONS_TUTTLE
+    _extensions.clear();
 #if 0
     // hard-coded extensions list
-    const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    for (const char** ext = extensionsl; *ext != NULL; ++ext) {
+        _extensions.push_back(*ext);
+    }
 #else
-    std::vector<std::string> extensions;
     {
         std::list<std::string> extensionsl;
         AVOutputFormat* oFormat = av_oformat_next(NULL);
@@ -3411,15 +3403,28 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
             extensionsl.remove(*e);
         }
 
-        extensions.assign(extensionsl.begin(), extensionsl.end());
+        _extensions.assign(extensionsl.begin(), extensionsl.end());
         // sort / unique
-        std::sort(extensions.begin(), extensions.end());
-        extensions.erase(std::unique(extensions.begin(), extensions.end()), extensions.end());
+        std::sort(_extensions.begin(), _extensions.end());
+        _extensions.erase(std::unique(_extensions.begin(), _extensions.end()), _extensions.end());
     }
 #endif
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(0);
-#endif
+}
+
+/** @brief The basic describe function, passed a plugin descriptor */
+void
+WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+{
+    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe, _extensions, kPluginEvaluation, false, false);
+    // basic labels
+    desc.setLabel(kPluginName);
+    desc.setPluginDescription("Write images or video file using "
+#                             ifdef FFMS_USE_FFMPEG_COMPAT
+                              "FFmpeg"
+#                             else
+                              "libav"
+#                             endif
+                              ".\n\n" + ffmpeg_versions());
 
     ///We support only a single render call per instance
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
@@ -3436,8 +3441,6 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    
-    
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
@@ -3704,7 +3707,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteFFmpegPlugin(handle);
+    return new WriteFFmpegPlugin(handle, _extensions);
 }
 
 

@@ -44,7 +44,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool isMultiPlanar);
+    GenericReaderPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool isMultiPlanar);
     
     virtual ~GenericReaderPlugin();
 
@@ -344,7 +344,9 @@ private:
     void setSequenceFromFile(const std::string& filename);
     
     void refreshSubLabel(OfxTime time);
-    
+
+    bool checkExtension(const std::string& ext);
+
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
@@ -378,6 +380,7 @@ protected:
     std::auto_ptr<GenericOCIO> _ocio;
 #endif
     
+    const std::vector<std::string>& _extensions;
 
 private:
     
@@ -392,21 +395,26 @@ private:
 };
 
 
-void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles, bool multiPlanar);
+void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
+                           const std::vector<std::string>& extensions, // list of supported extensions
+                           int evaluation, // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
+                           bool supportsTiles, bool multiPlanar);
+
 OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles);
 void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 
-#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
+#define mDeclareReaderPluginFactory(CLASS, UNLOADFUNCDEF,ISVIDEOSTREAM) \
   class CLASS : public OFX::PluginFactoryHelper<CLASS>                       \
   {                                                                     \
   public:                                                                \
     CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):OFX::PluginFactoryHelper<CLASS>(id, verMaj, verMin){} \
-    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void load();                                   \
     virtual void unload() UNLOADFUNCDEF ;                               \
     virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
     bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
     virtual void describe(OFX::ImageEffectDescriptor &desc);      \
     virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
+    std::vector<std::string> _extensions; \
   }; 
 
 #endif

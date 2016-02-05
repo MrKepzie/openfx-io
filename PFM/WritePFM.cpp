@@ -36,6 +36,7 @@
 #define kPluginIdentifier "fr.inria.openfx.WritePFM"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 40 // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -54,7 +55,7 @@ class WritePFMPlugin : public GenericWriterPlugin
 {
 public:
 
-    WritePFMPlugin(OfxImageEffectHandle handle);
+    WritePFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~WritePFMPlugin();
 
@@ -69,8 +70,8 @@ private:
     virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
 };
 
-WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericWriterPlugin(handle, extensions)
 {
 }
 
@@ -189,21 +190,21 @@ WritePFMPlugin::onOutputFileChanged(const std::string &/*filename*/,
 
 using namespace OFX;
 
-mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, {}, false);
+mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, false);
+
+void WritePFMPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("pfm");
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false, false);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "pfm", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(40);
-#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -220,7 +221,7 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WritePFMPlugin(handle);
+    return new WritePFMPlugin(handle, _extensions);
 }
 
 

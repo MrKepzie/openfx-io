@@ -40,6 +40,7 @@ GCC_DIAG_ON(unused-parameter)
 #define kPluginIdentifier "fr.inria.openfx.WriteOIIO"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 91 // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -264,7 +265,7 @@ enum EParamTileSize
 class WriteOIIOPlugin : public GenericWriterPlugin
 {
 public:
-    WriteOIIOPlugin(OfxImageEffectHandle handle);
+    WriteOIIOPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~WriteOIIOPlugin();
 
@@ -361,8 +362,8 @@ private:
     std::list<std::string> _availableViews;
 };
 
-WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericWriterPlugin(handle, extensions)
 , _bitDepth(0)
 , _quality(0)
 , _dwaCompressionLevel(0)
@@ -428,7 +429,7 @@ namespace  {
 }
 
 void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) {
-    if (paramName == kParamOutputLayer && args.reason == OFX::eChangeUserEdit) {
+    if (paramName == kParamOutputLayer && args.reason == OFX::eChangeUserEdit && _outputLayers && _outputLayerString) {
         int cur_i;
         _outputLayers->getValue(cur_i);
         std::string opt;
@@ -488,10 +489,12 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
         }
         if (hasListChanged(_availableViews, views)) {
             _availableViews = views;
-            _views->resetOptions();
-            _views->appendOption("All");
-            for (std::list<std::string>::iterator it = views.begin(); it!=views.end();++it) {
-                _views->appendOption(*it);
+            if (_views) {
+                _views->resetOptions();
+                _views->appendOption("All");
+                for (std::list<std::string>::iterator it = views.begin(); it!=views.end();++it) {
+                    _views->appendOption(*it);
+                }
             }
         }
         
@@ -667,10 +670,10 @@ WriteOIIOPlugin::buildChannelMenus()
     if (supportsNChannels) {
         inputComponents.push_front(kParamOutputLayerAll);
     }
-    if (hasListChanged(_currentInputComponents, inputComponents)) {
-        
+    if (hasListChanged(_currentInputComponents, inputComponents) && _outputLayers && _outputLayerString) {
+
         _currentInputComponents = inputComponents;
-        
+
         std::vector<std::string> options;
         _outputLayers->resetOptions();
 
@@ -678,7 +681,7 @@ WriteOIIOPlugin::buildChannelMenus()
         std::list<std::string> compsToAdd;
         bool foundColor = false;
         for (std::list<std::string>::const_iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
-            
+
             if (*it == kParamOutputLayerAll) {
                 options.push_back(kParamOutputLayerAll);
                 continue;
@@ -700,7 +703,7 @@ WriteOIIOPlugin::buildChannelMenus()
                     options.push_back(kWriteOIIOColorAlpha);
                     foundColor = true;
                 }
-                
+
                 continue;
             }
             compsToAdd.push_back(layer);
@@ -709,11 +712,11 @@ WriteOIIOPlugin::buildChannelMenus()
             options.push_back(kWriteOIIOColorRGBA);
         }
         options.insert(options.end(), compsToAdd.begin(), compsToAdd.end());
-        
+
         for (std::vector<std::string>::const_iterator it = options.begin(); it!=options.end(); ++it) {
             _outputLayers->appendOption(*it);
         }
-        
+
         std::string outputComponentsStr;
         _outputLayerString->getValue(outputComponentsStr);
         if (outputComponentsStr.empty()) {
@@ -743,10 +746,7 @@ WriteOIIOPlugin::buildChannelMenus()
                 _outputLayerString->setValue(options[defIndex]);
             }
         }
-        
-
     }
-    
 }
 
 /**
@@ -912,15 +912,23 @@ WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
             hasDWA = (compression == eParamCompressionDWAa) || (compression == eParamCompressionDWAb);
         }
         _dwaCompressionLevel->setIsSecret(!hasDWA);
-        _views->setIsSecret(!isEXR);
-        _parts->setIsSecret(!output->supports("multiimage"));
+        if (_views) {
+            _views->setIsSecret(!isEXR);
+        }
+        if (_parts) {
+            _parts->setIsSecret(!output->supports("multiimage"));
+        }
     } else {
         _tileSize->setIsSecret(true);
         //_outputLayers->setIsSecret(true);
         _quality->setIsSecret(true);
         _dwaCompressionLevel->setIsSecret(true);
-        _views->setIsSecret(true);
-        _parts->setIsSecret(true);
+        if (_views) {
+            _views->setIsSecret(true);
+        }
+        if (_parts) {
+            _parts->setIsSecret(true);
+        }
     }
 
 }
@@ -1452,12 +1460,56 @@ static std::string oiio_versions()
     return oss.str();
 }
 
-mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, {}, false);
+mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, false);
+
+void WriteOIIOPluginFactory::load()
+{
+    _extensions.clear();
+#if 0
+    // hard-coded extensions list
+    const char* extensionsl[] = { "bmp", "cin", /*"dds",*/ "dpx", /*"f3d",*/ "fits", "hdr", "ico",
+        "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
+        "pbm", "pgm", "ppm",
+#     if OIIO_VERSION >= 10605
+        "pfm", // PFM was flipped before 1.6.5
+#     endif
+        "psd", "pdd", "psb", /*"ptex",*/ "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    for (const char** ext = extensionsl; *ext != NULL; ++ext) {
+        _extensions.push_back(*ext);
+    }
+#else
+    // get extensions from OIIO (but there is no distinctions between readers and writers)
+    std::string extensions_list;
+    getattribute("extension_list", extensions_list);
+    std::stringstream formatss(extensions_list);
+    std::string format;
+    std::list<std::string> extensionsl;
+    while (std::getline(formatss, format, ';')) {
+        std::stringstream extensionss(format);
+        std::string extension;
+        std::getline(extensionss, extension, ':'); // extract the format
+        while (std::getline(extensionss, extension, ',')) {
+            extensionsl.push_back(extension);
+        }
+    }
+    const char* extensions_blacklist[] = {
+#     if OIIO_VERSION < 10605
+        "pfm", // PFM was flipped before 1.6.5
+#     endif
+        "avi", "mov", "qt", "mp4", "m4a", "3gp", "3g2", "mj2", "m4v", "mpg", // FFmpeg extensions - better supported by WriteFFmpeg
+        NULL
+    };
+    for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
+        extensionsl.remove(*e);
+    }
+    _extensions.assign(extensionsl.begin(), extensionsl.end());
+#endif
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, true, true);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, true, true);
     
 
     std::string extensions_list;
@@ -1515,49 +1567,6 @@ void WriteOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
                               "Zfile (*.zfile)\n\n"
                               "All supported formats and extensions: " + extensions_pretty + "\n\n"
                               + oiio_versions());
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-#if 0
-    // hard-coded extensions list
-    const char* extensions[] = { "bmp", "cin", /*"dds",*/ "dpx", /*"f3d",*/ "fits", "hdr", "ico",
-        "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
-        "pbm", "pgm", "ppm",
-#     if OIIO_VERSION >= 10605
-        "pfm", // PFM was flipped before 1.6.5
-#     endif
-        "psd", "pdd", "psb", /*"ptex",*/ "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
-#else
-    // get extensions from OIIO (but there is no distinctions between readers and writers)
-    std::vector<std::string> extensions;
-    {
-        std::stringstream formatss(extensions_list);
-        std::string format;
-        std::list<std::string> extensionsl;
-        while (std::getline(formatss, format, ';')) {
-            std::stringstream extensionss(format);
-            std::string extension;
-            std::getline(extensionss, extension, ':'); // extract the format
-            while (std::getline(extensionss, extension, ',')) {
-                extensionsl.push_back(extension);
-            }
-        }
-        const char* extensions_blacklist[] = {
-#          if OIIO_VERSION < 10605
-            "pfm", // PFM was flipped before 1.6.5
-#          endif
-            "avi", "mov", "qt", "mp4", "m4a", "3gp", "3g2", "mj2", "m4v", "mpg", // FFmpeg extensions - better supported by WriteFFmpeg
-            NULL
-        };
-        for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
-            extensionsl.remove(*e);
-        }
-        extensions.assign(extensionsl.begin(), extensionsl.end());
-    }
-
-#endif
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(91);
-#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -1765,7 +1774,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteOIIOPlugin(handle);
+    return new WriteOIIOPlugin(handle, _extensions);
 }
 
 

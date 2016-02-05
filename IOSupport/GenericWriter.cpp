@@ -115,7 +115,7 @@ static bool gHostIsNatron   = false;
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsMultiView = false;
 
-GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
+GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
 : OFX::ImageEffect(handle)
 , _inputClip(0)
 , _outputClip(0)
@@ -131,6 +131,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle)
 , _clipToProject(0)
 , _sublabel(0)
 , _ocio(new GenericOCIO(this))
+, _extensions(extensions)
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -188,67 +189,14 @@ GenericWriterPlugin::~GenericWriterPlugin()
 }
 
 
-void
-GenericWriterPlugin::getOutputFileNameAndExtension(OfxTime time, std::string& filename)
+bool
+GenericWriterPlugin::checkExtension(const std::string& ext)
 {
-    _fileParam->getValueAtTime(time,filename);
-    // filename = filenameFromPattern(filename, time);
-    
-    ///find out whether we support this extension...
-    size_t sepPos = filename.find_last_of('.');
-    if (sepPos == std::string::npos){ //we reached the start of the file, return false because we can't determine from the extension
-        setPersistentMessage(OFX::Message::eMessageError, "", "Invalid file name");
-        return;
+    if (ext.empty()) {
+        // no extension
+        return false;
     }
-    
-    std::string ext;
-    size_t i = sepPos;
-    ++i;//< bypass the '.' character
-	std::locale loc;
-    while(i < filename.size()){
-        ext.append(1,std::tolower(filename.at(i),loc));
-        ++i;
-    }
-    
-#ifdef OFX_EXTENSIONS_TUTTLE
-    try {
-        bool found = false;
-        int nExtensions = getPropertySet().propGetDimension(kTuttleOfxImageEffectPropSupportedExtensions);
-        for (int i = 0; i < nExtensions; ++i) {
-            std::string exti = getPropertySet().propGetString(kTuttleOfxImageEffectPropSupportedExtensions, i);
-            if (exti == ext) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            std::string err("Unsupported file extension: ");
-            err.append(ext);
-            setPersistentMessage(OFX::Message::eMessageError, "", ext);
-        }
-    } catch (OFX::Exception::PropertyUnknownToHost &e) {
-        // ignore exception
-    }
-#endif
-    
-#if 0
-    // [FD] disabled 5/04/2015 because it modifies the filename when writing to a file that ends with digits.
-    // For example sequence_01.mov, will be changed to sequence_.mov, which is very dangerous.
-
-    ////if the file extension corresponds to a video file, remove file digits that were
-    ////added to the file path in order to write into the same file.
-    if (!isImageFile(ext)) {
-        ///find the position of the first digit
-        size_t firstDigitPos = sepPos;
-        --firstDigitPos;
-		std::locale loc;
-        while (firstDigitPos &&  std::isdigit(filename.at(firstDigitPos),loc)) {
-            --firstDigitPos;
-        }
-        ++firstDigitPos;
-        filename.erase(firstDigitPos, sepPos - firstDigitPos); //< erase the digits
-    }
-#endif
+    return std::find(_extensions.begin(), _extensions.end(), ext) != _extensions.end();
 }
 
 bool
@@ -574,6 +522,7 @@ struct ImageData
 void
 GenericWriterPlugin::render(const OFX::RenderArguments &args)
 {
+    const double time = args.time;
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -590,13 +539,21 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     }
 
     std::string filename;
-    getOutputFileNameAndExtension(args.time, filename);
+    _fileParam->getValueAtTime(time, filename);
+    // filename = filenameFromPattern(filename, time);
+    {
+        std::string ext = extension(filename);
+        if (!checkExtension(ext)) {
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+        }
+    }
     
     float pixelAspectRatio = _inputClip->getPixelAspectRatio();
     
     ///This is automatically the same generally as inputClip premultiplication but can differ is the user changed it.
     int userPremult_i;
-    _premult->getValueAtTime(args.time, userPremult_i);
+    _premult->getValueAtTime(time, userPremult_i);
     OFX::PreMultiplicationEnum userPremult = (OFX::PreMultiplicationEnum)userPremult_i;
 
     ///This is what the plug-in expects to be passed to the encode function.
@@ -612,8 +569,8 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     //if (dstImg.get()) {
     //// do the color-space conversion on dstImg
     //getImageData(dstImg.get(), &pixelData, &bounds, &pixelComponents, &rowBytes);
-    //_ocio->apply(args.time, args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
-    //encode(filename, args.time, pixelData, bounds, pixelComponents, rowBytes);
+    //_ocio->apply(time, args.renderWindow, pixelData, bounds, pixelComponents, rowBytes);
+    //encode(filename, time, pixelData, bounds, pixelComponents, rowBytes);
     //}
     //
     // The only viable solution (below) is to do the conversion in a temporary space,
@@ -621,7 +578,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     //
     
    
-    bool isOCIOIdentity = _ocio->isIdentity(args.time);
+    bool isOCIOIdentity = _ocio->isIdentity(time);
 
     //The host required that we render all views into 1 file. This is for now only supported by EXR.
     
@@ -688,9 +645,9 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         const OFX::Image* srcImg;
         OFX::ImageMemory *tmpMem;
         ImageData data;
-        fetchPlaneConvertAndCopy(args.planes.front(), viewIndex, args.renderView, args.time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
+        fetchPlaneConvertAndCopy(args.planes.front(), viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
         
-        encode(filename, args.time, viewNames[0], data.srcPixelData, args.renderWindow, pixelAspectRatio, data.pixelComponents, data.rowBytes);
+        encode(filename, time, viewNames[0], data.srcPixelData, args.renderWindow, pixelAspectRatio, data.pixelComponents, data.rowBytes);
     } else {
         /*
          Use the beginEncodeParts/encodePart/endEncodeParts API when there are multiple views/planes to render
@@ -700,7 +657,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         EncodePlanesLocalData_RAII encodeData(this);
         InputImagesHolder dataHolder;
         
-        beginEncodeParts(encodeData.getData(), filename, args.time, pixelAspectRatio, partsSplit, viewNames, args.planes, args.renderWindow);
+        beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, args.planes, args.renderWindow);
         
         if (partsSplit == eLayerViewsSplitViews &&
             args.planes.size() == 1) {
@@ -724,7 +681,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         const OFX::Image* srcImg;
                         
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, args.time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
+                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
                         
                         bool isColorPlane;
                         data.pixelComponentsCount = getPixelsComponentsCount(srcImg,&data.pixelComponents,&isColorPlane);
@@ -779,7 +736,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         const OFX::Image* srcImg;
                         
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, args.time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
+                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
                         
                         bool isColorPlane;
                         data.pixelComponentsCount = getPixelsComponentsCount(srcImg,&data.pixelComponents,&isColorPlane);
@@ -835,7 +792,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         OFX::ImageMemory *tmpMem;
                         const OFX::Image* srcImg;
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, args.time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
+                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents);
                         encodePart(encodeData.getData(), filename, data.srcPixelData, partIndex, data.rowBytes);
                         
                         ++partIndex;
@@ -1006,8 +963,15 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     }
 
     std::string filename;
-    getOutputFileNameAndExtension(args.frameRange.min, filename);
-    
+    _fileParam->getValue(filename);
+    {
+        std::string ext = extension(filename);
+        if (!checkExtension(ext)) {
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+        }
+    }
+
     OfxRectD rod;
     getOutputFormat(args.frameRange.min, rod);
     
@@ -1375,6 +1339,19 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else if (paramName == kParamFilename) {
         std::string filename;
         _fileParam->getValue(filename);
+        // filename = filenameFromPattern(filename, time);
+        {
+            std::string ext = extension(filename);
+            if (!checkExtension(ext)) {
+                if (args.reason == OFX::eChangeUserEdit) {
+                    sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                } else {
+                    setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                }
+                OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+            }
+        }
+
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
             _sublabel->setValue(basename(filename));
         }
@@ -1529,12 +1506,19 @@ using namespace OFX;
  * GenericWriterPluginFactory<YOUR_FACTORY>::describe(desc);
  **/
 void
-GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety,bool isMultiPlanar, bool isMultiView)
+GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,
+                      OFX::RenderSafetyEnum safety,
+                      const std::vector<std::string>& extensions, // list of supported extensions
+                      int evaluation, // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
+                      bool isMultiPlanar,
+                      bool isMultiView)
 {
     desc.setPluginGrouping(kPluginGrouping);
     
 #ifdef OFX_EXTENSIONS_TUTTLE
     desc.addSupportedContext(OFX::eContextWriter);
+    desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(evaluation);
 #endif
     desc.addSupportedContext(OFX::eContextGeneral);
 

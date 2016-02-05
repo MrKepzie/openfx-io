@@ -42,6 +42,7 @@
 #define kPluginIdentifier "fr.inria.openfx.WriteEXR"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 10 // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
 
 #define kParamWriteEXRCompression "compression"
 #define kParamWriteEXRDataType "dataType"
@@ -103,7 +104,7 @@ class WriteEXRPlugin : public GenericWriterPlugin
 {
 public:
 
-    WriteEXRPlugin(OfxImageEffectHandle handle);
+    WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
 
     virtual ~WriteEXRPlugin();
@@ -125,8 +126,8 @@ private:
     
 };
 
-WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericWriterPlugin(handle, extensions)
 , _compression(0)
 , _bitDepth(0)
 {
@@ -277,22 +278,22 @@ WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
 
 using namespace OFX;
 
-mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
+mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, false);
 
+
+void WriteEXRPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("exr");
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, false, false);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "exr", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(10);
-#endif
 
     desc.setIsDeprecated(true); // This plugin was superseeded by WriteOIIO
 }
@@ -337,7 +338,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteEXRPlugin(handle);
+    return new WriteEXRPlugin(handle, _extensions);
 }
 
 

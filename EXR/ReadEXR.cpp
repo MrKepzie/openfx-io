@@ -53,7 +53,7 @@
 #define kPluginIdentifier "fr.inria.openfx.ReadEXR"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
-
+#define kPluginEvaluation 10
 
 #ifndef OPENEXR_IMF_NAMESPACE
 #define OPENEXR_IMF_NAMESPACE Imf
@@ -69,7 +69,7 @@ class ReadEXRPlugin : public GenericReaderPlugin
 {
 public:
 
-    ReadEXRPlugin(OfxImageEffectHandle handle);
+    ReadEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~ReadEXRPlugin();
 
@@ -496,8 +496,8 @@ namespace Exr {
 
 
 
-ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
+ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 {
     Exr::FileManager::s_readerManager.initialize();
 }
@@ -677,24 +677,25 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
 
 using namespace OFX;
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, false);
+
+void
+ReadEXRPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("exr");
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
 ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles, false);
+    GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
     // basic labels
     desc.setLabel("ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");
 #ifdef OFX_IO_MT_EXR
     desc.setRenderThreadSafety(eRenderFullySafe);
-#endif
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "exr", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(10);
 #endif
 
     desc.setIsDeprecated(true); // This plugin was superseeded by ReadOIIO
@@ -716,7 +717,7 @@ ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 ImageEffect*
 ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    ReadEXRPlugin* ret =  new ReadEXRPlugin(handle);
+    ReadEXRPlugin* ret =  new ReadEXRPlugin(handle, _extensions);
     ret->restoreStateFromParameters();
     return ret;
 }

@@ -53,7 +53,7 @@ class GenericWriterPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericWriterPlugin(OfxImageEffectHandle handle);
+    GenericWriterPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
     
     virtual ~GenericWriterPlugin();
     
@@ -231,6 +231,7 @@ protected:
     OFX::StringParam* _sublabel;
 
     std::auto_ptr<GenericOCIO> _ocio;
+    const std::vector<std::string>& _extensions;
 
 private:
     
@@ -283,9 +284,9 @@ private:
                               OFX::PixelComponentEnum* mappedComponents);
     
     /**
-     * @brief Retrieves the output filename at the given time and checks if the extension is supported.
+     * @brief Checks if the extension is supported.
      **/
-    void getOutputFileNameAndExtension(OfxTime time,std::string& filename);
+    bool checkExtension(const std::string& filename);
     
     /**
      * @brief Override if you want to do something when the output image/video file changed.
@@ -432,21 +433,24 @@ public:
     void* getData() const  { return data; }
 };
 
-void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,OFX::RenderSafetyEnum safety, bool isMultiPlanar, bool isMultiView);
+void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc, OFX::RenderSafetyEnum safety, const std::vector<std::string>& extensions, int evaluation, bool isMultiPlanar, bool isMultiView);
 OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 
-#define mDeclareWriterPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
+// the load() member has to be provided, and it should fill the _extensions list of valid file extensions
+#define mDeclareWriterPluginFactory(CLASS, UNLOADFUNCDEF,ISVIDEOSTREAM) \
   class CLASS : public OFX::PluginFactoryHelper<CLASS>                       \
   {                                                                     \
   public:                                                                \
     CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):OFX::PluginFactoryHelper<CLASS>(id, verMaj, verMin){} \
-    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void load();                                   \
     virtual void unload() UNLOADFUNCDEF ;                               \
     virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
     bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
     virtual void describe(OFX::ImageEffectDescriptor &desc);      \
     virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
+  private: \
+    std::vector<std::string> _extensions; \
   };
 
 #endif

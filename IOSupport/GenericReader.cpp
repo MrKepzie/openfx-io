@@ -234,6 +234,7 @@ premultString(OFX::PreMultiplicationEnum e)
 }
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
+                                         const std::vector<std::string>& extensions,
                                          bool supportsRGBA,
                                          bool supportsRGB,
                                          bool supportsAlpha,
@@ -264,6 +265,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 #ifdef OFX_IO_USING_OCIO
 , _ocio(new GenericOCIO(this))
 #endif
+, _extensions(extensions)
 , _sequenceFromFiles()
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
@@ -1813,6 +1815,15 @@ GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
 
 }
 
+bool
+GenericReaderPlugin::checkExtension(const std::string& ext)
+{
+    if (ext.empty()) {
+        // no extension
+        return false;
+    }
+    return std::find(_extensions.begin(), _extensions.end(), ext) != _extensions.end();
+}
 
 void
 GenericReaderPlugin::inputFileChanged()
@@ -1820,7 +1831,6 @@ GenericReaderPlugin::inputFileChanged()
     std::string filename;
     
     if (!gHostIsNatron) {
-        
         _fileParam->getValue(filename);
 
         setSequenceFromFile(filename);
@@ -1833,7 +1843,7 @@ GenericReaderPlugin::inputFileChanged()
     
     
     OfxRangeI tmp;
-    if (getSequenceTimeDomainInternal(tmp,true)) {
+    if (getSequenceTimeDomainInternal(tmp, true)) {
         timeDomainFromSequenceTimeDomain(tmp, true);
         _startingTime->setValue(tmp.min);
         
@@ -2309,6 +2319,8 @@ using namespace OFX;
 
 void
 GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
+                      const std::vector<std::string>& extensions,
+                      int evaluation,
                       bool supportsTiles,
                       bool multiPlanar)
 {
@@ -2348,6 +2360,10 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
         desc.setIsViewAware(true);
         desc.setIsViewInvariant(OFX::eViewInvarianceAllViewsVariant);
     }
+#endif
+#ifdef OFX_EXTENSIONS_TUTTLE
+    desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(evaluation);
 #endif
 }
 

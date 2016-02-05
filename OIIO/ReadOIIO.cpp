@@ -63,6 +63,7 @@ GCC_DIAG_ON(unused-parameter)
 #define kPluginIdentifier "fr.inria.openfx.ReadOIIO"
 #define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 91
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -176,7 +177,7 @@ class ReadOIIOPlugin : public GenericReaderPlugin {
 
 public:
 
-    ReadOIIOPlugin(bool useRGBAChoices,OfxImageEffectHandle handle);
+    ReadOIIOPlugin(bool useRGBAChoices,OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~ReadOIIOPlugin();
 
@@ -297,8 +298,10 @@ private:
 
 };
 
-ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles,
+ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
+                               OfxImageEffectHandle handle,
+                               const std::vector<std::string>& extensions)
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles,
 #ifdef OFX_EXTENSIONS_NUKE
                       (OFX::getImageEffectHostDescription() && OFX::getImageEffectHostDescription()->isMultiPlanar) ? kIsMultiPlanar : false
 #else
@@ -2548,14 +2551,58 @@ public:
     virtual void load() OVERRIDE FINAL;
     virtual void unload() OVERRIDE FINAL;
     bool isVideoStreamPlugin() const { return false; }
+    std::vector<std::string> _extensions;
 };
 
 template <bool useRGBAChoices>
-void ReadOIIOPluginFactory<useRGBAChoices>::load() {
+void
+ReadOIIOPluginFactory<useRGBAChoices>::load()
+{
+    _extensions.clear();
+#if 0
+    // hard-coded extensions list
+    const char* extensionsl[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
+        "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
+        "pbm", "pgm", "ppm",
+#     if OIIO_VERSION >= 10605
+        "pfm", // PFM was flipped before 1.6.5
+#     endif
+        "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
+    for (const char** ext = extensionsl; *ext != NULL; ++ext) {
+        _extensions.push_back(*ext);
+    }
+#else
+    // get extensions from OIIO (but there is no distinctions between readers and writers)
+    std::string extensions_list;
+    getattribute("extension_list", extensions_list);
+    std::stringstream formatss(extensions_list);
+    std::string format;
+    std::list<std::string> extensionsl;
+    while (std::getline(formatss, format, ';')) {
+        std::stringstream extensionss(format);
+        std::string extension;
+        std::getline(extensionss, extension, ':'); // extract the format
+        while (std::getline(extensionss, extension, ',')) {
+            extensionsl.push_back(extension);
+        }
+    }
+    const char* extensions_blacklist[] = {
+#     if OIIO_VERSION < 10605
+        "pfm", // PFM was flipped before 1.6.5
+#     endif
+        "avi", "mov", "qt", "mp4", "m4a", "3gp", "3g2", "mj2", "m4v", "mpg", // FFmpeg extensions - better supported by ReadFFmpeg
+        NULL
+    };
+    for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
+        extensionsl.remove(*e);
+    }
+    _extensions.assign(extensionsl.begin(), extensionsl.end());
+#endif
 }
 
 template <bool useRGBAChoices>
-void ReadOIIOPluginFactory<useRGBAChoices>::unload()
+void
+ReadOIIOPluginFactory<useRGBAChoices>::unload()
 {
 #  ifdef OFX_READ_OIIO_SHARED_CACHE
     // get the shared image cache (may be shared with other plugins using OIIO)
@@ -2578,9 +2625,10 @@ static std::string oiio_versions()
 
 /** @brief The basic describe function, passed a plugin descriptor */
 template <bool useRGBAChoices>
-void ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor &desc)
+void
+ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles, kIsMultiPlanar);
+    GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, kIsMultiPlanar);
 
     if (useRGBAChoices) {
         //Keep the old plug-in with choice menus but set it deprecated so the user cannot create it anymore
@@ -2645,51 +2693,6 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor 
                               "Zfile (*.zfile)\n\n"
                               "All supported formats and extensions: " + extensions_pretty + "\n\n"
                               + oiio_versions());
-
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-#if 0
-    // hard-coded extensions list
-    const char* extensions[] = { "bmp", "cin", "dds", "dpx", "f3d", "fits", "hdr", "ico",
-        "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
-        "pbm", "pgm", "ppm",
-#     if OIIO_VERSION >= 10605
-        "pfm", // PFM was flipped before 1.6.5
-#     endif
-        "psd", "pdd", "psb", "ptex", "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile", NULL };
-#else
-    // get extensions from OIIO (but there is no distinctions between readers and writers)
-    std::vector<std::string> extensions;
-    {
-        std::stringstream formatss(extensions_list);
-        std::string format;
-        std::list<std::string> extensionsl;
-        while (std::getline(formatss, format, ';')) {
-            std::stringstream extensionss(format);
-            std::string extension;
-            std::getline(extensionss, extension, ':'); // extract the format
-            while (std::getline(extensionss, extension, ',')) {
-                extensionsl.push_back(extension);
-            }
-        }
-        const char* extensions_blacklist[] = {
-#          if OIIO_VERSION < 10605
-            "pfm", // PFM was flipped before 1.6.5
-#          endif
-            "avi", "mov", "qt", "mp4", "m4a", "3gp", "3g2", "mj2", "m4v", "mpg", // FFmpeg extensions - better supported by ReadFFmpeg
-            NULL
-        };
-        for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
-            extensionsl.remove(*e);
-        }
-        extensions.assign(extensionsl.begin(), extensionsl.end());
-    }
-
-#endif
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(91);
-#endif
-
 }
 
 static void
@@ -2870,7 +2873,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
 template <bool useRGBAChoices>
 ImageEffect* ReadOIIOPluginFactory<useRGBAChoices>::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(useRGBAChoices,handle);
+    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(useRGBAChoices, handle, _extensions);
     ret->restoreStateFromParameters();
     return ret;
 }

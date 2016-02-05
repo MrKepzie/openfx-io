@@ -38,6 +38,7 @@
 #define kPluginIdentifier "fr.inria.openfx.ReadPFM"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 92 // better than ReadOIIO
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -48,7 +49,7 @@ class ReadPFMPlugin : public GenericReaderPlugin
 {
 public:
 
-    ReadPFMPlugin(OfxImageEffectHandle handle);
+    ReadPFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~ReadPFMPlugin();
 
@@ -105,8 +106,8 @@ static void invert_endianness(T *const buffer, const unsigned int size)
     }
 }
 
-ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
+ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 {
 }
 
@@ -409,23 +410,24 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
 
 using namespace OFX;
 
-mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
+mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, false);
+
+void
+ReadPFMPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("pfm");
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles, false);
+    GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
     
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
-
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "pfm", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(92); // better than ReadOIIO
-#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -445,7 +447,7 @@ ImageEffect*
 ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
-    ReadPFMPlugin* ret =  new ReadPFMPlugin(handle);
+    ReadPFMPlugin* ret =  new ReadPFMPlugin(handle, _extensions);
     ret->restoreStateFromParameters();
     return ret;
 }
