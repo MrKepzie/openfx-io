@@ -580,6 +580,7 @@ ReadFFmpegPluginFactory::load()
     extensionsl.push_back("flv");
     extensionsl.push_back("m2ts");
     extensionsl.push_back("mxf");
+    extensionsl.push_back("mts");
 
 
     // remove audio and subtitle-only formats
