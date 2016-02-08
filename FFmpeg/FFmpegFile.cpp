@@ -33,6 +33,8 @@
 #include <iostream>
 #include <algorithm>
 
+#include <ofxsImageEffect.h>
+
 #if defined(_WIN32) || defined(WIN64)
 #  include <windows.h> // for GetSystemInfo()
 #define strncasecmp _strnicmp
@@ -612,6 +614,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
     , _data(0)
 #ifdef OFX_IO_MT_FFMPEG
     , _lock(0)
+    , _invalidStateLock(0)
 #endif
 {
 #ifdef OFX_IO_MT_FFMPEG
@@ -909,6 +912,28 @@ FFmpegFile::getColorspace() const
     return isYUV() ? "Gamma2.2" : "Gamma1.8";
 }
 
+void
+FFmpegFile::setError(const char* msg, const char* prefix)
+{
+#ifdef OFX_IO_MT_FFMPEG
+    OFX::MultiThread::AutoMutex guard(_invalidStateLock);
+#endif
+    if (prefix) {
+        _errorMsg = prefix;
+        _errorMsg += msg;
+#if TRACE_DECODE_PROCESS
+        std::cout << "!!ERROR: " << prefix << msg << std::endl;
+#endif
+    }
+    else {
+        _errorMsg = msg;
+#if TRACE_DECODE_PROCESS
+        std::cout << "!!ERROR: " << msg << std::endl;
+#endif
+    }
+    _invalidState = true;
+}
+
 const std::string &
 FFmpegFile::getError() const
 {
@@ -924,7 +949,7 @@ bool
 FFmpegFile::isInvalid() const
 {
 #ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_lock);
+    OFX::MultiThread::AutoMutex guard(_invalidStateLock);
 #endif
 
     return _invalidState;
@@ -951,7 +976,8 @@ FFmpegFile::seekFrame(int frame,
 
 // decode a single frame into the buffer thread safe
 bool
-FFmpegFile::decode(int frame,
+FFmpegFile::decode(const OFX::ImageEffect* plugin,
+                   int frame,
                    bool loadNearest,
                    int maxRetries)
 {
@@ -1394,7 +1420,7 @@ FFmpegFile::decode(int frame,
                         setError("FFmpeg Reader detected decoding stall, possible file corruption");
                         break;
                     }
-                }
+                } // if (awaitingFirstDecodeAfterSeek)
 
                 // If we reach here, seek to the target frame chosen above in an attempt to recover from the decode stall.
                 lastSeekedFrame = seekTargetFrame;
@@ -1406,10 +1432,12 @@ FFmpegFile::decode(int frame,
                 if ( !seekFrame(seekTargetFrame, stream) ) {
                     break;
                 }
-            }
-        }
-
+            } // if (decodeAttempted)
+        } // if (stream->_decodeNextFrameIn < stream->_frames)
         av_free_packet(&_avPacket);
+        if (plugin->abort()) {
+            return false;
+        }
     } while (!hasPicture);
 
 #if TRACE_DECODE_PROCESS
@@ -1433,9 +1461,6 @@ bool
 FFmpegFile::getFPS(double & fps,
                    unsigned streamIdx)
 {
-#ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_lock);
-#endif
 
     if ( streamIdx >= _streams.size() ) {
         return false;
@@ -1456,9 +1481,7 @@ FFmpegFile::getInfo(int & width,
                     int & frames,
                     unsigned streamIdx)
 {
-#ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_lock);
-#endif
+
 
     if ( streamIdx >= _streams.size() ) {
         return false;

@@ -89,6 +89,10 @@ extern "C" {
 
 #define kChunkSizeKey "fn_log2chunksize"
 
+namespace OFX {
+class ImageEffect;
+}
+
 class FFmpegFile {
 
     struct Stream
@@ -266,26 +270,11 @@ class FFmpegFile {
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
     mutable OFX::MultiThread::Mutex _lock;
+    mutable OFX::MultiThread::Mutex _invalidStateLock;
 #endif
 
     // set reader error
-    void setError(const char* msg, const char* prefix = 0)
-    {
-        if (prefix) {
-            _errorMsg = prefix;
-            _errorMsg += msg;
-#if TRACE_DECODE_PROCESS
-            std::cout << "!!ERROR: " << prefix << msg << std::endl;
-#endif
-        }
-        else {
-            _errorMsg = msg;
-#if TRACE_DECODE_PROCESS
-            std::cout << "!!ERROR: " << msg << std::endl;
-#endif
-        }
-        _invalidState = true;
-    }
+    void setError(const char* msg, const char* prefix = 0);
 
     // set FFmpeg library error
     void setInternalError(const int error, const char* prefix = 0)
@@ -443,7 +432,7 @@ public:
     }
 
     // decode a single frame into the buffer (stream 0). Thread safe
-    bool decode(int frame, bool loadNearest, int maxRetries);
+    bool decode(const OFX::ImageEffect* plugin, int frame, bool loadNearest, int maxRetries);
 
     // get stream information
     bool getFPS(double& fps,
