@@ -712,8 +712,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                 if (proxyFileName.empty()) {
                     proxyGood = false;
                 } else {
-                    std::ifstream fs(proxyFileName.c_str());
-                    proxyGood = fs.is_open() && fs.good();
+                    proxyGood = checkIfFileExists(proxyFileName);
                 }
                 if (proxyGood) {
                     // proxy file exists, replace the filename with the proxy name
