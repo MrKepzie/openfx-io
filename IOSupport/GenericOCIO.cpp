@@ -82,6 +82,9 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
         if ((cs = config->getColorSpace("sRGB"))) {
             // nuke-default and blender
             return cs->getName();
+        } else if ((cs = config->getColorSpace("sRGB D65"))) {
+            // blender-cycles
+            return cs->getName();
         } else if ((cs = config->getColorSpace("sRGB (D60 sim.)"))) {
             // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
             return cs->getName();

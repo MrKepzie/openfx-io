@@ -1293,6 +1293,7 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
     _ocio->getOutputColorspace(selection);
     if (selection.find("sRGB") != std::string::npos || // sRGB in nuke-default and blender
         selection.find("srgb") != std::string::npos ||
+        selection == "sRGB D65" || // blender-cycles
         selection == "sRGB (D60 sim.)" || // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
         selection == "out_srgbd60sim" ||
         selection == "rrt_srgb" || // rrt_srgb in aces

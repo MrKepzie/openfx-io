@@ -816,6 +816,9 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
                 if (_ocio->hasColorspace("sRGB")) {
                     // nuke-default
                     _ocio->setOutputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("sRGB D65")) {
+                    // blender-cycles
+                    _ocio->setOutputColorspace("sRGB D65");
                 } else if (_ocio->hasColorspace("rrt_srgb")) {
                     // rrt_srgb in aces
                     _ocio->setOutputColorspace("rrt_srgb");
@@ -1137,7 +1140,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         // VD16 in blender
         colorSpaceStr = "GammaCorrected";
         gamma = 2.2f;
-    } else if (ocioColorspace == "sRGB" || ocioColorspace == "sRGB (D60 sim.)" || ocioColorspace == "out_srgbd60sim" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
+    } else if (ocioColorspace == "sRGB" || ocioColorspace == "sRGB D65" || ocioColorspace == "sRGB (D60 sim.)" || ocioColorspace == "out_srgbd60sim" || ocioColorspace == "rrt_srgb" || ocioColorspace == "srgb8") {
         // sRGB in nuke-default and blender
         // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
         // rrt_srgb in aces

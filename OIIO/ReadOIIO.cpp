@@ -1673,6 +1673,9 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
                 } else if (_ocio->hasColorspace("sRGB")) {
                     // nuke-default and blender
                     _ocio->setInputColorspace("sRGB");
+                } else if (_ocio->hasColorspace("sRGB D65")) {
+                    // blender-cycles
+                    _ocio->setInputColorspace("sRGB D65");
                 } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
                     // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
                     _ocio->setInputColorspace("sRGB (D60 sim.)");
@@ -1697,6 +1700,9 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
             if (_ocio->hasColorspace("sRGB")) {
                 // nuke-default and blender
                 _ocio->setInputColorspace("sRGB");
+            } else if (_ocio->hasColorspace("sRGB D65")) {
+                // blender-cycles
+                _ocio->setInputColorspace("sRGB D65");
             } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
                 // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
                 _ocio->setInputColorspace("sRGB (D60 sim.)");
