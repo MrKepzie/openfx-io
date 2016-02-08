@@ -2838,6 +2838,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     _lastTimeEncoded = -1;
 
     _isOpen = true;
+    _error = CLEANUP;
 }
 
 
@@ -2932,8 +2933,10 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &/*args*
     }
 
 
-    if (_error == IGNORE_FINISH)
+    if (_error == IGNORE_FINISH) {
+        freeFormat();
         return;
+    }
 
     bool flushFrames = true;
     while (flushFrames) {
@@ -3198,7 +3201,9 @@ void WriteFFmpegPlugin::freeFormat()
     if (!(_formatContext->oformat->flags & AVFMT_NOFILE)) {
         avio_close(_formatContext->pb);
     }
-    avformat_free_context(_formatContext);
+    if (_formatContext) {
+        avformat_free_context(_formatContext);
+    }
     _formatContext = NULL;
     _streamVideo = NULL;
     _lastTimeEncoded = -1;
