@@ -35,6 +35,10 @@
 #define DBG(x) (void)0
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
 #include "ofxsCoords.h"
@@ -641,6 +645,36 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
     return eGetSequenceTimeError;
 }
 
+#ifdef _WIN32
+std::wstring utf8ToUtf16 (const std::string& str)
+{
+    std::wstring native;
+    
+    native.resize(MultiByteToWideChar (CP_UTF8, 0, str.c_str(), -1, NULL, 0));
+    MultiByteToWideChar (CP_UTF8, 0, str.c_str(), -1, &native[0], (int)native.size());
+    
+    return native;
+}
+#endif
+
+static bool checkIfFileExists (const std::string& path)
+{
+#ifdef _WIN32
+    WIN32_FIND_DATA FindFileData;
+    std::wstring wpath = utf8ToUtf16 (path);
+    HANDLE handle = FindFirstFileW(wpath, &FindFileData) ;
+    if (handle != INVALID_HANDLE_VALUE) {
+        FindClose(handle);
+        return true;
+    }
+    return false;
+#else
+    // on Unix platforms passing in UTF-8 works
+    std::ifstream fs(path.c_str());
+    return fs.is_open() && fs.good();
+#endif
+}
+
 GenericReaderPlugin::GetFilenameRetCodeEnum
 GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                bool proxyFiles,
@@ -675,8 +709,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
             filenameGood = false;
         }
         else {
-            std::ifstream fs(filename->c_str());
-            filenameGood = fs.is_open() && fs.good();
+            filenameGood = checkIfFileExists(*filename);
         }
         if (filenameGood) {
             ret = eGetFileNameReturnedFullRes;
