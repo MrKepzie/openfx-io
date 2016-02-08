@@ -653,7 +653,7 @@ static bool checkIfFileExists (const std::string& path)
 #ifdef _WIN32
     WIN32_FIND_DATA FindFileData;
     std::wstring wpath = utf8ToUtf16 (path);
-    HANDLE handle = FindFirstFileW(wpath, &FindFileData) ;
+    HANDLE handle = FindFirstFileW(wpath.c_str(), &FindFileData) ;
     if (handle != INVALID_HANDLE_VALUE) {
         FindClose(handle);
         return true;
