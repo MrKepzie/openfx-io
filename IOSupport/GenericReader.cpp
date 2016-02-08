@@ -416,23 +416,24 @@ bool
 GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSetOriginalFrameRange)
 {
     
-    ///compute the frame-range
+    ////first-off check if the original frame range param has valid values, in which
+    ///case we don't bother calculating the frame range
+    int originalMin,originalMax;
+    _originalFrameRange->getValue(originalMin, originalMax);
+    if (originalMin != INT_MIN && originalMax != INT_MAX) {
+        range.min = originalMin;
+        range.max = originalMax;
+        return true;
+    }
     
     std::string filename;
     _fileParam->getValue(filename);
+    
+    
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
     if (!getSequenceTimeDomain(filename, range)) {
-        ////first-off check if the original frame range param has valid values, in which
-        ///case we don't bother calculating the frame range
-        int originalMin,originalMax;
-        _originalFrameRange->getValue(originalMin, originalMax);
-        if (originalMin != INT_MIN && originalMax != INT_MAX) {
-            range.min = originalMin;
-            range.max = originalMax;
-            return true;
-        }
 
         if (_sequenceFromFiles.size() == 1) {
             range.min = range.max = 1;
