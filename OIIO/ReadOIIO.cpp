@@ -1563,7 +1563,10 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
     
 #ifdef OFX_READ_OIIO_USES_CACHE
     //Only support tiles if tile size is set
-    setSupportsTiles(_subImagesSpec[0].tile_width != 0 && _subImagesSpec[0].tile_width != _subImagesSpec[0].full_width && _subImagesSpec[0].tile_height != 0 && _subImagesSpec[0].tile_height != _subImagesSpec[0].full_height);
+    int fullHeight = _subImagesSpec[0].full_height == 0 ? _subImagesSpec[0].height : _subImagesSpec[0].full_height;
+    int fullWidth = _subImagesSpec[0].full_width == 0 ? _subImagesSpec[0].width : _subImagesSpec[0].full_width;
+    
+    setSupportsTiles(_subImagesSpec[0].tile_width != 0 && _subImagesSpec[0].tile_width != fullWidth && _subImagesSpec[0].tile_height != 0 && _subImagesSpec[0].tile_height != fullHeight);
 #endif
 }
 
@@ -1894,14 +1897,14 @@ ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput*
         }
         
 #pragma message WARN("Uncomment this block when https://github.com/OpenImageIO/oiio/issues/1239 (race-condition) is REALLY fixed")
-        /*{
+        {
             //Keep in OIIO cache only the current frame in case multiple threads try to access it
             OFX::MultiThread::AutoMutex l(_lastFileReadNoPlaybackMutex);
             if (!_lastFileReadNoPlayback.empty() && filename != _lastFileReadNoPlayback) {
                 _cache->invalidate(ustring(_lastFileReadNoPlayback));
             }
             _lastFileReadNoPlayback = filename;
-        }*/
+        }
         
     } else // warning: '{' must follow #endif
 #endif
@@ -2243,13 +2246,16 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
 
 #         ifdef OFX_READ_OIIO_USES_CACHE
             if (useCache) {
+                
+                int fullHeight = spec.full_height == 0 ? spec.height : spec.full_height;
+                
                 if (!_cache->get_pixels(ustring(filename),
                                         subImageIndex, //subimage
                                         0, //miplevel
                                         useDisplayWindowOrigin ? spec.full_x + renderWindow.x1 : renderWindow.x1, //x begin
                                         useDisplayWindowOrigin ? spec.full_x + renderWindow.x2 : renderWindow.x2, //x end
-                                        useDisplayWindowOrigin ? spec.full_y + spec.full_height - renderWindow.y2 : renderWindow.y2, //y begin
-                                        useDisplayWindowOrigin ? spec.full_y + spec.full_height - renderWindow.y1 : renderWindow.y1, //y end
+                                        useDisplayWindowOrigin ? spec.full_y + fullHeight - renderWindow.y2 : renderWindow.y2, //y begin
+                                        useDisplayWindowOrigin ? spec.full_y + fullHeight - renderWindow.y1 : renderWindow.y1, //y end
                                         0, //z begin
                                         1, //z end
                                         chbegin, //chan begin
@@ -2398,8 +2404,11 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
             
             specBounds.x1 = (specs[i].x - specs[i].full_x);
             specBounds.x2 = (specs[i].x + specs[i].width - specs[i].full_x);
-            specBounds.y1 = specs[i].full_y + specs[i].full_height - (specs[i].y + specs[i].height);
-            specBounds.y2 = (specs[i].full_height) + (specs[i].full_y - specs[i].y);
+            
+            int fullHeight = specs[i].full_height == 0 ? specs[i].height : specs[i].full_height;
+            
+            specBounds.y1 = specs[i].full_y + fullHeight - (specs[i].y + specs[i].height);
+            specBounds.y2 = fullHeight + (specs[i].full_y - specs[i].y);
         }
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
         else {
