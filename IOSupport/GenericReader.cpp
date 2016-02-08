@@ -651,7 +651,7 @@ std::wstring utf8ToUtf16 (const std::string& str)
 static bool checkIfFileExists (const std::string& path)
 {
 #ifdef _WIN32
-    WIN32_FIND_DATA FindFileData;
+    WIN32_FIND_DATAW FindFileData;
     std::wstring wpath = utf8ToUtf16 (path);
     HANDLE handle = FindFirstFileW(wpath.c_str(), &FindFileData) ;
     if (handle != INVALID_HANDLE_VALUE) {
