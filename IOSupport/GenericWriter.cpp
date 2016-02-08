@@ -1570,7 +1570,7 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
 PageParamDescriptor*
-GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow)
+GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool /*isVideoStreamPlugin*/, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow)
 {
     gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
@@ -1612,7 +1612,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->setHint(kParamFilenameHint);
         // in the Writer context, the script name should be kOfxImageEffectFileParamName, for consistency with the reader nodes @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
-        param->setAnimates(!isVideoStreamPlugin);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
