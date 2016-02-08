@@ -495,15 +495,6 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
 }
 
 
-static bool
-fileExists(const std::string& filename)
-{
-    std::ifstream f(filename.c_str());
-    bool ret = f.good();
-    f.close();
-    return ret;
-}
-
 GenericReaderPlugin::GetSequenceTimeRetEnum
 GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime)
 {
@@ -1543,7 +1534,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
     assert(downscaleLevels >= 0);
     
-    if (filename.empty() || !fileExists(filename)) {
+    if (filename.empty() || !checkIfFileExists(filename)) {
         for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
             fillWithBlack(args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
         }
