@@ -658,6 +658,12 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 #endif
             continue;
         }
+        if (avstream->codec->pix_fmt == AV_PIX_FMT_NONE) {
+#         if TRACE_FILE_OPEN
+            std::cout << "Unknown pixel format, skipping..." << std::endl;
+#         endif
+            continue;
+        }
 
         // find the codec
         AVCodec* videoCodec = avcodec_find_decoder(avstream->codec->codec_id);
@@ -742,6 +748,9 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             //stream->_bitDepth = 16; // enabled in Nuke's reader
 
             const AVPixFmtDescriptor* avPixFmtDescriptor = av_pix_fmt_desc_get(stream->_codecContext->pix_fmt);
+            if (avPixFmtDescriptor == NULL) {
+                throw std::runtime_error("av_pix_fmt_desc_get() failed");
+            }
             // Sanity check the number of components.
             // Only 3 or 4 components are supported by |engine|, that is
             // Nuke/NukeStudio will only accept 3 or 4 component data.
