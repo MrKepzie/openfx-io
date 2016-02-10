@@ -2389,6 +2389,9 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
     desc.addSupportedExtensions(extensions);
     desc.setPluginEvaluation(evaluation);
 #endif
+#ifdef OFX_EXTENSIONS_NATRON
+    desc.setChannelSelector(OFX::ePixelComponentNone);
+#endif
 }
 
 OFX::PageParamDescriptor *
