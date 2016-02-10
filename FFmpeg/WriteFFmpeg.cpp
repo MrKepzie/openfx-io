@@ -58,6 +58,7 @@ extern "C" {
 }
 #include "FFmpegCompat.h"
 #include "IOUtility.h"
+#include "ofxsMacros.h"
 
 #ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
@@ -205,7 +206,7 @@ extern "C" {
 #define kProresProfile4444XQFourCC "ap4x"
 
 #if OFX_FFMPEG_DNXHD
-// Valid DNxHD profiles (as of FFmpeg 2.6.1):
+// Valid DNxHD profiles (as of FFmpeg 2.8.6):
 // Frame size: 1920x1080p; bitrate: 175Mbps; pixel format: yuv422p10; framerate: 24000/1001
 // Frame size: 1920x1080p; bitrate: 185Mbps; pixel format: yuv422p10; framerate: 25/1
 // Frame size: 1920x1080p; bitrate: 365Mbps; pixel format: yuv422p10; framerate: 50/1
@@ -254,8 +255,21 @@ extern "C" {
 // Frame size: 960x720p; bitrate: 60Mbps; pixel format: yuv422p; framerate: 0/0
 // Frame size: 960x720p; bitrate: 75Mbps; pixel format: yuv422p; framerate: 0/0
 // Frame size: 960x720p; bitrate: 115Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 63Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 84Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 100Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 110Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 80Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 90Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 100Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 110Mbps; pixel format: yuv422p; framerate: 0/0
+
+#ifdef DNXHD_444
+#pragma message WARN("This version of FFmpeg seems to support DNxHD 444")
+#endif
 
 //#define AVID_DNXHD_444_440X_NAME "DNxHD 444 10-bit 440Mbit"
+#define AVID_DNXHD_422_440X_NAME "DNxHD 422 10-bit 440Mbit"
 #define AVID_DNXHD_422_220X_NAME "DNxHD 422 10-bit 220Mbit"
 #define AVID_DNXHD_422_220_NAME "DNxHD 422 8-bit 220Mbit"
 #define AVID_DNXHD_422_145_NAME "DNxHD 422 8-bit 145Mbit"
@@ -263,9 +277,9 @@ extern "C" {
 
 #define kParamDNxHDCodecProfile "DNxHDCodecProfile"
 #define kParamDNxHDCodecProfileLabel "DNxHD Codec Profile"
-#define kParamDNxHDCodecProfileHint "Only for the Avid DNxHD codec, select the target bit rate for the encoded movie. The stream may be resized to 1920x1080 if resolution is not supported."
-//#define kParamDNxHDCodecProfileOption440x AVID_DNXHD_444_440X_NAME
-//#define kParamDNxHDCodecProfileOption440xHint AVID_DNXHD_444_440X_NAME
+#define kParamDNxHDCodecProfileHint "Only for the Avid DNxHD codec, select the target bit rate for the encoded movie. The stream may be resized to 1920x1080 if resolution is not supported. Writing in thin-raster HDV format (1440x1080) is not supported by this plug-in, although FFmpeg supports it."
+#define kParamDNxHDCodecProfileOption440x AVID_DNXHD_422_440X_NAME
+#define kParamDNxHDCodecProfileOption440xHint "880x in 1080p/60 or 1080p/59.94, 730x in 1080p/50, 440x in 1080p/30, 390x in 1080p/25, 350x in 1080p/24"
 #define kParamDNxHDCodecProfileOption220x AVID_DNXHD_422_220X_NAME
 #define kParamDNxHDCodecProfileOption220xHint "440x in 1080p/60 or 1080p/59.94, 365x in 1080p/50, 220x in 1080i/60 or 1080i/59.94, 185x in 1080i/50 or 1080p/25, 175x in 1080p/24 or 1080p/23.976, 220x in 1080p/29.97, 220x in 720p/59.94, 175x in 720p/50"
 #define kParamDNxHDCodecProfileOption220  AVID_DNXHD_422_220_NAME
@@ -276,7 +290,7 @@ extern "C" {
 #define kParamDNxHDCodecProfileOption36Hint   "90 in 1080p/60 or 1080p/59.94, 75 in 1080p/50, 45 in 1080i/60 or 1080i/59.94, 36 in 1080i/50 or 1080p/25, 36 in 1080p/24 or 1080p/23.976, 45 in 1080p/29.97, 100 in 720p/59.94, 85 in 720p/50"
 
 enum DNxHDCodecProfileEnum {
-    //eDNxHDCodecProfile440x,
+    eDNxHDCodecProfile440x,
     eDNxHDCodecProfile220x,
     eDNxHDCodecProfile220,
     eDNxHDCodecProfile145,
@@ -1424,7 +1438,7 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         int dnxhdCodecProfile_i;
         _dnxhdCodecProfile->getValue(dnxhdCodecProfile_i);
         DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
-        if (dnxhdCodecProfile == eDNxHDCodecProfile220x /*|| dnxhdCodecProfile == eDNxHDCodecProfile440x*/) {
+        if (dnxhdCodecProfile == eDNxHDCodecProfile220x || dnxhdCodecProfile == eDNxHDCodecProfile440x) {
             outTargetPixelFormat = AV_PIX_FMT_YUV422P10;
             outBitDepth = 10;
         } else {
@@ -1854,115 +1868,124 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         int mbs = 0;
         DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
         switch (dnxhdCodecProfile) {
+            case eDNxHDCodecProfile440x:
+                // 880x in 1080p/60 or 1080p/59.94, 730x in 1080p/50, 440x in 1080p/30, 390x in 1080p/25, 350x in 1080p/24
+                if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 880 : /*0*/220;
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 730 : /*0*/220;
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 440 : /*0*/220;
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 390 : /*0*/185;
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 350 : /*0*/145;
+                    }
+                }
+                break;
             case eDNxHDCodecProfile220x:
             case eDNxHDCodecProfile220:
                 // 440x in 1080p/60 or 1080p/59.94, 365x in 1080p/50, 220x in 1080i/60 or 1080i/59.94, 185x in 1080i/50 or 1080p/25, 175x in 1080p/24 or 1080p/23.976, 220x in 1080p/29.97, 220x in 720p/59.94, 175x in 720p/50
                 if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 440 : 220;
-                            break;
-                        case 50:
-                            mbs = progressive ? 365 : 185;
-                            break;
-                        case 29:
-                            mbs = progressive ? 220 : 0;
-                            break;
-                        case 25:
-                            mbs = progressive ? 185 : 0;
-                            break;
-                        case 24:
-                        case 23:
-                            mbs = progressive ? 175 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 440 : 220;
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 365 : 185;
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 220 : /*0*/145;
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 185 : /*0*/120;
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 175 : /*0*/120;
                     }
                 } else {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 220 : 0;
-                            break;
-                        case 50:
-                            mbs = progressive ? 175 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 220 : 0; // 720i unsupported in ffmpeg
+                    } else {
+                        //case 50:
+                        mbs = progressive ? 175 : 0; // 720i unsupported in ffmpeg
                     }
                 }
                 break;
             case eDNxHDCodecProfile145:
                 // 290 in 1080p/60 or 1080p/59.94, 240 in 1080p/50, 145 in 1080i/60 or 1080i/59.94, 120 in 1080i/50 or 1080p/25, 115 in 1080p/24 or 1080p/23.976, 145 in 1080p/29.97, 145 in 720p/59.94, 115 in 720p/50
                 if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 290 : 145;
-                            break;
-                        case 50:
-                            mbs = progressive ? 240 : 120;
-                            break;
-                        case 29:
-                            mbs = progressive ? 145 : 0;
-                            break;
-                        case 25:
-                            mbs = progressive ? 120 : 0;
-                            break;
-                        case 24:
-                        case 23:
-                            mbs = progressive ? 115 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 290 : 145;
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 240 : 120;
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 145 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 120 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 115 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
                     }
                 } else {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 145 : 0;
-                            break;
-                        case 50:
-                            mbs = progressive ? 115 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 145 : 0; // 720i unsupported
+                    } else {
+                        //case 50:
+                        mbs = progressive ? 115 : 0; // 720i unsupported
                     }
                 }
                 break;
             case eDNxHDCodecProfile36:
                 // 90 in 1080p/60 or 1080p/59.94, 75 in 1080p/50, 45 in 1080i/60 or 1080i/59.94, 36 in 1080i/50 or 1080p/25, 36 in 1080p/24 or 1080p/23.976, 45 in 1080p/29.97, 100 in 720p/59.94, 85 in 720p/50
                 if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 90 : 45;
-                            break;
-                        case 50:
-                            mbs = progressive ? 75 : 36;
-                            break;
-                        case 29:
-                            mbs = progressive ? 45 : 0;
-                            break;
-                        case 25:
-                            mbs = progressive ? 36 : 0;
-                            break;
-                        case 24:
-                        case 23:
-                            mbs = progressive ? 36 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 90 : /*45*/120; // 45 is not unsupported by ffmpeg for 1920x1080i
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 75 : /*36*/120; // 36 is not unsupported by ffmpeg 1920x1080i
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 45 : /*0*/120;
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 36 : /*0*/120;
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 36 : /*0*/120;
+
                     }
                 } else {
                     switch (frameRate) {
                         case 60:
                         case 59:
-                            mbs = progressive ? 100 : 0;
+                            mbs = progressive ? 100 : 0; // 720i unsupported in ffmpeg
                             break;
                         case 50:
-                            mbs = progressive ? 85 : 0;
+                            mbs = progressive ? 85 : 0; // 720i unsupported in ffmpeg
                             break;
                         default:
                             break;
@@ -3532,8 +3555,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDNxHDCodecProfile);
         param->setLabel(kParamDNxHDCodecProfileLabel);
         param->setHint(kParamDNxHDCodecProfileHint);
-        //assert(param->getNOptions() == (int)eDNxHDCodecProfile440x);
-        //param->appendOption(kParamDNxHDCodecProfileOption440x, kParamDNxHDCodecProfileOption440xHint);
+        assert(param->getNOptions() == (int)eDNxHDCodecProfile440x);
+        param->appendOption(kParamDNxHDCodecProfileOption440x, kParamDNxHDCodecProfileOption440xHint);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile220x);
         param->appendOption(kParamDNxHDCodecProfileOption220x, kParamDNxHDCodecProfileOption220xHint);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile220);
