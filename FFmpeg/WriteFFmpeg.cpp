@@ -1939,7 +1939,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
                         mbs = progressive ? 145 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
                     } else if (frameRate > 24) {
                         //case 25:
-                        mbs = progressive ? 120 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
+                        mbs = 120/*progressive ? 120 : 0*/; // 120 is the lowest possible bitrate for 1920x1080i
                     } else {
                         //case 24:
                         //case 23:
@@ -3221,14 +3221,13 @@ void WriteFFmpegPlugin::freeFormat()
         avcodec_close(_streamAudio->codec);
         _streamAudio = NULL;
     }
-    if (!(_formatContext->oformat->flags & AVFMT_NOFILE)) {
-        avio_close(_formatContext->pb);
-    }
     if (_formatContext) {
+        if (!(_formatContext->oformat->flags & AVFMT_NOFILE)) {
+            avio_close(_formatContext->pb);
+        }
         avformat_free_context(_formatContext);
+        _formatContext = NULL;
     }
-    _formatContext = NULL;
-    _streamVideo = NULL;
     _lastTimeEncoded = -1;
     _isOpen = false;
 }
