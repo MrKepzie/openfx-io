@@ -473,8 +473,9 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
         }
         
         if (supportsNChannels) {
-            outputClipInfos[0].componentsPresent.push_front(kPlaneLabelAll);
+            outputClipInfos[0].componentsPresent.push_back(kPlaneLabelAll);
         }
+        
         
         OFX::MultiPlane::buildChannelMenus(choiceParams);
         
