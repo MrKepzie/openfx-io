@@ -44,6 +44,7 @@ GCC_DIAG_ON(unused-parameter)
 #include "IOUtility.h"
 
 #include <ofxsCoords.h>
+#include <ofxsMultiPlane.h>
 
 
 #define OFX_READ_OIIO_USES_CACHE
@@ -509,18 +510,6 @@ ReadOIIOPlugin::onOutputComponentsParamChanged(OFX::PixelComponentEnum component
     }
 }
 
-static std::string makeNatronCustomChannel(const std::string& layer,const std::vector<std::string>& channels)
-{
-    std::string ret(kNatronOfxImageComponentsPlane);
-    ret.append(layer);
-    for (std::size_t i = 0; i < channels.size(); ++i) {
-        ret.append(kNatronOfxImageComponentsPlaneChannel);
-        ret.append(channels[i]);
-    }
-    return ret;
-    
-}
-
 void
 ReadOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
@@ -580,7 +569,7 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
                 }
             }
             for (std::map<std::string,std::vector<std::string> >::iterator it = layers.begin(); it!=layers.end(); ++it) {
-                std::string component = makeNatronCustomChannel(it->first, it->second);
+                std::string component = OFX::MultiPlane::makeNatronCustomChannel(it->first, it->second);
                 clipComponents.addClipComponents(*_outputClip, component);
             }
         } else { // !_useRGBAChoices
@@ -602,7 +591,7 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
                             break;
                     };*/
                 } else {
-                    component = makeNatronCustomChannel(it->first, it->second.layer.channelNames);
+                    component = OFX::MultiPlane::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
                 }
                 clipComponents.addClipComponents(*_outputClip, component);
             }

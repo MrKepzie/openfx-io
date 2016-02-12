@@ -326,7 +326,11 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
     const OFX::Image* srcImg = _inputClip->fetchImagePlane(time, view, plane.c_str());
     *inputImage = srcImg;
     if (!srcImg) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Input image could not be fetched");
+        std::stringstream ss;
+        ss << "Input layer ";
+        ss << plane << " could not be fetched";
+        
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     } else {
