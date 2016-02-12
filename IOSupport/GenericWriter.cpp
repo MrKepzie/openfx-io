@@ -1762,7 +1762,9 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
             assert((components == OFX::ePixelComponentAlpha && premult != OFX::eImageOpaque) ||
                    (components == OFX::ePixelComponentRGB && premult == OFX::eImageOpaque) ||
                    (components == OFX::ePixelComponentRGBA) ||
-                   (components == OFX::ePixelComponentCustom && gHostIsMultiPlanar));
+                   ((components == OFX::ePixelComponentCustom ||
+                     components == OFX::ePixelComponentMotionVectors ||
+                     components == OFX::ePixelComponentStereoDisparity) && gHostIsMultiPlanar));
         }
 #      endif
         _premult->setValue(premult);
