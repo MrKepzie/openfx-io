@@ -41,6 +41,7 @@
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha true
+#define kSupportsXY false
 
 /**
  \return \c false for "Little Endian", \c true for "Big Endian".
@@ -61,7 +62,16 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename,
+                        const OfxTime time,
+                        const std::string& viewName,
+                        const float *pixelData,
+                        const OfxRectI& bounds,
+                        const float pixelAspectRatio,
+                        const int pixelDataNComps,
+                        const int dstNCompsStartIndex,
+                        const int dstNComps,
+                        const int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
@@ -71,7 +81,7 @@ private:
 };
 
 WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
 {
 }
 
@@ -81,9 +91,9 @@ WritePFMPlugin::~WritePFMPlugin()
 }
 
 template <class PIX, int srcC, int dstC>
-static void copyLine(const PIX* pixelData, int rowbytes, int W, int /*H*/, int C, int y, PIX *image)
+static void copyLine(const PIX* pixelData, int rowbytes, int W, int /*H*/, int dstNCompsStartIndex, int C, int y, PIX *image)
 {
-    assert(srcC == C);
+    assert(dstC == 3 || dstC == 1);
 
     const PIX *srcPix = (const PIX*)((char*)pixelData + y*rowbytes);
     PIX *dstPix = image;
@@ -92,48 +102,37 @@ static void copyLine(const PIX* pixelData, int rowbytes, int W, int /*H*/, int C
         if(srcC == 1) {
             // alpha/grayscale image
             for (int c = 0; c < std::min(dstC,3); ++c) {
-                dstPix[c] = srcPix[0];
+                dstPix[c] = srcPix[dstNCompsStartIndex];
             }
         } else {
             // color image (if dstC == 1, only the red channel is extracted)
             for (int c = 0; c < std::min(dstC,3); ++c) {
-                dstPix[c] = srcPix[c];
+                dstPix[c] = srcPix[dstNCompsStartIndex + c];
             }
         }
-        if (dstC == 4) {
-            dstPix[3] = 1.f; // alpha
-        }
 
-        srcPix += srcC;
+        srcPix += C;
         dstPix += dstC;
     }
     
 }
 
 
-void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const std::string& /*viewName*/, const float *pixelData, const OfxRectI& bounds, float /*pixelAspectRatio*/, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void WritePFMPlugin::encode(const std::string& filename,
+                            const OfxTime /*time*/,
+                            const std::string& /*viewName*/,
+                            const float *pixelData,
+                            const OfxRectI& bounds,
+                            const float /*pixelAspectRatio*/,
+                            const int pixelDataNComps,
+                            const int dstNCompsStartIndex,
+                            const int dstNComps,
+                            const int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+    if (dstNComps != 4 && dstNComps != 3 && dstNComps != 1) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
-    }
-
-    int spectrum;
-    switch(pixelComponents) {
-        case OFX::ePixelComponentRGBA:
-            spectrum = 4;
-            break;
-        case OFX::ePixelComponentRGB:
-            spectrum = 3;
-            break;
-        case OFX::ePixelComponentAlpha:
-            spectrum = 1;
-            break;
-        default:
-            //spectrum = 0;
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            return;
     }
 
     std::FILE *const nfile = std::fopen(filename.c_str(), "wb");
@@ -145,25 +144,25 @@ void WritePFMPlugin::encode(const std::string& filename, OfxTime /*time*/, const
     int width = (bounds.x2 - bounds.x1);
     int height = (bounds.y2 - bounds.y1);
 
-    const int depth = (spectrum == 1 ? 1 : 3);
+    const int depth = (dstNComps == 1 ? 1 : 3);
     const unsigned int buf_size = width * depth;
     std::vector<float> buffer(buf_size);
     std::fill(buffer.begin(), buffer.end(), 0.);
 
-    std::fprintf(nfile, "P%c\n%u %u\n%d.0\n", (spectrum == 1 ? 'f' : 'F'), width, height, endianness() ? 1 : -1);
+    std::fprintf(nfile, "P%c\n%u %u\n%d.0\n", (dstNComps == 1 ? 'f' : 'F'), width, height, endianness() ? 1 : -1);
 
-    for (int y = height-1; y >= 0; --y) {
+    for (int y = 0; y < height; ++y) {
 
         // now copy to the dstImg
         if (depth == 1) {
-            assert(pixelComponents == OFX::ePixelComponentAlpha);
-            copyLine<float,1,1>(pixelData, rowBytes, width, height, spectrum, y, &buffer.front());
+            assert(dstNComps == 1);
+            copyLine<float,1,1>(pixelData, rowBytes, width, height,  dstNCompsStartIndex, pixelDataNComps, y, &buffer.front());
         } else if (depth == 3) {
-            assert(pixelComponents == OFX::ePixelComponentRGB || pixelComponents == OFX::ePixelComponentRGBA);
-            if (pixelComponents == OFX::ePixelComponentRGB) {
-                copyLine<float,3,3>(pixelData, rowBytes, width, height, spectrum, y, &buffer.front());
-            } else if (pixelComponents == OFX::ePixelComponentRGBA) {
-                copyLine<float,4,3>(pixelData, rowBytes, width, height, spectrum, y, &buffer.front());
+            assert(dstNComps == 3 || dstNComps == 4);
+            if (dstNComps == 3) {
+                copyLine<float,3,3>(pixelData, rowBytes, width, height, dstNCompsStartIndex, pixelDataNComps, y, &buffer.front());
+            } else if (dstNComps == 4) {
+                copyLine<float,4,3>(pixelData, rowBytes, width, height, dstNCompsStartIndex, pixelDataNComps, y, &buffer.front());
             }
         }
 
@@ -211,8 +210,8 @@ void WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,kSupportsXY,
                                                                     "reference", "reference", false);
 
     GenericWriterDescribeInContextEnd(desc, context, page);

@@ -22,6 +22,7 @@ PLUGINOBJECTS = \
 	ofxsRamp.o \
 	ofxsGenerator.o \
 	ofxsTransformInteract.o \
+    ofxsMultiPlane.o \
 	ofxsRectangleInteract.o
 
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))

@@ -89,6 +89,7 @@ extern "C" {
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha false
+#define kSupportsXY false
 
 #define kParamFormat "format"
 #define kParamFormatLabel "Format"
@@ -915,7 +916,16 @@ private:
 
     virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename,
+                        const OfxTime time,
+                        const std::string& viewName,
+                        const float *pixelData,
+                        const OfxRectI& bounds,
+                        const float pixelAspectRatio,
+                        const int pixelDataNComps,
+                        const int dstNCompsStartIndex,
+                        const int dstNComps,
+                        const int rowBytes) OVERRIDE FINAL;
 
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
@@ -957,8 +967,8 @@ private:
     AVStream* addStream(AVFormatContext* avFormatContext, enum AVCodecID avCodecId, AVCodec** pavCodec);
     int openCodec(AVFormatContext* avFormatContext, AVCodec* avCodec, AVStream* avStream);
     int writeAudio(AVFormatContext* avFormatContext, AVStream* avStream, bool flush);
-    int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData = NULL, const OfxRectI* bounds = NULL, OFX::PixelComponentEnum pixelComponents = OFX::ePixelComponentNone, int rowBytes = 0);
-    int writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData = NULL, const OfxRectI* bounds = NULL, OFX::PixelComponentEnum pixelComponents = OFX::ePixelComponentNone, int rowBytes = 0);
+    int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
+    int writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
 
     int colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext);
 
@@ -1149,7 +1159,7 @@ FFmpegSingleton::~FFmpegSingleton(){
 using namespace OFX;
 
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
 , _filename()
 , _pixelAspectRatio(1.)
 , _isOpen(false)
@@ -2323,8 +2333,9 @@ int WriteFFmpegPlugin::numberOfDestChannels() const
 //         <0 otherwise for any failure to convert the pixel format, encode the
 //         video or write to the file.
 //
-int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData, const OfxRectI* bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps, int dstNComps, int rowBytes)
 {
+    assert(dstNComps == 3 || dstNComps == 4 || dstNComps == 0);
     // FIXME enum needed for error codes.
     if (!_isOpen) {
         return -5; //writer is not open!
@@ -2361,23 +2372,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         if (!ret) {
 
             // Convert floating point values to unsigned values.
-            int numChannels = 0;
-            switch(pixelComponents) {
-                case OFX::ePixelComponentRGBA:
-                    numChannels = 4;
-                    break;
-                case OFX::ePixelComponentRGB:
-                    numChannels = 3;
-                    break;
-                    //case OFX::ePixelComponentAlpha:
-                    //    numChannels = 1;
-                    //    break;
-                default:
-                    assert(false);
-                    OFX::throwSuiteStatusException(kOfxStatErrFormat);
-                    return -1;
-            }
-            assert(numChannels);
             assert(rowBytes);
             const int numDestChannels = hasAlpha ? 4 : 3;
 
@@ -2392,13 +2386,13 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                     unsigned short* dst_pixels = reinterpret_cast<unsigned short*>(avPicture.data[0]) + y * (avPicture.linesize[0] / 2);
 
                     for (int x = 0; x < width; ++x) {
-                        int srcCol = x * numChannels;
+                        int srcCol = x * pixelDataNComps;
                         int dstCol = x * numDestChannels;
                         dst_pixels[dstCol + 0] = floatToInt<65536>(src_pixels[srcCol + 0]);
                         dst_pixels[dstCol + 1] = floatToInt<65536>(src_pixels[srcCol + 1]);
                         dst_pixels[dstCol + 2] = floatToInt<65536>(src_pixels[srcCol + 2]);
                         if (hasAlpha) {
-                            dst_pixels[dstCol + 3] = floatToInt<65536>((numChannels == 4) ? src_pixels[srcCol + 3] : 1.);
+                            dst_pixels[dstCol + 3] = floatToInt<65536>((pixelDataNComps == 4) ? src_pixels[srcCol + 3] : 1.);
                         }
                     }
                } else {
@@ -2407,13 +2401,13 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                     unsigned char* dst_pixels = avPicture.data[0] + y * avPicture.linesize[0];
 
                     for (int x = 0; x < width; ++x) {
-                        int srcCol = x * numChannels;
+                        int srcCol = x * pixelDataNComps;
                         int dstCol = x * numDestChannels;
                         dst_pixels[dstCol + 0] = floatToInt<256>(src_pixels[srcCol + 0]);
                         dst_pixels[dstCol + 1] = floatToInt<256>(src_pixels[srcCol + 1]);
                         dst_pixels[dstCol + 2] = floatToInt<256>(src_pixels[srcCol + 2]);
                         if (hasAlpha) {
-                            dst_pixels[dstCol + 3] = floatToInt<256>((numChannels == 4) ? src_pixels[srcCol + 3] : 1.);
+                            dst_pixels[dstCol + 3] = floatToInt<256>((pixelDataNComps == 4) ? src_pixels[srcCol + 3] : 1.);
                         }
                    }
                 }
@@ -2584,7 +2578,7 @@ int WriteFFmpegPlugin::encodeVideo(AVCodecContext* avCodecContext, uint8_t* out,
 // @return 0 if successful.
 //         <0 otherwise.
 //
-int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData, const OfxRectI* bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps,int dstNComps, int rowBytes)
 {
 #if OFX_FFMPEG_AUDIO
     // Write interleaved audio and video if an audio file has
@@ -2613,7 +2607,7 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
         }
     }
 #endif
-    return writeVideo(avFormatContext, _streamVideo, finalise, pixelData, bounds, pixelComponents, rowBytes);
+    return writeVideo(avFormatContext, _streamVideo, finalise, pixelData, bounds, pixelDataNComps, dstNComps, rowBytes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2876,15 +2870,18 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 
 void
 WriteFFmpegPlugin::encode(const std::string& filename,
-                          OfxTime time,
+                          const OfxTime time,
                           const std::string& /*viewName*/,
                           const float *pixelData,
                           const OfxRectI& bounds,
-                          float pixelAspectRatio,
-                          OFX::PixelComponentEnum pixelComponents,
-                          int rowBytes)
+                          const float pixelAspectRatio,
+                          const int pixelDataNComps,
+                          const int dstNCompsStartIndex,
+                          const int dstNComps,
+                          const int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
+    assert(dstNCompsStartIndex == 0);
+    if (dstNComps != 4 && dstNComps != 3) {
         setPersistentMessage(OFX::Message::eMessageError, "", "can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
@@ -2928,7 +2925,7 @@ WriteFFmpegPlugin::encode(const std::string& filename,
     if (_isOpen) {
         _error = CLEANUP;
 
-        if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelComponents, rowBytes)) {
+        if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
             _error = SUCCESS;
             _lastTimeEncoded = (int)time;
         } else {
@@ -3063,6 +3060,12 @@ WriteFFmpegPlugin::updateVisibility()
     _encodeVideoRange->setEnabled(isdnxhd);
     _encodeVideoRange->setIsSecret(!isdnxhd);
 #endif
+    
+    
+    ///Do not allow custom channel shuffling for the user, it's either RGB or RGBA
+    for (int i = 0; i < 4; ++i) {
+        _processChannels[i]->setIsSecret(true);
+    }
 }
 
 
@@ -3615,8 +3618,8 @@ WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,kSupportsXY,
                                                                     "reference", "rec709", false);
 
     ///If the host doesn't support sequential render, fail.

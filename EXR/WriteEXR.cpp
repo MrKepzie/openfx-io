@@ -54,6 +54,7 @@
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha true
+#define kSupportsXY false
 
 namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
@@ -113,7 +114,16 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const std::string& viewName, const float *pixelData, const OfxRectI& bounds, float pixelAspectRatio, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename,
+                        const OfxTime time,
+                        const std::string& viewName,
+                        const float *pixelData,
+                        const OfxRectI& bounds,
+                        const float pixelAspectRatio,
+                        const int pixelDataNComps,
+                        const int dstNCompsStartIndex,
+                        const int dstNComps,
+                        const int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
@@ -127,7 +137,7 @@ private:
 };
 
 WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
 , _compression(0)
 , _bitDepth(0)
 {
@@ -146,36 +156,25 @@ WriteEXRPlugin::~WriteEXRPlugin(){
 
 void
 WriteEXRPlugin::encode(const std::string& filename,
-                       OfxTime /*time*/,
+                       const OfxTime /*time*/,
                        const std::string& /*viewName*/,
                        const float *pixelData,
                        const OfxRectI& bounds,
-                       float pixelAspectRatio,
-                       OFX::PixelComponentEnum pixelComponents,
-                       int rowBytes)
+                       const float pixelAspectRatio,
+                       const int pixelDataNComps,
+                       const int /*dstNCompsStartIndex*/,
+                       const int /*dstNComps*/,
+                       const int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+    ///FIXME: WriteEXR should not disregard dstNComps
+    
+    if (pixelDataNComps != 4 && pixelDataNComps != 3 && pixelDataNComps != 1) {
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
-    int numChannels = 0;
-    switch(pixelComponents)
-    {
-        case OFX::ePixelComponentRGBA:
-            numChannels = 4;
-            break;
-        case OFX::ePixelComponentRGB:
-            numChannels = 3;
-            break;
-        case OFX::ePixelComponentAlpha:
-            numChannels = 1;
-            break;
-        default:
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            return;
-    }
-    assert(numChannels);
+
+    assert(pixelDataNComps);
     try {
         int compressionIndex;
         _compression->getValue(compressionIndex);
@@ -211,10 +210,10 @@ WriteEXRPlugin::encode(const std::string& filename,
         }
 
         const char* chanNames[4] = { "R" , "G" , "B" , "A" };
-        if (pixelComponents == OFX::ePixelComponentAlpha) {
+        if (pixelDataNComps == 1) {
             chanNames[0] = chanNames[3];
         }
-        for (int chan = 0; chan < numChannels; ++chan) {
+        for (int chan = 0; chan < pixelDataNComps; ++chan) {
             exrheader.channels().insert(chanNames[chan],Imf_::Channel(pixelType));
         }
 
@@ -230,19 +229,19 @@ WriteEXRPlugin::encode(const std::string& filename,
             /*we create the frame buffer*/
             Imf_::FrameBuffer fbuf;
             if (depth == 32) {
-                for (int chan = 0; chan < numChannels; ++chan) {
-                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * numChannels, 0));
+                for (int chan = 0; chan < pixelDataNComps; ++chan) {
+                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * pixelDataNComps, 0));
                 }
             } else {
-                Imf_::Array2D<half> halfwriterow(numChannels ,bounds.x2 - bounds.x1);
+                Imf_::Array2D<half> halfwriterow(pixelDataNComps ,bounds.x2 - bounds.x1);
                 
-                for (int chan = 0; chan < numChannels; ++chan) {
+                for (int chan = 0; chan < pixelDataNComps; ++chan) {
                     fbuf.insert(chanNames[chan],
                                 Imf_::Slice(Imf_::HALF,
                                             (char*)(&halfwriterow[chan][0] - exrDataW.min.x),
                                             sizeof(halfwriterow[chan][0]), 0));
                     const float* from = src_pixels + chan;
-                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += numChannels) {
+                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += pixelDataNComps) {
                         halfwriterow[chan][i - exrDataW.min.x] = from[f];
                     }
                 }
@@ -302,8 +301,8 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY,
                                                                     "reference", "reference", false);
 
     /////////Compression

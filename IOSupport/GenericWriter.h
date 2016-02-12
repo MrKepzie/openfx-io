@@ -53,7 +53,9 @@ class GenericWriterPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericWriterPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    GenericWriterPlugin(OfxImageEffectHandle handle,
+                        const std::vector<std::string>& extensions,
+                        bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY);
     
     virtual ~GenericWriterPlugin();
     
@@ -130,6 +132,7 @@ public:
     
 protected:
     
+    void setOutputComponentsParam(OFX::PixelComponentEnum components);
     
     
     /**
@@ -142,17 +145,33 @@ protected:
      * false colors or sub-par performances in the case the end-user has to prepend a color-space conversion
      * effect her/himself.
      *
+     * @param filename The output file to write to
+     * @param time The frame number
+     * @param viewName The name of the view to render
+     * @param pixelData Pointer to the start of the input image
+     * @param bounds The bounds of the pixelData buffer
+     * @param pixelAspectRatio The PAR of the source image
+     * @param pixelDataNComps The number of components per pixel in pixelData
+     * @param dstNCompsStartIndex The start index where the first component of dstNComps is to be read (in the range of pixelDataNComps)
+     * @param dstNComps The desired number of components in the written file
+     * @param rowBytes The number of bytes in a row of pixelData. 
+     * The following assert should hold true:
+     * assert(((bounds.x2 - bounds.x1) * pixelDataNComps * sizeof(float)) == rowBytes);
+     *
      * @pre The filename has been validated against the supported file extensions.
      * You don't need to check this yourself.
+     * The source image has been correctly color-converted
      **/
     virtual void encode(const std::string& filename,
-                        OfxTime time,
+                        const OfxTime time,
                         const std::string& viewName, 
                         const float *pixelData,
                         const OfxRectI& bounds,
-                        float pixelAspectRatio,
-                        OFX::PixelComponentEnum pixelComponents,
-                        int rowBytes);
+                        const float pixelAspectRatio,
+                        const int pixelDataNComps,
+                        const int dstNCompsStartIndex,
+                        const int dstNComps,
+                        const int rowBytes);
     
     
     virtual void beginEncode(const std::string& /*filename*/,
@@ -171,17 +190,19 @@ protected:
      * @brief When writing multiple planes, should allocate data that are shared amongst all planes
      **/
     virtual void beginEncodeParts(void* user_data,
-                                   const std::string& filename,
-                                   OfxTime time,
-                                   float pixelAspectRatio,
-                                   LayerViewsPartsEnum partsSplitting,
-                                   const std::map<int,std::string>& viewsToRender,
-                                   const std::list<std::string>& planes,
-                                   const OfxRectI& bounds);
+                                  const std::string& filename,
+                                  OfxTime time,
+                                  float pixelAspectRatio,
+                                  LayerViewsPartsEnum partsSplitting,
+                                  const std::map<int,std::string>& viewsToRender,
+                                  const std::list<std::string>& planes,
+                                  const bool packingRequired,
+                                  const std::vector<int>& packingMapping,
+                                  const OfxRectI& bounds);
     
     virtual void endEncodeParts(void* /*user_data*/) {}
     
-    virtual void encodePart(void* user_data, const std::string& filename, const float *pixelData, int planeIndex, int rowBytes);
+    virtual void encodePart(void* user_data, const std::string& filename, const float *pixelData, int pixelDataNComps, int planeIndex, int rowBytes);
     
     /**
      * @brief Should return the view index needed to render. 
@@ -229,9 +250,12 @@ protected:
     OFX::BooleanParam* _clipToProject;
 
     OFX::StringParam* _sublabel;
+    OFX::BooleanParam* _processChannels[4];
 
     std::auto_ptr<GenericOCIO> _ocio;
     const std::vector<std::string>& _extensions;
+    
+    bool _supportsAlpha,_supportsXY,_supportsRGB,_supportsRGBA;
 
 private:
     
@@ -266,22 +290,25 @@ private:
      * that will properly release resources.
      */
     void fetchPlaneConvertAndCopy(const std::string& plane,
-                              int view,
-                              int renderRequestedView,
-                              double time,
-                              const OfxRectI& renderWindow,
-                              const OfxPointD& renderScale,
-                              OFX::FieldEnum fieldToRender,
-                              OFX::PreMultiplicationEnum pluginExpectedPremult,
-                              OFX::PreMultiplicationEnum userPremult,
-                              bool isOCIOIdentity,
-                              InputImagesHolder* srcImgsHolder,
-                              OfxRectI* bounds,
-                              OFX::ImageMemory** tmpMem,
-                              const OFX::Image** inputImage,
-                              float** tmpMemPtr,
-                              int* rowBytes,
-                              OFX::PixelComponentEnum* mappedComponents);
+                                  int view,
+                                  int renderRequestedView,
+                                  double time,
+                                  const OfxRectI& renderWindow,
+                                  const OfxPointD& renderScale,
+                                  OFX::FieldEnum fieldToRender,
+                                  OFX::PreMultiplicationEnum pluginExpectedPremult,
+                                  OFX::PreMultiplicationEnum userPremult,
+                                  const bool isOCIOIdentity,
+                                  const bool packingRequired,
+                                  const std::vector<int>& packingMapping,
+                                  InputImagesHolder* srcImgsHolder,
+                                  OfxRectI* bounds,
+                                  OFX::ImageMemory** tmpMem,
+                                  const OFX::Image** inputImage,
+                                  float** tmpMemPtr,
+                                  int* rowBytes,
+                                  OFX::PixelComponentEnum* mappedComponents,
+                                  int* mappedComponentsCount);
     
     /**
      * @brief Checks if the extension is supported.
@@ -370,17 +397,29 @@ private:
                    dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     }
     
+    void packPixelBuffer(const OfxRectI& renderWindow,
+                         const void *srcPixelData,
+                         const OfxRectI& bounds,
+                         OFX::BitDepthEnum bitDepth,
+                         int srcRowBytes,
+                         OFX::PixelComponentEnum srcPixelComponents,
+                         const std::vector<int>& channelsMapping, //maps dst channels to input channels
+                         int dstRowBytes,
+                         void* dstPixelData);
+    
     void interleavePixelBuffers(const OfxRectI& renderWindow,
                                 const void *srcPixelData,
                                 const OfxRectI& bounds,
-                                OFX::PixelComponentEnum srcPixelComponents,
-                                int srcPixelComponentCount,
-                                OFX::BitDepthEnum bitDepth,
-                                int srcRowBytes,
+                                const OFX::PixelComponentEnum srcPixelComponents,
+                                const int srcPixelComponentCount,
+                                const int srcNCompsStartIndex,
+                                const int desiredSrcNComps,
+                                const OFX::BitDepthEnum bitDepth,
+                                const int srcRowBytes,
                                 const OfxRectI& dstBounds,
-                                int dstPixelComponentStartIndex,
-                                int dstPixelComponentCount,
-                                int dstRowBytes,
+                                const int dstPixelComponentStartIndex,
+                                const int dstPixelComponentCount,
+                                const int dstRowBytes,
                                 void* dstPixelData);
 
     void unPremultPixelData(const OfxRectI &renderWindow,
@@ -434,7 +473,7 @@ public:
 };
 
 void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc, OFX::RenderSafetyEnum safety, const std::vector<std::string>& extensions, int evaluation, bool isMultiPlanar, bool isMultiView);
-OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
+OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
 void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
 
 // the load() member has to be provided, and it should fill the _extensions list of valid file extensions
