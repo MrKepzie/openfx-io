@@ -328,7 +328,11 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
     if (!srcImg) {
         std::stringstream ss;
         ss << "Input layer ";
-        ss << plane << " could not be fetched";
+        std::string layerName,pairedLayer;
+        std::vector<std::string> channels;
+        OFX::MultiPlane::extractChannelsFromComponentString(plane, &layerName, &pairedLayer, &channels);
+        ss << layerName;
+        ss << " could not be fetched";
         
         setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
         OFX::throwSuiteStatusException(kOfxStatFailed);
