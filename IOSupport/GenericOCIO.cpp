@@ -801,7 +801,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
-    if (paramName == kOCIOParamConfigFile) {
+    if (paramName == kOCIOParamConfigFile && args.reason != OFX::eChangeTime) {
         // compute canonical inputSpace and outputSpace before changing the config,
         // if different from inputSpace and outputSpace they must be set to the canonical value after changing ocio config
         std::string inputSpace;
@@ -810,13 +810,15 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         if (inputSpaceCanonical != inputSpace) {
             _inputSpace->setValue(inputSpaceCanonical);
         }
-        std::string outputSpace;
-        getOutputColorspaceAtTime(args.time, outputSpace);
-        std::string outputSpaceCanonical = canonicalizeColorSpace(_config, outputSpace);
-        if (outputSpaceCanonical != outputSpace) {
-            _outputSpace->setValue(outputSpaceCanonical);
+        if (_outputSpace) {
+            std::string outputSpace;
+            getOutputColorspaceAtTime(args.time, outputSpace);
+            std::string outputSpaceCanonical = canonicalizeColorSpace(_config, outputSpace);
+            if (outputSpaceCanonical != outputSpace) {
+                _outputSpace->setValue(outputSpaceCanonical);
+            }
         }
-
+        
         loadConfig(); // re-load the new OCIO config
         //if inputspace or outputspace are not valid in the new config, reset them to "default"
         if (_config) {
@@ -828,7 +830,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
             }
         }
         inputCheck(args.time);
-        if (_config) {
+        if (_config && _outputSpace) {
             std::string outputSpaceName;
             getOutputColorspaceAtTime(args.time, outputSpaceName);
             int outputSpaceIndex = _config->getIndexForColorSpace(outputSpaceName.c_str());
