@@ -43,6 +43,9 @@ enum LayerViewsPartsEnum
     eLayerViewsSplitViewsLayers
 };
 
+#define kGenericWriterViewDefault -2 // Indicates that we want to render what the host request via the render action (the default)
+#define kGenericWriterViewAll -1 // the write will write all views when rendering view 0
+
 /**
  * @brief A generic writer plugin, derive this to create a new writer for a specific file format.
  * This class propose to handle the common stuff among writers:
@@ -207,8 +210,8 @@ protected:
     /**
      * @brief Should return the view index needed to render. 
      * Possible return values:
-     * -2: Indicates that we want to render what the host request via the render action (the default)
-     * -1: Indicates that we want to render all views in a single file
+     * -2 or kGenericWriterViewDefault: Indicates that we want to render what the host request via the render action (the default)
+     * -1 or kGenericWriterViewAll: Indicates that we want to render all views in a single file. In this case, rendering view 0 requires all views.
      * >= 0: Indicates the view index to render
      **/
     virtual int getViewToRender() const { return -2; }

@@ -717,21 +717,17 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     
     bool doDefaultView = false;
     std::map<int,std::string> viewNames;
-    
-    if (args.renderView == -1) {
-        int viewToRender = getViewToRender();
-        if (viewToRender != -1) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "Inconsistent view to render requested");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
+    int viewToRender = getViewToRender();
+
+    if (viewToRender == kGenericWriterViewAll) {
+        if (args.renderView != 0) {
+            return; // nothing to do, except for the main view
         }
-        
         int nViews = getViewCount();
         for (int v = 0; v < nViews; ++v) {
             std::string view = getViewName(v);
             viewNames[v] = view;
         }
-        
     } else {
         int viewToRender = getViewToRender();
         if (viewToRender >= 0 && viewToRender != args.renderView) {
@@ -740,14 +736,14 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
             return;
         }
         
-        if (viewToRender == -1) {
+        if (viewToRender == kGenericWriterViewAll) {
             /*
              We might be in this situation if the user requested %V or %v in the filename, so the host didn't request -1 as render view.
              We might also be here if the host never requests -1 as render view
              Just fallback to the default view
              */
             doDefaultView = true;
-        } else if (viewToRender == -2) {
+        } else if (viewToRender == kGenericWriterViewDefault) {
             doDefaultView = true;
         } else {
             std::string view;
@@ -1469,10 +1465,10 @@ GenericWriterPlugin::getOutputFormat(OfxTime time,OfxRectD& rod)
     if (doDefaultBehaviour) {
         // union RoD across all views
         int viewsToRender = getViewToRender();
-        if (viewsToRender == -2 || !gHostIsMultiView) {
+        if (viewsToRender == kGenericWriterViewDefault || !gHostIsMultiView) {
             rod = _inputClip->getRegionOfDefinition(time);
         } else {
-            if (viewsToRender == -1) {
+            if (viewsToRender == kGenericWriterViewAll) {
                 //Union all views
                 bool rodSet = false;
                 for (int i = 0; i < getViewCount(); ++i) {
@@ -1800,13 +1796,19 @@ GenericWriterPlugin::getFrameViewsNeeded(const OFX::FrameViewsNeededArguments& a
         frameViews.addFrameViewsNeeded(*_inputClip, r, args.view);
     } else {
         int viewsToRender = getViewToRender();
-        if (viewsToRender == -1) {
+        if (viewsToRender == kGenericWriterViewAll) {
+            if (args.view != 0) {
+                // any view other than view 0 does nothing and requires no input
+                return;
+            }
+            // rendering view 0 requires all views, and writes them to file
             int nViews = getViewCount();
             for (int i = 0; i < nViews; ++i) {
                 frameViews.addFrameViewsNeeded(*_inputClip, r, i);
             }
         } else {
-            if (viewsToRender == -2) {
+            // default behavior
+            if (viewsToRender == kGenericWriterViewDefault) {
                 viewsToRender = args.view;
             }
             frameViews.addFrameViewsNeeded(*_inputClip, r, viewsToRender);
