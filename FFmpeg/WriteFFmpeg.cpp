@@ -2907,7 +2907,7 @@ WriteFFmpegPlugin::encode(const std::string& filename,
     }
     
     ///Check that we're really encoding in sequential order
-    if (_lastTimeEncoded != -1 && _lastTimeEncoded != time -1 && _lastTimeEncoded != time + 1) {
+    if (_lastTimeEncoded != -1 && _lastTimeEncoded != (time - 1)) {
         std::stringstream ss;
         ss << "The render does not seem sequential, another render must be currently active: ";
         ss << "Last time encoded = " <<  _lastTimeEncoded;
