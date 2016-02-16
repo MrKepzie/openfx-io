@@ -1246,8 +1246,8 @@ bool WriteFFmpegPlugin::isRec709Format(const int height) const
 {
     // First check for codecs which require special handling:
     //  * JPEG codecs always use Rec 601.
-    int codec;
-    _codec->getValue(codec);
+    assert(_codec);
+    int codec = _codec->getValue();
     const bool isJpeg = IsJpeg(_codec, codec);
     if (isJpeg) {
         return false;
@@ -1264,7 +1264,7 @@ bool WriteFFmpegPlugin::IsYUV(AVPixelFormat pix_fmt)
 {
     // from swscale_internal.h
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
-    return !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
+    return desc && !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
 }
 
 // Figure out if a codec is definitely YUV based from its shortname.
@@ -1314,6 +1314,7 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
     //AVCOL_TRC_BT2020_12    = 15, ///< ITU-R BT2020 for 12 bit system
 # ifdef OFX_IO_USING_OCIO
     std::string selection;
+    assert(_ocio.get());
     _ocio->getOutputColorspace(selection);
     if (selection.find("sRGB") != std::string::npos || // sRGB in nuke-default and blender
         selection.find("srgb") != std::string::npos ||
@@ -1367,8 +1368,8 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
 
 AVOutputFormat* WriteFFmpegPlugin::initFormat(bool reportErrors) const
 {
-    int format;
-    _format->getValue(format);
+    assert(_format);
+    int format = _format->getValue();
     AVOutputFormat* fmt = NULL;
 
     if (!format) { // first item is "Default"
@@ -1391,11 +1392,15 @@ AVOutputFormat* WriteFFmpegPlugin::initFormat(bool reportErrors) const
 
 bool WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AVCodec*& outVideoCodec) const
 {
+    if (!fmt) {
+        return false;
+    }
     outCodecId = fmt->video_codec;
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
 
-    int codec;
-    _codec->getValue(codec);
+    assert(_codec);
+    int codec = _codec->getValue();
+    assert(codec >=0 && codec < (int)codecsShortNames.size());
 
     AVCodec* userCodec = avcodec_find_encoder_by_name(getCodecFromShortName(codecsShortNames[codec]));
     if (userCodec) {
@@ -1419,12 +1424,16 @@ bool WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AV
 void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outNukeBufferPixelFormat, AVPixelFormat& outTargetPixelFormat, int& outBitDepth) const
 {
     assert(videoCodec);
-
+    if (!videoCodec) {
+        outNukeBufferPixelFormat = AV_PIX_FMT_NONE;
+        outTargetPixelFormat = AV_PIX_FMT_NONE;
+        outBitDepth = 0;
+        return;
+    }
     const bool hasAlpha = alphaEnabled();
 #if OFX_FFMPEG_PRORES
     if (AV_CODEC_ID_PRORES == videoCodec->id) {
-        int index;
-        _codec->getValue(index);
+        int index = _codec->getValue();
         const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
         assert(index < (int)codecsShortNames.size());
         int profile = getProfileFromShortName(codecsShortNames[index]);
@@ -1445,9 +1454,7 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
 #endif
 #if OFX_FFMPEG_DNXHD
     if (AV_CODEC_ID_DNXHD == videoCodec->id) {
-        int dnxhdCodecProfile_i;
-        _dnxhdCodecProfile->getValue(dnxhdCodecProfile_i);
-        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
+        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)_dnxhdCodecProfile->getValue();
         if (dnxhdCodecProfile == eDNxHDCodecProfile220x || dnxhdCodecProfile == eDNxHDCodecProfile440x) {
             outTargetPixelFormat = AV_PIX_FMT_YUV422P10;
             outBitDepth = 10;
@@ -1536,6 +1543,10 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
 int WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
 {
     switch (pixelFormat) {
+        case AV_PIX_FMT_NONE:
+            return 0;
+            break;
+
         case AV_PIX_FMT_BGRA64LE:
         case AV_PIX_FMT_BGRA64BE:
         case AV_PIX_FMT_RGBA64LE:
@@ -1592,6 +1603,9 @@ int WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
 /*static*/
 AVPixelFormat WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha)
 {
+    if (bitDepth == 0) {
+        return AV_PIX_FMT_NONE;
+    }
     AVPixelFormat pixelFormat;
     if (hasAlpha)
         pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGB32;
@@ -1604,6 +1618,12 @@ AVPixelFormat WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth, 
 void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyParams, bool& outInterGOPParams, bool& outInterBParams)
 {
     assert(codec);
+    if (!codec) {
+        outLossyParams = false;
+        outInterGOPParams = false;
+        outInterBParams = false;
+        return;
+    }
     //The flags on the codec can't be trusted to indicate capabilities, so use the props bitmask on the descriptor instead.
     const AVCodecDescriptor* codecDesc = avcodec_descriptor_get(codec->id);
 
@@ -1652,7 +1672,15 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
 //
 void WriteFFmpegPlugin::configureAudioStream(AVCodec* avCodec, AVStream* avStream)
 {
+    assert(avCodec && avStream);
+    if (!avCodec || !avStream) {
+        return;
+    }
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return;
+    }
     avcodec_get_context_defaults3(avCodecContext, avCodec);
     avCodecContext->sample_fmt = audioReader_->getSampleFormat();
     //avCodecContext->bit_rate    = 64000; // Calculate...
@@ -1671,7 +1699,15 @@ void WriteFFmpegPlugin::configureAudioStream(AVCodec* avCodec, AVStream* avStrea
 //
 void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStream)
 {
+    assert(avCodec && avStream && _formatContext);
+    if (!avCodec || !avStream || !_formatContext) {
+        return;
+    }
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return;
+    }
     avcodec_get_context_defaults3(avCodecContext, avCodec);
 
     //Only update the relevant context variables where the user is able to set them.
@@ -1682,10 +1718,9 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     if (avCodec) GetCodecSupportedParams(avCodec, lossyParams, interGOPParams, interBParams);
 
     if (lossyParams) {
-        int bitrate;
-        _bitrate->getValue(bitrate);
-        int bitrateTolerance;
-        _bitrateTolerance->getValue(bitrateTolerance);
+        assert(_bitrate && _bitrateTolerance && _quality);
+        int bitrate = _bitrate->getValue();
+        int bitrateTolerance = _bitrateTolerance->getValue();
         int qMin, qMax;
         _quality->getValue(qMin, qMax);
 
@@ -1710,8 +1745,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 
     av_dict_set(&_formatContext->metadata, kMetaKeyWriter, kMetaValueWriter64, 0);
 
-    int codec = 0;
-    _codec->getValue(codec);
+    int codec = _codec->getValue();
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     int dnxhdCodecProfile_i = 0;
 #if OFX_FFMPEG_DNXHD
@@ -1719,8 +1753,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 #endif
     //Write the NCLC atom in the case the underlying storage is YUV.
     if(IsYUVFromShortName(codecsShortNames[codec].c_str(), dnxhdCodecProfile_i)) {
-        bool writeNCLC = false;
-        _writeNCLC->getValue(writeNCLC);
+        bool writeNCLC = _writeNCLC->getValue();
 
         // Primaries are always 709.
         avCodecContext->color_primaries = AVCOL_PRI_BT709;
@@ -1783,8 +1816,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         avCodecContext->sample_aspect_ratio.den = 11;
     }
 
-    double fps = 0.;
-    _fps->getValue(fps);
+    double fps = _fps->getValue();
     // timebase: This is the fundamental unit of time (in seconds) in terms
     // of which frame timestamps are represented. For fixed-fps content,
     // timebase should be 1/framerate and timestamp increments should be
@@ -1824,13 +1856,11 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     avStream->time_base.num = 100;
     avStream->time_base.den = frameRate * 100;
 
-    int gopSize = 0;
-    _gopSize->getValue(gopSize);
+    int gopSize = _gopSize->getValue();
     if (interGOPParams)
         avCodecContext->gop_size = gopSize;
 
-    int bFrames;
-    _bFrames->getValue(bFrames);
+    int bFrames = _bFrames->getValue();
     // NOTE: in new ffmpeg, bframes don't seem to work correctly - ffmpeg crashes...
     if (interBParams && bFrames) {
         avCodecContext->max_b_frames = bFrames;
@@ -2019,16 +2049,14 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     av_dict_set(&_formatContext->metadata, kMetaKeyYCbCrMatrix, ycbcrmetavalue, 0);
 
 #if OFX_FFMPEG_MBDECISION
-    int mbDecision;
-    _mbDecision->getValue(mbDecision);
+    int mbDecision = _mbDecision->getValue();
     avCodecContext->mb_decision = mbDecision;
 #else
     avCodecContext->mb_decision = FF_MB_DECISION_SIMPLE;
 #endif
 
 # if OFX_FFMPEG_TIMECODE
-    bool writeTimecode;
-    _writeTimecode->getValue(writeTimecode);
+    bool writeTimecode = _writeTimecode->getValue(writeTimecode);
 
     // Create a timecode stream for QuickTime movies. (There was no
     // requirement at the time of writing for any other file format.
@@ -2127,9 +2155,17 @@ AVStream* WriteFFmpegPlugin::addStream(AVFormatContext* avFormatContext, enum AV
 // @return 0 if successful,
 //         <0 otherwise.
 //
-int WriteFFmpegPlugin::openCodec(AVFormatContext* /*avFormatContext*/, AVCodec* avCodec, AVStream* avStream)
+int WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext, AVCodec* avCodec, AVStream* avStream)
 {
+    assert(avFormatContext && avCodec && avStream);
+    if (!avFormatContext || !avCodec || !avStream) {
+        return -1;
+    }
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return -1;
+    }
     if (AVMEDIA_TYPE_AUDIO == avCodecContext->codec_type) {
         // Audio codecs.
         if (avcodec_open2(avCodecContext, avCodec, NULL) < 0) {
@@ -2223,6 +2259,10 @@ int WriteFFmpegPlugin::writeAudio(AVFormatContext* avFormatContext, AVStream* av
 // the following was taken from libswscale/utils.c:
 static int handle_jpeg(enum AVPixelFormat *format)
 {
+    assert(format);
+    if (!format) {
+        return 0;
+    }
     switch (*format) {
         case AV_PIX_FMT_YUVJ420P:
             *format = AV_PIX_FMT_YUV420P;
@@ -2256,6 +2296,9 @@ static int handle_jpeg(enum AVPixelFormat *format)
 //
 int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext)
 {
+    if (!avPicture || !avFrame || !avCodecContext) {
+        return -1;
+    }
     int ret = 0;
 
     int width = (_rodPixel.x2 - _rodPixel.x1);
@@ -2264,8 +2307,7 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
     int dstRange = IsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
     dstRange |= handle_jpeg(&dstPixelFormat); // may modify dstPixelFormat
     if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
-        int encodeVideoRange;
-        _encodeVideoRange->getValue(encodeVideoRange);
+        int encodeVideoRange = _encodeVideoRange->getValue();
         dstRange = !(encodeVideoRange);
     }
 
@@ -2273,7 +2315,9 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
                                                   width, height, srcPixelFormat, // from
                                                   avCodecContext->width, avCodecContext->height, dstPixelFormat,// to
                                                   SWS_BICUBIC, NULL, NULL, NULL);
-
+    if (!convertCtx) {
+        return -1;
+    }
     // Set up the sws (SoftWareScaler) to convert colourspaces correctly, in the sws_scale function below
     //const int colorspace = (width < 1000) ? SWS_CS_ITU601 : SWS_CS_ITU709;
     // it's the output size that counts (e.g. for DNxHD), and we prefer using height
@@ -2305,8 +2349,7 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
 bool WriteFFmpegPlugin::alphaEnabled() const
 {
     // is the writer configured to write alpha channel to file ?
-    bool enableAlpha;
-    _enableAlpha->getValue(enableAlpha);
+    bool enableAlpha = _enableAlpha->getValue();
     return enableAlpha && _inputClip->getPixelComponents() == ePixelComponentRGBA;
 }
 
@@ -2344,11 +2387,17 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         return -6;
     }
     assert(avFormatContext);
+    if (!avFormatContext || !pixelData || !bounds) {
+        return -7;
+    }
     int ret = 0;
     // First convert from Nuke floating point RGB to either 16-bit or 8-bit RGB.
     // Create a buffer to hold either  16-bit or 8-bit RGB.
     AVCodecContext* avCodecContext = avStream->codec;
     assert(avCodecContext);
+    if (!avCodecContext) {
+        return -8;
+    }
     // Create another buffer to convert from either 16-bit or 8-bit RGB
     // to the input pixel format required by the encoder.
     AVPixelFormat pixelFormatCodec = avCodecContext->pix_fmt;
@@ -2419,7 +2468,10 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             }
 
             avFrame = av_frame_alloc(); // Create an AVFrame structure and initialise to zero.
-            {
+            assert(avFrame);
+            if (!avFrame) {
+                ret = -1;
+            } else {
                 // For any codec an
                 // intermediate buffer is allocated for the
                 // colour space conversion.
@@ -2545,6 +2597,9 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
 //
 int WriteFFmpegPlugin::encodeVideo(AVCodecContext* avCodecContext, uint8_t* out, int outSize, const AVFrame* avFrame)
 {
+    if (!avCodecContext || !out || !avFrame) {
+        return -1;
+    }
     int ret, got_packet = 0;
 
     if (outSize < FF_MIN_BUFFER_SIZE) {
@@ -2612,6 +2667,13 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
         }
     }
 #endif
+    if (!_streamVideo) {
+        return -6;
+    }
+    assert(avFormatContext);
+    if (!avFormatContext || !pixelData || !bounds) {
+        return -7;
+    }
     return writeVideo(avFormatContext, _streamVideo, finalise, pixelData, bounds, pixelDataNComps, dstNComps, rowBytes);
 }
 
@@ -2667,6 +2729,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         _formatContext = avformat_alloc_output_context(NULL, avOutputFormat, filename.c_str());
 #       else
         _formatContext = avformat_alloc_context();
+        assert(_formatContext);
         _formatContext->oformat = fmt;
 #       endif
 #     endif
@@ -2780,8 +2843,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         // Now that the stream has been created, and the pixel format
         // is known, for DNxHD, set the YUV range.
         if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
-            int encodeVideoRange;
-            _encodeVideoRange->getValue(encodeVideoRange);
+            int encodeVideoRange = _encodeVideoRange->getValue();
             // Set the metadata for the YUV range. This modifies the appropriate
             // field in the 'ACLR' atom in the video sample description.
             // Set 'full range' = 1 or 'legal range' = 2.
@@ -2804,8 +2866,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
             avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
 #if OFX_FFMPEG_PRORES
         if (codecId == AV_CODEC_ID_PRORES) {
-            int index;
-            _codec->getValue(index);
+            int index = _codec->getValue();
             const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
             assert(index < (int)codecsShortNames.size());
             //avCodecContext->profile = getProfileFromShortName(codecsShortNames[index]);
@@ -2897,8 +2958,11 @@ WriteFFmpegPlugin::encode(const std::string& filename,
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-
-    if (_formatContext && filename != std::string(_formatContext->filename)) {
+    if (!pixelData || !_streamVideo) {
+        OFX::throwSuiteStatusException(kOfxStatErrBadHandle);
+        return;
+    }
+    if (filename != std::string(_formatContext->filename)) {
         std::stringstream ss;
         ss << "Trying to render " << filename << " but another active render is rendering " << std::string(_formatContext->filename);
         setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
@@ -2930,6 +2994,11 @@ WriteFFmpegPlugin::encode(const std::string& filename,
     if (_isOpen) {
         _error = CLEANUP;
 
+        if (!_streamVideo) {
+            OFX::throwSuiteStatusException(kOfxStatErrBadHandle);
+            return;
+        }
+        assert(_formatContext);
         if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
             _error = SUCCESS;
             _lastTimeEncoded = (int)time;
@@ -3012,8 +3081,7 @@ WriteFFmpegPlugin::updateVisibility()
     //codecs defaulted the same, and as a user experience it was pretty counter intuitive.
     //Check knob exists, to deal with cases where Nuke might not have updated underlying writer (#44774)
     //(we still want to use showPanel to update when loading from script and the like).
-    int index;
-    _codec->getValue(index);
+    int index = _codec->getValue();
     //assert(index < _codec->getNOptions());
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     std::string codecShortName;
@@ -3084,10 +3152,8 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
 {
     //Bitrate tolerance should in theory be allowed down to target bitrate/target framerate.
     //We're not force limiting the range since the upper range is not bounded.
-    int bitrate = 0;
-    _bitrate->getValue(bitrate);
-    double fps = 24.;
-    _fps->getValue(fps);
+    int bitrate = _bitrate->getValue();
+    double fps = _fps->getValue();
     double minRange = bitrate / fps;
     _bitrateTolerance->setRange(minRange, 4000 * 10000);
 }
@@ -3099,8 +3165,7 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
 void
 WriteFFmpegPlugin::checkCodec()
 {
-    int codec;
-    _codec->getValue(codec);
+    int codec = _codec->getValue();
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     //assert(codec < (int)codecsShortNames.size());
     std::string codecShortName;
@@ -3188,8 +3253,7 @@ void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
 {
     if (paramName == kParamCodec && args.reason == eChangeUserEdit) {
         // update the secret parameter
-        int codec;
-        _codec->getValue(codec);
+        int codec = _codec->getValue();
         const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
         assert(codec < (int)codecsShortNames.size());
         _codecShortName->setValue(codecsShortNames[codec]);
