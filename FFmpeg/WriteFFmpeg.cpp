@@ -2343,15 +2343,20 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     if (!avStream) {
         return -6;
     }
+    assert(avFormatContext);
     int ret = 0;
     // First convert from Nuke floating point RGB to either 16-bit or 8-bit RGB.
     // Create a buffer to hold either  16-bit or 8-bit RGB.
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
     // Create another buffer to convert from either 16-bit or 8-bit RGB
     // to the input pixel format required by the encoder.
     AVPixelFormat pixelFormatCodec = avCodecContext->pix_fmt;
     int width = _rodPixel.x2-_rodPixel.x1;
     int height = _rodPixel.y2-_rodPixel.y1;
+    assert(bounds->x1 == _rodPixel.x1 && bounds->x2 == _rodPixel.x2 &&
+           bounds->y1 == _rodPixel.y1 && bounds->y2 == _rodPixel.y2);
+    
     int picSize = avpicture_get_size(pixelFormatCodec, width, height);
 
     AVPicture avPicture = {{0}, {0}};
