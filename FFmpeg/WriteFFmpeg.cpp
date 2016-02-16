@@ -2354,8 +2354,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     AVPixelFormat pixelFormatCodec = avCodecContext->pix_fmt;
     int width = _rodPixel.x2-_rodPixel.x1;
     int height = _rodPixel.y2-_rodPixel.y1;
-    assert(bounds->x1 == _rodPixel.x1 && bounds->x2 == _rodPixel.x2 &&
-           bounds->y1 == _rodPixel.y1 && bounds->y2 == _rodPixel.y2);
     
     int picSize = avpicture_get_size(pixelFormatCodec, width, height);
 
@@ -2363,8 +2361,10 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     AVFrame* avFrame = NULL;
 
     if (!flush) {
-
         assert(pixelData && bounds);
+        assert(bounds->x1 == _rodPixel.x1 && bounds->x2 == _rodPixel.x2 &&
+               bounds->y1 == _rodPixel.y1 && bounds->y2 == _rodPixel.y2);
+
         const bool hasAlpha = alphaEnabled();
 
         AVPixelFormat pixelFormatNuke;
