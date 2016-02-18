@@ -416,6 +416,7 @@ private:
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL
     {
         clipPreferences.setOutputFrameVarying(true);
+        clipPreferences.setOutputHasContinousSamples(true);
     }
 
 private:

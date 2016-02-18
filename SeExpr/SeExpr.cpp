@@ -2057,6 +2057,7 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 
     //We're frame varying since we don't know what the user may output at any frame
     clipPreferences.setOutputFrameVarying(true);
+    clipPreferences.setOutputHasContinousSamples(true);
 
     OFX::PixelComponentEnum outputComponents = getOutputComponents();
     if (outputComponents == OFX::ePixelComponentRGB) {
