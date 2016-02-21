@@ -2013,7 +2013,8 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
 
 void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
 {
-#ifdef OFX_READ_OIIO_USES_CACHE
+#if defined(OFX_READ_OIIO_USES_CACHE) && OIIO_VERSION >= 10605
+    //Do not use cache in OIIO 1.5.x because it does not support channel ranges correctly
     bool useCache = !isPlayback;
 #else
     bool useCache = false;
