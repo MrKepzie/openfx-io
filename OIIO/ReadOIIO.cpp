@@ -2235,6 +2235,10 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
 
 #         ifdef OFX_READ_OIIO_USES_CACHE
+            if (useCache && spec.tile_width != 0) {
+                ///OIIO ImageCache does not support channel ranges correctly for tiled files, so do not use the cache in that case
+                useCache = false;
+            }
             if (useCache) {
                 
                 int fullHeight = spec.full_height == 0 ? spec.height : spec.full_height;
