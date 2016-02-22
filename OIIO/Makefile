@@ -2,7 +2,7 @@ PLUGINOBJECTS = \
 	ReadOIIO.o WriteOIIO.o \
 	OIIOText.o OIIOResize.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
-	ofxsOGLTextRenderer.o ofxsOGLFontData.o
+	ofxsOGLTextRenderer.o ofxsOGLFontData.o ofxsMultiPlane.o
 
 PLUGINNAME = OIIO
 
