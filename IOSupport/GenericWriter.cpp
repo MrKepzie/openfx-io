@@ -1120,6 +1120,8 @@ public:
     InterleaveProcessorBase(OFX::ImageEffect& instance)
     : OFX::PixelProcessorFilterBase(instance)
     , _dstStartIndex(-1)
+    , _desiredSrcNComps(-1)
+    , _srcNCompsStartIndex(0)
     {
     }
     
