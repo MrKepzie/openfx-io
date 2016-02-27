@@ -437,7 +437,7 @@ ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, true);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }

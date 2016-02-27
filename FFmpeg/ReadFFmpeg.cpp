@@ -902,7 +902,7 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false);
     
     {
         OFX::IntParamDescriptor *param = desc.defineIntParam(kParamMaxRetries);
@@ -912,6 +912,7 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setDefault(10);
         param->setRange(0, 100);
         param->setDisplayRange(0, 20);
+        param->setLayoutHint(OFX::eLayoutHintDivider);
         page->addChild(*param);
     }
 

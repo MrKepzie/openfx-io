@@ -2724,7 +2724,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
     gHostSupportsMultiPlane = (OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true)) != 0;
     
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false);
 
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
@@ -2857,6 +2857,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setIsSecret(true);
                 param->setEvaluateOnChange(false);
                 param->setIsPersistant(false);
+                param->setLayoutHint(OFX::eLayoutHintDivider);
                 if (page) {
                     page->addChild(*param);
                 }

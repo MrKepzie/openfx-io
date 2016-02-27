@@ -2406,7 +2406,8 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                                     bool supportsRGBA,
                                     bool supportsRGB,
                                     bool supportsAlpha,
-                                    bool supportsTiles)
+                                    bool supportsTiles,
+                                    bool addSeparatorAfterLastParameter)
 {
     gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
@@ -2784,6 +2785,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
         desc.addClipPreferencesSlaveParam(*param);
+        if (addSeparatorAfterLastParameter) {
+            param->setLayoutHint(OFX::eLayoutHintDivider);
+        }
         if (page) {
             page->addChild(*param);
         }

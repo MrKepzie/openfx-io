@@ -400,7 +400,7 @@ void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
                            int evaluation, // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
                            bool supportsTiles, bool multiPlanar);
 
-OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles);
+OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles, bool addSeparatorAfterLastParameter);
 void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 
 #define mDeclareReaderPluginFactory(CLASS, UNLOADFUNCDEF,ISVIDEOSTREAM) \
