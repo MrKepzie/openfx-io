@@ -39,11 +39,12 @@ before_install:
   - uname -a
   - export J='-j3'
   - git submodule update --init --recursive
+  - sudo add-apt-repository -y ppa:boost-latest/ppa
   - sudo add-apt-repository -y ppa:archivematica/externals
 #  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg 
 #  - sudo add-apt-repository -y ppa:irie/boost
   - sudo add-apt-repository -y ppa:kubuntu-ppa/backports
-  - sudo apt-get update
+  - sudo apt-get update -qq
 #  - sudo apt-get upgrade
   - sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev
 
@@ -93,6 +94,43 @@ script:
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
 
 addons:
+  apt:
+    sources:
+    - boost-latest
+    # kubuntu-ppa/backports contains OpenCV
+    - kubuntu-backports
+    # the PPA xorg-edgers contains cairo 1.12 (required for rotoscoping)
+    - ppa:xorg-edgers/ppa
+    # ubuntu-toolchain-r/test contains recent versions of gcc
+    - ubuntu-toolchain-r-test
+    # get a recent ffmpeg (>=2.5) for precise from ppa:archivematica/externals(2.5.1) or ppa:pavlyshko/precise(2.6.1)
+    - ppa:archivematica/externals
+    - kalakris-cmake
+    packages:
+    - gcc-4.9
+    - g++-4.9
+    - libavcodec-dev
+    - libavformat-dev
+    - libswscale-dev
+    - libavutil-dev
+    - libswresample-dev
+    - libtinyxml-dev
+    - liblcms2-dev
+    - libyaml-cpp-dev
+    - libboost-dev
+    - libopenexr-dev
+    - libilmbase-dev
+    - libopenjpeg-dev
+    - libtiff4-dev
+    - libjpeg-dev
+    - libpng-dev
+    - libboost-filesystem-dev
+    - libboost-regex-dev
+    - libboost-thread-dev
+    - libboost-system-dev
+    - libwebp-dev
+    - libfreetype6-dev
+    - libssl-dev
   coverity_scan:
     # customized build script URL
     # TRAVIS_REPO_SLUG: owner_name/repo_name of repository currently being built
