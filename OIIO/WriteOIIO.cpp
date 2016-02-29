@@ -292,7 +292,7 @@ private:
                         const int dstNComps,
                         const int rowBytes) OVERRIDE FINAL
     {
-        std::string rawComps;
+        std::string rawComps(kFnOfxImagePlaneColour);
         switch (dstNComps) {
             case 1:
                 rawComps = kOfxImageComponentAlpha;
@@ -322,7 +322,7 @@ private:
             packingMapping[i] = pixelDataNCompsStartIndex + i;
         }
         
-        beginEncodeParts(data.getData(), filename, time, pixelAspectRatio, eLayerViewsSinglePart, viewsToRender, comps, pixelDataNComps != dstNComps,packingMapping, bounds);
+        beginEncodeParts(data.getData(), filename, time, pixelAspectRatio, eLayerViewsSinglePart, viewsToRender, comps, false,packingMapping, bounds);
         encodePart(data.getData(), filename, pixelData, pixelDataNComps, 0, rowBytes);
         endEncodeParts(data.getData());
     }

@@ -1940,6 +1940,46 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
+    
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessR);
+        param->setLabel(kNatronOfxParamProcessRLabel);
+        param->setHint(kParamProcessHint);
+        param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessG);
+        param->setLabel(kNatronOfxParamProcessGLabel);
+        param->setHint(kParamProcessHint);
+        param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessB);
+        param->setLabel(kNatronOfxParamProcessBLabel);
+        param->setHint(kParamProcessHint);
+        param->setDefault(true);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessA);
+        param->setLabel(kNatronOfxParamProcessALabel);
+        param->setHint(kParamProcessHint);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
 
     //////////Output file
     {
@@ -2145,46 +2185,6 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         }
     }
     
-    
-    {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessR);
-        param->setLabel(kNatronOfxParamProcessRLabel);
-        param->setHint(kParamProcessHint);
-        param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine, 1);
-        if (page) {
-            page->addChild(*param);
-        }
-    }
-    {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessG);
-        param->setLabel(kNatronOfxParamProcessGLabel);
-        param->setHint(kParamProcessHint);
-        param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine, 1);
-        if (page) {
-            page->addChild(*param);
-        }
-    }
-    {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessB);
-        param->setLabel(kNatronOfxParamProcessBLabel);
-        param->setHint(kParamProcessHint);
-        param->setDefault(true);
-        param->setLayoutHint(eLayoutHintNoNewLine, 1);
-        if (page) {
-            page->addChild(*param);
-        }
-    }
-    {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessA);
-        param->setLabel(kNatronOfxParamProcessALabel);
-        param->setHint(kParamProcessHint);
-        param->setDefault(false);
-        if (page) {
-            page->addChild(*param);
-        }
-    }
     return page;
 }
 
