@@ -159,7 +159,7 @@ namespace
     const FilterEntry kCodecWhitelist[] =
     {
         // Video codecs.
-        { "aic",            true,  true }, // Apple Intermediate Codec (no encoder)
+        { "aic",            true,  false }, // Apple Intermediate Codec (no encoder)
         { "avrp",           true,  UNSAFEQT && UNSAFEVLC }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec. Only MOV (AVI seems broken in FFmpeg 3.0).
         { "avui",           true,  false }, // Avid Meridien Uncompressed - write not supported as this is an SD only codec. Only 720x486 and 720x576 are supported. experimental in ffmpeg 2.6.1.
         { "ayuv",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable. Only AVI, MKV or MOV.
