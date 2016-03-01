@@ -347,10 +347,16 @@ static CodecMap CreateCodecKnobLabelsMap()
 #if OFX_FFMPEG_DNXHD
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
+    m["ffv1"]          = "FFV1\tFFmpeg video codec #1";
+    m["ffvhuff"]       = "FFVH\tHuffyuv FFmpeg variant";
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
     m["gif"]           = "gif \tGIF (Graphics Interchange Format)";
+    m["huffyuv"]       = "HFYU\tHuffYUV";
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
+    m["libopenh264"]   = "H264\tCisco libopenh264 H.264/MPEG-4 AVC encoder";
+    m["libschroedinger"] = "drac\tlibschroedinger Dirac";
+    m["libtheora"]     = "theo\tlibtheora Theora";
     m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
     m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // disabled in whitelist (bad quality)
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
@@ -368,6 +374,7 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["qtrle"]         = "rle \tQuickTime Animation (RLE) video";
     m["r10k"]          = "R10k\tAJA Kona 10-bit RGB Codec"; // disabled in whitelist
     m["r210"]          = "r210\tUncompressed RGB 10-bit"; // disabled in whitelist
+    m["rawvideo"]      = "RGBx\tUncompressed 4:2:2 8-bit"; // actual fourcc is RGB^x
     m["svq1"]          = "SVQ1\tSorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1";
     m["targa"]         = "tga \tTruevision Targa image";
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
@@ -375,6 +382,7 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["v308"]          = "v308\tUncompressed 8-bit 4:4:4";
     m["v408"]          = "v308\tUncompressed 8-bit QT 4:4:4:4";
     m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
+    m["vc2"]           = "drac\tSMPTE VC-2 (previously BBC Dirac Pro)";
 
     return m;
 }
@@ -1079,11 +1087,13 @@ FFmpegSingleton::FFmpegSingleton()
             if (FFmpegFile::isFormatWhitelistedForWriting( fmt->name ) ) {
                 if (fmt->long_name) {
                     _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
-                    _formatsShortNames.push_back(fmt->name);
-#                 if OFX_FFMPEG_PRINT_CODECS
-                    std::cout << "Format: " << fmt->name << " = " << fmt->long_name << std::endl;
-#                 endif //  FFMPEG_PRINT_CODECS
+                } else {
+                    _formatsLongNames.push_back(fmt->name);
                 }
+                _formatsShortNames.push_back(fmt->name);
+#                 if OFX_FFMPEG_PRINT_CODECS
+                std::cout << "Format: " << fmt->name << " = " << fmt->long_name << std::endl;
+#                 endif //  FFMPEG_PRINT_CODECS
             }
 #         if OFX_FFMPEG_PRINT_CODECS
             else {
@@ -3243,6 +3253,33 @@ WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename, bool setColo
                 _format->setValue(i);
                 break;
             }
+            if (formatsShortNames[i] == "matroska") {
+                if (suffix.compare("mkv") == 0 ||
+                    suffix.compare("mk3d") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            } else if (formatsShortNames[i] == "mpeg") {
+                if (suffix.compare("mpg") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            } else if (formatsShortNames[i] == "mpegts") {
+                if (suffix.compare("m2ts") == 0 ||
+                    suffix.compare("mts") == 0 ||
+                    suffix.compare("ts") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            } else if (formatsShortNames[i] == "mp4") {
+                if (suffix.compare("mov") == 0 ||
+                    suffix.compare("3gp") == 0 ||
+                    suffix.compare("3g2") == 0 ||
+                    suffix.compare("mj2") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            }
         }
     }
     // also check that the codec setting is OK
@@ -3496,7 +3533,7 @@ WriteFFmpegPluginFactory::load()
             // "lvf", // lvf (LVF)
             // "lxf", // lxf (VR native stream (LXF))
             // "m4v", // m4v (raw MPEG-4 video)
-            // "mkv,mk3d,mka,mks", // matroska,webm (Matroska / WebM)
+            "mka", "mks", // "mkv,mk3d,mka,mks", // matroska,webm (Matroska / WebM)
             "mgsts", // mgsts (Metal Gear Solid: The Twin Snakes)
             "microdvd", // microdvd (MicroDVD subtitle format)
             // "mjpg,mjpeg,mpo", // mjpeg (raw MJPEG video)
@@ -3504,7 +3541,7 @@ WriteFFmpegPluginFactory::load()
             // "mlv", // mlv (Magic Lantern Video (MLV))
             "mm", // mm (American Laser Games MM)
             "mmf", // mmf (Yamaha SMAF)
-            // "mov,mp4,m4a,3gp,3g2,mj2", // mov,mp4,m4a,3gp,3g2,mj2 (QuickTime / MOV)
+            "m4a", // "mov,mp4,m4a,3gp,3g2,mj2", // mov,mp4,m4a,3gp,3g2,mj2 (QuickTime / MOV)
             "mp2", "mp3", "m2a", "mpa", // mp3 (MP2/3 (MPEG audio layer 2/3))
             "mpc", // mpc (Musepack)
             "mpc8", // mpc8 (Musepack SV8)
@@ -3705,8 +3742,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         param->setLabel(kParamFormatLabel);
         param->setHint(kParamFormatHint);
         for (unsigned int i = 0; i < formatsV.size(); ++i) {
-            param->appendOption(formatsV[i],"");
-
+            param->appendOption(formatsV[i]);
         }
         param->setAnimates(false);
         param->setDefault(0);
