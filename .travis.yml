@@ -63,9 +63,9 @@ install:
   - sudo apt-get install libopenexr-dev libilmbase-dev
 # OpenImageIO (for some reason, freetype is not recognized)
   - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem-dev libboost-regex-dev libboost-thread-dev libboost-system-dev libwebp-dev libfreetype6-dev libssl-dev
-  - wget https://github.com/OpenImageIO/oiio/archive/Release-1.6.9.tar.gz -O /tmp/OpenImageIO-1.6.9.tar.gz
-  - tar zxf /tmp/OpenImageIO-1.6.9.tar.gz > /dev/null 2>&1
-  - cd oiio-Release-1.6.9
+  - wget https://github.com/OpenImageIO/oiio/archive/Release-1.6.11.tar.gz -O /tmp/OpenImageIO-1.6.11.tar.gz
+  - tar zxf /tmp/OpenImageIO-1.6.11.tar.gz > /dev/null 2>&1
+  - cd oiio-Release-1.6.11
   - make $MAKEFLAGSPARALLEL USE_QT=0 USE_TBB=0 USE_PYTHON=0 USE_PYTHON3=0 USE_FIELD3D=0 USE_FFMPEG=0 USE_OPENJPEG=1 USE_OCIO=1 USE_OPENCV=0 USE_OPENSSL=0 USE_FREETYPE=1 USE_GIF=0 USE_PTEX=0 USE_LIBRAW=0 OIIO_BUILD_TESTS=0 OIIO_BUILD_TOOLS=0 OCIO_HOME=/opt/ocio INSTALLDIR=/opt/oiio dist_dir=. cmake
   - sudo make $MAKEFLAGSPARALLEL dist_dir=.
   - cd ..
