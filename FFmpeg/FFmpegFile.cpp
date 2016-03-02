@@ -139,7 +139,7 @@ namespace
         { "h264",           true,  true },
         { "hevc",           true,  false }, // hevc codec cannot be read in official qt
         { "m4v",            true,  true },
-        { "mkv",            true,  true }, // not readable in Qt but may be used with other software
+        { "matroska",       true,  true }, // not readable in Qt but may be used with other software
         { "mov",            true,  true },
         { "mp4",            true,  true },
         { "mpeg",           true,  true },
