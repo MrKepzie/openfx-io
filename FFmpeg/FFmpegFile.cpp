@@ -94,7 +94,8 @@ extensionCorrespondToImageFile(const std::string & ext)
             ext == "tiff" ||
             ext == "tga" ||
             ext == "rgba" ||
-            ext == "rgb");
+            ext == "rgb" ||
+            ext == "webp");
 }
 
 bool
