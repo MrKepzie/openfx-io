@@ -1071,6 +1071,8 @@ public:
 
     const std::vector<std::string>& getCodecsKnobLabels() const { return _codecsKnobLabels; }
 
+    const std::vector<AVCodecID>& getCodecsIds() const { return _codecsIds; }
+
     const std::vector<std::vector<size_t> >& getCodecsFormats() const { return _codecsFormats; }
 
 private:
@@ -3346,7 +3348,26 @@ void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
         assert(codec < (int)codecsShortNames.size());
         _codecShortName->setValue(codecsShortNames[codec]);
         updateVisibility();
-
+        int format = _format->getValue();
+        if (format > 0) {
+            AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
+            if (fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec])) {
+                setPersistentMessage(OFX::Message::eMessageError, "","the selected codec is not supported in this container.");
+            } else {
+                clearPersistentMessage();
+            }
+        }
+    } else if (paramName == kParamFormat && args.reason == eChangeUserEdit) {
+        int codec = _codec->getValue();
+        int format = _format->getValue();
+        if (format > 0) {
+            AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
+            if (fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec])) {
+                setPersistentMessage(OFX::Message::eMessageError, "","the selected codec is not supported in this container.");
+            } else {
+                clearPersistentMessage();
+            }
+        }
     } else if (paramName == kParamFPS || paramName == kParamBitrate) {
         updateBitrateToleranceRange();
 
