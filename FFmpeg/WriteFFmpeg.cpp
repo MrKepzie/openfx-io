@@ -334,6 +334,27 @@ static bool IsJpeg(OFX::ChoiceParam *codecParam, int codecValue)
     return false;
 }
 
+// check if codec is compatible with format.
+// libavformat may not implemen query_codec for all formats
+static bool codecCompatible(const AVOutputFormat *ofmt, enum AVCodecID codec_id)
+{
+    std::string fmt = std::string(ofmt->name);
+    return (avformat_query_codec(ofmt, codec_id, FF_COMPLIANCE_NORMAL) == 1 ||
+            (fmt == "mxf" && (codec_id == AV_CODEC_ID_MPEG2VIDEO ||
+                              codec_id == AV_CODEC_ID_DNXHD||
+                              codec_id == AV_CODEC_ID_DVVIDEO||
+                              codec_id == AV_CODEC_ID_H264)) ||
+            (fmt == "mpegts" && (codec_id == AV_CODEC_ID_MPEG1VIDEO ||
+                                 codec_id == AV_CODEC_ID_MPEG2VIDEO ||
+                                 codec_id == AV_CODEC_ID_MPEG4 ||
+                                 codec_id == AV_CODEC_ID_H264 ||
+                                 codec_id == AV_CODEC_ID_HEVC ||
+                                 codec_id == AV_CODEC_ID_CAVS ||
+                                 codec_id == AV_CODEC_ID_DIRAC)) ||
+            (fmt == "mpeg" && (codec_id == AV_CODEC_ID_MPEG1VIDEO ||
+                               codec_id == AV_CODEC_ID_H264)));
+}
+
 typedef std::map<std::string, std::string> CodecMap;
 
 static CodecMap CreateCodecKnobLabelsMap()
@@ -1042,11 +1063,15 @@ public:
     
     const std::vector<std::string>& getFormatsLongNames() const { return _formatsLongNames; }
     
+    const std::vector<std::vector<size_t> >& getFormatsCodecs() const { return _formatsCodecs; }
+
     const std::vector<std::string>& getCodecsShortNames() const { return _codecsShortNames; }
     
     const std::vector<std::string>& getCodecsLongNames() const { return _codecsLongNames; }
 
     const std::vector<std::string>& getCodecsKnobLabels() const { return _codecsKnobLabels; }
+
+    const std::vector<std::vector<size_t> >& getCodecsFormats() const { return _codecsFormats; }
 
 private:
     
@@ -1064,9 +1089,12 @@ private:
     
     std::vector<std::string> _formatsLongNames;
     std::vector<std::string> _formatsShortNames;
+    std::vector<std::vector<size_t> > _formatsCodecs; // for each format, give the list of compatible codecs (indices in the codecs list)
     std::vector<std::string> _codecsLongNames;
     std::vector<std::string> _codecsShortNames;
     std::vector<std::string> _codecsKnobLabels;
+    std::vector<AVCodecID>   _codecsIds;
+    std::vector<std::vector<size_t> > _codecsFormats; // for each codec, give the list of compatible formats (indices in the formats list)
 };
 
 FFmpegSingleton FFmpegSingleton::m_instance = FFmpegSingleton();
@@ -1083,7 +1111,7 @@ FFmpegSingleton::FFmpegSingleton()
     _formatsShortNames.push_back("default");
     AVOutputFormat* fmt = av_oformat_next(NULL);
     while (fmt) {
-        if (fmt->video_codec != AV_CODEC_ID_NONE) {
+        if (fmt->video_codec != AV_CODEC_ID_NONE) { // if this is a video format, it should have a default video codec
             if (FFmpegFile::isFormatWhitelistedForWriting( fmt->name ) ) {
                 if (fmt->long_name) {
                     _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
@@ -1104,6 +1132,7 @@ FFmpegSingleton::FFmpegSingleton()
         }
         fmt = av_oformat_next(fmt);
     }
+    assert(_formatsLongNames.size() == _formatsShortNames.size());
 
 #if OFX_FFMPEG_PRORES
     // Apple ProRes support.
@@ -1113,22 +1142,27 @@ FFmpegSingleton::FFmpegSingleton()
     _codecsShortNames.push_back(kProresCodec kProresProfile4444FourCC);
     _codecsLongNames.push_back              (kProresProfile4444Name);
     _codecsKnobLabels.push_back             (kProresProfile4444FourCC"\t"kProresProfile4444Name);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 #endif
     _codecsShortNames.push_back(kProresCodec kProresProfileHQFourCC);
     _codecsLongNames.push_back              (kProresProfileHQName);
     _codecsKnobLabels.push_back             (kProresProfileHQFourCC"\t"kProresProfileHQName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileSQFourCC);
     _codecsLongNames.push_back              (kProresProfileSQName);
     _codecsKnobLabels.push_back             (kProresProfileSQFourCC"\t"kProresProfileSQName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileLTFourCC);
     _codecsLongNames.push_back              (kProresProfileLTName);
     _codecsKnobLabels.push_back             (kProresProfileLTFourCC"\t"kProresProfileLTName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileProxyFourCC);
     _codecsLongNames.push_back              (kProresProfileProxyName);
     _codecsKnobLabels.push_back             (kProresProfileProxyFourCC"\t"kProresProfileProxyName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 #endif
 
     AVCodec* c = av_codec_next(NULL);
@@ -1148,8 +1182,11 @@ FFmpegSingleton::FFmpegSingleton()
                     _codecsLongNames.push_back(c->long_name);
                     _codecsShortNames.push_back(c->name);
                     _codecsKnobLabels.push_back(knobLabel);
+                    _codecsIds.push_back(c->id);
+                    _codecsFormats.push_back(std::vector<size_t>());
                     assert(_codecsLongNames.size() == _codecsShortNames.size());
-                    assert(_codecsKnobLabels.size() == _codecsKnobLabels.size());
+                    assert(_codecsLongNames.size() == _codecsKnobLabels.size());
+                    assert(_codecsLongNames.size() == _codecsIds.size());
                 }
             }
 #         if OFX_FFMPEG_PRINT_CODECS
@@ -1159,6 +1196,20 @@ FFmpegSingleton::FFmpegSingleton()
 #         endif //  FFMPEG_PRINT_CODECS
         }
         c = av_codec_next(c);
+    }
+    // fill the entries in _codecsFormats and _formatsCodecs
+    _codecsFormats.resize(_codecsIds.size());
+    _formatsCodecs.resize(_formatsShortNames.size());
+    for (size_t f = 1; f < _formatsShortNames.size(); ++f) { // format 0 is "default"
+        fmt = av_guess_format(_formatsShortNames[f].c_str(), NULL, NULL);
+        if (fmt) {
+            for (size_t c = 0; c < _codecsIds.size(); ++c) {
+                if (codecCompatible(fmt, _codecsIds[c])) {
+                    _codecsFormats[c].push_back(f);
+                    _formatsCodecs[f].push_back(c);
+                }
+            }
+        }
     }
 }
 
@@ -2821,10 +2872,10 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     }
 
     // Test if the container recognises the codec type.
-    bool isCodecSupportedInContainer = (avformat_query_codec(avOutputFormat, codecId, FF_COMPLIANCE_NORMAL) == 1);
+    bool isCodecSupportedInContainer = codecCompatible(avOutputFormat, codecId);
     // mov seems to be able to cope with anything, which the above function doesn't seem to think is the case (even with FF_COMPLIANCE_EXPERIMENTAL)
     // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
-    isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0);
+    //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
     if (!isCodecSupportedInContainer) {
         setPersistentMessage(OFX::Message::eMessageError, "","the selected codec is not supported in this container.");
         freeFormat();
@@ -3739,10 +3790,24 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
         const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
+        const std::vector<std::vector<size_t> >& formatsCodecs = FFmpegSingleton::Instance().getFormatsCodecs();
+        const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsShortNames();
         param->setLabel(kParamFormatLabel);
         param->setHint(kParamFormatHint);
         for (unsigned int i = 0; i < formatsV.size(); ++i) {
-            param->appendOption(formatsV[i]);
+            if (formatsCodecs[i].empty()) {
+                param->appendOption(formatsV[i]);
+            } else {
+                std::string hint = "Compatible with ";
+                for (unsigned int j = 0; j < formatsCodecs[i].size(); ++j) {
+                    if (j != 0) {
+                        hint.append(", ");
+                    }
+                    hint.append(codecsV[formatsCodecs[i][j]]);
+                }
+                hint.append(".");
+                param->appendOption(formatsV[i], hint);
+            }
         }
         param->setAnimates(false);
         param->setDefault(0);
@@ -3757,8 +3822,22 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         param->setLabel(kParamCodecName);
         param->setHint(kParamCodecHint);
         const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsKnobLabels();// getCodecsLongNames();
+        const std::vector<std::vector<size_t> >& codecsFormats = FFmpegSingleton::Instance().getCodecsFormats();
+        const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsShortNames();
         for (unsigned int i = 0; i < codecsV.size(); ++i) {
-            param->appendOption(codecsV[i]);
+            if (codecsFormats[i].empty()) {
+                param->appendOption(codecsV[i]);
+            } else {
+                std::string hint = "Compatible with ";
+                for (unsigned int j = 0; j < codecsFormats[i].size(); ++j) {
+                    if (j != 0) {
+                        hint.append(", ");
+                    }
+                    hint.append(formatsV[codecsFormats[i][j]]);
+                }
+                hint.append(".");
+                param->appendOption(codecsV[i], hint);
+            }
         }
         param->setAnimates(false);
         param->setDefault(0);
