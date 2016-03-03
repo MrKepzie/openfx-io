@@ -152,7 +152,8 @@ namespace
     // A range of codecs are omitted for licensing reasons, or because they support obselete/unnecessary
     // formats that confuse the interface.
 
-#define UNSAFEQT false // set to false: we care about QuickTime, because it is used widely
+#define UNSAFEQT0 true // set to true: not really harmful
+#define UNSAFEQT false // set to false: we care about QuickTime, because it is used widely - mainly colorshift issues
 #define UNSAFEVLC true // set to true: we don't care much about being playable in VLC
 #define TERRIBLE false
 //#define SHOULDWORK true
@@ -161,50 +162,50 @@ namespace
     {
         // Video codecs.
         { "aic",            true,  false }, // Apple Intermediate Codec (no encoder)
-        { "avrp",           true,  UNSAFEQT && UNSAFEVLC }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec. Only MOV (AVI seems broken in FFmpeg 3.0).
+        { "avrp",           true,  UNSAFEQT0 && UNSAFEVLC }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec. Only MOV (AVI seems broken in FFmpeg 3.0).
         { "avui",           true,  false }, // Avid Meridien Uncompressed - write not supported as this is an SD only codec. Only 720x486 and 720x576 are supported. experimental in ffmpeg 2.6.1.
-        { "ayuv",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable. Only AVI, MKV or MOV.
+        { "ayuv",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable. Only AVI, MKV or MOV.
         { "cinepak",        true,  true }, // Cinepak. Only AVI or MOV.
         { "dnxhd",          true,  true }, // VC3/DNxHD
-        { "ffv1",           true,  UNSAFEQT && UNSAFEVLC }, // FFmpeg video codec #1 - write not supported as not official qt readable.
-        { "ffvhuff",        true,  UNSAFEQT && UNSAFEVLC }, // Huffyuv FFmpeg variant - write not supported as not official qt readable. AVI and MKV OK in VLC, but MOV doesn't play.
-        { "flv",            true,  UNSAFEQT }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video) - write not supported as not official qt readable.
+        { "ffv1",           true,  UNSAFEQT0 && UNSAFEVLC }, // FFmpeg video codec #1 - write not supported as not official qt readable.
+        { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC }, // Huffyuv FFmpeg variant - write not supported as not official qt readable. AVI and MKV OK in VLC, but MOV doesn't play.
+        { "flv",            true,  UNSAFEQT0 }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video) - write not supported as not official qt readable.
         { "gif",            true,  false }, // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
         { "h264",           true,  false }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
         { "hevc",           true,  false }, // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
-        { "huffyuv",        true,  UNSAFEQT && UNSAFEVLC }, // HuffYUV - write not supported as not official qt readable. MOV seems broken in VLC.
-        { "jpeg2000",       true,  UNSAFEQT }, // JPEG 2000 - write not supported as not official qt readable.
-        { "jpegls",         true,  UNSAFEQT }, // JPEG-LS - write not supported as can't be read in in official qt.
+        { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC }, // HuffYUV - write not supported as not official qt readable. MOV seems broken in VLC.
+        { "jpeg2000",       true,  UNSAFEQT0 }, // JPEG 2000 - write not supported as not official qt readable.
+        { "jpegls",         true,  UNSAFEQT0 }, // JPEG-LS - write not supported as can't be read in in official qt.
         { "libopenh264",    true,  true }, // Cisco libopenh264 H.264/MPEG-4 AVC encoder
-        { "libschroedinger", true,  UNSAFEQT && UNSAFEVLC }, // libschroedinger Dirac - write untested. VLC plays with a wrong format
+        { "libschroedinger", true,  UNSAFEQT0 && UNSAFEVLC }, // libschroedinger Dirac - write untested. VLC plays with a wrong format
         { "libtheora",      true,  UNSAFEQT }, // libtheora Theora - write untested. MKV only.
-        { "libvpx",         true,  UNSAFEQT }, // On2 VP8
-        { "libvpx-vp9",     true,  UNSAFEQT && TERRIBLE }, // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
-        { "libx264",        true,  UNSAFEQT }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
-        { "libx264rgb",     true,  UNSAFEQT }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB (encoder)
-        { "libx265",        true,  UNSAFEQT }, // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
-        { "ljpeg",          true,  UNSAFEQT }, // Lossless JPEG - write not supported as can't be read in in official qt.
+        { "libvpx",         true,  UNSAFEQT0 }, // On2 VP8
+        { "libvpx-vp9",     true,  UNSAFEQT0 && TERRIBLE }, // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
+        { "libx264",        true,  UNSAFEQT0 }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
+        { "libx264rgb",     true,  UNSAFEQT0 }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB (encoder)
+        { "libx265",        true,  UNSAFEQT0 }, // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
+        { "ljpeg",          true,  UNSAFEQT0 }, // Lossless JPEG - write not supported as can't be read in in official qt.
         { "mjpeg",          true,  true }, // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
         { "mpeg1video",     true,  true }, // MPEG-1 video. Only MPEG format.
         { "mpeg2video",     true,  true }, // MPEG-2 video (MOV does not play in VLC)
         { "mpeg4",          true,  true }, // MPEG-4 part 2
-        { "msmpeg4v2",      true,  UNSAFEQT }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
-        { "msmpeg4",        true,  UNSAFEQT }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
+        { "msmpeg4v2",      true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
+        { "msmpeg4",        true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
         { "png",            true,  true }, // PNG (Portable Network Graphics) image
         { "prores",         true,  false }, // Apple ProRes (the encoder is prores_ks)
         { "qtrle",          true,  true }, // QuickTime Animation (RLE) video
         { "r10k",           true,  UNSAFEQT && UNSAFEVLC }, // AJA Kono 10-bit RGB - write not supported as not official qt readable without colourshifts.
         { "r210",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
-        { "rawvideo",       true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
+        { "rawvideo",       true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
         { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
         { "targa",          true,  true }, // Truevision Targa image.
         { "theora",         true,  false }, // Theora (decoder).
         { "tiff",           true,  true }, // TIFF Image. MOV only.
         { "v210",           true,  UNSAFEQT }, // Uncompressed 4:2:2 10-bit- write not supported as not official qt readable without colourshifts.
-        { "v308",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
-        { "v408",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed packed QT 4:4:4:4 - write not supported as official qt can't write, so bad round trip choice and 8-bit only.
-        { "v410",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed 4:4:4 10-bit - write not supported as not official qt readable with standard codecs.
-        { "vc2",            true,  UNSAFEQT && UNSAFEVLC }, // SMPTE VC-2 (previously BBC Dirac Pro).
+        { "v308",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
+        { "v408",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed QT 4:4:4:4 - write not supported as official qt can't write, so bad round trip choice and 8-bit only.
+        { "v410",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed 4:4:4 10-bit - write not supported as not official qt readable with standard codecs.
+        { "vc2",            true,  UNSAFEQT0 && UNSAFEVLC }, // SMPTE VC-2 (previously BBC Dirac Pro).
         { "vp8",            true,  false }, // On2 VP8 (decoder)
         { "vp9",            true,  false }, // Google VP9 (decoder)
 
