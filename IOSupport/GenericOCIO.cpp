@@ -682,35 +682,25 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 
 #ifdef OFX_IO_USING_OCIO
 void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const std::string& inputSpace, const std::string& outputSpace)
+GenericOCIO::setValues(const std::string& inputSpace, const std::string& outputSpace)
 {
-    _proc = config->getProcessor(inputSpace.c_str(), outputSpace.c_str());
+    return setValues(_config->getCurrentContext(), inputSpace.c_str(), outputSpace.c_str());
 }
 
 void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
+GenericOCIO::setValues(const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
 {
-    _proc = config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+    if (!_proc ||
+        context != _procContext ||
+        inputSpace != _procInputSpace ||
+        outputSpace != _procOutputSpace) {
+        _procContext = context;
+        _procInputSpace = inputSpace;
+        _procOutputSpace = outputSpace;
+        _proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+    }
 }
 
-void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform)
-{
-    _proc = config->getProcessor(transform);
-}
-
-void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction)
-{
-    _proc = config->getProcessor(transform, direction);
-}
-
-
-void
-OCIOProcessor::setValues(const OCIO_NAMESPACE::ConstConfigRcPtr &config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction)
-{
-    _proc = config->getProcessor(context, transform, direction);
-}
 
 void
 OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
@@ -785,7 +775,8 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
     std::string outputSpace;
     getOutputColorspaceAtTime(time, outputSpace);
     OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
-    processor.setValues(_config, context, inputSpace, outputSpace);
+    setValues(context, inputSpace, outputSpace);
+    processor.setProcessor(getProcessor());
 
     // set the render window
     processor.setRenderWindow(renderWindow);

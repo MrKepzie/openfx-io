@@ -279,6 +279,11 @@ private:
     OFX::BooleanParam* _maskInvert;
 
     std::auto_ptr<GenericOCIO> _ocio;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    std::string _procLook;
+    std::string _procInputSpace;
+    std::string _procOutputSpace;
+    int _procDirection;
 };
 
 OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
@@ -287,6 +292,7 @@ OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
 , _srcClip(0)
 , _maskClip(0)
 , _ocio(new GenericOCIO(this))
+, _procDirection(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -312,8 +318,7 @@ OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 
-    bool singleLook;
-    _singleLook->getValue(singleLook);
+    bool singleLook = _singleLook->getValue();
     _lookChoice->setEvaluateOnChange(singleLook);
     _lookCombination->setEnabled(!singleLook);
     _lookCombination->setEvaluateOnChange(!singleLook);
@@ -380,8 +385,7 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
     std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     if (doMasking) {
-        bool maskInvert;
-        _maskInvert->getValueAtTime(time, maskInvert);
+        bool maskInvert = _maskInvert->getValueAtTime(time);
         processor.doMasking(true);
         processor.setMaskImg(mask.get(), maskInvert);
     }
@@ -399,12 +403,9 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     // set the render window
     processor.setRenderWindow(renderWindow);
 
-    bool premult;
-    int premultChannel;
-    _premult->getValueAtTime(time, premult);
-    _premultChannel->getValueAtTime(time, premultChannel);
-    double mix;
-    _mix->getValueAtTime(time, mix);
+    bool premult = _premult->getValueAtTime(time);
+    int premultChannel = _premultChannel->getValueAtTime(time);
+    double mix = _mix->getValueAtTime(time);
     processor.setPremultMaskMix(premult, premultChannel, mix);
 
     // Call the base class process member, this will call the derived templated process code
@@ -494,8 +495,7 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     OCIO::ConstConfigRcPtr config = _ocio->getConfig();
     assert(config);
 
-    bool singleLook;
-    _singleLook->getValueAtTime(time, singleLook);
+    bool singleLook = _singleLook->getValueAtTime(time);
     std::string lookCombination;
     _lookCombination->getValueAtTime(time, lookCombination);
     if (_ocio->isIdentity(time) && !singleLook && lookCombination.empty()) {
@@ -505,14 +505,12 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     _ocio->getInputColorspaceAtTime(time, inputSpace);
     std::string look;
     if (singleLook) {
-        int lookChoice_i;
-        _lookChoice->getValueAtTime(time, lookChoice_i);
+        int lookChoice_i = _lookChoice->getValueAtTime(time);
         look = config->getLookNameByIndex(lookChoice_i);
     } else {
         look = lookCombination;
     }
-    int _directioni;
-    _direction->getValueAtTime(time, _directioni);
+    int directioni = _direction->getValueAtTime(time);
     std::string outputSpace;
     _ocio->getOutputColorspaceAtTime(time, outputSpace);
 
@@ -521,26 +519,33 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
     try {
-        OCIO::TransformDirection direction = OCIO::TRANSFORM_DIR_UNKNOWN;
-        OCIO::LookTransformRcPtr transform = OCIO::LookTransform::Create();
-        transform->setLooks(look.c_str());
+        if (!_proc ||
+            _procLook != look ||
+            _procInputSpace != inputSpace ||
+            _procOutputSpace != outputSpace ||
+            _procDirection != directioni) {
 
-        if (_directioni == 0) {
-            transform->setSrc(inputSpace.c_str());
-            transform->setDst(outputSpace.c_str());
-            direction = OCIO::TRANSFORM_DIR_FORWARD;
-        } else {
-            // The TRANSFORM_DIR_INVERSE applies an inverse for the end-to-end transform,
-            // which would otherwise do dst->inv look -> src.
-            // This is an unintuitive result for the artist (who would expect in, out to
-            // remain unchanged), so we account for that here by flipping src/dst
+            OCIO::TransformDirection direction = OCIO::TRANSFORM_DIR_UNKNOWN;
+            OCIO::LookTransformRcPtr transform = OCIO::LookTransform::Create();
+            transform->setLooks(look.c_str());
 
-            transform->setSrc(outputSpace.c_str());
-            transform->setDst(inputSpace.c_str());
-            direction = OCIO::TRANSFORM_DIR_INVERSE;
+            if (directioni == 0) {
+                transform->setSrc(inputSpace.c_str());
+                transform->setDst(outputSpace.c_str());
+                direction = OCIO::TRANSFORM_DIR_FORWARD;
+            } else {
+                // The TRANSFORM_DIR_INVERSE applies an inverse for the end-to-end transform,
+                // which would otherwise do dst->inv look -> src.
+                // This is an unintuitive result for the artist (who would expect in, out to
+                // remain unchanged), so we account for that here by flipping src/dst
+
+                transform->setSrc(outputSpace.c_str());
+                transform->setDst(inputSpace.c_str());
+                direction = OCIO::TRANSFORM_DIR_INVERSE;
+            }
+            _proc = config->getProcessor(transform, direction);
         }
-
-        processor.setValues(config, transform, direction);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);

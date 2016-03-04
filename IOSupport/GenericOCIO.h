@@ -93,6 +93,7 @@ public:
 #ifdef OFX_IO_USING_OCIO
     OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
     OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
+    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor() { return _proc; };
 #endif
     bool configIsDefault();
 
@@ -100,6 +101,11 @@ public:
     static void describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* inputSpaceLabel = kOCIOParamInputSpaceLabel);
     static void describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* outputSpaceNameDefault, const char* outputSpaceLabel = kOCIOParamOutputSpaceLabel);
     static void describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page);
+
+#ifdef OFX_IO_USING_OCIO
+    void setValues(const std::string& inputSpace, const std::string& outputSpace);
+    void setValues(const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace);
+#endif
 
 private:
     void loadConfig();
@@ -129,6 +135,12 @@ private:
     OFX::StringParam* _contextValue4;
 
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OCIO_NAMESPACE::ConstContextRcPtr _procContext;
+    std::string _procInputSpace;
+    std::string _procOutputSpace;
+    OCIO_NAMESPACE::ConstTransformRcPtr _procTransform;
+    OCIO_NAMESPACE::TransformDirection _procDirection;
 #endif
 };
 
@@ -145,11 +157,9 @@ public:
     // and do some processing
     void multiThreadProcessImages(OfxRectI procWindow);
 
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const std::string& inputSpace, const std::string& outputSpace);
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace);
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform);
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
-    void setValues(const OCIO_NAMESPACE::ConstConfigRcPtr& config, const OCIO_NAMESPACE::ConstContextRcPtr &context, const OCIO_NAMESPACE::ConstTransformRcPtr& transform, OCIO_NAMESPACE::TransformDirection direction);
+    void setProcessor(const OCIO_NAMESPACE::ConstProcessorRcPtr& proc) {
+        _proc = proc;
+    }
 
 private:
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
