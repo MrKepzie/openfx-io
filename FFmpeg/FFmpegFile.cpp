@@ -162,23 +162,24 @@ namespace
     {
         // Video codecs.
         { "aic",            true,  false }, // Apple Intermediate Codec (no encoder)
-        { "avrp",           true,  UNSAFEQT0 && UNSAFEVLC }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec. Only MOV (AVI seems broken in FFmpeg 3.0).
+        { "avrp",           true,  UNSAFEQT0 && UNSAFEVLC }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec.
         { "avui",           true,  false }, // Avid Meridien Uncompressed - write not supported as this is an SD only codec. Only 720x486 and 720x576 are supported. experimental in ffmpeg 2.6.1.
-        { "ayuv",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable. Only AVI, MKV or MOV.
-        { "cinepak",        true,  true }, // Cinepak. Only AVI or MOV.
+        { "ayuv",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable.
+        { "cfhd",           true,  false }, // Cineform HD.
+        { "cinepak",        true,  true }, // Cinepak.
         { "dnxhd",          true,  true }, // VC3/DNxHD
         { "ffv1",           true,  UNSAFEQT0 && UNSAFEVLC }, // FFmpeg video codec #1 - write not supported as not official qt readable.
-        { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC }, // Huffyuv FFmpeg variant - write not supported as not official qt readable. AVI and MKV OK in VLC, but MOV doesn't play.
+        { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC }, // Huffyuv FFmpeg variant - write not supported as not official qt readable.
         { "flv",            true,  UNSAFEQT0 }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video) - write not supported as not official qt readable.
         { "gif",            true,  false }, // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
         { "h264",           true,  false }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
         { "hevc",           true,  false }, // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
-        { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC }, // HuffYUV - write not supported as not official qt readable. MOV seems broken in VLC.
+        { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC }, // HuffYUV - write not supported as not official qt readable.
         { "jpeg2000",       true,  UNSAFEQT0 }, // JPEG 2000 - write not supported as not official qt readable.
         { "jpegls",         true,  UNSAFEQT0 }, // JPEG-LS - write not supported as can't be read in in official qt.
         { "libopenh264",    true,  true }, // Cisco libopenh264 H.264/MPEG-4 AVC encoder
         { "libschroedinger", true,  UNSAFEQT0 && UNSAFEVLC }, // libschroedinger Dirac - write untested. VLC plays with a wrong format
-        { "libtheora",      true,  UNSAFEQT }, // libtheora Theora - write untested. MKV only.
+        { "libtheora",      true,  UNSAFEQT }, // libtheora Theora - write untested.
         { "libvpx",         true,  UNSAFEQT0 }, // On2 VP8
         { "libvpx-vp9",     true,  UNSAFEQT0 && TERRIBLE }, // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
         { "libx264",        true,  UNSAFEQT0 }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
@@ -186,8 +187,8 @@ namespace
         { "libx265",        true,  UNSAFEQT0 }, // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
         { "ljpeg",          true,  UNSAFEQT0 }, // Lossless JPEG - write not supported as can't be read in in official qt.
         { "mjpeg",          true,  true }, // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
-        { "mpeg1video",     true,  true }, // MPEG-1 video. Only MPEG format.
-        { "mpeg2video",     true,  true }, // MPEG-2 video (MOV does not play in VLC)
+        { "mpeg1video",     true,  true }, // MPEG-1 video
+        { "mpeg2video",     true,  true }, // MPEG-2 video
         { "mpeg4",          true,  true }, // MPEG-4 part 2
         { "msmpeg4v2",      true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
         { "msmpeg4",        true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
@@ -200,7 +201,7 @@ namespace
         { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
         { "targa",          true,  true }, // Truevision Targa image.
         { "theora",         true,  false }, // Theora (decoder).
-        { "tiff",           true,  true }, // TIFF Image. MOV only.
+        { "tiff",           true,  true }, // TIFF Image
         { "v210",           true,  UNSAFEQT }, // Uncompressed 4:2:2 10-bit- write not supported as not official qt readable without colourshifts.
         { "v308",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
         { "v408",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed QT 4:4:4:4 - write not supported as official qt can't write, so bad round trip choice and 8-bit only.
