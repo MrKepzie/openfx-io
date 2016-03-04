@@ -307,6 +307,13 @@ private:
     OFX::ChoiceParam* _channel;
 
     std::auto_ptr<GenericOCIO> _ocio;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    std::string _procInputSpace;
+    ChannelSelectorEnum _procChannel;
+    std::string _procDisplay;
+    std::string _procView;
+    double _procGain;
+    double _procGamma;
 };
 
 OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
@@ -568,101 +575,113 @@ OCIODisplayPlugin::apply(double time, const OfxRectI& renderWindow, float *pixel
 
     std::string inputSpace;
     _ocio->getInputColorspaceAtTime(time, inputSpace);
-    int channel_i;
-    _channel->getValueAtTime(time, channel_i);
-    ChannelSelectorEnum channel = (ChannelSelectorEnum)channel_i;
+    ChannelSelectorEnum channel = (ChannelSelectorEnum)_channel->getValueAtTime(time);
+    std::string display;
+    _display->getValueAtTime(time, display);
+    std::string view;
+    _view->getValueAtTime(time, view);
+    double gain = _gain->getValueAtTime(time);
+    double gamma = _gamma->getValueAtTime(time);
 
     try {
-        OCIO::ConstConfigRcPtr config = _ocio->getConfig();
-        assert(config);
-        OCIO::DisplayTransformRcPtr transform = OCIO::DisplayTransform::Create();
-        transform->setInputColorSpaceName(inputSpace.c_str());
+        if (!_proc ||
+            _procInputSpace != inputSpace ||
+            _procChannel != channel ||
+            _procDisplay != display ||
+            _procView != view ||
+            _procGain != gain ||
+            _procGamma != gamma) {
 
-        std::string display;
-        _display->getValueAtTime(time, display);
-        transform->setDisplay(display.c_str());
+            OCIO::ConstConfigRcPtr config = _ocio->getConfig();
+            assert(config);
+            OCIO::DisplayTransformRcPtr transform = OCIO::DisplayTransform::Create();
+            transform->setInputColorSpaceName(inputSpace.c_str());
 
-        std::string view;
-        _view->getValueAtTime(time, view);
-        transform->setView(view.c_str());
+            transform->setDisplay(display.c_str());
 
-        // Specify an (optional) linear color correction
-        {
-            float m44[16];
-            float offset4[4];
-            double gain;
-            _gain->getValueAtTime(time, gain);
-            const float slope4f[] = { gain, gain, gain, gain };
-            OCIO::MatrixTransform::Scale(m44, offset4, slope4f);
+            transform->setView(view.c_str());
 
-            OCIO::MatrixTransformRcPtr mtx =  OCIO::MatrixTransform::Create();
-            mtx->setValue(m44, offset4);
-
-            transform->setLinearCC(mtx);
-        }
-
-        // Specify an (optional) post-display transform.
-        {
-            double gamma;
-            _gamma->getValueAtTime(time, gamma);
-            float exponent = 1.0f/std::max(1e-6f, (float)gamma);
-            const float exponent4f[] = { exponent, exponent, exponent, exponent };
-            OCIO::ExponentTransformRcPtr cc =  OCIO::ExponentTransform::Create();
-            cc->setValue(exponent4f);
-            transform->setDisplayCC(cc);
-        }
-
-        // Add Channel swizzling
-        {
-            int channelHot[4] = { 0, 0, 0, 0};
-
-            switch(channel)
+            // Specify an (optional) linear color correction
             {
-                case eChannelSelectorLuminance: // Luma
-                    channelHot[0] = 1;
-                    channelHot[1] = 1;
-                    channelHot[2] = 1;
-                    break;
-                //case eChannelSelectorMatteOverlay: //  Channel overlay mode. Do rgb, and then swizzle later
-                //    channelHot[0] = 1;
-                //    channelHot[1] = 1;
-                //    channelHot[2] = 1;
-                //    channelHot[3] = 1;
-                //    break;
-                case eChannelSelectorRGB: // RGB
-                    channelHot[0] = 1;
-                    channelHot[1] = 1;
-                    channelHot[2] = 1;
-                    channelHot[3] = 1;
-                    break;
-                case eChannelSelectorR: // R
-                    channelHot[0] = 1;
-                    break;
-                case eChannelSelectorG: // G
-                    channelHot[1] = 1;
-                    break;
-                case eChannelSelectorB: // B
-                    channelHot[2] = 1;
-                    break;
-                case eChannelSelectorA: // A
-                    channelHot[3] = 1;
-                    break;
-                default:
-                    break;
+                float m44[16];
+                float offset4[4];
+                const float slope4f[] = { gain, gain, gain, gain };
+                OCIO::MatrixTransform::Scale(m44, offset4, slope4f);
+
+                OCIO::MatrixTransformRcPtr mtx =  OCIO::MatrixTransform::Create();
+                mtx->setValue(m44, offset4);
+
+                transform->setLinearCC(mtx);
             }
 
-            float lumacoef[3];
-            config->getDefaultLumaCoefs(lumacoef);
-            float m44[16];
-            float offset[4];
-            OCIO::MatrixTransform::View(m44, offset, channelHot, lumacoef);
-            OCIO::MatrixTransformRcPtr swizzle = OCIO::MatrixTransform::Create();
-            swizzle->setValue(m44, offset);
-            transform->setChannelView(swizzle);
-        }
+            // Specify an (optional) post-display transform.
+            {
+                float exponent = 1.0f/std::max(1e-6f, (float)gamma);
+                const float exponent4f[] = { exponent, exponent, exponent, exponent };
+                OCIO::ExponentTransformRcPtr cc =  OCIO::ExponentTransform::Create();
+                cc->setValue(exponent4f);
+                transform->setDisplayCC(cc);
+            }
 
-        OCIO::ConstContextRcPtr context = _ocio->getLocalContext(time);
-        processor.setValues(config, context, transform, OCIO::TRANSFORM_DIR_FORWARD);
+            // Add Channel swizzling
+            {
+                int channelHot[4] = { 0, 0, 0, 0};
+
+                switch(channel)
+                {
+                    case eChannelSelectorLuminance: // Luma
+                        channelHot[0] = 1;
+                        channelHot[1] = 1;
+                        channelHot[2] = 1;
+                        break;
+                        //case eChannelSelectorMatteOverlay: //  Channel overlay mode. Do rgb, and then swizzle later
+                        //    channelHot[0] = 1;
+                        //    channelHot[1] = 1;
+                        //    channelHot[2] = 1;
+                        //    channelHot[3] = 1;
+                        //    break;
+                    case eChannelSelectorRGB: // RGB
+                        channelHot[0] = 1;
+                        channelHot[1] = 1;
+                        channelHot[2] = 1;
+                        channelHot[3] = 1;
+                        break;
+                    case eChannelSelectorR: // R
+                        channelHot[0] = 1;
+                        break;
+                    case eChannelSelectorG: // G
+                        channelHot[1] = 1;
+                        break;
+                    case eChannelSelectorB: // B
+                        channelHot[2] = 1;
+                        break;
+                    case eChannelSelectorA: // A
+                        channelHot[3] = 1;
+                        break;
+                    default:
+                        break;
+                }
+
+                float lumacoef[3];
+                config->getDefaultLumaCoefs(lumacoef);
+                float m44[16];
+                float offset[4];
+                OCIO::MatrixTransform::View(m44, offset, channelHot, lumacoef);
+                OCIO::MatrixTransformRcPtr swizzle = OCIO::MatrixTransform::Create();
+                swizzle->setValue(m44, offset);
+                transform->setChannelView(swizzle);
+            }
+            
+            OCIO::ConstContextRcPtr context = _ocio->getLocalContext(time);
+            _proc = config->getProcessor(context, transform, OCIO::TRANSFORM_DIR_FORWARD);
+            _procInputSpace = inputSpace;
+            _procChannel = channel;
+            _procDisplay = display;
+            _procView = view;
+            _procGain = gain;
+            _procGamma = gamma;
+        }
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);

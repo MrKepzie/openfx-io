@@ -226,6 +226,8 @@ private:
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    int _procMode;
 };
 
 OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
@@ -233,6 +235,7 @@ OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
 , _dstClip(0)
 , _srcClip(0)
 , _maskClip(0)
+, _procMode(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -448,22 +451,26 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
-    int mode_i;
-    _mode->getValueAtTime(time, mode_i);
+    int mode_i = _mode->getValueAtTime(time);
 
     try {
-        const char * src = 0;
-        const char * dst = 0;
+        if (!_proc ||
+            _procMode != mode_i) {
 
-        if (mode_i == 0) {
-            src = OCIO::ROLE_COMPOSITING_LOG;
-            dst = OCIO::ROLE_SCENE_LINEAR;
-        } else {
-            src = OCIO::ROLE_SCENE_LINEAR;
-            dst = OCIO::ROLE_COMPOSITING_LOG;
+            const char * src = 0;
+            const char * dst = 0;
+
+            if (mode_i == 0) {
+                src = OCIO::ROLE_COMPOSITING_LOG;
+                dst = OCIO::ROLE_SCENE_LINEAR;
+            } else {
+                src = OCIO::ROLE_SCENE_LINEAR;
+                dst = OCIO::ROLE_COMPOSITING_LOG;
+            }
+
+            _proc = _config->getProcessor(src, dst);
         }
-
-        processor.setValues(_config, src, dst);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);

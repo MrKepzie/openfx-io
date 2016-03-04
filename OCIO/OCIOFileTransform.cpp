@@ -265,6 +265,11 @@ private:
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    std::string _procFile;
+    std::string _procCCCId;
+    int _procDirection;
+    int _procInterpolation;
 };
 
 OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
@@ -272,6 +277,8 @@ OCIOFileTransformPlugin::OCIOFileTransformPlugin(OfxImageEffectHandle handle)
 , _dstClip(0)
 , _srcClip(0)
 , _maskClip(0)
+, _procDirection(-1)
+, _procInterpolation(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -470,43 +477,49 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     _file->getValueAtTime(time, file);
     std::string cccid;
     _cccid->getValueAtTime(time, cccid);
+    int directioni = _direction->getValueAtTime(time);
+    int interpolationi = _interpolation->getValueAtTime(time);
 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
         assert(config);
-        OCIO::FileTransformRcPtr transform = OCIO::FileTransform::Create();
-        transform->setSrc(file.c_str());
+        if (!_proc ||
+            _procFile != file ||
+            _procCCCId != cccid ||
+            _procDirection != directioni ||
+            _procInterpolation != interpolationi) {
+            OCIO::FileTransformRcPtr transform = OCIO::FileTransform::Create();
+            transform->setSrc(file.c_str());
+            transform->setCCCId(cccid.c_str());
 
-        transform->setCCCId(cccid.c_str());
+            if (directioni == 0) {
+                transform->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
+            } else {
+                transform->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            }
 
-        int _directioni;
-        _direction->getValueAtTime(time, _directioni);
+            if (interpolationi == 0) {
+                transform->setInterpolation(OCIO::INTERP_NEAREST);
+            } else if(interpolationi == 1) {
+                transform->setInterpolation(OCIO::INTERP_LINEAR);
+            } else if(interpolationi == 2) {
+                transform->setInterpolation(OCIO::INTERP_TETRAHEDRAL);
+            } else if(interpolationi == 3) {
+                transform->setInterpolation(OCIO::INTERP_BEST);
+            } else {
+                // Should never happen
+                setPersistentMessage(OFX::Message::eMessageError, "", "OCIO Interpolation value out of bounds");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
+            }
 
-        if (_directioni == 0) {
-            transform->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
-        } else {
-            transform->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            _proc = config->getProcessor(transform, OCIO::TRANSFORM_DIR_FORWARD);
+            _procFile = file;
+            _procCCCId = cccid;
+            _procDirection = directioni;
+            _procInterpolation = interpolationi;
         }
-
-        int _interpolationi;
-        _interpolation->getValueAtTime(time, _interpolationi);
-
-        if (_interpolationi == 0) {
-            transform->setInterpolation(OCIO::INTERP_NEAREST);
-        } else if(_interpolationi == 1) {
-            transform->setInterpolation(OCIO::INTERP_LINEAR);
-        } else if(_interpolationi == 2) {
-            transform->setInterpolation(OCIO::INTERP_TETRAHEDRAL);
-        } else if(_interpolationi == 3) {
-            transform->setInterpolation(OCIO::INTERP_BEST);
-        } else {
-            // Should never happen
-            setPersistentMessage(OFX::Message::eMessageError, "", "OCIO Interpolation value out of bounds");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
-        }
-
-        processor.setValues(config, transform, OCIO::TRANSFORM_DIR_FORWARD);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);

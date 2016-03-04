@@ -302,6 +302,18 @@ private:
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    double _procSlope_r;
+    double _procSlope_g;
+    double _procSlope_b;
+    double _procOffset_r;
+    double _procOffset_g;
+    double _procOffset_b;
+    double _procPower_r;
+    double _procPower_g;
+    double _procPower_b;
+    double _procSaturation;
+    int _procDirection;
 };
 
 OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
@@ -325,6 +337,17 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
 , _mix(0)
 , _maskApply(0)
 , _maskInvert(0)
+, _procSlope_r(-1)
+, _procSlope_g(-1)
+, _procSlope_b(-1)
+, _procOffset_r(-1)
+, _procOffset_g(-1)
+, _procOffset_b(-1)
+, _procPower_r(-1)
+, _procPower_g(-1)
+, _procPower_b(-1)
+, _procSaturation(-1)
+, _procDirection(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -544,42 +567,64 @@ OCIOCDLTransformPlugin::apply(double time,
     }
 
     float sop[9];
-    double saturation;
-    double r, g, b;
-    _slope->getValueAtTime(time, r, g, b);
-    sop[0] = (float)r;
-    sop[1] = (float)g;
-    sop[2] = (float)b;
-    _offset->getValueAtTime(time, r, g, b);
-    sop[3] = (float)r;
-    sop[4] = (float)g;
-    sop[5] = (float)b;
-    _power->getValueAtTime(time, r, g, b);
-    sop[6] = (float)r;
-    sop[7] = (float)g;
-    sop[8] = (float)b;
-    _saturation->getValueAtTime(time, saturation);
-    int _directioni;
-    _direction->getValueAtTime(time, _directioni);
-    std::string file;
-    _file->getValueAtTime(time, file);
-    std::string cccid;
-    _cccid->getValueAtTime(time, cccid);
+    double slope_r, slope_g, slope_b;
+    _slope->getValueAtTime(time, slope_r, slope_g, slope_b);
+    double offset_r, offset_g, offset_b;
+    _offset->getValueAtTime(time, offset_r, offset_g, offset_b);
+    double power_r, power_g, power_b;
+    _power->getValueAtTime(time, power_r, power_g, power_b);
+    double saturation = _saturation->getValueAtTime(time);
+    int directioni = _direction->getValueAtTime(time);
 
     try {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        assert(config);
-        OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
-        cc->setSOP(sop);
-        cc->setSat((float)saturation);
+        if (!_proc ||
+            _procSlope_r != slope_r ||
+            _procSlope_g != slope_g ||
+            _procSlope_b != slope_b ||
+            _procOffset_r != offset_r ||
+            _procOffset_g != offset_g ||
+            _procOffset_b != offset_b ||
+            _procPower_r != power_r ||
+            _procPower_g != power_g ||
+            _procPower_b != power_b ||
+            _procSaturation != saturation ||
+            _procDirection != directioni) {
 
-        if (_directioni == 0) {
-            cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
-        } else {
-            cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+            assert(config);
+            OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
+            sop[0] = (float)slope_r;
+            sop[1] = (float)slope_g;
+            sop[2] = (float)slope_b;
+            sop[3] = (float)offset_r;
+            sop[4] = (float)offset_g;
+            sop[5] = (float)offset_b;
+            sop[6] = (float)power_r;
+            sop[7] = (float)power_g;
+            sop[8] = (float)power_b;
+            cc->setSOP(sop);
+            cc->setSat((float)saturation);
+
+            if (directioni == 0) {
+                cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
+            } else {
+                cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            }
+            
+            _proc = config->getProcessor(cc);
+            _procSlope_r = slope_r;
+            _procSlope_g = slope_g;
+            _procSlope_b = slope_b;
+            _procOffset_r = offset_r;
+            _procOffset_g = offset_g;
+            _procOffset_b = offset_b;
+            _procPower_r = power_r;
+            _procPower_g = power_g;
+            _procPower_b = power_b;
+            _procSaturation = saturation;
+            _procDirection = directioni;
         }
-
-        processor.setValues(config, cc);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
