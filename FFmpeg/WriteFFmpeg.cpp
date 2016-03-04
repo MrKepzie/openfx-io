@@ -3341,7 +3341,7 @@ WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename, bool setColo
 
 void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    if (paramName == kParamCodec && args.reason == eChangeUserEdit) {
+    if (paramName == kParamCodec) {
         // update the secret parameter
         int codec = _codec->getValue();
         const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
@@ -3357,7 +3357,7 @@ void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                 clearPersistentMessage();
             }
         }
-    } else if (paramName == kParamFormat && args.reason == eChangeUserEdit) {
+    } else if (paramName == kParamFormat) {
         int codec = _codec->getValue();
         int format = _format->getValue();
         if (format > 0) {
