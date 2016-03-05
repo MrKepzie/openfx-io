@@ -2477,6 +2477,9 @@ ReadOIIOPlugin::metadata(const std::string& filename)
         for (int i = 0;  i < subImages[sIt].nchannels;  ++i) {
             if (i < (int)subImages[sIt].channelnames.size()) {
                 ss << subImages[sIt].channelnames[i];
+                if (i == subImages[sIt].alpha_channel) {
+                    ss << " - alpha channel";
+                }
             } else {
                 ss << "unknown";
             }
@@ -2844,10 +2847,10 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setLabel(kParamChannelOutputLayerChoice);
                 param->setIsSecret(true);
                 param->setAnimates(false);
+                desc.addClipPreferencesSlaveParam(*param);
                 if (page) {
                     page->addChild(*param);
                 }
-                desc.addClipPreferencesSlaveParam(*param);
             }
             {
                 StringParamDescriptor* param = desc.defineStringParam(kParamAvailableViews);
