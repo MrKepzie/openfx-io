@@ -772,8 +772,6 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         param->setHint(kOCIOParamConfigFileHint);
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
-        param->setAnimates(true);
-        desc.addClipPreferencesSlaveParam(*param);
         // the OCIO config can only be set in a portable fashion using the environment variable.
         // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
         // disable it, and set the default from the env variable.
@@ -789,6 +787,8 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         } else {
             param->setDefault(file);
         }
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
         }
