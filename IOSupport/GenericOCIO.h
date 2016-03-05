@@ -27,6 +27,7 @@
 #include <string>
 
 #include <ofxsImageEffect.h>
+#include <ofxsMultiThread.h>
 #include "ofxsPixelProcessor.h"
 
 // define OFX_OCIO_CHOICE to enable the colorspace choice popup menu
@@ -93,7 +94,7 @@ public:
 #ifdef OFX_IO_USING_OCIO
     OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
     OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
-    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor() { return _proc; };
+    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor();
 #endif
     bool configIsDefault();
 
@@ -135,12 +136,13 @@ private:
     OFX::StringParam* _contextValue4;
 
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
+
+    OFX::MultiThread::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     OCIO_NAMESPACE::ConstContextRcPtr _procContext;
     std::string _procInputSpace;
     std::string _procOutputSpace;
-    OCIO_NAMESPACE::ConstTransformRcPtr _procTransform;
-    OCIO_NAMESPACE::TransformDirection _procDirection;
+    //OCIO_NAMESPACE::ConstTransformRcPtr _procTransform;
 #endif
 };
 

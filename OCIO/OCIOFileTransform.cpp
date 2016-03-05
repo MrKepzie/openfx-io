@@ -265,6 +265,8 @@ private:
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
+
+    OFX::MultiThread::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     std::string _procFile;
     std::string _procCCCId;
@@ -483,6 +485,7 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
         assert(config);
+        OFX::MultiThread::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procFile != file ||
             _procCCCId != cccid ||

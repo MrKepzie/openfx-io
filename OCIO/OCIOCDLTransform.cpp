@@ -302,6 +302,8 @@ private:
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
+
+    OFX::MultiThread::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     double _procSlope_r;
     double _procSlope_g;
@@ -577,6 +579,7 @@ OCIOCDLTransformPlugin::apply(double time,
     int directioni = _direction->getValueAtTime(time);
 
     try {
+        OFX::MultiThread::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procSlope_r != slope_r ||
             _procSlope_g != slope_g ||
