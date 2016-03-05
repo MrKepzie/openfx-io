@@ -460,6 +460,9 @@ namespace Exr {
         for (FilesMap::iterator it = _files.begin(); it!= _files.end(); ++it) {
             delete it->second;
         }
+#ifdef OFX_IO_MT_EXR
+        delete _lock;
+#endif
     }
     
     void FileManager::initialize() {
