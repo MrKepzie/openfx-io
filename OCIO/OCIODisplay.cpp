@@ -330,6 +330,9 @@ OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
 , _gamma(0)
 , _channel(0)
 , _ocio(new GenericOCIO(this))
+, _procChannel(eChannelSelectorRGB)
+, _procGain(-1)
+, _procGamma(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -586,6 +589,8 @@ OCIODisplayPlugin::apply(double time, const OfxRectI& renderWindow, float *pixel
     double gamma = _gamma->getValueAtTime(time);
 
     try {
+        OCIO::ConstConfigRcPtr config = _ocio->getConfig();
+        assert(config);
         OFX::MultiThread::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procInputSpace != inputSpace ||
@@ -595,8 +600,6 @@ OCIODisplayPlugin::apply(double time, const OfxRectI& renderWindow, float *pixel
             _procGain != gain ||
             _procGamma != gamma) {
 
-            OCIO::ConstConfigRcPtr config = _ocio->getConfig();
-            assert(config);
             OCIO::DisplayTransformRcPtr transform = OCIO::DisplayTransform::Create();
             transform->setInputColorSpaceName(inputSpace.c_str());
 
