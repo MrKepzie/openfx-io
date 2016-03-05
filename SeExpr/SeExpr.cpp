@@ -2830,7 +2830,6 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamGeneratorFormat);
         param->setLabel(kParamGeneratorFormatLabel);
-        param->setAnimates(false);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
         assert(param->getNOptions() == eParamFormatNTSC);
@@ -2865,6 +2864,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamGeneratorFormatHint);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

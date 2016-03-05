@@ -785,8 +785,8 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->appendOption(kParamTypeOptionSize);
         assert(param->getNOptions() == eResizeTypeScale);
         param->appendOption(kParamTypeOptionScale);
-        param->setAnimates(false);
         param->setDefault(0);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -795,7 +795,6 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
         param->setLabel(kParamFormatLabel);
-        param->setAnimates(false);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
         assert(param->getNOptions() == eParamFormatNTSC);
@@ -830,6 +829,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamFormatHint);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

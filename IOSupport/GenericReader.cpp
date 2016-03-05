@@ -2468,9 +2468,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamFilenameHint);
-        param->setAnimates(false);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -2643,9 +2643,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamProxyHint);
-        param->setAnimates(false);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamProxy);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -2704,7 +2704,6 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFilePremult);
         param->setLabel(kParamFilePremultLabel);
-        param->setAnimates(false);
         param->setHint(kParamFilePremultHint);
         assert(param->getNOptions() == eImageOpaque);
         param->appendOption(premultString(eImageOpaque), kParamFilePremultOptionOpaqueHint);
@@ -2715,6 +2714,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
             param->appendOption(premultString(eImageUnPreMultiplied), kParamFilePremultOptionUnPreMultipliedHint);
             param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         }
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -2764,14 +2764,14 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFrameRate);
         param->setLabel(kParamFrameRateLabel);
         param->setHint(kParamFrameRateHint);
-        param->setAnimates(false);
         param->setEvaluateOnChange(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
-        desc.addClipPreferencesSlaveParam(*param);
         param->setEnabled(false);
         param->setDefault(24.);
         param->setRange(0., DBL_MAX);
         param->setDisplayRange(0.,300.);
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
         }
@@ -2782,8 +2782,8 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamCustomFps);
         param->setLabel(kParamCustomFpsLabel);
         param->setHint(kParamCustomFpsHint);
-        param->setAnimates(false);
         param->setEvaluateOnChange(false);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (addSeparatorAfterLastParameter) {
             param->setLayoutHint(OFX::eLayoutHintDivider);
