@@ -870,7 +870,7 @@ ReadOIIOPlugin::buildLayersMenu()
                 //If the layer name is empty, try to map it to something known
                 if (layer.empty()) {
                     //channel  has already been remapped to our formatting of channels, i.e: 1 upper-case letter
-                    if (channel == "R" || channel == "G" || channel == "B" || channel == "A") {
+                    if (channel == "R" || channel == "G" || channel == "B" || channel == "A" || channel == "I") {
                         layer = kReadOIIOColorLayer;
                     } else if (channel == "X") {
                         //try to put XYZ together, unless Z is alone
@@ -1834,7 +1834,8 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     } else {
         buildLayersMenu();
         if (!_layersUnion.empty()) {
-            switch (_layersUnion[0].second.layer.channelNames.size()) {
+            const std::vector<std::string>& channels = _layersUnion[0].second.layer.channelNames;
+            switch (channels.size()) {
                 case 0:
                     *components = OFX::ePixelComponentNone;
                     *componentCount = 0;
@@ -1851,6 +1852,26 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
                     *components = OFX::ePixelComponentRGBA;
                     *componentCount = 4;
                     break;
+                case 2: {
+                    //in OIIO, PNG with alpha are stored with as a 2-channel image
+                    bool hasI = false;
+                    bool hasA = false;
+                    for (std::size_t i = 0; i < channels.size(); ++i) {
+                        if (channels[i] == "I" || channels[i] == "i") {
+                            hasI = true;
+                        }
+                        if (channels[i] == "A" || channels[i] == "a") {
+                            hasA = true;
+                        }
+                    }
+                    if (hasI && hasA) {
+                        *components = OFX::ePixelComponentRGBA;
+                        *componentCount = 4;
+                    } else {
+                        *components = OFX::ePixelComponentXY;
+                        *componentCount = 2;
+                    }
+                }   break;
                 default:
                     *components = OFX::ePixelComponentRGBA;
                     *componentCount = 4;
@@ -1977,10 +1998,17 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
         case OFX::ePixelComponentRGBA:
             numChannels = 4;
             channels.resize(numChannels);
-            channels[0] = 0 < layerChannels.size() ? layerChannels[0] + kXChannelFirst : 0;
-            channels[1] = 1 < layerChannels.size() ? layerChannels[1] + kXChannelFirst : 0;
-            channels[2] = 2 < layerChannels.size() ? layerChannels[2] + kXChannelFirst : 0;
-            channels[3] = 3 < layerChannels.size() ? layerChannels[3] + kXChannelFirst : 1;
+            if (layerChannels.size() == 2 && foundView->second[foundLayer].second.channelNames[0] == "I" && foundView->second[foundLayer].second.channelNames[1] == "A") {
+                channels[0] = layerChannels[0] + kXChannelFirst;
+                channels[1] = layerChannels[0] + kXChannelFirst;
+                channels[2] = layerChannels[0] + kXChannelFirst;
+                channels[3] = layerChannels[1] + kXChannelFirst;
+            } else {
+                channels[0] = 0 < layerChannels.size() ? layerChannels[0] + kXChannelFirst : 0;
+                channels[1] = 1 < layerChannels.size() ? layerChannels[1] + kXChannelFirst : 0;
+                channels[2] = 2 < layerChannels.size() ? layerChannels[2] + kXChannelFirst : 0;
+                channels[3] = 3 < layerChannels.size() ? layerChannels[3] + kXChannelFirst : 1;
+            }
             break;
         case OFX::ePixelComponentRGB:
             numChannels = 3;
