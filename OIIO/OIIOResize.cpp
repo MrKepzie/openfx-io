@@ -50,6 +50,10 @@ GCC_DIAG_ON(unused-parameter)
 
 #include "IOUtility.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "ResizeOIIO"
 #define kPluginGrouping "Transform"
 #define kPluginDescription  "Use OpenImageIO to resize images."
@@ -102,7 +106,6 @@ enum ResizeTypeEnum
 
 #define kSrcClipChanged "srcClipChanged"
 
-using namespace OFX;
 using namespace OpenImageIO;
 
 class OIIOResizePlugin : public OFX::ImageEffect
@@ -708,8 +711,6 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
 }
 
 
-using namespace OFX;
-
 mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -919,3 +920,5 @@ ImageEffect* OIIOResizePluginFactory::createInstance(OfxImageEffectHandle handle
 
 static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

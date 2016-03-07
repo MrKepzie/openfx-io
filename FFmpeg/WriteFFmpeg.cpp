@@ -78,6 +78,11 @@ extern "C" {
 #include <iostream>
 #endif
 
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "WriteFFmpeg"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription "Write images using FFmpeg."
@@ -528,10 +533,6 @@ const char* getProfileStringFromShortName(const std::string& name)
     }
     return "auto";
 }
-
-struct AVCodecContext;
-struct AVFormatContext;
-struct AVStream;
 
 ////////////////////////////////////////////////////////////////////////////////
 // MyAVFrame
@@ -1219,7 +1220,6 @@ FFmpegSingleton::~FFmpegSingleton(){
     
 }
 
-using namespace OFX;
 
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
 : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
@@ -3414,8 +3414,6 @@ void WriteFFmpegPlugin::freeFormat()
 }
 
 
-using namespace OFX;
-
 mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, true);
 
 static
@@ -4094,3 +4092,5 @@ ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handl
 
 static WriteFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

@@ -36,6 +36,10 @@
 #include "GenericOCIO.h"
 #include "GenericWriter.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "WriteEXR"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription "Write images using OpenEXR."
@@ -275,7 +279,6 @@ WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
     }
 }
 
-using namespace OFX;
 
 mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, false);
 
@@ -343,3 +346,5 @@ ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, 
 
 static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

@@ -35,6 +35,10 @@ GCC_DIAG_ON(unused-parameter)
 
 #include <ofxsMultiPlane.h>
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "WriteOIIO"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription "Write images using OpenImageIO."
@@ -1365,8 +1369,6 @@ bool WriteOIIOPlugin::isImageFile(const std::string& /*fileExtension*/) const {
 }
 
 
-using namespace OFX;
-
 static std::string oiio_versions()
 {
     std::ostringstream oss;
@@ -1680,3 +1682,5 @@ ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle,
 
 static WriteOIIOPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

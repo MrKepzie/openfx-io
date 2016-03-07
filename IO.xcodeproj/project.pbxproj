@@ -138,6 +138,10 @@
 		1E9B5F73198A5A510095C8AA /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
 		1E9DF4711B0B5F29008C7055 /* OCIODisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */; };
 		1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
+		1EA5A4621C8D84790031138D /* ofxsMultiPlane.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AC9FFEB51C6B36FE000D073B /* ofxsMultiPlane.cpp */; };
+		1EA5A4631C8D848A0031138D /* ofxsMultiPlane.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AC9FFEB51C6B36FE000D073B /* ofxsMultiPlane.cpp */; };
+		1EA5A4641C8D84900031138D /* ofxsMultiPlane.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AC9FFEB51C6B36FE000D073B /* ofxsMultiPlane.cpp */; };
+		1EA5A4651C8D84940031138D /* ofxsMultiPlane.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AC9FFEB51C6B36FE000D073B /* ofxsMultiPlane.cpp */; };
 		1EB199031A482E3F0009D9DF /* fr.inria.openfx.ReadFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F61A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.png */; };
 		1EB199041A482E3F0009D9DF /* fr.inria.openfx.ReadFFmpeg.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F71A41BDF00088844F /* fr.inria.openfx.ReadFFmpeg.svg */; };
 		1EB199051A482E3F0009D9DF /* fr.inria.openfx.WriteFFmpeg.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486F81A41BDF00088844F /* fr.inria.openfx.WriteFFmpeg.png */; };
@@ -156,7 +160,6 @@
 		1EB199151A482EAC0009D9DF /* fr.inria.openfx.WritePFM.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486ED1A41BDD40088844F /* fr.inria.openfx.WritePFM.svg */; };
 		1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
 		1EB6CCF31993B98D000DDB1A /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
-		1ED1A80E18BB4FC200E095DD /* PluginRegistration.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */; };
 		1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
 		1ED3A2611BBC30A3008128B1 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
 		1ED3A2621BBC30A5008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */; };
@@ -535,7 +538,6 @@
 		1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsTransformInteract.cpp; sourceTree = "<group>"; };
 		1EDECBAB18B9F7F10093B6FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1EDECBAC18B9F7F10093B6FC /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PluginRegistration.cpp; sourceTree = "<group>"; };
 		1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = RunScript.cpp; sourceTree = "<group>"; };
 		1EDECBAF18B9F7F10093B6FC /* RunScript.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RunScript.h; sourceTree = "<group>"; };
 		1EDECBE018B9F8040093B6FC /* RunScript.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunScript.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -875,7 +877,6 @@
 				1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */,
 				1EDECBAF18B9F7F10093B6FC /* RunScript.h */,
 				1EE4A8CC19C6F06700E6E3AE /* pstream.h */,
-				1EDECBAD18B9F7F10093B6FC /* PluginRegistration.cpp */,
 				1EDECBAB18B9F7F10093B6FC /* Info.plist */,
 				1EDECBAC18B9F7F10093B6FC /* Makefile */,
 				1EE4A8CB19C6F05100E6E3AE /* fr.inria.openfx.RunScript.png */,
@@ -1234,6 +1235,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1EA5A4651C8D84940031138D /* ofxsMultiPlane.cpp in Sources */,
 				1EDECB9618B95D720093B6FC /* ReadPFM.cpp in Sources */,
 				1EDECB9718B95D760093B6FC /* WritePFM.cpp in Sources */,
 				1E8B5DA818B7A2F300C31FDC /* GenericOCIO.cpp in Sources */,
@@ -1278,7 +1280,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */,
-				1ED1A80E18BB4FC200E095DD /* PluginRegistration.cpp in Sources */,
 				1EDECBB218B9F8040093B6FC /* ofxsProperty.cpp in Sources */,
 				1EDECBB618B9F8040093B6FC /* ofxsCore.cpp in Sources */,
 				1EDECBB718B9F8040093B6FC /* ofxsParams.cpp in Sources */,
@@ -1316,6 +1317,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1EA5A4621C8D84790031138D /* ofxsMultiPlane.cpp in Sources */,
 				1E00B3CB188EE90A003BC7F3 /* ReadEXR.cpp in Sources */,
 				1E00B3CD188EE90A003BC7F3 /* WriteEXR.cpp in Sources */,
 				1E74D851189115BC00E9034B /* GenericOCIO.cpp in Sources */,
@@ -1342,6 +1344,7 @@
 				D780C41819898045002470C9 /* OIIOText.cpp in Sources */,
 				1EB6CCF31993B98D000DDB1A /* OIIOResize.cpp in Sources */,
 				1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */,
+				1EA5A4641C8D84900031138D /* ofxsMultiPlane.cpp in Sources */,
 				1E00B39F188EE887003BC7F3 /* GenericWriter.cpp in Sources */,
 				1E00B393188EE887003BC7F3 /* GenericReader.cpp in Sources */,
 				1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */,
@@ -1376,6 +1379,7 @@
 				1E74D8461891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
 				1E74D83A1891074000E9034B /* ofxsLog.cpp in Sources */,
 				1E74D8371891074000E9034B /* ofxsInteract.cpp in Sources */,
+				1EA5A4631C8D848A0031138D /* ofxsMultiPlane.cpp in Sources */,
 				1E74D83D1891074000E9034B /* ofxsMultiThread.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

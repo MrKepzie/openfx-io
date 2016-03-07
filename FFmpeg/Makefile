@@ -1,6 +1,6 @@
 PLUGINOBJECTS = \
 	ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o ofxsMultiPlane.o
 PLUGINNAME = FFmpeg
 
 TOP_SRCDIR = ..

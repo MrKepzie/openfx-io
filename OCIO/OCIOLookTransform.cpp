@@ -36,6 +36,10 @@
 
 #include "IOUtility.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "OCIOLookTransformOFX"
 #define kPluginGrouping "Color/OCIO"
 #define kPluginDescription \
@@ -770,7 +774,6 @@ OCIOLookTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOLookTransformPluginFactory, {}, {});
 
@@ -912,6 +915,8 @@ ImageEffect* OCIOLookTransformPluginFactory::createInstance(OfxImageEffectHandle
 
 static OCIOLookTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
 #endif // OFX_IO_USING_OCIO
 

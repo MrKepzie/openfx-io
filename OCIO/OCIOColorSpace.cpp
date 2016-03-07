@@ -35,6 +35,10 @@
 #include "IOUtility.h"
 
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "OCIOColorSpaceOFX"
 #define kPluginGrouping "Color/OCIO"
 #define kPluginDescription "ColorSpace transformation using OpenColorIO configuration file."
@@ -578,7 +582,6 @@ OCIOColorSpacePlugin::changedClip(const OFX::InstanceChangedArgs &args, const st
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOColorSpacePluginFactory, {}, {});
 
@@ -658,5 +661,7 @@ ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle ha
 
 static OCIOColorSpacePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
 #endif // OFX_IO_USING_OCIO
