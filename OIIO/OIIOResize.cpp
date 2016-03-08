@@ -711,12 +711,8 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
 }
 
 
-mDeclarePluginFactory(OIIOResizePluginFactory, {}, ;);
+mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
 
-void OIIOResizePluginFactory::unload()
-{
-    tearDownOIIOThreads();
-}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)

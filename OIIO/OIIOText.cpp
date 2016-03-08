@@ -487,12 +487,7 @@ OIIOTextPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &ar
     return true;
 }
 
-mDeclarePluginFactory(OIIOTextPluginFactory, {}, ;);
-
-void OIIOTextPluginFactory::unload()
-{
-    tearDownOIIOThreads();
-}
+mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
 
 namespace {
 struct PositionInteractParam {

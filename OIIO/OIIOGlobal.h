@@ -62,12 +62,4 @@ inline void initOIIOThreads()
     }
 }
 
-inline void tearDownOIIOThreads()
-{
-    //Kill the OpenEXR thread pool!
-    attribute("exr_threads",  -1);
-
-}
-
-
 #endif /* IO_GLOBAL_OIIO_H*/
