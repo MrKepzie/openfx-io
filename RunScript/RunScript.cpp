@@ -52,6 +52,10 @@
 
 #include "pstream.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "RunScriptOFX"
 #define kPluginGrouping "Image"
 #define kPluginDescription \
@@ -580,7 +584,6 @@ RunScriptPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &a
     return false;
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
 
@@ -794,11 +797,9 @@ OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle ha
 }
 
 
+static RunScriptPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-void getRunScriptPluginID(OFX::PluginFactoryArray &ids)
-{
-    static RunScriptPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
 #endif // _WINDOWS

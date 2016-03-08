@@ -38,6 +38,7 @@
 #include <ImfPixelType.h>
 #include <ImfChannelList.h>
 #include <ImfInputFile.h>
+#include <IlmThreadPool.h>
 
 #ifdef OFX_IO_MT_EXR
 #include <ofxsMultiThread.h>
@@ -46,6 +47,10 @@
 #include "GenericOCIO.h"
 #include "GenericReader.h"
 
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ReadEXR"
 #define kPluginGrouping "Image/Readers"
@@ -678,9 +683,15 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
     return true;
 }
 
-using namespace OFX;
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, false);
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, ;, false);
+
+void
+ReadEXRPluginFactory::unload()
+{
+    //Kill all threads
+    IlmThread::ThreadPool::globalThreadPool().setNumThreads(0);
+}
 
 void
 ReadEXRPluginFactory::load()
@@ -728,3 +739,5 @@ ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*
 
 static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

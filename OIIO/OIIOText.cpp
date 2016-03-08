@@ -47,6 +47,10 @@ GCC_DIAG_ON(unused-parameter)
 #include "ofxNatron.h"
 
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "TextOIIO"
 #define kPluginGrouping "Draw"
 #define kPluginDescription  "Use OpenImageIO to write text on images."
@@ -98,8 +102,6 @@ GCC_DIAG_ON(unused-parameter)
 #define kParamTextColorHint \
 "The color of the text to render"
 
-
-using namespace OFX;
 
 class OIIOTextPlugin : public OFX::ImageEffect
 {
@@ -162,7 +164,7 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     _textColor = fetchRGBAParam(kParamTextColor);
     assert(_position && _text && _fontSize && _fontName && _textColor);
     
-    setOIIOThreads();
+    initOIIOThreads();
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()
@@ -485,7 +487,12 @@ OIIOTextPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &ar
     return true;
 }
 
-mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
+mDeclarePluginFactory(OIIOTextPluginFactory, {}, ;);
+
+void OIIOTextPluginFactory::unload()
+{
+    tearDownOIIOThreads();
+}
 
 namespace {
 struct PositionInteractParam {
@@ -629,3 +636,5 @@ ImageEffect* OIIOTextPluginFactory::createInstance(OfxImageEffectHandle handle, 
 
 static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

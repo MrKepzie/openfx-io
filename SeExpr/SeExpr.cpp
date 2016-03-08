@@ -67,6 +67,10 @@
 #  endif
 #endif // _WINDOWS
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "SeExpr"
 #define kPluginGrouping "Merge"
 #define kPluginDescription \
@@ -2449,7 +2453,6 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
     return true;
 }
 
-using namespace OFX;
 
 class SeExprInteract
 : public OFX::RectangleInteract
@@ -3165,3 +3168,5 @@ OFX::ImageEffect* SeExprPluginFactory::createInstance(OfxImageEffectHandle handl
 
 static SeExprPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

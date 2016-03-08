@@ -54,6 +54,10 @@ GCC_DIAG_ON(unused-parameter)
 #define OFX_READ_OIIO_SHARED_CACHE
 #endif
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "ReadOIIO"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription \
@@ -376,7 +380,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
     //Don't try to restore any state in here, do so in restoreState instead which is called
     //right away after the constructor.
     
-    setOIIOThreads();
+    initOIIOThreads();
 
 }
 
@@ -2578,8 +2582,6 @@ ReadOIIOPlugin::metadata(const std::string& filename)
 }
 
 
-using namespace OFX;
-
 template<bool useRGBAChoices>
 class ReadOIIOPluginFactory : public OFX::PluginFactoryHelper<ReadOIIOPluginFactory<useRGBAChoices> >
 {
@@ -2651,6 +2653,7 @@ ReadOIIOPluginFactory<useRGBAChoices>::unload()
     // teardown is dangerous if there are other users
     ImageCache::destroy(sharedcache);
 #  endif
+    tearDownOIIOThreads();
 }
 
 static std::string oiio_versions()
@@ -2924,3 +2927,5 @@ static ReadOIIOPluginFactory<false> p1(kPluginIdentifier, kPluginVersionMajor, k
 static ReadOIIOPluginFactory<true> p2(kPluginIdentifier, 1, 0);
 mRegisterPluginFactoryInstance(p1)
 mRegisterPluginFactoryInstance(p2)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

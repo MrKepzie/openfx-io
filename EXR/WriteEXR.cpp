@@ -29,12 +29,17 @@
 
 
 #include <ImfChannelList.h>
+#include <IlmThreadPool.h>
 #include <ImfArray.h>
 #include <ImfOutputFile.h>
 #include <half.h>
 
 #include "GenericOCIO.h"
 #include "GenericWriter.h"
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "WriteEXR"
 #define kPluginGrouping "Image/Writers"
@@ -275,15 +280,21 @@ WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
     }
 }
 
-using namespace OFX;
 
-mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, false);
+mDeclareWriterPluginFactory(WriteEXRPluginFactory, ;, false);
 
 
 void WriteEXRPluginFactory::load()
 {
     _extensions.clear();
     _extensions.push_back("exr");
+}
+
+void
+WriteEXRPluginFactory::unload()
+{
+    //Kill all threads
+    IlmThread::ThreadPool::globalThreadPool().setNumThreads(0);
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -343,3 +354,5 @@ ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, 
 
 static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

@@ -33,6 +33,10 @@
 #include "IOUtility.h"
 #include "GenericOCIO.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "OCIODisplayOFX"
 #define kPluginGrouping "Color/OCIO"
 #define kPluginDescription "Uses the OpenColorIO library to apply a colorspace conversion to an image sequence, so that it can be accurately represented on a specific display device."
@@ -876,7 +880,6 @@ OCIODisplayPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIODisplayPluginFactory, {}, {});
 
@@ -1061,5 +1064,6 @@ ImageEffect* OCIODisplayPluginFactory::createInstance(OfxImageEffectHandle handl
 static OCIODisplayPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
 
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
 #endif // OFX_IO_USING_OCIO
