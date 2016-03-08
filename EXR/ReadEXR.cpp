@@ -38,6 +38,7 @@
 #include <ImfPixelType.h>
 #include <ImfChannelList.h>
 #include <ImfInputFile.h>
+#include <IlmThreadPool.h>
 
 #ifdef OFX_IO_MT_EXR
 #include <ofxsMultiThread.h>
@@ -683,7 +684,14 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
 }
 
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, false);
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, ;, false);
+
+void
+ReadEXRPluginFactory::unload()
+{
+    //Kill all threads
+    IlmThread::ThreadPool::globalThreadPool().setNumThreads(0);
+}
 
 void
 ReadEXRPluginFactory::load()
