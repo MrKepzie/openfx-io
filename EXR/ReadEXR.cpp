@@ -47,6 +47,10 @@
 #include "GenericReader.h"
 
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "ReadEXR"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read images using OpenEXR."
@@ -678,7 +682,6 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
     return true;
 }
 
-using namespace OFX;
 
 mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, false);
 
@@ -728,3 +731,5 @@ ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*
 
 static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

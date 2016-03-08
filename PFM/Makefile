@@ -1,6 +1,6 @@
 PLUGINOBJECTS = \
 	ReadPFM.o WritePFM.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o ofxsMultiPlane.o
 
 PLUGINNAME = PFM
 

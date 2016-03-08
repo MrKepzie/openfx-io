@@ -37,6 +37,10 @@
 
 namespace OCIO = OCIO_NAMESPACE;
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "OCIOCDLTransformOFX"
 #define kPluginGrouping "Color/OCIO"
 #define kPluginDescription \
@@ -1008,7 +1012,6 @@ OCIOCDLTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const 
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOCDLTransformPluginFactory, {}, {});
 
@@ -1192,5 +1195,7 @@ ImageEffect* OCIOCDLTransformPluginFactory::createInstance(OfxImageEffectHandle 
 
 static OCIOCDLTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
 #endif // OFX_IO_USING_OCIO

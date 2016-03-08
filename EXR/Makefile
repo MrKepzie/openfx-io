@@ -1,6 +1,6 @@
 PLUGINOBJECTS = \
 	ReadEXR.o WriteEXR.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o
+	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o ofxsMultiPlane.o
 PLUGINNAME = EXR
 RESOURCES = fr.inria.openfx.WriteEXR.png \
 fr.inria.openfx.WriteEXR.svg \

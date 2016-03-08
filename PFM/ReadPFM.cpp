@@ -32,6 +32,10 @@
 #include "GenericOCIO.h"
 #include "ofxsMacros.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "ReadPFM"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read PFM (Portable Float Map) files."
@@ -408,7 +412,6 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     }
 }
 
-using namespace OFX;
 
 mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, false);
 
@@ -455,3 +458,5 @@ ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
 
 static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

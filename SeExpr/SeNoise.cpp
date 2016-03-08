@@ -81,6 +81,10 @@ namespace SeExpr {
 #include "ofxsTransformInteract.h"
 #include "ofxsMatrix2D.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "SeNoise"
 #define kPluginGrouping "Draw"
 #define kPluginDescription "Generate noise."
@@ -220,8 +224,6 @@ enum VoronoiTypeEnum {
 #define kPageColorHint "Color properties of the noise"
 
 #define kGroupColor "colorGroup"
-
-using namespace OFX;
 
 
 static bool gHostIsNatron   = false;
@@ -1438,3 +1440,5 @@ OFX::ImageEffect* SeNoisePluginFactory::createInstance(OfxImageEffectHandle hand
 
 static SeNoisePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

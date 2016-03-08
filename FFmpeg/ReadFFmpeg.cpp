@@ -38,6 +38,10 @@
 #include "GenericReader.h"
 #include "FFmpegFile.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "ReadFFmpeg"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read video using FFmpeg."
@@ -421,8 +425,6 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
     return true;
 }
 
-
-using namespace OFX;
 
 class ReadFFmpegPluginFactory : public OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>
 {
@@ -932,3 +934,5 @@ ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
 
 static ReadFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

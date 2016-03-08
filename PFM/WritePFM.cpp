@@ -30,6 +30,10 @@
 #include "GenericWriter.h"
 #include "ofxsMacros.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "WritePFM"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription "Write PFM (Portable Float Map) files."
@@ -187,7 +191,6 @@ WritePFMPlugin::onOutputFileChanged(const std::string &/*filename*/,
     }
 }
 
-using namespace OFX;
 
 mDeclareWriterPluginFactory(WritePFMPluginFactory, {}, false);
 
@@ -226,3 +229,5 @@ ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, 
 
 static WritePFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

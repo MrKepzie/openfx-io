@@ -36,7 +36,9 @@
 
 namespace OCIO = OCIO_NAMESPACE;
 
-static bool gWasOCIOEnvVarFound = false;
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "OCIOLogConvertOFX"
 #define kPluginGrouping "Color/OCIO"
@@ -56,6 +58,8 @@ static bool gWasOCIOEnvVarFound = false;
 #define kParamOperationHint "Operation to perform. Lin is the SCENE_LINEAR profile and Log is the COMPOSITING_LOG profile of the OCIO configuration."
 #define kParamOperationOptionLogToLin "Log to Lin"
 #define kParamOperationOptionLinToLog "Lin to Log"
+
+static bool gWasOCIOEnvVarFound = false;
 
 class OCIOLogConvertPlugin : public OFX::ImageEffect
 {
@@ -700,7 +704,6 @@ OCIOLogConvertPlugin::changedClip(const OFX::InstanceChangedArgs &args, const st
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOLogConvertPluginFactory, {}, {});
 
@@ -828,5 +831,7 @@ ImageEffect* OCIOLogConvertPluginFactory::createInstance(OfxImageEffectHandle ha
 
 static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
 #endif // OFX_IO_USING_OCIO

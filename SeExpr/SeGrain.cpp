@@ -61,6 +61,10 @@
 #include "ofxsTransformInteract.h"
 #include "ofxsMatrix2D.h"
 
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "SeGrain"
 #define kPluginGrouping "Draw"
 #define kPluginDescription "Adds synthetic grain. Push \"presets\" to get predefined types of grain, these are the correct size for 2K scans.\n\nYou can also adjust the sliders to match a sample piece of grain. Find a sample with a rather constant background, blur it to remove the grain, and use as input to this. View with a wipe in the viewer so you can make a match. It helps to view and match each of the red, green, blue separately."
@@ -194,8 +198,6 @@ static struct PresetStruct gPresets[NUMPRESETS] =
 #define kParamIntensityMinimumLabel "Minimum"
 #define kParamIntensityMinimumHint "Minimum black level."
 #define kParamIntensityMinimumDefault 0.,0.,0.
-
-using namespace OFX;
 
 
 static bool gHostIsNatron   = false;
@@ -1027,3 +1029,5 @@ OFX::ImageEffect* SeGrainPluginFactory::createInstance(OfxImageEffectHandle hand
 
 static SeGrainPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT
