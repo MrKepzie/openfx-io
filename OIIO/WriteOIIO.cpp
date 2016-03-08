@@ -408,7 +408,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle, const std::vector<
     std::string filename;
     _fileParam->getValue(filename);
     refreshParamsVisibility(filename);
-    setOIIOThreads();
+    initOIIOThreads();
 }
 
 
@@ -1377,7 +1377,12 @@ static std::string oiio_versions()
     return oss.str();
 }
 
-mDeclareWriterPluginFactory(WriteOIIOPluginFactory, {}, false);
+mDeclareWriterPluginFactory(WriteOIIOPluginFactory, ;, false);
+
+void WriteOIIOPluginFactory::unload()
+{
+    tearDownOIIOThreads();
+}
 
 void WriteOIIOPluginFactory::load()
 {

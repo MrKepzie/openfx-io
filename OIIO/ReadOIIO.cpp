@@ -376,7 +376,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
     //Don't try to restore any state in here, do so in restoreState instead which is called
     //right away after the constructor.
     
-    setOIIOThreads();
+    initOIIOThreads();
 
 }
 
@@ -2651,6 +2651,7 @@ ReadOIIOPluginFactory<useRGBAChoices>::unload()
     // teardown is dangerous if there are other users
     ImageCache::destroy(sharedcache);
 #  endif
+    tearDownOIIOThreads();
 }
 
 static std::string oiio_versions()

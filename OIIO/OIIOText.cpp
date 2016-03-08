@@ -162,7 +162,7 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     _textColor = fetchRGBAParam(kParamTextColor);
     assert(_position && _text && _fontSize && _fontName && _textColor);
     
-    setOIIOThreads();
+    initOIIOThreads();
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()
@@ -485,7 +485,12 @@ OIIOTextPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &ar
     return true;
 }
 
-mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
+mDeclarePluginFactory(OIIOTextPluginFactory, {}, ;);
+
+void OIIOTextPluginFactory::unload()
+{
+    tearDownOIIOThreads();
+}
 
 namespace {
 struct PositionInteractParam {
