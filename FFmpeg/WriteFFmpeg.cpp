@@ -3192,6 +3192,7 @@ WriteFFmpegPlugin::updateVisibility()
     // Note that x264 is used in qpmin/qpmax mode
     bool bitrateParams  = lossyParams && (codecShortName != "mpeg4" &&
                                           codecShortName != "libx264" &&
+                                          codecShortName != "libx264rgb" &&
                                           codecShortName != "cvid" &&
                                           codecShortName != "flv" &&
                                           codecShortName != "jpeg2000" &&
@@ -3199,6 +3200,7 @@ WriteFFmpegPlugin::updateVisibility()
                                           codecShortName != "mjpeg" &&
                                           codecShortName != "svq1");
     bool bitratetParams = lossyParams && (codecShortName != "libx264" &&
+                                          codecShortName != "libx264rgb" &&
                                           codecShortName != "libx265" &&
                                           codecShortName != "mpeg2video" &
                                           codecShortName != "mpeg4" &&
