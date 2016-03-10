@@ -113,7 +113,9 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 "The general recommendation is to write either separate frames (using WriteOIIO), " \
 "or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
 "and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
-"command-line tools)."
+"command-line tools).\n" \
+"The FFmpeg encoder codec name is given between brackets at the end of each codec description.\n" \
+"Please refer to the FFmpeg documentation http://ffmpeg.org/ffmpeg-codecs.html for codec options."
 
 // a string param holding the short name of the codec (used to disambiguiate the codec choice when using different versions of FFmpeg)
 #define kParamCodecShortName "codecShortName"
@@ -154,7 +156,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
 "The target bitrate the codec will attempt to reach (in bits/s), within the confines of the bitrate tolerance and " \
-"quality min/max settings. Only supported by certain codecs (e.g. avc1, hev1, m2v1, MP42, 3IVD, but not mp4v)."
+"quality min/max settings. Only supported by certain codecs (e.g. hev1, m2v1, MP42, 3IVD, but not mp4v, avc1 or H264).\n" \
+"Option -b in ffmpeg."
 
 #define kParamBitrateTolerance "bitrateTolerance"
 #define kParamBitrateToleranceLabel "Bitrate Tolerance"
@@ -165,7 +168,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 "bitrate. Lowering tolerance too much has an adverse effect on "\
 "quality. " \
 "As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders." \
-"Only supported by certain codecs (e.g. MP42, 3IVD, but not av1c, hev1, m2v1 or mp4v)."
+"Only supported by certain codecs (e.g. MP42, 3IVD, but not avc1, hev1, m2v1, mp4v or H264).\n" \
+"Option -bt in ffmpeg."
 
 #define kParamQuality "quality"
 #define kParamQualityLabel "Quality"
@@ -173,25 +177,28 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 "The quality range the codec is allowed to vary the image data quantiser " \
 "between to attempt to hit the desired bitrate. Higher values mean increased " \
 "image degradation is possible, but with the upside of lower bit rates. " \
-"Only supported by certain codecs (e.g. VP80, VP90, avc1, but not hev1 or mp4v)."
+"Only supported by certain codecs (e.g. VP80, VP90, avc1, but not hev1 or mp4v).\n" \
+"Options -qmin and -qmax in ffmpeg."
 
 #define kParamGopSize "gopSize"
 #define kParamGopSizeLabel "GOP Size"
 #define kParamGopSizeHint \
 "Specifies how many frames may be grouped together by the codec to form a compression GOP. Exercise caution " \
 "with this control as it may impact whether the resultant file can be opened in other packages. Only supported by " \
-"certain codecs."
+"certain codecs.\n" \
+"Option -g in ffmpeg."
 
 #define kParamBFrames "bFrames"
 #define kParamBFramesLabel "B Frames"
 #define kParamBFramesHint \
 "Controls the maximum number of B frames found consecutively in the resultant stream, where zero means no limit " \
-"imposed. Only supported by certain codecs."
+"imposed. Must be an integer between -1 and 16. 0 means that B-frames are disabled. If a value of -1 is used, it will choose an automatic value depending on the encoder. Only supported by certain codecs.\n" \
+"Option -bf in ffmpeg."
 
 #define kParamWriteNCLC "writeNCLC"
 #define kParamWriteNCLCLabel "Write NCLC"
 #define kParamWriteNCLCHint \
-"Write nclc data in the colr atom of the video header."
+"Write nclc data in the colr atom of the video header. QuickTime only."
 
 //Removed from panel - should never have been exposed as very low level control.
 #if OFX_FFMPEG_MBDECISION
@@ -417,6 +424,12 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
     m["vc2"]           = "drac\tSMPTE VC-2 (previously BBC Dirac Pro)";
 
+    // add the FFmpeg encoder name at the end of each codec description
+    for (CodecMap::iterator it = m.begin(); it != m.end(); ++it) {
+        it->second += " [";
+        it->second += it->first;
+        it->second += ']';
+    }
     return m;
 }
 
@@ -1124,7 +1137,7 @@ FFmpegSingleton::FFmpegSingleton()
         if (fmt->video_codec != AV_CODEC_ID_NONE) { // if this is a video format, it should have a default video codec
             if (FFmpegFile::isFormatWhitelistedForWriting( fmt->name ) ) {
                 if (fmt->long_name) {
-                    _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
+                    _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" [") + std::string(fmt->name) + std::string("]"));
                 } else {
                     _formatsLongNames.push_back(fmt->name);
                 }
@@ -3172,17 +3185,53 @@ WriteFFmpegPlugin::updateVisibility()
     bool lossyParams    = false;
     bool interGOPParams = false;
     bool interBParams   = false;
-
     if (codec) {
         GetCodecSupportedParams(codec, lossyParams, interGOPParams, interBParams);
     }
+    // handle codec-specific cases.
+    // Note that x264 is used in qpmin/qpmax mode
+    bool bitrateParams  = lossyParams && (codecShortName != "mpeg4" &&
+                                          codecShortName != "libx264" &&
+                                          codecShortName != "cvid" &&
+                                          codecShortName != "flv" &&
+                                          codecShortName != "jpeg2000" &&
+                                          codecShortName != "jpegls" &&
+                                          codecShortName != "mjpeg" &&
+                                          codecShortName != "svq1");
+    bool bitratetParams = lossyParams && (codecShortName != "libx264" &&
+                                          codecShortName != "libx265" &&
+                                          codecShortName != "mpeg2video" &
+                                          codecShortName != "mpeg4" &&
+                                          codecShortName != "libopenh264" &&
+                                          codecShortName != "cvid" &&
+                                          codecShortName != "flv" &&
+                                          codecShortName != "jpeg2000" &&
+                                          codecShortName != "jpegls" &&
+                                          codecShortName != "mjpeg" &&
+                                          codecShortName != "mpeg1video" &&
+                                          codecShortName != "mpeg2video" &&
+                                          codecShortName != "svq1" &&
+                                          codecShortName != "libschroedinger" &&
+                                          codecShortName != "libvpx");
+    bool qualityParams  = lossyParams && (codecShortName != "libx265" &&
+                                          codecShortName != "mpeg4" &&
+                                          codecShortName != "libopenh264" &&
+                                          codecShortName != "cvid" &&
+                                          codecShortName != "flv" &&
+                                          codecShortName != "jpeg2000" &&
+                                          codecShortName != "jpegls" &&
+                                          codecShortName != "mjpeg" &&
+                                          codecShortName != "mpeg1video" &&
+                                          codecShortName != "mpeg2video" &&
+                                          codecShortName != "svq1" &&
+                                          codecShortName != "libschroedinger");
 
-    _bitrate->setEnabled(lossyParams);
-    _bitrate->setIsSecret(!lossyParams);
-    _bitrateTolerance->setEnabled(lossyParams);
-    _bitrateTolerance->setIsSecret(!lossyParams);
-    _quality->setEnabled(lossyParams);
-    _quality->setIsSecret(!lossyParams);
+    _bitrate->setEnabled(bitrateParams);
+    _bitrate->setIsSecret(!bitrateParams);
+    _bitrateTolerance->setEnabled(bitratetParams);
+    _bitrateTolerance->setIsSecret(!bitratetParams);
+    _quality->setEnabled(qualityParams);
+    _quality->setIsSecret(!qualityParams);
 
     _gopSize->setEnabled(interGOPParams);
     _gopSize->setIsSecret(!interGOPParams);
@@ -4042,7 +4091,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBFrames);
             param->setLabel(kParamBFramesLabel);
             param->setHint(kParamBFramesHint);
-            param->setRange(0, FF_MAX_B_FRAMES);
+            param->setRange(-1, FF_MAX_B_FRAMES);
             param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);
