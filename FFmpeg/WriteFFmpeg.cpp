@@ -3784,10 +3784,7 @@ WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     ///check that the host supports sequential render
     
     ///This plug-in only supports sequential render
-    int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;
-    if (hostSequentialRender == 1 || hostSequentialRender == 2) {
-        desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 1);
-    }
+    desc.setSequentialRender(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
