@@ -85,7 +85,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "WriteFFmpeg"
 #define kPluginGrouping "Image/Writers"
-#define kPluginDescription "Write images using FFmpeg."
+#define kPluginDescription \
+"Write images using FFmpeg.\n" \
+"The general recommendation is to write either separate frames (using WriteOIIO), " \
+"or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
+"and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
+"command-line tools).\n" \
+"Further information can be found at https://trac.ffmpeg.org/wiki/Encode/VFX"
+
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
