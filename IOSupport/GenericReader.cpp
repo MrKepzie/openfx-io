@@ -727,7 +727,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
             // now, try the proxy file
             if (proxyFiles) {
                 std::string proxyFileName;
-                bool proxyGood;
+                bool proxyGood = true;
                 _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
                 if (proxyFileName.empty()) {
                     proxyGood = false;
