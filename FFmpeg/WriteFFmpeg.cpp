@@ -2925,7 +2925,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         avCodecContext->pix_fmt = targetPixelFormat;
         
         std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1);
-        if (_scratchBuffer.size() != picSize) {
+        if (_scratchBuffer.size() < picSize) {
             _scratchBuffer.resize(picSize);
         }
         
