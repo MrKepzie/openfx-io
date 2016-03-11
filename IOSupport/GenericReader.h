@@ -265,7 +265,10 @@ private:
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string *filename) WARN_UNUSED_RETURN;
+    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t,
+                                                     bool proxyFiles,
+                                                     bool checkForExistingFile,
+                                                     std::string *filename) WARN_UNUSED_RETURN;
     
     /**
      * @brief Initializes the params depending on the input file.
