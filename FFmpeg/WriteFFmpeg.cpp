@@ -1065,6 +1065,11 @@ private:
 #if OFX_FFMPEG_MBDECISION
     OFX::ChoiceParam* _mbDecision;
 #endif
+    
+    // Used in writeVideo as a contiguous buffer. The size of the buffer remains throughout
+    // the encoding of the whole video. Since the plug-in is instanceSafe, we do not need to lock it
+    // since 2 renders will never use it at the same time.
+    std::vector<uint8_t> _scratchBuffer;
 };
 
 
@@ -1273,6 +1278,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
 #if OFX_FFMPEG_MBDECISION
 , _mbDecision(0)
 #endif
+, _scratchBuffer()
 {
     _rodPixel.x1 = _rodPixel.y1 = 0;
     _rodPixel.x2 = _rodPixel.y2 = -1;
@@ -2487,8 +2493,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     int width = _rodPixel.x2-_rodPixel.x1;
     int height = _rodPixel.y2-_rodPixel.y1;
     
-    int picSize = avpicture_get_size(pixelFormatCodec, width, height);
-
     AVPicture avPicture = {{0}, {0}};
     AVFrame* avFrame = NULL;
 
@@ -2592,17 +2596,16 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                 error = true;
             }
         } else {
-            // Allocate a contiguous block of memory. This is to scope the
+            // Use a contiguous block of memory. This is to scope the
             // buffer allocation and ensure that memory is released even
             // if errors or exceptions occur. A std::vector will allocate
             // contiguous memory.
-            std::vector<uint8_t> outbuf(picSize);
             
             AVPacket pkt;
             av_init_packet(&pkt);
             // NOTE: If |flush| is true, then avFrame will be NULL at this point as
             //       alloc will not have been called.
-            const int bytesEncoded = encodeVideo(avCodecContext, &outbuf.front(), picSize, avFrame);
+            const int bytesEncoded = encodeVideo(avCodecContext, &_scratchBuffer.front(), (int)_scratchBuffer.size(), avFrame);
             const bool encodeSucceeded = (bytesEncoded > 0);
             if (encodeSucceeded) {
                 if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
@@ -2611,7 +2614,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                     pkt.flags |= AV_PKT_FLAG_KEY;
                 
                 pkt.stream_index = avStream->index;
-                pkt.data = &outbuf[0];
+                pkt.data = &_scratchBuffer[0];
                 pkt.size = bytesEncoded;
                 
                 const int writeResult = av_write_frame(avFormatContext, &pkt);
@@ -2920,6 +2923,12 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 
         AVCodecContext* avCodecContext = _streamVideo->codec;
         avCodecContext->pix_fmt = targetPixelFormat;
+        
+        std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1);
+        if (_scratchBuffer.size() != picSize) {
+            _scratchBuffer.resize(picSize);
+        }
+        
         avCodecContext->bits_per_raw_sample = outBitDepth;
         avCodecContext->sample_aspect_ratio = av_d2q(pixelAspectRatio, 255);
         
@@ -3468,6 +3477,7 @@ void WriteFFmpegPlugin::freeFormat()
         _formatContext = NULL;
     }
     _lastTimeEncoded = -1;
+    _scratchBuffer.clear();
     _isOpen = false;
 }
 
