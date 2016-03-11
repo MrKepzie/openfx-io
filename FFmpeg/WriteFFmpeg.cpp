@@ -3221,7 +3221,7 @@ WriteFFmpegPlugin::updateVisibility()
     bool bitratetParams = lossyParams && (codecShortName != "libx264" &&
                                           codecShortName != "libx264rgb" &&
                                           codecShortName != "libx265" &&
-                                          codecShortName != "mpeg2video" &
+                                          codecShortName != "mpeg2video" &&
                                           codecShortName != "mpeg4" &&
                                           codecShortName != "libopenh264" &&
                                           codecShortName != "cvid" &&
