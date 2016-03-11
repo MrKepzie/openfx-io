@@ -1069,7 +1069,10 @@ private:
     // Used in writeVideo as a contiguous buffer. The size of the buffer remains throughout
     // the encoding of the whole video. Since the plug-in is instanceSafe, we do not need to lock it
     // since 2 renders will never use it at the same time.
-    std::vector<uint8_t> _scratchBuffer;
+    // We do not use a std::vector<uint8_t> here because of unnecessary initialization
+    // http://stackoverflow.com/questions/17347254/why-is-allocation-and-deallocation-of-stdvector-slower-than-dynamic-array-on-m
+    uint8_t* _scratchBuffer;
+    std::size_t _scratchBufferSize;
 };
 
 
@@ -1278,7 +1281,8 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
 #if OFX_FFMPEG_MBDECISION
 , _mbDecision(0)
 #endif
-, _scratchBuffer()
+, _scratchBuffer(0)
+, _scratchBufferSize(0)
 {
     _rodPixel.x1 = _rodPixel.y1 = 0;
     _rodPixel.x2 = _rodPixel.y2 = -1;
@@ -1308,8 +1312,10 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
 
 }
 
-WriteFFmpegPlugin::~WriteFFmpegPlugin(){
-    
+WriteFFmpegPlugin::~WriteFFmpegPlugin()
+{
+    delete [] _scratchBuffer;
+    _scratchBufferSize = 0;
 }
 
 
@@ -2605,7 +2611,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             av_init_packet(&pkt);
             // NOTE: If |flush| is true, then avFrame will be NULL at this point as
             //       alloc will not have been called.
-            const int bytesEncoded = encodeVideo(avCodecContext, &_scratchBuffer.front(), (int)_scratchBuffer.size(), avFrame);
+            const int bytesEncoded = encodeVideo(avCodecContext, _scratchBuffer, (int)_scratchBufferSize, avFrame);
             const bool encodeSucceeded = (bytesEncoded > 0);
             if (encodeSucceeded) {
                 if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
@@ -2935,8 +2941,10 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         avCodecContext->pix_fmt = targetPixelFormat;
         
         std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1);
-        if (_scratchBuffer.size() < picSize) {
-            _scratchBuffer.resize(picSize);
+        if (_scratchBufferSize < picSize) {
+            delete [] _scratchBuffer;
+            _scratchBuffer = new uint8_t[picSize];
+            _scratchBufferSize = picSize;
         }
         
         avCodecContext->bits_per_raw_sample = outBitDepth;
@@ -3487,7 +3495,9 @@ void WriteFFmpegPlugin::freeFormat()
         _formatContext = NULL;
     }
     _lastTimeEncoded = -1;
-    _scratchBuffer.clear();
+    _scratchBufferSize = 0;
+    delete [] _scratchBuffer;
+    _scratchBuffer = 0;
     _isOpen = false;
 }
 
