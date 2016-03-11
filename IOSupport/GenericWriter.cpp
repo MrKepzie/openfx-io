@@ -2068,7 +2068,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
             Int2DParamDescriptor* param = desc.defineInt2DParam(kParamFormatSize);
             param->setIsSecret(true);
             param->setDefault(w, h);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
         
         {
@@ -2077,7 +2079,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
             param->setRange(0., DBL_MAX);
             param->setDisplayRange(0.5, 2.);
             param->setDefault(par);
-            page->addChild(*param);
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
 
