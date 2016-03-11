@@ -314,10 +314,20 @@ GenericReaderPlugin::refreshSubLabel(OfxTime time)
 {
     assert(_sublabel);
     double sequenceTime;
-    (void)getSequenceTimeHold(time, &sequenceTime);
-    std::string filename;
-    (void)getFilenameAtSequenceTime(sequenceTime, false, &filename);
-    _sublabel->setValue(basename(filename));
+    GetSequenceTimeRetEnum ret = getSequenceTimeHold(time, &sequenceTime);
+    if (ret == eGetSequenceTimeWithinSequence ||
+        ret == eGetSequenceTimeBeforeSequence ||
+        ret == eGetSequenceTimeAfterSequence) {
+        std::string filename;
+        GetFilenameRetCodeEnum ret = getFilenameAtSequenceTime(sequenceTime, false, &filename);
+        if (ret == eGetFileNameReturnedFullRes) {
+            _sublabel->setValue(basename(filename));
+        } else {
+            _sublabel->setValue("");
+        }
+    } else {
+        _sublabel->setValue("");
+    }
 }
 
 
@@ -536,7 +546,7 @@ GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, 
             setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
             return eGetSequenceTimeError;
     }
-
+    return eGetSequenceTimeError;
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
@@ -576,6 +586,7 @@ GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, d
             setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
             return eGetSequenceTimeError;
     }
+    return eGetSequenceTimeError;
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
