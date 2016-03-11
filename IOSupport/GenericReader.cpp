@@ -609,10 +609,10 @@ GenericReaderPlugin::getSequenceTimeHold(double t, double *sequenceTime)
     if (sequenceTimeDomain.min <= *sequenceTime && *sequenceTime <= sequenceTimeDomain.max) {
         return eGetSequenceTimeWithinSequence;
     } else if (*sequenceTime < sequenceTimeDomain.min) {
-        getSequenceTimeBefore(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
+        return getSequenceTimeBefore(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
     } else {
         assert(*sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
-        getSequenceTimeAfter(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
+        return getSequenceTimeAfter(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
     }
     return eGetSequenceTimeError;
 }
