@@ -704,9 +704,12 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 
             // Activate multithreaded decoding. This must be done before opening the codec; see
             // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+#          ifdef AV_CODEC_CAP_AUTO_THREADS
             if (avstream->codec->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
                 avstream->codec->thread_count = 0;
-            } else {
+            } else
+#          endif
+            {
                 avstream->codec->thread_count = OFX::MultiThread::getNumCPUs();
                 //avstream->codec->thread_count = video_decoding_threads();
             }

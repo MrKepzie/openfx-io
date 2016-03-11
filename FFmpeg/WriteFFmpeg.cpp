@@ -2860,6 +2860,16 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
                 // Some formats want stream headers to be separate.
                 if (formatContext_->oformat->flags & AVFMT_GLOBALHEADER)
                     avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+                // Activate multithreaded decoding. This must be done before opening the codec; see
+                // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+#              ifdef AV_CODEC_CAP_AUTO_THREADS
+                if (avCodecContext->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
+                    avCodecContext->thread_count = 0;
+                } else
+#              endif
+                {
+                    avCodecContext->thread_count = OFX::MultiThread::getNumCPUs();
+                }
 
                 if (openCodec(formatContext_, audioCodec, streamAudio_) < 0) {
                     freeFormat();
@@ -2931,11 +2941,6 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         
         avCodecContext->bits_per_raw_sample = outBitDepth;
         avCodecContext->sample_aspect_ratio = av_d2q(pixelAspectRatio, 255);
-        if (avCodecContext->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
-            avCodecContext->thread_count = 0;
-        } else {
-            avCodecContext->thread_count = OFX::MultiThread::getNumCPUs();
-        }
 
         // Now that the stream has been created, and the pixel format
         // is known, for DNxHD, set the YUV range.
