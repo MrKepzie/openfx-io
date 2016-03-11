@@ -55,6 +55,7 @@
 
 // Use one decoding thread per processor for video decoding.
 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
+#if 0
 static int
 video_decoding_threads()
 {
@@ -77,6 +78,7 @@ video_decoding_threads()
 
     return n;
 }
+#endif
 
 static bool
 extensionCorrespondToImageFile(const std::string & ext)
@@ -702,7 +704,12 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 
             // Activate multithreaded decoding. This must be done before opening the codec; see
             // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
-            avstream->codec->thread_count = video_decoding_threads();
+            if (avstream->codec->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
+                avstream->codec->thread_count = 0;
+            } else {
+                avstream->codec->thread_count = OFX::MultiThread::getNumCPUs();
+                //avstream->codec->thread_count = video_decoding_threads();
+            }
             // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
             // I don't know what exactly this does, but it is necessary to fix the problem
             // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
