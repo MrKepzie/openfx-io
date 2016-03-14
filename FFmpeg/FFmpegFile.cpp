@@ -702,16 +702,22 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         if (avstream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
             // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
 
+            // Some codecs support multi-threaded decoding (eg mpeg). Its fast but causes problems when opening many readers
+            // simultaneously since each opens as many threads as you have cores. This leads to resource starvation and failed reads.
+            // Hopefully, getNumCPUs() will give us the right number of usable cores
+
             // Activate multithreaded decoding. This must be done before opening the codec; see
             // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
 #          ifdef AV_CODEC_CAP_AUTO_THREADS
-            if (avstream->codec->codec && (avstream->codec->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS)) {
-                avstream->codec->thread_count = 0;
-            } else
+            // Do not use AV_CODEC_CAP_AUTO_THREADS, since it may create too many threads
+            //if (avstream->codec->codec && (avstream->codec->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS)) {
+            //    avstream->codec->thread_count = 0;
+            //} else
 #          endif
             {
-                avstream->codec->thread_count = OFX::MultiThread::getNumCPUs();
-                //avstream->codec->thread_count = video_decoding_threads();
+                avstream->codec->thread_count = OFX::MultiThread::getNumCPUs(); // ask for the number of available cores for multithreading
+                avstream->codec->thread_type = FF_THREAD_SLICE; // multiple threads are used to decode a single frame. Reduces delay
+                //avstream->codec->thread_count = video_decoding_threads(); // bino's strategy (disabled)
             }
             // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
             // I don't know what exactly this does, but it is necessary to fix the problem
@@ -725,21 +731,6 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             }
         }
 
-        // Some codecs support multi-threaded decoding (eg mpeg). Its fast but causes problems when opening many readers
-        // simultaneously since each opens as many threads as you have cores. This leads to resource starvation and failed reads.
-        // For now, revert to the previous ffmpeg behaviour (single-threaded decode) unless overridden by env var.
-#if OFX_FFMPEG_MULTI_THREADED_CODEC_SUPPORT
-# if TRACE_FILE_OPEN
-        std::cout << "FFmpeg Reader: Multi-threaded decode" << std::endl;
-# endif
-#else
-# if TRACE_FILE_OPEN
-        std::cout << "FFmpeg Reader: Single-threaded decode" << std::endl;
-# endif
-        // Default behaviour
-        avstream->codec->thread_count = 1;
-        avstream->codec->thread_type = FF_THREAD_FRAME;
-#endif
         // skip if the codec can't be open
         if (avcodec_open2(avstream->codec, videoCodec, NULL) < 0) {
 #if TRACE_FILE_OPEN
