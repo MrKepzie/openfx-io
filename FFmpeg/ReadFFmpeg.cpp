@@ -37,6 +37,7 @@
 #include "GenericOCIO.h"
 #include "GenericReader.h"
 #include "FFmpegFile.h"
+#include "ofxsCopier.h"
 
 using namespace OFX;
 
@@ -92,6 +93,17 @@ private:
     virtual bool getFrameRate(const std::string& filename, double* fps) OVERRIDE FINAL;
     
     virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
+    
+    void convertDepthAndComponents(const void* srcPixelData,
+                      const OfxRectI& renderWindow,
+                      const OfxRectI& srcBounds,
+                      OFX::PixelComponentEnum srcPixelComponents,
+                      OFX::BitDepthEnum srcBitDepth,
+                      int srcRowBytes,
+                      float *dstPixelData,
+                      const OfxRectI& dstBounds,
+                      OFX::PixelComponentEnum dstPixelComponents,
+                      int dstRowBytes);
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
@@ -201,44 +213,206 @@ ReadFFmpegPlugin::isVideoStream(const std::string& filename)
     return !FFmpegFile::isImageFile(filename);
 }
 
-template<int nDstComp, int nSrcComp, int numVals, typename PIX>
-static void
-fillWindow(const PIX* buffer,
-           const OfxRectI& renderWindow,
-           float *pixelData,
-           const OfxRectI& imgBounds,
-           OFX::PixelComponentEnum pixelComponents,
-           int rowBytes)
+template<typename SRCPIX, int srcMaxValue, int nSrcComp, int nDstComp>
+class PixelConverterProcessor
+: public OFX::PixelProcessor
 {
-    assert(nSrcComp >= 3 && nSrcComp <= 4);
-    assert((nDstComp == 3 && pixelComponents == OFX::ePixelComponentRGB) ||
-           (nDstComp == 4 && pixelComponents == OFX::ePixelComponentRGBA));
-    ///fill the renderWindow in dstImg with the buffer freshly decoded.
-    for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
-        int srcY = renderWindow.y2 - y - 1;
-        float* dst_pixels = (float*)((char*)pixelData + rowBytes*(y-imgBounds.y1));
-        const PIX* src_pixels = buffer + (imgBounds.x2 - imgBounds.x1) * srcY * nSrcComp;
+    const SRCPIX* _srcPixelData;
+    int _dstBufferRowBytes;
+    int _srcBufferRowBytes;
+    OfxRectI _srcBufferBounds;
+    
+public:
+    // ctor
+    PixelConverterProcessor(OFX::ImageEffect &instance)
+    : OFX::PixelProcessor(instance)
+    {
+        
+    }
+    
+    void setValues(const SRCPIX* srcPixelData,
+                   OfxRectI srcBufferBounds,
+                   int srcBufferRowBytes,
+                   float* dstPixelData,
+                   int dstBufferRowBytes,
+                   OfxRectI dstBufferBounds)
+    {
+        _srcPixelData = srcPixelData;
+        _srcBufferBounds = srcBufferBounds;
+        _srcBufferRowBytes = srcBufferRowBytes;
+        _dstBufferRowBytes = dstBufferRowBytes;
+        
+        _dstBounds = dstBufferBounds;
+        _dstPixelData = dstPixelData;
+    }
+    
+    // and do some processing
+    void multiThreadProcessImages(OfxRectI procWindow)
+    {
+        assert(nSrcComp == 3 || nSrcComp == 4);
+        assert(nDstComp == 3 || nDstComp == 4);
+        
+        for (int dsty = procWindow.y1; dsty < procWindow.y2; ++dsty) {
+            if ( _effect.abort() ) {
+                break;
+            }
+            
+            int srcY = _dstBounds.y2 - dsty - 1;
+            
+            float* dst_pixels = (float*)((char*)_dstPixelData + _dstBufferRowBytes * (dsty - _dstBounds.y1))
+                                         + (_dstBounds.x1 * nDstComp);
+            const SRCPIX* src_pixels = (const SRCPIX*)((const char*)_srcPixelData + _srcBufferRowBytes * (srcY - _srcBufferBounds.y1))
+            + (_srcBufferBounds.x1 * nSrcComp);
 
-        for (int x = renderWindow.x1; x < renderWindow.x2; ++x) {
-            int srcCol = x * nSrcComp ;
-            int dstCol = x * nDstComp;
-            dst_pixels[dstCol + 0] = intToFloat<numVals>(src_pixels[srcCol + 0]);
-            dst_pixels[dstCol + 1] = intToFloat<numVals>(src_pixels[srcCol + 1]);
-            dst_pixels[dstCol + 2] = intToFloat<numVals>(src_pixels[srcCol + 2]);
-            if (nDstComp == 4) {
-                // Output is Opaque with alpha=0 by default,
-                // but premultiplication is set to opaque.
-                // That way, chaining with a Roto node works correctly.
-                // Alpha is set to 0 and premult is set to Opaque.
-                // That way, the Roto node can be conveniently used to draw a mask. This shouldn't
-                // disturb anything else in the process, since Opaque premult means that alpha should
-                // be considered as being 1 everywhere, whatever the actual alpha value is.
-                // see GenericWriterPlugin::render, if (userPremult == OFX::eImageOpaque...
-                dst_pixels[dstCol + 3] = nSrcComp == 4 ? intToFloat<numVals>(src_pixels[srcCol + 3]) : 0.f;
+            
+            assert(dst_pixels && src_pixels);
+            
+            for (int x = procWindow.x1; x < procWindow.x2; ++x) {
+                
+                int srcCol = x * nSrcComp ;
+                int dstCol = x * nDstComp;
+                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
+                if (nDstComp == 4) {
+                    dst_pixels[dstCol + 3] = nSrcComp == 4 ? src_pixels[srcCol + 3] / (float)srcMaxValue : 1.f;
+                }
+
             }
         }
     }
+};
+
+template<typename SRCPIX, int srcMaxValue, int nSrcComp, int nDstComp>
+void
+convertForDstNComps(OFX::ImageEffect* effect,
+                    const SRCPIX* srcPixelData,
+                    const OfxRectI& renderWindow,
+                    const OfxRectI& srcBounds,
+                    int srcRowBytes,
+                    float *dstPixelData,
+                    const OfxRectI& dstBounds,
+                    int dstRowBytes)
+{
+
+    PixelConverterProcessor<SRCPIX, srcMaxValue, nSrcComp, nDstComp> p(*effect);
+    p.setValues(srcPixelData, srcBounds, srcRowBytes, dstPixelData,  dstRowBytes,  dstBounds);
+    p.setRenderWindow(renderWindow);
+    p.process();
 }
+
+template<typename SRCPIX, int srcMaxValue, int nSrcComp>
+void
+convertForSrcNComps(OFX::ImageEffect* effect,
+                    const SRCPIX* srcPixelData,
+                    const OfxRectI& renderWindow,
+                    const OfxRectI& srcBounds,
+                    int srcRowBytes,
+                    float *dstPixelData,
+                    const OfxRectI& dstBounds,
+                    OFX::PixelComponentEnum dstPixelComponents,
+                    int dstRowBytes)
+{
+    
+    switch (dstPixelComponents) {
+        case OFX::ePixelComponentAlpha: {
+            convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        } break;
+        case OFX::ePixelComponentRGB: {
+            convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        } break;
+        case OFX::ePixelComponentRGBA: {
+            convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 4>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        } break;
+        default:
+            assert(false);
+            break;
+    }
+
+}
+
+template<typename SRCPIX, int srcMaxValue>
+void
+convertForDepth(OFX::ImageEffect* effect,
+                const SRCPIX* srcPixelData,
+                const OfxRectI& renderWindow,
+                const OfxRectI& srcBounds,
+                OFX::PixelComponentEnum srcPixelComponents,
+                int srcRowBytes,
+                float *dstPixelData,
+                const OfxRectI& dstBounds,
+                OFX::PixelComponentEnum dstPixelComponents,
+                int dstRowBytes)
+{
+    switch (srcPixelComponents) {
+        case OFX::ePixelComponentAlpha:
+            convertForSrcNComps<SRCPIX, srcMaxValue, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        case OFX::ePixelComponentRGB:
+            convertForSrcNComps<SRCPIX, srcMaxValue, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        case OFX::ePixelComponentRGBA:
+            convertForSrcNComps<SRCPIX, srcMaxValue, 4>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+void
+ReadFFmpegPlugin::convertDepthAndComponents(const void* srcPixelData,
+                                            const OfxRectI& renderWindow,
+                                            const OfxRectI& srcBounds,
+                                            OFX::PixelComponentEnum srcPixelComponents,
+                                            OFX::BitDepthEnum srcBitDepth,
+                                            int srcRowBytes,
+                                            float *dstPixelData,
+                                            const OfxRectI& dstBounds,
+                                            OFX::PixelComponentEnum dstPixelComponents,
+                                            int dstRowBytes)
+{
+    
+    switch (srcBitDepth) {
+        case OFX::eBitDepthFloat:
+            convertForDepth<float, 1>(this, (const float*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        case OFX::eBitDepthUShort:
+            convertForDepth<unsigned short, 65535>(this, (const unsigned short*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        case OFX::eBitDepthUByte:
+            convertForDepth<unsigned char, 255>(this, (const unsigned char*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        default:
+            assert(false);
+            break;
+    }
+}
+
+class RamBuffer
+{
+    unsigned char* data;
+    
+public:
+    
+    RamBuffer(std::size_t nBytes)
+    : data(0)
+    {
+        data = (unsigned char*)malloc(nBytes);
+    }
+    
+    unsigned char* getData() const
+    {
+        return data;
+    }
+    
+    ~RamBuffer()
+    {
+        if (data) {
+            free(data);
+        }
+    }
+};
 
 void
 ReadFFmpegPlugin::decode(const std::string& filename,
@@ -260,11 +434,12 @@ ReadFFmpegPlugin::decode(const std::string& filename,
 
     /// we only support RGB or RGBA output clip
     if ((pixelComponents != OFX::ePixelComponentRGB) &&
-        (pixelComponents != OFX::ePixelComponentRGBA)) {
+        (pixelComponents != OFX::ePixelComponentRGBA) &&
+        (pixelComponents != OFX::ePixelComponentAlpha)) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
-    assert((pixelComponents == OFX::ePixelComponentRGB && pixelComponentCount == 3) || (pixelComponents == OFX::ePixelComponentRGBA && pixelComponentCount == 4));
+    assert((pixelComponents == OFX::ePixelComponentRGB && pixelComponentCount == 3) || (pixelComponents == OFX::ePixelComponentRGBA && pixelComponentCount == 4) || (pixelComponents == OFX::ePixelComponentAlpha && pixelComponentCount == 1));
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (!file) {
@@ -284,7 +459,7 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     //assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
 
     if((imgBounds.x2 - imgBounds.x1) < width ||
-       (imgBounds.y2 - imgBounds.y1) < height){
+       (imgBounds.y2 - imgBounds.y1) < height) {
         setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -293,9 +468,28 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     int maxRetries;
     _maxRetries->getValue(maxRetries);
     
+    // not in FFmpeg Reader: initialize the output buffer
+    // TODO: use avpicture_get_size? see WriteFFmpeg
+    unsigned int numComponents = file->getNumberOfComponents();
+    assert(numComponents == 3 || numComponents == 4);
+    
+    std::size_t sizeOfData = file->getSizeOfData();
+    assert(sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short));
+    
+    int srcRowBytes = width * numComponents * sizeOfData;
+    std::size_t bufferSize =  height * srcRowBytes;
+    
+    RamBuffer bufferRaii(bufferSize);
+    unsigned char* buffer = bufferRaii.getData();
+    if (!buffer) {
+        OFX::throwSuiteStatusException(kOfxStatErrMemory);
+        return;
+    }
+    // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
+    
     try {
-        // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5 
-        if ( !file->decode(this, (int)std::floor(time-0.5), loadNearestFrame(), maxRetries) ) {
+        // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5
+        if ( !file->decode(this, (int)std::floor(time-0.5), loadNearestFrame(), maxRetries, buffer) ) {
             if (abort()) {
                 // decode() probably existed because plugin was aborted
                 return;
@@ -316,41 +510,9 @@ ReadFFmpegPlugin::decode(const std::string& filename,
         return;
     }
 
-    const unsigned char* buffer = file->getData();
-    std::size_t sizeOfData = file->getSizeOfData();
-    unsigned int numComponents = file->getNumberOfComponents();
-    assert(sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short));
-    ///fill the renderWindow in dstImg with the buffer freshly decoded.
-    if (pixelComponents == OFX::ePixelComponentRGB) {
-        if (sizeOfData == sizeof(unsigned char)) {
-            if (numComponents == 3) {
-                fillWindow<3,3,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            } else if (numComponents == 4) {
-                fillWindow<3,4,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            }
-        } else {
-            if (numComponents == 3) {
-                fillWindow<3,3,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            } else {
-                fillWindow<3,4,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            }
-        }
-        
-    } else if (pixelComponents == OFX::ePixelComponentRGBA) {
-        if (sizeOfData == sizeof(unsigned char)) {
-            if (numComponents == 3) {
-                fillWindow<4,3,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            } else {
-                fillWindow<4,4,256,unsigned char>(buffer, renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            }
-        } else {
-            if (numComponents == 3) {
-                fillWindow<4,3,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            } else {
-                fillWindow<4,4,65536,unsigned short>(reinterpret_cast<const unsigned short*>(buffer), renderWindow, pixelData, imgBounds, pixelComponents, rowBytes);
-            }
-        }
-    }
+
+    convertDepthAndComponents(buffer, renderWindow, imgBounds, numComponents == 3 ? ePixelComponentRGB : ePixelComponentRGBA, sizeOfData == sizeof(unsigned char) ? eBitDepthUByte : eBitDepthUShort, srcRowBytes, pixelData, imgBounds, pixelComponents, rowBytes);
+
 }
 
 bool

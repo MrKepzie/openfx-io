@@ -626,7 +626,6 @@ FFmpegFile::FFmpegFile(const std::string & filename)
     , _errorMsg()
     , _invalidState(false)
     , _avPacket()
-    , _data(0)
 #ifdef OFX_IO_MT_FFMPEG
     , _lock(0)
     , _invalidStateLock(0)
@@ -831,15 +830,6 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         stream->_startPTS = getStreamStartTime(*stream);
         stream->_frames   = getStreamFrames(*stream);
 
-        // not in FFmpeg Reader: initialize the output buffer
-        if (_streams.empty()) {
-            // TODO: use avpicture_get_size? see WriteFFmpeg
-            std::size_t pixelDepth = stream->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
-            // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
-            assert(!_data);
-            _data = new unsigned char[stream->_width * stream->_height * stream->_numberOfComponents * pixelDepth];
-        }
-
         // save the stream
         _streams.push_back(stream);
     }
@@ -867,7 +857,6 @@ FFmpegFile::~FFmpegFile()
     }
     _filename.clear();
     _errorMsg.clear();
-    delete _data;
 }
 
 const char*
@@ -1002,7 +991,8 @@ bool
 FFmpegFile::decode(const OFX::ImageEffect* plugin,
                    int frame,
                    bool loadNearest,
-                   int maxRetries)
+                   int maxRetries,
+                   unsigned char* buffer)
 {
     
     const unsigned int streamIdx = 0;
@@ -1361,7 +1351,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                 // decoding the frame.
                 if (context) {
                     AVPicture output;
-                    avpicture_fill(&output, _data, stream->_outputPixelFormat, stream->_width, stream->_height);
+                    avpicture_fill(&output, buffer, stream->_outputPixelFormat, stream->_width, stream->_height);
                     sws_scale(context,
                               stream->_avFrame->data,
                               stream->_avFrame->linesize,
@@ -1521,24 +1511,19 @@ FFmpegFile::getInfo(int & width,
     return true;
 }
 
-int
-FFmpegFile::getRowSize() const
+std::size_t
+FFmpegFile::getBufferBytesCount() const
 {
-    // returns 0 if no stream
-    const int bitDepth = getBitDepth();
-
-    if (bitDepth > 8) {
-        return getNumberOfComponents() * getWidth() * sizeof(uint16_t);
+    if (_streams.empty()) {
+        return 0;
     }
-
-    return getNumberOfComponents() * getWidth();
+    
+    Stream* stream = _streams[0];
+    std::size_t pixelDepth = stream->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
+    // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
+    return stream->_width * stream->_height * stream->_numberOfComponents * pixelDepth;
 }
 
-int
-FFmpegFile::getBufferSize() const
-{
-    return getRowSize() * getHeight();
-}
 
 FFmpegFileManager::FFmpegFileManager()
 : _files()

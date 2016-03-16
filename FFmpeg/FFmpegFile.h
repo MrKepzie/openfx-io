@@ -264,8 +264,6 @@ class FFmpegFile {
     bool _invalidState;     // true if the reader is in an invalid state
     
     AVPacket _avPacket;
-
-    unsigned char* _data;
     
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
@@ -420,10 +418,6 @@ public:
         return _streams[0]->_height;
     }
     
-    const unsigned char* getData() const {
-        return _data;
-    }
-    
     std::size_t getSizeOfData() const {
         if (_streams.empty()) {
             return 0;
@@ -432,7 +426,7 @@ public:
     }
 
     // decode a single frame into the buffer (stream 0). Thread safe
-    bool decode(const OFX::ImageEffect* plugin, int frame, bool loadNearest, int maxRetries);
+    bool decode(const OFX::ImageEffect* plugin, int frame, bool loadNearest, int maxRetries, unsigned char* buffer);
 
     // get stream information
     bool getFPS(double& fps,
@@ -447,8 +441,7 @@ public:
 
     const char* getColorspace() const;
 
-    int getBufferSize() const;
-    int getRowSize() const;
+    std::size_t getBufferBytesCount() const;
     
     static bool isImageFile(const std::string& filename);
 
