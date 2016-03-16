@@ -2992,6 +2992,18 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
             av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
         }
 #endif
+        
+        // Activate multithreaded decoding. This must be done before opening the codec; see
+        // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+#              ifdef AV_CODEC_CAP_AUTO_THREADS
+        if (avCodecContext->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
+            avCodecContext->thread_count = 0;
+        } else
+#              endif
+        {
+            avCodecContext->thread_count = OFX::MultiThread::getNumCPUs();
+        }
+
 
 # if OFX_FFMPEG_PRINT_CODECS
         std::cout << "Format: " << _formatContext->oformat->name << " Codec: " << videoCodec->name << " nukeBufferPixelFormat: " << av_get_pix_fmt_name(nukeBufferPixelFormat) << " targetPixelFormat: " << av_get_pix_fmt_name(targetPixelFormat) << " outBitDepth: " << outBitDepth << " Profile: " << _streamVideo->codec->profile << std::endl;
