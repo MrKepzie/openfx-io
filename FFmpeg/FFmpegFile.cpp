@@ -1009,25 +1009,29 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
 
     // get the stream
     Stream* stream = _streams[streamIdx];
+    
+    // Translate from the 1-based frames expected to 0-based frame offsets for use in the rest of this code.
+    int desiredFrame = frame - 1;
+
 
     // Early-out if out-of-range frame requested.
 
-    if (frame < 0) {
+    if (desiredFrame < 0) {
         if (loadNearest) {
-            frame = 0;
+            desiredFrame = 0;
         } else {
             throw std::runtime_error("Missing frame");
         }
-    } else if (frame >= stream->_frames) {
+    } else if (desiredFrame >= stream->_frames) {
         if (loadNearest) {
-            frame = (int)stream->_frames - 1;
+            desiredFrame = (int)stream->_frames - 1;
         } else {
             throw std::runtime_error("Missing frame");
         }
     }
 
 #if TRACE_DECODE_PROCESS
-    std::cout << "FFmpeg Reader=" << this << "::decode(): frame=" << frame << ", videoStream=" << streamIdx << ", streamIdx=" << stream->_idx << std::endl;
+    std::cout << "FFmpeg Reader=" << this << "::decode(): frame=" << desiredFrame << ", videoStream=" << streamIdx << ", streamIdx=" << stream->_idx << std::endl;
 #endif
 
     // Number of read retries remaining when decode stall is detected before we give up (in the case of post-seek stalls,
@@ -1064,18 +1068,18 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
     int lastSeekedFrame = -1; // 0-based index of the last frame to which we seeked when seek in progress / negative when no
     // seek in progress,
 
-    if (frame != stream->_decodeNextFrameOut) {
+    if (desiredFrame != stream->_decodeNextFrameOut) {
 #if TRACE_DECODE_PROCESS
         std::cout << "  Next frame expected out=" << stream->_decodeNextFrameOut << ", Seeking to desired frame" << std::endl;
 #endif
 
-        lastSeekedFrame = frame;
+        lastSeekedFrame = desiredFrame;
         stream->_decodeNextFrameIn  = -1;
         stream->_decodeNextFrameOut = -1;
         stream->_accumDecodeLatency = 0;
         awaitingFirstDecodeAfterSeek = true;
 
-        if ( !seekFrame(frame, stream) ) {
+        if ( !seekFrame(desiredFrame, stream) ) {
             return false;
         }
     }
@@ -1115,14 +1119,14 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                 stream->_frames = stream->_decodeNextFrameIn;
                 if (loadNearest) {
                     // try again
-                    frame = (int)stream->_frames - 1;
-                    lastSeekedFrame = frame;
+                    desiredFrame = (int)stream->_frames - 1;
+                    lastSeekedFrame = desiredFrame;
                     stream->_decodeNextFrameIn  = -1;
                     stream->_decodeNextFrameOut = -1;
                     stream->_accumDecodeLatency = 0;
                     awaitingFirstDecodeAfterSeek = true;
 
-                    if ( !seekFrame(frame, stream) ) {
+                    if ( !seekFrame(desiredFrame, stream) ) {
                         return false;
                     }
                 }
@@ -1195,7 +1199,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                             // frame from this stream, switch to using DTSs and retry the read from the initial desired frame.
                             if ( (stream->_timestampField == &AVPacket::pts) && !stream->_ptsSeen ) {
                                 stream->_timestampField = &AVPacket::dts;
-                                lastSeekedFrame = frame;
+                                lastSeekedFrame = desiredFrame;
 #if TRACE_DECODE_PROCESS
                                 std::cout << ", PTSs absent, switching to use DTSs";
 #endif
@@ -1334,7 +1338,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
 
             // If the frame just output from decode is the desired one, get the decoded picture from it and set that we
             // have a picture.
-            if (stream->_decodeNextFrameOut == frame) {
+            if (stream->_decodeNextFrameOut == desiredFrame) {
 #if TRACE_DECODE_PROCESS
                 std::cout << ", is desired frame" << std::endl;
 #endif
@@ -1365,7 +1369,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
             }
 #if TRACE_DECODE_PROCESS
             else {
-                std::cout << ", is not desired frame (" << frame << ")" << std::endl;
+                std::cout << ", is not desired frame (" << desiredFrame << ")" << std::endl;
             }
 #endif
 
@@ -1401,7 +1405,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                     // starting from the desired frame.
                     else if (retriesRemaining > 0) {
                         --retriesRemaining;
-                        seekTargetFrame = frame;
+                        seekTargetFrame = desiredFrame;
 #if TRACE_DECODE_PROCESS
                         std::cout << "    Post-seek stall detected, at start of file, retrying from desired frame " << seekTargetFrame << std::endl;
 #endif
@@ -1420,7 +1424,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                     // If we have any retries remaining, use one to attempt the read again, starting from the desired frame.
                     if (retriesRemaining > 0) {
                         --retriesRemaining;
-                        seekTargetFrame = frame;
+                        seekTargetFrame = desiredFrame;
 #if TRACE_DECODE_PROCESS
                         std::cout << "    Mid-decode stall detected, retrying from desired frame " << seekTargetFrame << std::endl;
 #endif
@@ -1454,7 +1458,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
     } while (!hasPicture);
 
 #if TRACE_DECODE_PROCESS
-    std::cout << "<-validPicture=" << hasPicture << " for frame " << frame << std::endl;
+    std::cout << "<-validPicture=" << hasPicture << " for frame " << desiredFrame << std::endl;
 #endif
 
     // If read failed, reset the next frame expected out so that we seek and restart decode on next read attempt. Also free
