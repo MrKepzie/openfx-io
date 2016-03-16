@@ -894,7 +894,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     _manager.init();
     
-    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    desc.setRenderThreadSafety(OFX::eRenderFullySafe);
     // Thus effect prefers sequential render, but will still give correct results otherwise
     desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 2);
 }
