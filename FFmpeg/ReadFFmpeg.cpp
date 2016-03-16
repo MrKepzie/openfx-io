@@ -884,6 +884,9 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
     // otherwise non-thread-safe calls.
     av_lockmgr_register(FFmpegLockManager);
+    desc.setRenderThreadSafety(OFX::eRenderFullySafe);
+#else
+    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 #endif
     
     
@@ -894,7 +897,7 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     
     _manager.init();
     
-    desc.setRenderThreadSafety(OFX::eRenderFullySafe);
+    
     // Thus effect prefers sequential render, but will still give correct results otherwise
     desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 2);
 }
