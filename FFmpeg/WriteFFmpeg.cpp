@@ -42,6 +42,7 @@
 #  endif
 #else
 #  include <unistd.h> // for sysconf()
+#  include <time.h>
 #endif
 
 extern "C" {
@@ -59,6 +60,7 @@ extern "C" {
 #include "FFmpegCompat.h"
 #include "IOUtility.h"
 #include "ofxsMacros.h"
+
 
 #ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
@@ -1041,7 +1043,10 @@ private:
     AVStream* _streamVideo;
     AVStream* _streamAudio;
     AVStream* _streamTimecode;
-    int _lastTimeEncoded; //< the frame index of the last frame encoded.
+    
+    OFX::MultiThread::Mutex _nextFrameToEncodeMutex;
+    int _nextFrameToEncode; //< the frame index we need to encode next, INT_MIN means uninitialized
+    int _frameStep;
 
     OFX::ChoiceParam* _format;
     OFX::DoubleParam* _fps;
@@ -1259,7 +1264,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
 , _streamVideo(0)
 , _streamAudio(0)
 , _streamTimecode(0)
-, _lastTimeEncoded(-1)
+, _nextFrameToEncodeMutex(0)
+, _nextFrameToEncode(INT_MIN)
+, _frameStep(1)
 , _format(0)
 , _fps(0)
 #if OFX_FFMPEG_DNXHD
@@ -3027,14 +3034,29 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     if (tag)
         av_dict_set(&_formatContext->metadata, "encoder", "", 0); // Set the 'encoder' key to null.
 
-    ///Flag that we didn't encode any frame yet
-    _lastTimeEncoded = -1;
+    // Flag that we didn't encode any frame yet
+    {
+        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        _nextFrameToEncode = (int)args.frameRange.min;
+        _frameStep = (int)args.frameStep;
+    }
 
     _isOpen = true;
     _error = CLEANUP;
 }
 
-
+inline void
+sleep(const unsigned int milliseconds)
+{
+#ifdef _WINDOWS
+    Sleep(milliseconds);
+#else
+    struct timespec tv;
+    tv.tv_sec = milliseconds/1000;
+    tv.tv_nsec = (milliseconds%1000)*1000000;
+    nanosleep(&tv,0);
+#endif
+}
 
 #define checkAvError() if (error < 0) { \
                         char errorBuf[1024]; \
@@ -3080,43 +3102,57 @@ WriteFFmpegPlugin::encode(const std::string& filename,
         return;
     }
     
-    ///Check that we're really encoding in sequential order
-    if (_lastTimeEncoded != -1 && _lastTimeEncoded != (time - 1)) {
-        std::stringstream ss;
-        ss << "The render does not seem sequential, another render must be currently active: ";
-        ss << "Last time encoded = " <<  _lastTimeEncoded;
-        ss << " whereas current time = " << time;
-        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-
-    }
-
+    
     if (pixelAspectRatio != _pixelAspectRatio) {
         setPersistentMessage(OFX::Message::eMessageError, "", "all images in the sequence do not have the same pixel aspect ratio");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
-
-    _error = IGNORE_FINISH;
-
-
-    if (_isOpen) {
-        _error = CLEANUP;
-
-        if (!_streamVideo) {
-            OFX::throwSuiteStatusException(kOfxStatErrBadHandle);
-            return;
+    
+    ///Check that we're really encoding in sequential order
+    {
+        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        
+        while (_nextFrameToEncode != time && _nextFrameToEncode != INT_MIN) {
+            lock.unlock();
+            sleep(1);
+            lock.relock();
         }
-        assert(_formatContext);
-        if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
-            _error = SUCCESS;
-            _lastTimeEncoded = (int)time;
-        } else {
+        
+        if (_nextFrameToEncode == INT_MIN) {
+            // Another thread aborted
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-    }
+        try {
+            
+            _error = IGNORE_FINISH;
+            
+            
+            if (_isOpen) {
+                _error = CLEANUP;
+                
+                if (!_streamVideo) {
+                    OFX::throwSuiteStatusException(kOfxStatErrBadHandle);
+                    return;
+                }
+                assert(_formatContext);
+                if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
+                    _error = SUCCESS;
+                    _nextFrameToEncode = (int)time + _frameStep;
+                    if (abort()) {
+                        _nextFrameToEncode = INT_MIN;
+                    }
+                } else {
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
+            }
+        } catch (const std::exception& e) {
+            _nextFrameToEncode = INT_MIN;
+            throw e;
+        }
+    } // OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3494,7 +3530,11 @@ void WriteFFmpegPlugin::freeFormat()
         avformat_free_context(_formatContext);
         _formatContext = NULL;
     }
-    _lastTimeEncoded = -1;
+    {
+        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        _nextFrameToEncode = INT_MIN;
+        _frameStep = 1;
+    }
     _scratchBufferSize = 0;
     delete [] _scratchBuffer;
     _scratchBuffer = 0;
@@ -3855,7 +3895,7 @@ WriteFFmpegPluginFactory::load()
 void
 WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe, _extensions, kPluginEvaluation, false, false);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription("Write images or video file using "
@@ -3866,10 +3906,6 @@ WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #                             endif
                               ".\n\n" + ffmpeg_versions());
 
-    ///We support only a single render call per instance
-    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-    
-    ///check that the host supports sequential render
     
     ///This plug-in only supports sequential render
     desc.setSequentialRender(true);
