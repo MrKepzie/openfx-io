@@ -488,7 +488,6 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
     
     try {
-        // first frame of the video file is 1 in OpenFX, but 0 in File::decode, thus the -0.5
         if ( !file->decode(this, (int)time, loadNearestFrame(), maxRetries, buffer) ) {
             if (abort()) {
                 // decode() probably existed because plugin was aborted
