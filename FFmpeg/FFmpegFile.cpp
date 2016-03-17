@@ -52,6 +52,7 @@
     } \
 
 //#define TRACE_DECODE_PROCESS 1
+//#define TRACE_FILE_OPEN 1
 
 // Use one decoding thread per processor for video decoding.
 // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
@@ -636,7 +637,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 #endif
 
 #if TRACE_FILE_OPEN
-    std::cout << "FFmpeg Reader=" << this << "::c'tor(): filename=" << filename + offset << std::endl;
+    std::cout << "FFmpeg Reader=" << this << "::c'tor(): filename=" << filename << std::endl;
 #endif
 
     assert(!_filename.empty());
