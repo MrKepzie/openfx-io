@@ -185,9 +185,12 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
 #     endif
     }
     assert(premult && components && componentCount);
-    //Clear all opened files by this plug-in since the user changed the selected file/sequence
-    _manager.clear(this);
-    FFmpegFile* file = _manager.getOrCreate(this, filename);
+    FFmpegFile* file = _manager.get(this, filename);
+    if (!file) {
+        //Clear all opened files by this plug-in since the user changed the selected file/sequence
+        _manager.clear(this);
+        file = _manager.getOrCreate(this, filename);
+    }
     
     if (!file || file->isInvalid()) {
         if (file) {

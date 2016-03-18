@@ -472,8 +472,9 @@ public:
     
     void clear(void* plugin);
     
-    FFmpegFile* getOrCreate(void* plugin,const std::string &filename);
-        
+    FFmpegFile* get(void* plugin, const std::string &filename);
+    FFmpegFile* getOrCreate(void* plugin, const std::string &filename);
+
 };
 
 

@@ -1569,6 +1569,32 @@ FFmpegFileManager::clear(void* plugin)
 }
 
 FFmpegFile*
+FFmpegFileManager::get(void* plugin, const std::string &filename)
+{
+    if (filename.empty() || !plugin) {
+        return 0;
+    }
+    assert(_lock);
+    OFX::MultiThread::AutoMutex guard(*_lock);
+    FilesMap::iterator found = _files.find(plugin);
+    if (found != _files.end()) {
+        for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
+            if ((*it)->getFilename() == filename) {
+                if ((*it)->isInvalid()) {
+                    delete *it;
+                    found->second.erase(it);
+                    break;
+                } else {
+                    return *it;
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
+FFmpegFile*
 FFmpegFileManager::getOrCreate(void* plugin,const std::string &filename)
 {
     if (filename.empty() || !plugin) {
@@ -1590,7 +1616,6 @@ FFmpegFileManager::getOrCreate(void* plugin,const std::string &filename)
             }
         }
     }
-    
     
     FFmpegFile* file = new FFmpegFile(filename);
     if (found == _files.end()) {
