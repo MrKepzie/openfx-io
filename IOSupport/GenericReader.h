@@ -395,6 +395,7 @@ private:
     const bool _supportsAlpha;
     const bool _supportsTiles;
     const bool _isMultiPlanar;
+    std::string _filename; // filename used for the last onInputFileChanged() call, to avoid calling it again and again (potentially costly)
 };
 
 

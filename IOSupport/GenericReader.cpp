@@ -1896,6 +1896,12 @@ GenericReaderPlugin::inputFileChanged()
         ///unless the user did a mistake. We are also safe to assume that images specs are the same for
         ///all the sequence
         _fileParam->getValueAtTime(tmp.min, filename);
+        if (filename == _filename) {
+            // file name did not really change
+            return;
+        }
+        _filename = filename;
+
         ///let the derive class a chance to initialize any data structure it may need
         
         OFX::PixelComponentEnum components;
