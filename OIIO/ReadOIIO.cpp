@@ -174,12 +174,13 @@ struct LayerUnionData
     
 };
 
-//This is a vector to remain the ordering imposed by the file
+//This is a vector to remain the ordering imposed by the file <layer name, layer info>
 typedef std::vector<std::pair<std::string, LayerChannelIndexes> > LayersMap;
 
 //For each view name, the layer availables. Note that they are ordered because the first one is the "Main" view
 typedef std::vector< std::pair<std::string,LayersMap> > ViewsLayersMap;
 
+// <layer name, extended layer info>
 typedef std::vector<std::pair<std::string, LayerUnionData> > LayersUnionVect;
 
 class ReadOIIOPlugin : public GenericReaderPlugin {
@@ -228,9 +229,9 @@ private:
     virtual void decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
                              OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes) OVERRIDE FINAL;
     
-    void getOIIOChannelIndexesFromLayerName(const std::string& filename, int view, const std::string& layerName, OFX::PixelComponentEnum pixelComponents, std::vector<int>& channels, int& numChannels, int& subImageIndex);
+    void getOIIOChannelIndexesFromLayerName(const std::string& filename, int view, const std::string& layerName, OFX::PixelComponentEnum pixelComponents, const std::vector<ImageSpec>& subimages, std::vector<int>& channels, int& numChannels, int& subImageIndex);
     
-    void openFile(const std::string& filename, bool useCache, ImageInput** img, ImageSpec* spec, int subimage);
+    void openFile(const std::string& filename, bool useCache, ImageInput** img, std::vector<ImageSpec>* subimages);
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error,  int* tile_width, int* tile_height) OVERRIDE FINAL;
 
@@ -240,6 +241,10 @@ private:
     
     std::string metadata(const std::string& filename);
 
+    void getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& subimages) const;
+    
+    void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const;
+    
     void updateSpec(const std::string &filename);
     
     void setOCIOColorspacesFromSpec(const std::string& filename);
@@ -249,6 +254,9 @@ private:
     void buildChannelMenus();
     
     ///This may warn the user if some views do not exist in the project
+    
+    static void layersMapFromSubImages(const std::vector<ImageSpec>& subimages, ViewsLayersMap* layersMap, LayersUnionVect* layersUnion);
+    
     void buildLayersMenu();
 
     void setDefaultChannels(OFX::PixelComponentEnum *components);
@@ -296,9 +304,7 @@ private:
     
     
     OFX::MultiThread::Mutex _layersMapMutex;
-    
-    //Refreshed in buildLayersMenu() when input file changes
-    ViewsLayersMap _layersMap;
+
     
     ///Union all layers across views to build the layers choice.
     ///This is because we cannot provide a choice with different entries across views, so if there are some disparities,
@@ -344,7 +350,6 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
 , _lastFileReadNoPlaybackMutex()
 , _lastFileReadNoPlayback()
 , _layersMapMutex()
-, _layersMap()
 , _layersUnion()
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
@@ -735,6 +740,240 @@ static bool caseInsensitiveCompare(const std::string& lhs, const std::string& rh
 } // anon namespace
 
 void
+ReadOIIOPlugin::layersMapFromSubImages(const std::vector<ImageSpec>& subimages, ViewsLayersMap* layersMap, LayersUnionVect* layersUnion)
+{
+    assert(!subimages.empty());
+    
+    std::vector<std::string> views;
+    
+    
+    /*
+     First off, detect views.
+     */
+    std::vector<std::string> partsViewAttribute;
+    if (subimages.size() == 1) {
+        //Check the "multiView" property
+        //We have to pass TypeDesc::UNKNOWN because if we pass TypeDesc::String OIIO will also check the type length which is encoded in the type
+        //but we do not know it yet
+        //See https://github.com/OpenImageIO/oiio/issues/1247
+        const ParamValue* multiviewValue = subimages[0].find_attribute("multiView", TypeDesc::UNKNOWN);
+        if (multiviewValue) {
+            
+            ///This is the only way to retrieve the array size currently, see issue above
+            int nValues = multiviewValue->type().arraylen;
+            const ustring* dataPtr = (const ustring*)multiviewValue->data();
+            for (int i = 0; i < nValues ; ++i) {
+                std::string view(dataPtr[i].data());
+                if (!view.empty()) {
+                    if (std::find(views.begin(), views.end(), view) == views.end()) {
+                        views.push_back(view);
+                    }
+                }
+            }
+        }
+    } else {
+        //Check for each subimage the "view" property
+        partsViewAttribute.resize(subimages.size());
+        for (std::size_t i = 0; i < subimages.size(); ++i) {
+            const ParamValue* viewValue = subimages[i].find_attribute("view", TypeDesc::STRING);
+            bool viewPartAdded = false;
+            if (viewValue) {
+                const char* dataPtr = *(const char**)viewValue->data();
+                std::string view = std::string(dataPtr);
+                if (!view.empty()) {
+                    if (std::find(views.begin(), views.end(), view) == views.end()) {
+                        views.push_back(view);
+                    }
+                    viewPartAdded = true;
+                    partsViewAttribute[i] = view;
+                }
+            }
+            if (!viewPartAdded) {
+                partsViewAttribute[i] = std::string();
+            }
+        }
+    }
+    
+    std::string viewsEncoded;
+    for (std::size_t i = 0; i < views.size(); ++i) {
+        
+        viewsEncoded.append(views[i]);
+        if (i < views.size() - 1) {
+            viewsEncoded.push_back(',');
+        }
+        layersMap->push_back(std::make_pair(views[i], LayersMap()));
+    }
+    
+    
+    if (views.empty()) {
+        layersMap->push_back(std::make_pair("Main", LayersMap()));
+    }
+    
+    
+    
+    ///Layers are considered to be named as view.layer.channels. If no view prefix then it is considered to be part of the "main" view
+    ///that is, the first view declared.
+    
+    for (std::size_t i = 0; i < subimages.size(); ++i) {
+        for (int j = 0; j < subimages[i].nchannels; ++j) {
+            std::string layerChanName;
+            if (j >= (int)subimages[i].channelnames.size()) {
+                //give it a generic name since it's not in the channelnames
+                std::stringstream ss;
+                ss << "channel " << i;
+                layerChanName = ss.str();
+            } else {
+                layerChanName = subimages[i].channelnames[j];
+            }
+            
+            //Extract the view layer and channel to our format so we can compare strings
+            std::string originalView,originalLayer,channel;
+            extractLayerName(layerChanName, &originalView, &originalLayer, &channel);
+            std::string view = originalView;
+            std::string layer = originalLayer;
+            
+            if (view.empty() && !partsViewAttribute.empty() && i < partsViewAttribute.size() && !partsViewAttribute[i].empty()) {
+                view = partsViewAttribute[i];
+            }
+            if (view.empty() && !layer.empty()) {
+                ///Check if the layer we parsed is in fact not a view name
+                for (std::size_t v = 0; v < views.size(); ++v) {
+                    if (caseInsensitiveCompare(views[v],layer)) {
+                        view = layer;
+                        layer.clear();
+                        break;
+                    }
+                }
+            }
+            
+            ViewsLayersMap::iterator foundView = layersMap->end();
+            if (view.empty()) {
+                ///Set to main view (view 0)
+                foundView = layersMap->begin();
+            } else {
+                for (ViewsLayersMap::iterator it = layersMap->begin(); it!=layersMap->end(); ++it) {
+                    if (it->first == view) {
+                        foundView = it;
+                        break;
+                    }
+                }
+            }
+            if (foundView == layersMap->end()) {
+                //The view does not exist in the metadata, this is probably a channel named aaa.bbb.c, just concatenate aaa.bbb as a single layer name
+                //and put it in the "Main" view
+                layer = view + "." + layer;
+                view.clear();
+                foundView = layersMap->begin();
+            }
+            
+            assert(foundView != layersMap->end());
+            
+            //If the layer name is empty, try to map it to something known
+            if (layer.empty()) {
+                //channel  has already been remapped to our formatting of channels, i.e: 1 upper-case letter
+                if (channel == "R" || channel == "G" || channel == "B" || channel == "A" || channel == "I") {
+                    layer = kReadOIIOColorLayer;
+                } else if (channel == "X") {
+                    //try to put XYZ together, unless Z is alone
+                    bool hasY = hasChannelName(originalView, originalLayer, "Y", subimages[i].channelnames);
+                    bool hasZ = hasChannelName(originalView, originalLayer, "Z", subimages[i].channelnames);
+                    if (hasY && hasZ) {
+                        layer = kReadOIIOXYZLayer;
+                    }
+                } else if (channel == "Y") {
+                    //try to put XYZ together, unless Z is alone
+                    bool hasX = hasChannelName(originalView, originalLayer, "X", subimages[i].channelnames);
+                    bool hasZ = hasChannelName(originalView, originalLayer, "Z", subimages[i].channelnames);
+                    if (hasX && hasZ) {
+                        layer = kReadOIIOXYZLayer;
+                    }
+                } else if (channel == "Z") {
+                    //try to put XYZ together, unless Z is alone
+                    bool hasX = hasChannelName(originalView, originalLayer, "X", subimages[i].channelnames);
+                    bool hasY = hasChannelName(originalView, originalLayer, "Y", subimages[i].channelnames);
+                    if (hasX && hasY) {
+                        layer = kReadOIIOXYZLayer;
+                    } else {
+                        layer = kReadOIIODepthLayer;
+                    }
+                }
+            }
+            
+            //The layer is still empty, put the channel alone in a new layer
+            if (layer.empty()) {
+                layer = channel;
+            }
+            
+            //There may be duplicates, e.g: 2 parts of a EXR file with same RGBA layer, we have no choice but to prepend the part index
+            {
+                int attempts = 1;
+                std::string baseLayerName = layer;
+                while (hasDuplicate(foundView->second, layer, channel)) {
+                    std::stringstream ss;
+                    
+                    ss << "Part" << attempts;
+                    
+                    ss << '.' << baseLayerName;
+                    layer = ss.str();
+                    ++attempts;
+                }
+            }
+            
+            assert(!layer.empty());
+            
+            int layerIndex = -1;
+            for (std::size_t c = 0; c < foundView->second.size(); ++c) {
+                if (foundView->second[c].first == layer) {
+                    layerIndex = (int)c;
+                    break;
+                }
+            }
+            if (layerIndex == -1) {
+                foundView->second.push_back(std::make_pair(layer,LayerChannelIndexes()));
+                layerIndex = (int)foundView->second.size() - 1;
+            }
+            //Now we are sure there are no duplicates
+            foundView->second[layerIndex].second.subImageIdx = i;
+            foundView->second[layerIndex].second.channelIndexes.push_back(j);
+            foundView->second[layerIndex].second.channelNames.push_back(channel);
+        } // for (int j = 0; j < _subImagesSpec[i].nchannels; ++j) {
+    } // for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
+    
+    
+    ///Union all layers across views
+    if (layersUnion) {
+        for (ViewsLayersMap::iterator it = layersMap->begin(); it!=layersMap->end(); ++it) {
+            for (LayersMap::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                
+                LayersUnionVect::iterator found = layersUnion->end();
+                for (LayersUnionVect::iterator it3 = layersUnion->begin(); it3 != layersUnion->end(); ++it3) {
+                    if (it3->first == it2->first) {
+                        found = it3;
+                        break;
+                    }
+                }
+                
+                
+                if (found == layersUnion->end()) {
+                    // We did not find a view in the layersUnion with this name
+                    LayerUnionData d;
+                    d.layer = it2->second;
+                    d.views.push_back(it->first);
+                    layersUnion->push_back(std::make_pair(it2->first, d));
+                    
+                } else {
+                    // We already found a view in the layersUnion with this name
+                    if (views.size() > 1) {
+                        //register views that have this layer
+                        found->second.views.push_back(it->first);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void
 ReadOIIOPlugin::buildLayersMenu()
 {
     assert(gHostSupportsMultiPlane && gHostSupportsDynamicChoices);
@@ -746,242 +985,28 @@ ReadOIIOPlugin::buildLayersMenu()
     assert(!_subImagesSpec.empty());
     
     std::vector<std::pair<std::string,std::string> > options;
-    std::vector<std::string> views;
+
     //Protect the map
     {
         OFX::MultiThread::AutoMutex lock(_layersMapMutex);
+        _layersUnion.clear();
         
-        _layersMap.clear();
+        ViewsLayersMap layersMap;
+        layersMapFromSubImages(_subImagesSpec, &layersMap, &_layersUnion);
         
-        /*
-         First off, detect views.
-         */
-        std::vector<std::string> partsViewAttribute;
-        if (_subImagesSpec.size() == 1) {
-            //Check the "multiView" property
-            //We have to pass TypeDesc::UNKNOWN because if we pass TypeDesc::String OIIO will also check the type length which is encoded in the type
-            //but we do not know it yet
-            //See https://github.com/OpenImageIO/oiio/issues/1247
-            const ParamValue* multiviewValue = _subImagesSpec[0].find_attribute("multiView", TypeDesc::UNKNOWN);
-            if (multiviewValue) {
-                
-                ///This is the only way to retrieve the array size currently, see issue above
-                int nValues = multiviewValue->type().arraylen;
-                const ustring* dataPtr = (const ustring*)multiviewValue->data();
-                for (int i = 0; i < nValues ; ++i) {
-                    std::string view(dataPtr[i].data());
-                    if (!view.empty()) {
-                        if (std::find(views.begin(), views.end(), view) == views.end()) {
-                            views.push_back(view);
-                        }
-                    }
-                }
-            }
-        } else {
-            //Check for each subimage the "view" property
-            partsViewAttribute.resize(_subImagesSpec.size());
-            for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
-                const ParamValue* viewValue = _subImagesSpec[i].find_attribute("view", TypeDesc::STRING);
-                bool viewPartAdded = false;
-                if (viewValue) {
-                    const char* dataPtr = *(const char**)viewValue->data();
-                    std::string view = std::string(dataPtr);
-                    if (!view.empty()) {
-                        if (std::find(views.begin(), views.end(), view) == views.end()) {
-                            views.push_back(view);
-                        }
-                        viewPartAdded = true;
-                        partsViewAttribute[i] = view;
-                    }
-                }
-                if (!viewPartAdded) {
-                    partsViewAttribute[i] = std::string();
-                }
-            }
-        }
-   
         std::string viewsEncoded;
-        for (std::size_t i = 0; i < views.size(); ++i) {
-
-            viewsEncoded.append(views[i]);
-            if (i < views.size() - 1) {
+        for (std::size_t i = 0; i < layersMap.size(); ++i) {
+        
+            viewsEncoded.append(layersMap[i].first);
+            if (i < layersMap.size() - 1) {
                 viewsEncoded.push_back(',');
             }
-            _layersMap.push_back(std::make_pair(views[i], LayersMap()));
         }
         
         _availableViews->setValue(viewsEncoded);
+
         
-        if (views.empty()) {
-            _layersMap.push_back(std::make_pair("Main", LayersMap()));
-        }
-        
-      
-        
-        ///Layers are considered to be named as view.layer.channels. If no view prefix then it is considered to be part of the "main" view
-        ///that is, the first view declared.
-        
-        for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
-            for (int j = 0; j < _subImagesSpec[i].nchannels; ++j) {
-                std::string layerChanName;
-                if (j >= (int)_subImagesSpec[i].channelnames.size()) {
-                    //give it a generic name since it's not in the channelnames
-                    std::stringstream ss;
-                    ss << "channel " << i;
-                    layerChanName = ss.str();
-                } else {
-                    layerChanName = _subImagesSpec[i].channelnames[j];
-                }
-                
-                //Extract the view layer and channel to our format so we can compare strings
-                std::string originalView,originalLayer,channel;
-                extractLayerName(layerChanName, &originalView, &originalLayer, &channel);
-                std::string view = originalView;
-                std::string layer = originalLayer;
-                
-                if (view.empty() && !partsViewAttribute.empty() && i < partsViewAttribute.size() && !partsViewAttribute[i].empty()) {
-                    view = partsViewAttribute[i];
-                }
-                if (view.empty() && !layer.empty()) {
-                    ///Check if the layer we parsed is in fact not a view name
-                    for (std::size_t v = 0; v < views.size(); ++v) {
-                        if (caseInsensitiveCompare(views[v],layer)) {
-                            view = layer;
-                            layer.clear();
-                            break;
-                        }
-                    }
-                }
-                
-                ViewsLayersMap::iterator foundView = _layersMap.end();
-                if (view.empty()) {
-                    ///Set to main view (view 0)
-                    foundView = _layersMap.begin();
-                } else {
-                    for (ViewsLayersMap::iterator it = _layersMap.begin(); it!=_layersMap.end(); ++it) {
-                        if (it->first == view) {
-                            foundView = it;
-                            break;
-                        }
-                    }
-                }
-                if (foundView == _layersMap.end()) {
-                    //The view does not exist in the metadata, this is probably a channel named aaa.bbb.c, just concatenate aaa.bbb as a single layer name
-                    //and put it in the "Main" view
-                    layer = view + "." + layer;
-                    view.clear();
-                    foundView = _layersMap.begin();
-                }
-                
-                assert(foundView != _layersMap.end());
-                
-                //If the layer name is empty, try to map it to something known
-                if (layer.empty()) {
-                    //channel  has already been remapped to our formatting of channels, i.e: 1 upper-case letter
-                    if (channel == "R" || channel == "G" || channel == "B" || channel == "A" || channel == "I") {
-                        layer = kReadOIIOColorLayer;
-                    } else if (channel == "X") {
-                        //try to put XYZ together, unless Z is alone
-                        bool hasY = hasChannelName(originalView, originalLayer, "Y", _subImagesSpec[i].channelnames);
-                        bool hasZ = hasChannelName(originalView, originalLayer, "Z", _subImagesSpec[i].channelnames);
-                        if (hasY && hasZ) {
-                            layer = kReadOIIOXYZLayer;
-                        }
-                    } else if (channel == "Y") {
-                        //try to put XYZ together, unless Z is alone
-                        bool hasX = hasChannelName(originalView, originalLayer, "X", _subImagesSpec[i].channelnames);
-                        bool hasZ = hasChannelName(originalView, originalLayer, "Z", _subImagesSpec[i].channelnames);
-                        if (hasX && hasZ) {
-                            layer = kReadOIIOXYZLayer;
-                        }
-                    } else if (channel == "Z") {
-                        //try to put XYZ together, unless Z is alone
-                        bool hasX = hasChannelName(originalView, originalLayer, "X", _subImagesSpec[i].channelnames);
-                        bool hasY = hasChannelName(originalView, originalLayer, "Y", _subImagesSpec[i].channelnames);
-                        if (hasX && hasY) {
-                            layer = kReadOIIOXYZLayer;
-                        } else {
-                            layer = kReadOIIODepthLayer;
-                        }
-                    }
-                }
-                
-                //The layer is still empty, put the channel alone in a new layer
-                if (layer.empty()) {
-                    layer = channel;
-                }
-                
-                //There may be duplicates, e.g: 2 parts of a EXR file with same RGBA layer, we have no choice but to prepend the part index
-                {
-                    int attempts = 1;
-                    std::string baseLayerName = layer;
-                    while (hasDuplicate(foundView->second, layer, channel)) {
-                        std::stringstream ss;
-          
-                        ss << "Part" << attempts;
-                        
-                        ss << '.' << baseLayerName;
-                        layer = ss.str();
-                        ++attempts;
-                    }
-                }
-                
-                assert(!layer.empty());
-                
-                int layerIndex = -1;
-                for (std::size_t c = 0; c < foundView->second.size(); ++c) {
-                    if (foundView->second[c].first == layer) {
-                        layerIndex = (int)c;
-                        break;
-                    }
-                }
-                if (layerIndex == -1) {
-                    foundView->second.push_back(std::make_pair(layer,LayerChannelIndexes()));
-                    layerIndex = (int)foundView->second.size() - 1;
-                }
-                //Now we are sure there are no duplicates
-                foundView->second[layerIndex].second.subImageIdx = i;
-                foundView->second[layerIndex].second.channelIndexes.push_back(j);
-                foundView->second[layerIndex].second.channelNames.push_back(channel);
-            } // for (int j = 0; j < _subImagesSpec[i].nchannels; ++j) {
-        } // for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
-        
-        
-        ///Union all layers across views
-        _layersUnion.clear();
-        
-        for (ViewsLayersMap::iterator it = _layersMap.begin(); it!=_layersMap.end(); ++it) {
-            for (LayersMap::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                
-                LayersUnionVect::iterator found = _layersUnion.end();
-                for (LayersUnionVect::iterator it3 = _layersUnion.begin(); it3 != _layersUnion.end(); ++it3) {
-                    if (it3->first == it2->first) {
-                        found = it3;
-                        break;
-                    }
-                }
-                if (found == _layersUnion.end()) {
-                    if (views.size() > 1) {
-                        //register views that have this layer
-                        LayerUnionData d;
-                        d.layer = it2->second;
-                        d.views.push_back(it->first);
-                        _layersUnion.push_back(std::make_pair(it2->first, d));
-                    } else {
-                        LayerUnionData d;
-                        d.layer = it2->second;
-                        d.views.push_back(it->first);
-                        _layersUnion.push_back(std::make_pair(it2->first, d));
-                    }
-                } else {
-                    if (views.size() > 1) {
-                        //register views that have this layer
-                        found->second.views.push_back(it->first);
-                    }
-                }
-            }
-        }
-        
+
         ///Now build the choice options
         for (std::size_t i = 0; i < _layersUnion.size(); ++i) {
             const std::string& layerName = _layersUnion[i].first;
@@ -1014,7 +1039,7 @@ ReadOIIOPlugin::buildLayersMenu()
             
             
             std::string optionLabel;
-            if (views.size() > 1) {
+            if (layersMap.size() > 1) {
                 std::stringstream ss;
                 ss << "Present in views: ";
                 for (std::size_t j = 0; j < _layersUnion[i].second.views.size(); ++j) {
@@ -1504,55 +1529,63 @@ ReadOIIOPlugin::restoreChannelMenusFromStringParams()
 
 }
 
+void
+ReadOIIOPlugin::getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& subimages) const
+{
+    int subImageIndex = 0;
+    ImageSpec spec;
+    while (img->seek_subimage(subImageIndex, 0, spec)) {
+        subimages.push_back(spec);
+        ++subImageIndex;
+#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
+        break;
+#endif
+    }
+}
+
+void
+ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const
+{
+    ImageSpec spec;
+    int subImageIndex = 0;
+    while (_cache->get_imagespec(ustring(filename), spec, subImageIndex)) {
+        subimages.push_back(spec);
+        ++subImageIndex;
+#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
+        break;
+#endif
+    }
+}
 
 void
 ReadOIIOPlugin::updateSpec(const std::string &filename)
 {
     _specValid = false;
+    _subImagesSpec.clear();
 # ifdef OFX_READ_OIIO_USES_CACHE
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    ImageSpec spec;
-    _subImagesSpec.clear();
-    int subImageIndex = 0;
-    while (_cache->get_imagespec(ustring(filename), spec, subImageIndex)) {
-        _subImagesSpec.push_back(spec);
-        ++subImageIndex;
-#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-        break;
-#endif
-    }
-    if (_subImagesSpec.empty()) {
-        return;
-    }
+    getSpecsFromCache(filename, _subImagesSpec);
+
 # else
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
         return;
     }
-    int subImageIndex = 0;
-    ImageSpec spec;
-    while (img->seek_subimage(subImageIndex, 0, spec)) {
-        _subImagesSpec.push_back(spec);
-        ++subImageIndex;
-#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-        break;
-#endif
-    }
+    getSpecsFromImageInput(img, _subImagesSpec);
+# endif
     if (_subImagesSpec.empty()) {
         return;
     }
-# endif
     _specValid = true;
     
     for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
         if (_subImagesSpec[i].deep) {
-            if (spec.deep) {
+            if (_subImagesSpec[0].deep) {
                 sendMessage(OFX::Message::eMessageError, "", "Cannot read deep images yet.");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 _subImagesSpec.clear();
                 _specValid = false;
                 _layersUnion.clear();
-                _layersMap.clear();
                 return;
             }
         }
@@ -1903,30 +1936,12 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
 }
 
 void
-ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput** img, ImageSpec* spec, int subimage)
+ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput** img, std::vector<ImageSpec>* subimages)
 {
-#ifdef OFX_READ_OIIO_USES_CACHE
     if (useCache) {
-        //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-        if(!_cache->get_imagespec(ustring(filename), *spec, subimage)){
-            setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
-        }
+        getSpecsFromCache(filename, *subimages);
+    } else {
         
-#pragma message WARN("Uncomment this block when https://github.com/OpenImageIO/oiio/issues/1239 (race-condition) is REALLY fixed")
-        /*{
-            //Keep in OIIO cache only the current frame in case multiple threads try to access it
-            OFX::MultiThread::AutoMutex l(_lastFileReadNoPlaybackMutex);
-            if (!_lastFileReadNoPlayback.empty() && filename != _lastFileReadNoPlayback) {
-                _cache->invalidate(ustring(_lastFileReadNoPlayback));
-            }
-            _lastFileReadNoPlayback = filename;
-        }*/
-        
-    } else // warning: '{' must follow #endif
-#endif
-    { // !useCache
         // Always keep unassociated alpha.
         // Don't let OIIO premultiply, because if the image is 8bits,
         // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
@@ -1941,43 +1956,40 @@ ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput*
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-        if (!(*img)->seek_subimage(subimage, 0, *spec)) {
-            std::stringstream ss;
-            ss << "Cannot seek subimage " << subimage << " in " << filename;
-            setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
-
-        }
+        getSpecsFromImageInput(*img, *subimages);
     }
-
 }
+
 
 void
 ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
                                                    int view,
                                                    const std::string& layerName,
                                                    OFX::PixelComponentEnum pixelComponents,
+                                                   const std::vector<ImageSpec>& subimages,
                                                    std::vector<int>& channels, int& numChannels, int& subImageIndex)
 {
+    ViewsLayersMap layersMap;
+    layersMapFromSubImages(subimages, &layersMap, 0);
+    
     ///Find the view
     std::string viewName = getViewName(view);
-    ViewsLayersMap::iterator foundView = _layersMap.end();
-    for (ViewsLayersMap::iterator it = _layersMap.begin(); it!=_layersMap.end(); ++it) {
+    ViewsLayersMap::iterator foundView = layersMap.end();
+    for (ViewsLayersMap::iterator it = layersMap.begin(); it!=layersMap.end(); ++it) {
         if (caseInsensitiveCompare(it->first, viewName)) {
             foundView = it;
             break;
         }
     }
-    if (foundView == _layersMap.end()) {
+    if (foundView == layersMap.end()) {
         /*
          We did not find the view by name. To offer some sort of compatibility and not fail, just load the view corresponding to the given
          index, even though the names do not match. 
          If the index is out of range, just load the main view (index 0)
          */
         
-        foundView = _layersMap.begin();
-        if (view >= 0 && view < (int)_layersMap.size()) {
+        foundView = layersMap.begin();
+        if (view >= 0 && view < (int)layersMap.size()) {
             std::advance(foundView, view);
         }
         
@@ -2002,33 +2014,75 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
     const std::vector<int>& layerChannels = foundView->second[foundLayer].second.channelIndexes;
     subImageIndex = foundView->second[foundLayer].second.subImageIdx;
     
+    // Some pngs are 2-channel intensity + alpha
+    bool isIA = layerChannels.size() == 2 && foundView->second[foundLayer].second.channelNames[0] == "I" && foundView->second[foundLayer].second.channelNames[1] == "A";
+                 
     switch (pixelComponents) {
         case OFX::ePixelComponentRGBA:
             numChannels = 4;
             channels.resize(numChannels);
-            if (layerChannels.size() == 2 && foundView->second[foundLayer].second.channelNames[0] == "I" && foundView->second[foundLayer].second.channelNames[1] == "A") {
+            if (isIA) {
                 channels[0] = layerChannels[0] + kXChannelFirst;
                 channels[1] = layerChannels[0] + kXChannelFirst;
                 channels[2] = layerChannels[0] + kXChannelFirst;
                 channels[3] = layerChannels[1] + kXChannelFirst;
             } else {
-                channels[0] = 0 < layerChannels.size() ? layerChannels[0] + kXChannelFirst : 0;
-                channels[1] = 1 < layerChannels.size() ? layerChannels[1] + kXChannelFirst : 0;
-                channels[2] = 2 < layerChannels.size() ? layerChannels[2] + kXChannelFirst : 0;
-                channels[3] = 3 < layerChannels.size() ? layerChannels[3] + kXChannelFirst : 1;
+                if (layerChannels.size() == 1) {
+                    channels[0] = layerChannels[0] + kXChannelFirst;
+                    channels[1] = layerChannels[0] + kXChannelFirst;
+                    channels[2] = layerChannels[0] + kXChannelFirst;
+                    channels[3] = layerChannels[0] + kXChannelFirst;
+                } else if (layerChannels.size() == 2) {
+                    channels[0] = layerChannels[0] + kXChannelFirst;
+                    channels[1] = layerChannels[1] + kXChannelFirst;
+                    channels[2] = 0;
+                    channels[3] = 1;
+                } else if (layerChannels.size() == 3) {
+                    channels[0] = layerChannels[0] + kXChannelFirst;
+                    channels[1] = layerChannels[1] + kXChannelFirst;
+                    channels[2] = layerChannels[2] + kXChannelFirst;
+                    channels[3] = 1;
+                } else {
+                    channels[0] = layerChannels[0] + kXChannelFirst;
+                    channels[1] = layerChannels[1] + kXChannelFirst;
+                    channels[2] = layerChannels[2] + kXChannelFirst;
+                    channels[3] = layerChannels[3] + kXChannelFirst;
+                }
             }
             break;
         case OFX::ePixelComponentRGB:
             numChannels = 3;
             channels.resize(numChannels);
-            channels[0] = 0 < layerChannels.size() ? layerChannels[0] + kXChannelFirst : 0;
-            channels[1] = 1 < layerChannels.size() ? layerChannels[1] + kXChannelFirst : 0;
-            channels[2] = 2 < layerChannels.size() ? layerChannels[2] + kXChannelFirst : 0;
+            if (layerChannels.size() == 1) {
+                channels[0] = layerChannels[0] + kXChannelFirst;
+                channels[1] = layerChannels[0] + kXChannelFirst;
+                channels[2] = layerChannels[0] + kXChannelFirst;
+            } else if (layerChannels.size() == 2) {
+                channels[0] = layerChannels[0] + kXChannelFirst;
+                channels[1] = layerChannels[1] + kXChannelFirst;
+                channels[2] = 0;
+            } else if (layerChannels.size() >= 3) {
+                channels[0] = layerChannels[0] + kXChannelFirst;
+                channels[1] = layerChannels[1] + kXChannelFirst;
+                channels[2] = layerChannels[2] + kXChannelFirst;
+            }
             break;
         case OFX::ePixelComponentAlpha:
             numChannels = 1;
             channels.resize(numChannels);
-            channels[0] = 0 < layerChannels.size() ? layerChannels[0] + kXChannelFirst : 0;
+            if (layerChannels.size() == 1) {
+                channels[0] = layerChannels[0] + kXChannelFirst;
+            } else if (layerChannels.size() == 2) {
+                if (isIA) {
+                    channels[0] = layerChannels[1] + kXChannelFirst;
+                } else {
+                    channels[0] = layerChannels[0] + kXChannelFirst;
+                }
+            } else if (layerChannels.size() == 3) {
+                channels[0] = 1;
+            } else if (layerChannels.size() == 4) {
+                channels[0] = layerChannels[3] + kXChannelFirst;
+            }
             break;
         case OFX::ePixelComponentCustom:
             //numChannels has been already set
@@ -2044,7 +2098,7 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
             break;
     }
     
-
+    
 }
 
 void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
@@ -2074,15 +2128,18 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     int numChannels = 0;
     int pixelBytes = 0;
     std::auto_ptr<ImageInput> img;
-    ImageSpec spec;
+    std::vector<ImageSpec> subimages;
     
-    ///When using RGBA choices we always use the subImage 0
-    if (_useRGBAChoices || !_outputLayer) {
-        ImageInput* rawImg = 0;
-        openFile(filename, useCache, &rawImg, & spec, 0);
-        if (rawImg) {
-            img.reset(rawImg);
-        }
+    ImageInput* rawImg = 0;
+    openFile(filename, useCache, &rawImg, &subimages);
+    if (rawImg) {
+        img.reset(rawImg);
+    }
+    
+    if (subimages.empty()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot open file ") + filename);
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
     
     int subImageIndex = 0;
@@ -2090,22 +2147,24 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
         assert(rawComponents == kOfxImageComponentAlpha || rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
         
         if (_useRGBAChoices) {
+            
+            
             int rChannel, gChannel, bChannel, aChannel;
             _rChannel->getValueAtTime(time, rChannel);
             _gChannel->getValueAtTime(time, gChannel);
             _bChannel->getValueAtTime(time, bChannel);
             _aChannel->getValueAtTime(time, aChannel);
             // test if channels are valid
-            if (rChannel > spec.nchannels + kXChannelFirst) {
+            if (rChannel > subimages[0].nchannels + kXChannelFirst) {
                 rChannel = 0;
             }
-            if (gChannel > spec.nchannels + kXChannelFirst) {
+            if (gChannel > subimages[0].nchannels + kXChannelFirst) {
                 gChannel = 0;
             }
-            if (bChannel > spec.nchannels + kXChannelFirst) {
+            if (bChannel > subimages[0].nchannels + kXChannelFirst) {
                 bChannel = 0;
             }
-            if (aChannel > spec.nchannels + kXChannelFirst) {
+            if (aChannel > subimages[0].nchannels + kXChannelFirst) {
                 aChannel = 1; // opaque by default
             }
             
@@ -2173,7 +2232,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 OFX::MultiThread::AutoMutex lock(_layersMapMutex);
                 if (layer_i < (int)_layersUnion.size() && layer_i >= 0) {
                     const std::string& layerName = _layersUnion[layer_i].first;
-                    getOIIOChannelIndexesFromLayerName(filename, view, layerName, pixelComponents, channels, numChannels, subImageIndex);
+                    getOIIOChannelIndexesFromLayerName(filename, view, layerName, pixelComponents, subimages, channels, numChannels, subImageIndex);
                     
                 } else {
                     setPersistentMessage(OFX::Message::eMessageError, "", "Failure to find requested layer in file");
@@ -2194,7 +2253,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             pixelBytes = numChannels * sizeof(float);
             
             if (!_useRGBAChoices && _outputLayer) {
-                getOIIOChannelIndexesFromLayerName(filename, view, layer, pixelComponents, channels, numChannels, subImageIndex);
+                getOIIOChannelIndexesFromLayerName(filename, view, layer, pixelComponents, subimages, channels, numChannels, subImageIndex);
             } else {
                 
                 if (numChannels == 1 && layerChannels[1] == layer) {
@@ -2204,14 +2263,14 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 
                 for (int i = 0; i < numChannels; ++i) {
                     bool found = false;
-                    for (std::size_t j = 0; j < spec.channelnames.size(); ++j) {
+                    for (std::size_t j = 0; j < subimages[0].channelnames.size(); ++j) {
                         std::string realChan;
                         if (!layer.empty()) {
                             realChan.append(layer);
                             realChan.push_back('.');
                         }
                         realChan.append(layerChannels[i+1]);
-                        if (spec.channelnames[j] == realChan) {
+                        if (subimages[0].channelnames[j] == realChan) {
                             channels[i] = j + kXChannelFirst;
                             found = true;
                             break;
@@ -2228,18 +2287,19 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     }
 #endif
     
-    ///Open the appropriate subimage index if needed
-    if (!img.get() || useCache) {
-        ImageInput* rawImg = 0;
-        openFile(filename, useCache, &rawImg, & spec, subImageIndex);
-        if (rawImg) {
-            img.reset(rawImg);
-        }
+    
+    if (img.get() && !img->seek_subimage(subImageIndex, 0, subimages[0])) {
+        std::stringstream ss;
+        ss << "Cannot seek subimage " << subImageIndex << " in " << filename;
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
         
     }
     
+    
     size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
-
+    
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
     bool useDisplayWindowOrigin;
     _useDisplayWindowAsOrigin->getValue(useDisplayWindowOrigin);
@@ -2273,15 +2333,15 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
 #         ifdef OFX_READ_OIIO_USES_CACHE
             if (useCache) {
                 
-                int fullHeight = spec.full_height == 0 ? spec.height : spec.full_height;
+                int fullHeight = subimages[subImageIndex].full_height == 0 ? subimages[subImageIndex].height : subimages[subImageIndex].full_height;
                 
                 if (!_cache->get_pixels(ustring(filename),
                                         subImageIndex, //subimage
                                         0, //miplevel
-                                        useDisplayWindowOrigin ? spec.full_x + renderWindow.x1 : renderWindow.x1, //x begin
-                                        useDisplayWindowOrigin ? spec.full_x + renderWindow.x2 : renderWindow.x2, //x end
-                                        useDisplayWindowOrigin ? spec.full_y + fullHeight - renderWindow.y2 : renderWindow.y2, //y begin
-                                        useDisplayWindowOrigin ? spec.full_y + fullHeight - renderWindow.y1 : renderWindow.y1, //y end
+                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_x + renderWindow.x1 : renderWindow.x1, //x begin
+                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_x + renderWindow.x2 : renderWindow.x2, //x end
+                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_y + fullHeight - renderWindow.y2 : renderWindow.y2, //y begin
+                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_y + fullHeight - renderWindow.y1 : renderWindow.y1, //y end
                                         0, //z begin
                                         1, //z end
                                         chbegin, //chan begin
@@ -2305,20 +2365,20 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             } else // warning: '{' must follow #endif
 #         endif
             { // !useCache
-                assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
+                assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == subimages[subImageIndex].width && (renderWindow.y2 - renderWindow.y1) == subimages[subImageIndex].height));
                 
-                if (spec.tile_width == 0 ||
-                    !spec.valid_tile_range(renderWindow.x1, renderWindow.x2, spec.height - renderWindow.y2, spec.height - renderWindow.y1, 0, 1)) {
+                if (subimages[subImageIndex].tile_width == 0 ||
+                    !subimages[subImageIndex].valid_tile_range(renderWindow.x1, renderWindow.x2, subimages[subImageIndex].height - renderWindow.y2, subimages[subImageIndex].height - renderWindow.y1, 0, 1)) {
                     ///read by scanlines
-                    if (!img->read_scanlines(spec.height - renderWindow.y2, //y begin
-                                        spec.height - renderWindow.y1, //y end
-                                        0, // z
-                                        chbegin, // chan begin
-                                        chend, // chan end
-                                        TypeDesc::FLOAT, // data type
-                                        (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                                        numChannels * sizeof(float), //x stride
-                                        -rowBytes)) //y stride < make it invert Y;
+                    if (!img->read_scanlines(subimages[subImageIndex].height - renderWindow.y2, //y begin
+                                             subimages[subImageIndex].height - renderWindow.y1, //y end
+                                             0, // z
+                                             chbegin, // chan begin
+                                             chend, // chan end
+                                             TypeDesc::FLOAT, // data type
+                                             (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                             numChannels * sizeof(float), //x stride
+                                             -rowBytes)) //y stride < make it invert Y;
                     {
                         setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
                         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2330,18 +2390,18 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                      calls ImageInput::read_tile without chbegin,chend
                      */
                     if (!img->read_tiles(renderWindow.x1, //x begin
-                                    renderWindow.x2,//x end
-                                    spec.height - renderWindow.y2,//y begin
-                                    spec.height - renderWindow.y1,//y end
-                                    0, // z begin
-                                    1, // z end
-                                    chbegin, // chan begin
-                                    chend, // chan end
-                                    TypeDesc::FLOAT,  // data type
-                                    (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                                    numChannels * sizeof(float), //x stride
-                                    -rowBytes, //y stride < make it invert Y
-                                    AutoStride)) //z stride
+                                         renderWindow.x2,//x end
+                                         subimages[subImageIndex].height - renderWindow.y2,//y begin
+                                         subimages[subImageIndex].height - renderWindow.y1,//y end
+                                         0, // z begin
+                                         1, // z end
+                                         chbegin, // chan begin
+                                         chend, // chan end
+                                         TypeDesc::FLOAT,  // data type
+                                         (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
+                                         numChannels * sizeof(float), //x stride
+                                         -rowBytes, //y stride < make it invert Y
+                                         AutoStride)) //z stride
                     {
                         setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
                         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2350,7 +2410,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 }
             } // !useCache
         } // if (channels[i] < kXChannelFirst) {
-       
+        
     } // for (std::size_t i = 0; i < channels.size(); i+=incr) {
     
     if (!useCache) {
