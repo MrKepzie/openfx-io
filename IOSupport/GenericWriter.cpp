@@ -518,6 +518,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
                 return;
             }
             
+            
             // copy the source image (the writer is a no-op)
             copyPixelData(renderWindow, srcPixelData, *bounds, pixelComponents, *mappedComponentsCount, bitDepth, srcRowBytes, dstImg.get());
             
@@ -1188,6 +1189,8 @@ public:
         assert(dstPix);
         dstPix += _dstStartIndex;
         
+        int numComps = std::min(_dstPixelComponentCount, _desiredSrcNComps);
+        
         const PIX *srcPix = (const PIX *) getSrcPixelAddress(procWindow.x1, procWindow.y1);
         assert(srcPix);
         
@@ -1212,7 +1215,7 @@ public:
                 assert(dstPix == ((PIX*)getDstPixelAddress(x, y)) + _dstStartIndex);
                 assert(srcPix == ((const PIX*)getSrcPixelAddress(x, y)));
                 
-                for (int c = 0; c < _desiredSrcNComps; ++c) {
+                for (int c = 0; c < numComps; ++c) {
                     dstPix[c] = srcPix[c + _srcNCompsStartIndex];
                 }
                 
