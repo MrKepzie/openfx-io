@@ -525,6 +525,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         *bounds = renderWindow;
 
     } // if (renderWindowIsBounds && isOCIOIdentity && (noPremult || userPremult == pluginExpectedPremult))
+
     
     if (doAnyPacking && (!packingContiguous || (int)packingMapping.size() != *mappedComponentsCount)) {
         int pixelBytes = packingMapping.size() * getComponentBytes(bitDepth);
@@ -563,6 +564,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         }
     }
     
+  
 }
 
 struct ImageData
@@ -573,6 +575,32 @@ struct ImageData
     OFX::PixelComponentEnum pixelComponents;
     int pixelComponentsCount;
 };
+
+void
+GenericWriterPlugin::getPackingOptions(bool *allCheckboxHidden, std::vector<int>* packingMapping) const
+{
+    bool processChannels[4] = {true, true, true, true};
+    bool processCheckboxSecret[4];
+    *allCheckboxHidden = true;
+    for (int i = 0; i < 4; ++i) {
+        processCheckboxSecret[i] = _processChannels[i]->getIsSecret();
+        if (!processCheckboxSecret[i]) {
+            *allCheckboxHidden = false;
+        }
+    }
+    if (!*allCheckboxHidden) {
+        for (int i = 0; i < 4; ++i) {
+            if (!processCheckboxSecret[i]) {
+                _processChannels[i]->getValue(processChannels[i]);
+            } else {
+                processChannels[i] = false;
+            }
+            if (processChannels[i]) {
+                packingMapping->push_back(i);
+            }
+        }
+    }
+}
 
 void
 GenericWriterPlugin::render(const OFX::RenderArguments &args)
@@ -615,19 +643,12 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     OFX::PreMultiplicationEnum pluginExpectedPremult = getExpectedInputPremultiplication();
 
     
-    bool processChannels[4] = {true, true, true, true};
     
     ///This is the mapping of destination channels onto source channels if packing happens
     std::vector<int> packingMapping;
-    bool processCheckboxSecret[4];
-    bool allCheckboxHidden = true;
-    for (int i = 0; i < 4; ++i) {
-        processCheckboxSecret[i] = _processChannels[i]->getIsSecret();
-        if (!processCheckboxSecret[i]) {
-            allCheckboxHidden = false;
-        }
-    }
-    
+    bool allCheckboxHidden;
+    getPackingOptions(&allCheckboxHidden, &packingMapping);
+
     const bool doAnyPacking = args.planes.size() == 1 && !allCheckboxHidden;
     
     //Packing is required if channels are not contiguous, e.g: the user unchecked G but left R,B,A checked
@@ -636,17 +657,6 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     if (doAnyPacking) {
         
         OFX::PixelComponentEnum clipComps = _inputClip->getPixelComponents();
-        
-        for (int i = 0; i < 4; ++i) {
-            if (!processCheckboxSecret[i]) {
-                _processChannels[i]->getValue(processChannels[i]);
-            } else {
-                processChannels[i] = false;
-            }
-            if (processChannels[i]) {
-                packingMapping.push_back(i);
-            }
-        }
       
         if (packingMapping.empty()) {
             setPersistentMessage(OFX::Message::eMessageError, "", "Nothing to render: At least 1 channel checkbox must be checked");
@@ -1810,7 +1820,6 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
 void
 GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-    clipPreferences.setOutputPremultiplication(getExpectedInputPremultiplication());
     
     if (!_outputComponents->getIsSecret()) {
         int index;
@@ -1850,17 +1859,27 @@ GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             }
         }
         //Set output pixel components to match what will be output if the choice is not All
+        
+        
         clipPreferences.setClipComponents(*_inputClip, comps);
         clipPreferences.setClipComponents(*_outputClip, comps);
-        
+        OFX::PreMultiplicationEnum premult = _inputClip->getPreMultiplication();
         switch (comps) {
             case OFX::ePixelComponentAlpha:
-                
+                premult = OFX::eImageUnPreMultiplied;
                 break;
-                
+            case OFX::ePixelComponentXY:
+                premult = OFX::eImageOpaque;
+                break;
+            case OFX::ePixelComponentRGB:
+                premult = OFX::eImageOpaque;
+                break;
             default:
                 break;
         }
+        
+        clipPreferences.setOutputPremultiplication(premult);
+
     }
     
     

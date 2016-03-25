@@ -537,7 +537,7 @@ WriteOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& /*args*/,
         
         std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
         std::string ofxPlane,ofxComp;
-        OFX::MultiPlane::getPlaneNeededInOutput(inputComponents, _outputClip, _outputLayers, &ofxPlane, &ofxComp);
+        OFX::MultiPlane::getPlaneNeededInOutput(inputComponents, _inputClip, _outputLayers, &ofxPlane, &ofxComp);
         
         if (ofxPlane == kPlaneLabelAll) {
             for (std::list<std::string>::iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {

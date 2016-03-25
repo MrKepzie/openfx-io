@@ -2282,6 +2282,7 @@ GenericReaderPlugin::purgeCaches()
 #ifdef OFX_IO_USING_OCIO
     _ocio->purgeCaches();
 #endif
+    _filename.clear();
 }
 
 bool

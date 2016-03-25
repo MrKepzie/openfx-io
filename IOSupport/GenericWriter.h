@@ -456,6 +456,8 @@ private:
                           int dstPixelComponentCount,
                           OFX::BitDepthEnum dstBitDepth,
                           int dstRowBytes);
+    
+    void getPackingOptions(bool *allCheckboxHidden, std::vector<int>* packingMapping) const;
 };
 
 class EncodePlanesLocalData_RAII
