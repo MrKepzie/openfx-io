@@ -3335,6 +3335,7 @@ WriteFFmpegPlugin::updateVisibility()
     for (int i = 0; i < 4; ++i) {
         _processChannels[i]->setIsSecret(true);
     }
+    _outputComponents->setIsSecret(true);
 }
 
 

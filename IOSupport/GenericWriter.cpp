@@ -116,10 +116,15 @@
 #define kParamProcessHint  "When checked, this channel of the layer will be written to the file otherwise it will be skipped. Most file formats will " \
 "pack the channels into the first N channels of the file. If for some reason it's not possible, the channel will be filled with 0."
 
+#define kParamOutputComponents "outputComponents"
+#define kParamOutputComponentsLabel "Output Components"
+#define kParamOutputComponentsHint "Map the input layer to this type of components before writing it to the output file."
+
 static bool gHostIsNatron   = false;
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsMultiView = false;
 
+static std::vector<OFX::PixelComponentEnum> gPluginOutputComponents;
 
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
@@ -140,6 +145,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _clipToProject(0)
 , _sublabel(0)
 , _processChannels()
+, _outputComponents(0)
 , _ocio(new GenericOCIO(this))
 , _extensions(extensions)
 , _supportsAlpha(supportsAlpha)
@@ -177,7 +183,8 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
     _processChannels[1] = fetchBooleanParam(kNatronOfxParamProcessG);
     _processChannels[2] = fetchBooleanParam(kNatronOfxParamProcessB);
     _processChannels[3] = fetchBooleanParam(kNatronOfxParamProcessA);
-    assert(_processChannels[0] && _processChannels[1] && _processChannels[2] && _processChannels[3]);
+    _outputComponents = fetchChoiceParam(kParamOutputComponents);
+    assert(_processChannels[0] && _processChannels[1] && _processChannels[2] && _processChannels[3] && _outputComponents);
     
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -302,7 +309,8 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
                                               OFX::PreMultiplicationEnum pluginExpectedPremult,
                                               OFX::PreMultiplicationEnum userPremult,
                                               const bool isOCIOIdentity,
-                                              const bool packingRequired,
+                                              const bool doAnyPacking,
+                                              const bool packingContiguous,
                                               const std::vector<int>& packingMapping,
                                               InputImagesHolder* srcImgsHolder,
                                               OfxRectI* bounds,
@@ -518,7 +526,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
 
     } // if (renderWindowIsBounds && isOCIOIdentity && (noPremult || userPremult == pluginExpectedPremult))
     
-    if (packingRequired) {
+    if (doAnyPacking && (!packingContiguous || (int)packingMapping.size() != *mappedComponentsCount)) {
         int pixelBytes = packingMapping.size() * getComponentBytes(bitDepth);
         int tmpRowBytes = (renderWindow.x2 - renderWindow.x1) * pixelBytes;
         size_t memSize = (renderWindow.y2 - renderWindow.y1) * tmpRowBytes;
@@ -623,9 +631,12 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     const bool doAnyPacking = args.planes.size() == 1 && !allCheckboxHidden;
     
     //Packing is required if channels are not contiguous, e.g: the user unchecked G but left R,B,A checked
-    bool packingAfterReadingRequired = false;
+    bool packingContiguous = false;
 
     if (doAnyPacking) {
+        
+        OFX::PixelComponentEnum clipComps = _inputClip->getPixelComponents();
+        
         for (int i = 0; i < 4; ++i) {
             if (!processCheckboxSecret[i]) {
                 _processChannels[i]->getValue(processChannels[i]);
@@ -636,10 +647,16 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 packingMapping.push_back(i);
             }
         }
+      
         if (packingMapping.empty()) {
             setPersistentMessage(OFX::Message::eMessageError, "", "Nothing to render: At least 1 channel checkbox must be checked");
             OFX::throwSuiteStatusException(kOfxStatFailed);
         }
+        if (clipComps == OFX::ePixelComponentAlpha && packingMapping.size() != 1) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Output Components selected is Alpha: select only one single channel checkbox");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
+        
         if (packingMapping.size() == 1 && !_supportsAlpha) {
             if (_supportsXY) {
                 packingMapping.push_back(-1);
@@ -684,7 +701,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         for (std::size_t i = 0; i < packingMapping.size(); ++i) {
             if (i > 0) {
                 if (packingMapping[i] != prevChannel + 1) {
-                    packingAfterReadingRequired = true;
+                    packingContiguous = true;
                     break;
                 }
             }
@@ -774,7 +791,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         const OFX::Image* srcImg;
         OFX::ImageMemory *tmpMem;
         ImageData data;
-        fetchPlaneConvertAndCopy(args.planes.front(), viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, packingAfterReadingRequired, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents,&data.pixelComponentsCount);
+        fetchPlaneConvertAndCopy(args.planes.front(), viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents,&data.pixelComponentsCount);
         
         int dstNComps = doAnyPacking ? packingMapping.size() : data.pixelComponentsCount;
         int dstNCompsStartIndex = doAnyPacking ? packingMapping[0] : 0;
@@ -790,7 +807,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         EncodePlanesLocalData_RAII encodeData(this);
         InputImagesHolder dataHolder;
         
-        beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, args.planes, doAnyPacking && !packingAfterReadingRequired,packingMapping, args.renderWindow);
+        beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, args.planes, doAnyPacking && !packingContiguous,packingMapping, args.renderWindow);
         
         if (partsSplit == eLayerViewsSplitViews &&
             args.planes.size() == 1) {
@@ -815,7 +832,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         const OFX::Image* srcImg;
                         
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, packingAfterReadingRequired, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
                         
                         assert(data.pixelComponentsCount != 0 && data.pixelComponents != OFX::ePixelComponentNone);
                         
@@ -871,7 +888,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         const OFX::Image* srcImg;
                         
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, packingAfterReadingRequired, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
                         
                         assert(data.pixelComponentsCount != 0 && data.pixelComponents != OFX::ePixelComponentNone);
                         
@@ -931,7 +948,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         OFX::ImageMemory *tmpMem;
                         const OFX::Image* srcImg;
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, packingAfterReadingRequired, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
 
 
                         encodePart(encodeData.getData(), filename, data.srcPixelData, data.pixelComponentsCount, partIndex, data.rowBytes);
@@ -982,7 +999,8 @@ public:
     virtual void multiThreadProcessImages(OfxRectI procWindow) OVERRIDE FINAL
     {
         assert(_srcBounds.x1 < _srcBounds.x2 && _srcBounds.y1 < _srcBounds.y2);
-
+        assert((int)_mapping.size() == _dstPixelComponentCount);
+        
         PIX *dstPix = (PIX *)getDstPixelAddress(procWindow.x1, procWindow.y1);
         assert(dstPix);
         
@@ -1011,12 +1029,19 @@ public:
                 assert(srcPix == ((const PIX*)getSrcPixelAddress(x, y)));
                 for (int c = 0; c < _dstPixelComponentCount; ++ c) {
                     int srcCol = _mapping[c];
-                    if (srcCol != -1) {
-                        dstPix[c] = srcPix[srcCol];
-                    } else {
+                    if (srcCol == -1) {
                         dstPix[c] = c != 3 ? 0 : maxValue;
+                    } else {
+                        if (srcCol < srcNComps) {
+                            dstPix[c] = srcPix[srcCol];
+                        } else {
+                            if (srcNComps == 1) {
+                                dstPix[c] = *srcPix;
+                            } else {
+                                dstPix[c] = c != 3 ? 0 : maxValue;
+                            }
+                        }
                     }
-
                     
                 }
                 
@@ -1662,9 +1687,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             }
         }
 
-        if (_sublabel && args.reason != OFX::eChangePluginEdit) {
-            _sublabel->setValue(basename(filename));
-        }
+
         bool setColorSpace = true;
 # ifdef OFX_IO_USING_OCIO
         // Always try to parse from string first,
@@ -1739,18 +1762,6 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         }
         msg += "\n";
         sendMessage(OFX::Message::eMessageMessage, "", msg);
-    } else if (paramName == kNatronOfxParamProcessR ||
-               paramName == kNatronOfxParamProcessG ||
-               paramName == kNatronOfxParamProcessB ||
-               paramName == kNatronOfxParamProcessA) {
-        int nbChannels = 0;
-        for (int i = 0; i < 4; ++i) {
-            bool processChannel;
-            _processChannels[i]->getValue(processChannel);
-            if (processChannel) {
-                ++nbChannels;
-            }
-        }
     }
 
 
@@ -1771,12 +1782,27 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
                    ((components == OFX::ePixelComponentCustom ||
                      components == OFX::ePixelComponentMotionVectors ||
                      components == OFX::ePixelComponentStereoDisparity) && gHostIsMultiPlanar));
+            
+            
+            int index = -1;
+            for (std::size_t i = 0; i < gPluginOutputComponents.size(); ++i) {
+                if (gPluginOutputComponents[i] == components) {
+                    index = i;
+                    break;
+                }
+            }
+            assert(index != -1);
+            if (index != -1) {
+                _outputComponents->setValue(index);
+            }
         }
 #      endif
         _premult->setValue(premult);
         
         double fps = _inputClip->getFrameRate();
         setOutputFrameRate(fps);
+ 
+        
     }
 }
 
@@ -1785,6 +1811,59 @@ void
 GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
     clipPreferences.setOutputPremultiplication(getExpectedInputPremultiplication());
+    
+    if (!_outputComponents->getIsSecret()) {
+        int index;
+        _outputComponents->getValue(index);
+        assert(index >= 0 && index < (int)gPluginOutputComponents.size());
+        OFX::PixelComponentEnum comps = gPluginOutputComponents[index];
+        
+        
+        std::vector<std::string> checkboxesLabels;
+        if (comps == OFX::ePixelComponentAlpha) {
+            checkboxesLabels.push_back("A");
+        } else if (comps == OFX::ePixelComponentRGB) {
+            checkboxesLabels.push_back("R");
+            checkboxesLabels.push_back("G");
+            checkboxesLabels.push_back("B");
+        } else if (comps == OFX::ePixelComponentRGBA) {
+            checkboxesLabels.push_back("R");
+            checkboxesLabels.push_back("G");
+            checkboxesLabels.push_back("B");
+            checkboxesLabels.push_back("A");
+        }
+        
+        if (checkboxesLabels.size() == 1) {
+            for (int i = 0; i < 3; ++i) {
+                _processChannels[i]->setIsSecret(true);
+            }
+            _processChannels[3]->setIsSecret(false);
+            _processChannels[3]->setLabel(checkboxesLabels[0]);
+        } else {
+            for (int i = 0; i < 4; ++i) {
+                if (i < (int)checkboxesLabels.size()) {
+                    _processChannels[i]->setIsSecret(false);
+                    _processChannels[i]->setLabel(checkboxesLabels[i]);
+                } else {
+                    _processChannels[i]->setIsSecret(true);
+                }
+            }
+        }
+        //Set output pixel components to match what will be output if the choice is not All
+        clipPreferences.setClipComponents(*_inputClip, comps);
+        clipPreferences.setClipComponents(*_outputClip, comps);
+        
+        switch (comps) {
+            case OFX::ePixelComponentAlpha:
+                
+                break;
+                
+            default:
+                break;
+        }
+    }
+    
+    
 }
 
 void
@@ -1942,6 +2021,30 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     PageParamDescriptor *page = desc.definePageParam("Controls");
     
     {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputComponents);
+        param->setLabel(kParamOutputComponentsLabel);
+        param->setHint(kParamOutputComponentsHint);
+        if (supportsAlpha) {
+            param->appendOption("Alpha");
+            gPluginOutputComponents.push_back(OFX::ePixelComponentAlpha);
+        }
+        if (supportsRGB) {
+            param->appendOption("RGB");
+            gPluginOutputComponents.push_back(OFX::ePixelComponentRGB);
+        }
+        if (supportsRGBA) {
+            param->appendOption("RGBA");
+            gPluginOutputComponents.push_back(OFX::ePixelComponentRGBA);
+        }
+        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setDefault(gPluginOutputComponents.size() - 1);
+        desc.addClipPreferencesSlaveParam(*param);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    
+    {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessR);
         param->setLabel(kNatronOfxParamProcessRLabel);
         param->setHint(kParamProcessHint);
@@ -1975,7 +2078,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kNatronOfxParamProcessA);
         param->setLabel(kNatronOfxParamProcessALabel);
         param->setHint(kParamProcessHint);
-        param->setDefault(false);
+        param->setDefault(true);
         if (page) {
             page->addChild(*param);
         }
@@ -2148,7 +2251,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
         param->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
         param->setAnimates(true);
-        param->setDefault(0);
+        param->setDefault(2);
         if (page) {
             page->addChild(*param);
         }

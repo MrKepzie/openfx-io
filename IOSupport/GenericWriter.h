@@ -118,8 +118,10 @@ public:
     
     /**
      * @brief Overriden to set the clips premultiplication according to the user and plug-ins wishes.
+     * It also set the output components from the output components parameter
      **/
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
+
     
     /**
      * @brief Overriden to request the views needed to render.
@@ -254,6 +256,7 @@ protected:
 
     OFX::StringParam* _sublabel;
     OFX::BooleanParam* _processChannels[4];
+    OFX::ChoiceParam* _outputComponents;
 
     std::auto_ptr<GenericOCIO> _ocio;
     const std::vector<std::string>& _extensions;
@@ -302,7 +305,8 @@ private:
                                   OFX::PreMultiplicationEnum pluginExpectedPremult,
                                   OFX::PreMultiplicationEnum userPremult,
                                   const bool isOCIOIdentity,
-                                  const bool packingRequired,
+                                  const bool doAnyPacking,
+                                  const bool packingContiguous,
                                   const std::vector<int>& packingMapping,
                                   InputImagesHolder* srcImgsHolder,
                                   OfxRectI* bounds,

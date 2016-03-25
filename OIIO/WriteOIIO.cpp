@@ -490,61 +490,16 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
         std::string ofxPlane,ofxComponents;
         OFX::MultiPlane::getPlaneNeededInOutput(outputClipInfos[0].componentsPresent, _outputClip, _outputLayers, &ofxPlane, &ofxComponents);
 
-        
-        OFX::PixelComponentEnum dstPixelComps;
-    
+            
         
         if (ofxComponents == kPlaneLabelAll) {
+            _outputComponents->setIsSecret(true);
             for (int i = 0; i < 4; ++i) {
                 _processChannels[i]->setIsSecret(true);
             }
-        } else {
-             
-            std::vector<std::string> checkboxesLabels;
-            
-            dstPixelComps = OFX::mapStrToPixelComponentEnum(ofxComponents);
-            std::string layer,paieredLayer;
-            OFX::MultiPlane::extractChannelsFromComponentString(ofxComponents, &layer, &paieredLayer, &checkboxesLabels);
-            
-            if (dstPixelComps == OFX::ePixelComponentCustom) {
-                int nComps = std::max((int)checkboxesLabels.size() - 1, 0);
-                switch (nComps) {
-                    case 1:
-                        dstPixelComps = OFX::ePixelComponentAlpha;
-                        break;
-                    case 2:
-                        dstPixelComps = OFX::ePixelComponentXY;
-                        break;
-                    case 3:
-                        dstPixelComps = OFX::ePixelComponentRGB;
-                        break;
-                    case 4:
-                        dstPixelComps = OFX::ePixelComponentRGBA;
-                    default:
-                        break;
-                }
-            }
-            
-            if (checkboxesLabels.size() == 1) {
-                _processChannels[3]->setLabel(checkboxesLabels[0]);
-            } else {
-                for (int i = 0; i < 4; ++i) {
-                    if (i < (int)checkboxesLabels.size()) {
-                        _processChannels[i]->setIsSecret(false);
-                        _processChannels[i]->setLabel(checkboxesLabels[i]);
-                    } else {
-                        _processChannels[i]->setIsSecret(true);
-                    }
-                }
-            }
-            //Set output pixel components to match what will be output if the choice is not All
-            clipPreferences.setClipComponents(*_inputClip, dstPixelComps);
-            clipPreferences.setClipComponents(*_outputClip, dstPixelComps);
         }
         
     }
-   
-    
     
     if (_views) {
         //Now build the views choice
