@@ -497,6 +497,8 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
             for (int i = 0; i < 4; ++i) {
                 _processChannels[i]->setIsSecret(true);
             }
+        } else {
+            _outputComponents->setIsSecret(false);
         }
         
     }
