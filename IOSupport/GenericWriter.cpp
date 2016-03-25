@@ -2251,7 +2251,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         param->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
         param->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
         param->setAnimates(true);
-        param->setDefault(2);
+        param->setDefault(1);
         if (page) {
             page->addChild(*param);
         }
