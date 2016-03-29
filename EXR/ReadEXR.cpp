@@ -650,10 +650,20 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
             *componentCount = 0;
         }
     }
-#pragma message WARN("This is probably wrong, I just set it for the sake of making it compile.")
-    // where can we get premult information in EXR data?
-    *premult = OFX::eImagePreMultiplied;
+    /*
+     OpenEXR is always stored premultiplied.
+     
+     See page five of the Technical Introduction PDF at http://www.openexr.com/documentation.html.
 
+     "alpha/opacity: 0.0 means the pixel is transparent; 1.0 means the pixel is
+     opaque. By convention, all color channels are premultiplied by alpha, so that
+     "foreground + (1-alpha) × background" performs a correct "over" operation."
+     */
+    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+        *premult = OFX::eImageOpaque;
+    } else {
+        *premult = OFX::eImagePreMultiplied;
+    }
 }
 
 bool
