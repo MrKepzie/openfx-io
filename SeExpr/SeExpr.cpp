@@ -348,7 +348,7 @@ private:
     OFX::Clip* _maskClip;
     OFX::Clip *_dstClip;
     
-    std::vector<std::list<std::string> > _clipLayerOptions;
+    std::vector<std::vector<std::string> > _clipLayerOptions;
     OFX::ChoiceParam *_clipLayerToFetch[kSourceClipCount];
     OFX::StringParam *_clipLayerToFetchString[kSourceClipCount];
     
@@ -1527,8 +1527,9 @@ SeExprPlugin::getOfxComponentsForClip(int inputNumber) const
 
         return kFnOfxImageComponentStereoDisparity;
     } else {
-        std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
-        for (std::list<std::string>::iterator it = components.begin(); it != components.end(); ++it) {
+        std::vector<std::string> components;
+        _srcClip[inputNumber]->getComponentsPresent(&components);
+        for (std::vector<std::string>::iterator it = components.begin(); it != components.end(); ++it) {
             std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
             if (layerChannels.empty()) {
                 continue;
@@ -1562,8 +1563,9 @@ SeExprPlugin::getOfxPlaneForClip(int inputNumber) const
     } else if (opt == kSeExprDisparityRightPlaneName) {
         return kFnOfxImagePlaneStereoDisparityRight;
     } else {
-        std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
-        for (std::list<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
+        std::vector<std::string> components;
+        _srcClip[inputNumber]->getComponentsPresent(&components);
+        for (std::vector<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
             std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
             if (layerChannels.empty()) {
                 continue;
@@ -1931,14 +1933,14 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
 }
 
 namespace {
-    static bool hasListChanged(const std::list<std::string>& oldList, const std::list<std::string>& newList)
+    static bool hasListChanged(const std::vector<std::string>& oldList, const std::vector<std::string>& newList)
     {
         if (oldList.size() != newList.size()) {
             return true;
         }
         
-        std::list<std::string>::const_iterator itNew = newList.begin();
-        for (std::list<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
+        std::vector<std::string>::const_iterator itNew = newList.begin();
+        for (std::vector<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
             if (*it != *itNew) {
                 return true;
             }
@@ -1951,7 +1953,8 @@ void
 SeExprPlugin::buildChannelMenus()
 {
     for (int i = 0; i < kSourceClipCount; ++i) {
-        std::list<std::string> components = _srcClip[i]->getComponentsPresent();
+        std::vector<std::string> components;
+        _srcClip[i]->getComponentsPresent(&components);
         if (!hasListChanged(_clipLayerOptions[i], components)) {
             continue;
         }
@@ -1962,7 +1965,7 @@ SeExprPlugin::buildChannelMenus()
         std::vector<std::string> options;
         options.push_back(kSeExprColorPlaneName);
         
-        for (std::list<std::string> ::iterator it = components.begin(); it!=components.end(); ++it) {
+        for (std::vector<std::string> ::iterator it = components.begin(); it!=components.end(); ++it) {
             const std::string& comp = *it;
             if (comp == kOfxImageComponentAlpha) {
                 continue;

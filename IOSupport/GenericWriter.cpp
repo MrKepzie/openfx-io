@@ -130,7 +130,7 @@ static std::vector<OFX::PixelComponentEnum> gPluginOutputComponents;
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
                                          const std::vector<std::string>& extensions,
                                          bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY)
-: OFX::ImageEffect(handle)
+: OFX::MultiPlane::MultiPlaneEffect(handle)
 , _inputClip(0)
 , _outputClip(0)
 , _fileParam(0)
@@ -274,7 +274,7 @@ static int getPixelsComponentsCount(const std::string& rawComponents,
     
     std::string layer,pairedLayer;
     std::vector<std::string> channels;
-    OFX::MultiPlane::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &channels);
+    OFX::MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &channels);
     switch (channels.size()) {
         case 0:
             *mappedComponents = OFX::ePixelComponentNone;
@@ -338,7 +338,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         ss << "Input layer ";
         std::string layerName,pairedLayer;
         std::vector<std::string> channels;
-        OFX::MultiPlane::extractChannelsFromComponentString(plane, &layerName, &pairedLayer, &channels);
+        OFX::MultiPlane::Utils::extractChannelsFromComponentString(plane, &layerName, &pairedLayer, &channels);
         ss << layerName;
         ss << " could not be fetched";
         

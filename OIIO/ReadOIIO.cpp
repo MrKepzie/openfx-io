@@ -582,7 +582,7 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
                 }
             }
             for (std::map<std::string,std::vector<std::string> >::iterator it = layers.begin(); it!=layers.end(); ++it) {
-                std::string component = OFX::MultiPlane::makeNatronCustomChannel(it->first, it->second);
+                std::string component = OFX::MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second);
                 clipComponents.addClipComponents(*_outputClip, component);
             }
         } else { // !_useRGBAChoices
@@ -604,7 +604,7 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
                             break;
                     };*/
                 } else {
-                    component = OFX::MultiPlane::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
+                    component = OFX::MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
                 }
                 clipComponents.addClipComponents(*_outputClip, component);
             }

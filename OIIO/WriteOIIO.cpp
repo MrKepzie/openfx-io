@@ -371,7 +371,6 @@ private:
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _tileSize;
     OFX::ChoiceParam* _outputLayers;
-    OFX::StringParam* _outputLayerString;
     OFX::ChoiceParam* _parts;
     OFX::ChoiceParam* _views;
     std::list<std::string> _currentInputComponents;
@@ -387,7 +386,6 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle, const std::vector<
 , _compression(0)
 , _tileSize(0)
 , _outputLayers(0)
-, _outputLayerString(0)
 , _parts(0)
 , _views(0)
 , _currentInputComponents()
@@ -408,7 +406,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle, const std::vector<
     _tileSize = fetchChoiceParam(kParamTileSize);
     if (enableMultiPlaneFeature) {
         _outputLayers = fetchChoiceParam(kParamOutputChannels);
-        _outputLayerString = fetchStringParam(kParamOutputChannelsChoice);
+        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, _outputClip);
         _parts = fetchChoiceParam(kParamPartsSplitting);
         _views = fetchChoiceParam(kParamViewsSelector);
     }
@@ -452,7 +450,7 @@ void WriteOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
     } else if (paramName == kParamOutputChannels) {
         
     }
-    if (OFX::MultiPlane::checkIfChangedParamCalledOnDynamicChoice(paramName, args.reason, _outputLayers, _outputLayerString)) {
+    if (handleChangedParamForAllDynamicChoices(paramName, args.reason)) {
         return;
     }
     GenericWriterPlugin::changedParam(args, paramName);
@@ -463,33 +461,12 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
     
     if (_outputLayers && !_outputLayers->getIsSecret()) {
-        std::vector<OFX::MultiPlane::ChoiceParamClips> choiceParams(1);
-        std::vector<OFX::MultiPlane::ClipComponentsInfo> outputClipInfos(1);
-        outputClipInfos[0].clip = _outputClip;
-        outputClipInfos[0].componentsPresent = _inputClip->getComponentsPresent();
-        outputClipInfos[0].componentsPresentCache = &_currentInputComponents;
-        choiceParams[0].param = _outputLayers;
-        choiceParams[0].stringparam = _outputLayerString;
-        choiceParams[0].clips = &outputClipInfos;
+
         
-        std::string filename;
-        _fileParam->getValue(filename);
-        std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
-        bool supportsNChannels = false;
-        if (output.get()) {
-            supportsNChannels = output->supports("nchannels");
-        }
-        
-        if (supportsNChannels) {
-            outputClipInfos[0].componentsPresent.push_back(kPlaneLabelAll);
-        }
-        
-        
-        OFX::MultiPlane::buildChannelMenus(choiceParams);
+        buildChannelMenus();
         
         std::string ofxPlane,ofxComponents;
-        OFX::MultiPlane::getPlaneNeededInOutput(outputClipInfos[0].componentsPresent, _outputClip, _outputLayers, &ofxPlane, &ofxComponents);
-
+        getPlaneNeededInOutput(&ofxPlane, &ofxComponents);
             
         
         if (ofxComponents == kPlaneLabelAll) {
@@ -535,12 +512,13 @@ WriteOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& /*args*/,
     
     if (_outputLayers && !_outputLayers->getIsSecret()) {
         
-        std::list<std::string> inputComponents = _inputClip->getComponentsPresent();
         std::string ofxPlane,ofxComp;
-        OFX::MultiPlane::getPlaneNeededInOutput(inputComponents, _inputClip, _outputLayers, &ofxPlane, &ofxComp);
+        getPlaneNeededInOutput(&ofxPlane, &ofxComp);
         
         if (ofxPlane == kPlaneLabelAll) {
-            for (std::list<std::string>::iterator it = inputComponents.begin(); it!=inputComponents.end(); ++it) {
+            
+            const std::vector<std::string>& components = getCachedComponentsPresent(_outputClip);
+            for (std::vector<std::string>::const_iterator it = components.begin(); it!=components.end(); ++it) {
                 clipComponents.addClipComponents(*_inputClip, *it);
                 clipComponents.addClipComponents(*_outputClip, *it);
             }
@@ -1119,7 +1097,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                     } else {
                         rawComponents = *it;
                     }
-                    OFX::MultiPlane::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
+                    OFX::MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
                     
                     if (!layer.empty()) {
                         for (std::size_t i = 0; i < planeChannels.size(); ++i) {
@@ -1183,7 +1161,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                     } else {
                         rawComponents = *it;
                     }
-                    OFX::MultiPlane::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
+                    OFX::MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
                     
                     if (!layer.empty()) {
                         for (std::size_t i = 0; i < planeChannels.size(); ++i) {
@@ -1237,7 +1215,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                     } else {
                         rawComponents = *it;
                     }
-                    OFX::MultiPlane::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
+                    OFX::MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
                     ImageSpec partSpec = spec;
                     
                     if (!layer.empty()) {
@@ -1610,7 +1588,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     if (enableMultiPlaneFeature) {
         
         {
-            OFX::ChoiceParamDescriptor* param = OFX::MultiPlane::describeInContextAddOutputLayerChoice(true, desc, page);
+            OFX::ChoiceParamDescriptor* param = OFX::MultiPlane::Factory::describeInContextAddOutputLayerChoice(true, desc, page);
             param->setLabel(kParamOutputChannelsLabel);
             param->setHint(kParamOutputChannelsHint);
         }

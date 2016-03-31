@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <ofxsImageEffect.h>
+#include <ofxsMultiPlane.h>
 #include "IOUtility.h"
 #include "ofxsMacros.h"
 #include "ofxsPixelProcessor.h" // for getImageData
@@ -52,7 +53,7 @@ enum LayerViewsPartsEnum
  * - common params
  * - a way to inform the host about the colour-space of the data.
  **/
-class GenericWriterPlugin : public OFX::ImageEffect {
+class GenericWriterPlugin : public OFX::MultiPlane::MultiPlaneEffect {
     
 public:
     
