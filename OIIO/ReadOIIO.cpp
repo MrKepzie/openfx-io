@@ -1617,6 +1617,10 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
         //Restore channels from the channel strings serialized
         restoreChannelMenusFromStringParams();
     } else {
+        OFX::PreMultiplicationEnum premult;
+        OFX::PixelComponentEnum comps;
+        int compsNum;
+        onInputFileChanged(filename, true, &premult, &comps, &compsNum);
         if (_specValid) {
             buildLayersMenu();
         }
