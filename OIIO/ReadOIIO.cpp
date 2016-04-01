@@ -984,7 +984,7 @@ ReadOIIOPlugin::buildLayersMenu()
     }
     assert(!_subImagesSpec.empty());
     
-    std::vector<std::pair<std::string,std::string> > options;
+    std::vector<std::string> options,optionsLabel;
 
     //Protect the map
     {
@@ -1050,7 +1050,8 @@ ReadOIIOPlugin::buildLayersMenu()
                 }
                 optionLabel = ss.str();
             }
-            options.push_back(std::make_pair(choice, optionLabel));
+            options.push_back(choice);
+            optionsLabel.push_back(optionLabel);
             _layersUnion[i].second.choiceOption = choice;
         }
         
@@ -1061,11 +1062,8 @@ ReadOIIOPlugin::buildLayersMenu()
     
     
     ///Actually build the menu
-    _outputLayer->resetOptions();
-    for (std::size_t i = 0; i < options.size(); ++i) {
-        _outputLayer->appendOption(options[i].first,options[i].second);
-    }
-    
+    _outputLayer->resetOptions(options, optionsLabel);
+
     
    ///synchronize with the value stored in the string param
     std::string valueStr;
@@ -1074,17 +1072,17 @@ ReadOIIOPlugin::buildLayersMenu()
         int cur_i;
         _outputLayer->getValue(cur_i);
         if (cur_i >= 0 && cur_i < (int)options.size()) {
-            valueStr = options[cur_i].first;
+            valueStr = options[cur_i];
         } else if (!options.empty()) {
             //No choice but to change the chocie value
-            valueStr = options[0].first;
+            valueStr = options[0];
             _outputLayer->setValue(0);
         }
         _outputLayerString->setValue(valueStr);
     } else {
         int foundOption = -1;
         for (int i = 0; i < (int)options.size(); ++i) {
-            if (options[i].first == valueStr) {
+            if (options[i] == valueStr) {
                 foundOption = i;
                 break;
             }
@@ -1093,7 +1091,7 @@ ReadOIIOPlugin::buildLayersMenu()
             _outputLayer->setValue(foundOption);
         } else {
             _outputLayer->setValue(0);
-            _outputLayerString->setValue(options[0].first);
+            _outputLayerString->setValue(options[0]);
         }
     }
 
@@ -1603,10 +1601,11 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
 void
 ReadOIIOPlugin::restoreState(const std::string& filename)
 {
-    //Update OIIO spec
-    updateSpec(filename);
     
     if (_useRGBAChoices) {
+        //Update OIIO spec
+        updateSpec(filename);
+
         //Update RGBA parameters visibility according to the output components
         updateChannelMenusVisibility(getOutputComponents());
         
@@ -1620,9 +1619,10 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
         OFX::PreMultiplicationEnum premult;
         OFX::PixelComponentEnum comps;
         int compsNum;
-        onInputFileChanged(filename, true, &premult, &comps, &compsNum);
-        if (_specValid) {
-            buildLayersMenu();
+        try {
+            onInputFileChanged(filename, true, &premult, &comps, &compsNum);
+        } catch (...) {
+            
         }
     }
     

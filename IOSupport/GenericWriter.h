@@ -297,6 +297,7 @@ private:
      * that will properly release resources.
      */
     void fetchPlaneConvertAndCopy(const std::string& plane,
+                                  bool failIfNoSrcImg,
                                   int view,
                                   int renderRequestedView,
                                   double time,

@@ -462,8 +462,15 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     
     if (_outputLayers && !_outputLayers->getIsSecret()) {
 
+        std::string filename;
+        _fileParam->getValue(filename);
+        std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
+        bool supportsNChannels = false;
+        if (output.get()) {
+            supportsNChannels = output->supports("nchannels");
+        }
         
-        buildChannelMenus();
+        buildChannelMenus(std::string(), true /*mergeMenus*/, supportsNChannels);
         
         std::string ofxPlane,ofxComponents;
         getPlaneNeededInOutput(&ofxPlane, &ofxComponents);
@@ -1599,7 +1606,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->appendOption(kParamPartsSinglePart,kParamPartsSinglePartHint);
             param->appendOption(kParamPartsSlitViews,kParamPartsSlitViewsHint);
             param->appendOption(kParamPartsSplitViewsLayers,kParamPartsSplitViewsLayersHint);
-            param->setDefault(0);
+            param->setDefault(2);
             param->setAnimates(false);
             if (page) {
                 page->addChild(*param);

@@ -300,6 +300,7 @@ static int getPixelsComponentsCount(const std::string& rawComponents,
 
 void
 GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
+                                              bool failIfNoSrcImg,
                                               int view,
                                               int renderRequestedView,
                                               double time,
@@ -334,16 +335,18 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
     const OFX::Image* srcImg = _inputClip->fetchImagePlane(time, view, plane.c_str());
     *inputImage = srcImg;
     if (!srcImg) {
-        std::stringstream ss;
-        ss << "Input layer ";
-        std::string layerName,pairedLayer;
-        std::vector<std::string> channels;
-        OFX::MultiPlane::Utils::extractChannelsFromComponentString(plane, &layerName, &pairedLayer, &channels);
-        ss << layerName;
-        ss << " could not be fetched";
-        
-        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        if (failIfNoSrcImg) {
+            std::stringstream ss;
+            ss << "Input layer ";
+            std::string layerName,pairedLayer;
+            std::vector<std::string> channels;
+            OFX::MultiPlane::Utils::extractChannelsFromComponentString(plane, &layerName, &pairedLayer, &channels);
+            ss << layerName;
+            ss << " could not be fetched";
+            
+            setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
         return;
     } else {
         ///Add it to the holder so we are sure it gets released if an exception occurs below
@@ -801,7 +804,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         const OFX::Image* srcImg;
         OFX::ImageMemory *tmpMem;
         ImageData data;
-        fetchPlaneConvertAndCopy(args.planes.front(), viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents,&data.pixelComponentsCount);
+        fetchPlaneConvertAndCopy(args.planes.front(), true, viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents,&data.pixelComponentsCount);
         
         int dstNComps = doAnyPacking ? packingMapping.size() : data.pixelComponentsCount;
         int dstNCompsStartIndex = doAnyPacking ? packingMapping[0] : 0;
@@ -817,7 +820,6 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         EncodePlanesLocalData_RAII encodeData(this);
         InputImagesHolder dataHolder;
         
-        beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, args.planes, doAnyPacking && !packingContiguous,packingMapping, args.renderWindow);
         
         if (partsSplit == eLayerViewsSplitViews &&
             args.planes.size() == 1) {
@@ -835,14 +837,34 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 int nChannels = 0;
                 InputImagesHolder dataHolder;
                 std::list<ImageData> planesData;
-                                
+                
+                // The list of actual planes that could be fetched
+                std::list<std::string> actualPlanes;
+                
                 for (std::map<int,std::string>::const_iterator view = viewNames.begin(); view!=viewNames.end(); ++view) {
-                    for (std::list<std::string>::const_iterator plane = args.planes.begin(); plane != args.planes.end(); ++plane) {
+                    
+                    
+                    // The first view determines the planes that could be fetched. Other views just attempt to fetch the exact same planes.
+                    const std::list<std::string> *planesToFetch = 0;
+                    if (view == viewNames.begin()) {
+                        planesToFetch = &args.planes;
+                    } else {
+                        planesToFetch = &actualPlanes;
+                    }
+                    
+                    for (std::list<std::string>::const_iterator plane = planesToFetch->begin(); plane != planesToFetch->end(); ++plane) {
                         OFX::ImageMemory *tmpMem;
                         const OFX::Image* srcImg;
                         
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        fetchPlaneConvertAndCopy(*plane, false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        if (!data.srcPixelData) {
+                            continue;
+                        }
+                        
+                        if (view == viewNames.begin()) {
+                            actualPlanes.push_back(*plane);
+                        }
                         
                         assert(data.pixelComponentsCount != 0 && data.pixelComponents != OFX::ePixelComponentNone);
                         
@@ -851,7 +873,11 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         nChannels += dstNComps;
                     }// for each plane
                 } // for each view
-                
+                if (nChannels == 0) {
+                    setPersistentMessage(OFX::Message::eMessageError, "", "Failed to fetch input layers");
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
                 int pixelBytes = nChannels * getComponentBytes(OFX::eBitDepthFloat);
                 int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
                 size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
@@ -879,6 +905,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                     interleaveIndex += dstNComps;
                 }
                 
+                beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, actualPlanes, doAnyPacking && !packingContiguous,packingMapping, args.renderWindow);
                 encodePart(encodeData.getData(), filename, tmpMemPtr, nChannels, 0, tmpRowBytes);
                 
             } break;
@@ -886,19 +913,40 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
               /*
                Write each view into a single part but aggregate all layers for each view
                */
+                // The list of actual planes that could be fetched
+                std::list<std::string> actualPlanes;
+                
+                
                 int partIndex = 0;
                 for (std::map<int,std::string>::const_iterator view = viewNames.begin(); view!=viewNames.end(); ++view) {
+                    
+                    
+                    // The first view determines the planes that could be fetched. Other views just attempt to fetch the exact same planes.
+                    const std::list<std::string> *planesToFetch = 0;
+                    if (view == viewNames.begin()) {
+                        planesToFetch = &args.planes;
+                    } else {
+                        planesToFetch = &actualPlanes;
+                    }
+                    
                     int nChannels = 0;
                     InputImagesHolder dataHolder;
                     
                     std::list<ImageData> planesData;
-                    for (std::list<std::string>::const_iterator plane = args.planes.begin(); plane != args.planes.end(); ++plane) {
+                    for (std::list<std::string>::const_iterator plane = planesToFetch->begin(); plane != planesToFetch->end(); ++plane) {
                         
                         OFX::ImageMemory *tmpMem;
                         const OFX::Image* srcImg;
                         
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        fetchPlaneConvertAndCopy(*plane, false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        if (!data.srcPixelData) {
+                            continue;
+                        }
+                       
+                        if (view == viewNames.begin()) {
+                            actualPlanes.push_back(*plane);
+                        }
                         
                         assert(data.pixelComponentsCount != 0 && data.pixelComponents != OFX::ePixelComponentNone);
                         
@@ -908,7 +956,11 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         nChannels += dstNComps;
 
                     }
-                    
+                    if (nChannels == 0) {
+                        setPersistentMessage(OFX::Message::eMessageError, "", "Failed to fetch input layers");
+                        OFX::throwSuiteStatusException(kOfxStatFailed);
+                        return;
+                    }
                     int pixelBytes = nChannels * getComponentBytes(OFX::eBitDepthFloat);
                     int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
                     size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
@@ -941,6 +993,10 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                         interleaveIndex += dstNComps;
                     }
                     
+                    if (view == viewNames.begin()) {
+                        beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, actualPlanes, doAnyPacking && !packingContiguous,packingMapping, args.renderWindow);
+                    }
+                    
                     encodePart(encodeData.getData(), filename, tmpMemPtr, nChannels, partIndex, tmpRowBytes);
                     
                     ++partIndex;
@@ -950,21 +1006,46 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
               /*
                Write each layer of each view in an independent part
                */
+                // The list of actual planes that could be fetched
+                std::list<std::string> actualPlanes;
+
                 int partIndex = 0;
                 for (std::map<int,std::string>::const_iterator view = viewNames.begin(); view!=viewNames.end(); ++view) {
-                    for (std::list<std::string>::const_iterator plane = args.planes.begin(); plane != args.planes.end(); ++plane) {
+                    InputImagesHolder dataHolder;
+                    std::vector<ImageData> datas;
+                    
+                    // The first view determines the planes that could be fetched. Other views just attempt to fetch the exact same planes.
+                    const std::list<std::string> *planesToFetch = 0;
+                    if (view == viewNames.begin()) {
+                        planesToFetch = &args.planes;
+                    } else {
+                        planesToFetch = &actualPlanes;
+                    }
+                    
+                    for (std::list<std::string>::const_iterator plane = planesToFetch->begin(); plane != planesToFetch->end(); ++plane) {
+                    
                         
-                        InputImagesHolder dataHolder;
                         OFX::ImageMemory *tmpMem;
                         const OFX::Image* srcImg;
                         ImageData data;
-                        fetchPlaneConvertAndCopy(*plane, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        fetchPlaneConvertAndCopy(*plane, false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                        if (!data.srcPixelData) {
+                            continue;
+                        }
+                        datas.push_back(data);
+                        if (view == viewNames.begin()) {
+                            actualPlanes.push_back(*plane);
+                        }
 
-
-                        encodePart(encodeData.getData(), filename, data.srcPixelData, data.pixelComponentsCount, partIndex, data.rowBytes);
-                        
-                        ++partIndex;
                     } // for each plane
+                    
+                    if (view == viewNames.begin()) {
+                        beginEncodeParts(encodeData.getData(), filename, time, pixelAspectRatio, partsSplit, viewNames, actualPlanes, doAnyPacking && !packingContiguous,packingMapping, args.renderWindow);
+                    }
+                    for (std::vector<ImageData>::iterator it = datas.begin(); it!=datas.end(); ++it) {
+                        encodePart(encodeData.getData(), filename, it->srcPixelData, it->pixelComponentsCount, partIndex, it->rowBytes);
+                        ++partIndex;
+                    }
                 } // for each view
             } break;
         };
