@@ -82,6 +82,7 @@ extern "C" {
 #define kMetaKeyWriter             "uk.co.thefoundry.Writer"
 #define kMetaValueWriter64         "mov64"
 
+#define OFX_FFMPEG_MAX_THREADS 32 // defined in libavcodec/mpegvideo.h and libavcodec/h264.h
 
 ////////////////////////////////////////////////////////////////////////////////
 // Chunksize static names.

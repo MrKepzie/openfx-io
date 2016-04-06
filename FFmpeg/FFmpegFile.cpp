@@ -715,8 +715,13 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             //} else
 #          endif
             {
-                avstream->codec->thread_count = OFX::MultiThread::getNumCPUs(); // ask for the number of available cores for multithreading
-                avstream->codec->thread_type = FF_THREAD_SLICE; // multiple threads are used to decode a single frame. Reduces delay
+                avstream->codec->thread_count = std::min((int)OFX::MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS); // ask for the number of available cores for multithreading
+#             ifdef AV_CODEC_CAP_SLICE_THREADS
+                if (avstream->codec->codec && (avstream->codec->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS)) {
+                    // multiple threads are used to decode a single frame. Reduces delay
+                    avstream->codec->thread_type = FF_THREAD_SLICE;
+                }
+#             endif
                 //avstream->codec->thread_count = video_decoding_threads(); // bino's strategy (disabled)
             }
             // Set CODEC_FLAG_EMU_EDGE in the same situations in which ffplay sets it.
