@@ -1000,7 +1000,6 @@ private:
                          AVPixelFormat&    outTargetPixelFormat,
                          int&              outBitDepth) const;
 
-    int encodeVideo(AVCodecContext* avCodecContext, uint8_t* out, int outSize, const AVFrame* avFrame);
     void updateBitrateToleranceRange();
     bool isRec709Format(const int height) const;
     static bool IsYUV(AVPixelFormat pixelFormat);
@@ -1019,8 +1018,8 @@ private:
     AVStream* addStream(AVFormatContext* avFormatContext, enum AVCodecID avCodecId, AVCodec** pavCodec);
     int openCodec(AVFormatContext* avFormatContext, AVCodec* avCodec, AVStream* avStream);
     int writeAudio(AVFormatContext* avFormatContext, AVStream* avStream, bool flush);
-    int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
-    int writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
+    int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, double time, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
+    int writeToFile(AVFormatContext* avFormatContext, bool finalise, double time, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
 
     int colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext);
 
@@ -1046,6 +1045,8 @@ private:
     
     OFX::MultiThread::Mutex _nextFrameToEncodeMutex;
     int _nextFrameToEncode; //< the frame index we need to encode next, INT_MIN means uninitialized
+    int _firstFrameToEncode;
+    int _lastFrameToEncode;
     int _frameStep;
 
     OFX::ChoiceParam* _format;
@@ -1266,6 +1267,8 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
 , _streamTimecode(0)
 , _nextFrameToEncodeMutex(0)
 , _nextFrameToEncode(INT_MIN)
+, _firstFrameToEncode(1)
+, _lastFrameToEncode(1)
 , _frameStep(1)
 , _format(0)
 , _fps(0)
@@ -2478,7 +2481,7 @@ int WriteFFmpegPlugin::numberOfDestChannels() const
 //         <0 otherwise for any failure to convert the pixel format, encode the
 //         video or write to the file.
 //
-int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps, int dstNComps, int rowBytes)
+int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, double time, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps, int dstNComps, int rowBytes)
 {
     assert(dstNComps == 3 || dstNComps == 4 || dstNComps == 0);
     // FIXME enum needed for error codes.
@@ -2489,7 +2492,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         return -6;
     }
     assert(avFormatContext);
-    if (!avFormatContext || !pixelData || !bounds) {
+    if (!avFormatContext || (!flush && (!pixelData || !bounds))) {
         return -7;
     }
     int ret = 0;
@@ -2594,7 +2597,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     if (!ret) {
         bool error = false;
         if (avFrame) {
-            avFrame->pts = avCodecContext->frame_number; // ... or libx264 encoding says "non-strictly-monotonic PTS" and encodes the wrong fps
+            avFrame->pts = time - _firstFrameToEncode;
         }
         if ((avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
             AVPacket pkt;
@@ -2603,6 +2606,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             pkt.stream_index = avStream->index;
             pkt.data = avFrame ? avFrame->data[0] : NULL;
             pkt.size = sizeof(AVPicture);
+            pkt.pts  = pkt.dts  = time - _firstFrameToEncode;
             const int writeResult = av_write_frame(avFormatContext, &pkt);
             const bool writeSucceeded = (writeResult == 0);
             if (!writeSucceeded) {
@@ -2618,41 +2622,51 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             av_init_packet(&pkt);
             // NOTE: If |flush| is true, then avFrame will be NULL at this point as
             //       alloc will not have been called.
-            const int bytesEncoded = encodeVideo(avCodecContext, _scratchBuffer, (int)_scratchBufferSize, avFrame);
-            const bool encodeSucceeded = (bytesEncoded > 0);
-            if (encodeSucceeded) {
-                if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
-                    pkt.pts = av_rescale_q(avCodecContext->coded_frame->pts, avCodecContext->time_base, avStream->time_base);
-                if (avCodecContext->coded_frame && avCodecContext->coded_frame->key_frame)
-                    pkt.flags |= AV_PKT_FLAG_KEY;
-                
-                pkt.stream_index = avStream->index;
-                pkt.data = &_scratchBuffer[0];
-                pkt.size = bytesEncoded;
-                
-                const int writeResult = av_write_frame(avFormatContext, &pkt);
-                const bool writeSucceeded = (writeResult == 0);
-                if (!writeSucceeded) {
-                    // Report the error.
-                    char szError[1024];
-                    av_strerror(bytesEncoded, szError, 1024);
-                    setPersistentMessage(OFX::Message::eMessageError, "", szError);
-                    error = true;
-                }
+            pkt.stream_index = avStream->index;
+            pkt.data = &_scratchBuffer[0];
+            pkt.size = _scratchBufferSize;
+            // Encode a frame of video.
+            //
+            // Note that the uncompressed source frame to be encoded must be in an
+            // appropriate pixel format for the encoder prior to calling this method as
+            // this method does NOT perform an pixel format conversion, e.g. through using
+            // Sws_xxx.
+            int got_packet = 0;
+            int encodeResult = avcodec_encode_video2(avCodecContext, &pkt, avFrame, &got_packet);
+            if (avCodecContext->coded_frame && !ret && got_packet) {
+                avCodecContext->coded_frame->pts = pkt.pts;
+                avCodecContext->coded_frame->key_frame = !!(pkt.flags & AV_PKT_FLAG_KEY);
+            }
+            if (encodeResult < 0) {
+                // Report the error.
+                char szError[1024];
+                av_strerror(encodeResult, szError, 1024);
+                setPersistentMessage(OFX::Message::eMessageError, "", szError);
+                error = true;
             } else {
-                if (bytesEncoded < 0) {
-                    // Report the error.
-                    char szError[1024];
-                    av_strerror(bytesEncoded, szError, 1024);
-                    setPersistentMessage(OFX::Message::eMessageError, "", szError);
-                    error = true;
-                } else if (flush) {
+                if (flush && !got_packet) {
                     // Flag that the flush is complete.
                     ret = -10;
                 }
+                if (got_packet) {
+                    // codecs with AV_CODEC_CAP_DELAY (e.g. png with multithreading) may not return a packet although encoding was successful
+                    if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
+                        pkt.pts = av_rescale_q(avCodecContext->coded_frame->pts, avCodecContext->time_base, avStream->time_base);
+                    if (avCodecContext->coded_frame && avCodecContext->coded_frame->key_frame)
+                        pkt.flags |= AV_PKT_FLAG_KEY;
+
+                    const int writeResult = av_write_frame(avFormatContext, &pkt);
+                    const bool writeSucceeded = (writeResult == 0);
+                    if (!writeSucceeded) {
+                        // Report the error.
+                        char szError[1024];
+                        av_strerror(writeResult, szError, 1024);
+                        setPersistentMessage(OFX::Message::eMessageError, "", szError);
+                        error = true;
+                    }
+                }
             }
         }
-        
         if (error) {
             av_log(avCodecContext, AV_LOG_ERROR, "error writing frame to file\n");
             ret = -2;
@@ -2675,53 +2689,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// encodeVideo
-// Encode a frame of video.
-//
-// Note that the uncompressed source frame to be encoded must be in an
-// appropriate pixel format for the encoder prior to calling this method as
-// this method does NOT perform an pixel format conversion, e.g. through using
-// Sws_xxx.
-//
-// @param avCodecContext A reference to an AVCodecContext of a video stream.
-// @param out A reference to a buffer to receive the encoded frame.
-// @param outSize The size in bytes of |out|.
-// @param avFrame A constant reference to an AVFrame that contains the source data
-//                to be encoded. This must be in an appropriate pixel format for
-//                the encoder.
-//
-// @return <0 for any failure to encode the frame, otherwise the size in byte
-//         of the encoded frame.
-//
-int WriteFFmpegPlugin::encodeVideo(AVCodecContext* avCodecContext, uint8_t* out, int outSize, const AVFrame* avFrame)
-{
-    if (!avCodecContext || !out || !avFrame) {
-        return -1;
-    }
-    int ret, got_packet = 0;
-
-    if (outSize < FF_MIN_BUFFER_SIZE) {
-        av_log(avCodecContext, AV_LOG_ERROR, "buffer smaller than minimum size\n");
-        return -1;
-    }
-
-    AVPacket pkt;
-    av_init_packet(&pkt);
-
-    pkt.data = out;
-    pkt.size = outSize;
-
-    {
-        ret = avcodec_encode_video2(avCodecContext, &pkt, avFrame, &got_packet);
-        if (!ret && got_packet && avCodecContext->coded_frame) {
-            avCodecContext->coded_frame->pts = pkt.pts;
-            avCodecContext->coded_frame->key_frame = !!(pkt.flags & AV_PKT_FLAG_KEY);
-        }
-    }
-    
-    return ret ? ret : pkt.size;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // writeToFile
@@ -2737,7 +2704,7 @@ int WriteFFmpegPlugin::encodeVideo(AVCodecContext* avCodecContext, uint8_t* out,
 // @return 0 if successful.
 //         <0 otherwise.
 //
-int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps,int dstNComps, int rowBytes)
+int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finalise, double time, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps, int dstNComps, int rowBytes)
 {
 #if OFX_FFMPEG_AUDIO
     // Write interleaved audio and video if an audio file has
@@ -2770,10 +2737,10 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
         return -6;
     }
     assert(avFormatContext);
-    if (!avFormatContext || !pixelData || !bounds) {
+    if (!avFormatContext || (!finalise && (!pixelData || !bounds))) {
         return -7;
     }
-    return writeVideo(avFormatContext, _streamVideo, finalise, pixelData, bounds, pixelDataNComps, dstNComps, rowBytes);
+    return writeVideo(avFormatContext, _streamVideo, finalise, time, pixelData, bounds, pixelDataNComps, dstNComps, rowBytes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2881,7 +2848,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
                 } else
 #              endif
                 {
-                    avCodecContext->thread_count = OFX::MultiThread::getNumCPUs();
+                    avCodecContext->thread_count = std::min(OFX::MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS);
                 }
 
                 if (openCodec(formatContext_, audioCodec, streamAudio_) < 0) {
@@ -2995,14 +2962,21 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         
         // Activate multithreaded decoding. This must be done before opening the codec; see
         // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
-#              ifdef AV_CODEC_CAP_AUTO_THREADS
+#     ifdef AV_CODEC_CAP_AUTO_THREADS
         if (avCodecContext->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
             avCodecContext->thread_count = 0;
         } else
-#              endif
+#     endif
         {
             avCodecContext->thread_count = OFX::MultiThread::getNumCPUs();
         }
+#     ifdef AV_CODEC_CAP_SLICE_THREADS
+        if (avCodecContext->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) {
+            // multiple threads are used to decode a single frame. Reduces delay
+            // also, mjpeg prefers this, see libavfocodec/frame_thread_encoder.c:ff_frame_thread_encoder_init()
+            avCodecContext->thread_type = FF_THREAD_SLICE;
+        }
+#     endif
 
 
 # if OFX_FFMPEG_PRINT_CODECS
@@ -3050,6 +3024,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     {
         OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
         _nextFrameToEncode = (int)args.frameRange.min;
+        _firstFrameToEncode = (int)args.frameRange.min;
+        _lastFrameToEncode = (int)args.frameRange.max;
         _frameStep = (int)args.frameStep;
     }
 
@@ -3149,7 +3125,7 @@ WriteFFmpegPlugin::encode(const std::string& filename,
                     return;
                 }
                 assert(_formatContext);
-                if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
+                if (!writeToFile(_formatContext, false, time, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
                     _error = SUCCESS;
                     _nextFrameToEncode = (int)time + _frameStep;
                     if (abort()) {
@@ -3195,7 +3171,7 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &/*args*
         // Continue to write the audio/video interleave while there are still
         // frames in the video and/or audio encoder queues, without queuing any
         // new data to encode. This is ffmpeg specific.
-        flushFrames = !writeToFile(_formatContext, true) ? true : false;
+        flushFrames = !writeToFile(_formatContext, true, -1) ? true : false;
     }
 #if OFX_FFMPEG_AUDIO
     // The audio is written in ~0.5s chunks only when the video stream position
@@ -3546,6 +3522,8 @@ void WriteFFmpegPlugin::freeFormat()
     {
         OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
         _nextFrameToEncode = INT_MIN;
+        _firstFrameToEncode = 1;
+        _lastFrameToEncode = 1;
         _frameStep = 1;
     }
     _scratchBufferSize = 0;
