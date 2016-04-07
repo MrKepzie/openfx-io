@@ -273,7 +273,7 @@ private:
     /**
      * @brief Initializes the params depending on the input file.
      **/
-    void inputFileChanged();
+    void inputFileChanged(bool isLoadingExistingReader);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const void *srcPixelData,
@@ -378,6 +378,7 @@ protected:
     OFX::DoubleParam* _fps;
 
     OFX::StringParam* _sublabel;
+    OFX::BooleanParam* _isExistingReader;
     
 #ifdef OFX_IO_USING_OCIO
     std::auto_ptr<GenericOCIO> _ocio;

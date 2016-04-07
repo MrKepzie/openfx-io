@@ -208,6 +208,8 @@ enum MissingEnum
 #define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter. The frame-rate is just the meta-data that will be passed " \
 "downstream to the graph, no retime will actually take place."
 
+#define kParamExistingInstance "ParamExistingInstance"
+
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
@@ -266,6 +268,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _customFPS(0)
 , _fps(0)
 , _sublabel(0)
+, _isExistingReader(0)
 #ifdef OFX_IO_USING_OCIO
 , _ocio(new GenericOCIO(this))
 #endif
@@ -302,6 +305,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
         _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
         assert(_sublabel);
     }
+    _isExistingReader = fetchBooleanParam(kParamExistingInstance);
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -334,47 +338,17 @@ GenericReaderPlugin::refreshSubLabel(OfxTime time)
 void
 GenericReaderPlugin::restoreStateFromParameters()
 {
-    std::string filename;
     
-    if (!gHostIsNatron) {
-        
-        _fileParam->getValue(filename);
-        
-        if (!filename.empty()) {
-            setSequenceFromFile(filename);
-        }
-        
-        //reset the original range param only if the host is not Natron
-        _originalFrameRange->setValue(INT_MIN, INT_MAX);
-    }
+    // Natron explicitly set the value of filename before instanciating a Reader.
+    // We need to know if all parameters were setup already and we are just loading a project
+    // or if we are creating a new Reader from scratch and need toa djust parameters.
+    bool readerExisted;
+    _isExistingReader->getValue(readerExisted);
     
-
+    inputFileChanged(readerExisted);
     
-    OfxRangeI tmp;
-
-    if (getSequenceTimeDomainInternal(tmp,true)) {
-        
-        bool timeDomainUserEdited;
-        _timeDomainUserSet->getValue(timeDomainUserEdited);
-        if (!timeDomainUserEdited) {
-            timeDomainFromSequenceTimeDomain(tmp, true, true);
-        }
-    }
-    ///We call restoreState with the first frame of the sequence so we're almost sure it will work
-    ///unless the user did a mistake. We are also safe to assume that images specs are the same for
-    ///all the sequence
-    _fileParam->getValueAtTime(tmp.min, filename);
-    
-    restoreState(filename);
-    
-    bool customFps;
-    _customFPS->getValue(customFps);
-    if (!customFps) {
-        double fps;
-        bool gotFps = getFrameRate(filename, &fps);
-        if (gotFps) {
-            _fps->setValue(fps);
-        }
+    if (!readerExisted) {
+        _isExistingReader->setValue(true);
     }
     
     int frameMode_i;
@@ -1871,14 +1845,16 @@ GenericReaderPlugin::checkExtension(const std::string& ext)
 }
 
 void
-GenericReaderPlugin::inputFileChanged()
+GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader)
 {
     std::string filename;
     
     if (!gHostIsNatron) {
         _fileParam->getValue(filename);
 
-        setSequenceFromFile(filename);
+        if (!filename.empty()) {
+            setSequenceFromFile(filename);
+        }
         
         clearPersistentMessage();
         
@@ -1889,54 +1865,68 @@ GenericReaderPlugin::inputFileChanged()
     
     OfxRangeI tmp;
     if (getSequenceTimeDomainInternal(tmp, true)) {
-        timeDomainFromSequenceTimeDomain(tmp, true);
-        _startingTime->setValue(tmp.min);
+        
+        if (isLoadingExistingReader) {
+            bool timeDomainUserEdited;
+            _timeDomainUserSet->getValue(timeDomainUserEdited);
+            if (!timeDomainUserEdited) {
+                timeDomainFromSequenceTimeDomain(tmp, true, true);
+            }
+        } else {
+            
+            timeDomainFromSequenceTimeDomain(tmp, true);
+            _startingTime->setValue(tmp.min);
+        }
         
         ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
         ///unless the user did a mistake. We are also safe to assume that images specs are the same for
         ///all the sequence
         _fileParam->getValueAtTime(tmp.min, filename);
-        if (filename == _filename) {
+        if (filename == _filename && !isLoadingExistingReader) {
             // file name did not really change
             return;
         }
         _filename = filename;
 
-        ///let the derive class a chance to initialize any data structure it may need
-        
-        OFX::PixelComponentEnum components;
-        int componentCount;
-        OFX::PreMultiplicationEnum premult;
-
-        bool setColorSpace = true;
+        if (isLoadingExistingReader) {
+            restoreState(filename);
+        } else {
+            ///let the derive class a chance to initialize any data structure it may need
+            
+            OFX::PixelComponentEnum components;
+            int componentCount;
+            OFX::PreMultiplicationEnum premult;
+            
+            bool setColorSpace = true;
 # ifdef OFX_IO_USING_OCIO
-        // Always try to parse from string first,
-        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-        OCIO_NAMESPACE::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
-        if (ocioConfig) {
-            const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
-            if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
-                colorSpaceStr = NULL;
+            // Always try to parse from string first,
+            // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+            OCIO_NAMESPACE::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
+            if (ocioConfig) {
+                const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
+                if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+                    colorSpaceStr = NULL;
+                }
+                if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+                    // we're lucky
+                    _ocio->setInputColorspace(colorSpaceStr);
+                    setColorSpace = false;
+                }
             }
-            if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
-                // we're lucky
-                _ocio->setInputColorspace(colorSpaceStr);
-                setColorSpace = false;
-            }
-        }
 # endif
-
-        onInputFileChanged(filename, setColorSpace, &premult, &components, &componentCount);
-        // RGB is always Opaque, Alpha is always PreMultiplied
-        if (components == OFX::ePixelComponentRGB) {
-            premult = OFX::eImageOpaque;
-        } else if (components == OFX::ePixelComponentAlpha) {
-            premult = OFX::eImagePreMultiplied;
-        }
-        if (components != OFX::ePixelComponentNone) {
-            setOutputComponents(components);
-        }
-        _premult->setValue((int)premult);
+            
+            onInputFileChanged(filename, setColorSpace, &premult, &components, &componentCount);
+            // RGB is always Opaque, Alpha is always PreMultiplied
+            if (components == OFX::ePixelComponentRGB) {
+                premult = OFX::eImageOpaque;
+            } else if (components == OFX::ePixelComponentAlpha) {
+                premult = OFX::eImagePreMultiplied;
+            }
+            if (components != OFX::ePixelComponentNone) {
+                setOutputComponents(components);
+            }
+            _premult->setValue((int)premult);
+        } // isLoadingExistingReader
         
         bool customFps;
         _customFPS->getValue(customFps);
@@ -1964,7 +1954,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
-            inputFileChanged();
+            inputFileChanged(false);
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
             refreshSubLabel(args.time);
@@ -2824,6 +2814,17 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setIsPersistant(true);
         param->setEvaluateOnChange(false);
         //param->setDefault();
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    
+    {
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
+        param->setEvaluateOnChange(false);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        param->setDefault(false);
         if (page) {
             page->addChild(*param);
         }
