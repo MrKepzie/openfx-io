@@ -1938,9 +1938,9 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     //
     // The code was this:
     //streamVideo_->codec->time_base = av_d2q(1.0 / fps_, 100);
-    const float CONVERSION_FACTOR = 1000.0f;
-    avCodecContext->time_base.num = (int)CONVERSION_FACTOR;
-    avCodecContext->time_base.den = (int)(fps * CONVERSION_FACTOR);
+    //const float CONVERSION_FACTOR = 1000.0f;
+    //avCodecContext->time_base.num = (int)CONVERSION_FACTOR;
+    //avCodecContext->time_base.den = (int)(fps * CONVERSION_FACTOR);
 
     // Trap fractional frame rates so that they can be specified correctly
     // in a QuickTime movie. The rational number representation of fractional
@@ -1950,16 +1950,18 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     //          frame rate is 24/1.001, 30/1.001, etc. so the frame rate
     //          is corrected here.
     int frameRate = (0.0 < fps) ? (int)fps : 0;
-    if ((23 == frameRate) || (29 == frameRate) || (59 == frameRate)) {
-        avCodecContext->time_base.num = 1001;
-        avCodecContext->time_base.den = (frameRate + 1) * 1000;
+    AVRational frame_rate;
+    if ((23.969 < fps && fps < 23.981) || (29.969 < fps && 29.981 < fps) || (59.939 < fps && fps < 59.941)) {
+        frame_rate.num = std::ceil(fps) * 1000;
+        frame_rate.den = 1001;
     } else {
-        avCodecContext->time_base.num = 100;
-        avCodecContext->time_base.den = frameRate * 100;
+        // integers are represented exactly as float, so most of the time the denominator will be 1
+        frame_rate = av_d2q(fps, INT_MAX);
     }
+    avCodecContext->time_base = av_inv_q(frame_rate);;
     // [mov @ 0x1042d7600] Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead.
-    avStream->time_base.num = 100;
-    avStream->time_base.den = frameRate * 100;
+    // copy timebase while removing common factors
+    avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational){0, 1});
 
     int gopSize = _gopSize->getValue();
     if (interGOPParams)
@@ -2597,7 +2599,9 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     if (!ret) {
         bool error = false;
         if (avFrame) {
-            avFrame->pts = time - _firstFrameToEncode;
+            //avFrame->pts = AV_NOPTS_VALUE; // let ffmpeg guess the pts
+            int pts_incr = (avStream->time_base.den * avCodecContext->time_base.num) / (avStream->time_base.num * avCodecContext->time_base.den);
+            avFrame->pts = ((int)time - _firstFrameToEncode) * pts_incr;
         }
         if ((avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
             AVPacket pkt;
