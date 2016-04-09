@@ -2275,13 +2275,21 @@ int WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext, AVCodec* avCo
     }
     if (AVMEDIA_TYPE_AUDIO == avCodecContext->codec_type) {
         // Audio codecs.
-        if (avcodec_open2(avCodecContext, avCodec, NULL) < 0) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "could not open audio codec");
+        int error = avcodec_open2(avCodecContext, avCodec, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror(error, szError, sizeof(szError));
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Could not open audio codec: ") + szError);
             return -1;
         }
     } else if (AVMEDIA_TYPE_VIDEO == avCodecContext->codec_type) {
-        if (avcodec_open2(avCodecContext, avCodec, NULL) < 0) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "unable to open video codec");
+        int error = avcodec_open2(avCodecContext, avCodec, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror(error, szError, sizeof(szError));
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Could not open video codec: ") + szError);
             return -4;
         }
     } else if (AVMEDIA_TYPE_DATA == avCodecContext->codec_type) {
@@ -2353,8 +2361,8 @@ int WriteFFmpegPlugin::writeAudio(AVFormatContext* avFormatContext, AVStream* av
 
         if (ret < 0) {
             // Report the error.
-            char szError[1024];
-            av_strerror(ret, szError, 1024);
+            char szError[1024] = { 0 };
+            av_strerror(ret, szError, sizeof(szError));
             iop->error(szError);
         }
     }
@@ -2643,9 +2651,9 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             }
             if (encodeResult < 0) {
                 // Report the error.
-                char szError[1024];
-                av_strerror(encodeResult, szError, 1024);
-                setPersistentMessage(OFX::Message::eMessageError, "", szError);
+                char szError[1024] = { 0 };
+                av_strerror(encodeResult, szError, sizeof(szError));
+                setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot encode frame: ") + szError);
                 error = true;
             } else {
                 if (flush && !got_packet) {
@@ -2663,9 +2671,9 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                     const bool writeSucceeded = (writeResult == 0);
                     if (!writeSucceeded) {
                         // Report the error.
-                        char szError[1024];
-                        av_strerror(writeResult, szError, 1024);
-                        setPersistentMessage(OFX::Message::eMessageError, "", szError);
+                        char szError[1024] = { 0 };
+                        av_strerror(writeResult, szError, sizeof(szError));
+                        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot write frame: ") + szError);
                         error = true;
                     }
                 }
@@ -2993,15 +3001,28 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         }
 
         if (!(avOutputFormat->flags & AVFMT_NOFILE)) {
-            if (avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
-                setPersistentMessage(OFX::Message::eMessageError, "","unable to open file");
+            int error = avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE);
+            if (error < 0) {
+                // Report the error.
+                char szError[1024] = { 0 };
+                av_strerror(error, szError, sizeof(szError));
+                setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unable to open file: ") + szError);
                 freeFormat();
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
             }
         }
         
-        avformat_write_header(_formatContext, NULL);
+        int error = avformat_write_header(_formatContext, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror(error, szError, sizeof(szError));
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unable to write file header: ") + szError);
+            freeFormat();
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
     }
 
     // Special behaviour.
