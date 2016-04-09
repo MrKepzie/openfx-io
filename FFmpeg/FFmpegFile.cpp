@@ -170,6 +170,7 @@ namespace
         { "ayuv",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable.
         { "cfhd",           true,  false }, // Cineform HD.
         { "cinepak",        true,  true }, // Cinepak.
+        { "dxv",            true,  false }, // Resolume DXV
         { "dnxhd",          true,  true }, // VC3/DNxHD
         { "ffv1",           true,  UNSAFEQT0 && UNSAFEVLC }, // FFmpeg video codec #1 - write not supported as not official qt readable.
         { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC }, // Huffyuv FFmpeg variant - write not supported as not official qt readable.
