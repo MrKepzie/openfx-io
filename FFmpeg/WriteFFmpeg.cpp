@@ -1547,7 +1547,7 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
             if (hasAlpha) {
                 outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
             } else {
-                outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
+                outTargetPixelFormat = AV_PIX_FMT_YUV444P10;
             }
             outBitDepth = 10;
         } else {
