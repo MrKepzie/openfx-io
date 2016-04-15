@@ -990,7 +990,7 @@ private:
     void updateVisibility();
     void checkCodec();
     void freeFormat();
-    AVColorTransferCharacteristic getColorTransferCharacteristic() const;
+    void getColorInfo(AVColorPrimaries *color_primaries, AVColorTransferCharacteristic *color_trc) const;
     AVPixelFormat                 getPixelFormat(AVCodec* videoCodec) const;
     AVOutputFormat*               initFormat(bool reportErrors) const;
     bool                          initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AVCodec*& outCodec) const;
@@ -1399,8 +1399,24 @@ bool WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName, int codecProfi
             !strcmp(shortName, "qtrle"));
 }
 
-AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic() const
+
+void
+WriteFFmpegPlugin::getColorInfo(AVColorPrimaries *color_primaries,
+                                AVColorTransferCharacteristic *color_trc) const
 {
+    //AVCOL_PRI_RESERVED0   = 0,
+    //AVCOL_PRI_BT709       = 1, ///< also ITU-R BT1361 / IEC 61966-2-4 / SMPTE RP177 Annex B
+    //AVCOL_PRI_UNSPECIFIED = 2,
+    //AVCOL_PRI_RESERVED    = 3,
+    //AVCOL_PRI_BT470M      = 4, ///< also FCC Title 47 Code of Federal Regulations 73.682 (a)(20)
+    //
+    //AVCOL_PRI_BT470BG     = 5, ///< also ITU-R BT601-6 625 / ITU-R BT1358 625 / ITU-R BT1700 625 PAL & SECAM
+    //AVCOL_PRI_SMPTE170M   = 6, ///< also ITU-R BT601-6 525 / ITU-R BT1358 525 / ITU-R BT1700 NTSC
+    //AVCOL_PRI_SMPTE240M   = 7, ///< functionally identical to above
+    //AVCOL_PRI_FILM        = 8, ///< colour filters using Illuminant C
+    //AVCOL_PRI_BT2020      = 9, ///< ITU-R BT2020
+    //AVCOL_PRI_NB,              ///< Not part of ABI
+
     //AVCOL_TRC_RESERVED0    = 0,
     //AVCOL_TRC_BT709        = 1,  ///< also ITU-R BT1361
     //AVCOL_TRC_UNSPECIFIED  = 2,
@@ -1417,6 +1433,10 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
     //AVCOL_TRC_IEC61966_2_1 = 13, ///< IEC 61966-2-1 (sRGB or sYCC)
     //AVCOL_TRC_BT2020_10    = 14, ///< ITU-R BT2020 for 10 bit system
     //AVCOL_TRC_BT2020_12    = 15, ///< ITU-R BT2020 for 12 bit system
+
+    *color_primaries = AVCOL_PRI_UNSPECIFIED;
+    *color_trc = AVCOL_TRC_UNSPECIFIED;
+
 # ifdef OFX_IO_USING_OCIO
     std::string selection;
     assert(_ocio.get());
@@ -1429,7 +1449,8 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
         selection == "out_srgbd60sim" ||
         selection == "rrt_srgb" || // rrt_srgb in aces
         selection == "srgb8" ) { // srgb8 in spi-vfx
-        return AVCOL_TRC_IEC61966_2_1;///< IEC 61966-2-1 (sRGB or sYCC)
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_IEC61966_2_1;///< IEC 61966-2-1 (sRGB or sYCC)
     } else if (selection.find("Rec709") != std::string::npos || // Rec709 in nuke-default
                selection.find("rec709") != std::string::npos ||
                selection == "Rec 709 Curve" || // natron
@@ -1439,8 +1460,8 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
                selection == "rrt_rec709_full_100nits" || // aces 0.7.1
                selection == "rrt_rec709" || // rrt_rec709 in aces
                selection == "hd10") { // hd10 in spi-anim and spi-vfx
-        return AVCOL_TRC_BT709;///< also ITU-R BT1361
-#  if 0 // float values should be divided by 100 for this to work?
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_BT709;///< also ITU-R BT1361
     } else if (selection.find("KodakLog") != std::string::npos ||
                selection.find("kodaklog") != std::string::npos ||
                selection.find("Cineon") != std::string::npos || // Cineon in nuke-default
@@ -1451,15 +1472,16 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
                selection == "lg10" || // lg10 in spi-vfx and blender
                selection == "lm10" ||
                selection == "lgf") {
-        return AVCOL_TRC_LOG;///< "Logarithmic transfer characteristic (100:1 range)"
-#  endif
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_LOG;///< "Logarithmic transfer characteristic (100:1 range)"
     } else if (selection.find("Gamma2.2") != std::string::npos ||
                selection == "rrt_Gamma2.2" ||
                selection == "vd8" || // vd8, vd10, vd16 in spi-anim and spi-vfx
                selection == "vd10" ||
                selection == "vd16" ||
                selection == "VD16") { // VD16 in blender
-        return AVCOL_TRC_GAMMA22;///< also ITU-R BT470M / ITU-R BT1700 625 PAL & SECAM
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_GAMMA22;///< also ITU-R BT470M / ITU-R BT1700 625 PAL & SECAM
     } else if (selection.find("linear") != std::string::npos ||
                selection.find("Linear") != std::string::npos ||
                selection == "Linear sRGB / REC.709 D65" || // natron
@@ -1467,17 +1489,17 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
                selection == "aces" || // aces in aces
                selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
                selection == "ln16") {
-        return AVCOL_TRC_LINEAR;
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_LINEAR;
     } else if (selection.find("Rec2020") != std::string::npos ||
                selection == "Rec 2020 12 Bit Curve" || // natron
                selection == "aces" || // aces in aces
                selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
                selection == "ln16") {
-        return AVCOL_TRC_BT2020_12;
+        *color_primaries = AVCOL_PRI_BT2020;
+        *color_trc = AVCOL_TRC_BT2020_12;
     }
 # endif
-
-    return AVCOL_TRC_UNSPECIFIED;
 }
 
 
@@ -1859,6 +1881,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         return;
     }
     avcodec_get_context_defaults3(avCodecContext, avCodec);
+    //avCodecContext->strict_std_compliance = FF_COMPLIANCE_STRICT;
 
     //Only update the relevant context variables where the user is able to set them.
     //This deals with cases where values are left on an old value when knob disabled.
@@ -1883,7 +1906,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     avCodecContext->width = (_rodPixel.x2 - _rodPixel.x1);
     avCodecContext->height = (_rodPixel.y2 - _rodPixel.y1);
 
-    avCodecContext->color_trc = getColorTransferCharacteristic();
+    getColorInfo(&avCodecContext->color_primaries, &avCodecContext->color_trc);
 
     av_dict_set(&_formatContext->metadata, kMetaKeyApplication, kPluginIdentifier, 0);
 
@@ -1906,7 +1929,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         bool writeNCLC = _writeNCLC->getValue();
 
         // Primaries are always 709.
-        avCodecContext->color_primaries = AVCOL_PRI_BT709;
+        //avCodecContext->color_primaries = AVCOL_PRI_BT709;
         if (writeNCLC)
             av_dict_set(&avStream->metadata, kNCLCPrimariesKey, "1", 0);
 
@@ -1918,10 +1941,16 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 
         // Matrix is based on that used when writing (a combo of height and legacy codec in general).
         if (isRec709Format(avCodecContext->height)) {
-            avCodecContext->colorspace = AVCOL_SPC_BT709;
+            if (avCodecContext->color_primaries == AVCOL_PRI_BT2020) {
+                avCodecContext->colorspace = AVCOL_SPC_BT2020_NCL;
+            } else {
+                avCodecContext->colorspace = AVCOL_SPC_BT709;
+            }
             if (writeNCLC)
                 av_dict_set(&avStream->metadata, kNCLCMatrixKey, "1", 0);
         } else {
+            avCodecContext->color_primaries = AVCOL_PRI_BT470BG;
+            avCodecContext->color_trc = AVCOL_TRC_GAMMA28;
             avCodecContext->colorspace = AVCOL_SPC_BT470BG;
             if (writeNCLC)
                 av_dict_set(&avStream->metadata, kNCLCMatrixKey, "6", 0);
