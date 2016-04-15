@@ -2682,8 +2682,8 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         bool error = false;
         if (avFrame) {
             //avFrame->pts = AV_NOPTS_VALUE; // let ffmpeg guess the pts
-            int pts_incr = (avStream->time_base.den * avCodecContext->time_base.num) / (avStream->time_base.num * avCodecContext->time_base.den);
-            avFrame->pts = ((int)time - _firstFrameToEncode) * pts_incr;
+            avFrame->pts = ((int)time - _firstFrameToEncode);
+            av_frame_set_pkt_duration(avFrame, 1);
         }
         if ((avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
             AVPacket pkt;
@@ -2719,10 +2719,12 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             // Sws_xxx.
             int got_packet = 0;
             int encodeResult = avcodec_encode_video2(avCodecContext, &pkt, avFrame, &got_packet);
-            if (avCodecContext->coded_frame && !ret && got_packet) {
-                avCodecContext->coded_frame->pts = pkt.pts;
-                avCodecContext->coded_frame->key_frame = !!(pkt.flags & AV_PKT_FLAG_KEY);
-            }
+            // coded_frame is deprecated
+            // see https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-July/092046.html
+            //if (avCodecContext->coded_frame && !ret && got_packet) {
+            //    avCodecContext->coded_frame->pts = pkt.pts;
+            //    avCodecContext->coded_frame->key_frame = !!(pkt.flags & AV_PKT_FLAG_KEY);
+            //}
             if (encodeResult < 0) {
                 // Report the error.
                 char szError[1024] = { 0 };
@@ -2736,10 +2738,15 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                 }
                 if (got_packet) {
                     // codecs with AV_CODEC_CAP_DELAY (e.g. png with multithreading) may not return a packet although encoding was successful
-                    if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
-                        pkt.pts = av_rescale_q(avCodecContext->coded_frame->pts, avCodecContext->time_base, avStream->time_base);
-                    if (avCodecContext->coded_frame && avCodecContext->coded_frame->key_frame)
-                        pkt.flags |= AV_PKT_FLAG_KEY;
+                    // coded_frame is deprecated
+                    // see https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-July/092046.html
+                    //if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
+                    //    //pkt.pts = av_rescale_q(avCodecContext->coded_frame->pts, avCodecContext->time_base, avStream->time_base);
+                    //    pkt.pts = avCodecContext->coded_frame->pts;
+                    //    av_packet_rescale_ts(&pkt, avCodecContext->time_base, avStream->time_base);
+                    //if (avCodecContext->coded_frame && avCodecContext->coded_frame->key_frame)
+                    //    pkt.flags |= AV_PKT_FLAG_KEY;
+                    av_packet_rescale_ts(&pkt, avCodecContext->time_base, avStream->time_base);
 
                     const int writeResult = av_write_frame(avFormatContext, &pkt);
                     const bool writeSucceeded = (writeResult == 0);
