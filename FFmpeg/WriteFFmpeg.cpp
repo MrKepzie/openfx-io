@@ -31,6 +31,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cfloat>
 #include <sstream>
 
 #ifdef _WINDOWS
@@ -154,24 +155,26 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamEnableAlphaHint \
 "Write alpha channel to the video file (if supported by the codec)."
 
-#define kParamBitrate "bitrate"
+#define kParamBitrate "bitrateMbps"
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
-"The target bitrate the codec will attempt to reach (in bits/s), within the confines of the bitrate tolerance and " \
+"The target bitrate the codec will attempt to reach (in Megabits/s), within the confines of the bitrate tolerance and " \
 "quality min/max settings. Only supported by certain codecs (e.g. hev1, m2v1, MP42, 3IVD, but not mp4v, avc1 or H264).\n" \
-"Option -b in ffmpeg."
+"Option -b in ffmpeg (multiplied by 1000000)."
+#define kParamBitrateDefault 185
+#define kParamBitrateMax 4000
 
-#define kParamBitrateTolerance "bitrateTolerance"
+#define kParamBitrateTolerance "bitrateToleranceMbps"
 #define kParamBitrateToleranceLabel "Bitrate Tolerance"
 #define kParamBitrateToleranceHint \
-"Set video bitrate tolerance (in bits/s). In 1-pass mode, bitrate " \
+"Set video bitrate tolerance (in Megabits/s). In 1-pass mode, bitrate " \
 "tolerance specifies how far ratecontrol is willing to deviate from " \
 "the target average bitrate value. This is not related to min/max " \
 "bitrate. Lowering tolerance too much has an adverse effect on "\
 "quality. " \
 "As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders." \
 "Only supported by certain codecs (e.g. MP42, 3IVD, but not avc1, hev1, m2v1, mp4v or H264).\n" \
-"Option -bt in ffmpeg."
+"Option -bt in ffmpeg (multiplied by 1000000)."
 
 #define kParamQuality "quality"
 #define kParamQualityLabel "Quality"
@@ -1009,8 +1012,7 @@ private:
 
     static int            GetPixelFormatBitDepth(const AVPixelFormat pixelFormat);
     static AVPixelFormat  GetPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha);
-    static void           GetCodecSupportedParams(AVCodec* codec, bool& outLossyParams,
-                                                  bool& outInterGOPParams, bool& outInterBParams);
+    static void           GetCodecSupportedParams(AVCodec* codec, bool& outBitrateParam, bool& outBitrateTolParam, bool& outQualityParams, bool& outInterGOPParams, bool& outInterBParams);
 
     void configureAudioStream(AVCodec* avCodec, AVStream* avStream);
     void configureVideoStream(AVCodec* avCodec, AVStream* avStream);
@@ -1062,8 +1064,8 @@ private:
     OFX::ChoiceParam* _codec;
     OFX::StringParam* _codecShortName;
     OFX::BooleanParam* _enableAlpha;
-    OFX::IntParam* _bitrate;
-    OFX::IntParam* _bitrateTolerance;
+    OFX::DoubleParam* _bitrate;
+    OFX::DoubleParam* _bitrateTolerance;
     OFX::Int2DParam* _quality;
     OFX::IntParam* _gopSize;
     OFX::IntParam* _bFrames;
@@ -1308,8 +1310,8 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
     _codec = fetchChoiceParam(kParamCodec);
     _codecShortName = fetchStringParam(kParamCodecShortName);
     _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
-    _bitrate = fetchIntParam(kParamBitrate);
-    _bitrateTolerance = fetchIntParam(kParamBitrateTolerance);
+    _bitrate = fetchDoubleParam(kParamBitrate);
+    _bitrateTolerance = fetchDoubleParam(kParamBitrateTolerance);
     _quality = fetchInt2DParam(kParamQuality);
     _gopSize = fetchIntParam(kParamGopSize);
     _bFrames = fetchIntParam(kParamBFrames);
@@ -1787,8 +1789,14 @@ AVPixelFormat WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth, 
 }
 
 /*static*/
-void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyParams, bool& outInterGOPParams, bool& outInterBParams)
+void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec,
+                                                bool& outBitrateParam,
+                                                bool& outBitrateTolParam,
+                                                bool& outQualityParams,
+                                                bool& outInterGOPParams,
+                                                bool& outInterBParams)
 {
+    bool outLossyParams = false;
     assert(codec);
     if (!codec) {
         outLossyParams = false;
@@ -1830,6 +1838,52 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
     }
 #endif
     /* && codec->id != AV_CODEC_ID_PRORES*/
+
+    if (!outLossyParams) {
+        outBitrateParam = outBitrateTolParam = outQualityParams = false;
+    } else {
+        std::string codecShortName = codec->name;
+
+        // handle codec-specific cases.
+        // Note that x264 is used in qpmin/qpmax mode
+        outBitrateParam  = (codecShortName != "mpeg4" &&
+                            codecShortName != "libx264" &&
+                            codecShortName != "libx264rgb" &&
+                            codecShortName != "cvid" &&
+                            codecShortName != "flv" &&
+                            codecShortName != "jpeg2000" &&
+                            codecShortName != "jpegls" &&
+                            codecShortName != "svq1");
+        outBitrateTolParam = (codecShortName != "libx264" &&
+                              codecShortName != "libx264rgb" &&
+                              codecShortName != "libx265" &&
+                              codecShortName != "mpeg2video" &&
+                              codecShortName != "mpeg4" &&
+                              codecShortName != "libopenh264" &&
+                              codecShortName != "cvid" &&
+                              codecShortName != "flv" &&
+                              codecShortName != "jpeg2000" &&
+                              codecShortName != "jpegls" &&
+                              codecShortName != "mjpeg" &&
+                              codecShortName != "mpeg1video" &&
+                              codecShortName != "mpeg2video" &&
+                              codecShortName != "svq1" &&
+                              codecShortName != "libschroedinger" &&
+                              codecShortName != "libvpx");
+        outQualityParams  = (codecShortName != "libx265" &&
+                             codecShortName != "mpeg4" &&
+                             codecShortName != "libopenh264" &&
+                             codecShortName != "cvid" &&
+                             codecShortName != "flv" &&
+                             codecShortName != "jpeg2000" &&
+                             codecShortName != "jpegls" &&
+                             codecShortName != "mjpeg" &&
+                             codecShortName != "mpeg1video" &&
+                             codecShortName != "mpeg2video" &&
+                             codecShortName != "svq1" &&
+                             codecShortName != "libschroedinger");
+    }
+
 }
 
 
@@ -1885,20 +1939,26 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 
     //Only update the relevant context variables where the user is able to set them.
     //This deals with cases where values are left on an old value when knob disabled.
-    bool lossyParams    = false;
-    bool interGOPParams = false;
-    bool interBParams   = false;
-    if (avCodec) GetCodecSupportedParams(avCodec, lossyParams, interGOPParams, interBParams);
+    bool bitrateParam    = false;
+    bool bitrateTolParam = false;
+    bool qualityParams   = false;
+    bool interGOPParams  = false;
+    bool interBParams    = false;
+    if (avCodec) GetCodecSupportedParams(avCodec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
 
-    if (lossyParams) {
-        assert(_bitrate && _bitrateTolerance && _quality);
-        int bitrate = _bitrate->getValue();
-        int bitrateTolerance = _bitrateTolerance->getValue();
+    assert(_bitrate && _bitrateTolerance && _quality);
+    if (bitrateParam) {
+        double bitrate = _bitrate->getValue();
+        avCodecContext->bit_rate = (int)(bitrate*1000000);
+    }
+    if (bitrateTolParam) {
+        double bitrateTolerance = _bitrateTolerance->getValue();
+        avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance*1000000);
+    }
+    if (qualityParams) {
         int qMin, qMax;
         _quality->getValue(qMin, qMax);
 
-        avCodecContext->bit_rate = bitrate;
-        avCodecContext->bit_rate_tolerance = bitrateTolerance;
         avCodecContext->qmin = qMin;
         avCodecContext->qmax = qMax;
     }
@@ -3339,55 +3399,19 @@ WriteFFmpegPlugin::updateVisibility()
 
     AVCodec* codec = avcodec_find_encoder_by_name(codecShortName.c_str());
 
-    bool lossyParams    = false;
-    bool interGOPParams = false;
-    bool interBParams   = false;
+    bool bitrateParam    = false;
+    bool bitrateTolParam = false;
+    bool qualityParams   = false;
+    bool interGOPParams  = false;
+    bool interBParams    = false;
     if (codec) {
-        GetCodecSupportedParams(codec, lossyParams, interGOPParams, interBParams);
+        GetCodecSupportedParams(codec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
     }
-    // handle codec-specific cases.
-    // Note that x264 is used in qpmin/qpmax mode
-    bool bitrateParams  = lossyParams && (codecShortName != "mpeg4" &&
-                                          codecShortName != "libx264" &&
-                                          codecShortName != "libx264rgb" &&
-                                          codecShortName != "cvid" &&
-                                          codecShortName != "flv" &&
-                                          codecShortName != "jpeg2000" &&
-                                          codecShortName != "jpegls" &&
-                                          codecShortName != "svq1");
-    bool bitratetParams = lossyParams && (codecShortName != "libx264" &&
-                                          codecShortName != "libx264rgb" &&
-                                          codecShortName != "libx265" &&
-                                          codecShortName != "mpeg2video" &&
-                                          codecShortName != "mpeg4" &&
-                                          codecShortName != "libopenh264" &&
-                                          codecShortName != "cvid" &&
-                                          codecShortName != "flv" &&
-                                          codecShortName != "jpeg2000" &&
-                                          codecShortName != "jpegls" &&
-                                          codecShortName != "mjpeg" &&
-                                          codecShortName != "mpeg1video" &&
-                                          codecShortName != "mpeg2video" &&
-                                          codecShortName != "svq1" &&
-                                          codecShortName != "libschroedinger" &&
-                                          codecShortName != "libvpx");
-    bool qualityParams  = lossyParams && (codecShortName != "libx265" &&
-                                          codecShortName != "mpeg4" &&
-                                          codecShortName != "libopenh264" &&
-                                          codecShortName != "cvid" &&
-                                          codecShortName != "flv" &&
-                                          codecShortName != "jpeg2000" &&
-                                          codecShortName != "jpegls" &&
-                                          codecShortName != "mjpeg" &&
-                                          codecShortName != "mpeg1video" &&
-                                          codecShortName != "mpeg2video" &&
-                                          codecShortName != "svq1" &&
-                                          codecShortName != "libschroedinger");
 
-    _bitrate->setEnabled(bitrateParams);
-    _bitrate->setIsSecret(!bitrateParams);
-    _bitrateTolerance->setEnabled(bitratetParams);
-    _bitrateTolerance->setIsSecret(!bitratetParams);
+    _bitrate->setEnabled(bitrateParam);
+    _bitrate->setIsSecret(!bitrateParam);
+    _bitrateTolerance->setEnabled(bitrateTolParam);
+    _bitrateTolerance->setIsSecret(!bitrateTolParam);
     _quality->setEnabled(qualityParams);
     _quality->setIsSecret(!qualityParams);
 
@@ -3430,10 +3454,11 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
 {
     //Bitrate tolerance should in theory be allowed down to target bitrate/target framerate.
     //We're not force limiting the range since the upper range is not bounded.
-    int bitrate = _bitrate->getValue();
+    double bitrate = _bitrate->getValue();
     double fps = _fps->getValue();
     double minRange = bitrate / fps;
-    _bitrateTolerance->setRange(minRange, 4000 * 10000);
+    _bitrateTolerance->setRange(minRange, DBL_MAX);
+    _bitrateTolerance->setDisplayRange(minRange, kParamBitrateMax);
 }
 
 // Check that the secret codecShortName corresponds to the selected codec.
@@ -4195,11 +4220,12 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 
         ///////////bit-rate
         {
-            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitrate);
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamBitrate);
             param->setLabel(kParamBitrateLabel);
             param->setHint(kParamBitrateHint);
-            param->setRange(0, 400000);
-            param->setDefault(400000);
+            param->setRange(0, DBL_MAX);
+            param->setDisplayRange(0, kParamBitrateMax);
+            param->setDefault(kParamBitrateDefault);
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
@@ -4209,11 +4235,11 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 
         ///////////bit-rate tolerance
         {
-            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitrateTolerance);
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamBitrateTolerance);
             param->setLabel(kParamBitrateToleranceLabel);
             param->setHint(kParamBitrateToleranceHint);
-            param->setRange(833, 4000 * 10000);
-            param->setDefault(4000 * 10000);
+            param->setRange(0, kParamBitrateMax);
+            param->setDefault(kParamBitrateMax);
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
