@@ -3354,7 +3354,6 @@ WriteFFmpegPlugin::updateVisibility()
                                           codecShortName != "flv" &&
                                           codecShortName != "jpeg2000" &&
                                           codecShortName != "jpegls" &&
-                                          codecShortName != "mjpeg" &&
                                           codecShortName != "svq1");
     bool bitratetParams = lossyParams && (codecShortName != "libx264" &&
                                           codecShortName != "libx264rgb" &&
