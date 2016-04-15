@@ -1843,45 +1843,63 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec,
         outBitrateParam = outBitrateTolParam = outQualityParams = false;
     } else {
         std::string codecShortName = codec->name;
+        outBitrateParam = outBitrateTolParam = outQualityParams = true;
 
         // handle codec-specific cases.
         // Note that x264 is used in qpmin/qpmax mode
-        outBitrateParam  = (codecShortName != "mpeg4" &&
-                            codecShortName != "libx264" &&
-                            codecShortName != "libx264rgb" &&
-                            codecShortName != "cvid" &&
-                            codecShortName != "flv" &&
-                            codecShortName != "jpeg2000" &&
-                            codecShortName != "jpegls" &&
-                            codecShortName != "svq1");
-        outBitrateTolParam = (codecShortName != "libx264" &&
-                              codecShortName != "libx264rgb" &&
-                              codecShortName != "libx265" &&
-                              codecShortName != "mpeg2video" &&
-                              codecShortName != "mpeg4" &&
-                              codecShortName != "libopenh264" &&
-                              codecShortName != "cvid" &&
-                              codecShortName != "flv" &&
-                              codecShortName != "jpeg2000" &&
-                              codecShortName != "jpegls" &&
-                              codecShortName != "mjpeg" &&
-                              codecShortName != "mpeg1video" &&
-                              codecShortName != "mpeg2video" &&
-                              codecShortName != "svq1" &&
-                              codecShortName != "libschroedinger" &&
-                              codecShortName != "libvpx");
-        outQualityParams  = (codecShortName != "libx265" &&
-                             codecShortName != "mpeg4" &&
-                             codecShortName != "libopenh264" &&
-                             codecShortName != "cvid" &&
-                             codecShortName != "flv" &&
-                             codecShortName != "jpeg2000" &&
-                             codecShortName != "jpegls" &&
-                             codecShortName != "mjpeg" &&
-                             codecShortName != "mpeg1video" &&
-                             codecShortName != "mpeg2video" &&
-                             codecShortName != "svq1" &&
-                             codecShortName != "libschroedinger");
+        if (codecShortName == "mpeg4") {
+            outBitrateParam = outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "libx264") {
+            outBitrateParam = outBitrateTolParam = false;
+        } else if (codecShortName == "libx264rgb") {
+            outBitrateParam = outBitrateTolParam = false;
+        } else if (codecShortName == "libx265") {
+            outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "libopenh264") {
+            outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "cinepak") {
+            outBitrateParam = outBitrateTolParam = false;
+            outInterGOPParams = outInterBParams = false;
+            outQualityParams = false;
+        } else if (codecShortName == "mpeg2video") {
+            outQualityParams = false;
+        } else if (codecShortName == "mpeg1video") {
+            outQualityParams = false;
+        } else if (codecShortName == "flv") {
+            outQualityParams = false;
+        } else if (codecShortName == "svq1") {
+            // svq1 is h263-based
+            outQualityParams = false;
+        } else if (codecShortName == "mjpeg") {
+            outQualityParams = false;
+            outInterGOPParams = outInterBParams = false;
+        } else if (codecShortName == "jpeg2000") {
+            outBitrateParam = outBitrateTolParam = false;
+            outQualityParams = false;
+            outInterGOPParams = outInterBParams = false;
+        } else if (codecShortName == "jpegls") {
+            outBitrateParam = outBitrateTolParam = false;
+            outQualityParams = false;
+            outInterGOPParams = outInterBParams = false;
+        } else if (codecShortName == "libvpx") {
+            outBitrateTolParam = false;
+            outInterBParams = false;
+        } else if (codecShortName == "libvpx-vp9") {
+            // libvpx/VP9 could be lossless??
+            outBitrateTolParam = false;
+            outInterBParams = false;
+        } else if (codecShortName == "libschroedinger") {
+            outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "vc2") {
+            // libvpx/VP9 could be lossless??
+            outBitrateTolParam = false;
+            outQualityParams  = false;
+            outInterGOPParams = outInterBParams = false;
+        }
     }
 
 }
