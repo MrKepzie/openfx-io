@@ -1809,7 +1809,7 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
         outLossyParams = outInterGOPParams = outInterBParams = false;
     }
     //Mpeg4 ms var 3 / AV_CODEC_ID_MSMPEG4V3 doesn't have a descriptor, but needs the params.
-    if (!codecDesc && (codec->id == AV_CODEC_ID_MSMPEG4V3)) {
+    if (codecDesc && (codec->id == AV_CODEC_ID_MSMPEG4V3)) {
         outLossyParams = outInterGOPParams = outInterBParams = true;
     }
     //QTRLE supports differing GOPs, but any b frame settings causes unreadable files.
