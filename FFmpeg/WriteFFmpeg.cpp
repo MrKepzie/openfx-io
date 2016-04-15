@@ -1584,7 +1584,6 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
 
         //call best_pix_fmt using the full list.
         const int hasAlphaInt = hasAlpha ? 1 : 0;
-        int loss     = 0; //Potentially we should error, or at least report if over a certain value?
 
         // gather the formats that have the highest bit depth (avcodec_find_best_pix_fmt_of_list doesn't do the best job: it prefers yuv422p over yuv422p10)
         std::vector<AVPixelFormat> bestFormats;
@@ -1597,7 +1596,43 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         }
         bestFormats.push_back(AV_PIX_FMT_NONE);
 
-        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outNukeBufferPixelFormat, hasAlphaInt, &loss);
+        // FFmpeg bug https://trac.ffmpeg.org/ticket/5223 : do not pass &loss as the last parameter:
+        // there is a bug in avcodec_find_best_pix_fmt_of_list: the loss mask is not the same for all pixel formats
+        // (the loss of first format is used a a mask for the second, etc) so that if the first pixel format
+        // loses resolution, resolution loss is not considered for other formats.
+        // If we pass NULL, the considered loss is ~0 for all formats
+        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outNukeBufferPixelFormat, hasAlphaInt, NULL);
+
+#ifdef DEBUG
+        int loss = av_get_pix_fmt_loss(outTargetPixelFormat, outNukeBufferPixelFormat, hasAlphaInt);
+        // loss is a combination of
+        // FF_LOSS_RESOLUTION
+        // FF_LOSS_DEPTH
+        // FF_LOSS_COLORSPACE
+        // FF_LOSS_ALPHA
+        // FF_LOSS_COLORQUANT
+        // FF_LOSS_CHROMA
+        printf("WriteFFmpeg: pixel format selected: %s->%s\n", av_get_pix_fmt_name(outNukeBufferPixelFormat),
+               av_get_pix_fmt_name(outTargetPixelFormat));
+        if (loss & FF_LOSS_RESOLUTION) {
+            printf("WriteFFmpeg: pixel format loses RESOLUTION\n");
+        }
+        if (loss & FF_LOSS_DEPTH) {
+            printf("WriteFFmpeg: pixel format loses DEPTH\n");
+        }
+        if (loss & FF_LOSS_COLORSPACE) {
+            printf("WriteFFmpeg: pixel format loses COLORSPACE\n");
+        }
+        if (loss & FF_LOSS_ALPHA) {
+            printf("WriteFFmpeg: pixel format loses ALPHA\n");
+        }
+        if (loss & FF_LOSS_COLORQUANT) {
+            printf("WriteFFmpeg: pixel format loses COLORQUANT\n");
+        }
+        if (loss & FF_LOSS_CHROMA) {
+            printf("WriteFFmpeg: pixel format loses CHROMA\n");
+        }
+#endif
 
         if (AV_CODEC_ID_QTRLE == videoCodec->id) {
             if (hasAlphaInt &&
