@@ -1423,6 +1423,7 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
     _ocio->getOutputColorspace(selection);
     if (selection.find("sRGB") != std::string::npos || // sRGB in nuke-default and blender
         selection.find("srgb") != std::string::npos ||
+        selection == "sRGB Curve" || // natron
         selection == "sRGB D65" || // blender-cycles
         selection == "sRGB (D60 sim.)" || // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
         selection == "out_srgbd60sim" ||
@@ -1431,6 +1432,7 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
         return AVCOL_TRC_IEC61966_2_1;///< IEC 61966-2-1 (sRGB or sYCC)
     } else if (selection.find("Rec709") != std::string::npos || // Rec709 in nuke-default
                selection.find("rec709") != std::string::npos ||
+               selection == "Rec 709 Curve" || // natron
                selection == "nuke_rec709" || // nuke_rec709 in blender
                selection == "Rec.709 - Full" || // aces 1.0.0
                selection == "out_rec709full" || // aces 1.0.0
@@ -1443,11 +1445,12 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
                selection.find("kodaklog") != std::string::npos ||
                selection.find("Cineon") != std::string::npos || // Cineon in nuke-default
                selection.find("cineon") != std::string::npos ||
-               selection == "REDlogFilm" != std::string::npos || // REDlogFilm in aces 1.0.0
-               selection == "adx10" != std::string::npos ||
-               selection == "lg10" != std::string::npos || // lg10 in spi-vfx and blender
-               selection == "lm10" != std::string::npos ||
-               selection == "lgf" != std::string::npos) {
+               selection == "Cineon Log Curve" || // natron
+               selection == "REDlogFilm" || // REDlogFilm in aces 1.0.0
+               selection == "adx10" ||
+               selection == "lg10" || // lg10 in spi-vfx and blender
+               selection == "lm10" ||
+               selection == "lgf") {
         return AVCOL_TRC_LOG;///< "Logarithmic transfer characteristic (100:1 range)"
 #  endif
     } else if (selection.find("Gamma2.2") != std::string::npos ||
@@ -1459,11 +1462,18 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
         return AVCOL_TRC_GAMMA22;///< also ITU-R BT470M / ITU-R BT1700 625 PAL & SECAM
     } else if (selection.find("linear") != std::string::npos ||
                selection.find("Linear") != std::string::npos ||
+               selection == "Linear sRGB / REC.709 D65" || // natron
                selection == "ACES2065-1" || // ACES2065-1 in aces 1.0.0
                selection == "aces" || // aces in aces
                selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
                selection == "ln16") {
         return AVCOL_TRC_LINEAR;
+    } else if (selection.find("Rec2020") != std::string::npos ||
+               selection == "Rec 2020 12 Bit Curve" || // natron
+               selection == "aces" || // aces in aces
+               selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
+               selection == "ln16") {
+        return AVCOL_TRC_BT2020_12;
     }
 # endif
 
