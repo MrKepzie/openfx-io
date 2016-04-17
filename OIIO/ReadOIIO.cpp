@@ -1836,7 +1836,9 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
     updateSpec(filename);
     if (!_specValid) {
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        *componentCount = 0;
+        *components = OFX::ePixelComponentNone;
+        *premult = OFX::eImageOpaque;
         return;
     }
     
