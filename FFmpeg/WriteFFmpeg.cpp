@@ -34,7 +34,7 @@
 #include <cfloat>
 #include <sstream>
 
-#ifdef _WINDOWS
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #    define NOMINMAX 1
 // windows - defined for both Win32 and Win64
 #    include <windows.h> // for GetSystemInfo()
@@ -3220,7 +3220,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 inline void
 sleep(const unsigned int milliseconds)
 {
-#ifdef _WINDOWS
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     Sleep(milliseconds);
 #else
     struct timespec tv;

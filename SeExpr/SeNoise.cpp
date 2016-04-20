@@ -26,7 +26,7 @@
 #include <cmath>
 #include <algorithm>
 //#include <iostream>
-#ifdef _WINDOWS
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #    define NOMINMAX 1
 // windows - defined for both Win32 and Win64
 #    include <windows.h>
@@ -39,7 +39,7 @@
 #  if defined(_MSC_VER) && _MSC_VER < 1900
 #    define snprintf _snprintf
 #  endif
-#endif // _WINDOWS
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include <SeNoise.h>
 #include <SeExprBuiltins.h>
@@ -61,7 +61,7 @@ namespace SeExpr {
 }
 #endif
 
-#ifdef _WINDOWS
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 // fix SePlatform.h's bad defines, see https://github.com/wdas/SeExpr/issues/33
 #undef snprintf
 #undef strtok_r
@@ -71,7 +71,7 @@ namespace SeExpr {
 #  if defined(_MSC_VER) && _MSC_VER >= 1400
 #    define strtok_r(s,d,p) strtok_s(s,d,p)
 #  endif
-#endif // _WINDOWS
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include "ofxsProcessing.H"
 #include "ofxsMaskMix.h"

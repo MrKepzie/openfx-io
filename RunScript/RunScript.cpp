@@ -21,7 +21,7 @@
  * Run a shell script.
  */
 
-#ifndef _WINDOWS // Sorry, MS Windows users, this plugin won't work for you
+#if !( defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) // Sorry, MS Windows users, this plugin won't work for you
 
 #include "RunScript.h"
 #include "ofxsMacros.h"
@@ -41,12 +41,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h> // for snprintf & _snprintf
-#ifdef _WINDOWS
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #  include <windows.h>
 #  if defined(_MSC_VER) && _MSC_VER < 1900
 #    define snprintf _snprintf
 #  endif
-#endif // _WINDOWS
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include "ofxsCopier.h"
 
@@ -802,4 +802,4 @@ mRegisterPluginFactoryInstance(p)
 
 OFXS_NAMESPACE_ANONYMOUS_EXIT
 
-#endif // _WINDOWS
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
