@@ -228,17 +228,20 @@ class PixelConverterProcessor
 public:
     // ctor
     PixelConverterProcessor(OFX::ImageEffect &instance)
-    : OFX::PixelProcessor(instance)
+        : OFX::PixelProcessor(instance)
+        , _srcPixelData(0)
+        , _dstBufferRowBytes(0)
+        , _srcBufferRowBytes(0)
     {
-        
+        _srcBufferBounds.x1 = _srcBufferBounds.y1 = _srcBufferBounds.x2 = _srcBufferBounds.y2 = 0;
     }
     
     void setValues(const SRCPIX* srcPixelData,
-                   OfxRectI srcBufferBounds,
+                   const OfxRectI &srcBufferBounds,
                    int srcBufferRowBytes,
                    float* dstPixelData,
                    int dstBufferRowBytes,
-                   OfxRectI dstBufferBounds)
+                   const OfxRectI &dstBufferBounds)
     {
         _srcPixelData = srcPixelData;
         _srcBufferBounds = srcBufferBounds;
