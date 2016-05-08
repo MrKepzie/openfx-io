@@ -3293,6 +3293,9 @@ WriteFFmpegPlugin::encode(const std::string& filename,
         
         if (_nextFrameToEncode == INT_MIN) {
             // Another thread aborted
+            if (abort()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Render aborted");
+            }
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
