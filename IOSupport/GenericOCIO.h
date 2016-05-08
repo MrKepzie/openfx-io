@@ -107,6 +107,13 @@ public:
     void setValues(const std::string& inputSpace, const std::string& outputSpace);
     void setValues(const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace);
 #endif
+    
+    // Calls inputCheck and outputCheck
+    void refreshInputAndOutputState(double time)
+    {
+        inputCheck(time);
+        outputCheck(time);
+    }
 
 private:
     void loadConfig();

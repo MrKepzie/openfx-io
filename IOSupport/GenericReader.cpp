@@ -1916,6 +1916,16 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader)
 # endif
             
             onInputFileChanged(filename, setColorSpace, &premult, &components, &componentCount);
+            
+            
+            if (setColorSpace) {
+# ifdef OFX_IO_USING_OCIO
+                
+                // Refreshing the choice menus of ocio is required since the instanceChanged action
+                // may not be called recursively during the createInstance action
+                 _ocio->refreshInputAndOutputState(tmp.min);
+#endif
+            }
             // RGB is always Opaque, Alpha is always PreMultiplied
             if (components == OFX::ePixelComponentRGB) {
                 premult = OFX::eImageOpaque;
