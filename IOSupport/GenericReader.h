@@ -1,40 +1,24 @@
-/*
- OFX GenericReader plugin.
- A base class for all OpenFX-based decoders.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
 
+/*
+ * OFX GenericReader plugin.
+ * A base class for all OpenFX-based decoders.
  */
 
 #ifndef Io_GenericReader_h
@@ -60,7 +44,7 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool isMultiPlanar);
+    GenericReaderPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool isMultiPlanar);
     
     virtual ~GenericReaderPlugin();
 
@@ -111,7 +95,7 @@ public:
      * @brief Set the output components and premultiplication state for the input image automatically.
      * This is filled from directly the info returned by onInputFileChanged
      **/
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
+    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
 
     /**
      * @brief Overriden to clear any OCIO cache. 
@@ -129,6 +113,16 @@ public:
         return _isMultiPlanar;
     }
     
+    
+    enum BeforeAfterEnum
+    {
+        eBeforeAfterHold,
+        eBeforeAfterLoop,
+        eBeforeAfterBounce,
+        eBeforeAfterBlack,
+        eBeforeAfterError,
+    };
+    
 protected:
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
@@ -137,6 +131,9 @@ protected:
     int getStartingTime();
     
     OFX::PixelComponentEnum getOutputComponents() const;
+    
+    void setOutputComponents(OFX::PixelComponentEnum comps);
+
     
 
     struct PlaneToRender
@@ -151,8 +148,6 @@ protected:
 private:
     
     
-    void setOutputComponents(OFX::PixelComponentEnum comps);
-
     /**
      * @brief Called when the input image/video file changed.
      * You shouldn't do any strong processing as this is called on the main thread and
@@ -161,7 +156,11 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) = 0;
+    virtual void onInputFileChanged(const std::string& newFile,
+                                    bool setColorSpace, //!< true is colorspace was not set from the filename
+                                    OFX::PreMultiplicationEnum *premult,
+                                    OFX::PixelComponentEnum *components,
+                                    int *componentCount) = 0;
     
     /**
      * @brief Called when the Output Components param changes
@@ -184,7 +183,19 @@ private:
      * in pixel coordinates and the pixel aspect ratio out of the header
      * of the image targeted by the filename.
      **/
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par,std::string *error) = 0;
+    virtual bool getFrameBounds(const std::string& filename,
+                                OfxTime time,
+                                OfxRectI *bounds,
+                                double *par,
+                                std::string *error,
+                                int* tile_width,
+                                int* tile_height) = 0;
+    
+    /*
+     * In case of plug-ins that can read tiled files, determines whether the image is oriented bottom up or top down.
+     * This is so that the rounding to the tile size is applied correctly. Currently this is only useful for the OIIO plug-in.
+     */
+    virtual bool isTileOrientationTopDown() const { return true; }
     
     virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) { return false; }
 
@@ -197,10 +208,10 @@ private:
      * false colors or sub-par performances in the case the end-user has to append a color-space conversion
      * effect her/himself.
      **/
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
+    virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
     
    
-    virtual void decodePlane(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
+    virtual void decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds,
                              OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes);
     
     
@@ -233,11 +244,17 @@ private:
         eGetSequenceTimeBlack,
         eGetSequenceTimeError,
     };
+    
+    
+    
     /**
      * @brief compute the sequence/file time from time
      */
     GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) WARN_UNUSED_RETURN;
-
+    GetSequenceTimeRetEnum getSequenceTimeHold(double t, double *sequenceTime) WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime);
+    
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
         eGetFileNameReturnedFullRes,
@@ -248,12 +265,15 @@ private:
     /**
      * @brief Returns the filename of the image at the sequence time t.
      **/
-    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t, bool proxyFiles, std::string *filename) WARN_UNUSED_RETURN;
+    GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t,
+                                                     bool proxyFiles,
+                                                     bool checkForExistingFile,
+                                                     std::string *filename) WARN_UNUSED_RETURN;
     
     /**
      * @brief Initializes the params depending on the input file.
      **/
-    void inputFileChanged();
+    void inputFileChanged(bool isLoadingExistingReader);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const void *srcPixelData,
@@ -326,7 +346,10 @@ private:
     
     void setSequenceFromFile(const std::string& filename);
     
-    
+    void refreshSubLabel(OfxTime time);
+
+    bool checkExtension(const std::string& ext);
+
 protected:
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
@@ -353,10 +376,15 @@ protected:
     
     OFX::BooleanParam* _customFPS;
     OFX::DoubleParam* _fps;
+
+    OFX::StringParam* _sublabel;
+    OFX::BooleanParam* _isExistingReader;
     
+#ifdef OFX_IO_USING_OCIO
     std::auto_ptr<GenericOCIO> _ocio;
+#endif
     
-    std::string _oldFileName; //< used to determine if we need to call inputFileChanged or not
+    const std::vector<std::string>& _extensions;
 
 private:
     
@@ -368,24 +396,30 @@ private:
     const bool _supportsAlpha;
     const bool _supportsTiles;
     const bool _isMultiPlanar;
+    std::string _filename; // filename used for the last onInputFileChanged() call, to avoid calling it again and again (potentially costly)
 };
 
 
-void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc, bool supportsTiles, bool multiPlanar);
-OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles);
+void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
+                           const std::vector<std::string>& extensions, // list of supported extensions
+                           int evaluation, // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
+                           bool supportsTiles, bool multiPlanar);
+
+OFX::PageParamDescriptor* GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool isVideoStreamPlugin, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsTiles, bool addSeparatorAfterLastParameter);
 void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor* page, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault);
 
-#define mDeclareReaderPluginFactory(CLASS, LOADFUNCDEF, UNLOADFUNCDEF,ISVIDEOSTREAM) \
+#define mDeclareReaderPluginFactory(CLASS, UNLOADFUNCDEF,ISVIDEOSTREAM) \
   class CLASS : public OFX::PluginFactoryHelper<CLASS>                       \
   {                                                                     \
   public:                                                                \
     CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):OFX::PluginFactoryHelper<CLASS>(id, verMaj, verMin){} \
-    virtual void load() LOADFUNCDEF ;                                   \
+    virtual void load();                                   \
     virtual void unload() UNLOADFUNCDEF ;                               \
     virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
     bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
     virtual void describe(OFX::ImageEffectDescriptor &desc);      \
     virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
+    std::vector<std::string> _extensions; \
   }; 
 
 #endif

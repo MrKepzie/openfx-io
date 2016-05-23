@@ -1,45 +1,28 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OCIOCDLTransform plugin.
- Apply an ASC CDL grade.
-
- Copyright (C) 2014 INRIA
- Author: Frederic Devernay <frederic.devernay@inria.fr>
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
+ * OCIOCDLTransform plugin.
+ * Apply an ASC CDL grade.
  */
 
-#include "OCIOCDLTransform.h"
-
 #ifdef OFX_IO_USING_OCIO
+
 #include <cstdio> // fopen...
 #include <OpenColorIO/OpenColorIO.h>
 
@@ -47,12 +30,16 @@
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 #include "ofxNatron.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 
 #include "GenericOCIO.h"
 
 namespace OCIO = OCIO_NAMESPACE;
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "OCIOCDLTransformOFX"
 #define kPluginGrouping "Color/OCIO"
@@ -303,7 +290,7 @@ private:
     OFX::Clip *_srcClip;
     OFX::Clip *_maskClip;
 
-    bool firstLoad_;
+    bool _firstLoad;
     OFX::RGBParam *_slope;
     OFX::RGBParam *_offset;
     OFX::RGBParam *_power;
@@ -317,7 +304,22 @@ private:
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
+
+    OFX::MultiThread::Mutex _procMutex;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    double _procSlope_r;
+    double _procSlope_g;
+    double _procSlope_b;
+    double _procOffset_r;
+    double _procOffset_g;
+    double _procOffset_b;
+    double _procPower_r;
+    double _procPower_g;
+    double _procPower_b;
+    double _procSaturation;
+    int _procDirection;
 };
 
 OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
@@ -325,13 +327,42 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
 , _dstClip(0)
 , _srcClip(0)
 , _maskClip(0)
-, firstLoad_(true)
+, _firstLoad(true)
+, _slope(0)
+, _offset(0)
+, _power(0)
+, _saturation(0)
+, _direction(0)
+, _readFromFile(0)
+, _file(0)
+, _version(0)
+, _cccid(0)
+, _export(0)
+, _premult(0)
+, _premultChannel(0)
+, _mix(0)
+, _maskApply(0)
+, _maskInvert(0)
+, _procSlope_r(-1)
+, _procSlope_g(-1)
+, _procSlope_b(-1)
+, _procOffset_r(-1)
+, _procOffset_g(-1)
+, _procOffset_b(-1)
+, _procPower_r(-1)
+, _procPower_g(-1)
+, _procPower_b(-1)
+, _procSaturation(-1)
+, _procDirection(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _slope = fetchRGBParam(kParamSlope);
     _offset = fetchRGBParam(kParamOffset);
@@ -348,6 +379,7 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     updateCCCId();
@@ -388,11 +420,12 @@ OCIOCDLTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                         _maskClip->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
                                          _srcClip->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -530,8 +563,8 @@ OCIOCDLTransformPlugin::apply(double time,
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
-    if (firstLoad_) {
-        firstLoad_ = false;
+    if (_firstLoad) {
+        _firstLoad = false;
         bool readFromFile;
         _readFromFile->getValue(readFromFile);
         if (readFromFile) {
@@ -540,42 +573,65 @@ OCIOCDLTransformPlugin::apply(double time,
     }
 
     float sop[9];
-    double saturation;
-    double r, g, b;
-    _slope->getValueAtTime(time, r, g, b);
-    sop[0] = (float)r;
-    sop[1] = (float)g;
-    sop[2] = (float)b;
-    _offset->getValueAtTime(time, r, g, b);
-    sop[3] = (float)r;
-    sop[4] = (float)g;
-    sop[5] = (float)b;
-    _power->getValueAtTime(time, r, g, b);
-    sop[6] = (float)r;
-    sop[7] = (float)g;
-    sop[8] = (float)b;
-    _saturation->getValueAtTime(time, saturation);
-    int _directioni;
-    _direction->getValueAtTime(time, _directioni);
-    std::string file;
-    _file->getValueAtTime(time, file);
-    std::string cccid;
-    _cccid->getValueAtTime(time, cccid);
+    double slope_r, slope_g, slope_b;
+    _slope->getValueAtTime(time, slope_r, slope_g, slope_b);
+    double offset_r, offset_g, offset_b;
+    _offset->getValueAtTime(time, offset_r, offset_g, offset_b);
+    double power_r, power_g, power_b;
+    _power->getValueAtTime(time, power_r, power_g, power_b);
+    double saturation = _saturation->getValueAtTime(time);
+    int directioni = _direction->getValueAtTime(time);
 
     try {
-        OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        assert(config);
-        OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
-        cc->setSOP(sop);
-        cc->setSat((float)saturation);
+        OFX::MultiThread::AutoMutex guard(_procMutex);
+        if (!_proc ||
+            _procSlope_r != slope_r ||
+            _procSlope_g != slope_g ||
+            _procSlope_b != slope_b ||
+            _procOffset_r != offset_r ||
+            _procOffset_g != offset_g ||
+            _procOffset_b != offset_b ||
+            _procPower_r != power_r ||
+            _procPower_g != power_g ||
+            _procPower_b != power_b ||
+            _procSaturation != saturation ||
+            _procDirection != directioni) {
 
-        if (_directioni == 0) {
-            cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
-        } else {
-            cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
+            assert(config);
+            OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
+            sop[0] = (float)slope_r;
+            sop[1] = (float)slope_g;
+            sop[2] = (float)slope_b;
+            sop[3] = (float)offset_r;
+            sop[4] = (float)offset_g;
+            sop[5] = (float)offset_b;
+            sop[6] = (float)power_r;
+            sop[7] = (float)power_g;
+            sop[8] = (float)power_b;
+            cc->setSOP(sop);
+            cc->setSat((float)saturation);
+
+            if (directioni == 0) {
+                cc->setDirection(OCIO::TRANSFORM_DIR_FORWARD);
+            } else {
+                cc->setDirection(OCIO::TRANSFORM_DIR_INVERSE);
+            }
+            
+            _proc = config->getProcessor(cc);
+            _procSlope_r = slope_r;
+            _procSlope_g = slope_g;
+            _procSlope_b = slope_b;
+            _procOffset_r = offset_r;
+            _procOffset_g = offset_g;
+            _procOffset_b = offset_b;
+            _procPower_r = power_r;
+            _procPower_g = power_g;
+            _procPower_b = power_b;
+            _procSaturation = saturation;
+            _procDirection = directioni;
         }
-
-        processor.setValues(config, cc);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -741,14 +797,15 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
         return true;
     }
 
-    if (_maskClip && _maskClip->isConnected()) {
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip;
                 return true;
             }
@@ -835,8 +892,8 @@ OCIOCDLTransformPlugin::loadCDLFromFile()
 void
 OCIOCDLTransformPlugin::beginEdit()
 {
-    if (firstLoad_) {
-        firstLoad_ = false;
+    if (_firstLoad) {
+        _firstLoad = false;
         bool readFromFile;
         _readFromFile->getValue(readFromFile);
         if (readFromFile) {
@@ -850,8 +907,8 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
 {
     clearPersistentMessage();
 
-    if (firstLoad_ || paramName == kParamReadFromFile || paramName == kParamFile || paramName == kParamCCCID) {
-        firstLoad_ = false;
+    if (_firstLoad || paramName == kParamReadFromFile || paramName == kParamFile || paramName == kParamCCCID) {
+        _firstLoad = false;
         bool readFromFile;
         _readFromFile->getValue(readFromFile);
         refreshKnobEnabledState(readFromFile);
@@ -939,8 +996,11 @@ void
 OCIOCDLTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_srcClip->getPreMultiplication()) {
+        if (_srcClip->getPixelComponents() != OFX::ePixelComponentRGBA) {
+            _premult->setValue(false);
+        } else switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
+                _premult->setValue(false);
                 break;
             case OFX::eImagePreMultiplied:
                 _premult->setValue(true);
@@ -952,7 +1012,6 @@ OCIOCDLTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const 
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOCDLTransformPluginFactory, {}, {});
 
@@ -980,7 +1039,7 @@ void OCIOCDLTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
     // Source clip only in the filter context
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
@@ -996,16 +1055,14 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral) {
-            maskClip->setOptional(true);
-        }
-        maskClip->setSupportsTiles(kSupportsTiles);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
@@ -1018,7 +1075,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
         param->setDisplayRange(kParamSlopeMin, kParamSlopeMin, kParamSlopeMin, kParamSlopeMax, kParamSlopeMax, kParamSlopeMax);
         param->setDefault(1., 1., 1.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamOffset);
@@ -1027,7 +1086,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
         param->setDisplayRange(kParamOffsetMin, kParamOffsetMin, kParamOffsetMin, kParamOffsetMax, kParamOffsetMax, kParamOffsetMax);
         param->setDefault(0., 0., 0.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         RGBParamDescriptor *param = desc.defineRGBParam(kParamPower);
@@ -1036,7 +1097,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
         param->setDisplayRange(kParamPowerMin, kParamPowerMin, kParamPowerMin, kParamPowerMax, kParamPowerMax, kParamPowerMax);
         param->setDefault(1., 1., 1.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         DoubleParamDescriptor *param = desc.defineDoubleParam(kParamSaturation);
@@ -1045,7 +1108,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setRange(kParamSaturationMin, kParamSaturationMax);
         param->setDisplayRange(kParamSaturationMin, kParamSaturationMax);
         param->setDefault(1.);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
@@ -1054,7 +1119,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
         param->setDefault(0);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         BooleanParamDescriptor *param = desc.defineBooleanParam(kParamReadFromFile);
@@ -1062,7 +1129,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setHint(kParamReadFromFileHint);
         param->setAnimates(false);
         param->setDefault(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamFile);
@@ -1070,26 +1139,34 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setHint(kParamFileHint);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
-        param->setLayoutHint(eLayoutHintNoNewLine);
-        page->addChild(*param);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamReload);
         param->setLabel(kParamReloadLabel);
         param->setHint(kParamReloadHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         IntParamDescriptor *param = desc.defineIntParam(kParamVersion);
         param->setIsSecret(true); // always secret
         param->setDefault(1);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamCCCID);
         param->setLabel(kParamCCCIDLabel);
         param->setHint(kParamCCCIDHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamExport);
@@ -1101,7 +1178,9 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setIsPersistant(false);
         param->setAnimates(false);
         param->setDefault(kParamExportDefault);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
@@ -1114,16 +1193,9 @@ ImageEffect* OCIOCDLTransformPluginFactory::createInstance(OfxImageEffectHandle 
 }
 
 
-void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOCDLTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIOCDLTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
-void getOCIOCDLTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif
+#endif // OFX_IO_USING_OCIO

@@ -15,6 +15,7 @@ DerivedData/*
 *Debug
 *Release
 *release
+*relwithdebinfo
 *debug
 Cache
 TestImages

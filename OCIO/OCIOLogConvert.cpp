@@ -1,46 +1,28 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OCIOLogConvert plugin.
- Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back).
-
- Copyright (C) 2014 INRIA
- Author: Frederic Devernay <frederic.devernay@inria.fr>
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
+ * OCIOLogConvert plugin.
+ * Use OpenColorIO to convert from SCENE_LINEAR to COMPOSITING_LOG (or back).
  */
 
-
-#include "OCIOLogConvert.h"
-
 #ifdef OFX_IO_USING_OCIO
+
 #include <OpenColorIO/OpenColorIO.h>
 
 #include <cstdlib>
@@ -48,13 +30,15 @@
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 #include "ofxNatron.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 #include "GenericOCIO.h"
 
 namespace OCIO = OCIO_NAMESPACE;
 
-static bool gWasOCIOEnvVarFound = false;
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "OCIOLogConvertOFX"
 #define kPluginGrouping "Color/OCIO"
@@ -74,6 +58,8 @@ static bool gWasOCIOEnvVarFound = false;
 #define kParamOperationHint "Operation to perform. Lin is the SCENE_LINEAR profile and Log is the COMPOSITING_LOG profile of the OCIO configuration."
 #define kParamOperationOptionLogToLin "Log to Lin"
 #define kParamOperationOptionLinToLog "Lin to Log"
+
+static bool gWasOCIOEnvVarFound = false;
 
 class OCIOLogConvertPlugin : public OFX::ImageEffect
 {
@@ -241,8 +227,13 @@ private:
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
+
+    OFX::MultiThread::Mutex _procMutex;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    int _procMode;
 };
 
 OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
@@ -250,12 +241,16 @@ OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
 , _dstClip(0)
 , _srcClip(0)
 , _maskClip(0)
+, _procMode(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _ocioConfigFile = fetchStringParam(kOCIOParamConfigFile);
     assert(_ocioConfigFile);
@@ -265,6 +260,7 @@ OCIOLogConvertPlugin::OCIOLogConvertPlugin(OfxImageEffectHandle handle)
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
     loadConfig(0.);
@@ -278,7 +274,7 @@ void
 OCIOLogConvertPlugin::loadConfig(double time)
 {
     std::string filename;
-    _ocioConfigFile->getValue(filename);
+    _ocioConfigFile->getValueAtTime(time, filename);
 
     if (filename == _ocioConfigFileName) {
         return;
@@ -324,11 +320,12 @@ OCIOLogConvertPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                   _maskClip->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
-                                   _srcClip->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
+                                         _srcClip->fetchImage(time) : 0);
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
@@ -460,22 +457,27 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
-    int mode_i;
-    _mode->getValueAtTime(time, mode_i);
+    int mode_i = _mode->getValueAtTime(time);
 
     try {
-        const char * src = 0;
-        const char * dst = 0;
+        OFX::MultiThread::AutoMutex guard(_procMutex);
+        if (!_proc ||
+            _procMode != mode_i) {
 
-        if (mode_i == 0) {
-            src = OCIO::ROLE_COMPOSITING_LOG;
-            dst = OCIO::ROLE_SCENE_LINEAR;
-        } else {
-            src = OCIO::ROLE_SCENE_LINEAR;
-            dst = OCIO::ROLE_COMPOSITING_LOG;
+            const char * src = 0;
+            const char * dst = 0;
+
+            if (mode_i == 0) {
+                src = OCIO::ROLE_COMPOSITING_LOG;
+                dst = OCIO::ROLE_SCENE_LINEAR;
+            } else {
+                src = OCIO::ROLE_SCENE_LINEAR;
+                dst = OCIO::ROLE_COMPOSITING_LOG;
+            }
+
+            _proc = _config->getProcessor(src, dst);
         }
-
-        processor.setValues(_config, src, dst);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -595,14 +597,15 @@ OCIOLogConvertPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip
         return true;
     }
 
-    if (_maskClip && _maskClip->isConnected()) {
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip;
                 return true;
             }
@@ -685,8 +688,11 @@ void
 OCIOLogConvertPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_srcClip->getPreMultiplication()) {
+        if (_srcClip->getPixelComponents() != OFX::ePixelComponentRGBA) {
+            _premult->setValue(false);
+        } else switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
+                _premult->setValue(false);
                 break;
             case OFX::eImagePreMultiplied:
                 _premult->setValue(true);
@@ -698,7 +704,6 @@ OCIOLogConvertPlugin::changedClip(const OFX::InstanceChangedArgs &args, const st
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOLogConvertPluginFactory, {}, {});
 
@@ -741,16 +746,14 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral) {
-            maskClip->setOptional(true);
-        }
-        maskClip->setSupportsTiles(kSupportsTiles);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
     char* file = std::getenv("OCIO");
     OCIO::ConstConfigRcPtr config;
@@ -767,46 +770,52 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 
     ////////// OCIO config file
     {
-        OFX::StringParamDescriptor* ocioConfigFileParam = desc.defineStringParam(kOCIOParamConfigFile);
-        ocioConfigFileParam->setLabel(kOCIOParamConfigFileLabel);
-        ocioConfigFileParam->setHint(kOCIOParamConfigFileHint);
-        ocioConfigFileParam->setStringType(OFX::eStringTypeFilePath);
-        ocioConfigFileParam->setFilePathExists(true);
-        ocioConfigFileParam->setAnimates(true);
-        desc.addClipPreferencesSlaveParam(*ocioConfigFileParam);
+        OFX::StringParamDescriptor* param = desc.defineStringParam(kOCIOParamConfigFile);
+        param->setLabel(kOCIOParamConfigFileLabel);
+        param->setHint(kOCIOParamConfigFileHint);
+        param->setStringType(OFX::eStringTypeFilePath);
+        param->setFilePathExists(true);
         // the OCIO config can only be set in a portable fashion using the environment variable.
         // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
         // disable it, and set the default from the env variable.
         assert(OFX::getImageEffectHostDescription());
-        ocioConfigFileParam->setEnabled(true);
+        param->setEnabled(true);
         if (file == NULL) {
-            ocioConfigFileParam->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
+            param->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
         } else if (!config) {
             std::string s("ERROR: Invalid OCIO configuration '");
             s += file;
             s += '\'';
-            ocioConfigFileParam->setDefault(s);
+            param->setDefault(s);
         } else {
-            ocioConfigFileParam->setDefault(file);
+            param->setDefault(file);
         }
-        page->addChild(*ocioConfigFileParam);
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
-        ChoiceParamDescriptor *mode = desc.defineChoiceParam(kParamOperation);
-        mode->setLabel(kParamOperationLabel);
-        mode->setHint(kParamOperationHint);
-        mode->appendOption(kParamOperationOptionLogToLin);
-        mode->appendOption(kParamOperationOptionLinToLog);
+        ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOperation);
+        param->setLabel(kParamOperationLabel);
+        param->setHint(kParamOperationHint);
+        param->appendOption(kParamOperationOptionLogToLin);
+        param->appendOption(kParamOperationOptionLinToLog);
         if (!config) {
-            mode->setEnabled(false);
+            param->setEnabled(false);
         }
-        page->addChild(*mode);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ofxsPremultDescribeParams(desc, page);
@@ -820,16 +829,9 @@ ImageEffect* OCIOLogConvertPluginFactory::createInstance(OfxImageEffectHandle ha
 }
 
 
-void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIOLogConvertPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
-void getOCIOLogConvertPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif
+#endif // OFX_IO_USING_OCIO

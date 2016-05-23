@@ -1,47 +1,28 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OCIOLookTransform plugin.
- Convert from one colorspace to another.
-
- Copyright (C) 2014 INRIA
- Author: Frederic Devernay <frederic.devernay@inria.fr>
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
+ * OCIOLookTransform plugin.
+ * Apply a "look".
  */
 
-
-#include "OCIOLookTransform.h"
-
-
 #ifdef OFX_IO_USING_OCIO
+
 //#include <iostream>
 #include <memory>
 
@@ -49,11 +30,15 @@
 
 #include <ofxsProcessing.H>
 #include <ofxsCopier.h>
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include <ofxsMacros.h>
 #include <ofxNatron.h>
 
 #include "IOUtility.h"
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "OCIOLookTransformOFX"
 #define kPluginGrouping "Color/OCIO"
@@ -294,9 +279,17 @@ private:
     OFX::BooleanParam* _premult;
     OFX::ChoiceParam* _premultChannel;
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
 
     std::auto_ptr<GenericOCIO> _ocio;
+
+    OFX::MultiThread::Mutex _procMutex;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    std::string _procLook;
+    std::string _procInputSpace;
+    std::string _procOutputSpace;
+    int _procDirection;
 };
 
 OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
@@ -305,12 +298,16 @@ OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
 , _srcClip(0)
 , _maskClip(0)
 , _ocio(new GenericOCIO(this))
+, _procDirection(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _lookChoice = fetchChoiceParam(kParamLookChoice);
     _lookAppend = fetchPushButtonParam(kParamLookAppend);
@@ -323,11 +320,11 @@ OCIOLookTransformPlugin::OCIOLookTransformPlugin(OfxImageEffectHandle handle)
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 
-    bool singleLook;
-    _singleLook->getValue(singleLook);
+    bool singleLook = _singleLook->getValue();
     _lookChoice->setEvaluateOnChange(singleLook);
     _lookCombination->setEnabled(!singleLook);
     _lookCombination->setEvaluateOnChange(!singleLook);
@@ -388,13 +385,13 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                   _maskClip->fetchImage(time) : 0);
     std::auto_ptr<const OFX::Image> orig((_srcClip && _srcClip->isConnected()) ?
-                                   _srcClip->fetchImage(time) : 0);
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
-        bool maskInvert;
-        _maskInvert->getValueAtTime(time, maskInvert);
+                                         _srcClip->fetchImage(time) : 0);
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    if (doMasking) {
+        bool maskInvert = _maskInvert->getValueAtTime(time);
         processor.doMasking(true);
         processor.setMaskImg(mask.get(), maskInvert);
     }
@@ -412,12 +409,9 @@ OCIOLookTransformPlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
     // set the render window
     processor.setRenderWindow(renderWindow);
 
-    bool premult;
-    int premultChannel;
-    _premult->getValueAtTime(time, premult);
-    _premultChannel->getValueAtTime(time, premultChannel);
-    double mix;
-    _mix->getValueAtTime(time, mix);
+    bool premult = _premult->getValueAtTime(time);
+    int premultChannel = _premultChannel->getValueAtTime(time);
+    double mix = _mix->getValueAtTime(time);
     processor.setPremultMaskMix(premult, premultChannel, mix);
 
     // Call the base class process member, this will call the derived templated process code
@@ -507,8 +501,7 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     OCIO::ConstConfigRcPtr config = _ocio->getConfig();
     assert(config);
 
-    bool singleLook;
-    _singleLook->getValueAtTime(time, singleLook);
+    bool singleLook = _singleLook->getValueAtTime(time);
     std::string lookCombination;
     _lookCombination->getValueAtTime(time, lookCombination);
     if (_ocio->isIdentity(time) && !singleLook && lookCombination.empty()) {
@@ -518,14 +511,12 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     _ocio->getInputColorspaceAtTime(time, inputSpace);
     std::string look;
     if (singleLook) {
-        int lookChoice_i;
-        _lookChoice->getValueAtTime(time, lookChoice_i);
+        int lookChoice_i = _lookChoice->getValueAtTime(time);
         look = config->getLookNameByIndex(lookChoice_i);
     } else {
         look = lookCombination;
     }
-    int _directioni;
-    _direction->getValueAtTime(time, _directioni);
+    int directioni = _direction->getValueAtTime(time);
     std::string outputSpace;
     _ocio->getOutputColorspaceAtTime(time, outputSpace);
 
@@ -534,26 +525,34 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
     try {
-        OCIO::TransformDirection direction = OCIO::TRANSFORM_DIR_UNKNOWN;
-        OCIO::LookTransformRcPtr transform = OCIO::LookTransform::Create();
-        transform->setLooks(look.c_str());
+        OFX::MultiThread::AutoMutex guard(_procMutex);
+        if (!_proc ||
+            _procLook != look ||
+            _procInputSpace != inputSpace ||
+            _procOutputSpace != outputSpace ||
+            _procDirection != directioni) {
 
-        if (_directioni == 0) {
-            transform->setSrc(inputSpace.c_str());
-            transform->setDst(outputSpace.c_str());
-            direction = OCIO::TRANSFORM_DIR_FORWARD;
-        } else {
-            // The TRANSFORM_DIR_INVERSE applies an inverse for the end-to-end transform,
-            // which would otherwise do dst->inv look -> src.
-            // This is an unintuitive result for the artist (who would expect in, out to
-            // remain unchanged), so we account for that here by flipping src/dst
+            OCIO::TransformDirection direction = OCIO::TRANSFORM_DIR_UNKNOWN;
+            OCIO::LookTransformRcPtr transform = OCIO::LookTransform::Create();
+            transform->setLooks(look.c_str());
 
-            transform->setSrc(outputSpace.c_str());
-            transform->setDst(inputSpace.c_str());
-            direction = OCIO::TRANSFORM_DIR_INVERSE;
+            if (directioni == 0) {
+                transform->setSrc(inputSpace.c_str());
+                transform->setDst(outputSpace.c_str());
+                direction = OCIO::TRANSFORM_DIR_FORWARD;
+            } else {
+                // The TRANSFORM_DIR_INVERSE applies an inverse for the end-to-end transform,
+                // which would otherwise do dst->inv look -> src.
+                // This is an unintuitive result for the artist (who would expect in, out to
+                // remain unchanged), so we account for that here by flipping src/dst
+
+                transform->setSrc(outputSpace.c_str());
+                transform->setDst(inputSpace.c_str());
+                direction = OCIO::TRANSFORM_DIR_INVERSE;
+            }
+            _proc = config->getProcessor(transform, direction);
         }
-
-        processor.setValues(config, transform, direction);
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -687,14 +686,15 @@ OCIOLookTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::C
         return true;
     }
 
-    if (_maskClip && _maskClip->isConnected()) {
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip;
                 return true;
             }
@@ -758,8 +758,11 @@ void
 OCIOLookTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_srcClip->getPreMultiplication()) {
+        if (_srcClip->getPixelComponents() != OFX::ePixelComponentRGBA) {
+            _premult->setValue(false);
+        } else switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
+                _premult->setValue(false);
                 break;
             case OFX::eImagePreMultiplied:
                 _premult->setValue(true);
@@ -771,7 +774,6 @@ OCIOLookTransformPlugin::changedClip(const OFX::InstanceChangedArgs &args, const
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIOLookTransformPluginFactory, {}, {});
 
@@ -814,18 +816,16 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral) {
-            maskClip->setOptional(true);
-        }
-        maskClip->setSupportsTiles(kSupportsTiles);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
@@ -842,7 +842,9 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
             param->setDefault(false);
             param->setEnabled(false);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamLookChoice);
@@ -854,7 +856,9 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
             param->setEnabled(false);
         }
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLookAppend);
@@ -863,13 +867,17 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         if (!config) {
             param->setEnabled(false);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         OFX::StringParamDescriptor* param = desc.defineStringParam(kParamLookCombination);
         param->setLabel(kParamLookCombinationLabel);
         param->setHint(kParamLookCombinationHint);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamDirection);
@@ -878,15 +886,19 @@ void OCIOLookTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
         param->appendOption(kParamDirectionOptionForward);
         param->appendOption(kParamDirectionOptionInverse);
         param->setDefault(0);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO::ROLE_REFERENCE);
     GenericOCIO::describeInContextContext(desc, context, page);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpLooksButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpLooksButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ofxsPremultDescribeParams(desc, page);
@@ -900,18 +912,11 @@ ImageEffect* OCIOLookTransformPluginFactory::createInstance(OfxImageEffectHandle
 }
 
 
-void getOCIOLookTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIOLookTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
 
+static OCIOLookTransformPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
-void getOCIOLookTransformPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-
-#endif
+#endif // OFX_IO_USING_OCIO
 

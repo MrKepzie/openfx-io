@@ -1,46 +1,28 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OFX PFM reader plugin.
- Reads an image in the Portable Float Map (PFM) format.
- 
- Copyright (C) 2014 INRIA
- Author: Frederic Devernay frederic.devernay@inria.fr
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
- 
+ * OFX PFM reader plugin.
+ * Reads an image in the Portable Float Map (PFM) format.
  */
 
-
-#include "ReadPFM.h"
-
 #include <cstdio> // fopen, fread...
+#include <algorithm>
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
@@ -50,12 +32,17 @@
 #include "GenericOCIO.h"
 #include "ofxsMacros.h"
 
-#define kPluginName "ReadPFMOFX"
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
+#define kPluginName "ReadPFM"
 #define kPluginGrouping "Image/Readers"
 #define kPluginDescription "Read PFM (Portable Float Map) files."
 #define kPluginIdentifier "fr.inria.openfx.ReadPFM"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 92 // better than ReadOIIO
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -66,7 +53,7 @@ class ReadPFMPlugin : public GenericReaderPlugin
 {
 public:
 
-    ReadPFMPlugin(OfxImageEffectHandle handle);
+    ReadPFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~ReadPFMPlugin();
 
@@ -74,11 +61,11 @@ private:
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
 };
 
@@ -123,8 +110,8 @@ static void invert_endianness(T *const buffer, const unsigned int size)
     }
 }
 
-ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
+ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 {
 }
 
@@ -170,6 +157,8 @@ static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
 void
 ReadPFMPlugin::decode(const std::string& filename,
                       OfxTime /*time*/,
+                      int /*view*/,
+                      bool /*isPlayback*/,
                       const OfxRectI& renderWindow,
                       float *pixelData,
                       const OfxRectI& bounds,
@@ -249,7 +238,7 @@ ReadPFMPlugin::decode(const std::string& filename,
     const int x2 = renderWindow.x2;
 
     for (int y = renderWindow.y1; y < renderWindow.y2; ++y) {
-        int numread = std::fread(image.data(), 4, numpixels, nfile);
+        std::size_t numread = std::fread(&image.front(), 4, numpixels, nfile);
         if (numread < numpixels) {
             std::fclose(nfile);
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
@@ -258,7 +247,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         }
 
         if (is_inverted) {
-            invert_endianness(image.data(), numpixels);
+            invert_endianness(&image.front(), numpixels);
         }
 
         // now copy to the dstImg
@@ -266,16 +255,16 @@ ReadPFMPlugin::decode(const std::string& filename,
         if (C == 1) {
             switch (pixelComponentCount) {
                 case 1:
-                    copyLine<float,1,1>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,1>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 2:
-                    copyLine<float,1,2>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,2>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 3:
-                    copyLine<float,1,3>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,3>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 4:
-                    copyLine<float,1,4>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,1,4>(&image.front(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;
@@ -283,16 +272,16 @@ ReadPFMPlugin::decode(const std::string& filename,
         } else if (C == 3) {
             switch (pixelComponentCount) {
                 case 1:
-                    copyLine<float,3,1>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,1>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 2:
-                    copyLine<float,3,2>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,2>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 3:
-                    copyLine<float,3,3>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,3>(&image.front(), x1, x2, C, dstPix);
                     break;
                 case 4:
-                    copyLine<float,3,4>(image.data(), x1, x2, C, dstPix);
+                    copyLine<float,3,4>(&image.front(), x1, x2, C, dstPix);
                     break;
                 default:
                     break;
@@ -307,7 +296,9 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
                               OfxTime /*time*/,
                               OfxRectI *bounds,
                               double *par,
-                              std::string *error)
+                              std::string *error,
+                              int* tile_width,
+                              int* tile_height)
 {
     assert(bounds && par);
     // read PFM header
@@ -357,15 +348,23 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     bounds->y1 = 0;
     bounds->y2 = H;
     *par = 1.;
+    *tile_width = *tile_height = 0;
     return true;
 }
 
 void
 ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
+                                  bool setColorSpace,
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,
                                   int *componentCount)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, pfm files are assumed to be linear.
+        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
     assert(premult && components);
     int startingTime = getStartingTime();
     std::string filename;
@@ -413,25 +412,25 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     }
 }
 
-using namespace OFX;
 
-mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, {}, false);
+mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, false);
+
+void
+ReadPFMPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("pfm");
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles, false);
+    GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
     
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
-
-
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "pfm", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(60); // better than ReadOIIO
-#endif
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -441,7 +440,7 @@ ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, true);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
@@ -451,15 +450,13 @@ ImageEffect*
 ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
-    ReadPFMPlugin* ret =  new ReadPFMPlugin(handle);
+    ReadPFMPlugin* ret =  new ReadPFMPlugin(handle, _extensions);
     ret->restoreStateFromParameters();
     return ret;
 }
 
 
-void getReadPFMPluginID(OFX::PluginFactoryArray &ids)
-{
-    static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
+OFXS_NAMESPACE_ANONYMOUS_EXIT

@@ -1,42 +1,25 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OFX exrWriter plugin.
- Writes a an output image using the OpenEXR library.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
- 
+ * OFX exr Writer plugin.
+ * Writes a an output image using the OpenEXR library.
  */
-#include "WriteEXR.h"
 
 #include <memory>
 #include <ImfChannelList.h>
@@ -46,11 +29,17 @@
 
 
 #include <ImfChannelList.h>
+#include <IlmThreadPool.h>
 #include <ImfArray.h>
 #include <ImfOutputFile.h>
 #include <half.h>
 
+#include "GenericOCIO.h"
 #include "GenericWriter.h"
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "WriteEXR"
 #define kPluginGrouping "Image/Writers"
@@ -58,6 +47,7 @@
 #define kPluginIdentifier "fr.inria.openfx.WriteEXR"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 10 // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
 
 #define kParamWriteEXRCompression "compression"
 #define kParamWriteEXRDataType "dataType"
@@ -69,6 +59,7 @@
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha true
+#define kSupportsXY false
 
 namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
@@ -119,7 +110,7 @@ class WriteEXRPlugin : public GenericWriterPlugin
 {
 public:
 
-    WriteEXRPlugin(OfxImageEffectHandle handle);
+    WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
 
     virtual ~WriteEXRPlugin();
@@ -128,19 +119,30 @@ public:
 
 private:
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename,
+                        const OfxTime time,
+                        const std::string& viewName,
+                        const float *pixelData,
+                        const OfxRectI& bounds,
+                        const float pixelAspectRatio,
+                        const int pixelDataNComps,
+                        const int dstNCompsStartIndex,
+                        const int dstNComps,
+                        const int rowBytes) OVERRIDE FINAL;
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
 
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const { return OFX::eImagePreMultiplied; }
+    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
+
+    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
 
     OFX::ChoiceParam* _compression;
     OFX::ChoiceParam* _bitDepth;
     
 };
 
-WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
 , _compression(0)
 , _bitDepth(0)
 {
@@ -157,32 +159,27 @@ WriteEXRPlugin::~WriteEXRPlugin(){
 //}
 
 
-void WriteEXRPlugin::encode(const std::string& filename,
-                            OfxTime /*time*/,
-                            const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void
+WriteEXRPlugin::encode(const std::string& filename,
+                       const OfxTime /*time*/,
+                       const std::string& /*viewName*/,
+                       const float *pixelData,
+                       const OfxRectI& bounds,
+                       const float pixelAspectRatio,
+                       const int pixelDataNComps,
+                       const int /*dstNCompsStartIndex*/,
+                       const int /*dstNComps*/,
+                       const int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+    ///FIXME: WriteEXR should not disregard dstNComps
+    
+    if (pixelDataNComps != 4 && pixelDataNComps != 3 && pixelDataNComps != 1) {
         setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
-    int numChannels = 0;
-    switch(pixelComponents)
-    {
-        case OFX::ePixelComponentRGBA:
-            numChannels = 4;
-            break;
-        case OFX::ePixelComponentRGB:
-            numChannels = 3;
-            break;
-        case OFX::ePixelComponentAlpha:
-            numChannels = 1;
-            break;
-        default:
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            return;
-    }
-    assert(numChannels);
+
+    assert(pixelDataNComps);
     try {
         int compressionIndex;
         _compression->getValue(compressionIndex);
@@ -206,7 +203,7 @@ void WriteEXRPlugin::encode(const std::string& filename,
         exrDispW.max.x = (bounds.x2 - bounds.x1);
         exrDispW.max.y = (bounds.y2 - bounds.y1);
 
-        Imf_::Header exrheader(exrDispW, exrDataW, 1.f,
+        Imf_::Header exrheader(exrDispW, exrDataW, pixelAspectRatio,
                                Imath::V2f(0, 0), 1, Imf_::INCREASING_Y, compression);
         
         Imf_::PixelType pixelType;
@@ -218,10 +215,10 @@ void WriteEXRPlugin::encode(const std::string& filename,
         }
 
         const char* chanNames[4] = { "R" , "G" , "B" , "A" };
-        if (pixelComponents == OFX::ePixelComponentAlpha) {
+        if (pixelDataNComps == 1) {
             chanNames[0] = chanNames[3];
         }
-        for (int chan = 0; chan < numChannels; ++chan) {
+        for (int chan = 0; chan < pixelDataNComps; ++chan) {
             exrheader.channels().insert(chanNames[chan],Imf_::Channel(pixelType));
         }
 
@@ -237,19 +234,19 @@ void WriteEXRPlugin::encode(const std::string& filename,
             /*we create the frame buffer*/
             Imf_::FrameBuffer fbuf;
             if (depth == 32) {
-                for (int chan = 0; chan < numChannels; ++chan) {
-                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * numChannels, 0));
+                for (int chan = 0; chan < pixelDataNComps; ++chan) {
+                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * pixelDataNComps, 0));
                 }
             } else {
-                Imf_::Array2D<half> halfwriterow(numChannels ,bounds.x2 - bounds.x1);
+                Imf_::Array2D<half> halfwriterow(pixelDataNComps ,bounds.x2 - bounds.x1);
                 
-                for (int chan = 0; chan < numChannels; ++chan) {
+                for (int chan = 0; chan < pixelDataNComps; ++chan) {
                     fbuf.insert(chanNames[chan],
                                 Imf_::Slice(Imf_::HALF,
                                             (char*)(&halfwriterow[chan][0] - exrDataW.min.x),
                                             sizeof(halfwriterow[chan][0]), 0));
                     const float* from = src_pixels + chan;
-                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += numChannels) {
+                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += pixelDataNComps) {
                         halfwriterow[chan][i - exrDataW.min.x] = from[f];
                     }
                 }
@@ -271,34 +268,53 @@ bool WriteEXRPlugin::isImageFile(const std::string& /*fileExtension*/) const{
     return true;
 }
 
+void
+WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
+                                    bool setColorSpace)
+{
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, exr files are assumed to be linear.
+        _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
+}
 
-using namespace OFX;
 
-mDeclareWriterPluginFactory(WriteEXRPluginFactory, {}, {}, false);
+mDeclareWriterPluginFactory(WriteEXRPluginFactory, ;, false);
 
+
+void WriteEXRPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("exr");
+}
+
+void
+WriteEXRPluginFactory::unload()
+{
+    //Kill all threads
+    IlmThread::ThreadPool::globalThreadPool().setNumThreads(0);
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe);
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
 
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "exr", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(10);
-#endif
+    desc.setIsDeprecated(true); // This plugin was superseeded by WriteOIIO
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
-                                                                    "reference", "reference");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY,
+                                                                    "reference", "reference", false);
 
     /////////Compression
     {
@@ -308,7 +324,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
             param->appendOption(Exr::compressionNames[i]);
         }
         param->setDefault(3);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////////Data type
@@ -319,7 +337,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
             param->appendOption(Exr::depthNames[i]);
         }
         param->setDefault(1);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     GenericWriterDescribeInContextEnd(desc, context, page);
@@ -328,11 +348,11 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteEXRPlugin(handle);
+    return new WriteEXRPlugin(handle, _extensions);
 }
 
-void getWriteEXRPluginID(OFX::PluginFactoryArray &ids)
-{
-    static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+
+static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

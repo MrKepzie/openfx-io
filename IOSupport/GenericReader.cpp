@@ -1,41 +1,26 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OFX GenericReader plugin.
- A base class for all OpenFX-based decoders.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
- 
+ * OFX GenericReader plugin.
+ * A base class for all OpenFX-based decoders.
  */
+
 #include "GenericReader.h"
 
 #include <memory>
@@ -50,8 +35,13 @@
 #define DBG(x) (void)0
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "ofxsLog.h"
 #include "ofxsCopier.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 
 #ifdef OFX_EXTENSIONS_TUTTLE
@@ -60,7 +50,9 @@
 #include <ofxNatron.h>
 
 #include "SequenceParsing/SequenceParsing.h"
+#ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
+#endif
 #include "IOUtility.h"
 
 #define kPluginGrouping "Image/Readers"
@@ -149,14 +141,6 @@ enum FrameModeEnum
 
 #define kParamTimeDomainUserEdited "timeDomainUserEdited"
 
-enum BeforeAfterEnum
-{
-    eBeforeAfterHold,
-    eBeforeAfterLoop,
-    eBeforeAfterBounce,
-    eBeforeAfterBlack,
-    eBeforeAfterError,
-};
 
 enum MissingEnum
 {
@@ -206,7 +190,8 @@ enum MissingEnum
 
 #define kParamOutputComponents "outputComponents"
 #define kParamOutputComponentsLabel "Output Components"
-#define kParamOutputComponentsHint "Components present in the output. The default value is set from the first frame in the sequence."
+#define kParamOutputComponentsHint "What type of components this effect should output when the main color plane is requested." \
+" For the Read node it will map (in number of components) the Output Layer choice to these."
 #define kParamOutputComponentsOptionRGBA "RGBA"
 #define kParamOutputComponentsOptionRGB "RGB"
 #define kParamOutputComponentsOptionAlpha "Alpha"
@@ -220,7 +205,10 @@ enum MissingEnum
 
 #define kParamCustomFps "customFps"
 #define kParamCustomFpsLabel "Custom FPS"
-#define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter."
+#define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter. The frame-rate is just the meta-data that will be passed " \
+"downstream to the graph, no retime will actually take place."
+
+#define kParamExistingInstance "ParamExistingInstance"
 
 #define MISSING_FRAME_NEAREST_RANGE 100
 
@@ -252,6 +240,7 @@ premultString(OFX::PreMultiplicationEnum e)
 }
 
 GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
+                                         const std::vector<std::string>& extensions,
                                          bool supportsRGBA,
                                          bool supportsRGB,
                                          bool supportsAlpha,
@@ -278,7 +267,12 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _timeDomainUserSet(0)
 , _customFPS(0)
 , _fps(0)
+, _sublabel(0)
+, _isExistingReader(0)
+#ifdef OFX_IO_USING_OCIO
 , _ocio(new GenericOCIO(this))
+#endif
+, _extensions(extensions)
 , _sequenceFromFiles()
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
@@ -307,10 +301,11 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _premult = fetchChoiceParam(kParamFilePremult);
     _customFPS = fetchBooleanParam(kParamCustomFps);
     _fps = fetchDoubleParam(kParamFrameRate);
-
-    _proxyThreshold->setIsSecret(true);
-    _enableCustomScale->setIsSecret(true);
-    _timeOffset->setIsSecret(true);
+    if (gHostIsNatron) {
+        _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
+        assert(_sublabel);
+    }
+    _isExistingReader = fetchBooleanParam(kParamExistingInstance);
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -318,52 +313,74 @@ GenericReaderPlugin::~GenericReaderPlugin()
 }
 
 
+void
+GenericReaderPlugin::refreshSubLabel(OfxTime time)
+{
+    assert(_sublabel);
+    double sequenceTime;
+    GetSequenceTimeRetEnum getTimeRet = getSequenceTimeHold(time, &sequenceTime);
+    if (getTimeRet == eGetSequenceTimeWithinSequence ||
+        getTimeRet == eGetSequenceTimeBeforeSequence ||
+        getTimeRet == eGetSequenceTimeAfterSequence) {
+        std::string filename;
+        GetFilenameRetCodeEnum getFileNameRet = getFilenameAtSequenceTime(sequenceTime, false, false, &filename);
+        if (getFileNameRet == eGetFileNameReturnedFullRes) {
+            _sublabel->setValue(basename(filename));
+        } else {
+            _sublabel->setValue("");
+        }
+    } else {
+        _sublabel->setValue("");
+    }
+}
+
 
 void
 GenericReaderPlugin::restoreStateFromParameters()
 {
-    std::string filename;
     
-    if (!gHostIsNatron) {
-        
-        _fileParam->getValue(filename);
-        
-        if (!filename.empty()) {
-            setSequenceFromFile(filename);
-        }
-        
-        //reset the original range param only if the host is not Natron
-        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+    // Natron explicitly set the value of filename before instanciating a Reader.
+    // We need to know if all parameters were setup already and we are just loading a project
+    // or if we are creating a new Reader from scratch and need toa djust parameters.
+    bool readerExisted;
+    _isExistingReader->getValue(readerExisted);
+    
+    inputFileChanged(readerExisted);
+    
+    if (!readerExisted) {
+        _isExistingReader->setValue(true);
     }
     
-
-    _oldFileName.clear();
-    
-    OfxRangeI tmp;
-
-    if (getSequenceTimeDomainInternal(tmp,true)) {
-        
-        bool timeDomainUserEdited;
-        _timeDomainUserSet->getValue(timeDomainUserEdited);
-        
-        timeDomainFromSequenceTimeDomain(tmp, true, !timeDomainUserEdited);
+    int frameMode_i;
+    _frameMode->getValue(frameMode_i);
+    FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
+    switch (frameMode) {
+        case eFrameModeStartingTime: //starting frame
+            _startingTime->setIsSecret(false);
+            _timeOffset->setIsSecret(true);
+            break;
+        case eFrameModeTimeOffset: //time offset
+            _startingTime->setIsSecret(true);
+            _timeOffset->setIsSecret(false);
+            break;
     }
-    ///We call restoreState with the first frame of the sequence so we're almost sure it will work
-    ///unless the user did a mistake. We are also safe to assume that images specs are the same for
-    ///all the sequence
-    _fileParam->getValueAtTime(tmp.min, filename);
     
-    restoreState(filename);
-    
-    bool customFps;
-    _customFPS->getValue(customFps);
-    if (!customFps) {
-        double fps;
-        bool gotFps = getFrameRate(filename, &fps);
-        if (gotFps) {
-            _fps->setValue(fps);
-        }
+    ///Detect the scale of the proxy.
+    std::string proxyFile;
+    _proxyFileParam->getValue(proxyFile);
+    if (!proxyFile.empty()) {
+        _proxyThreshold->setIsSecret(false);
+        _enableCustomScale->setIsSecret(false);
+    } else {
+        _proxyThreshold->setIsSecret(true);
+        _enableCustomScale->setIsSecret(true);
     }
+    
+    
+    if (gHostIsNatron) {
+        refreshSubLabel(timeLineGetTime());
+    }
+    
 }
 
 bool
@@ -383,23 +400,24 @@ bool
 GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSetOriginalFrameRange)
 {
     
-    ///compute the frame-range
+    ////first-off check if the original frame range param has valid values, in which
+    ///case we don't bother calculating the frame range
+    int originalMin,originalMax;
+    _originalFrameRange->getValue(originalMin, originalMax);
+    if (originalMin != INT_MIN && originalMax != INT_MAX) {
+        range.min = originalMin;
+        range.max = originalMax;
+        return true;
+    }
     
     std::string filename;
     _fileParam->getValue(filename);
+    
+    
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
     if (!getSequenceTimeDomain(filename, range)) {
-        ////first-off check if the original frame range param has valid values, in which
-        ///case we don't bother calculating the frame range
-        int originalMin,originalMax;
-        _originalFrameRange->getValue(originalMin, originalMax);
-        if (originalMin != kOfxFlagInfiniteMin && originalMax != kOfxFlagInfiniteMax) {
-            range.min = originalMin;
-            range.max = originalMax;
-            return true;
-        }
 
         if (_sequenceFromFiles.size() == 1) {
             range.min = range.max = 1;
@@ -439,8 +457,10 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
         startingTime = frameRangeFirst;
         
         _firstFrame->setRange(INT_MIN, range.min);
+        _firstFrame->setDisplayRange(INT_MIN, range.min);
         _lastFrame->setRange(range.min, INT_MAX);
-        
+        _lastFrame->setDisplayRange(range.min, INT_MAX);
+
         if (setFirstLastFrame) {
             _firstFrame->setValue(range.min);
             _lastFrame->setValue(range.max);
@@ -460,13 +480,115 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
 }
 
 
-static bool
-fileExists(const std::string& filename)
+GenericReaderPlugin::GetSequenceTimeRetEnum
+GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime)
 {
-    std::ifstream f(filename.c_str());
-    bool ret = f.good();
-    f.close();
-    return ret;
+    ///get the offset from the starting time of the sequence in case we bounce or loop
+    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
+    
+    switch (beforeChoice) {
+        case eBeforeAfterHold: //hold
+            *sequenceTime = sequenceTimeDomain.min;
+            return eGetSequenceTimeBeforeSequence;
+            
+        case eBeforeAfterLoop: //loop
+            timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+            *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
+            return eGetSequenceTimeBeforeSequence;
+            
+        case eBeforeAfterBounce: { //bounce
+            int range = sequenceTimeDomain.max - sequenceTimeDomain.min;
+            int sequenceIntervalsCount = range == 0 ? 0 : timeOffsetFromStart / range;
+            ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
+            if (sequenceIntervalsCount % 2 == 0) {
+                if (range != 0) {
+                    timeOffsetFromStart %= (int)range;
+                }
+                *sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
+            } else {
+                if (range != 0) {
+                    timeOffsetFromStart %= (int)range;
+                }
+                *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
+            }
+            return eGetSequenceTimeBeforeSequence;
+        }
+        case eBeforeAfterBlack: //black
+            return eGetSequenceTimeBlack;
+            
+        case eBeforeAfterError: //error
+            setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+            return eGetSequenceTimeError;
+    }
+    return eGetSequenceTimeError;
+}
+
+GenericReaderPlugin::GetSequenceTimeRetEnum
+GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime)
+{
+    ///get the offset from the starting time of the sequence in case we bounce or loop
+    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
+
+    
+    switch (afterChoice) {
+        case eBeforeAfterHold: //hold
+            *sequenceTime = sequenceTimeDomain.max;
+            return eGetSequenceTimeAfterSequence;
+            
+        case eBeforeAfterLoop: //loop
+            timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+            *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
+            return eGetSequenceTimeAfterSequence;
+            
+        case eBeforeAfterBounce: { //bounce
+            int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
+            ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
+            if (sequenceIntervalsCount % 2 == 0) {
+                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
+            } else {
+                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
+            }
+            return eGetSequenceTimeAfterSequence;
+        }
+        case eBeforeAfterBlack: //black
+            return eGetSequenceTimeBlack;
+            break;
+            
+        case eBeforeAfterError: //error
+            setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+            return eGetSequenceTimeError;
+    }
+    return eGetSequenceTimeError;
+}
+
+GenericReaderPlugin::GetSequenceTimeRetEnum
+GenericReaderPlugin::getSequenceTimeHold(double t, double *sequenceTime)
+{
+    int timeOffset;
+    _timeOffset->getValue(timeOffset);
+    
+    
+    ///get the time sequence domain
+    OfxRangeI sequenceTimeDomain;
+    _firstFrame->getValue(sequenceTimeDomain.min);
+    _lastFrame->getValue(sequenceTimeDomain.max);
+    
+    
+    ///the return value
+    *sequenceTime = t - timeOffset ;
+    
+    ///if the time given is before the sequence
+    if (sequenceTimeDomain.min <= *sequenceTime && *sequenceTime <= sequenceTimeDomain.max) {
+        return eGetSequenceTimeWithinSequence;
+    } else if (*sequenceTime < sequenceTimeDomain.min) {
+        return getSequenceTimeBefore(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
+    } else {
+        assert(*sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
+        return getSequenceTimeAfter(sequenceTimeDomain, t, eBeforeAfterHold, sequenceTime);
+    }
+    return eGetSequenceTimeError;
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
@@ -484,10 +606,6 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
     
     ///the return value
     *sequenceTime = t - timeOffset ;
-
-    
-    ///get the offset from the starting time of the sequence in case we bounce or loop
-    int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
     
     ///if the time given is before the sequence
     if (sequenceTimeDomain.min <= *sequenceTime && *sequenceTime <= sequenceTimeDomain.max) {
@@ -497,80 +615,52 @@ GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
         int beforeChoice_i;
         _beforeFirst->getValue(beforeChoice_i);
         BeforeAfterEnum beforeChoice = BeforeAfterEnum(beforeChoice_i);
-        switch (beforeChoice) {
-            case eBeforeAfterHold: //hold
-                *sequenceTime = sequenceTimeDomain.min;
-                return eGetSequenceTimeBeforeSequence;
-
-            case eBeforeAfterLoop: //loop
-                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
-                return eGetSequenceTimeBeforeSequence;
-
-            case eBeforeAfterBounce: { //bounce
-                int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
-                ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
-                if (sequenceIntervalsCount % 2 == 0) {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    *sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
-                } else {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
-                }
-                return eGetSequenceTimeBeforeSequence;
-            }
-            case eBeforeAfterBlack: //black
-                return eGetSequenceTimeBlack;
-
-            case eBeforeAfterError: //error
-                setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
-                return eGetSequenceTimeError;
-        }
-
+        return getSequenceTimeBefore(sequenceTimeDomain, t, beforeChoice, sequenceTime);
     } else {
         assert(*sequenceTime > sequenceTimeDomain.max); ///the time given is after the sequence
         /////if we're after the last frame
         int afterChoice_i;
         _afterLast->getValue(afterChoice_i);
         BeforeAfterEnum afterChoice = BeforeAfterEnum(afterChoice_i);
-
-        switch (afterChoice) {
-            case eBeforeAfterHold: //hold
-                *sequenceTime = sequenceTimeDomain.max;
-                return eGetSequenceTimeAfterSequence;
-
-            case eBeforeAfterLoop: //loop
-                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
-                return eGetSequenceTimeAfterSequence;
-
-            case eBeforeAfterBounce: { //bounce
-                int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
-                ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
-                if (sequenceIntervalsCount % 2 == 0) {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
-                } else {
-                    timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
-                    *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
-                }
-                return eGetSequenceTimeAfterSequence;
-            }
-            case eBeforeAfterBlack: //black
-                return eGetSequenceTimeBlack;
-                break;
-
-            case eBeforeAfterError: //error
-                setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
-                return eGetSequenceTimeError;
-        }
+        return getSequenceTimeAfter(sequenceTimeDomain, t, afterChoice, sequenceTime);
     }
     return eGetSequenceTimeError;
+}
+
+#ifdef _WIN32
+std::wstring utf8ToUtf16 (const std::string& str)
+{
+    std::wstring native;
+    
+    native.resize(MultiByteToWideChar (CP_UTF8, 0, str.c_str(), -1, NULL, 0));
+    MultiByteToWideChar (CP_UTF8, 0, str.c_str(), -1, &native[0], (int)native.size());
+    
+    return native;
+}
+#endif
+
+static bool checkIfFileExists (const std::string& path)
+{
+#ifdef _WIN32
+    WIN32_FIND_DATAW FindFileData;
+    std::wstring wpath = utf8ToUtf16 (path);
+    HANDLE handle = FindFirstFileW(wpath.c_str(), &FindFileData) ;
+    if (handle != INVALID_HANDLE_VALUE) {
+        FindClose(handle);
+        return true;
+    }
+    return false;
+#else
+    // on Unix platforms passing in UTF-8 works
+    std::ifstream fs(path.c_str());
+    return fs.is_open() && fs.good();
+#endif
 }
 
 GenericReaderPlugin::GetFilenameRetCodeEnum
 GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                bool proxyFiles,
+                                               bool checkForExistingFile,
                                                std::string *filename)
 {
     GetFilenameRetCodeEnum ret;
@@ -587,6 +677,8 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     bool filenameGood = true;
     int offset = 0;
 
+    sequenceTime = std::floor(sequenceTime + 0.5); // round to the nearest frame
+
     const bool searchOtherFrame = ((missingFrame == eMissingPrevious) ||
                                    (missingFrame == eMissingNearest) ||
                                    (missingFrame == eMissingNext) ||
@@ -600,21 +692,23 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
             filenameGood = false;
         }
         else {
-            std::ifstream fs(filename->c_str());
-            filenameGood = fs.is_open() && fs.good();
+            if (checkForExistingFile) {
+                filenameGood = checkIfFileExists(*filename);
+            }
         }
         if (filenameGood) {
             ret = eGetFileNameReturnedFullRes;
             // now, try the proxy file
             if (proxyFiles) {
                 std::string proxyFileName;
-                bool proxyGood;
+                bool proxyGood = true;
                 _proxyFileParam->getValueAtTime(sequenceTime + offset, proxyFileName);
                 if (proxyFileName.empty()) {
                     proxyGood = false;
                 } else {
-                    std::ifstream fs(proxyFileName.c_str());
-                    proxyGood = fs.is_open() && fs.good();
+                    if (checkForExistingFile) {
+                        proxyGood = checkIfFileExists(proxyFileName);
+                    }
                 }
                 if (proxyGood) {
                     // proxy file exists, replace the filename with the proxy name
@@ -682,7 +776,7 @@ GenericReaderPlugin::getFilenameAtTime(double t, std::string *filename)
         case eGetSequenceTimeAfterSequence:
             break;
     }
-    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, filename);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, true, filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
             // do not setPersistentMessage()!
@@ -915,7 +1009,8 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
          dstPixelComponents != OFX::ePixelComponentAlpha &&
          dstPixelComponents != OFX::ePixelComponentCustom) ||
         dstPixelDepth != srcPixelDepth ||
-        dstPixelComponents != srcPixelComponents) {
+        dstPixelComponents != srcPixelComponents ||
+        dstPixelComponentCount != srcPixelComponentCount) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
@@ -1125,7 +1220,7 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
 
     /*We don't want to use the proxy image for the region of definition*/
     std::string filename;
-    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, &filename);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, true, &filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
             setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
@@ -1145,7 +1240,8 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     std::string error;
     OfxRectI bounds;
     double par = 1.;
-    bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error);
+    int tile_width,tile_height;
+    bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error, &tile_width, &tile_height);
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -1211,7 +1307,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
     assert(kSupportsRenderScale || (args.renderScale.x == 1. && args.renderScale.y == 1.));
     ///The image will have the appropriate size since we support the render scale (multi-resolution)
-    
+
     OutputImagesHolder_RAII outputImagesHolder;
 #ifdef OFX_EXTENSIONS_NUKE
     if (!isMultiPlanar()) {
@@ -1222,6 +1318,21 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
+#ifndef NDEBUG
+        if (!_supportsTiles) {
+            // http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#kOfxImageEffectPropSupportsTiles
+            //  If a clip or plugin does not support tiled images, then the host should supply full RoD images to the effect whenever it fetches one.
+            OfxRectI dstRod; // = dst->getRegionOfDefinition(); //  Nuke's image RoDs are wrong
+            OFX::Coords::toPixelEnclosing(_outputClip->getRegionOfDefinition(args.time), args.renderScale, _outputClip->getPixelAspectRatio(), &dstRod);
+            const OfxRectI& dstBounds = dstImg->getBounds();
+
+            assert(dstRod.x1 == dstBounds.x1);
+            assert(dstRod.x2 == dstBounds.x2);
+            assert(dstRod.y1 == dstBounds.y1);
+            assert(dstRod.y2 == dstBounds.y2); // crashes on Natron if kSupportsTiles=0 & kSupportsMultiResolution=1
+        }
+#endif
+
         outputImagesHolder.appendImage(dstImg);
 #ifdef OFX_EXTENSIONS_NUKE
     } else {
@@ -1271,7 +1382,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         } else {
             if (firstBounds.x1 != bounds.x1 || firstBounds.x2 != bounds.x2 || firstBounds.y1 != bounds.y1 || firstBounds.y2 != bounds.y2
                 || firstDepth != bitDepth) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image plane with wrong properites");
+                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image plane with wrong bounds/bitdepth");
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
             }
@@ -1340,7 +1451,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     ///We only support downscaling at a power of two.
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
-    unsigned int proxyMipMapThresholdLevel = getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
+    unsigned int proxyMipMapThresholdLevel = (proxyScaleThreshold.x == 0 || proxyScaleThreshold.y == 0) ? renderMipmapLevel :  getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
     unsigned int originalProxyMipMapLevel = getLevelFromScale(std::min(proxyOriginalScale.x, proxyOriginalScale.y));
     
     if (kSupportsRenderScale && (renderMipmapLevel >= proxyMipMapThresholdLevel)) {
@@ -1348,7 +1459,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     std::string filename;
-    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, &filename);
+    GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet = getFilenameAtSequenceTime(sequenceTime, false, true, &filename);
     switch (getFilenameAtSequenceTimeRet) {
         case eGetFileNameFailed:
             setPersistentMessage(OFX::Message::eMessageError, "", filename + ": Cannot load frame");
@@ -1376,7 +1487,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     std::string proxyFile;
     if (useProxy) {
         ///Use the proxy only if getFilenameAtSequenceTime returned a valid proxy filename different from the original file
-        GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, &proxyFile);
+        GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, true, &proxyFile);
         switch (getFilenameAtSequenceTimeRetPx) {
             case eGetFileNameFailed:
                 // should never happen: it should return at least the full res frame
@@ -1412,13 +1523,13 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     // When in proxy mode renderWindowFullRes is the render window at the proxy mip map level
     int downscaleLevels = renderMipmapLevel; // the number of mipmap levels from the actual file (proxy or not) to the renderWindow
 
-    if (_supportsTiles && useProxy && !proxyFile.empty()) {
+    if (useProxy && !proxyFile.empty()) {
         filename = proxyFile;
         downscaleLevels -= originalProxyMipMapLevel;
     }
     assert(downscaleLevels >= 0);
     
-    if (filename.empty() || !fileExists(filename)) {
+    if (filename.empty() || !checkIfFileExists(filename)) {
         for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
             fillWithBlack(args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
         }
@@ -1426,13 +1537,14 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         return;
     }
 
-    OfxRectI renderWindowFullRes;
+    OfxRectI renderWindowFullRes, renderWindowNotRounded;
     OfxRectI frameBounds;
     double par = 1.;
+    int tile_width,tile_height;
     std::string error;
 
     ///if the plug-in doesn't support tiles, just render the full rod
-    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error);
+    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error, &tile_width, &tile_height);
     ///We shouldve checked above for any failure, now this is too late.
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
@@ -1450,30 +1562,64 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
            renderWindowFullRes.y2 <= frameBounds.y2 + std::pow(2.,(double)downscaleLevels) - 1);
     intersect(renderWindowFullRes, frameBounds, &renderWindowFullRes);
 
+    //See below: we round the render window to the tile size
+    renderWindowNotRounded = renderWindowFullRes;
     
     for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
+
         
+        bool isOCIOIdentity;
         // Read into a temporary image, apply colorspace conversion, then copy
-        OFX::PreMultiplicationEnum premult ;
-        // force premult for non-RGBA pixelComponents
-        if (it->comps == OFX::ePixelComponentRGB) {
-            premult = OFX::eImageOpaque;
-        } else if (it->comps == OFX::ePixelComponentAlpha) {
-            premult = OFX::eImagePreMultiplied;
-        } else if (it->comps == OFX::ePixelComponentCustom) {
-            premult = OFX::eImageUnPreMultiplied;
+        OFX::PreMultiplicationEnum premult = OFX::eImageUnPreMultiplied;
+        
+        // if components are custom, remap it to a OFX components with the same number of channels
+        OFX::PixelComponentEnum remappedComponents;
+        
+        bool isColor;
+        bool isCustom;
+        if (it->comps == OFX::ePixelComponentCustom) {
+            std::vector<std::string> channelNames = OFX::mapPixelComponentCustomToLayerChannels(it->rawComps);
+            isColor = channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B";
+            isCustom = true;
+            if (isColor) {
+#ifdef OFX_IO_USING_OCIO
+                isOCIOIdentity = _ocio->isIdentity(args.time);
+#else
+                isOCIOIdentity = true;
+#endif
+            } else {
+                isOCIOIdentity = true;
+            }
+            
+            if (it->numChans == 3) {
+                remappedComponents = OFX::ePixelComponentRGB;
+            } else if (it->numChans == 4) {
+                remappedComponents = OFX::ePixelComponentRGBA;
+            } else if (it->numChans == 2) {
+                remappedComponents = OFX::ePixelComponentXY;
+            } else {
+                remappedComponents = OFX::ePixelComponentAlpha;
+            }
+            
         } else {
+            isColor = true;
+            isCustom = false;
+#ifdef OFX_IO_USING_OCIO
+            isOCIOIdentity = _ocio->isIdentity(args.time);
+#else
+            isOCIOIdentity = true;
+#endif
+            remappedComponents = it->comps;
+        }
+        
+        if (it->comps == OFX::ePixelComponentRGB || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGB)) {
+            premult = OFX::eImageOpaque;
+        } else if (it->comps == OFX::ePixelComponentAlpha  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentAlpha)) {
+            premult = OFX::eImagePreMultiplied;
+        } else if (it->comps == OFX::ePixelComponentRGBA  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGBA)) {
             int premult_i;
             _premult->getValue(premult_i);
             premult = (OFX::PreMultiplicationEnum)premult_i;
-        }
-        
-        bool isOCIOIdentity;
-        //For custom layers, OCIO is always identity, let the user handle colorspace conversion alone
-        if (it->comps == OFX::ePixelComponentCustom) {
-            isOCIOIdentity = true;
-        } else {
-            isOCIOIdentity = _ocio->isIdentity(args.time);
         }
         
         // we have to do the final premultiplication if:
@@ -1482,8 +1628,8 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         //   - buffer is PreMultiplied AND OCIO is not identity (OCIO works only on unpremultiplied data)
         //   OR
         //   - premult is unpremultiplied
-        bool mustPremult = ((it->comps == OFX::ePixelComponentRGBA) &&
-                            ((premult == OFX::eImagePreMultiplied && isOCIOIdentity) ||
+        bool mustPremult = ((remappedComponents == OFX::ePixelComponentRGBA) &&
+                            ((premult == OFX::eImagePreMultiplied && !isOCIOIdentity) ||
                              premult == OFX::eImageUnPreMultiplied));
         
         
@@ -1493,9 +1639,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             DBG(std::printf("decode (to dst)\n"));
             
             if (!_isMultiPlanar) {
-                decode(filename, sequenceTime, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rowBytes);
+                decode(filename, sequenceTime, args.renderView, args.sequentialRenderStatus, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rowBytes);
             } else {
-                decodePlane(filename, sequenceTime, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rawComps, it->rowBytes);
+                decodePlane(filename, sequenceTime, args.renderView,args.sequentialRenderStatus, args.renderWindow, it->pixelData, firstBounds, it->comps, it->numChans, it->rawComps, it->rowBytes);
             }
             
         } else {
@@ -1506,6 +1652,41 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 pixelBytes = it->numChans * getComponentBytes(firstDepth);
             }
             assert(pixelBytes > 0);
+            
+            /*
+             If tile_width and tile_height is set, round the renderWindow to the enclosing tile size to make sure the plug-in has a buffer
+             large enough to decode tiles. This is needed for OpenImageIO. Note that 
+             */
+            if (tile_width > 0 && tile_height > 0) {
+                double frameHeight = frameBounds.y2 - frameBounds.y1;
+                if (isTileOrientationTopDown()) {
+                    //invert Y before rounding
+                    
+                    renderWindowFullRes.y1 = frameHeight -  renderWindowFullRes.y1;
+                    renderWindowFullRes.y2 = frameHeight  - renderWindowFullRes.y2;
+                    frameBounds.y1 = frameHeight  - frameBounds.y1;
+                    frameBounds.y2 = frameHeight  - frameBounds.y2;
+                    
+                    renderWindowFullRes.x1 = std::min((double)std::ceil((double)renderWindowFullRes.x1 / tile_width) * tile_width,(double)frameBounds.x1);
+                    renderWindowFullRes.y1 = std::min((double)std::ceil((double)renderWindowFullRes.y1 / tile_height) * tile_height,(double)frameBounds.y1);
+                    renderWindowFullRes.x2 = std::max((double)std::floor((double)renderWindowFullRes.x2 / tile_width) * tile_width,(double)frameBounds.x2);
+                    renderWindowFullRes.y2 = std::max((double)std::floor((double)renderWindowFullRes.y2 / tile_height) * tile_height,(double)frameBounds.y2);
+                } else {
+                    renderWindowFullRes.x1 = std::max((double)std::floor((double)renderWindowFullRes.x1 / tile_width) * tile_width,(double)frameBounds.x1);
+                    renderWindowFullRes.y1 = std::max((double)std::floor((double)renderWindowFullRes.y1 / tile_height) * tile_height,(double)frameBounds.y1);
+                    renderWindowFullRes.x2 = std::min((double)std::ceil((double)renderWindowFullRes.x2 / tile_width) * tile_width,(double)frameBounds.x2);
+                    renderWindowFullRes.y2 = std::min((double)std::ceil((double)renderWindowFullRes.y2 / tile_height) * tile_height,(double)frameBounds.y2);
+                }
+                
+                if (isTileOrientationTopDown()) {
+                    //invert back Y
+                    renderWindowFullRes.y1 = frameHeight - renderWindowFullRes.y1;
+                    renderWindowFullRes.y2 = frameHeight  - renderWindowFullRes.y2;
+                    frameBounds.y1 = frameHeight - frameBounds.y1;
+                    frameBounds.y2 = frameHeight - frameBounds.y2;
+                }
+            }
+            
             int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
             size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * tmpRowBytes;
             OFX::ImageMemory mem(memSize, this);
@@ -1515,9 +1696,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             DBG(std::printf("decode (to tmp)\n"));
             
             if (!_isMultiPlanar) {
-                decode(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, tmpRowBytes);
+                decode(filename, sequenceTime, args.renderView,args.sequentialRenderStatus, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, tmpRowBytes);
             } else {
-                decodePlane(filename, sequenceTime, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, it->rawComps, tmpRowBytes);
+                decodePlane(filename, sequenceTime, args.renderView, args.sequentialRenderStatus, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, it->rawComps, tmpRowBytes);
             }
             
             if (abort()) {
@@ -1527,10 +1708,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             ///do the color-space conversion
             if (!isOCIOIdentity && it->comps != OFX::ePixelComponentAlpha) {
                 if (premult == OFX::eImagePreMultiplied) {
-                    assert(it->comps == OFX::ePixelComponentRGBA);
+                    assert(remappedComponents == OFX::ePixelComponentRGBA);
                     DBG(std::printf("unpremult (tmp in-place)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
-                    unPremultPixelData(renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes);
+                    unPremultPixelData(renderWindowNotRounded, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes);
                     
                     if (abort()) {
                         return;
@@ -1538,8 +1719,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
                     //assert(tmpPixelData[0] == 1. && tmpPixelData[1] == 1. && tmpPixelData[2] == 1. && tmpPixelData[3] == 0.5);
                 }
+#ifdef OFX_IO_USING_OCIO
                 DBG(std::printf("OCIO (tmp in-place)\n"));
-                _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, tmpRowBytes);
+                _ocio->apply(args.time, renderWindowFullRes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, tmpRowBytes);
+#endif
             }
             
             if (kSupportsRenderScale && downscaleLevels > 0) {
@@ -1547,9 +1730,9 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     // we can write directly to dstPixelData
                     /// adjust the scale to match the given output image
                     DBG(std::printf("scale (no premult, tmp to dst)\n"));
-                    scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData, it->comps,
+                    scalePixelData(args.renderWindow,renderWindowNotRounded,(unsigned int)downscaleLevels, tmpPixelData, remappedComponents,
                                    it->numChans, firstDepth, renderWindowFullRes, tmpRowBytes, it->pixelData,
-                                   it->comps, it->numChans, firstDepth, firstBounds, it->rowBytes);
+                                   remappedComponents, it->numChans, firstDepth, firstBounds, it->rowBytes);
                 } else {
                     // allocate a temporary image (we must avoid reading from dstPixelData, in case several threads are rendering the same area)
                     int mem2RowBytes = (firstBounds.x2 - firstBounds.x1) * pixelBytes;
@@ -1559,10 +1742,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     
                     /// adjust the scale to match the given output image
                     DBG(std::printf("scale (tmp to scaled)\n"));
-                    scalePixelData(args.renderWindow,renderWindowFullRes,(unsigned int)downscaleLevels, tmpPixelData,
-                                   it->comps, it->numChans, firstDepth,
+                    scalePixelData(args.renderWindow,renderWindowNotRounded,(unsigned int)downscaleLevels, tmpPixelData,
+                                   remappedComponents, it->numChans, firstDepth,
                                    renderWindowFullRes, tmpRowBytes, scaledPixelData,
-                                   it->comps, it->numChans, firstDepth,
+                                   remappedComponents, it->numChans, firstDepth,
                                    firstBounds, mem2RowBytes);
                     
                     if (abort()) {
@@ -1572,40 +1755,37 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                     // apply premult
                     DBG(std::printf("premult (scaled to dst)\n"));
                     //scaledPixelData[0] = scaledPixelData[1] = scaledPixelData[2] = 1.; scaledPixelData[3] = 0.5;
-                    premultPixelData(args.renderWindow, scaledPixelData, firstBounds, it->comps,  it->numChans, firstDepth, mem2RowBytes, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
+                    premultPixelData(args.renderWindow, scaledPixelData, firstBounds, remappedComponents,  it->numChans, firstDepth, mem2RowBytes, it->pixelData, firstBounds, remappedComponents, it->numChans, firstDepth, it->rowBytes);
                     //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
                 }
             } else {
-                
-                //We should never enter here for custom layers
-                assert(it->comps != OFX::ePixelComponentCustom);
                 
                 // copy
                 if (mustPremult) {
                     DBG(std::printf("premult (no scale, tmp to dst)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = 1.; tmpPixelData[3] = 0.5;
-                    premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
+                    premultPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, remappedComponents, it->numChans, firstDepth, it->rowBytes);
                     //assert(dstPixelDataF[0] == 0.5 && dstPixelDataF[1] == 0.5 && dstPixelDataF[2] == 0.5 && dstPixelDataF[3] == 0.5);
                 } else {
                     DBG(std::printf("copy (no premult no scale, tmp to dst)\n"));
-                    copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, it->comps, it->numChans, firstDepth, it->rowBytes);
+                    copyPixelData(args.renderWindow, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes, it->pixelData, firstBounds, remappedComponents, it->numChans, firstDepth, it->rowBytes);
                 }
             }
             mem.unlock();
         }
 
-    }
+    } // for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
     
 }
 
 void
-GenericReaderPlugin::decode(const std::string& /*filename*/, OfxTime /*time*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/, OFX::PixelComponentEnum /*pixelComponents*/, int /*pixelComponentCount*/, int /*rowBytes*/)
+GenericReaderPlugin::decode(const std::string& /*filename*/, OfxTime /*time*/, int /*view*/, bool /*isPlayback*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/, OFX::PixelComponentEnum /*pixelComponents*/, int /*pixelComponentCount*/, int /*rowBytes*/)
 {
     //does nothing
 }
 
 void
-GenericReaderPlugin::decodePlane(const std::string& /*filename*/, OfxTime /*time*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/,
+GenericReaderPlugin::decodePlane(const std::string& /*filename*/, OfxTime /*time*/, int /*view*/, bool /*isPlayback*/, const OfxRectI& /*renderWindow*/, float */*pixelData*/, const OfxRectI& /*bounds*/,
                                  OFX::PixelComponentEnum /*pixelComponents*/, int /*pixelComponentCount*/,  const std::string& /*rawComponents*/, int /*rowBytes*/)
 {
     //does nothing
@@ -1654,64 +1834,121 @@ GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
 
 }
 
+bool
+GenericReaderPlugin::checkExtension(const std::string& ext)
+{
+    if (ext.empty()) {
+        // no extension
+        return false;
+    }
+    return std::find(_extensions.begin(), _extensions.end(), ext) != _extensions.end();
+}
 
 void
-GenericReaderPlugin::inputFileChanged()
+GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader)
 {
     std::string filename;
     
     if (!gHostIsNatron) {
-        
         _fileParam->getValue(filename);
-        
-        setSequenceFromFile(filename);
+
+        if (!filename.empty()) {
+            setSequenceFromFile(filename);
+        }
         
         clearPersistentMessage();
         
         //reset the original range param only if not Natron
-        _originalFrameRange->setValue(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+        _originalFrameRange->setValue(INT_MIN, INT_MAX);
     }
     
     
     OfxRangeI tmp;
-    if (getSequenceTimeDomainInternal(tmp,true)) {
-        timeDomainFromSequenceTimeDomain(tmp, true);
-        _startingTime->setValue(tmp.min);
+    if (getSequenceTimeDomainInternal(tmp, true)) {
+        
+        if (isLoadingExistingReader) {
+            bool timeDomainUserEdited;
+            _timeDomainUserSet->getValue(timeDomainUserEdited);
+            if (!timeDomainUserEdited) {
+                timeDomainFromSequenceTimeDomain(tmp, true, true);
+            }
+        } else {
+            
+            timeDomainFromSequenceTimeDomain(tmp, true);
+            _startingTime->setValue(tmp.min);
+        }
         
         ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
         ///unless the user did a mistake. We are also safe to assume that images specs are the same for
         ///all the sequence
         _fileParam->getValueAtTime(tmp.min, filename);
-        ///let the derive class a chance to initialize any data structure it may need
-        
-        OFX::PixelComponentEnum components;
-        int componentCount;
-        OFX::PreMultiplicationEnum premult;
-        if (filename != _oldFileName) {
+        if (filename == _filename && !isLoadingExistingReader) {
+            // file name did not really change
+            return;
+        }
+        _filename = filename;
+
+        if (isLoadingExistingReader) {
+            restoreState(filename);
+        } else {
+            ///let the derive class a chance to initialize any data structure it may need
             
-            _oldFileName = filename;
+            OFX::PixelComponentEnum components;
+            int componentCount;
+            OFX::PreMultiplicationEnum premult;
             
-            onInputFileChanged(filename, &premult, &components, &componentCount);
+            bool setColorSpace = true;
+# ifdef OFX_IO_USING_OCIO
+            // Always try to parse from string first,
+            // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+            OCIO_NAMESPACE::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
+            if (ocioConfig) {
+                const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
+                if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+                    colorSpaceStr = NULL;
+                }
+                if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+                    // we're lucky
+                    _ocio->setInputColorspace(colorSpaceStr);
+                    setColorSpace = false;
+                }
+            }
+# endif
+            
+            onInputFileChanged(filename, setColorSpace, &premult, &components, &componentCount);
+            
+            
+            if (setColorSpace) {
+# ifdef OFX_IO_USING_OCIO
+                
+                // Refreshing the choice menus of ocio is required since the instanceChanged action
+                // may not be called recursively during the createInstance action
+                 _ocio->refreshInputAndOutputState(tmp.min);
+#endif
+            }
             // RGB is always Opaque, Alpha is always PreMultiplied
             if (components == OFX::ePixelComponentRGB) {
                 premult = OFX::eImageOpaque;
             } else if (components == OFX::ePixelComponentAlpha) {
                 premult = OFX::eImagePreMultiplied;
             }
-            setOutputComponents(components);
+            if (components != OFX::ePixelComponentNone) {
+                setOutputComponents(components);
+            }
             _premult->setValue((int)premult);
-            
-            bool customFps;
-            _customFPS->getValue(customFps);
-            if (!customFps) {
-                double fps;
-                bool gotFps = getFrameRate(filename, &fps);
-                if (gotFps) {
-                    _fps->setValue(fps);
-                }
+        } // isLoadingExistingReader
+        
+        bool customFps;
+        _customFPS->getValue(customFps);
+        if (!customFps) {
+            double fps;
+            bool gotFps = getFrameRate(filename, &fps);
+            if (gotFps) {
+                _fps->setValue(fps);
             }
         }
     }
+    
 }
 
 void
@@ -1727,9 +1964,11 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
-            inputFileChanged();
+            inputFileChanged(false);
         }
-
+        if (_sublabel && args.reason != OFX::eChangePluginEdit) {
+            refreshSubLabel(args.time);
+        }
     } else if (paramName == kParamProxy) {
         ///Detect the scale of the proxy.
         std::string proxyFile,originalFileName;
@@ -1743,8 +1982,8 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             case eGetSequenceTimeBeforeSequence:
             case eGetSequenceTimeWithinSequence:
             case eGetSequenceTimeAfterSequence: {
-                GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet   = getFilenameAtSequenceTime(sequenceTime, false, &originalFileName);
-                GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, &proxyFile);
+                GetFilenameRetCodeEnum getFilenameAtSequenceTimeRet   = getFilenameAtSequenceTime(sequenceTime, false, true, &originalFileName);
+                GetFilenameRetCodeEnum getFilenameAtSequenceTimeRetPx = getFilenameAtSequenceTime(sequenceTime, true, true, &proxyFile);
 
                 if (getFilenameAtSequenceTimeRet == eGetFileNameReturnedFullRes &&
                     getFilenameAtSequenceTimeRetPx ==  eGetFileNameReturnedProxy &&
@@ -1839,7 +2078,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _firstFrame->getValue(firstFrame);
         
         _timeOffset->setValue(startingTime - firstFrame);
-        
+         _timeDomainUserSet->setValue(true);
     } else if (paramName == kParamTimeOffset && args.reason == OFX::eChangeUserEdit) {
 
         //also update the starting frame
@@ -1849,7 +2088,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _firstFrame->getValue(first);
         
         _startingTime->setValue(offset + first);
-
+         _timeDomainUserSet->setValue(true);
     } else if (paramName == kParamOutputComponents) {
         OFX::PixelComponentEnum comps = getOutputComponents();
     
@@ -1910,7 +2149,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         }
         
     } else {
+#ifdef OFX_IO_USING_OCIO
         _ocio->changedParam(args, paramName);
+#endif
     }
 }
 
@@ -1932,6 +2173,7 @@ GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
         // not found, set the first supported component
         i = 0;
     }
+    assert(i < _outputComponents->getNOptions());
     _outputComponents->setValue(i);
 }
 
@@ -1957,9 +2199,10 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     }
     clipPreferences.setOutputFrameVarying(frameVarying); // true for readers and frame-varying generators/effects @see kOfxImageEffectFrameVarying
 
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB) {
+        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
+    }
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
 
     // the output of the GenericReader plugin is *always* premultiplied (as long as only float is supported)
@@ -2004,12 +2247,13 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     if (getSequenceTimeDomainInternal(tmp, false)) {
         timeDomainFromSequenceTimeDomain(tmp, false);
         std::string filename;
-        GetFilenameRetCodeEnum e = getFilenameAtSequenceTime(tmp.min, false, &filename);
+        GetFilenameRetCodeEnum e = getFilenameAtSequenceTime(tmp.min, false, true, &filename);
         if (e == eGetFileNameReturnedFullRes) {
             OfxRectI bounds;
             double par = 1.;
             std::string error;
-            bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error);
+            int tile_width,tile_height;
+            bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error,&tile_width, &tile_height);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
             }
@@ -2035,7 +2279,10 @@ void
 GenericReaderPlugin::purgeCaches()
 {
     clearAnyCache();
+#ifdef OFX_IO_USING_OCIO
     _ocio->purgeCaches();
+#endif
+    _filename.clear();
 }
 
 bool
@@ -2067,16 +2314,27 @@ GenericReaderPlugin::isIdentity(const OFX::IsIdentityArguments &args,
             return false;
 
         case eGetSequenceTimeBeforeSequence:
-        case eGetSequenceTimeAfterSequence:
+        case eGetSequenceTimeAfterSequence: {
+            ///Transform the sequence time to "real" time
+            int timeOffset;
+            _timeOffset->getValue(timeOffset);
+            identityTime = std::floor(sequenceTime + 0.5) + timeOffset; // round to the nearest frame
+            identityClip = _outputClip;
+            return true;
+        }
+        case eGetSequenceTimeWithinSequence: {
+            if (sequenceTime == (int)sequenceTime) {
+                return false;
+            }
+            // fractional time, round to nearest frame
+            sequenceTime = std::floor(sequenceTime + 0.5); // round to the nearest frame
             ///Transform the sequence time to "real" time
             int timeOffset;
             _timeOffset->getValue(timeOffset);
             identityTime = sequenceTime + timeOffset;
             identityClip = _outputClip;
             return true;
-
-        case eGetSequenceTimeWithinSequence:
-            return false;
+        }
     }
     return false;
 }
@@ -2089,9 +2347,10 @@ GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
     OfxRectI originalBounds, proxyBounds;
     std::string error;
     double originalPAR = 1., proxyPAR = 1.;
-    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error);
+    int tile_width,tile_height;
+    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error,&tile_width,&tile_height);
     proxyBounds.x1 = proxyBounds.x2 = proxyBounds.y1 = proxyBounds.y2 = 0.f;
-    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error);
+    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error,&tile_width,&tile_height);
     OfxPointD ret;
     if (!success ||
         (originalBounds.x1 == originalBounds.x2) ||
@@ -2112,6 +2371,8 @@ using namespace OFX;
 
 void
 GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
+                      const std::vector<std::string>& extensions,
+                      int evaluation,
                       bool supportsTiles,
                       bool multiPlanar)
 {
@@ -2148,7 +2409,16 @@ GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
             //We let all un-rendered planes pass-through so that they can be retrieved below by a shuffle node
             desc.setPassThroughForNotProcessedPlanes(ePassThroughLevelPassThroughNonRenderedPlanes);
         }
+        desc.setIsViewAware(true);
+        desc.setIsViewInvariant(OFX::eViewInvarianceAllViewsVariant);
     }
+#endif
+#ifdef OFX_EXTENSIONS_TUTTLE
+    desc.addSupportedExtensions(extensions);
+    desc.setPluginEvaluation(evaluation);
+#endif
+#ifdef OFX_EXTENSIONS_NATRON
+    desc.setChannelSelector(OFX::ePixelComponentNone);
 #endif
 }
 
@@ -2159,9 +2429,10 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                                     bool supportsRGBA,
                                     bool supportsRGB,
                                     bool supportsAlpha,
-                                    bool supportsTiles)
+                                    bool supportsTiles,
+                                    bool addSeparatorAfterLastParameter)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
          it != getImageEffectHostDescription()->_supportedComponents.end();
@@ -2220,11 +2491,13 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamFilenameHint);
-        param->setAnimates(false);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     //////////First-frame
@@ -2234,8 +2507,10 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamFirstFrameHint);
         param->setDefault(0);
         param->setAnimates(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ///////////Before first
@@ -2243,19 +2518,21 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBefore);
         param->setLabel(kParamBeforeLabel);
         param->setHint(kParamBeforeHint);
-        assert(param->getNOptions() == eBeforeAfterHold);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterHold);
         param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
-        assert(param->getNOptions() == eBeforeAfterLoop);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterLoop);
         param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
-        assert(param->getNOptions() == eBeforeAfterBounce);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBounce);
         param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
-        assert(param->getNOptions() == eBeforeAfterBlack);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBlack);
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-        assert(param->getNOptions() == eBeforeAfterError);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterError);
         param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
         param->setAnimates(true);
-        param->setDefault(eBeforeAfterHold);
-        page->addChild(*param);
+        param->setDefault(GenericReaderPlugin::eBeforeAfterHold);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //////////Last-frame
@@ -2265,8 +2542,10 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamLastFrameHint);
         param->setDefault(0);
         param->setAnimates(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////After first
@@ -2274,19 +2553,21 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamAfter);
         param->setLabel(kParamAfterLabel);
         param->setHint(kParamAfterHint);
-        assert(param->getNOptions() == eBeforeAfterHold);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterHold);
         param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
-        assert(param->getNOptions() == eBeforeAfterLoop);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterLoop);
         param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
-        assert(param->getNOptions() == eBeforeAfterBounce);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBounce);
         param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
-        assert(param->getNOptions() == eBeforeAfterBlack);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBlack);
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
-        assert(param->getNOptions() == eBeforeAfterError);
+        assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterError);
         param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
         param->setAnimates(true);
-        param->setDefault(eBeforeAfterHold);
-        page->addChild(*param);
+        param->setDefault(GenericReaderPlugin::eBeforeAfterHold);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Missing frame choice
@@ -2306,7 +2587,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
         param->setAnimates(true);
         param->setDefault(eMissingError);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Frame-mode
@@ -2317,10 +2600,12 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kParamFrameModeOptionStartingTime);
         assert(param->getNOptions() == eFrameModeTimeOffset);
         param->appendOption(kParamFrameModeOptionTimeOffset);
-        param->setAnimates(true);
+        param->setAnimates(false);
         param->setDefault(eFrameModeStartingTime);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Starting frame
@@ -2329,9 +2614,11 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamStartingTimeLabel);
         param->setHint(kParamStartingTimeHint);
         param->setDefault(0);
-        param->setAnimates(true);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        page->addChild(*param);
+        param->setAnimates(false);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Time offset
@@ -2340,9 +2627,11 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamTimeOffsetLabel);
         param->setHint(kParamTimeOffsetHint);
         param->setDefault(0);
-        param->setAnimates(true);
+        param->setAnimates(false);
         //param->setIsSecret(true); // done in the plugin constructor
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     /////////// Secret param set to true if the time domain was edited by the user
@@ -2352,18 +2641,22 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setIsSecret(true); // always secret
         param->setDefault(false);
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///////////Original frame range
     {
         OFX::Int2DParamDescriptor* param = desc.defineInt2DParam(kParamOriginalFrameRange);
         param->setLabel(kParamOriginalFrameRangeLabel);
-        param->setDefault(kOfxFlagInfiniteMin, kOfxFlagInfiniteMax);
+        param->setDefault(INT_MIN, INT_MAX);
         param->setAnimates(true);
         param->setIsSecret(true); // always secret
         param->setIsPersistant(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //////////Input proxy file
@@ -2373,11 +2666,13 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setStringType(OFX::eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setHint(kParamProxyHint);
-        param->setAnimates(false);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamProxy);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////Proxy original scale
@@ -2385,12 +2680,16 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamOriginalProxyScale);
         param->setLabel(kParamOriginalProxyScaleLabel);
         param->setDefault(1., 1.);
+        param->setRange(0., 0., 1., 1.);
+        param->setDisplayRange(0., 0., 1., 1.);
         param->setIsSecret(true); // always secret
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
-        // param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        // param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ////Proxy  scale threshold
@@ -2398,12 +2697,16 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamProxyThreshold);
         param->setLabel(kParamProxyThresholdLabel);
         param->setDefault(1., 1.);
+        param->setRange(0.01, 0.01, 1., 1.);
+        param->setDisplayRange(0.01, 0.01, 1., 1.);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setEnabled(false);
         param->setHint(kParamOriginalProxyScaleHint);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ///Enable custom proxy scale
@@ -2415,14 +2718,15 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamCustomProxyScaleHint);
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //// File premult
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFilePremult);
         param->setLabel(kParamFilePremultLabel);
-        param->setAnimates(true);
         param->setHint(kParamFilePremultHint);
         assert(param->getNOptions() == eImageOpaque);
         param->appendOption(premultString(eImageOpaque), kParamFilePremultOptionOpaqueHint);
@@ -2433,8 +2737,11 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
             param->appendOption(premultString(eImageUnPreMultiplied), kParamFilePremultOptionUnPreMultipliedHint);
             param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         }
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     //// Output components
@@ -2470,7 +2777,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ///Frame rate
@@ -2478,13 +2787,17 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFrameRate);
         param->setLabel(kParamFrameRateLabel);
         param->setHint(kParamFrameRateHint);
-        param->setAnimates(false);
         param->setEvaluateOnChange(false);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        desc.addClipPreferencesSlaveParam(*param);
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setEnabled(false);
         param->setDefault(24.);
-        page->addChild(*param);
+        param->setRange(0., DBL_MAX);
+        param->setDisplayRange(0.,300.);
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     
     ///Custom FPS
@@ -2492,10 +2805,39 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamCustomFps);
         param->setLabel(kParamCustomFpsLabel);
         param->setHint(kParamCustomFpsHint);
-        param->setAnimates(false);
         param->setEvaluateOnChange(false);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (addSeparatorAfterLastParameter) {
+            param->setLayoutHint(OFX::eLayoutHintDivider);
+        }
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    // sublabel
+    if (gHostIsNatron) {
+        StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
+        param->setIsSecret(true); // always secret
+        param->setEnabled(false);
+        param->setIsPersistant(true);
+        param->setEvaluateOnChange(false);
+        //param->setDefault();
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    
+    {
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
+        param->setEvaluateOnChange(false);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     return page;
@@ -2509,15 +2851,19 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
                                   const char* inputSpaceNameDefault,
                                   const char* outputSpaceNameDefault)
 {
+#ifdef OFX_IO_USING_OCIO
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault, kParamInputSpaceLabel);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
+#endif
 }
 
 

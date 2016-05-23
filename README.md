@@ -3,6 +3,26 @@ openfx-io [![Build Status](https://api.travis-ci.org/MrKepzie/openfx-io.png?bran
 
 A set of Readers/Writers plugins written using the OpenFX standard.
 
+License
+-------
+
+<!-- BEGIN LICENSE BLOCK -->
+Copyright (C) 2015 INRIA
+
+openfx-io is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+openfx-io is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+<!-- END LICENSE BLOCK -->
+
 ## Getting the sources from github
 
 To fetch the latest sources from github, execute the following commands:
@@ -15,6 +35,37 @@ In order to get a specific tag, corresponding to a source release, do `git tag -
 to get the list of tags, and then `git checkout tags/<tag_name>`
 to checkout a given tag.
 
+## Compiling (Unix/Linux/FreeBSD/OS X, using Makefiles)
+
+On Unix-like systems, the plugins can be compiled by typing in a
+terminal:
+- `make [options]` to compile as a single combined plugin (see below
+  for valid options).
+- `make nomulti [options]` to compile as separate plugins (useful if
+only a few plugins are is needed, for example). `make` can also be
+executed in any plugin's directory.
+
+The most common options are `CONFIG=release` to compile a release
+version, `CONFIG=debug` to compile a debug version. Or
+`CONFIG=relwithdebinfo` to compile an optimized version with debugging
+symbols.
+
+Another common option is `BITS=32`for compiling a 32-bits version,
+`BITS=64` for a 64-bits version, and `BITS=Universal` for a universal
+binary (OS X only).
+
+See the file `Makefile.master`in the toplevel directory for other useful
+flags/variables.
+
+The compiled plugins are placed in subdirectories named after the
+configuration, for example Linux-64-realease for a 64-bits Linux
+compilation. In each of these directories, a `*.bundle` directory is
+created, which has to be moved to the proper place
+(`/usr/OFX/Plugins`on Linux, or `/Library/OFX/Plugins`on OS X), using
+a command like the following, with the *same* options used for
+compiling:
+
+	sudo make install [options]
 
 ## Compiling on Ubuntu 12.04 LTS
 
@@ -101,21 +152,17 @@ Add the following line to `/opt/local/etc/macports/variants.conf`:
 (add +universal on OSX 10.5 and 10.6)
 
 * special portfiles:
-- graphics/openimageio
-- graphics/opencolorio
+  - graphics/openimageio
+  - graphics/opencolorio
 
 * external libraries
 
-	sudo port -v install \
-	openexr \
-	ffmpeg \
-	opencolorio \
-	openimageio
-	
+    sudo port -v install openexr ffmpeg opencolorio openimageio
+
 Then to compile...
 
     make CONFIG=release OCIO_HOME=/opt/local OIIO_HOME=/opt/local
-	
+
 where /opt/local is where the macports tree stores the includes and libs.
 
 ## Using Xcode on OSX
@@ -131,9 +178,7 @@ following definitions in the Xcode preferences
 
 ## Compiling on MS Windows
 
-We provide pre-compiled static binaries for dependencies here:
-
-https://www.dropbox.com/s/s5yuh9k3kum99jp/3rdparty_windows_32_and_64bits_msvc2010.zip
+We provide pre-compiled static binaries for dependencies here: [3rdparty_windows_32_and_64bits_msvc2010.zip](https://www.dropbox.com/s/s5yuh9k3kum99jp/3rdparty_windows_32_and_64bits_msvc2010.zip)
 
 On the other hand if you want to compile them yourself, you can do so :
 
@@ -143,7 +188,7 @@ Clone the repository from github:
 
     git clone https://github.com/imageworks/OpenColorIO
 	
-See (this page) [https://github.com/MrKepzie/Natron/wiki/Compiling-OpenColorIO-static-on-Windows]
+See [Compiling-OpenColorIO-static-on-Windows](https://github.com/MrKepzie/Natron/wiki/Compiling-OpenColorIO-static-on-Windows)
 
 ### OpenEXR
 
@@ -172,9 +217,7 @@ Note that on this website you can only get shared versions of the ffmpeg librari
 
 ### Boost
 
-You can downlad pre-built binaries for your visual studio version here:
-
-http://boost.teeks99.com/
+You can downlad pre-built binaries for your visual studio version from [teeks99](http://boost.teeks99.com/)
 
 
 ### Note about the external libraries
@@ -211,26 +254,19 @@ Make a new file called INRIA.IO.manifest right next to IO.ofx in the bundle (i.e
 In this file copy the following lines:
 
     <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-	<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-
-	<assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
-
-	<file name="avcodec-56.dll">
-	</file>
-
-	<file name="avformat-56.dll">
-	</file>
-
-	<file name="avutil-54.dll">
-	</file>
-
-	<file name="swscale-3.dll">
-	</file>
-
-	<file name="swresample-1.dll">
-	</file>
-
-	</assembly>
+    <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+    <assemblyIdentity name="INRIA.IO" version="1.0.0.0" type="win32" processorArchitecture="amd64"/>
+    <file name="avcodec-56.dll">
+    </file>
+    <file name="avformat-56.dll">
+    </file>
+    <file name="avutil-54.dll">
+    </file>
+    <file name="swscale-3.dll">
+    </file>
+    <file name="swresample-1.dll">
+    </file>
+    </assembly>
 
 Now open the command line tool and navigate to `IO.ofx.bundle/Content/Win64/`
 Execute the following command:

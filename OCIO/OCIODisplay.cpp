@@ -1,56 +1,41 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OCIODisplay plugin.
- Use OpenColorIO to convert for a display device.
-
- Copyright (C) 2015 INRIA
- Author: Frederic Devernay <frederic.devernay@inria.fr>
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
+ * OCIODisplay plugin.
+ * Use OpenColorIO to convert for a display device.
  */
-
-
-#include "OCIODisplay.h"
 
 #ifdef OFX_IO_USING_OCIO
 //#include <iostream>
 #include <memory>
-
-#include <GenericOCIO.h>
+#include <algorithm>
 
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMacros.h"
 #include "IOUtility.h"
+#include "GenericOCIO.h"
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "OCIODisplayOFX"
 #define kPluginGrouping "Color/OCIO"
@@ -163,7 +148,7 @@ public:
 
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL
+    virtual bool isIdentity(const OFX::IsIdentityArguments &/*args*/, OFX::Clip * &/*identityClip*/, double &/*identityTime*/) OVERRIDE FINAL
     {
         // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
         clearPersistentMessage();
@@ -326,6 +311,15 @@ private:
     OFX::ChoiceParam* _channel;
 
     std::auto_ptr<GenericOCIO> _ocio;
+
+    OFX::MultiThread::Mutex _procMutex;
+    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    std::string _procInputSpace;
+    ChannelSelectorEnum _procChannel;
+    std::string _procDisplay;
+    std::string _procView;
+    double _procGain;
+    double _procGamma;
 };
 
 OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
@@ -340,11 +334,17 @@ OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
 , _gamma(0)
 , _channel(0)
 , _ocio(new GenericOCIO(this))
+, _procChannel(eChannelSelectorRGB)
+, _procGain(-1)
+, _procGamma(-1)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
@@ -584,101 +584,114 @@ OCIODisplayPlugin::apply(double time, const OfxRectI& renderWindow, float *pixel
 
     std::string inputSpace;
     _ocio->getInputColorspaceAtTime(time, inputSpace);
-    int channel_i;
-    _channel->getValueAtTime(time, channel_i);
-    ChannelSelectorEnum channel = (ChannelSelectorEnum)channel_i;
+    ChannelSelectorEnum channel = (ChannelSelectorEnum)_channel->getValueAtTime(time);
+    std::string display;
+    _display->getValueAtTime(time, display);
+    std::string view;
+    _view->getValueAtTime(time, view);
+    double gain = _gain->getValueAtTime(time);
+    double gamma = _gamma->getValueAtTime(time);
 
     try {
         OCIO::ConstConfigRcPtr config = _ocio->getConfig();
         assert(config);
-        OCIO::DisplayTransformRcPtr transform = OCIO::DisplayTransform::Create();
-        transform->setInputColorSpaceName(inputSpace.c_str());
+        OFX::MultiThread::AutoMutex guard(_procMutex);
+        if (!_proc ||
+            _procInputSpace != inputSpace ||
+            _procChannel != channel ||
+            _procDisplay != display ||
+            _procView != view ||
+            _procGain != gain ||
+            _procGamma != gamma) {
 
-        std::string display;
-        _display->getValueAtTime(time, display);
-        transform->setDisplay(display.c_str());
+            OCIO::DisplayTransformRcPtr transform = OCIO::DisplayTransform::Create();
+            transform->setInputColorSpaceName(inputSpace.c_str());
 
-        std::string view;
-        _view->getValueAtTime(time, view);
-        transform->setView(view.c_str());
+            transform->setDisplay(display.c_str());
 
-        // Specify an (optional) linear color correction
-        {
-            float m44[16];
-            float offset4[4];
-            double gain;
-            _gain->getValueAtTime(time, gain);
-            const float slope4f[] = { gain, gain, gain, gain };
-            OCIO::MatrixTransform::Scale(m44, offset4, slope4f);
+            transform->setView(view.c_str());
 
-            OCIO::MatrixTransformRcPtr mtx =  OCIO::MatrixTransform::Create();
-            mtx->setValue(m44, offset4);
-
-            transform->setLinearCC(mtx);
-        }
-
-        // Specify an (optional) post-display transform.
-        {
-            double gamma;
-            _gamma->getValueAtTime(time, gamma);
-            float exponent = 1.0f/std::max(1e-6f, (float)gamma);
-            const float exponent4f[] = { exponent, exponent, exponent, exponent };
-            OCIO::ExponentTransformRcPtr cc =  OCIO::ExponentTransform::Create();
-            cc->setValue(exponent4f);
-            transform->setDisplayCC(cc);
-        }
-
-        // Add Channel swizzling
-        {
-            int channelHot[4] = { 0, 0, 0, 0};
-
-            switch(channel)
+            // Specify an (optional) linear color correction
             {
-                case eChannelSelectorLuminance: // Luma
-                    channelHot[0] = 1;
-                    channelHot[1] = 1;
-                    channelHot[2] = 1;
-                    break;
-                //case eChannelSelectorMatteOverlay: //  Channel overlay mode. Do rgb, and then swizzle later
-                //    channelHot[0] = 1;
-                //    channelHot[1] = 1;
-                //    channelHot[2] = 1;
-                //    channelHot[3] = 1;
-                //    break;
-                case eChannelSelectorRGB: // RGB
-                    channelHot[0] = 1;
-                    channelHot[1] = 1;
-                    channelHot[2] = 1;
-                    channelHot[3] = 1;
-                    break;
-                case eChannelSelectorR: // R
-                    channelHot[0] = 1;
-                    break;
-                case eChannelSelectorG: // G
-                    channelHot[1] = 1;
-                    break;
-                case eChannelSelectorB: // B
-                    channelHot[2] = 1;
-                    break;
-                case eChannelSelectorA: // A
-                    channelHot[3] = 1;
-                    break;
-                default:
-                    break;
+                float m44[16];
+                float offset4[4];
+                const float slope4f[] = { gain, gain, gain, gain };
+                OCIO::MatrixTransform::Scale(m44, offset4, slope4f);
+
+                OCIO::MatrixTransformRcPtr mtx =  OCIO::MatrixTransform::Create();
+                mtx->setValue(m44, offset4);
+
+                transform->setLinearCC(mtx);
             }
 
-            float lumacoef[3];
-            config->getDefaultLumaCoefs(lumacoef);
-            float m44[16];
-            float offset[4];
-            OCIO::MatrixTransform::View(m44, offset, channelHot, lumacoef);
-            OCIO::MatrixTransformRcPtr swizzle = OCIO::MatrixTransform::Create();
-            swizzle->setValue(m44, offset);
-            transform->setChannelView(swizzle);
-        }
+            // Specify an (optional) post-display transform.
+            {
+                float exponent = 1.0f/std::max(1e-6f, (float)gamma);
+                const float exponent4f[] = { exponent, exponent, exponent, exponent };
+                OCIO::ExponentTransformRcPtr cc =  OCIO::ExponentTransform::Create();
+                cc->setValue(exponent4f);
+                transform->setDisplayCC(cc);
+            }
 
-        OCIO::ConstContextRcPtr context = _ocio->getLocalContext(time);
-        processor.setValues(config, context, transform, OCIO::TRANSFORM_DIR_FORWARD);
+            // Add Channel swizzling
+            {
+                int channelHot[4] = { 0, 0, 0, 0};
+
+                switch(channel)
+                {
+                    case eChannelSelectorLuminance: // Luma
+                        channelHot[0] = 1;
+                        channelHot[1] = 1;
+                        channelHot[2] = 1;
+                        break;
+                        //case eChannelSelectorMatteOverlay: //  Channel overlay mode. Do rgb, and then swizzle later
+                        //    channelHot[0] = 1;
+                        //    channelHot[1] = 1;
+                        //    channelHot[2] = 1;
+                        //    channelHot[3] = 1;
+                        //    break;
+                    case eChannelSelectorRGB: // RGB
+                        channelHot[0] = 1;
+                        channelHot[1] = 1;
+                        channelHot[2] = 1;
+                        channelHot[3] = 1;
+                        break;
+                    case eChannelSelectorR: // R
+                        channelHot[0] = 1;
+                        break;
+                    case eChannelSelectorG: // G
+                        channelHot[1] = 1;
+                        break;
+                    case eChannelSelectorB: // B
+                        channelHot[2] = 1;
+                        break;
+                    case eChannelSelectorA: // A
+                        channelHot[3] = 1;
+                        break;
+                    default:
+                        break;
+                }
+
+                float lumacoef[3];
+                config->getDefaultLumaCoefs(lumacoef);
+                float m44[16];
+                float offset[4];
+                OCIO::MatrixTransform::View(m44, offset, channelHot, lumacoef);
+                OCIO::MatrixTransformRcPtr swizzle = OCIO::MatrixTransform::Create();
+                swizzle->setValue(m44, offset);
+                transform->setChannelView(swizzle);
+            }
+            
+            OCIO::ConstContextRcPtr context = _ocio->getLocalContext(time);
+            _proc = config->getProcessor(context, transform, OCIO::TRANSFORM_DIR_FORWARD);
+            _procInputSpace = inputSpace;
+            _procChannel = channel;
+            _procDisplay = display;
+            _procView = view;
+            _procGain = gain;
+            _procGamma = gamma;
+        }
+        processor.setProcessor(_proc);
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -851,8 +864,11 @@ void
 OCIODisplayPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        switch (_srcClip->getPreMultiplication()) {
+        if (_srcClip->getPixelComponents() != OFX::ePixelComponentRGBA) {
+            _premult->setValue(false);
+        } else switch (_srcClip->getPreMultiplication()) {
             case OFX::eImageOpaque:
+                _premult->setValue(false);
                 break;
             case OFX::eImagePreMultiplied:
                 _premult->setValue(true);
@@ -864,7 +880,6 @@ OCIODisplayPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::
     }
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(OCIODisplayPluginFactory, {}, {});
 
@@ -907,7 +922,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     dstClip->addSupportedComponent(ePixelComponentRGB);
     dstClip->setSupportsTiles(kSupportsTiles);
 
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
@@ -926,7 +941,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         if (display) {
             param->setDefault(display);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     if (gHostIsNatron) {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDisplayChoice);
@@ -938,7 +955,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             param->setEnabled(false);
         }
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // view transform
@@ -950,7 +969,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             param->setDefault(view);
         }
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     if (gHostIsNatron) {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamViewChoice);
@@ -962,7 +983,9 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             param->setEnabled(false);
         }
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // gain
@@ -970,10 +993,13 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamGain);
         param->setLabel(kParamGainLabel);
         param->setHint(kParamGainHint);
+        param->setRange(0., DBL_MAX);
         param->setDisplayRange(1./64., 64.);
         param->setDefault(1.);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // gamma
@@ -981,10 +1007,13 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamGamma);
         param->setLabel(kParamGammaLabel);
         param->setHint(kParamGammaHint);
+        param->setRange(0., DBL_MAX);
         param->setDisplayRange(0., 4.);
         param->setDefault(1.);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     // channel view
@@ -1007,15 +1036,19 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         //assert(param->getNOptions() == eChannelSelectorMatteOverlay);
         //param->appendOption(kParamChannelSelectorOptionMatteOverlay, kParamChannelSelectorOptionMatteOverlayHint);
         param->setAnimates(false);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     GenericOCIO::describeInContextContext(desc, context, page);
     {
-        OFX::PushButtonParamDescriptor* pb = desc.definePushButtonParam(kOCIOHelpDisplaysButton);
-        pb->setLabel(kOCIOHelpButtonLabel);
-        pb->setHint(kOCIOHelpButtonHint);
-        page->addChild(*pb);
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpDisplaysButton);
+        param->setLabel(kOCIOHelpButtonLabel);
+        param->setHint(kOCIOHelpButtonHint);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     ofxsPremultDescribeParams(desc, page);
@@ -1028,14 +1061,9 @@ ImageEffect* OCIODisplayPluginFactory::createInstance(OfxImageEffectHandle handl
 }
 
 
-void getOCIODisplayPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OCIODisplayPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OCIODisplayPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-#else // !OFX_IO_USING_OCIO
-void getOCIODisplayPluginID(OFX::PluginFactoryArray &ids)
-{
-}
-#endif
+OFXS_NAMESPACE_ANONYMOUS_EXIT
+
+#endif // OFX_IO_USING_OCIO

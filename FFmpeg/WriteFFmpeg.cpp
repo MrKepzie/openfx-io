@@ -1,44 +1,24 @@
-/*
- OFX ffmpegWriter plugin.
- Writes a video output file using the libav library.
- 
- Copyright (C) 2015 INRIA
- Authors:
-    Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
-    Frederic Devernay frederic.devernay@inria.fr
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
- 
- inspired by mov64Writer.cpp
- Copyright (c) 2014 The Foundry Visionmongers Ltd.  All Rights Reserved.
+/*
+ * OFX ffmpegWriter plugin.
+ * Writes a video output file using the libav library.
  */
 
 
@@ -48,20 +28,22 @@
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS // ...or stdint.h wont' define UINT64_C, needed by libavutil
 #endif
-#include "WriteFFmpeg.h"
 
 #include <cstdio>
 #include <cstring>
+#include <cfloat>
 #include <sstream>
 
-#if _WIN32
-#define snprintf sprintf_s
-#endif
-
-#if defined(_WIN32) || defined(WIN64)
-#  include <windows.h> // for GetSystemInfo()
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+#    define NOMINMAX 1
+// windows - defined for both Win32 and Win64
+#    include <windows.h> // for GetSystemInfo()
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
 #else
 #  include <unistd.h> // for sysconf()
+#  include <time.h>
 #endif
 
 extern "C" {
@@ -78,6 +60,8 @@ extern "C" {
 }
 #include "FFmpegCompat.h"
 #include "IOUtility.h"
+#include "ofxsMacros.h"
+
 
 #ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
@@ -97,16 +81,30 @@ extern "C" {
 #include <iostream>
 #endif
 
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
+
 #define kPluginName "WriteFFmpeg"
 #define kPluginGrouping "Image/Writers"
-#define kPluginDescription "Write images using FFmpeg."
+#define kPluginDescription \
+"Write images using FFmpeg.\n" \
+"The general recommendation is to write either separate frames (using WriteOIIO), " \
+"or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
+"and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
+"command-line tools).\n" \
+"Further information can be found at https://trac.ffmpeg.org/wiki/Encode/VFX"
+
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+#define kPluginEvaluation 0 // plugin quality from 0 (bad) to 100 (perfect) or -1 if not evaluated
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha false
+#define kSupportsXY false
 
 #define kParamFormat "format"
 #define kParamFormatLabel "Format"
@@ -114,7 +112,13 @@ extern "C" {
 
 #define kParamCodec "codec"
 #define kParamCodecName "Codec"
-#define kParamCodecHint "Output codec used for encoding."
+#define kParamCodecHint "Output codec used for encoding. " \
+"The general recommendation is to write either separate frames (using WriteOIIO), " \
+"or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
+"and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
+"command-line tools).\n" \
+"The FFmpeg encoder codec name is given between brackets at the end of each codec description.\n" \
+"Please refer to the FFmpeg documentation http://ffmpeg.org/ffmpeg-codecs.html for codec options."
 
 // a string param holding the short name of the codec (used to disambiguiate the codec choice when using different versions of FFmpeg)
 #define kParamCodecShortName "codecShortName"
@@ -151,19 +155,26 @@ extern "C" {
 #define kParamEnableAlphaHint \
 "Write alpha channel to the video file (if supported by the codec)."
 
-#define kParamBitrate "bitrate"
+#define kParamBitrate "bitrateMbps"
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
-"The target bitrate the codec will attempt to reach, within the confines of the bitrate tolerance and " \
-"quality min/max settings. Only supported by certain codecs."
+"The target bitrate the codec will attempt to reach (in Megabits/s), within the confines of the bitrate tolerance and " \
+"quality min/max settings. Only supported by certain codecs (e.g. hev1, m2v1, MP42, 3IVD, but not mp4v, avc1 or H264).\n" \
+"Option -b in ffmpeg (multiplied by 1000000)."
+#define kParamBitrateDefault 185
+#define kParamBitrateMax 4000
 
-#define kParamBitrateTolerance "bitrateTolerance"
+#define kParamBitrateTolerance "bitrateToleranceMbps"
 #define kParamBitrateToleranceLabel "Bitrate Tolerance"
 #define kParamBitrateToleranceHint \
-"The amount the codec is allowed to vary from the target bitrate based on image and quality settings. " \
-"Exercise caution with this control as too small a number for your image data will result in failed renders. " \
-"As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. " \
-"Only supported by certain codecs."
+"Set video bitrate tolerance (in Megabits/s). In 1-pass mode, bitrate " \
+"tolerance specifies how far ratecontrol is willing to deviate from " \
+"the target average bitrate value. This is not related to min/max " \
+"bitrate. Lowering tolerance too much has an adverse effect on "\
+"quality. " \
+"As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders." \
+"Only supported by certain codecs (e.g. MP42, 3IVD, but not avc1, hev1, m2v1, mp4v or H264).\n" \
+"Option -bt in ffmpeg (multiplied by 1000000)."
 
 #define kParamQuality "quality"
 #define kParamQualityLabel "Quality"
@@ -171,25 +182,28 @@ extern "C" {
 "The quality range the codec is allowed to vary the image data quantiser " \
 "between to attempt to hit the desired bitrate. Higher values mean increased " \
 "image degradation is possible, but with the upside of lower bit rates. " \
-"Only supported by certain codecs."
+"Only supported by certain codecs (e.g. VP80, VP90, avc1, but not hev1 or mp4v).\n" \
+"Options -qmin and -qmax in ffmpeg."
 
 #define kParamGopSize "gopSize"
 #define kParamGopSizeLabel "GOP Size"
 #define kParamGopSizeHint \
 "Specifies how many frames may be grouped together by the codec to form a compression GOP. Exercise caution " \
 "with this control as it may impact whether the resultant file can be opened in other packages. Only supported by " \
-"certain codecs."
+"certain codecs.\n" \
+"Option -g in ffmpeg."
 
 #define kParamBFrames "bFrames"
 #define kParamBFramesLabel "B Frames"
 #define kParamBFramesHint \
 "Controls the maximum number of B frames found consecutively in the resultant stream, where zero means no limit " \
-"imposed. Only supported by certain codecs."
+"imposed. Must be an integer between -1 and 16. 0 means that B-frames are disabled. If a value of -1 is used, it will choose an automatic value depending on the encoder. Only supported by certain codecs.\n" \
+"Option -bf in ffmpeg."
 
 #define kParamWriteNCLC "writeNCLC"
 #define kParamWriteNCLCLabel "Write NCLC"
 #define kParamWriteNCLCHint \
-"Write nclc data in the colr atom of the video header."
+"Write nclc data in the colr atom of the video header. QuickTime only."
 
 //Removed from panel - should never have been exposed as very low level control.
 #if OFX_FFMPEG_MBDECISION
@@ -217,7 +231,7 @@ extern "C" {
 #define kProresProfile4444XQFourCC "ap4x"
 
 #if OFX_FFMPEG_DNXHD
-// Valid DNxHD profiles (as of FFmpeg 2.6.1):
+// Valid DNxHD profiles (as of FFmpeg 2.8.6):
 // Frame size: 1920x1080p; bitrate: 175Mbps; pixel format: yuv422p10; framerate: 24000/1001
 // Frame size: 1920x1080p; bitrate: 185Mbps; pixel format: yuv422p10; framerate: 25/1
 // Frame size: 1920x1080p; bitrate: 365Mbps; pixel format: yuv422p10; framerate: 50/1
@@ -266,8 +280,21 @@ extern "C" {
 // Frame size: 960x720p; bitrate: 60Mbps; pixel format: yuv422p; framerate: 0/0
 // Frame size: 960x720p; bitrate: 75Mbps; pixel format: yuv422p; framerate: 0/0
 // Frame size: 960x720p; bitrate: 115Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 63Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 84Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 100Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080p; bitrate: 110Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 80Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 90Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 100Mbps; pixel format: yuv422p; framerate: 0/0
+// Frame size: 1440x1080i; bitrate: 110Mbps; pixel format: yuv422p; framerate: 0/0
+
+#ifdef DNXHD_444
+#pragma message WARN("This version of FFmpeg seems to support DNxHD 444")
+#endif
 
 //#define AVID_DNXHD_444_440X_NAME "DNxHD 444 10-bit 440Mbit"
+#define AVID_DNXHD_422_440X_NAME "DNxHD 422 10-bit 440Mbit"
 #define AVID_DNXHD_422_220X_NAME "DNxHD 422 10-bit 220Mbit"
 #define AVID_DNXHD_422_220_NAME "DNxHD 422 8-bit 220Mbit"
 #define AVID_DNXHD_422_145_NAME "DNxHD 422 8-bit 145Mbit"
@@ -275,9 +302,9 @@ extern "C" {
 
 #define kParamDNxHDCodecProfile "DNxHDCodecProfile"
 #define kParamDNxHDCodecProfileLabel "DNxHD Codec Profile"
-#define kParamDNxHDCodecProfileHint "Only for the Avid DNxHD codec, select the target bit rate for the encoded movie. The stream may be resized to 1920x1080 if resolution is not supported."
-//#define kParamDNxHDCodecProfileOption440x AVID_DNXHD_444_440X_NAME
-//#define kParamDNxHDCodecProfileOption440xHint AVID_DNXHD_444_440X_NAME
+#define kParamDNxHDCodecProfileHint "Only for the Avid DNxHD codec, select the target bit rate for the encoded movie. The stream may be resized to 1920x1080 if resolution is not supported. Writing in thin-raster HDV format (1440x1080) is not supported by this plug-in, although FFmpeg supports it."
+#define kParamDNxHDCodecProfileOption440x AVID_DNXHD_422_440X_NAME
+#define kParamDNxHDCodecProfileOption440xHint "880x in 1080p/60 or 1080p/59.94, 730x in 1080p/50, 440x in 1080p/30, 390x in 1080p/25, 350x in 1080p/24"
 #define kParamDNxHDCodecProfileOption220x AVID_DNXHD_422_220X_NAME
 #define kParamDNxHDCodecProfileOption220xHint "440x in 1080p/60 or 1080p/59.94, 365x in 1080p/50, 220x in 1080i/60 or 1080i/59.94, 185x in 1080i/50 or 1080p/25, 175x in 1080p/24 or 1080p/23.976, 220x in 1080p/29.97, 220x in 720p/59.94, 175x in 720p/50"
 #define kParamDNxHDCodecProfileOption220  AVID_DNXHD_422_220_NAME
@@ -288,7 +315,7 @@ extern "C" {
 #define kParamDNxHDCodecProfileOption36Hint   "90 in 1080p/60 or 1080p/59.94, 75 in 1080p/50, 45 in 1080i/60 or 1080i/59.94, 36 in 1080i/50 or 1080p/25, 36 in 1080p/24 or 1080p/23.976, 45 in 1080p/29.97, 100 in 720p/59.94, 85 in 720p/50"
 
 enum DNxHDCodecProfileEnum {
-    //eDNxHDCodecProfile440x,
+    eDNxHDCodecProfile440x,
     eDNxHDCodecProfile220x,
     eDNxHDCodecProfile220,
     eDNxHDCodecProfile145,
@@ -331,6 +358,27 @@ static bool IsJpeg(OFX::ChoiceParam *codecParam, int codecValue)
     return false;
 }
 
+// check if codec is compatible with format.
+// libavformat may not implemen query_codec for all formats
+static bool codecCompatible(const AVOutputFormat *ofmt, enum AVCodecID codec_id)
+{
+    std::string fmt = std::string(ofmt->name);
+    return (avformat_query_codec(ofmt, codec_id, FF_COMPLIANCE_NORMAL) == 1 ||
+            (fmt == "mxf" && (codec_id == AV_CODEC_ID_MPEG2VIDEO ||
+                              codec_id == AV_CODEC_ID_DNXHD||
+                              codec_id == AV_CODEC_ID_DVVIDEO||
+                              codec_id == AV_CODEC_ID_H264)) ||
+            (fmt == "mpegts" && (codec_id == AV_CODEC_ID_MPEG1VIDEO ||
+                                 codec_id == AV_CODEC_ID_MPEG2VIDEO ||
+                                 codec_id == AV_CODEC_ID_MPEG4 ||
+                                 codec_id == AV_CODEC_ID_H264 ||
+                                 codec_id == AV_CODEC_ID_HEVC ||
+                                 codec_id == AV_CODEC_ID_CAVS ||
+                                 codec_id == AV_CODEC_ID_DIRAC)) ||
+            (fmt == "mpeg" && (codec_id == AV_CODEC_ID_MPEG1VIDEO ||
+                               codec_id == AV_CODEC_ID_H264)));
+}
+
 typedef std::map<std::string, std::string> CodecMap;
 
 static CodecMap CreateCodecKnobLabelsMap()
@@ -344,10 +392,16 @@ static CodecMap CreateCodecKnobLabelsMap()
 #if OFX_FFMPEG_DNXHD
     m["dnxhd"]         = "AVdn\tVC3/DNxHD";
 #endif
+    m["ffv1"]          = "FFV1\tFFmpeg video codec #1";
+    m["ffvhuff"]       = "FFVH\tHuffyuv FFmpeg variant";
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
     m["gif"]           = "gif \tGIF (Graphics Interchange Format)";
+    m["huffyuv"]       = "HFYU\tHuffYUV";
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
+    m["libopenh264"]   = "H264\tCisco libopenh264 H.264/MPEG-4 AVC encoder";
+    m["libschroedinger"] = "drac\tlibschroedinger Dirac";
+    m["libtheora"]     = "theo\tlibtheora Theora";
     m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
     m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // disabled in whitelist (bad quality)
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
@@ -365,6 +419,7 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["qtrle"]         = "rle \tQuickTime Animation (RLE) video";
     m["r10k"]          = "R10k\tAJA Kona 10-bit RGB Codec"; // disabled in whitelist
     m["r210"]          = "r210\tUncompressed RGB 10-bit"; // disabled in whitelist
+    m["rawvideo"]      = "RGBx\tUncompressed 4:2:2 8-bit"; // actual fourcc is RGB^x
     m["svq1"]          = "SVQ1\tSorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1";
     m["targa"]         = "tga \tTruevision Targa image";
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
@@ -372,7 +427,14 @@ static CodecMap CreateCodecKnobLabelsMap()
     m["v308"]          = "v308\tUncompressed 8-bit 4:4:4";
     m["v408"]          = "v308\tUncompressed 8-bit QT 4:4:4:4";
     m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
+    m["vc2"]           = "drac\tSMPTE VC-2 (previously BBC Dirac Pro)";
 
+    // add the FFmpeg encoder name at the end of each codec description
+    for (CodecMap::iterator it = m.begin(); it != m.end(); ++it) {
+        it->second += " [";
+        it->second += it->first;
+        it->second += ']';
+    }
     return m;
 }
 
@@ -496,10 +558,6 @@ const char* getProfileStringFromShortName(const std::string& name)
     }
     return "auto";
 }
-
-struct AVCodecContext;
-struct AVFormatContext;
-struct AVStream;
 
 ////////////////////////////////////////////////////////////////////////////////
 // MyAVFrame
@@ -896,7 +954,7 @@ private:
 
 public:
 
-    WriteFFmpegPlugin(OfxImageEffectHandle handle);
+    WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~WriteFFmpegPlugin();
 
@@ -904,16 +962,25 @@ private:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
-    virtual void onOutputFileChanged(const std::string &filename) OVERRIDE FINAL;
+    virtual void onOutputFileChanged(const std::string &filename, bool setColorSpace) OVERRIDE FINAL;
 
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
     virtual void beginEdit(void) OVERRIDE FINAL;
 
-    virtual void beginEncode(const std::string& filename,const OfxRectI& rod,const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
+    virtual void beginEncode(const std::string& filename, const OfxRectI& rodPixel, float pixelAspectRatio, const OFX::BeginSequenceRenderArguments& args) OVERRIDE FINAL;
 
     virtual void endEncode(const OFX::EndSequenceRenderArguments& args) OVERRIDE FINAL;
 
-    virtual void encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes) OVERRIDE FINAL;
+    virtual void encode(const std::string& filename,
+                        const OfxTime time,
+                        const std::string& viewName,
+                        const float *pixelData,
+                        const OfxRectI& bounds,
+                        const float pixelAspectRatio,
+                        const int pixelDataNComps,
+                        const int dstNCompsStartIndex,
+                        const int dstNComps,
+                        const int rowBytes) OVERRIDE FINAL;
 
 
     virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
@@ -926,7 +993,7 @@ private:
     void updateVisibility();
     void checkCodec();
     void freeFormat();
-    AVColorTransferCharacteristic getColorTransferCharacteristic() const;
+    void getColorInfo(AVColorPrimaries *color_primaries, AVColorTransferCharacteristic *color_trc) const;
     AVPixelFormat                 getPixelFormat(AVCodec* videoCodec) const;
     AVOutputFormat*               initFormat(bool reportErrors) const;
     bool                          initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AVCodec*& outCodec) const;
@@ -936,7 +1003,6 @@ private:
                          AVPixelFormat&    outTargetPixelFormat,
                          int&              outBitDepth) const;
 
-    int encodeVideo(AVCodecContext* avCodecContext, uint8_t* out, int outSize, const AVFrame* avFrame);
     void updateBitrateToleranceRange();
     bool isRec709Format(const int height) const;
     static bool IsYUV(AVPixelFormat pixelFormat);
@@ -946,8 +1012,7 @@ private:
 
     static int            GetPixelFormatBitDepth(const AVPixelFormat pixelFormat);
     static AVPixelFormat  GetPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha);
-    static void           GetCodecSupportedParams(AVCodec* codec, bool& outLossyParams,
-                                                  bool& outInterGOPParams, bool& outInterBParams);
+    static void           GetCodecSupportedParams(AVCodec* codec, bool& outBitrateParam, bool& outBitrateTolParam, bool& outQualityParams, bool& outInterGOPParams, bool& outInterBParams);
 
     void configureAudioStream(AVCodec* avCodec, AVStream* avStream);
     void configureVideoStream(AVCodec* avCodec, AVStream* avStream);
@@ -955,8 +1020,8 @@ private:
     AVStream* addStream(AVFormatContext* avFormatContext, enum AVCodecID avCodecId, AVCodec** pavCodec);
     int openCodec(AVFormatContext* avFormatContext, AVCodec* avCodec, AVStream* avStream);
     int writeAudio(AVFormatContext* avFormatContext, AVStream* avStream, bool flush);
-    int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData = NULL, const OfxRectI* bounds = NULL, OFX::PixelComponentEnum pixelComponents = OFX::ePixelComponentNone, int rowBytes = 0);
-    int writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData = NULL, const OfxRectI* bounds = NULL, OFX::PixelComponentEnum pixelComponents = OFX::ePixelComponentNone, int rowBytes = 0);
+    int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, double time, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
+    int writeToFile(AVFormatContext* avFormatContext, bool finalise, double time, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
 
     int colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext);
 
@@ -971,14 +1036,20 @@ private:
 
     ///These members are not protected and only read/written by/to by the same thread.
     std::string _filename;
-    OfxRectI _rod;
+    OfxRectI _rodPixel;
+    float _pixelAspectRatio;
     bool _isOpen; // Flag for the configuration state of the FFmpeg components.
     WriterError _error;
     AVFormatContext*  _formatContext;
     AVStream* _streamVideo;
     AVStream* _streamAudio;
     AVStream* _streamTimecode;
-    int _lastTimeEncoded; //< the frame index of the last frame encoded.
+    
+    OFX::MultiThread::Mutex _nextFrameToEncodeMutex;
+    int _nextFrameToEncode; //< the frame index we need to encode next, INT_MIN means uninitialized
+    int _firstFrameToEncode;
+    int _lastFrameToEncode;
+    int _frameStep;
 
     OFX::ChoiceParam* _format;
     OFX::DoubleParam* _fps;
@@ -993,8 +1064,8 @@ private:
     OFX::ChoiceParam* _codec;
     OFX::StringParam* _codecShortName;
     OFX::BooleanParam* _enableAlpha;
-    OFX::IntParam* _bitrate;
-    OFX::IntParam* _bitrateTolerance;
+    OFX::DoubleParam* _bitrate;
+    OFX::DoubleParam* _bitrateTolerance;
     OFX::Int2DParam* _quality;
     OFX::IntParam* _gopSize;
     OFX::IntParam* _bFrames;
@@ -1002,6 +1073,14 @@ private:
 #if OFX_FFMPEG_MBDECISION
     OFX::ChoiceParam* _mbDecision;
 #endif
+    
+    // Used in writeVideo as a contiguous buffer. The size of the buffer remains throughout
+    // the encoding of the whole video. Since the plug-in is instanceSafe, we do not need to lock it
+    // since 2 renders will never use it at the same time.
+    // We do not use a std::vector<uint8_t> here because of unnecessary initialization
+    // http://stackoverflow.com/questions/17347254/why-is-allocation-and-deallocation-of-stdvector-slower-than-dynamic-array-on-m
+    uint8_t* _scratchBuffer;
+    std::size_t _scratchBufferSize;
 };
 
 
@@ -1021,11 +1100,17 @@ public:
     
     const std::vector<std::string>& getFormatsLongNames() const { return _formatsLongNames; }
     
+    const std::vector<std::vector<size_t> >& getFormatsCodecs() const { return _formatsCodecs; }
+
     const std::vector<std::string>& getCodecsShortNames() const { return _codecsShortNames; }
     
     const std::vector<std::string>& getCodecsLongNames() const { return _codecsLongNames; }
 
     const std::vector<std::string>& getCodecsKnobLabels() const { return _codecsKnobLabels; }
+
+    const std::vector<AVCodecID>& getCodecsIds() const { return _codecsIds; }
+
+    const std::vector<std::vector<size_t> >& getCodecsFormats() const { return _codecsFormats; }
 
 private:
     
@@ -1043,9 +1128,12 @@ private:
     
     std::vector<std::string> _formatsLongNames;
     std::vector<std::string> _formatsShortNames;
+    std::vector<std::vector<size_t> > _formatsCodecs; // for each format, give the list of compatible codecs (indices in the codecs list)
     std::vector<std::string> _codecsLongNames;
     std::vector<std::string> _codecsShortNames;
     std::vector<std::string> _codecsKnobLabels;
+    std::vector<AVCodecID>   _codecsIds;
+    std::vector<std::vector<size_t> > _codecsFormats; // for each codec, give the list of compatible formats (indices in the formats list)
 };
 
 FFmpegSingleton FFmpegSingleton::m_instance = FFmpegSingleton();
@@ -1062,15 +1150,17 @@ FFmpegSingleton::FFmpegSingleton()
     _formatsShortNames.push_back("default");
     AVOutputFormat* fmt = av_oformat_next(NULL);
     while (fmt) {
-        if (fmt->video_codec != AV_CODEC_ID_NONE) {
+        if (fmt->video_codec != AV_CODEC_ID_NONE) { // if this is a video format, it should have a default video codec
             if (FFmpegFile::isFormatWhitelistedForWriting( fmt->name ) ) {
                 if (fmt->long_name) {
-                    _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" (") + std::string(fmt->name) + std::string(")"));
-                    _formatsShortNames.push_back(fmt->name);
-#                 if OFX_FFMPEG_PRINT_CODECS
-                    std::cout << "Format: " << fmt->name << " = " << fmt->long_name << std::endl;
-#                 endif //  FFMPEG_PRINT_CODECS
+                    _formatsLongNames.push_back(std::string(fmt->long_name) + std::string(" [") + std::string(fmt->name) + std::string("]"));
+                } else {
+                    _formatsLongNames.push_back(fmt->name);
                 }
+                _formatsShortNames.push_back(fmt->name);
+#                 if OFX_FFMPEG_PRINT_CODECS
+                std::cout << "Format: " << fmt->name << " = " << fmt->long_name << std::endl;
+#                 endif //  FFMPEG_PRINT_CODECS
             }
 #         if OFX_FFMPEG_PRINT_CODECS
             else {
@@ -1081,6 +1171,7 @@ FFmpegSingleton::FFmpegSingleton()
         }
         fmt = av_oformat_next(fmt);
     }
+    assert(_formatsLongNames.size() == _formatsShortNames.size());
 
 #if OFX_FFMPEG_PRORES
     // Apple ProRes support.
@@ -1090,22 +1181,27 @@ FFmpegSingleton::FFmpegSingleton()
     _codecsShortNames.push_back(kProresCodec kProresProfile4444FourCC);
     _codecsLongNames.push_back              (kProresProfile4444Name);
     _codecsKnobLabels.push_back             (kProresProfile4444FourCC"\t"kProresProfile4444Name);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 #endif
     _codecsShortNames.push_back(kProresCodec kProresProfileHQFourCC);
     _codecsLongNames.push_back              (kProresProfileHQName);
     _codecsKnobLabels.push_back             (kProresProfileHQFourCC"\t"kProresProfileHQName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileSQFourCC);
     _codecsLongNames.push_back              (kProresProfileSQName);
     _codecsKnobLabels.push_back             (kProresProfileSQFourCC"\t"kProresProfileSQName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileLTFourCC);
     _codecsLongNames.push_back              (kProresProfileLTName);
     _codecsKnobLabels.push_back             (kProresProfileLTFourCC"\t"kProresProfileLTName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileProxyFourCC);
     _codecsLongNames.push_back              (kProresProfileProxyName);
     _codecsKnobLabels.push_back             (kProresProfileProxyFourCC"\t"kProresProfileProxyName);
+    _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 #endif
 
     AVCodec* c = av_codec_next(NULL);
@@ -1125,8 +1221,11 @@ FFmpegSingleton::FFmpegSingleton()
                     _codecsLongNames.push_back(c->long_name);
                     _codecsShortNames.push_back(c->name);
                     _codecsKnobLabels.push_back(knobLabel);
+                    _codecsIds.push_back(c->id);
+                    _codecsFormats.push_back(std::vector<size_t>());
                     assert(_codecsLongNames.size() == _codecsShortNames.size());
-                    assert(_codecsKnobLabels.size() == _codecsKnobLabels.size());
+                    assert(_codecsLongNames.size() == _codecsKnobLabels.size());
+                    assert(_codecsLongNames.size() == _codecsIds.size());
                 }
             }
 #         if OFX_FFMPEG_PRINT_CODECS
@@ -1137,24 +1236,42 @@ FFmpegSingleton::FFmpegSingleton()
         }
         c = av_codec_next(c);
     }
+    // fill the entries in _codecsFormats and _formatsCodecs
+    _codecsFormats.resize(_codecsIds.size());
+    _formatsCodecs.resize(_formatsShortNames.size());
+    for (size_t f = 1; f < _formatsShortNames.size(); ++f) { // format 0 is "default"
+        fmt = av_guess_format(_formatsShortNames[f].c_str(), NULL, NULL);
+        if (fmt) {
+            for (size_t c = 0; c < _codecsIds.size(); ++c) {
+                if (codecCompatible(fmt, _codecsIds[c])) {
+                    _codecsFormats[c].push_back(f);
+                    _formatsCodecs[f].push_back(c);
+                }
+            }
+        }
+    }
 }
 
 FFmpegSingleton::~FFmpegSingleton(){
     
 }
 
-using namespace OFX;
 
-WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
-: GenericWriterPlugin(handle)
+WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
 , _filename()
+, _pixelAspectRatio(1.)
 , _isOpen(false)
 , _error(IGNORE_FINISH)
 , _formatContext(0)
 , _streamVideo(0)
 , _streamAudio(0)
 , _streamTimecode(0)
-, _lastTimeEncoded(-1)
+, _nextFrameToEncodeMutex(0)
+, _nextFrameToEncode(INT_MIN)
+, _firstFrameToEncode(1)
+, _lastFrameToEncode(1)
+, _frameStep(1)
 , _format(0)
 , _fps(0)
 #if OFX_FFMPEG_DNXHD
@@ -1176,9 +1293,11 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 #if OFX_FFMPEG_MBDECISION
 , _mbDecision(0)
 #endif
+, _scratchBuffer(0)
+, _scratchBufferSize(0)
 {
-    _rod.x1 = _rod.y1 = 0;
-    _rod.x2 = _rod.y2 = -1;
+    _rodPixel.x1 = _rodPixel.y1 = 0;
+    _rodPixel.x2 = _rodPixel.y2 = -1;
     _format = fetchChoiceParam(kParamFormat);
     _fps = fetchDoubleParam(kParamFPS);
 #if OFX_FFMPEG_DNXHD
@@ -1191,8 +1310,8 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
     _codec = fetchChoiceParam(kParamCodec);
     _codecShortName = fetchStringParam(kParamCodecShortName);
     _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
-    _bitrate = fetchIntParam(kParamBitrate);
-    _bitrateTolerance = fetchIntParam(kParamBitrateTolerance);
+    _bitrate = fetchDoubleParam(kParamBitrate);
+    _bitrateTolerance = fetchDoubleParam(kParamBitrateTolerance);
     _quality = fetchInt2DParam(kParamQuality);
     _gopSize = fetchIntParam(kParamGopSize);
     _bFrames = fetchIntParam(kParamBFrames);
@@ -1205,8 +1324,10 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle)
 
 }
 
-WriteFFmpegPlugin::~WriteFFmpegPlugin(){
-    
+WriteFFmpegPlugin::~WriteFFmpegPlugin()
+{
+    delete [] _scratchBuffer;
+    _scratchBufferSize = 0;
 }
 
 
@@ -1232,8 +1353,8 @@ bool WriteFFmpegPlugin::isRec709Format(const int height) const
 {
     // First check for codecs which require special handling:
     //  * JPEG codecs always use Rec 601.
-    int codec;
-    _codec->getValue(codec);
+    assert(_codec);
+    int codec = _codec->getValue();
     const bool isJpeg = IsJpeg(_codec, codec);
     if (isJpeg) {
         return false;
@@ -1250,7 +1371,7 @@ bool WriteFFmpegPlugin::IsYUV(AVPixelFormat pix_fmt)
 {
     // from swscale_internal.h
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
-    return !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
+    return desc && !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
 }
 
 // Figure out if a codec is definitely YUV based from its shortname.
@@ -1280,8 +1401,24 @@ bool WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName, int codecProfi
             !strcmp(shortName, "qtrle"));
 }
 
-AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic() const
+
+void
+WriteFFmpegPlugin::getColorInfo(AVColorPrimaries *color_primaries,
+                                AVColorTransferCharacteristic *color_trc) const
 {
+    //AVCOL_PRI_RESERVED0   = 0,
+    //AVCOL_PRI_BT709       = 1, ///< also ITU-R BT1361 / IEC 61966-2-4 / SMPTE RP177 Annex B
+    //AVCOL_PRI_UNSPECIFIED = 2,
+    //AVCOL_PRI_RESERVED    = 3,
+    //AVCOL_PRI_BT470M      = 4, ///< also FCC Title 47 Code of Federal Regulations 73.682 (a)(20)
+    //
+    //AVCOL_PRI_BT470BG     = 5, ///< also ITU-R BT601-6 625 / ITU-R BT1358 625 / ITU-R BT1700 625 PAL & SECAM
+    //AVCOL_PRI_SMPTE170M   = 6, ///< also ITU-R BT601-6 525 / ITU-R BT1358 525 / ITU-R BT1700 NTSC
+    //AVCOL_PRI_SMPTE240M   = 7, ///< functionally identical to above
+    //AVCOL_PRI_FILM        = 8, ///< colour filters using Illuminant C
+    //AVCOL_PRI_BT2020      = 9, ///< ITU-R BT2020
+    //AVCOL_PRI_NB,              ///< Not part of ABI
+
     //AVCOL_TRC_RESERVED0    = 0,
     //AVCOL_TRC_BT709        = 1,  ///< also ITU-R BT1361
     //AVCOL_TRC_UNSPECIFIED  = 2,
@@ -1298,62 +1435,80 @@ AVColorTransferCharacteristic WriteFFmpegPlugin::getColorTransferCharacteristic(
     //AVCOL_TRC_IEC61966_2_1 = 13, ///< IEC 61966-2-1 (sRGB or sYCC)
     //AVCOL_TRC_BT2020_10    = 14, ///< ITU-R BT2020 for 10 bit system
     //AVCOL_TRC_BT2020_12    = 15, ///< ITU-R BT2020 for 12 bit system
+
+    *color_primaries = AVCOL_PRI_UNSPECIFIED;
+    *color_trc = AVCOL_TRC_UNSPECIFIED;
+
 # ifdef OFX_IO_USING_OCIO
     std::string selection;
+    assert(_ocio.get());
     _ocio->getOutputColorspace(selection);
     if (selection.find("sRGB") != std::string::npos || // sRGB in nuke-default and blender
         selection.find("srgb") != std::string::npos ||
+        selection == "sRGB Curve" || // natron
+        selection == "sRGB D65" || // blender-cycles
         selection == "sRGB (D60 sim.)" || // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
         selection == "out_srgbd60sim" ||
         selection == "rrt_srgb" || // rrt_srgb in aces
         selection == "srgb8" ) { // srgb8 in spi-vfx
-        return AVCOL_TRC_IEC61966_2_1;///< IEC 61966-2-1 (sRGB or sYCC)
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_IEC61966_2_1;///< IEC 61966-2-1 (sRGB or sYCC)
     } else if (selection.find("Rec709") != std::string::npos || // Rec709 in nuke-default
                selection.find("rec709") != std::string::npos ||
+               selection == "Rec 709 Curve" || // natron
                selection == "nuke_rec709" || // nuke_rec709 in blender
                selection == "Rec.709 - Full" || // aces 1.0.0
                selection == "out_rec709full" || // aces 1.0.0
                selection == "rrt_rec709_full_100nits" || // aces 0.7.1
                selection == "rrt_rec709" || // rrt_rec709 in aces
                selection == "hd10") { // hd10 in spi-anim and spi-vfx
-        return AVCOL_TRC_BT709;///< also ITU-R BT1361
-#  if 0 // float values should be divided by 100 for this to work?
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_BT709;///< also ITU-R BT1361
     } else if (selection.find("KodakLog") != std::string::npos ||
                selection.find("kodaklog") != std::string::npos ||
                selection.find("Cineon") != std::string::npos || // Cineon in nuke-default
                selection.find("cineon") != std::string::npos ||
-               selection == "REDlogFilm" != std::string::npos || // REDlogFilm in aces 1.0.0
-               selection == "adx10" != std::string::npos ||
-               selection == "lg10" != std::string::npos || // lg10 in spi-vfx and blender
-               selection == "lm10" != std::string::npos ||
-               selection == "lgf" != std::string::npos) {
-        return AVCOL_TRC_LOG;///< "Logarithmic transfer characteristic (100:1 range)"
-#  endif
+               selection == "Cineon Log Curve" || // natron
+               selection == "REDlogFilm" || // REDlogFilm in aces 1.0.0
+               selection == "adx10" ||
+               selection == "lg10" || // lg10 in spi-vfx and blender
+               selection == "lm10" ||
+               selection == "lgf") {
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_LOG;///< "Logarithmic transfer characteristic (100:1 range)"
     } else if (selection.find("Gamma2.2") != std::string::npos ||
                selection == "rrt_Gamma2.2" ||
                selection == "vd8" || // vd8, vd10, vd16 in spi-anim and spi-vfx
                selection == "vd10" ||
                selection == "vd16" ||
                selection == "VD16") { // VD16 in blender
-        return AVCOL_TRC_GAMMA22;///< also ITU-R BT470M / ITU-R BT1700 625 PAL & SECAM
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_GAMMA22;///< also ITU-R BT470M / ITU-R BT1700 625 PAL & SECAM
     } else if (selection.find("linear") != std::string::npos ||
                selection.find("Linear") != std::string::npos ||
+               selection == "Linear sRGB / REC.709 D65" || // natron
                selection == "ACES2065-1" || // ACES2065-1 in aces 1.0.0
                selection == "aces" || // aces in aces
                selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
                selection == "ln16") {
-        return AVCOL_TRC_LINEAR;
+        *color_primaries = AVCOL_PRI_BT709;
+        *color_trc = AVCOL_TRC_LINEAR;
+    } else if (selection.find("Rec2020") != std::string::npos ||
+               selection == "Rec 2020 12 Bit Curve" || // natron
+               selection == "aces" || // aces in aces
+               selection == "lnf" || // lnf, ln16 in spi-anim and spi-vfx
+               selection == "ln16") {
+        *color_primaries = AVCOL_PRI_BT2020;
+        *color_trc = AVCOL_TRC_BT2020_12;
     }
 # endif
-
-    return AVCOL_TRC_UNSPECIFIED;
 }
 
 
 AVOutputFormat* WriteFFmpegPlugin::initFormat(bool reportErrors) const
 {
-    int format;
-    _format->getValue(format);
+    assert(_format);
+    int format = _format->getValue();
     AVOutputFormat* fmt = NULL;
 
     if (!format) { // first item is "Default"
@@ -1376,11 +1531,15 @@ AVOutputFormat* WriteFFmpegPlugin::initFormat(bool reportErrors) const
 
 bool WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AVCodec*& outVideoCodec) const
 {
+    if (!fmt) {
+        return false;
+    }
     outCodecId = fmt->video_codec;
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
 
-    int codec;
-    _codec->getValue(codec);
+    assert(_codec);
+    int codec = _codec->getValue();
+    assert(codec >=0 && codec < (int)codecsShortNames.size());
 
     AVCodec* userCodec = avcodec_find_encoder_by_name(getCodecFromShortName(codecsShortNames[codec]));
     if (userCodec) {
@@ -1404,12 +1563,16 @@ bool WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AV
 void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outNukeBufferPixelFormat, AVPixelFormat& outTargetPixelFormat, int& outBitDepth) const
 {
     assert(videoCodec);
-
+    if (!videoCodec) {
+        outNukeBufferPixelFormat = AV_PIX_FMT_NONE;
+        outTargetPixelFormat = AV_PIX_FMT_NONE;
+        outBitDepth = 0;
+        return;
+    }
     const bool hasAlpha = alphaEnabled();
 #if OFX_FFMPEG_PRORES
     if (AV_CODEC_ID_PRORES == videoCodec->id) {
-        int index;
-        _codec->getValue(index);
+        int index = _codec->getValue();
         const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
         assert(index < (int)codecsShortNames.size());
         int profile = getProfileFromShortName(codecsShortNames[index]);
@@ -1418,7 +1581,7 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
             if (hasAlpha) {
                 outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
             } else {
-                outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
+                outTargetPixelFormat = AV_PIX_FMT_YUV444P10;
             }
             outBitDepth = 10;
         } else {
@@ -1430,10 +1593,8 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
 #endif
 #if OFX_FFMPEG_DNXHD
     if (AV_CODEC_ID_DNXHD == videoCodec->id) {
-        int dnxhdCodecProfile_i;
-        _dnxhdCodecProfile->getValue(dnxhdCodecProfile_i);
-        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
-        if (dnxhdCodecProfile == eDNxHDCodecProfile220x /*|| dnxhdCodecProfile == eDNxHDCodecProfile440x*/) {
+        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)_dnxhdCodecProfile->getValue();
+        if (dnxhdCodecProfile == eDNxHDCodecProfile220x || dnxhdCodecProfile == eDNxHDCodecProfile440x) {
             outTargetPixelFormat = AV_PIX_FMT_YUV422P10;
             outBitDepth = 10;
         } else {
@@ -1457,7 +1618,6 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
 
         //call best_pix_fmt using the full list.
         const int hasAlphaInt = hasAlpha ? 1 : 0;
-        int loss     = 0; //Potentially we should error, or at least report if over a certain value?
 
         // gather the formats that have the highest bit depth (avcodec_find_best_pix_fmt_of_list doesn't do the best job: it prefers yuv422p over yuv422p10)
         std::vector<AVPixelFormat> bestFormats;
@@ -1470,7 +1630,43 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         }
         bestFormats.push_back(AV_PIX_FMT_NONE);
 
-        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outNukeBufferPixelFormat, hasAlphaInt, &loss);
+        // FFmpeg bug https://trac.ffmpeg.org/ticket/5223 : do not pass &loss as the last parameter:
+        // there is a bug in avcodec_find_best_pix_fmt_of_list: the loss mask is not the same for all pixel formats
+        // (the loss of first format is used a a mask for the second, etc) so that if the first pixel format
+        // loses resolution, resolution loss is not considered for other formats.
+        // If we pass NULL, the considered loss is ~0 for all formats
+        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outNukeBufferPixelFormat, hasAlphaInt, NULL);
+
+#ifdef DEBUG
+        int loss = av_get_pix_fmt_loss(outTargetPixelFormat, outNukeBufferPixelFormat, hasAlphaInt);
+        // loss is a combination of
+        // FF_LOSS_RESOLUTION
+        // FF_LOSS_DEPTH
+        // FF_LOSS_COLORSPACE
+        // FF_LOSS_ALPHA
+        // FF_LOSS_COLORQUANT
+        // FF_LOSS_CHROMA
+        printf("WriteFFmpeg: pixel format selected: %s->%s\n", av_get_pix_fmt_name(outNukeBufferPixelFormat),
+               av_get_pix_fmt_name(outTargetPixelFormat));
+        if (loss & FF_LOSS_RESOLUTION) {
+            printf("WriteFFmpeg: pixel format loses RESOLUTION\n");
+        }
+        if (loss & FF_LOSS_DEPTH) {
+            printf("WriteFFmpeg: pixel format loses DEPTH\n");
+        }
+        if (loss & FF_LOSS_COLORSPACE) {
+            printf("WriteFFmpeg: pixel format loses COLORSPACE\n");
+        }
+        if (loss & FF_LOSS_ALPHA) {
+            printf("WriteFFmpeg: pixel format loses ALPHA\n");
+        }
+        if (loss & FF_LOSS_COLORQUANT) {
+            printf("WriteFFmpeg: pixel format loses COLORQUANT\n");
+        }
+        if (loss & FF_LOSS_CHROMA) {
+            printf("WriteFFmpeg: pixel format loses CHROMA\n");
+        }
+#endif
 
         if (AV_CODEC_ID_QTRLE == videoCodec->id) {
             if (hasAlphaInt &&
@@ -1521,6 +1717,10 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
 int WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
 {
     switch (pixelFormat) {
+        case AV_PIX_FMT_NONE:
+            return 0;
+            break;
+
         case AV_PIX_FMT_BGRA64LE:
         case AV_PIX_FMT_BGRA64BE:
         case AV_PIX_FMT_RGBA64LE:
@@ -1577,6 +1777,9 @@ int WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
 /*static*/
 AVPixelFormat WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha)
 {
+    if (bitDepth == 0) {
+        return AV_PIX_FMT_NONE;
+    }
     AVPixelFormat pixelFormat;
     if (hasAlpha)
         pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGB32;
@@ -1586,9 +1789,21 @@ AVPixelFormat WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth, 
 }
 
 /*static*/
-void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyParams, bool& outInterGOPParams, bool& outInterBParams)
+void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec,
+                                                bool& outBitrateParam,
+                                                bool& outBitrateTolParam,
+                                                bool& outQualityParams,
+                                                bool& outInterGOPParams,
+                                                bool& outInterBParams)
 {
+    bool outLossyParams = false;
     assert(codec);
+    if (!codec) {
+        outLossyParams = false;
+        outInterGOPParams = false;
+        outInterBParams = false;
+        return;
+    }
     //The flags on the codec can't be trusted to indicate capabilities, so use the props bitmask on the descriptor instead.
     const AVCodecDescriptor* codecDesc = avcodec_descriptor_get(codec->id);
 
@@ -1602,7 +1817,7 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
         outLossyParams = outInterGOPParams = outInterBParams = false;
     }
     //Mpeg4 ms var 3 / AV_CODEC_ID_MSMPEG4V3 doesn't have a descriptor, but needs the params.
-    if (!codecDesc && (codec->id == AV_CODEC_ID_MSMPEG4V3)) {
+    if (codecDesc && (codec->id == AV_CODEC_ID_MSMPEG4V3)) {
         outLossyParams = outInterGOPParams = outInterBParams = true;
     }
     //QTRLE supports differing GOPs, but any b frame settings causes unreadable files.
@@ -1623,6 +1838,70 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
     }
 #endif
     /* && codec->id != AV_CODEC_ID_PRORES*/
+
+    if (!outLossyParams) {
+        outBitrateParam = outBitrateTolParam = outQualityParams = false;
+    } else {
+        std::string codecShortName = codec->name;
+        outBitrateParam = outBitrateTolParam = outQualityParams = true;
+
+        // handle codec-specific cases.
+        // Note that x264 is used in qpmin/qpmax mode
+        if (codecShortName == "mpeg4") {
+            outBitrateParam = outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "libx264") {
+            outBitrateParam = outBitrateTolParam = false;
+        } else if (codecShortName == "libx264rgb") {
+            outBitrateParam = outBitrateTolParam = false;
+        } else if (codecShortName == "libx265") {
+            outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "libopenh264") {
+            outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "cinepak") {
+            outBitrateParam = outBitrateTolParam = false;
+            outInterGOPParams = outInterBParams = false;
+            outQualityParams = false;
+        } else if (codecShortName == "mpeg2video") {
+            outQualityParams = false;
+        } else if (codecShortName == "mpeg1video") {
+            outQualityParams = false;
+        } else if (codecShortName == "flv") {
+            outQualityParams = false;
+        } else if (codecShortName == "svq1") {
+            // svq1 is h263-based
+            outQualityParams = false;
+        } else if (codecShortName == "mjpeg") {
+            outQualityParams = false;
+            outInterGOPParams = outInterBParams = false;
+        } else if (codecShortName == "jpeg2000") {
+            outBitrateParam = outBitrateTolParam = false;
+            outQualityParams = false;
+            outInterGOPParams = outInterBParams = false;
+        } else if (codecShortName == "jpegls") {
+            outBitrateParam = outBitrateTolParam = false;
+            outQualityParams = false;
+            outInterGOPParams = outInterBParams = false;
+        } else if (codecShortName == "libvpx") {
+            outBitrateTolParam = false;
+            outInterBParams = false;
+        } else if (codecShortName == "libvpx-vp9") {
+            // libvpx/VP9 could be lossless??
+            outBitrateTolParam = false;
+            outInterBParams = false;
+        } else if (codecShortName == "libschroedinger") {
+            outBitrateTolParam = false;
+            outQualityParams = false;
+        } else if (codecShortName == "vc2") {
+            // libvpx/VP9 could be lossless??
+            outBitrateTolParam = false;
+            outQualityParams  = false;
+            outInterGOPParams = outInterBParams = false;
+        }
+    }
+
 }
 
 
@@ -1637,7 +1916,15 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec, bool& outLossyPa
 //
 void WriteFFmpegPlugin::configureAudioStream(AVCodec* avCodec, AVStream* avStream)
 {
+    assert(avCodec && avStream);
+    if (!avCodec || !avStream) {
+        return;
+    }
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return;
+    }
     avcodec_get_context_defaults3(avCodecContext, avCodec);
     avCodecContext->sample_fmt = audioReader_->getSampleFormat();
     //avCodecContext->bit_rate    = 64000; // Calculate...
@@ -1656,34 +1943,48 @@ void WriteFFmpegPlugin::configureAudioStream(AVCodec* avCodec, AVStream* avStrea
 //
 void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStream)
 {
+    assert(avCodec && avStream && _formatContext);
+    if (!avCodec || !avStream || !_formatContext) {
+        return;
+    }
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return;
+    }
     avcodec_get_context_defaults3(avCodecContext, avCodec);
+    //avCodecContext->strict_std_compliance = FF_COMPLIANCE_STRICT;
 
     //Only update the relevant context variables where the user is able to set them.
     //This deals with cases where values are left on an old value when knob disabled.
-    bool lossyParams    = false;
-    bool interGOPParams = false;
-    bool interBParams   = false;
-    if (avCodec) GetCodecSupportedParams(avCodec, lossyParams, interGOPParams, interBParams);
+    bool bitrateParam    = false;
+    bool bitrateTolParam = false;
+    bool qualityParams   = false;
+    bool interGOPParams  = false;
+    bool interBParams    = false;
+    if (avCodec) GetCodecSupportedParams(avCodec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
 
-    if (lossyParams) {
-        int bitrate;
-        _bitrate->getValue(bitrate);
-        int bitrateTolerance;
-        _bitrateTolerance->getValue(bitrateTolerance);
+    assert(_bitrate && _bitrateTolerance && _quality);
+    if (bitrateParam) {
+        double bitrate = _bitrate->getValue();
+        avCodecContext->bit_rate = (int)(bitrate*1000000);
+    }
+    if (bitrateTolParam) {
+        double bitrateTolerance = _bitrateTolerance->getValue();
+        avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance*1000000);
+    }
+    if (qualityParams) {
         int qMin, qMax;
         _quality->getValue(qMin, qMax);
 
-        avCodecContext->bit_rate = bitrate;
-        avCodecContext->bit_rate_tolerance = bitrateTolerance;
         avCodecContext->qmin = qMin;
         avCodecContext->qmax = qMax;
     }
 
-    avCodecContext->width = (_rod.x2 - _rod.x1);
-    avCodecContext->height = (_rod.y2 - _rod.y1);
+    avCodecContext->width = (_rodPixel.x2 - _rodPixel.x1);
+    avCodecContext->height = (_rodPixel.y2 - _rodPixel.y1);
 
-    avCodecContext->color_trc = getColorTransferCharacteristic();
+    getColorInfo(&avCodecContext->color_primaries, &avCodecContext->color_trc);
 
     av_dict_set(&_formatContext->metadata, kMetaKeyApplication, kPluginIdentifier, 0);
 
@@ -1695,8 +1996,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 
     av_dict_set(&_formatContext->metadata, kMetaKeyWriter, kMetaValueWriter64, 0);
 
-    int codec = 0;
-    _codec->getValue(codec);
+    int codec = _codec->getValue();
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     int dnxhdCodecProfile_i = 0;
 #if OFX_FFMPEG_DNXHD
@@ -1704,11 +2004,10 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 #endif
     //Write the NCLC atom in the case the underlying storage is YUV.
     if(IsYUVFromShortName(codecsShortNames[codec].c_str(), dnxhdCodecProfile_i)) {
-        bool writeNCLC = false;
-        _writeNCLC->getValue(writeNCLC);
+        bool writeNCLC = _writeNCLC->getValue();
 
         // Primaries are always 709.
-        avCodecContext->color_primaries = AVCOL_PRI_BT709;
+        //avCodecContext->color_primaries = AVCOL_PRI_BT709;
         if (writeNCLC)
             av_dict_set(&avStream->metadata, kNCLCPrimariesKey, "1", 0);
 
@@ -1720,10 +2019,16 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
 
         // Matrix is based on that used when writing (a combo of height and legacy codec in general).
         if (isRec709Format(avCodecContext->height)) {
-            avCodecContext->colorspace = AVCOL_SPC_BT709;
+            if (avCodecContext->color_primaries == AVCOL_PRI_BT2020) {
+                avCodecContext->colorspace = AVCOL_SPC_BT2020_NCL;
+            } else {
+                avCodecContext->colorspace = AVCOL_SPC_BT709;
+            }
             if (writeNCLC)
                 av_dict_set(&avStream->metadata, kNCLCMatrixKey, "1", 0);
         } else {
+            avCodecContext->color_primaries = AVCOL_PRI_BT470BG;
+            avCodecContext->color_trc = AVCOL_TRC_GAMMA28;
             avCodecContext->colorspace = AVCOL_SPC_BT470BG;
             if (writeNCLC)
                 av_dict_set(&avStream->metadata, kNCLCMatrixKey, "6", 0);
@@ -1768,8 +2073,7 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         avCodecContext->sample_aspect_ratio.den = 11;
     }
 
-    double fps = 0.;
-    _fps->getValue(fps);
+    double fps = _fps->getValue();
     // timebase: This is the fundamental unit of time (in seconds) in terms
     // of which frame timestamps are represented. For fixed-fps content,
     // timebase should be 1/framerate and timestamp increments should be
@@ -1786,9 +2090,9 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     //
     // The code was this:
     //streamVideo_->codec->time_base = av_d2q(1.0 / fps_, 100);
-    const float CONVERSION_FACTOR = 1000.0f;
-    avCodecContext->time_base.num = (int)CONVERSION_FACTOR;
-    avCodecContext->time_base.den = (int)(fps * CONVERSION_FACTOR);
+    //const float CONVERSION_FACTOR = 1000.0f;
+    //avCodecContext->time_base.num = (int)CONVERSION_FACTOR;
+    //avCodecContext->time_base.den = (int)(fps * CONVERSION_FACTOR);
 
     // Trap fractional frame rates so that they can be specified correctly
     // in a QuickTime movie. The rational number representation of fractional
@@ -1798,24 +2102,24 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     //          frame rate is 24/1.001, 30/1.001, etc. so the frame rate
     //          is corrected here.
     int frameRate = (0.0 < fps) ? (int)fps : 0;
-    if ((23 == frameRate) || (29 == frameRate) || (59 == frameRate)) {
-        avCodecContext->time_base.num = 1001;
-        avCodecContext->time_base.den = (frameRate + 1) * 1000;
+    AVRational frame_rate;
+    if ((23.969 < fps && fps < 23.981) || (29.969 < fps && 29.981 < fps) || (59.939 < fps && fps < 59.941)) {
+        frame_rate.num = std::ceil(fps) * 1000;
+        frame_rate.den = 1001;
     } else {
-        avCodecContext->time_base.num = 100;
-        avCodecContext->time_base.den = frameRate * 100;
+        // integers are represented exactly as float, so most of the time the denominator will be 1
+        frame_rate = av_d2q(fps, INT_MAX);
     }
+    avCodecContext->time_base = av_inv_q(frame_rate);;
     // [mov @ 0x1042d7600] Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead.
-    avStream->time_base.num = 100;
-    avStream->time_base.den = frameRate * 100;
+    // copy timebase while removing common factors
+    avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational){0, 1});
 
-    int gopSize = 0;
-    _gopSize->getValue(gopSize);
+    int gopSize = _gopSize->getValue();
     if (interGOPParams)
         avCodecContext->gop_size = gopSize;
 
-    int bFrames;
-    _bFrames->getValue(bFrames);
+    int bFrames = _bFrames->getValue();
     // NOTE: in new ffmpeg, bframes don't seem to work correctly - ffmpeg crashes...
     if (interBParams && bFrames) {
         avCodecContext->max_b_frames = bFrames;
@@ -1863,115 +2167,124 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
         int mbs = 0;
         DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
         switch (dnxhdCodecProfile) {
+            case eDNxHDCodecProfile440x:
+                // 880x in 1080p/60 or 1080p/59.94, 730x in 1080p/50, 440x in 1080p/30, 390x in 1080p/25, 350x in 1080p/24
+                if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 880 : /*0*/220;
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 730 : /*0*/220;
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 440 : /*0*/220;
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 390 : /*0*/185;
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 350 : /*0*/145;
+                    }
+                }
+                break;
             case eDNxHDCodecProfile220x:
             case eDNxHDCodecProfile220:
                 // 440x in 1080p/60 or 1080p/59.94, 365x in 1080p/50, 220x in 1080i/60 or 1080i/59.94, 185x in 1080i/50 or 1080p/25, 175x in 1080p/24 or 1080p/23.976, 220x in 1080p/29.97, 220x in 720p/59.94, 175x in 720p/50
                 if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 440 : 220;
-                            break;
-                        case 50:
-                            mbs = progressive ? 365 : 185;
-                            break;
-                        case 29:
-                            mbs = progressive ? 220 : 0;
-                            break;
-                        case 25:
-                            mbs = progressive ? 185 : 0;
-                            break;
-                        case 24:
-                        case 23:
-                            mbs = progressive ? 175 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 440 : 220;
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 365 : 185;
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 220 : /*0*/145;
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 185 : /*0*/120;
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 175 : /*0*/120;
                     }
                 } else {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 220 : 0;
-                            break;
-                        case 50:
-                            mbs = progressive ? 175 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 220 : 0; // 720i unsupported in ffmpeg
+                    } else {
+                        //case 50:
+                        mbs = progressive ? 175 : 0; // 720i unsupported in ffmpeg
                     }
                 }
                 break;
             case eDNxHDCodecProfile145:
                 // 290 in 1080p/60 or 1080p/59.94, 240 in 1080p/50, 145 in 1080i/60 or 1080i/59.94, 120 in 1080i/50 or 1080p/25, 115 in 1080p/24 or 1080p/23.976, 145 in 1080p/29.97, 145 in 720p/59.94, 115 in 720p/50
                 if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 290 : 145;
-                            break;
-                        case 50:
-                            mbs = progressive ? 240 : 120;
-                            break;
-                        case 29:
-                            mbs = progressive ? 145 : 0;
-                            break;
-                        case 25:
-                            mbs = progressive ? 120 : 0;
-                            break;
-                        case 24:
-                        case 23:
-                            mbs = progressive ? 115 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 290 : 145;
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 240 : 120;
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 145 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = 120/*progressive ? 120 : 0*/; // 120 is the lowest possible bitrate for 1920x1080i
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 115 : /*0*/120; // 120 is the lowest possible bitrate for 1920x1080i
                     }
                 } else {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 145 : 0;
-                            break;
-                        case 50:
-                            mbs = progressive ? 115 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 145 : 0; // 720i unsupported
+                    } else {
+                        //case 50:
+                        mbs = progressive ? 115 : 0; // 720i unsupported
                     }
                 }
                 break;
             case eDNxHDCodecProfile36:
                 // 90 in 1080p/60 or 1080p/59.94, 75 in 1080p/50, 45 in 1080i/60 or 1080i/59.94, 36 in 1080i/50 or 1080p/25, 36 in 1080p/24 or 1080p/23.976, 45 in 1080p/29.97, 100 in 720p/59.94, 85 in 720p/50
                 if (avCodecContext->width == 1920 && avCodecContext->height == 1080) {
-                    switch (frameRate) {
-                        case 60:
-                        case 59:
-                            mbs = progressive ? 90 : 45;
-                            break;
-                        case 50:
-                            mbs = progressive ? 75 : 36;
-                            break;
-                        case 29:
-                            mbs = progressive ? 45 : 0;
-                            break;
-                        case 25:
-                            mbs = progressive ? 36 : 0;
-                            break;
-                        case 24:
-                        case 23:
-                            mbs = progressive ? 36 : 0;
-                            break;
-                        default:
-                            break;
+                    if (frameRate > 50) {
+                        //case 60:
+                        //case 59:
+                        mbs = progressive ? 90 : /*45*/120; // 45 is not unsupported by ffmpeg for 1920x1080i
+                    } else if (frameRate > 29) {
+                        //case 50:
+                        mbs = progressive ? 75 : /*36*/120; // 36 is not unsupported by ffmpeg 1920x1080i
+                    } else if (frameRate > 25) {
+                        //case 29:
+                        mbs = progressive ? 45 : /*0*/120;
+                    } else if (frameRate > 24) {
+                        //case 25:
+                        mbs = progressive ? 36 : /*0*/120;
+                    } else {
+                        //case 24:
+                        //case 23:
+                        mbs = progressive ? 36 : /*0*/120;
+
                     }
                 } else {
                     switch (frameRate) {
                         case 60:
                         case 59:
-                            mbs = progressive ? 100 : 0;
+                            mbs = progressive ? 100 : 0; // 720i unsupported in ffmpeg
                             break;
                         case 50:
-                            mbs = progressive ? 85 : 0;
+                            mbs = progressive ? 85 : 0; // 720i unsupported in ffmpeg
                             break;
                         default:
                             break;
@@ -1995,16 +2308,14 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     av_dict_set(&_formatContext->metadata, kMetaKeyYCbCrMatrix, ycbcrmetavalue, 0);
 
 #if OFX_FFMPEG_MBDECISION
-    int mbDecision;
-    _mbDecision->getValue(mbDecision);
+    int mbDecision = _mbDecision->getValue();
     avCodecContext->mb_decision = mbDecision;
 #else
     avCodecContext->mb_decision = FF_MB_DECISION_SIMPLE;
 #endif
 
 # if OFX_FFMPEG_TIMECODE
-    bool writeTimecode;
-    _writeTimecode->getValue(writeTimecode);
+    bool writeTimecode = _writeTimecode->getValue(writeTimecode);
 
     // Create a timecode stream for QuickTime movies. (There was no
     // requirement at the time of writing for any other file format.
@@ -2103,18 +2414,34 @@ AVStream* WriteFFmpegPlugin::addStream(AVFormatContext* avFormatContext, enum AV
 // @return 0 if successful,
 //         <0 otherwise.
 //
-int WriteFFmpegPlugin::openCodec(AVFormatContext* /*avFormatContext*/, AVCodec* avCodec, AVStream* avStream)
+int WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext, AVCodec* avCodec, AVStream* avStream)
 {
+    assert(avFormatContext && avCodec && avStream);
+    if (!avFormatContext || !avCodec || !avStream) {
+        return -1;
+    }
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return -1;
+    }
     if (AVMEDIA_TYPE_AUDIO == avCodecContext->codec_type) {
         // Audio codecs.
-        if (avcodec_open2(avCodecContext, avCodec, NULL) < 0) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "could not open audio codec");
+        int error = avcodec_open2(avCodecContext, avCodec, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror(error, szError, sizeof(szError));
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Could not open audio codec: ") + szError);
             return -1;
         }
     } else if (AVMEDIA_TYPE_VIDEO == avCodecContext->codec_type) {
-        if (avcodec_open2(avCodecContext, avCodec, NULL) < 0) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "unable to open video codec");
+        int error = avcodec_open2(avCodecContext, avCodec, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror(error, szError, sizeof(szError));
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Could not open video codec: ") + szError);
             return -4;
         }
     } else if (AVMEDIA_TYPE_DATA == avCodecContext->codec_type) {
@@ -2186,8 +2513,8 @@ int WriteFFmpegPlugin::writeAudio(AVFormatContext* avFormatContext, AVStream* av
 
         if (ret < 0) {
             // Report the error.
-            char szError[1024];
-            av_strerror(ret, szError, 1024);
+            char szError[1024] = { 0 };
+            av_strerror(ret, szError, sizeof(szError));
             iop->error(szError);
         }
     }
@@ -2199,6 +2526,10 @@ int WriteFFmpegPlugin::writeAudio(AVFormatContext* avFormatContext, AVStream* av
 // the following was taken from libswscale/utils.c:
 static int handle_jpeg(enum AVPixelFormat *format)
 {
+    assert(format);
+    if (!format) {
+        return 0;
+    }
     switch (*format) {
         case AV_PIX_FMT_YUVJ420P:
             *format = AV_PIX_FMT_YUV420P;
@@ -2232,16 +2563,18 @@ static int handle_jpeg(enum AVPixelFormat *format)
 //
 int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext)
 {
+    if (!avPicture || !avFrame || !avCodecContext) {
+        return -1;
+    }
     int ret = 0;
 
-    int width = (_rod.x2 - _rod.x1);
-    int height = (_rod.y2 - _rod.y1);
+    int width = (_rodPixel.x2 - _rodPixel.x1);
+    int height = (_rodPixel.y2 - _rodPixel.y1);
 
     int dstRange = IsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
     dstRange |= handle_jpeg(&dstPixelFormat); // may modify dstPixelFormat
     if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
-        int encodeVideoRange;
-        _encodeVideoRange->getValue(encodeVideoRange);
+        int encodeVideoRange = _encodeVideoRange->getValue();
         dstRange = !(encodeVideoRange);
     }
 
@@ -2249,7 +2582,9 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
                                                   width, height, srcPixelFormat, // from
                                                   avCodecContext->width, avCodecContext->height, dstPixelFormat,// to
                                                   SWS_BICUBIC, NULL, NULL, NULL);
-
+    if (!convertCtx) {
+        return -1;
+    }
     // Set up the sws (SoftWareScaler) to convert colourspaces correctly, in the sws_scale function below
     //const int colorspace = (width < 1000) ? SWS_CS_ITU601 : SWS_CS_ITU709;
     // it's the output size that counts (e.g. for DNxHD), and we prefer using height
@@ -2281,8 +2616,7 @@ int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame
 bool WriteFFmpegPlugin::alphaEnabled() const
 {
     // is the writer configured to write alpha channel to file ?
-    bool enableAlpha;
-    _enableAlpha->getValue(enableAlpha);
+    bool enableAlpha = _enableAlpha->getValue();
     return enableAlpha && _inputClip->getPixelComponents() == ePixelComponentRGBA;
 }
 
@@ -2309,8 +2643,9 @@ int WriteFFmpegPlugin::numberOfDestChannels() const
 //         <0 otherwise for any failure to convert the pixel format, encode the
 //         video or write to the file.
 //
-int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, const float *pixelData, const OfxRectI* bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, double time, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps, int dstNComps, int rowBytes)
 {
+    assert(dstNComps == 3 || dstNComps == 4 || dstNComps == 0);
     // FIXME enum needed for error codes.
     if (!_isOpen) {
         return -5; //writer is not open!
@@ -2318,23 +2653,32 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     if (!avStream) {
         return -6;
     }
+    assert(avFormatContext);
+    if (!avFormatContext || (!flush && (!pixelData || !bounds))) {
+        return -7;
+    }
     int ret = 0;
     // First convert from Nuke floating point RGB to either 16-bit or 8-bit RGB.
     // Create a buffer to hold either  16-bit or 8-bit RGB.
     AVCodecContext* avCodecContext = avStream->codec;
+    assert(avCodecContext);
+    if (!avCodecContext) {
+        return -8;
+    }
     // Create another buffer to convert from either 16-bit or 8-bit RGB
     // to the input pixel format required by the encoder.
     AVPixelFormat pixelFormatCodec = avCodecContext->pix_fmt;
-    int width = _rod.x2-_rod.x1;
-    int height = _rod.y2-_rod.y1;
-    int picSize = avpicture_get_size(pixelFormatCodec, width, height);
-
-    AVPicture avPicture = {{0}};
+    int width = _rodPixel.x2-_rodPixel.x1;
+    int height = _rodPixel.y2-_rodPixel.y1;
+    
+    AVPicture avPicture = {{0}, {0}};
     AVFrame* avFrame = NULL;
 
     if (!flush) {
-
         assert(pixelData && bounds);
+        assert(bounds->x1 == _rodPixel.x1 && bounds->x2 == _rodPixel.x2 &&
+               bounds->y1 == _rodPixel.y1 && bounds->y2 == _rodPixel.y2);
+
         const bool hasAlpha = alphaEnabled();
 
         AVPixelFormat pixelFormatNuke;
@@ -2347,23 +2691,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         if (!ret) {
 
             // Convert floating point values to unsigned values.
-            int numChannels = 0;
-            switch(pixelComponents) {
-                case OFX::ePixelComponentRGBA:
-                    numChannels = 4;
-                    break;
-                case OFX::ePixelComponentRGB:
-                    numChannels = 3;
-                    break;
-                    //case OFX::ePixelComponentAlpha:
-                    //    numChannels = 1;
-                    //    break;
-                default:
-                    assert(false);
-                    OFX::throwSuiteStatusException(kOfxStatErrFormat);
-                    return -1;
-            }
-            assert(numChannels);
             assert(rowBytes);
             const int numDestChannels = hasAlpha ? 4 : 3;
 
@@ -2378,13 +2705,13 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                     unsigned short* dst_pixels = reinterpret_cast<unsigned short*>(avPicture.data[0]) + y * (avPicture.linesize[0] / 2);
 
                     for (int x = 0; x < width; ++x) {
-                        int srcCol = x * numChannels;
+                        int srcCol = x * pixelDataNComps;
                         int dstCol = x * numDestChannels;
                         dst_pixels[dstCol + 0] = floatToInt<65536>(src_pixels[srcCol + 0]);
                         dst_pixels[dstCol + 1] = floatToInt<65536>(src_pixels[srcCol + 1]);
                         dst_pixels[dstCol + 2] = floatToInt<65536>(src_pixels[srcCol + 2]);
                         if (hasAlpha) {
-                            dst_pixels[dstCol + 3] = floatToInt<65536>((numChannels == 4) ? src_pixels[srcCol + 3] : 1.);
+                            dst_pixels[dstCol + 3] = floatToInt<65536>((pixelDataNComps == 4) ? src_pixels[srcCol + 3] : 1.);
                         }
                     }
                } else {
@@ -2393,20 +2720,23 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
                     unsigned char* dst_pixels = avPicture.data[0] + y * avPicture.linesize[0];
 
                     for (int x = 0; x < width; ++x) {
-                        int srcCol = x * numChannels;
+                        int srcCol = x * pixelDataNComps;
                         int dstCol = x * numDestChannels;
                         dst_pixels[dstCol + 0] = floatToInt<256>(src_pixels[srcCol + 0]);
                         dst_pixels[dstCol + 1] = floatToInt<256>(src_pixels[srcCol + 1]);
                         dst_pixels[dstCol + 2] = floatToInt<256>(src_pixels[srcCol + 2]);
                         if (hasAlpha) {
-                            dst_pixels[dstCol + 3] = floatToInt<256>((numChannels == 4) ? src_pixels[srcCol + 3] : 1.);
+                            dst_pixels[dstCol + 3] = floatToInt<256>((pixelDataNComps == 4) ? src_pixels[srcCol + 3] : 1.);
                         }
                    }
                 }
             }
 
             avFrame = av_frame_alloc(); // Create an AVFrame structure and initialise to zero.
-            {
+            assert(avFrame);
+            if (!avFrame) {
+                ret = -1;
+            } else {
                 // For any codec an
                 // intermediate buffer is allocated for the
                 // colour space conversion.
@@ -2429,7 +2759,9 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     if (!ret) {
         bool error = false;
         if (avFrame) {
-            avFrame->pts = avCodecContext->frame_number; // ... or libx264 encoding says "non-strictly-monotonic PTS" and encodes the wrong fps
+            //avFrame->pts = AV_NOPTS_VALUE; // let ffmpeg guess the pts
+            avFrame->pts = ((int)time - _firstFrameToEncode);
+            av_frame_set_pkt_duration(avFrame, 1);
         }
         if ((avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0) {
             AVPacket pkt;
@@ -2438,57 +2770,74 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             pkt.stream_index = avStream->index;
             pkt.data = avFrame ? avFrame->data[0] : NULL;
             pkt.size = sizeof(AVPicture);
+            pkt.pts  = pkt.dts  = time - _firstFrameToEncode;
             const int writeResult = av_write_frame(avFormatContext, &pkt);
             const bool writeSucceeded = (writeResult == 0);
             if (!writeSucceeded) {
                 error = true;
             }
         } else {
-            // Allocate a contiguous block of memory. This is to scope the
+            // Use a contiguous block of memory. This is to scope the
             // buffer allocation and ensure that memory is released even
             // if errors or exceptions occur. A std::vector will allocate
             // contiguous memory.
-            std::vector<uint8_t> outbuf(picSize);
             
             AVPacket pkt;
             av_init_packet(&pkt);
             // NOTE: If |flush| is true, then avFrame will be NULL at this point as
             //       alloc will not have been called.
-            const int bytesEncoded = encodeVideo(avCodecContext, outbuf.data(), picSize, avFrame);
-            const bool encodeSucceeded = (bytesEncoded > 0);
-            if (encodeSucceeded) {
-                if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
-                    pkt.pts = av_rescale_q(avCodecContext->coded_frame->pts, avCodecContext->time_base, avStream->time_base);
-                if (avCodecContext->coded_frame && avCodecContext->coded_frame->key_frame)
-                    pkt.flags |= AV_PKT_FLAG_KEY;
-                
-                pkt.stream_index = avStream->index;
-                pkt.data = &outbuf[0];
-                pkt.size = bytesEncoded;
-                
-                const int writeResult = av_write_frame(avFormatContext, &pkt);
-                const bool writeSucceeded = (writeResult == 0);
-                if (!writeSucceeded) {
-                    // Report the error.
-                    char szError[1024];
-                    av_strerror(bytesEncoded, szError, 1024);
-                    setPersistentMessage(OFX::Message::eMessageError, "", szError);
-                    error = true;
-                }
+            pkt.stream_index = avStream->index;
+            pkt.data = &_scratchBuffer[0];
+            pkt.size = _scratchBufferSize;
+            // Encode a frame of video.
+            //
+            // Note that the uncompressed source frame to be encoded must be in an
+            // appropriate pixel format for the encoder prior to calling this method as
+            // this method does NOT perform an pixel format conversion, e.g. through using
+            // Sws_xxx.
+            int got_packet = 0;
+            int encodeResult = avcodec_encode_video2(avCodecContext, &pkt, avFrame, &got_packet);
+            // coded_frame is deprecated
+            // see https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-July/092046.html
+            //if (avCodecContext->coded_frame && !ret && got_packet) {
+            //    avCodecContext->coded_frame->pts = pkt.pts;
+            //    avCodecContext->coded_frame->key_frame = !!(pkt.flags & AV_PKT_FLAG_KEY);
+            //}
+            if (encodeResult < 0) {
+                // Report the error.
+                char szError[1024] = { 0 };
+                av_strerror(encodeResult, szError, sizeof(szError));
+                setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot encode frame: ") + szError);
+                error = true;
             } else {
-                if (bytesEncoded < 0) {
-                    // Report the error.
-                    char szError[1024];
-                    av_strerror(bytesEncoded, szError, 1024);
-                    setPersistentMessage(OFX::Message::eMessageError, "", szError);
-                    error = true;
-                } else if (flush) {
+                if (flush && !got_packet) {
                     // Flag that the flush is complete.
                     ret = -10;
                 }
+                if (got_packet) {
+                    // codecs with AV_CODEC_CAP_DELAY (e.g. png with multithreading) may not return a packet although encoding was successful
+                    // coded_frame is deprecated
+                    // see https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-July/092046.html
+                    //if (avCodecContext->coded_frame && (avCodecContext->coded_frame->pts != AV_NOPTS_VALUE))
+                    //    //pkt.pts = av_rescale_q(avCodecContext->coded_frame->pts, avCodecContext->time_base, avStream->time_base);
+                    //    pkt.pts = avCodecContext->coded_frame->pts;
+                    //    av_packet_rescale_ts(&pkt, avCodecContext->time_base, avStream->time_base);
+                    //if (avCodecContext->coded_frame && avCodecContext->coded_frame->key_frame)
+                    //    pkt.flags |= AV_PKT_FLAG_KEY;
+                    av_packet_rescale_ts(&pkt, avCodecContext->time_base, avStream->time_base);
+
+                    const int writeResult = av_write_frame(avFormatContext, &pkt);
+                    const bool writeSucceeded = (writeResult == 0);
+                    if (!writeSucceeded) {
+                        // Report the error.
+                        char szError[1024] = { 0 };
+                        av_strerror(writeResult, szError, sizeof(szError));
+                        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot write frame: ") + szError);
+                        error = true;
+                    }
+                }
             }
         }
-        
         if (error) {
             av_log(avCodecContext, AV_LOG_ERROR, "error writing frame to file\n");
             ret = -2;
@@ -2511,50 +2860,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// encodeVideo
-// Encode a frame of video.
-//
-// Note that the uncompressed source frame to be encoded must be in an
-// appropriate pixel format for the encoder prior to calling this method as
-// this method does NOT perform an pixel format conversion, e.g. through using
-// Sws_xxx.
-//
-// @param avCodecContext A reference to an AVCodecContext of a video stream.
-// @param out A reference to a buffer to receive the encoded frame.
-// @param outSize The size in bytes of |out|.
-// @param avFrame A constant reference to an AVFrame that contains the source data
-//                to be encoded. This must be in an appropriate pixel format for
-//                the encoder.
-//
-// @return <0 for any failure to encode the frame, otherwise the size in byte
-//         of the encoded frame.
-//
-int WriteFFmpegPlugin::encodeVideo(AVCodecContext* avCodecContext, uint8_t* out, int outSize, const AVFrame* avFrame)
-{
-    int ret, got_packet = 0;
-
-    if (outSize < FF_MIN_BUFFER_SIZE) {
-        av_log(avCodecContext, AV_LOG_ERROR, "buffer smaller than minimum size\n");
-        return -1;
-    }
-
-    AVPacket pkt;
-    av_init_packet(&pkt);
-
-    pkt.data = out;
-    pkt.size = outSize;
-
-    {
-        ret = avcodec_encode_video2(avCodecContext, &pkt, avFrame, &got_packet);
-        if (!ret && got_packet && avCodecContext->coded_frame) {
-            avCodecContext->coded_frame->pts = pkt.pts;
-            avCodecContext->coded_frame->key_frame = !!(pkt.flags & AV_PKT_FLAG_KEY);
-        }
-    }
-    
-    return ret ? ret : pkt.size;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // writeToFile
@@ -2570,7 +2875,7 @@ int WriteFFmpegPlugin::encodeVideo(AVCodecContext* avCodecContext, uint8_t* out,
 // @return 0 if successful.
 //         <0 otherwise.
 //
-int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finalise, const float *pixelData, const OfxRectI* bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finalise, double time, const float *pixelData, const OfxRectI* bounds, int pixelDataNComps, int dstNComps, int rowBytes)
 {
 #if OFX_FFMPEG_AUDIO
     // Write interleaved audio and video if an audio file has
@@ -2599,7 +2904,14 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
         }
     }
 #endif
-    return writeVideo(avFormatContext, _streamVideo, finalise, pixelData, bounds, pixelComponents, rowBytes);
+    if (!_streamVideo) {
+        return -6;
+    }
+    assert(avFormatContext);
+    if (!avFormatContext || (!finalise && (!pixelData || !bounds))) {
+        return -7;
+    }
+    return writeVideo(avFormatContext, _streamVideo, finalise, time, pixelData, bounds, pixelDataNComps, dstNComps, rowBytes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2611,7 +2923,8 @@ int WriteFFmpegPlugin::writeToFile(AVFormatContext* avFormatContext, bool finali
 //         false otherwise.
 //
 void WriteFFmpegPlugin::beginEncode(const std::string& filename,
-                                    const OfxRectI& rod,
+                                    const OfxRectI& rodPixel,
+                                    float pixelAspectRatio,
                                     const OFX::BeginSequenceRenderArguments& args)
 {
     if (!args.sequentialRenderStatus || _formatContext || _streamVideo) {
@@ -2635,7 +2948,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         //////////////////// INTIALIZE FORMAT       ////////////////////
     
     _filename = filename;
-    _rod = rod;
+    _rodPixel = rodPixel;
+    _pixelAspectRatio = pixelAspectRatio;
 
     AVOutputFormat* avOutputFormat = initFormat(/* reportErrors = */ true);
     if (!avOutputFormat) {
@@ -2652,6 +2966,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         _formatContext = avformat_alloc_output_context(NULL, avOutputFormat, filename.c_str());
 #       else
         _formatContext = avformat_alloc_context();
+        assert(_formatContext);
         _formatContext->oformat = fmt;
 #       endif
 #     endif
@@ -2696,6 +3011,16 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
                 // Some formats want stream headers to be separate.
                 if (formatContext_->oformat->flags & AVFMT_GLOBALHEADER)
                     avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
+                // Activate multithreaded decoding. This must be done before opening the codec; see
+                // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+#              ifdef AV_CODEC_CAP_AUTO_THREADS
+                if (avCodecContext->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
+                    avCodecContext->thread_count = 0;
+                } else
+#              endif
+                {
+                    avCodecContext->thread_count = std::min(OFX::MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS);
+                }
 
                 if (openCodec(formatContext_, audioCodec, streamAudio_) < 0) {
                     freeFormat();
@@ -2733,10 +3058,10 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     }
 
     // Test if the container recognises the codec type.
-    bool isCodecSupportedInContainer = (avformat_query_codec(avOutputFormat, codecId, FF_COMPLIANCE_NORMAL) == 1);
+    bool isCodecSupportedInContainer = codecCompatible(avOutputFormat, codecId);
     // mov seems to be able to cope with anything, which the above function doesn't seem to think is the case (even with FF_COMPLIANCE_EXPERIMENTAL)
     // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
-    isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0);
+    //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
     if (!isCodecSupportedInContainer) {
         setPersistentMessage(OFX::Message::eMessageError, "","the selected codec is not supported in this container.");
         freeFormat();
@@ -2759,13 +3084,21 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 
         AVCodecContext* avCodecContext = _streamVideo->codec;
         avCodecContext->pix_fmt = targetPixelFormat;
+        
+        std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1);
+        if (_scratchBufferSize < picSize) {
+            delete [] _scratchBuffer;
+            _scratchBuffer = new uint8_t[picSize];
+            _scratchBufferSize = picSize;
+        }
+        
         avCodecContext->bits_per_raw_sample = outBitDepth;
+        avCodecContext->sample_aspect_ratio = av_d2q(pixelAspectRatio, 255);
 
         // Now that the stream has been created, and the pixel format
         // is known, for DNxHD, set the YUV range.
         if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
-            int encodeVideoRange;
-            _encodeVideoRange->getValue(encodeVideoRange);
+            int encodeVideoRange = _encodeVideoRange->getValue();
             // Set the metadata for the YUV range. This modifies the appropriate
             // field in the 'ACLR' atom in the video sample description.
             // Set 'full range' = 1 or 'legal range' = 2.
@@ -2788,8 +3121,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
             avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
 #if OFX_FFMPEG_PRORES
         if (codecId == AV_CODEC_ID_PRORES) {
-            int index;
-            _codec->getValue(index);
+            int index = _codec->getValue();
             const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
             assert(index < (int)codecsShortNames.size());
             //avCodecContext->profile = getProfileFromShortName(codecsShortNames[index]);
@@ -2798,6 +3130,25 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
             av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
         }
 #endif
+        
+        // Activate multithreaded decoding. This must be done before opening the codec; see
+        // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
+#     ifdef AV_CODEC_CAP_AUTO_THREADS
+        if (avCodecContext->codec->capabilities & AV_CODEC_CAP_AUTO_THREADS) {
+            avCodecContext->thread_count = 0;
+        } else
+#     endif
+        {
+            avCodecContext->thread_count = OFX::MultiThread::getNumCPUs();
+        }
+#     ifdef AV_CODEC_CAP_SLICE_THREADS
+        if (avCodecContext->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) {
+            // multiple threads are used to decode a single frame. Reduces delay
+            // also, mjpeg prefers this, see libavfocodec/frame_thread_encoder.c:ff_frame_thread_encoder_init()
+            avCodecContext->thread_type = FF_THREAD_SLICE;
+        }
+#     endif
+
 
 # if OFX_FFMPEG_PRINT_CODECS
         std::cout << "Format: " << _formatContext->oformat->name << " Codec: " << videoCodec->name << " nukeBufferPixelFormat: " << av_get_pix_fmt_name(nukeBufferPixelFormat) << " targetPixelFormat: " << av_get_pix_fmt_name(targetPixelFormat) << " outBitDepth: " << outBitDepth << " Profile: " << _streamVideo->codec->profile << std::endl;
@@ -2809,15 +3160,28 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         }
 
         if (!(avOutputFormat->flags & AVFMT_NOFILE)) {
-            if (avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE) < 0) {
-                setPersistentMessage(OFX::Message::eMessageError, "","unable to open file");
+            int error = avio_open(&_formatContext->pb, filename.c_str(), AVIO_FLAG_WRITE);
+            if (error < 0) {
+                // Report the error.
+                char szError[1024] = { 0 };
+                av_strerror(error, szError, sizeof(szError));
+                setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unable to open file: ") + szError);
                 freeFormat();
                 OFX::throwSuiteStatusException(kOfxStatFailed);
                 return;
             }
         }
         
-        avformat_write_header(_formatContext, NULL);
+        int error = avformat_write_header(_formatContext, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror(error, szError, sizeof(szError));
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unable to write file header: ") + szError);
+            freeFormat();
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
     }
 
     // Special behaviour.
@@ -2840,13 +3204,31 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     if (tag)
         av_dict_set(&_formatContext->metadata, "encoder", "", 0); // Set the 'encoder' key to null.
 
-    ///Flag that we didn't encode any frame yet
-    _lastTimeEncoded = -1;
+    // Flag that we didn't encode any frame yet
+    {
+        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        _nextFrameToEncode = (int)args.frameRange.min;
+        _firstFrameToEncode = (int)args.frameRange.min;
+        _lastFrameToEncode = (int)args.frameRange.max;
+        _frameStep = (int)args.frameStep;
+    }
 
     _isOpen = true;
+    _error = CLEANUP;
 }
 
-
+inline void
+sleep(const unsigned int milliseconds)
+{
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    Sleep(milliseconds);
+#else
+    struct timespec tv;
+    tv.tv_sec = milliseconds/1000;
+    tv.tv_nsec = (milliseconds%1000)*1000000;
+    nanosleep(&tv,0);
+#endif
+}
 
 #define checkAvError() if (error < 0) { \
                         char errorBuf[1024]; \
@@ -2856,49 +3238,96 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
                     }
 
 
-void WriteFFmpegPlugin::encode(const std::string& filename, OfxTime time, const float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int rowBytes)
+void
+WriteFFmpegPlugin::encode(const std::string& filename,
+                          const OfxTime time,
+                          const std::string& /*viewName*/,
+                          const float *pixelData,
+                          const OfxRectI& bounds,
+                          const float pixelAspectRatio,
+                          const int pixelDataNComps,
+                          const int dstNCompsStartIndex,
+                          const int dstNComps,
+                          const int rowBytes)
 {
-    
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB) {
+    assert(dstNCompsStartIndex == 0);
+    if (dstNComps != 4 && dstNComps != 3) {
         setPersistentMessage(OFX::Message::eMessageError, "", "can only write RGBA or RGB components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
     
-    if (!_isOpen) {
+    if (!_isOpen || !_formatContext) {
         setPersistentMessage(OFX::Message::eMessageError, "", "file is not open");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-
-    if (!_formatContext || (_formatContext && filename != std::string(_formatContext->filename))) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Another render is currently active");
+    if (!pixelData || !_streamVideo) {
+        OFX::throwSuiteStatusException(kOfxStatErrBadHandle);
+        return;
+    }
+    if (filename != std::string(_formatContext->filename)) {
+        std::stringstream ss;
+        ss << "Trying to render " << filename << " but another active render is rendering " << std::string(_formatContext->filename);
+        setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
     
-    ///Check that we're really encoding in sequential order
-    if (_lastTimeEncoded != -1 && _lastTimeEncoded != time -1 && _lastTimeEncoded != time + 1) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Another render is currently active");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    
+    if (pixelAspectRatio != _pixelAspectRatio) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "all images in the sequence do not have the same pixel aspect ratio");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
-
     }
-
-    _error = IGNORE_FINISH;
-
-
-    if (_isOpen) {
-        _error = CLEANUP;
-
-        if (!writeToFile(_formatContext, false, pixelData, &bounds, pixelComponents, rowBytes)) {
-            _error = SUCCESS;
-            _lastTimeEncoded = (int)time;
-        } else {
+    
+    ///Check that we're really encoding in sequential order
+    {
+        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        
+        while (_nextFrameToEncode != time && _nextFrameToEncode != INT_MIN) {
+            lock.unlock();
+            sleep(1);
+            lock.relock();
+        }
+        
+        if (_nextFrameToEncode == INT_MIN) {
+            // Another thread aborted
+            if (abort()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", "Render aborted");
+            }
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-    }
+        try {
+            
+            _error = IGNORE_FINISH;
+            
+            
+            if (_isOpen) {
+                _error = CLEANUP;
+                
+                if (!_streamVideo) {
+                    OFX::throwSuiteStatusException(kOfxStatErrBadHandle);
+                    return;
+                }
+                assert(_formatContext);
+                if (!writeToFile(_formatContext, false, time, pixelData, &bounds, pixelDataNComps, dstNComps, rowBytes)) {
+                    _error = SUCCESS;
+                    _nextFrameToEncode = (int)time + _frameStep;
+                    if (abort()) {
+                        _nextFrameToEncode = INT_MIN;
+                    }
+                } else {
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
+                }
+            }
+        } catch (const std::exception& e) {
+            _nextFrameToEncode = INT_MIN;
+            throw e;
+        }
+    } // OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2919,15 +3348,17 @@ void WriteFFmpegPlugin::endEncode(const OFX::EndSequenceRenderArguments &/*args*
     }
 
 
-    if (_error == IGNORE_FINISH)
+    if (_error == IGNORE_FINISH) {
+        freeFormat();
         return;
+    }
 
     bool flushFrames = true;
     while (flushFrames) {
         // Continue to write the audio/video interleave while there are still
         // frames in the video and/or audio encoder queues, without queuing any
         // new data to encode. This is ffmpeg specific.
-        flushFrames = !writeToFile(_formatContext, true) ? true : false;
+        flushFrames = !writeToFile(_formatContext, true, -1) ? true : false;
     }
 #if OFX_FFMPEG_AUDIO
     // The audio is written in ~0.5s chunks only when the video stream position
@@ -2971,39 +3402,39 @@ WriteFFmpegPlugin::updateVisibility()
     //codecs defaulted the same, and as a user experience it was pretty counter intuitive.
     //Check knob exists, to deal with cases where Nuke might not have updated underlying writer (#44774)
     //(we still want to use showPanel to update when loading from script and the like).
-    int index;
-    _codec->getValue(index);
+    int index = _codec->getValue();
     //assert(index < _codec->getNOptions());
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     std::string codecShortName;
     _codecShortName->getValue(codecShortName);
     //assert(index < (int)codecsShortNames.size());
     // codecShortName may be empty if this was configured in an old version
-    if (!codecShortName.empty() && (codecsShortNames.size() <= index || codecShortName != codecsShortNames[index])) {
+    if (!codecShortName.empty() && ((int)codecsShortNames.size() <= index || codecShortName != codecsShortNames[index])) {
         _codecShortName->setIsSecret(false); // something may be wrong. Make it visible, at least
     } else {
         _codecShortName->setIsSecret(true);
-        if (codecsShortNames.size() <= index) {
+        if ((int)codecsShortNames.size() <= index) {
             codecShortName = codecsShortNames[index];
         }
     }
 
     AVCodec* codec = avcodec_find_encoder_by_name(codecShortName.c_str());
 
-    bool lossyParams    = false;
-    bool interGOPParams = false;
-    bool interBParams   = false;
-
+    bool bitrateParam    = false;
+    bool bitrateTolParam = false;
+    bool qualityParams   = false;
+    bool interGOPParams  = false;
+    bool interBParams    = false;
     if (codec) {
-        GetCodecSupportedParams(codec, lossyParams, interGOPParams, interBParams);
+        GetCodecSupportedParams(codec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
     }
 
-    _bitrate->setEnabled(lossyParams);
-    _bitrate->setIsSecret(!lossyParams);
-    _bitrateTolerance->setEnabled(lossyParams);
-    _bitrateTolerance->setIsSecret(!lossyParams);
-    _quality->setEnabled(lossyParams);
-    _quality->setIsSecret(!lossyParams);
+    _bitrate->setEnabled(bitrateParam);
+    _bitrate->setIsSecret(!bitrateParam);
+    _bitrateTolerance->setEnabled(bitrateTolParam);
+    _bitrateTolerance->setIsSecret(!bitrateTolParam);
+    _quality->setEnabled(qualityParams);
+    _quality->setIsSecret(!qualityParams);
 
     _gopSize->setEnabled(interGOPParams);
     _gopSize->setIsSecret(!interGOPParams);
@@ -3024,6 +3455,13 @@ WriteFFmpegPlugin::updateVisibility()
     _encodeVideoRange->setEnabled(isdnxhd);
     _encodeVideoRange->setIsSecret(!isdnxhd);
 #endif
+    
+    
+    ///Do not allow custom channel shuffling for the user, it's either RGB or RGBA
+    for (int i = 0; i < 4; ++i) {
+        _processChannels[i]->setIsSecret(true);
+    }
+    _outputComponents->setIsSecret(true);
 }
 
 
@@ -3037,12 +3475,11 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
 {
     //Bitrate tolerance should in theory be allowed down to target bitrate/target framerate.
     //We're not force limiting the range since the upper range is not bounded.
-    int bitrate = 0;
-    _bitrate->getValue(bitrate);
-    double fps = 24.;
-    _fps->getValue(fps);
+    double bitrate = _bitrate->getValue();
+    double fps = _fps->getValue();
     double minRange = bitrate / fps;
-    _bitrateTolerance->setRange(minRange, 4000 * 10000);
+    _bitrateTolerance->setRange(minRange, DBL_MAX);
+    _bitrateTolerance->setDisplayRange(minRange, kParamBitrateMax);
 }
 
 // Check that the secret codecShortName corresponds to the selected codec.
@@ -3052,14 +3489,13 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
 void
 WriteFFmpegPlugin::checkCodec()
 {
-    int codec;
-    _codec->getValue(codec);
+    int codec = _codec->getValue();
     const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
     //assert(codec < (int)codecsShortNames.size());
     std::string codecShortName;
     _codecShortName->getValue(codecShortName);
     // codecShortName may be empty if this was configured in an old version
-    if (!codecShortName.empty() && (codecsShortNames.size() <= codec || codecShortName != codecsShortNames[codec])) {
+    if (!codecShortName.empty() && ((int)codecsShortNames.size() <= codec || codecShortName != codecsShortNames[codec])) {
         // maybe it's another one but the label changed, if yes select it
         std::vector<std::string>::const_iterator it;
 
@@ -3076,7 +3512,7 @@ WriteFFmpegPlugin::checkCodec()
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-    } else if (codecsShortNames.size() <= codec) {
+    } else if ((int)codecsShortNames.size() <= codec) {
         setPersistentMessage(OFX::Message::eMessageError, "", "writer was configured for unavailable codec.");
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -3092,8 +3528,35 @@ WriteFFmpegPlugin::beginEdit()
 }
 
 void
-WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
+WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename, bool setColorSpace)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, video files are assumed to be rec709.
+        if (_ocio->hasColorspace("Rec709")) {
+            // nuke-default
+            _ocio->setOutputColorspace("Rec709");
+        } else if (_ocio->hasColorspace("nuke_rec709")) {
+            // blender
+            _ocio->setOutputColorspace("nuke_rec709");
+        } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            _ocio->setOutputColorspace("Rec.709 - Full");
+        } else if (_ocio->hasColorspace("out_rec709full")) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            _ocio->setOutputColorspace("out_rec709full");
+        } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+            // rrt_rec709_full_100nits in aces 0.7.1
+            _ocio->setOutputColorspace("rrt_rec709_full_100nits");
+        } else if (_ocio->hasColorspace("rrt_rec709")) {
+            // rrt_rec709 in aces 0.1.1
+            _ocio->setOutputColorspace("rrt_rec709");
+        } else if (_ocio->hasColorspace("hd10")) {
+            // hd10 in spi-anim and spi-vfx
+            _ocio->setOutputColorspace("hd10");
+        }
+#     endif
+    }
     // Switch the 'format' knob based on the new filename suffix
     std::string suffix = filename.substr(filename.find_last_of(".") + 1);
     if (!suffix.empty()) {
@@ -3104,6 +3567,33 @@ WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
                 _format->setValue(i);
                 break;
             }
+            if (formatsShortNames[i] == "matroska") {
+                if (suffix.compare("mkv") == 0 ||
+                    suffix.compare("mk3d") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            } else if (formatsShortNames[i] == "mpeg") {
+                if (suffix.compare("mpg") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            } else if (formatsShortNames[i] == "mpegts") {
+                if (suffix.compare("m2ts") == 0 ||
+                    suffix.compare("mts") == 0 ||
+                    suffix.compare("ts") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            } else if (formatsShortNames[i] == "mp4") {
+                if (suffix.compare("mov") == 0 ||
+                    suffix.compare("3gp") == 0 ||
+                    suffix.compare("3g2") == 0 ||
+                    suffix.compare("mj2") == 0) {
+                    _format->setValue(i);
+                    break;
+                }
+            }
         }
     }
     // also check that the codec setting is OK
@@ -3112,15 +3602,33 @@ WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename)
 
 void WriteFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-    if (paramName == kParamCodec && args.reason == eChangeUserEdit) {
+    if (paramName == kParamCodec) {
         // update the secret parameter
-        int codec;
-        _codec->getValue(codec);
+        int codec = _codec->getValue();
         const std::vector<std::string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
         assert(codec < (int)codecsShortNames.size());
         _codecShortName->setValue(codecsShortNames[codec]);
         updateVisibility();
-
+        int format = _format->getValue();
+        if (format > 0) {
+            AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
+            if (fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec])) {
+                setPersistentMessage(OFX::Message::eMessageError, "","the selected codec is not supported in this container.");
+            } else {
+                clearPersistentMessage();
+            }
+        }
+    } else if (paramName == kParamFormat) {
+        int codec = _codec->getValue();
+        int format = _format->getValue();
+        if (format > 0) {
+            AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
+            if (fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec])) {
+                setPersistentMessage(OFX::Message::eMessageError, "","the selected codec is not supported in this container.");
+            } else {
+                clearPersistentMessage();
+            }
+        }
     } else if (paramName == kParamFPS || paramName == kParamBitrate) {
         updateBitrateToleranceRange();
 
@@ -3155,22 +3663,44 @@ void WriteFFmpegPlugin::freeFormat()
         avcodec_close(_streamAudio->codec);
         _streamAudio = NULL;
     }
-    if (!(_formatContext->oformat->flags & AVFMT_NOFILE)) {
-        avio_close(_formatContext->pb);
+    if (_formatContext) {
+        if (!(_formatContext->oformat->flags & AVFMT_NOFILE)) {
+            avio_close(_formatContext->pb);
+        }
+        avformat_free_context(_formatContext);
+        _formatContext = NULL;
     }
-    avformat_free_context(_formatContext);
-    _formatContext = NULL;
-    _streamVideo = NULL;
-    _lastTimeEncoded = -1;
+    {
+        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        _nextFrameToEncode = INT_MIN;
+        _firstFrameToEncode = 1;
+        _lastFrameToEncode = 1;
+        _frameStep = 1;
+    }
+    _scratchBufferSize = 0;
+    delete [] _scratchBuffer;
+    _scratchBuffer = 0;
     _isOpen = false;
 }
 
 
-using namespace OFX;
+mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, true);
 
-mDeclareWriterPluginFactory(WriteFFmpegPluginFactory, {}, {}, true);
+static
+std::list<std::string> &
+split(const std::string &s, char delim, std::list<std::string> &elems)
+{
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
 
-static std::string ffmpeg_versions()
+static
+std::string
+ffmpeg_versions()
 {
     std::ostringstream oss;
 #ifdef FFMS_USE_FFMPEG_COMPAT
@@ -3197,10 +3727,317 @@ static std::string ffmpeg_versions()
     return oss.str();
 }
 
-/** @brief The basic describe function, passed a plugin descriptor */
-void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+WriteFFmpegPluginFactory::load()
 {
-    GenericWriterDescribe(desc,OFX::eRenderInstanceSafe);
+    _extensions.clear();
+#if 0
+    // hard-coded extensions list
+    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    for (const char** ext = extensionsl; *ext != NULL; ++ext) {
+        _extensions.push_back(*ext);
+    }
+#else
+    {
+        std::list<std::string> extensionsl;
+        AVOutputFormat* oFormat = av_oformat_next(NULL);
+        while (oFormat != NULL) {
+            //printf("WriteFFmpeg: \"%s\", // %s (%s)\n", oFormat->extensions ? oFormat->extensions : oFormat->name, oFormat->name, oFormat->long_name);
+            if (oFormat->extensions != NULL) {
+                std::string extStr(oFormat->extensions);
+                split(extStr, ',', extensionsl);
+            }
+            {
+                // name's format defines (in general) extensions
+                // require to fix extension in LibAV/FFMpeg to don't use it.
+                std::string extStr(oFormat->name);
+                split(extStr, ',', extensionsl);
+            }
+            oFormat = av_oformat_next( oFormat );
+        }
+
+        // Hack: Add basic video container extensions
+        // as some versions of LibAV doesn't declare properly all extensions...
+        extensionsl.push_back("avi"); // AVI (Audio Video Interleaved)
+        extensionsl.push_back("flv"); // flv (FLV (Flash Video))
+        extensionsl.push_back("mkv"); // matroska,webm (Matroska / WebM)
+        extensionsl.push_back("mov"); // QuickTime / MOV
+        extensionsl.push_back("mp4"); // MP4 (MPEG-4 Part 14)
+        extensionsl.push_back("mpg"); // MPEG-1 Systems / MPEG program stream
+        extensionsl.push_back("m2ts"); // mpegts (MPEG-TS (MPEG-2 Transport Stream))
+        extensionsl.push_back("mts"); // mpegts (MPEG-TS (MPEG-2 Transport Stream))
+        extensionsl.push_back("ts"); // mpegts (MPEG-TS (MPEG-2 Transport Stream))
+        extensionsl.push_back("mxf"); // mxf (MXF (Material eXchange Format))
+
+        // remove audio and subtitle-only formats
+        const char* extensions_blacklist[] = {
+            "aa", // aa (Audible AA format files)
+            "aac", // aac (raw ADTS AAC (Advanced Audio Coding))
+            "ac3", // ac3 (raw AC-3)
+            "act", // act (ACT Voice file format)
+            // "adf", // adf (Artworx Data Format)
+            "adp", "dtk", // adp (ADP) Audio format used on the Nintendo Gamecube.
+            "adx", // adx (CRI ADX) Audio-only format used in console video games.
+            "aea", // aea (MD STUDIO audio)
+            "afc", // afc (AFC) Audio format used on the Nintendo Gamecube.
+            "aiff", // aiff (Audio IFF)
+            "amr", // amr (3GPP AMR)
+            // "anm", // anm (Deluxe Paint Animation)
+            "apc", // apc (CRYO APC)
+            "ape", "apl", "mac", // ape (Monkey's Audio)
+            // "apng", // apng (Animated Portable Network Graphics)
+            "aqt", "aqtitle", // aqtitle (AQTitle subtitles)
+            // "asf", // asf (ASF (Advanced / Active Streaming Format))
+            // "asf_o", // asf_o (ASF (Advanced / Active Streaming Format))
+            "ass", // ass (SSA (SubStation Alpha) subtitle)
+            "ast", // ast (AST (Audio Stream))
+            "au", // au (Sun AU)
+            // "avi", // avi (AVI (Audio Video Interleaved))
+            "avr", // avr (AVR (Audio Visual Research)) Audio format used on Mac.
+            // "avs", // avs (AVS)
+            // "bethsoftvid", // bethsoftvid (Bethesda Softworks VID)
+            // "bfi", // bfi (Brute Force & Ignorance)
+            "bin", // bin (Binary text)
+            // "bink", // bink (Bink)
+            "bit", // bit (G.729 BIT file format)
+            // "bmv", // bmv (Discworld II BMV)
+            "bfstm", "bcstm", // bfstm (BFSTM (Binary Cafe Stream)) Audio format used on the Nintendo WiiU (based on BRSTM).
+            "brstm", // brstm (BRSTM (Binary Revolution Stream)) Audio format used on the Nintendo Wii.
+            "boa", // boa (Black Ops Audio)
+            // "c93", // c93 (Interplay C93)
+            "caf", // caf (Apple CAF (Core Audio Format))
+            // "cavsvideo", // cavsvideo (raw Chinese AVS (Audio Video Standard))
+            // "cdg", // cdg (CD Graphics)
+            // "cdxl,xl", // cdxl (Commodore CDXL video)
+            // "cine", // cine (Phantom Cine)
+            // "concat", // concat (Virtual concatenation script)
+            // "data", // data (raw data)
+            "302", "daud", // daud (D-Cinema audio)
+            // "dfa", // dfa (Chronomaster DFA)
+            // "dirac", // dirac (raw Dirac)
+            // "dnxhd", // dnxhd (raw DNxHD (SMPTE VC-3))
+            "dsf", // dsf (DSD Stream File (DSF))
+            // "dsicin", // dsicin (Delphine Software International CIN)
+            "dss", // dss (Digital Speech Standard (DSS))
+            "dts", // dts (raw DTS)
+            "dtshd", // dtshd (raw DTS-HD)
+            // "dv,dif", // dv (DV (Digital Video))
+            "dvbsub", // dvbsub (raw dvbsub)
+            // "dxa", // dxa (DXA)
+            // "ea", // ea (Electronic Arts Multimedia)
+            // "cdata", // ea_cdata (Electronic Arts cdata)
+            "eac3", // eac3 (raw E-AC-3)
+            "paf", "fap", "epaf", // epaf (Ensoniq Paris Audio File)
+            "ffm", // ffm (FFM (FFserver live feed))
+            "ffmetadata", // ffmetadata (FFmpeg metadata in text)
+            // "flm", // filmstrip (Adobe Filmstrip)
+            "flac", // flac (raw FLAC)
+            // "flic", // flic (FLI/FLC/FLX animation)
+            // "flv", // flv (FLV (Flash Video))
+            // "flv", // live_flv (live RTMP FLV (Flash Video))
+            // "4xm", // 4xm (4X Technologies)
+            // "frm", // frm (Megalux Frame)
+            "g722", "722", // g722 (raw G.722)
+            "tco", "rco", "g723_1", // g723_1 (G.723.1)
+            "g729", // g729 (G.729 raw format demuxer)
+            // "gif", // gif (CompuServe Graphics Interchange Format (GIF))
+            "gsm", // gsm (raw GSM)
+            // "gxf", // gxf (GXF (General eXchange Format))
+            // "h261", // h261 (raw H.261)
+            // "h263", // h263 (raw H.263)
+            // "h26l,h264,264,avc", // h264 (raw H.264 video)
+            // "hevc,h265,265", // hevc (raw HEVC video)
+            // "hls,applehttp", // hls,applehttp (Apple HTTP Live Streaming)
+            // "hnm", // hnm (Cryo HNM v4)
+            // "ico", // ico (Microsoft Windows ICO)
+            // "idcin", // idcin (id Cinematic)
+            // "idf", // idf (iCE Draw File)
+            // "iff", // iff (IFF (Interchange File Format))
+            "ilbc", // ilbc (iLBC storage)
+            // "image2", // image2 (image2 sequence)
+            "image2pipe", // image2pipe (piped image2 sequence)
+            "alias_pix", // alias_pix (Alias/Wavefront PIX image)
+            "brender_pix", // brender_pix (BRender PIX image)
+            // "cgi", // ingenient (raw Ingenient MJPEG)
+            "ipmovie", // ipmovie (Interplay MVE)
+            "sf", "ircam", // ircam (Berkeley/IRCAM/CARL Sound Format)
+            "iss", // iss (Funcom ISS)
+            // "iv8", // iv8 (IndigoVision 8000 video)
+            // "ivf", // ivf (On2 IVF)
+            "jacosub", // jacosub (JACOsub subtitle format)
+            "jv", // jv (Bitmap Brothers JV)
+            "latm", // latm (raw LOAS/LATM)
+            "lmlm4", // lmlm4 (raw lmlm4)
+            "loas", // loas (LOAS AudioSyncStream)
+            "lrc", // lrc (LRC lyrics)
+            // "lvf", // lvf (LVF)
+            // "lxf", // lxf (VR native stream (LXF))
+            // "m4v", // m4v (raw MPEG-4 video)
+            "mka", "mks", // "mkv,mk3d,mka,mks", // matroska,webm (Matroska / WebM)
+            "mgsts", // mgsts (Metal Gear Solid: The Twin Snakes)
+            "microdvd", // microdvd (MicroDVD subtitle format)
+            // "mjpg,mjpeg,mpo", // mjpeg (raw MJPEG video)
+            "mlp", // mlp (raw MLP)
+            // "mlv", // mlv (Magic Lantern Video (MLV))
+            "mm", // mm (American Laser Games MM)
+            "mmf", // mmf (Yamaha SMAF)
+            "m4a", // "mov,mp4,m4a,3gp,3g2,mj2", // mov,mp4,m4a,3gp,3g2,mj2 (QuickTime / MOV)
+            "mp2", "mp3", "m2a", "mpa", // mp3 (MP2/3 (MPEG audio layer 2/3))
+            "mpc", // mpc (Musepack)
+            "mpc8", // mpc8 (Musepack SV8)
+            // "mpeg", // mpeg (MPEG-PS (MPEG-2 Program Stream))
+            "mpegts", // mpegts (MPEG-TS (MPEG-2 Transport Stream))
+            "mpegtsraw", // mpegtsraw (raw MPEG-TS (MPEG-2 Transport Stream))
+            "mpegvideo", // mpegvideo (raw MPEG video)
+            // "mjpg", // mpjpeg (MIME multipart JPEG)
+            "txt", "mpl2", // mpl2 (MPL2 subtitles)
+            "sub", "mpsub", // mpsub (MPlayer subtitles)
+            "msnwctcp", // msnwctcp (MSN TCP Webcam stream)
+            // "mtv", // mtv (MTV)
+            // "mv", // mv (Silicon Graphics Movie)
+            // "mvi", // mvi (Motion Pixels MVI)
+            // "mxf", // mxf (MXF (Material eXchange Format))
+            // "mxg", // mxg (MxPEG clip)
+            // "v", // nc (NC camera feed)
+            "nist", "sph", "nistsphere", // nistsphere (NIST SPeech HEader REsources)
+            // "nsv", // nsv (Nullsoft Streaming Video)
+            // "nut", // nut (NUT)
+            // "nuv", // nuv (NuppelVideo)
+            // "ogg", // ogg (Ogg)
+            "oma", "omg", "aa3", // oma (Sony OpenMG audio)
+            // "paf", // paf (Amazing Studio Packed Animation File)
+            "al", "alaw", // alaw (PCM A-law)
+            "ul", "mulaw", // mulaw (PCM mu-law)
+            "f64be", // f64be (PCM 64-bit floating-point big-endian)
+            "f64le", // f64le (PCM 64-bit floating-point little-endian)
+            "f32be", // f32be (PCM 32-bit floating-point big-endian)
+            "f32le", // f32le (PCM 32-bit floating-point little-endian)
+            "s32be", // s32be (PCM signed 32-bit big-endian)
+            "s32le", // s32le (PCM signed 32-bit little-endian)
+            "s24be", // s24be (PCM signed 24-bit big-endian)
+            "s24le", // s24le (PCM signed 24-bit little-endian)
+            "s16be", // s16be (PCM signed 16-bit big-endian)
+            "sw", "s16le", // s16le (PCM signed 16-bit little-endian)
+            "sb", "s8", // s8 (PCM signed 8-bit)
+            "u32be", // u32be (PCM unsigned 32-bit big-endian)
+            "u32le", // u32le (PCM unsigned 32-bit little-endian)
+            "u24be", // u24be (PCM unsigned 24-bit big-endian)
+            "u24le", // u24le (PCM unsigned 24-bit little-endian)
+            "u16be", // u16be (PCM unsigned 16-bit big-endian)
+            "uw", "u16le", // u16le (PCM unsigned 16-bit little-endian)
+            "ub", "u8", // u8 (PCM unsigned 8-bit)
+            "pjs", // pjs (PJS (Phoenix Japanimation Society) subtitles)
+            "pmp", // pmp (Playstation Portable PMP)
+            "pva", // pva (TechnoTrend PVA)
+            "pvf", // pvf (PVF (Portable Voice Format))
+            "qcp", // qcp (QCP)
+            // "r3d", // r3d (REDCODE R3D)
+            // "yuv,cif,qcif,rgb", // rawvideo (raw video)
+            "rt", "realtext", // realtext (RealText subtitle format)
+            "rsd", "redspark", // redspark (RedSpark)
+            // "rl2", // rl2 (RL2)
+            // "rm", // rm (RealMedia)
+            // "roq", // roq (id RoQ)
+            // "rpl", // rpl (RPL / ARMovie)
+            "rsd", // rsd (GameCube RSD)
+            "rso", // rso (Lego Mindstorms RSO)
+            "rtp", // rtp (RTP input)
+            "rtsp", // rtsp (RTSP input)
+            "smi", "sami", // sami (SAMI subtitle format)
+            "sap", // sap (SAP input)
+            "sbg", // sbg (SBaGen binaural beats script)
+            "sdp", // sdp (SDP)
+            // "sdr2", // sdr2 (SDR2)
+            "film_cpk", // film_cpk (Sega FILM / CPK)
+            "shn", // shn (raw Shorten)
+            // "vb,son", // siff (Beam Software SIFF)
+            // "sln", // sln (Asterisk raw pcm)
+            "smk", // smk (Smacker)
+            // "mjpg", // smjpeg (Loki SDL MJPEG)
+            "smush", // smush (LucasArts Smush)
+            "sol", // sol (Sierra SOL)
+            "sox", // sox (SoX native)
+            "spdif", // spdif (IEC 61937 (compressed data in S/PDIF))
+            "srt", // srt (SubRip subtitle)
+            "psxstr", // psxstr (Sony Playstation STR)
+            "stl", // stl (Spruce subtitle format)
+            "sub", "subviewer1", // subviewer1 (SubViewer v1 subtitle format)
+            "sub", "subviewer", // subviewer (SubViewer subtitle format)
+            "sup", // sup (raw HDMV Presentation Graphic Stream subtitles)
+            // "swf", // swf (SWF (ShockWave Flash))
+            "tak", // tak (raw TAK)
+            "tedcaptions", // tedcaptions (TED Talks captions)
+            "thp", // thp (THP)
+            "tiertexseq", // tiertexseq (Tiertex Limited SEQ)
+            "tmv", // tmv (8088flex TMV)
+            "thd", "truehd", // truehd (raw TrueHD)
+            "tta", // tta (TTA (True Audio))
+            // "txd", // txd (Renderware TeXture Dictionary)
+            "ans", "art", "asc", "diz", "ice", "nfo", "txt", "vt", // tty (Tele-typewriter)
+            // "vc1", // vc1 (raw VC-1)
+            "vc1test", // vc1test (VC-1 test bitstream)
+            // "viv", // vivo (Vivo)
+            "vmd", // vmd (Sierra VMD)
+            "idx", "vobsub", // vobsub (VobSub subtitle format)
+            "voc", // voc (Creative Voice)
+            "txt", "vplayer", // vplayer (VPlayer subtitles)
+            "vqf", "vql", "vqe", // vqf (Nippon Telegraph and Telephone Corporation (NTT) TwinVQ)
+            "w64", // w64 (Sony Wave64)
+            "wav", // wav (WAV / WAVE (Waveform Audio))
+            "wc3movie", // wc3movie (Wing Commander III movie)
+            "webm_dash_manifest", // webm_dash_manifest (WebM DASH Manifest)
+            "vtt", "webvtt", // webvtt (WebVTT subtitle)
+            "wsaud", // wsaud (Westwood Studios audio)
+            "wsvqa", // wsvqa (Westwood Studios VQA)
+            "wtv", // wtv (Windows Television (WTV))
+            "wv", // wv (WavPack)
+            "xa", // xa (Maxis XA)
+            "xbin", // xbin (eXtended BINary text (XBIN))
+            "xmv", // xmv (Microsoft XMV)
+            "xwma", // xwma (Microsoft xWMA)
+            // "yop", // yop (Psygnosis YOP)
+            // "y4m", // yuv4mpegpipe (YUV4MPEG pipe)
+            "bmp_pipe", // bmp_pipe (piped bmp sequence)
+            "dds_pipe", // dds_pipe (piped dds sequence)
+            "dpx_pipe", // dpx_pipe (piped dpx sequence)
+            "exr_pipe", // exr_pipe (piped exr sequence)
+            "j2k_pipe", // j2k_pipe (piped j2k sequence)
+            "jpeg_pipe", // jpeg_pipe (piped jpeg sequence)
+            "jpegls_pipe", // jpegls_pipe (piped jpegls sequence)
+            "pictor_pipe", // pictor_pipe (piped pictor sequence)
+            "png_pipe", // png_pipe (piped png sequence)
+            "qdraw_pipe", // qdraw_pipe (piped qdraw sequence)
+            "sgi_pipe", // sgi_pipe (piped sgi sequence)
+            "sunrast_pipe", // sunrast_pipe (piped sunrast sequence)
+            "tiff_pipe", // tiff_pipe (piped tiff sequence)
+            "webp_pipe", // webp_pipe (piped webp sequence)
+
+            // OIIO and PFM extensions:
+            "bmp", "cin", /*"dds",*/ "dpx", /*"f3d",*/ "fits", "hdr", "ico",
+            "iff", "jpg", "jpe", "jpeg", "jif", "jfif", "jfi", "jp2", "j2k", "exr", "png",
+            "pbm", "pgm", "ppm",
+            "pfm",
+            "psd", "pdd", "psb", /*"ptex",*/ "rla", "sgi", "rgb", "rgba", "bw", "int", "inta", "pic", "tga", "tpic", "tif", "tiff", "tx", "env", "sm", "vsm", "zfile",
+
+            NULL
+        };
+        for (const char*const* e = extensions_blacklist; *e != NULL; ++e) {
+            extensionsl.remove(*e);
+        }
+
+        _extensions.assign(extensionsl.begin(), extensionsl.end());
+        // sort / unique
+        std::sort(_extensions.begin(), _extensions.end());
+        _extensions.erase(std::unique(_extensions.begin(), _extensions.end()), _extensions.end());
+    }
+#endif
+}
+
+/** @brief The basic describe function, passed a plugin descriptor */
+void
+WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+{
+    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription("Write images or video file using "
@@ -3211,33 +4048,18 @@ void WriteFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 #                             endif
                               ".\n\n" + ffmpeg_versions());
 
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(0);
-#endif
-
-    ///We support only a single render call per instance
-    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
-    
-    ///check that the host supports sequential render
     
     ///This plug-in only supports sequential render
-    int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;
-    if (hostSequentialRender == 1 || hostSequentialRender == 2) {
-        desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 1);
-    }
+    desc.setSequentialRender(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
-    
-    
     // make some pages and to things in
-    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,
-                                                                    "reference", "rec709");
+    PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,kSupportsXY,
+                                                                    "reference", "rec709", false);
 
     ///If the host doesn't support sequential render, fail.
     int hostSequentialRender = OFX::getImageEffectHostDescription()->sequentialRender;
@@ -3250,11 +4072,24 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
         const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
+        const std::vector<std::vector<size_t> >& formatsCodecs = FFmpegSingleton::Instance().getFormatsCodecs();
+        const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsShortNames();
         param->setLabel(kParamFormatLabel);
         param->setHint(kParamFormatHint);
         for (unsigned int i = 0; i < formatsV.size(); ++i) {
-            param->appendOption(formatsV[i],"");
-
+            if (formatsCodecs[i].empty()) {
+                param->appendOption(formatsV[i]);
+            } else {
+                std::string hint = "Compatible with ";
+                for (unsigned int j = 0; j < formatsCodecs[i].size(); ++j) {
+                    if (j != 0) {
+                        hint.append(", ");
+                    }
+                    hint.append(codecsV[formatsCodecs[i][j]]);
+                }
+                hint.append(".");
+                param->appendOption(formatsV[i], hint);
+            }
         }
         param->setAnimates(false);
         param->setDefault(0);
@@ -3269,8 +4104,22 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         param->setLabel(kParamCodecName);
         param->setHint(kParamCodecHint);
         const std::vector<std::string>& codecsV = FFmpegSingleton::Instance().getCodecsKnobLabels();// getCodecsLongNames();
+        const std::vector<std::vector<size_t> >& codecsFormats = FFmpegSingleton::Instance().getCodecsFormats();
+        const std::vector<std::string>& formatsV = FFmpegSingleton::Instance().getFormatsShortNames();
         for (unsigned int i = 0; i < codecsV.size(); ++i) {
-            param->appendOption(codecsV[i]);
+            if (codecsFormats[i].empty()) {
+                param->appendOption(codecsV[i]);
+            } else {
+                std::string hint = "Compatible with ";
+                for (unsigned int j = 0; j < codecsFormats[i].size(); ++j) {
+                    if (j != 0) {
+                        hint.append(", ");
+                    }
+                    hint.append(formatsV[codecsFormats[i][j]]);
+                }
+                hint.append(".");
+                param->appendOption(codecsV[i], hint);
+            }
         }
         param->setAnimates(false);
         param->setDefault(0);
@@ -3296,10 +4145,11 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFPS);
         param->setLabel(kParamFPSLabel);
         param->setHint(kParamFPSHint);
-        param->setRange(0.f, 100.f);
-        param->setDefault(24.f); // should be set from the input FPS
+        param->setRange(0., 100.);
+        param->setDisplayRange(0., 100.);
+        param->setDefault(24.); // should be set from the input FPS
         param->setAnimates(false);
-        param->setLayoutHint(eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
         }
@@ -3318,8 +4168,8 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDNxHDCodecProfile);
         param->setLabel(kParamDNxHDCodecProfileLabel);
         param->setHint(kParamDNxHDCodecProfileHint);
-        //assert(param->getNOptions() == (int)eDNxHDCodecProfile440x);
-        //param->appendOption(kParamDNxHDCodecProfileOption440x, kParamDNxHDCodecProfileOption440xHint);
+        assert(param->getNOptions() == (int)eDNxHDCodecProfile440x);
+        param->appendOption(kParamDNxHDCodecProfileOption440x, kParamDNxHDCodecProfileOption440xHint);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile220x);
         param->appendOption(kParamDNxHDCodecProfileOption220x, kParamDNxHDCodecProfileOption220xHint);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile220);
@@ -3391,11 +4241,12 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 
         ///////////bit-rate
         {
-            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitrate);
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamBitrate);
             param->setLabel(kParamBitrateLabel);
             param->setHint(kParamBitrateHint);
-            param->setRange(0, 400000);
-            param->setDefault(400000);
+            param->setRange(0, DBL_MAX);
+            param->setDisplayRange(0, kParamBitrateMax);
+            param->setDefault(kParamBitrateDefault);
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
@@ -3405,11 +4256,11 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 
         ///////////bit-rate tolerance
         {
-            OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBitrateTolerance);
+            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamBitrateTolerance);
             param->setLabel(kParamBitrateToleranceLabel);
             param->setHint(kParamBitrateToleranceHint);
-            param->setRange(833, 4000 * 10000);
-            param->setDefault(4000 * 10000);
+            param->setRange(0, kParamBitrateMax);
+            param->setDefault(kParamBitrateMax);
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
@@ -3451,7 +4302,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
             OFX::IntParamDescriptor* param = desc.defineIntParam(kParamBFrames);
             param->setLabel(kParamBFramesLabel);
             param->setHint(kParamBFramesHint);
-            param->setRange(0, FF_MAX_B_FRAMES);
+            param->setRange(-1, FF_MAX_B_FRAMES);
             param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);
@@ -3499,13 +4350,11 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteFFmpegPlugin(handle);
+    return new WriteFFmpegPlugin(handle, _extensions);
 }
 
 
-void getWriteFFmpegPluginID(OFX::PluginFactoryArray &ids)
-{
-    static WriteFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static WriteFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
+OFXS_NAMESPACE_ANONYMOUS_EXIT

@@ -44,7 +44,47 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include <string>
+#include <functional>
+#include <locale>
+
 #include "ofxsImageEffect.h"
+
+struct MatchPathSeparator
+{
+    bool operator()( char ch ) const
+    {
+#if defined(_WIN32) || defined(WIN64)
+        return ch == '\\' || ch == '/';
+#else
+        return ch == '/';
+#endif
+    }
+};
+
+inline std::string
+basename( std::string const& pathname )
+{
+    return std::string(std::find_if(pathname.rbegin(), pathname.rend(),
+                                    MatchPathSeparator() ).base(),
+                       pathname.end() );
+}
+
+inline std::string
+extension(const std::string& filename)
+{
+    std::string::const_reverse_iterator pivot = std::find( filename.rbegin(), filename.rend(), '.' );
+    if (pivot == filename.rend()) {
+        return "";
+    }
+    std::string ext;
+    std::locale loc;
+    for (std::string::const_iterator it = pivot.base(); it != filename.end(); ++it) {
+        ext.append(1, std::tolower(*it, loc));
+    }
+
+    return ext;
+}
 
 /// numvals should be 256 for byte, 65536 for 16-bits, etc.
 template<int numvals>

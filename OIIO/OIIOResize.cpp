@@ -1,65 +1,58 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OIIOResize plugin.
- Resize images using OIIO.
-
- Copyright (C) 2014 INRIA
- Author: Frederic Devernay <frederic.devernay@inria.fr>
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
+ * OIIOResize plugin.
+ * Resize images using OIIO.
  */
 
-#include "OIIOResize.h"
-
 #include <limits>
-#include "ofxsProcessing.H"
-#include "ofxsCopier.h"
-#include "ofxsFormatResolution.h"
-#include "ofxsMerging.h"
+#include <algorithm>
+#include <cfloat>
+
 #include "ofxsMacros.h"
-#include <OpenImageIO/imageio.h>
+
+#include "OIIOGlobal.h"
+GCC_DIAG_OFF(unused-parameter)
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
  which includes boost/thread.hpp,
  which includes boost/system/error_code.hpp,
  which requires the library boost_system to get the symbol boost::system::system_category().
- 
+
  the following define prevents including error_code.hpp, which is not used anyway.
  */
 #define OPENIMAGEIO_THREAD_H
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 #include <OpenImageIO/filter.h>
+GCC_DIAG_ON(unused-parameter)
+
+#include "ofxsProcessing.H"
+#include "ofxsCopier.h"
+#include "ofxsFormatResolution.h"
+#include "ofxsCoords.h"
 
 #include "IOUtility.h"
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ResizeOIIO"
 #define kPluginGrouping "Transform"
@@ -111,7 +104,8 @@ enum ResizeTypeEnum
 #define kParamFilterHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
 #define kParamFilterOptionImpulse "Impulse (no interpolation)"
 
-using namespace OFX;
+#define kSrcClipChanged "srcClipChanged"
+
 using namespace OpenImageIO;
 
 class OIIOResizePlugin : public OFX::ImageEffect
@@ -167,7 +161,7 @@ private:
     OFX::Int2DParam *_size;
     OFX::Double2DParam *_scale;
     OFX::BooleanParam *_preservePAR;
-    
+    OFX::BooleanParam* _srcClipChanged; // set to true the first time the user connects src
 };
 
 OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
@@ -180,15 +174,17 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
 , _size(0)
 , _scale(0)
 , _preservePAR(0)
+, _srcClipChanged(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
                         _dstClip->getPixelComponents() == OFX::ePixelComponentRGB ||
                         _dstClip->getPixelComponents() == OFX::ePixelComponentAlpha));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
-                        _srcClip->getPixelComponents() == OFX::ePixelComponentRGB ||
-                        _srcClip->getPixelComponents() == OFX::ePixelComponentAlpha));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentAlpha)));
 
     _type = fetchChoiceParam(kParamType);
     _format = fetchChoiceParam(kParamFormat);
@@ -196,6 +192,8 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     _size = fetchInt2DParam(kParamSize);
     _scale = fetchDouble2DParam(kParamScale);
     _preservePAR = fetchBooleanParam(kParamPreservePAR);
+    _srcClipChanged = fetchBooleanParam(kSrcClipChanged);
+    
     assert(_type && _format &&  _filter && _size && _scale && _preservePAR);
 
     int type_i;
@@ -226,6 +224,8 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
             _format->setIsSecret(true);
             break;
     }
+    
+    initOIIOThreads();
 }
 
 OIIOResizePlugin::~OIIOResizePlugin()
@@ -426,7 +426,7 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
 
     if (filter == 0) {
         ///Use nearest neighboor
-        if (!ImageBufAlgo::resample(dstBuf, srcBuf, /*interpolate*/false)) {
+        if (!ImageBufAlgo::resample(dstBuf, srcBuf, /*interpolate*/false, ROI::All(), OFX::MultiThread::getNumCPUs())) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     } else {
@@ -439,7 +439,8 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
         float w = fd.width * std::max(1.0f, wratio);
         float h = fd.width * std::max(1.0f, hratio);
         std::auto_ptr<Filter2D> filter(Filter2D::create(fd.name, w, h));
-        if (!ImageBufAlgo::resize(dstBuf, srcBuf, filter.get())) {
+        
+        if (!ImageBufAlgo::resize(dstBuf, srcBuf, filter.get(), ROI::All(), OFX::MultiThread::getNumCPUs())) {
             setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     }
@@ -485,7 +486,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             int index;
             _format->getValue(index);
             double par;
-            size_t w,h;
+            int w, h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             if (srcPAR != par) {
                 return false;
@@ -493,7 +494,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             OfxPointD rsOne;
             rsOne.x = rsOne.y = 1.;
             OfxRectI srcRoDPixel;
-            OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+            OFX::Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
             if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == (int)w && srcRoD.y2 == (int)h) {
                 identityClip = _srcClip;
                 return true;
@@ -507,7 +508,7 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             OfxPointD rsOne;
             rsOne.x = rsOne.y = 1.;
             OfxRectI srcRoDPixel;
-            OFX::MergeImages2D::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+            OFX::Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
 
             int w,h;
             _size->getValue(w, h);
@@ -572,24 +573,25 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
 void
 OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
 {
-    if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit) {
-        OfxPointD projectSize = getProjectSize();
-        double projectPAR = getProjectPixelAspectRatio();
+    if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit && !_srcClipChanged->getValue()) {
+        _srcClipChanged->setValue(true);
+        OfxRectD srcRod = _srcClip->getRegionOfDefinition(args.time);
+        double srcpar = _srcClip->getPixelAspectRatio();
 
         ///Try to find a format matching the project format in which case we switch to format mode otherwise
         ///switch to size mode and set the size accordingly
         bool foundFormat = false;
         for (int i = (int)eParamFormatPCVideo; i < (int)eParamFormatSquare2k ; ++i) {
-            std::size_t w,h;
+            int w, h;
             double par;
             getFormatResolution((OFX::EParamFormat)i, &w, &h, &par);
-            if (w == projectSize.x && h == projectSize.y && par == projectPAR) {
+            if (w == (srcRod.x2 - srcRod.x1) && h == (srcRod.y2 - srcRod.y1) && par == srcpar) {
                 _format->setValue((OFX::EParamFormat)i);
                 _type->setValue((int)eResizeTypeFormat);
                 foundFormat = true;
             }
         }
-        _size->setValue((int)projectSize.x, (int)projectSize.y);
+        _size->setValue((int)srcRod.x2 - srcRod.x1, (int)srcRod.y2 - srcRod.y1);
         if (!foundFormat) {
             _type->setValue((int)eResizeTypeSize);
         }
@@ -610,7 +612,7 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             int index;
             _format->getValue(index);
             double par;
-            size_t w,h;
+            int w, h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             OfxRectI rodPixel;
             rodPixel.x1 = rodPixel.y1 = 0;
@@ -618,7 +620,7 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             rodPixel.y2 = h;
             OfxPointD rsOne;
             rsOne.x = rsOne.y = 1.;
-            OFX::MergeImages2D::toCanonical(rodPixel, rsOne, par, &rod);
+            OFX::Coords::toCanonical(rodPixel, rsOne, par, &rod);
         }   break;
 
         case eResizeTypeSize: {
@@ -696,7 +698,7 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
             //specific output format
             int index;
             _format->getValue(index);
-            size_t w,h;
+            int w, h;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             clipPreferences.setPixelAspectRatio(*_dstClip, par);
             break;
@@ -709,22 +711,14 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
 }
 
 
-using namespace OFX;
-
 mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
+
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     
-    ///Set number of threads to 1 and let the host do multi-threading
-    if (!attribute("threads", 1)) {
-#     ifdef DEBUG
-        std::cerr << "Failed to set the number of threads for OIIO" << std::endl;
-#     endif
-    }
-
-    
+   
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
@@ -756,6 +750,8 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // ask the host to render all planes
     desc.setPassThroughForNotProcessedPlanes(OFX::ePassThroughLevelRenderAllRequestedPlanes);
 #endif
+    
+    desc.setIsDeprecated(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -791,15 +787,16 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->appendOption(kParamTypeOptionSize);
         assert(param->getNOptions() == eResizeTypeScale);
         param->appendOption(kParamTypeOptionScale);
-        param->setAnimates(false);
         param->setDefault(0);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
         param->setLabel(kParamFormatLabel);
-        param->setAnimates(false);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
         assert(param->getNOptions() == eParamFormatNTSC);
@@ -834,8 +831,11 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamFormatHint);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         Int2DParamDescriptor* param = desc.defineInt2DParam(kParamSize);
@@ -846,8 +846,10 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setAnimates(false);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
-        param->setLayoutHint(eLayoutHintNoNewLine);
-        page->addChild(*param);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     {
@@ -858,7 +860,9 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setDefault(false);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamScale);
@@ -867,9 +871,11 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setAnimates(true);
         //param->setIsSecret(true); // done in the plugin constructor
         param->setDefault(1., 1.);
-        param->setRange(0., 0., std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+        param->setRange(0., 0., DBL_MAX, DBL_MAX);
         param->setIncrement(0.05);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamFilter);
@@ -888,7 +894,21 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
             }
         }
         param->setDefault(defIndex);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    
+    // srcClipChanged
+    {
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kSrcClipChanged);
+        param->setDefault(false);
+        param->setIsSecret(true);
+        param->setAnimates(false);
+        param->setEvaluateOnChange(false);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 }
 
@@ -899,8 +919,7 @@ ImageEffect* OIIOResizePluginFactory::createInstance(OfxImageEffectHandle handle
 }
 
 
-void getOIIOResizePluginID(OFX::PluginFactoryArray &ids)
-{
-    static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

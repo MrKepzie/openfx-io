@@ -1,156 +1,150 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OFX SeExpr plugin.
- Execute a SeExpr script.
-
- Copyright (C) 2015 INRIA
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
-
- The skeleton for this source file is from:
- OFX Basic Example plugin, a plugin that illustrates the use of the OFX Support library.
-
- Copyright (C) 2004-2005 The Open Effects Association Ltd
- Author Bruno Nicoletti bruno@thefoundry.co.uk
-
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice,
- this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice,
- this list of conditions and the following disclaimer in the documentation
- and/or other materials provided with the distribution.
- * Neither the name The Open Effects Association Ltd, nor the names of its
- contributors may be used to endorse or promote products derived from this
- software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- The Open Effects Association Ltd
- 1 Wardour St
- London W1D 6PA
- England
-
+ * OFX SeExpr plugin.
+ * Execute a SeExpr script.
  */
-#include "SeExpr.h"
 
 #include <vector>
 #include <algorithm>
 #include <limits>
 #include <set>
+
 #include <stdio.h> // for snprintf & _snprintf
-#ifdef _WINDOWS
-#include <windows.h>
-#define snprintf _snprintf
-#endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+#    define NOMINMAX 1
+// windows - defined for both Win32 and Win64
+#    include <windows.h>
+// the following must be included before SePlatform.h tries to include
+// them with _CRT_NONSTDC_NO_DEPRECATE=1 and _CRT_SECURE_NO_DEPRECATE=1
+#    include <malloc.h>
+#    include <io.h>
+#    include <tchar.h>
+#    include <process.h>
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include "ofxsMacros.h"
 #include "ofxsCopier.h"
-#include "ofxsMerging.h"
+#include "ofxsCoords.h"
 #include "ofxsMultiThread.h"
 #include "ofxsFormatResolution.h"
 #include "ofxsRectangleInteract.h"
+#include "ofxsFilter.h"
 
 #include <SeExpression.h>
 #include <SeExprFunc.h>
 #include <SeExprNode.h>
+#include <SeExprBuiltins.h>
 #include <SeMutex.h>
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+// fix SePlatform.h's bad defines, see https://github.com/wdas/SeExpr/issues/33
+#undef snprintf
+#undef strtok_r
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#  if defined(_MSC_VER) && _MSC_VER >= 1400
+#    define strtok_r(s,d,p) strtok_s(s,d,p)
+#  endif
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "SeExpr"
 #define kPluginGrouping "Merge"
 #define kPluginDescription \
 "Use the Walt Disney Animation Studio SeExpr expresion language to process pixels of the input image.\n" \
+"SeExpr Home Page: http://www.disneyanimation.com/technology/seexpr.html\n" \
+"SeExpr Language Documentation: http://wdas.github.io/SeExpr/doxygen/userdoc.html\n" \
 "SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
-"Some extensions to the language have been developped in order to use it in the purpose of filtering and blending input images. " \
+"Some extensions were added to the language for filtering and blending several input images. " \
 "The following pre-defined variables can be used in the script:\n\n" \
-"- x: This is the pixel X coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
-"- y: This is the pixel Y coordinate of the pixel to render (this is not normalized in the [0,1] range)\n\n" \
-"- u: This is the normalized (to the output image size) X coordinate of the output pixel to render\n\n" \
-"- v: This is the normalized (to the output image size) Y coordinate of the output pixel to render\n\n" \
-"- scale: A 2-Dimensional vector (X,Y) indicating the scale at which the image is being rendered. Depending on the zoom level " \
+"- x: X coordinate (in pixel units) of the pixel to render.\n\n" \
+"- y: Y coordinate (in pixel units) of the pixel to render.\n\n" \
+"- u: X coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
+"- v: Y coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
+"- sx, sy: Scale at which the image is being rendered. Depending on the zoom level " \
 "of the viewer, the image might be rendered at a lower scale than usual. This parameter is useful when producing spatial " \
 "effects that need to be invariant to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
-"image is being rendered at half of its original size.\n\n " \
-"- frame: This is the current frame being rendered\n\n" \
-"- Each input has 2 variables named Cs<index> and As<index> which respectively references the color (RGB vector) " \
-"and the alpha (scalar) of the image originated from the input at the given index. For the first input, you do not need to add " \
-"the index after Cs and As. See usage example below.\n\n" \
-"- output_width: This is the width of the output image being rendered. This is useful to normalize x coordinates into the range [0,1]\n\n" \
-"- output_height: This is the height of the output image being rendered. This is useful to normalize y coordinates into the range [0,1]\n\n" \
-"- Each input has a variable named input_width<index> and input_height<index> indicating respectively the width and height of the input. " \
-"For the first input you do not need to add the index after input_width and input_height." \
-"For example, the input 2 will have the variables input_width2 and input_height2.\n\n" \
-"To fetch an arbitraty input pixel, you must use the getPixel(inputNumber,frame,x,y) function that will for " \
-"a given input fetch the pixel at the (x,y) position in the image at the given frame. " \
-"Note that inputNumber starts from 1 and that x,y are PIXEL COORDINATES and not normalized coordinates.\n\n" \
+"image is being rendered at half of its original size.\n\n" \
+"- par: The pixel aspect ratio.\n\n" \
+"- cx, cy: Shortcuts for (x + 0.5)/par/sx and (y + 0.5)/sy, a.k.a. the canonical coordinates of the current pixel.\n\n" \
+"- frame: Current frame being rendered\n\n" \
+"- Cs, As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
+"- CsN, AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. Cs2 and As2 for input 2.\n\n" \
+"- output_width: Width of the output image being rendered.\n\n" \
+"- output_height: Height of the output image being rendered.\n\n" \
+"- input_width, input_height: Size of image from input 1, in pixels.\n\n" \
+"- input_widthN, input_heightN: Size of image from input N, e.g. input_width2 and input_height2 for input 2.\n\n" \
+"- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"The pixel position of the center of the bottom-left pixel is (0., 0.).\n"\
+"First input has index i=1.\n"\
+"'interp' controls the interpolation filter, and can take one of the following values:\n"\
+"0: impulse - (nearest neighbor / box) Use original values\n"\
+"1: bilinear - (tent / triangle) Bilinear interpolation between original values\n"\
+"2: cubic - (cubic spline) Some smoothing\n"\
+"3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n"\
+"4: Simon - Some smoothing, plus medium sharpening (*)\n"\
+"5: Rifman - Some smoothing, plus significant sharpening (*)\n"\
+"6: Mitchell - Some smoothing, plus blurring to hide pixelation (*+)\n"\
+"7: Parzen - (cubic B-spline) Greatest smoothing of all filters (+)\n"\
+"8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
+"Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
 "Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
 "Cs * Cs2\n\n" \
 "Another merge operator example (over):\n\n" \
 "Cs + Cs2 * (1 -  As)\n\n" \
+"Generating a time-varying colored Perlin noise with size x1:\n" \
+"cnoise([cx/x1,cy/x1,frame])\n\n" \
 "A more complex example used to average pixels over the previous, current and next frame:\n\n" \
-"prev = getPixel(1,frame - 1,x,y);\n" \
+"prev = cpixel(1,frame - 1,x,y);\n" \
 "cur = Cs;\n" \
-"next = getPixel(1,frame + 1,x,y);\n" \
+"next = cpixel(1,frame + 1,x,y);\n" \
 "(prev + cur + next) / 3;\n\n" \
 "To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
 "using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n\n" \
 "Cs + x1\n\n" \
-"Note that for expressions that span multiple lines, you must end each instruction by ; as you would do in C/C++. The last line " \
-"of your expression will always be considered as the final value of the pixel.\n" \
-"More documentation is available on the website of the SeExpr project: http://www.disneyanimation.com/technology/seexpr.html\n\n" \
-"Limitations:\n\n" \
-"In order to be efficient getPixel(inputNumber,frame,x,y) works only under certain circumstances:\n" \
-"- the inputNumber must be in the correct range\n" \
-"- frame must not depend on the color or alpha of a pixel, nor on the result of another call to getPixel\n" \
-"- A call to getPixel must not depend on the color or alpha of a pixel, e.g this is not correct:\n\n" \
+"Note that for expressions that span multiple lines, you must end each instruction by a semicolumn (';') as you would do in C/C++. The last line " \
+"of your expression will always be considered as the final value of the pixel and must not be terminated by a semicolumn.\n" \
+"More documentation is available on the SeExpr website: \n\n" \
+"The input frame range used to render a given output frame is computed automatically if the following conditions hold:\n"\
+"- The 'frame' parameter to cpixel/apixel must not depend on the color or alpha of a pixel, nor on the result of another call to cpixel/apixel\n" \
+"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, as in the following:\n\n" \
 "if (As > 0.1) {\n" \
-"    src = getPixel(1,frame,x,y);\n" \
+"    src = cpixel(1,frame,x,y);\n" \
 "} else {\n" \
 "    src = [0,0,0];\n" \
-"}\n"
-
+"}\n" \
+"If one of these conditions does not hold, all frames from the specified input frame range are asked for.\n"
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
-#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+#define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
+// History:
+// version 1: initial version
+// version 2: $scale replaced with $scalex, $scaley; added $par, $cx, $cy; getPixel replaced by cpixel/apixel
 
 #define kSupportsTiles 1
 #define kSupportsMultiResolution 1
@@ -160,39 +154,52 @@
 #define kSourceClipCount 10
 #define kParamsCount 10
 
-#define kSeExprGetPixelFuncName "getPixel"
+#define kSeExprCPixelFuncName "cpixel"
+#define kSeExprAPixelFuncName "apixel"
 #define kSeExprCurrentTimeVarName "frame"
 #define kSeExprXCoordVarName "x"
 #define kSeExprYCoordVarName "y"
 #define kSeExprUCoordVarName "u"
 #define kSeExprVCoordVarName "v"
+#define kSeExprPARVarName "par"
+#define kSeExprXCanCoordVarName "cx"
+#define kSeExprYCanCoordVarName "cy"
 #define kSeExprInputWidthVarName "input_width"
 #define kSeExprInputHeightVarName "input_height"
 #define kSeExprOutputWidthVarName "output_width"
 #define kSeExprOutputHeightVarName "output_height"
 #define kSeExprColorVarName "Cs"
 #define kSeExprAlphaVarName "As"
-#define kSeExprRenderScaleVarName "scale"
+#define kSeExprRenderScaleXVarName "sx"
+#define kSeExprRenderScaleYVarName "sy"
 
 #define kSeExprDefaultRGBScript "#Just copy the source RGB\nCs"
 #define kSeExprDefaultAlphaScript "#Just copy the source alpha\nAs"
 
 #define kParamRegionOfDefinition "rod"
 #define kParamRegionOfDefinitionLabel "Region of Definition"
-#define kParamRegionOfDefinitionHint "The region of definition of the output."
+#define kParamRegionOfDefinitionHint "Region of definition (extent) of the output."
 
-#define kParamRegionOfDefinitionOptionFormat "Format"
-#define kParamRegionOfDefinitionOptionFormatHelp "The output region will be of the specified format."
-#define kParamRegionOfDefinitionOptionProject "Project"
-#define kParamRegionOfDefinitionOptionProjectHelp "The output region will be of the size of the project."
-#define kParamRegionOfDefinitionOptionSize "Size"
-#define kParamRegionOfDefinitionOptionSizeHelp "The output region will be of the size of the rectangle overlay."
 #define kParamRegionOfDefinitionOptionUnion "Union"
-#define kParamRegionOfDefinitionOptionUnionHelp "The output region will be the union of the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionUnionHelp "The output region is the union of the regions of definition of all connected inputs."
 #define kParamRegionOfDefinitionOptionIntersection "Intersection"
-#define kParamRegionOfDefinitionOptionIntersectionHelp "The output region will be the intersection the regions of definition of all connected inputs."
-#define kParamRegionOfDefinitionOptionCustomInput "Input%d"
-#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region will be the regions of definition of input %d."
+#define kParamRegionOfDefinitionOptionIntersectionHelp "The output region is the intersection the regions of definition of all connected inputs."
+#define kParamRegionOfDefinitionOptionSize "Size"
+#define kParamRegionOfDefinitionOptionSizeHelp "The output region is the size of the rectangle overlay."
+#define kParamRegionOfDefinitionOptionFormat "Format"
+#define kParamRegionOfDefinitionOptionFormatHelp "The output region is the specified format."
+#define kParamRegionOfDefinitionOptionProject "Project"
+#define kParamRegionOfDefinitionOptionProjectHelp "The output region is the size of the project."
+#define kParamRegionOfDefinitionOptionCustomInput "Input"
+#define kParamRegionOfDefinitionOptionCustomInputHelp "The output region is the region of definition of input "
+enum RegionOfDefinitionEnum {
+    eRegionOfDefinitionOptionUnion,
+    eRegionOfDefinitionOptionIntersection,
+    eRegionOfDefinitionOptionSize,
+    eRegionOfDefinitionOptionFormat,
+    eRegionOfDefinitionOptionProject,
+    eRegionOfDefinitionOptionCustom,
+};
 
 #define kParamGeneratorFormat "format"
 #define kParamGeneratorFormatLabel "Format"
@@ -202,48 +209,66 @@
 #define kParamOutputComponentsLabel "Output components"
 #define kParamOutputComponentsHint "Specify what components to output. In RGB only, the alpha script will not be executed. Similarily, in alpha only, the RGB script " \
 "will not be executed."
+#define kParamOutputComponentsOptionRGBA "RGBA"
+#define kParamOutputComponentsOptionRGB "RGB"
+#define kParamOutputComponentsOptionAlpha "Alpha"
 
-#define kParamOutputComponentsAlpha "Alpha"
-#define kParamOutputComponentsRGB "RGB"
-#define kParamOutputComponentsRGBA "RGBA"
-
-#define kParamLayerInput "layerInput%d"
-#define kParamLayerInputLabel "Input Layer %d"
-#define kParamLayerInputHint "Select which layer from the input to use when calling " kSeExprGetPixelFuncName " on input %d."
+#define kParamLayerInput "layerInput"
+#define kParamLayerInputChoice kParamLayerInput "Choice"
+#define kParamLayerInputLabel "Input Layer "
+#define kParamLayerInputHint "Select which layer from the input to use when calling cpixel/apixel on input "
 
 #define kParamDoubleParamNumber "doubleParamsNb"
 #define kParamDoubleParamNumberLabel "No. of Scalar Params"
 #define kParamDoubleParamNumberHint "Use this to control how many scalar parameters should be exposed to the SeExpr expression."
 
-#define kParamDouble "x%d"
-#define kParamDoubleLabel "x%d"
-#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, x%d"
+#define kParamDouble "x"
+#define kParamDoubleLabel "x"
+#define kParamDoubleHint "A custom 1-dimensional variable that can be referenced in the expression by its script-name, x"
 
 #define kParamDouble2DParamNumber "double2DParamsNb"
 #define kParamDouble2DParamNumberLabel "No. of 2D Params"
 #define kParamDouble2DParamNumberHint "Use this to control how many 2D (position) parameters should be exposed to the SeExpr expression."
 
-#define kParamDouble2D "pos%d"
-#define kParamDouble2DLabel "pos%d"
-#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, pos%d"
+#define kParamDouble2D "pos"
+#define kParamDouble2DLabel "pos"
+#define kParamDouble2DHint "A custom 2-dimensional variable that can be referenced in the expression by its script-name, pos"
 
 #define kParamColorNumber "colorParamsNb"
 #define kParamColorNumberLabel "No. of Color Params"
 #define kParamColorNumberHint "Use this to control how many color parameters should be exposed to the SeExpr expression."
 
-#define kParamColor "color%d"
-#define kParamColorLabel "color%d"
-#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color%d"
+#define kParamColor "color"
+#define kParamColorLabel "color"
+#define kParamColorHint "A custom RGB variable that can be referenced in the expression by its script-name, color"
+
+#define kParamFrameRange "frameRange"
+#define kParamFrameRangeLabel "Input Frame Range"
+#define kParamFrameRangeHint "Default input frame range to fetch images from (may be relative or absolute, depending on the \"frameRangeAbsolute\" parameter). Only used if the frame range cannot be statically computed from the expression. This parameter can be animated."
+#define kParamFrameRangeDefault 0,0
+
+#define kParamFrameRangeAbsolute "frameRangeAbsolute"
+#define kParamFrameRangeAbsoluteLabel "Absolute Frame Range"
+#define kParamFrameRangeAbsoluteHint "If checked, the frame range is relative to the current frame."
+#define kParamFrameRangeAbsoluteDefault false
 
 #define kParamScript "script"
 #define kParamScriptLabel "RGB Script"
 #define kParamScriptHint "Contents of the SeExpr expression. This expression should output the RGB components. See the description of the plug-in and " \
-"http://www.disneyanimation.com/technology/seexpr.html for documentation."
+"http://www.disneyanimation.com/technology/seexpr.html for documentation. On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
+
+#define kParamShowScript "showScript"
+#define kParamShowScriptLabel "Show RGB Script"
+#define kParamShowScriptHint "Show the contents of the RGB script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform vcariable or expression substitution on the RGB script parameter."
 
 #define kParamAlphaScript "alphaScript"
 #define kParamAlphaScriptLabel "Alpha Script"
 #define kParamAlphaScriptHint "Contents of the SeExpr expression. This expression should output the alpha component only. See the description of the plug-in and " \
-"http://www.disneyanimation.com/technology/seexpr.html for documentation."
+"http://www.disneyanimation.com/technology/seexpr.html for documentation. On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
+
+#define kParamShowAlphaScript "showAlphaScript"
+#define kParamShowAlphaScriptLabel "Show Alpha Script"
+#define kParamShowAlphaScriptHint "Show the contents of the Alpha script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform vcariable or expression substitution on the Alpha script parameter."
 
 #define kParamValidate                  "validate"
 #define kParamValidateLabel             "Validate"
@@ -255,8 +280,12 @@
 #define kSeExprDisparityLeftPlaneName "DisparityLeft"
 #define kSeExprDisparityRightPlaneName "DisparityRight"
 
-static bool gHostIsMultiPlanar;
-static bool gHostIsNatron;
+static bool gHostIsMultiPlanar = false;
+static bool gHostIsNatron = false;
+static bool gHostSupportsRGBA   = false;
+static bool gHostSupportsRGB    = false;
+static bool gHostSupportsAlpha  = false;
+static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
 class SeExprProcessorBase;
 
@@ -308,7 +337,9 @@ private:
     void buildChannelMenus();
     
     void setupAndProcess(SeExprProcessorBase & processor, const OFX::RenderArguments &args);
-    
+
+    OFX::PixelComponentEnum getOutputComponents() const;
+
     std::string getOfxComponentsForClip(int inputNumber) const;
     
     std::string getOfxPlaneForClip(int inputNumber) const;
@@ -317,7 +348,9 @@ private:
     OFX::Clip* _maskClip;
     OFX::Clip *_dstClip;
     
+    std::vector<std::vector<std::string> > _clipLayerOptions;
     OFX::ChoiceParam *_clipLayerToFetch[kSourceClipCount];
+    OFX::StringParam *_clipLayerToFetchString[kSourceClipCount];
     
     OFX::IntParam *_doubleParamCount;
     OFX::DoubleParam* _doubleParams[kParamsCount];
@@ -327,12 +360,16 @@ private:
     
     OFX::IntParam *_colorParamCount;
     OFX::RGBParam* _colorParams[kParamsCount];
-    
+
+    OFX::Int2DParam *_frameRange;
+    OFX::BooleanParam *_frameRangeAbsolute;
+
     OFX::StringParam *_rgbScript;
     OFX::StringParam *_alphaScript;
     OFX::BooleanParam *_validate;
     
     OFX::DoubleParam* _mix;
+    OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
     
     OFX::ChoiceParam* _boundingBox;
@@ -347,33 +384,15 @@ private:
 
 };
 
-class OFXSeExpression;
-
-int getNComponents(OFX::PixelComponentEnum pixelComps, const std::string& rawComponents) {
-    switch (pixelComps) {
-        case OFX::ePixelComponentRGBA:
-            return 4;
-        case OFX::ePixelComponentRGB:
-            return 3;
-        case OFX::ePixelComponentStereoDisparity:
-        case OFX::ePixelComponentMotionVectors:
-        case OFX::ePixelComponentXY:
-            return 2;
-        case OFX::ePixelComponentAlpha:
-            return 1;
-        case OFX::ePixelComponentCustom: {
-            std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(rawComponents);
-            if (layerChannels.empty()) {
-                return 0;
-            }
-            return std::max((int)layerChannels.size() - 1, 3);
-            break;
-        }
-        case OFX::ePixelComponentNone:
-            return 0;
-    }
-    return 0;
+OFX::PixelComponentEnum
+SeExprPlugin::getOutputComponents() const
+{
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    return gOutputComponentsMap[outputComponents_i];
 }
+
+class OFXSeExpression;
 
 // Base class for processor, note that we do not use the multi-thread suite.
 class SeExprProcessorBase
@@ -421,7 +440,7 @@ public:
 
     
     void setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers,
-                   const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale);
+                   const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale, double par);
     
     bool isExprOk(std::string* error);
 
@@ -475,133 +494,193 @@ public:
 };
 
 
-template <typename PIX, int maxValue>
-static void getPixInternal(int nComps, const void* data, SeVec3d& result)
+// implementation of the "apixel" function
+template <typename PIX, int nComps, OFX::FilterEnum interp, bool alpha>
+static void pixelForDepthCompsFilter(const OFX::Image* img, double x, double y, SeVec3d& result)
 {
-    const PIX* pix = (const PIX*)data;
-    for (int i = 0; i < nComps; ++i) {
-        result[i] = pix[i] / (double)maxValue;
+    result.setValue(0., 0., 0.);
+    if ((alpha && nComps != 1 && nComps != 4) ||
+        (!alpha && nComps <= 1)) {
+        // no value
+        return;
+    }
+    float pix[4];
+    // In OFX pixel coordinates, the center of pixel (0,0) has coordinates (0.5,0.5)
+    OFX::ofxsFilterInterpolate2D<PIX,nComps,interp,/*clamp=*/true>(x+0.5, y+0.5, img, /*blackOutside=*/false, pix);
+    if (alpha) {
+        if (nComps == 1) {
+            // alpha input
+            result.setValue(pix[0], 0., 0.);
+        } else if (nComps == 4) {
+            // RGBA input
+            result.setValue(pix[3], 0., 0.);
+        }
+    } else {
+        if (nComps == 2) {
+            // XY input: no B color
+            result.setValue(pix[0], pix[1], 0.);
+        } else if (nComps >= 3) {
+            // alpha input: no color
+            result.setValue(pix[0], pix[1], pix[2]);
+        }
     }
 }
 
-class GetPixelFuncX : public SeExprFuncX
+template <typename PIX, int nComps, bool alpha>
+static void pixelForDepthComps(const OFX::Image* img, OFX::FilterEnum interp, double x, double y,  SeVec3d& result)
+{
+    switch (interp) {
+        case OFX::eFilterImpulse:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterImpulse,alpha>(img, x, y, result);
+        case OFX::eFilterBilinear:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterBilinear,alpha>(img, x, y, result);
+        case OFX::eFilterCubic:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterCubic,alpha>(img, x, y, result);
+        case OFX::eFilterKeys:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterKeys,alpha>(img, x, y, result);
+        case OFX::eFilterSimon:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterSimon,alpha>(img, x, y, result);
+        case OFX::eFilterRifman:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterRifman,alpha>(img, x, y, result);
+        case OFX::eFilterMitchell:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterMitchell,alpha>(img, x, y, result);
+        case OFX::eFilterParzen:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterParzen,alpha>(img, x, y, result);
+        case OFX::eFilterNotch:
+            return pixelForDepthCompsFilter<PIX,nComps,OFX::eFilterNotch,alpha>(img, x, y, result);
+        default:
+            result.setValue(0., 0., 0.);
+    }
+}
+
+template <typename PIX, bool alpha>
+static void pixelForDepth(const OFX::Image* img, OFX::FilterEnum interp, double x, double y, SeVec3d& result)
+{
+    int nComponents = img->getPixelComponentCount();
+    switch (nComponents) {
+        case 1:
+            return pixelForDepthComps<PIX,1,alpha>(img, interp, x, y, result);
+        case 2:
+            return pixelForDepthComps<PIX,2,alpha>(img, interp, x, y, result);
+        case 3:
+            return pixelForDepthComps<PIX,3,alpha>(img, interp, x, y, result);
+        case 4:
+            return pixelForDepthComps<PIX,4,alpha>(img, interp, x, y, result);
+        default:
+            result.setValue(0., 0., 0.);
+    }
+}
+
+template<bool alpha>
+class PixelFuncX : public SeExprFuncX
 {
     SeExprProcessorBase* _processor;
-    
+
 public:
-    
-    
-    GetPixelFuncX(SeExprProcessorBase* processor)
+
+
+    PixelFuncX(SeExprProcessorBase* processor)
     : SeExprFuncX(true)  // Thread Safe
     , _processor(processor)
     {}
-    
-    virtual ~GetPixelFuncX() {}
-    
-    static int numArgs() { return 4; }
+
+    virtual ~PixelFuncX() {}
+
 private:
-    
-    
+
     virtual bool prep(SeExprFuncNode* node, bool /*wantVec*/)
     {
         // check number of arguments
         int nargs = node->nargs();
-        if (nargs != numArgs()) {
-            node->addError("Wrong number of arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+        if (nargs < 4 || 5 < nargs) {
+            node->addError("Wrong number of arguments, should be 4 or 5");
             return false;
         }
-        
-        for (int i = 0; i < numArgs(); ++i) {
-            
+
+        for (int i = 0; i < nargs; ++i) {
+
             if (node->child(i)->isVec()) {
-                node->addError("Wrong arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+                node->addError("Wrong arguments, should be all scalars");
                 return false;
             }
             if (!node->child(i)->prep(false)) {
                 return false;
             }
-            
-            SeVec3d val;
-            node->child(i)->eval(val);
-            if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-                char name[256];
-                snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
-                node->addError(name);
-                return false;
-            }
-
         }
-        
-        SeVec3d inputIndex;
-        node->child(0)->eval(inputIndex);
-        if (inputIndex[0] < 0 || inputIndex[0] >= kSourceClipCount) {
+
+        SeVec3d v;
+        node->child(0)->eval(v);
+        int inputIndex = (int)SeExpr::round(v[0]) - 1;
+        if (inputIndex < 0 || inputIndex >= kSourceClipCount) {
             node->addError("Invalid input index");
             return false;
         }
-        
-//        GetPixelFuncData* data = new GetPixelFuncData;
-//        data->index = inputIndex[0];
-//        data->frame = frame[0];
-//        data->x = xCoord[0];
-//        data->y = yCoord[0];
-//        
-//        node->setData((SeExprFuncNode::Data*)(data));
         return true;
     }
-    
 
-    
+
+
     virtual void eval(const SeExprFuncNode* node, SeVec3d& result) const
     {
-    
-        SeVec3d inputIndex;
-        node->child(0)->eval(inputIndex);
-        
-        SeVec3d frame;
-        node->child(1)->eval(frame);
-        
-        SeVec3d xCoord;
-        node->child(2)->eval(xCoord);
-
-        SeVec3d yCoord;
-        node->child(3)->eval(yCoord);
-        
-        _processor->prefetchImage(inputIndex[0] - 1, frame[0]);
-        const OFX::Image* img = _processor->getImage(inputIndex[0] - 1, frame[0]);
-        int nComponents = img ? img->getPixelComponentCount() : 0;
-        if (!img || nComponents == 0) {
-            result[0] = result[1] = result[2] = 0.;
-        } else {
-            const void* data = img->getPixelAddress(xCoord[0], yCoord[0]);
-            if (!data) {
-                result[0] = result[1] = result[2] = 0.;
-                return;
+        SeVec3d v;
+        node->child(0)->eval(v);
+        int inputIndex = (int)SeExpr::round(v[0]) - 1;
+        if (inputIndex < 0) {
+            inputIndex = 0;
+        } else if (inputIndex >= kSourceClipCount) {
+            inputIndex = kSourceClipCount - 1;
+        }
+        node->child(1)->eval(v);
+        OfxTime frame = SeExpr::round(v[0]);
+        node->child(2)->eval(v);
+        double x = v[0];
+        node->child(3)->eval(v);
+        double y = v[0];
+        OFX::FilterEnum interp = OFX::eFilterImpulse;
+        if (node->nargs() == 5) {
+            node->child(4)->eval(v);
+            int interp_i = SeExpr::round(v[0]);
+            if (interp_i < 0) {
+                interp_i = 0;
+            } else if (interp_i > (int)OFX::eFilterNotch) {
+                interp_i = (int)OFX::eFilterNotch;
             }
+            interp = (OFX::FilterEnum)interp_i;
+        }
+        if (frame != frame || x != x || y != y) {
+            // one of the parameters is NaN
+            result.setValue(0., 0., 0.);
+            return;
+        }
+        _processor->prefetchImage(inputIndex, frame);
+        const OFX::Image* img = _processor->getImage(inputIndex, frame);
+        if (!img) {
+            // be black and transparent
+            result.setValue(0., 0., 0.);
+        } else {
             OFX::BitDepthEnum depth = img->getPixelDepth();
             switch (depth) {
                 case OFX::eBitDepthFloat:
-                    getPixInternal<float, 1>(nComponents, data, result);
+                    pixelForDepth<float, alpha>(img, interp, x, y, result);
                     break;
                 case OFX::eBitDepthUByte:
-                    getPixInternal<unsigned char, 255>(nComponents, data, result);
+                    pixelForDepth<unsigned char, 255>(img, interp, x, y, result);
                     break;
                 case OFX::eBitDepthUShort:
-                    getPixInternal<unsigned short, 65535>(nComponents, data, result);
+                    pixelForDepth<unsigned short, 65535>(img, interp, x, y, result);
                     break;
                 default:
-                    result[0] = result[1] = result[2] = 0.;
+                    result.setValue(0., 0., 0.);
                     break;
             }
         }
-        //GetPixelFuncData *data = (GetPixelFuncData*) node->getData();
-    
     }
     
 };
 
+
 class DoubleParamVarRef : public SeExprVarRef
 {
-    
     //Used to call getValue only once per expression evaluation and not once per pixel
     //Using SeExpr lock is faster than calling the multi-thread suite to get a mutex
     SeExprInternal::Mutex _lock;
@@ -642,7 +721,6 @@ public:
 
 class Double2DParamVarRef : public SeExprVarRef
 {
-    
     //Used to call getValue only once per expression evaluation and not once per pixel
     //Using SeExpr lock is faster than calling the multi-thread suite to get a mutex
     SeExprInternal::Mutex _lock;
@@ -684,7 +762,6 @@ public:
 
 class ColorParamVarRef : public SeExprVarRef
 {
-    
     //Used to call getValue only once per expression evaluation and not once per pixel
     //Using SeExpr lock is faster than calling the multi-thread suite to get a mutex
     SeExprInternal::Mutex _lock;
@@ -727,9 +804,7 @@ public:
 
 class SimpleScalar : public SeExprVarRef
 {
-    
 public:
-    
     double _value;
     
     SimpleScalar() : SeExprVarRef(), _value(0) {}
@@ -742,15 +817,11 @@ public:
     {
         result[0] = _value;
     }
-
-    
 };
 
 class SimpleVec : public SeExprVarRef
 {
-    
 public:
-    
     double _value[3];
     
     SimpleVec() : SeExprVarRef(), _value() { _value[0] = _value[1] = _value[2] = 0.; }
@@ -765,31 +836,28 @@ public:
         result[1] = _value[1];
         result[2] = _value[2];
     }
-    
-    
 };
 
 class StubSeExpression;
-class StubGetPixelFuncX : public SeExprFuncX
+
+class StubPixelFuncX : public SeExprFuncX
 {
     StubSeExpression* _expr;
-    
+
 public:
-    
-    StubGetPixelFuncX(StubSeExpression* expr)
+
+    StubPixelFuncX(StubSeExpression* expr)
     : SeExprFuncX(true)  // Thread Safe
     , _expr(expr)
     {}
-    
-    virtual ~StubGetPixelFuncX() {}
-    
-    static int numArgs() { return 4; }
+
+    virtual ~StubPixelFuncX() {}
 private:
-    
-    
+
+
     virtual bool prep(SeExprFuncNode* node, bool /*wantVec*/);
     virtual void eval(const SeExprFuncNode* node, SeVec3d& result) const;
-    
+
 };
 
 typedef std::map<int,std::vector<OfxTime> > FramesNeeded;
@@ -802,10 +870,9 @@ class StubSeExpression : public SeExpression
     
     
     mutable SimpleScalar _nanScalar,_zeroScalar;
-    mutable StubGetPixelFuncX _getPix;
-    mutable SeExprFunc _getPixFunction;
+    mutable StubPixelFuncX _pixel;
+    mutable SeExprFunc _pixelFunction;
     mutable SimpleScalar _currentTime;
-    mutable SimpleScalar _xCoord,_yCoord;
 
     mutable FramesNeeded _images;
     
@@ -821,24 +888,20 @@ public:
     /** override resolveFunc to add external functions */
     virtual SeExprFunc* resolveFunc(const std::string& name) const OVERRIDE FINAL;
     
-    void onGetPixelCalled(int inputIndex, OfxTime time) {
-        
-        {
-            //Register image needed
-            FramesNeeded::iterator foundInput = _images.find(inputIndex);
-            if (foundInput == _images.end()) {
-                std::vector<OfxTime> times;
-                times.push_back(time);
-                _images.insert(std::make_pair(inputIndex, times));
-            } else {
-                if (std::find(foundInput->second.begin(), foundInput->second.end(), time) == foundInput->second.end()) {
-                    foundInput->second.push_back(time);
-                }
+    void onPixelCalled(int inputIndex, OfxTime time) {
+        //Register image needed
+        FramesNeeded::iterator foundInput = _images.find(inputIndex);
+        if (foundInput == _images.end()) {
+            std::vector<OfxTime> times;
+            times.push_back(time);
+            _images.insert(std::make_pair(inputIndex, times));
+        } else {
+            if (std::find(foundInput->second.begin(), foundInput->second.end(), time) == foundInput->second.end()) {
+                foundInput->second.push_back(time);
             }
         }
-        
     }
-    
+
     const FramesNeeded& getFramesNeeded() const
     {
         return _images;
@@ -849,27 +912,33 @@ public:
 
 class OFXSeExpression : public SeExpression
 {
-    mutable GetPixelFuncX _getPix;
-    mutable SeExprFunc _getPixFunction;
+    mutable PixelFuncX<false> _cpixel;
+    mutable SeExprFunc _cpixelFunction;
+    mutable PixelFuncX<true> _apixel;
+    mutable SeExprFunc _apixelFunction;
     OfxRectI _dstPixelRod;
     typedef std::map<std::string,SeExprVarRef*> VariablesMap;
     VariablesMap _variables;
     
-    SimpleVec* _scale;
+    SimpleScalar _scalex;
+    SimpleScalar _scaley;
+
+    SimpleScalar _curTime;
+    SimpleScalar _xCoord;
+    SimpleScalar _yCoord;
+    SimpleScalar _uCoord;
+    SimpleScalar _vCoord;
+    SimpleScalar _par;
+    SimpleScalar _xCanCoord;
+    SimpleScalar _yCanCoord;
+
+    SimpleScalar _outputWidth;
+    SimpleScalar _outputHeight;
+    SimpleScalar _inputWidths[kSourceClipCount];
+    SimpleScalar _inputHeights[kSourceClipCount];
     
-    SimpleScalar* _curTime;
-    SimpleScalar* _xCoord;
-    SimpleScalar* _yCoord;
-    SimpleScalar* _uCoord;
-    SimpleScalar* _vCoord;
-    
-    SimpleScalar* _outputWidth;
-    SimpleScalar* _outputHeight;
-    SimpleScalar* _inputWidths[kSourceClipCount];
-    SimpleScalar* _inputHeights[kSourceClipCount];
-    
-    SimpleVec* _inputColors[kSourceClipCount];
-    SimpleScalar* _inputAlphas[kSourceClipCount];
+    SimpleVec _inputColors[kSourceClipCount];
+    SimpleScalar _inputAlphas[kSourceClipCount];
     
     DoubleParamVarRef* _doubleRef[kParamsCount];
     Double2DParamVarRef* _double2DRef[kParamsCount];
@@ -880,7 +949,7 @@ public:
     
     
     OFXSeExpression(SeExprProcessorBase* processor,const std::string& expr, OfxTime time,
-                    const OfxPointD& renderScale, const OfxRectI& outputRod);
+                    const OfxPointD& renderScale, double par, const OfxRectI& outputRod);
     
     virtual ~OFXSeExpression();
     
@@ -892,26 +961,28 @@ public:
     
     /** NOT MT-SAFE, this object is to be used PER-THREAD*/
     void setXY(int x, int y) {
-        _xCoord->_value = x;
-        _yCoord->_value = y;
-        _uCoord->_value = (x + 0.5 - _dstPixelRod.x1) / (_dstPixelRod.x2 - _dstPixelRod.x1);
-        _vCoord->_value = (y + 0.5 - _dstPixelRod.y1) / (_dstPixelRod.y2 - _dstPixelRod.y1);
+        _xCoord._value = x;
+        _yCoord._value = y;
+        _uCoord._value = (x + 0.5 - _dstPixelRod.x1) / (_dstPixelRod.x2 - _dstPixelRod.x1);
+        _vCoord._value = (y + 0.5 - _dstPixelRod.y1) / (_dstPixelRod.y2 - _dstPixelRod.y1);
+        _xCanCoord._value = (x + 0.5) * _par._value /_scalex._value;
+        _yCanCoord._value = (y + 0.5) / _scaley._value;
     }
     
     void setRGBA(int inputIndex, float r, float g, float b, float a) {
-        _inputColors[inputIndex]->_value[0] = r;
-        _inputColors[inputIndex]->_value[1] = g;
-        _inputColors[inputIndex]->_value[2] = b;
-        _inputAlphas[inputIndex]->_value = a;
+        _inputColors[inputIndex]._value[0] = r;
+        _inputColors[inputIndex]._value[1] = g;
+        _inputColors[inputIndex]._value[2] = b;
+        _inputAlphas[inputIndex]._value = a;
     }
     
     void setSize(int inputNumber, int w, int h) {
         if (inputNumber == -1) {
-            _outputWidth->_value = w;
-            _outputHeight->_value = h;
+            _outputWidth._value = w;
+            _outputHeight._value = h;
         } else {
-            _inputWidths[inputNumber]->_value = w;
-            _inputHeights[inputNumber]->_value = h;
+            _inputWidths[inputNumber]._value = w;
+            _inputHeights[inputNumber]._value = h;
         }
     }
 
@@ -919,20 +990,26 @@ public:
 };
 
 OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::string& expr, OfxTime time,
-                                 const OfxPointD& renderScale, const OfxRectI& outputRod)
+                                 const OfxPointD& renderScale, double par, const OfxRectI& outputRod)
 : SeExpression(expr)
-, _getPix(processor)
-, _getPixFunction(_getPix, _getPix.numArgs(), _getPix.numArgs())
+, _cpixel(processor)
+, _cpixelFunction(_cpixel, 4, 5)
+, _apixel(processor)
+, _apixelFunction(_apixel, 4, 5)
 , _dstPixelRod(outputRod)
 , _variables()
-, _scale(0)
-, _curTime(0)
-, _xCoord(0)
-, _yCoord(0)
-, _uCoord(0)
-, _vCoord(0)
-, _outputWidth(0)
-, _outputHeight(0)
+, _scalex()
+, _scaley()
+, _curTime()
+, _xCoord()
+, _yCoord()
+, _uCoord()
+, _vCoord()
+, _par()
+, _xCanCoord()
+, _yCanCoord()
+, _outputWidth()
+, _outputHeight()
 , _inputWidths()
 , _inputHeights()
 , _inputColors()
@@ -943,117 +1020,81 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
 {
     _dstPixelRod = outputRod;
     
-    _scale = new SimpleVec;
-    _scale->_value[0] = renderScale.x;
-    _scale->_value[1] = renderScale.y;
-    _scale->_value[2] = 1.;
-    _variables.insert(std::make_pair(kSeExprRenderScaleVarName, _scale));
+    _scalex._value = renderScale.x;
+    _variables[kSeExprRenderScaleXVarName] = &_scalex;
+
+    _scaley._value = renderScale.y;
+    _variables[kSeExprRenderScaleYVarName] = &_scaley;
+
+    _curTime._value = time;
+    _variables[kSeExprCurrentTimeVarName] = &_curTime;
     
-    assert(processor);
-    SeExprPlugin* plugin = processor->getPlugin();
+    _variables[kSeExprXCoordVarName] = &_xCoord;
     
+    _variables[kSeExprYCoordVarName] = &_yCoord;
+    
+    _variables[kSeExprUCoordVarName] = &_uCoord;
+    
+    _variables[kSeExprVCoordVarName] = &_vCoord;
+
+    _par._value = par;
+    _variables[kSeExprPARVarName] = &_par;
+
+    _variables[kSeExprXCanCoordVarName] = &_xCanCoord;
+
+    _variables[kSeExprYCanCoordVarName] = &_yCanCoord;
+
+    _variables[kSeExprOutputWidthVarName] = &_outputWidth;
+
+    _variables[kSeExprOutputHeightVarName] = &_outputHeight;
+
     char name[256];
-    
-    _curTime = new SimpleScalar;
-    _curTime->_value = time;
-    _variables.insert(std::make_pair(std::string(kSeExprCurrentTimeVarName), _curTime));
-    
-    _xCoord = new SimpleScalar;
-    _variables.insert(std::make_pair(std::string(kSeExprXCoordVarName), _xCoord));
-    
-    _yCoord = new SimpleScalar;
-    _variables.insert(std::make_pair(std::string(kSeExprYCoordVarName), _yCoord));
-    
-    _uCoord = new SimpleScalar;
-    _variables.insert(std::make_pair(std::string(kSeExprUCoordVarName), _uCoord));
-    
-    _vCoord = new SimpleScalar;
-    _variables.insert(std::make_pair(std::string(kSeExprVCoordVarName), _vCoord));
-    
-    _outputWidth = new SimpleScalar;
-    _variables.insert(std::make_pair(std::string(kSeExprOutputWidthVarName), _outputWidth));
-    
-    _outputHeight = new SimpleScalar;
-    _variables.insert(std::make_pair(std::string(kSeExprOutputHeightVarName), _outputHeight));
-    
+
     for (int i = 0; i < kSourceClipCount; ++i) {
         snprintf(name, sizeof(name), kSeExprInputWidthVarName "%d", i+1);
-        _inputWidths[i] = new SimpleScalar;
-        _variables.insert(std::make_pair(std::string(name), _inputWidths[i]));
-        if (i == 0) {
-            _variables.insert(std::make_pair(std::string(kSeExprInputWidthVarName), _inputWidths[i]));
-        }
-        
+        _variables[name] = &_inputWidths[i];
         snprintf(name, sizeof(name), kSeExprInputHeightVarName "%d", i+1);
-        _inputHeights[i] = new SimpleScalar;
-        _variables.insert(std::make_pair(std::string(name), _inputHeights[i]));
-        
-        if (i == 0) {
-            _variables.insert(std::make_pair(std::string(kSeExprInputHeightVarName), _inputHeights[i]));
-        }
-        
+        _variables[name] = &_inputHeights[i];
         snprintf(name, sizeof(name), kSeExprColorVarName "%d", i+1);
-        _inputColors[i] = new SimpleVec;
-        _variables.insert(std::make_pair(std::string(name), _inputColors[i]));
-        
-        if (i == 0) {
-            _variables.insert(std::make_pair(std::string(kSeExprColorVarName), _inputColors[i]));
-        }
-        
+        _variables[name] = &_inputColors[i];
         snprintf(name, sizeof(name), kSeExprAlphaVarName "%d", i+1);
-        _inputAlphas[i] = new SimpleScalar;
-        _variables.insert(std::make_pair(std::string(name), _inputAlphas[i]));
-        
+        _variables[name] = &_inputAlphas[i];
         if (i == 0) {
-            _variables.insert(std::make_pair(std::string(kSeExprAlphaVarName), _inputAlphas[i]));
+            // default names for the first input
+            _variables[kSeExprInputWidthVarName] = &_inputWidths[i];
+            _variables[kSeExprInputHeightVarName] = &_inputHeights[i];
+            _variables[kSeExprColorVarName] = &_inputColors[i];
+            _variables[kSeExprAlphaVarName] = &_inputAlphas[i];
         }
     }
-    
-    
+
+    assert(processor);
+    SeExprPlugin* plugin = processor->getPlugin();
+
     OFX::DoubleParam** doubleParams = plugin->getDoubleParams();
     OFX::Double2DParam** double2DParams = plugin->getDouble2DParams();
     OFX::RGBParam** colorParams = plugin->getRGBParams();
-    
+
     for (int i = 0; i < kParamsCount; ++i) {
         _doubleRef[i] = new DoubleParamVarRef(doubleParams[i]);
         _double2DRef[i]  = new Double2DParamVarRef(double2DParams[i]);
         _colorRef[i]  = new ColorParamVarRef(colorParams[i]);
-        snprintf(name, sizeof(name), kParamDouble, i+1);
-        _variables.insert(std::make_pair(std::string(name), _doubleRef[i]));
-        snprintf(name, sizeof(name), kParamDouble2D, i+1);
-        _variables.insert(std::make_pair(std::string(name), _double2DRef[i]));
-        snprintf(name, sizeof(name), kParamColor, i+1);
-        _variables.insert(std::make_pair(std::string(name), _colorRef[i]));
+        snprintf(name, sizeof(name), kParamDouble "%d", i+1);
+        _variables[name] = _doubleRef[i];
+        snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
+        _variables[name] = _double2DRef[i];
+        snprintf(name, sizeof(name), kParamColor "%d", i+1);
+        _variables[name] = _colorRef[i];
     }
-    
-    
-    
 }
 
 OFXSeExpression::~OFXSeExpression()
 {
-    delete _scale;
-    delete _curTime;
-    delete _xCoord;
-    delete _yCoord;
-    delete _uCoord;
-    delete _vCoord;
-    delete _outputWidth;
-    delete _outputHeight;
-    
     for (int i = 0; i < kParamsCount; ++i) {
         delete _doubleRef[i];
         delete _double2DRef[i];
         delete _colorRef[i];
     }
-    
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        delete _inputWidths[i];
-        delete _inputHeights[i];
-        delete _inputColors[i];
-        delete _inputAlphas[i];
-    }
-    
 }
 
 SeExprVarRef*
@@ -1073,68 +1114,58 @@ SeExprFunc* OFXSeExpression::resolveFunc(const std::string& funcName) const
     if (SeExprFunc::lookup(funcName)) {
         return 0;
     }
-    
-    if (funcName == kSeExprGetPixelFuncName) {
-        return &_getPixFunction;
+    if (funcName == kSeExprCPixelFuncName) {
+        return &_cpixelFunction;
+    }
+    if (funcName == kSeExprAPixelFuncName) {
+        return &_apixelFunction;
     }
     return 0;
 }
 
 
 bool
-StubGetPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
+StubPixelFuncX::prep(SeExprFuncNode* node, bool /*wantVec*/)
 {
     // check number of arguments
     int nargs = node->nargs();
-    if (nargs != numArgs()) {
-        node->addError("Wrong number of arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+    if (nargs < 4 || 5 < nargs) {
+        node->addError("Wrong number of arguments, should be 4 or 5");
         return false;
     }
-    
-    for (int i = 0; i < numArgs(); ++i) {
-        
+
+    for (int i = 0; i < nargs; ++i) {
+
         if (node->child(i)->isVec()) {
-            node->addError("Wrong arguments, should be " kSeExprGetPixelFuncName "(inputIndex, frame, x, y)");
+            node->addError("Wrong arguments, should be all scalars");
             return false;
         }
         if (!node->child(i)->prep(false)) {
             return false;
         }
-        
-        SeVec3d val;
-        node->child(i)->eval(val);
-        if ((val[0] - std::floor(val[0] + 0.5)) != 0.) {
-            char name[256];
-            snprintf(name, sizeof(name), "Argument %d should be an integer.", i+1);
-            node->addError(name);
-            return false;
-        }
-        
     }
-    
-    SeVec3d inputIndex;
-    node->child(0)->eval(inputIndex);
-    if (inputIndex[0] < 0 || inputIndex[0] >= kSourceClipCount) {
+
+    SeVec3d v;
+    node->child(0)->eval(v);
+    int inputIndex = (int)SeExpr::round(v[0]) - 1;
+    if (inputIndex < 0 || inputIndex >= kSourceClipCount) {
         node->addError("Invalid input index");
         return false;
     }
     return true;
 }
 
-
-
 void
-StubGetPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
+StubPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
 {
-    
-    SeVec3d inputIndex;
-    node->child(0)->eval(inputIndex);
-    
-    SeVec3d frame;
-    node->child(1)->eval(frame);
-    
-    
-    _expr->onGetPixelCalled(inputIndex[0] - 1, frame[0]);
+    SeVec3d v;
+    node->child(0)->eval(v);
+    int inputIndex = (int)SeExpr::round(v[0]) - 1;
+    node->child(1)->eval(v);
+    OfxTime frame = SeExpr::round(v[0]);
+
+
+    _expr->onPixelCalled(inputIndex, frame);
     result[0] = result[1] = result[2] = std::numeric_limits<double>::quiet_NaN();
 }
 
@@ -1142,11 +1173,9 @@ StubSeExpression::StubSeExpression(const std::string& expr, OfxTime time)
 : SeExpression(expr)
 , _nanScalar()
 , _zeroScalar()
-, _getPix(this)
-, _getPixFunction(_getPix, 4, 4)
+, _pixel(this)
+, _pixelFunction(_pixel, 4, 5)
 , _currentTime()
-, _xCoord()
-, _yCoord()
 {
     _nanScalar._value = std::numeric_limits<double>::quiet_NaN();
     _currentTime._value = time;
@@ -1164,17 +1193,21 @@ StubSeExpression::resolveVar(const std::string& varName) const
     if (varName == kSeExprCurrentTimeVarName) {
         return &_currentTime;
     } else if (varName == kSeExprXCoordVarName) {
-        return &_xCoord;
+        return &_nanScalar;
     } else if (varName == kSeExprYCoordVarName) {
-        return &_yCoord;
+        return &_nanScalar;
     } else if (varName == kSeExprUCoordVarName) {
-        return &_zeroScalar;
+        return &_nanScalar;
     } else if (varName == kSeExprUCoordVarName) {
-        return &_zeroScalar;
+        return &_nanScalar;
+    } else if (varName == kSeExprXCanCoordVarName) {
+        return &_nanScalar;
+    } else if (varName == kSeExprYCanCoordVarName) {
+        return &_nanScalar;
     } else if (varName == kSeExprOutputWidthVarName) {
-        return &_zeroScalar;
+        return &_nanScalar;
     } else if (varName == kSeExprOutputHeightVarName) {
-        return &_zeroScalar;
+        return &_nanScalar;
     } else if (varName == kSeExprColorVarName) {
         return &_nanScalar;
     } else if (varName == kSeExprAlphaVarName) {
@@ -1183,11 +1216,13 @@ StubSeExpression::resolveVar(const std::string& varName) const
         return &_nanScalar;
     } else if (varName == kSeExprInputHeightVarName) {
         return &_nanScalar;
-    } else if (varName == kSeExprRenderScaleVarName) {
-        return &_zeroScalar;
+    } else if (varName == kSeExprRenderScaleXVarName) {
+        return &_nanScalar;
+    } else if (varName == kSeExprRenderScaleYVarName) {
+        return &_nanScalar;
     }
 
-    return &_zeroScalar;
+    return &_nanScalar;
 }
 
 /** override resolveFunc to add external functions */
@@ -1198,9 +1233,10 @@ StubSeExpression::resolveFunc(const std::string& funcName) const
     if (SeExprFunc::lookup(funcName)) {
         return 0;
     }
-    if (funcName == kSeExprGetPixelFuncName) {
-        return &_getPixFunction;
+    if (funcName == kSeExprCPixelFuncName || funcName == kSeExprAPixelFuncName) {
+        return &_pixelFunction;
     }
+
     return 0;
 }
 
@@ -1236,15 +1272,15 @@ SeExprProcessorBase::~SeExprProcessorBase()
 }
 
 void
-SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers, const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale)
+SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers, const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale, double par)
 {
     _renderTime = time;
     _renderView = view;
     if (!rgbExpr.empty()) {
-        _rgbExpr = new OFXSeExpression(this, rgbExpr, time, renderScale, dstPixelRod);
+        _rgbExpr = new OFXSeExpression(this, rgbExpr, time, renderScale, par, dstPixelRod);
     }
     if (!alphaExpr.empty()) {
-        _alphaExpr = new OFXSeExpression(this, alphaExpr, time, renderScale, dstPixelRod);
+        _alphaExpr = new OFXSeExpression(this, alphaExpr, time, renderScale, par, dstPixelRod);
     }
     if (gHostIsMultiPlanar) {
         for (int i = 0; i < kSourceClipCount; ++i) {
@@ -1322,7 +1358,7 @@ public:
         
         float tmpPix[4];
         PIX srcPixels[kSourceClipCount][4];
-        
+
         for (int y = procWindow.y1; y < procWindow.y2; ++y) {
             if (_plugin->abort()) {
                 break;
@@ -1392,16 +1428,19 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
     char name[256];
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        if (i == 0 && getContext() == OFX::eContextFilter) {
-            _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
-        } else {
-            snprintf(name, sizeof(name), "%d", i+1);
-            _srcClip[i] = fetchClip(name);
+    if (getContext() != OFX::eContextGenerator) {
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            if (i == 0 && getContext() == OFX::eContextFilter) {
+                _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+            } else {
+			  snprintf(name, sizeof(name), "%d", i+1);
+			  _srcClip[i] = fetchClip(name);
+            }
         }
     }
+    _clipLayerOptions.resize(kSourceClipCount);
     
-    _maskClip = getContext() == OFX::eContextFilter ? NULL : fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
     assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
 
@@ -1414,26 +1453,36 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
 
     for (int i = 0; i < kParamsCount; ++i) {
         if (gHostIsMultiPlanar) {
-            snprintf(name, sizeof(name), kParamLayerInput, i+1 );
+            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
             _clipLayerToFetch[i] = fetchChoiceParam(name);
+            snprintf(name, sizeof(name), kParamLayerInputChoice "%d", i+1 );
+            _clipLayerToFetchString[i] = fetchStringParam(name);
         } else {
             _clipLayerToFetch[i] = 0;
+            _clipLayerToFetchString[i] = 0;
         }
-        snprintf(name, sizeof(name), kParamDouble, i+1 );
+        
+        snprintf(name, sizeof(name), kParamDouble "%d", i+1 );
         _doubleParams[i] = fetchDoubleParam(name);
-        snprintf(name, sizeof(name), kParamDouble2D, i+1 );
+        snprintf(name, sizeof(name), kParamDouble2D "%d", i+1 );
         _double2DParams[i] = fetchDouble2DParam(name);
-        snprintf(name, sizeof(name), kParamColor, i+1 );
+        snprintf(name, sizeof(name), kParamColor "%d", i+1 );
         _colorParams[i] = fetchRGBParam(name);
     }
+
+    _frameRange = fetchInt2DParam(kParamFrameRange);
+    _frameRangeAbsolute = fetchBooleanParam(kParamFrameRangeAbsolute);
+    assert(_frameRange && _frameRangeAbsolute);
+
     _rgbScript = fetchStringParam(kParamScript);
     assert(_rgbScript);
     _alphaScript = fetchStringParam(kParamAlphaScript);
     assert(_alphaScript);
     _validate = fetchBooleanParam(kParamValidate);
     assert(_validate);
-    
+
     _mix = fetchDoubleParam(kParamMix);
+    _maskApply = paramExists(kParamMaskApply) ? fetchBooleanParam(kParamMaskApply) : 0;
     _maskInvert = fetchBooleanParam(kParamMaskInvert);
     assert(_mix && _maskInvert);
 
@@ -1450,52 +1499,13 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     assert(_format && _btmLeft && _size && _interactive);
     
     // update visibility
-    int numVisible;
-    _doubleParamCount->getValue(numVisible);
-    assert(numVisible <= kParamsCount && numVisible >=0);
-    for (int i = 0; i < kParamsCount; ++i) {
-        bool visible = i < numVisible;
-        _doubleParams[i]->setIsSecret(!visible);
-    }
-    _double2DParamCount->getValue(numVisible);
-    assert(numVisible <= kParamsCount && numVisible >=0);
-    for (int i = 0; i < kParamsCount; ++i) {
-        bool visible = i < numVisible;
-        _double2DParams[i]->setIsSecret(!visible);
-    }
-    _colorParamCount->getValue(numVisible);
-    assert(numVisible <= kParamsCount && numVisible >=0);
-    for (int i = 0; i < kParamsCount; ++i) {
-        bool visible = i < numVisible;
-        _colorParams[i]->setIsSecret(!visible);
-    }
-
-    int boundingbox_i;
-    _boundingBox->getValue(boundingbox_i);
-    bool hasFormat = (boundingbox_i == 3);
-    bool hasSize = (boundingbox_i == 2);
-    
-    _format->setEnabled(hasFormat);
-    _format->setIsSecret(!hasFormat);
-    _size->setEnabled(hasSize);
-    _size->setIsSecret(!hasSize);
-    _btmLeft->setEnabled(hasSize);
-    _btmLeft->setIsSecret(!hasSize);
-    _interactive->setEnabled(hasSize);
-    _interactive->setIsSecret(!hasSize);
-    
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    if (outputComponents_i == 0 || outputComponents_i == 1) { // RGB || RGBA
-        _rgbScript->setIsSecret(false);
-    } else {
-        _rgbScript->setIsSecret(true);
-    }
-    if (outputComponents_i == 1 || outputComponents_i == 2) { // RGBA || alpha
-        _alphaScript->setIsSecret(false);
-    } else {
-        _alphaScript->setIsSecret(true);
-    }
+    OFX::InstanceChangedArgs args = { OFX::eChangeUserEdit, 0, {1,1} };
+    changedParam(args, kParamDoubleParamNumber);
+    changedParam(args, kParamDouble2DParamNumber);
+    changedParam(args, kParamColorNumber);
+    changedParam(args, kParamValidate);
+    changedParam(args, kParamRegionOfDefinition);
+    changedParam(args, kParamOutputComponents);
 }
 
 std::string
@@ -1517,8 +1527,9 @@ SeExprPlugin::getOfxComponentsForClip(int inputNumber) const
 
         return kFnOfxImageComponentStereoDisparity;
     } else {
-        std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
-        for (std::list<std::string>::iterator it = components.begin(); it != components.end(); ++it) {
+        std::vector<std::string> components;
+        _srcClip[inputNumber]->getComponentsPresent(&components);
+        for (std::vector<std::string>::iterator it = components.begin(); it != components.end(); ++it) {
             std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
             if (layerChannels.empty()) {
                 continue;
@@ -1552,10 +1563,9 @@ SeExprPlugin::getOfxPlaneForClip(int inputNumber) const
     } else if (opt == kSeExprDisparityRightPlaneName) {
         return kFnOfxImagePlaneStereoDisparityRight;
     } else {
-        
-        
-        std::list<std::string> components = _srcClip[inputNumber]->getComponentsPresent();
-        for (std::list<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
+        std::vector<std::string> components;
+        _srcClip[inputNumber]->getComponentsPresent(&components);
+        for (std::vector<std::string>::iterator it = components.begin(); it!=components.end(); ++it) {
             std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
             if (layerChannels.empty()) {
                 continue;
@@ -1616,11 +1626,10 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     processor.setDstImg(dst.get());
     
     // auto ptr for the mask.
-    std::auto_ptr<const OFX::Image> mask((getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) ?
-                                         _maskClip->fetchImage(args.time) : 0);
-    
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(args.time) : 0);
     // do we do masking
-    if (getContext() != OFX::eContextFilter && _maskClip && _maskClip->isConnected()) {
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         
@@ -1637,7 +1646,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
             OfxRectD rod = _srcClip[i]->getRegionOfDefinition(args.time);
             double par = _srcClip[i]->getPixelAspectRatio();
             OfxRectI pixelRod;
-            OFX::MergeImages2D::toPixelEnclosing(rod, args.renderScale, par, &pixelRod);
+            OFX::Coords::toPixelEnclosing(rod, args.renderScale, par, &pixelRod);
             inputSizes[i].x = pixelRod.x2 - pixelRod.x1;
             inputSizes[i].y = pixelRod.y2 - pixelRod.y1;
         } else {
@@ -1655,12 +1664,12 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     
     double par = dst->getPixelAspectRatio();
     
-    OFX::MergeImages2D::toPixelEnclosing(outputRod, args.renderScale, par, &outputPixelRod);
+    OFX::Coords::toPixelEnclosing(outputRod, args.renderScale, par, &outputPixelRod);
     OfxPointI outputSize;
     outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
     outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
     
-    processor.setValues(args.time, args.renderView, mix, rgbScript, alphaScript, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale);
+    processor.setValues(args.time, args.renderView, mix, rgbScript, alphaScript, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale, par);
     
     std::string error;
     if (!processor.isExprOk(&error)) {
@@ -1683,9 +1692,6 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
         return;
     }
     
-    OFX::BitDepthEnum       dstBitDepth    = _dstClip->getPixelDepth();
-    OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
-    
     if (!gHostIsNatron) {
         bool validated;
         _validate->getValue(validated);
@@ -1696,7 +1702,19 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
         }
     }
 
+    OFX::BitDepthEnum       dstBitDepth    = _dstClip->getPixelDepth();
+    OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
+
     assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentAlpha);
+
+    int outputComponents_i;
+    _outputComponents->getValue(outputComponents_i);
+    OFX::PixelComponentEnum outputComponents = gOutputComponentsMap[outputComponents_i];
+    if (dstComponents != outputComponents) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "SeExpr: OFX Host did not take into account output components");
+        OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+    }
+
     if (dstComponents == OFX::ePixelComponentRGBA) {
         switch (dstBitDepth) {
             case OFX::eBitDepthUByte: {
@@ -1765,16 +1783,16 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
 
 }
 
+
 void
 SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
-
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
 
-    if (paramName == kParamDoubleParamNumber) {
+    if (paramName == kParamDoubleParamNumber && args.reason == OFX::eChangeUserEdit) {
         int numVisible;
         _doubleParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1782,7 +1800,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _doubleParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kParamDouble2DParamNumber) {
+    } else if (paramName == kParamDouble2DParamNumber && args.reason == OFX::eChangeUserEdit) {
         int numVisible;
         _double2DParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1790,7 +1808,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _double2DParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kParamColorNumber) {
+    } else if (paramName == kParamColorNumber && args.reason == OFX::eChangeUserEdit) {
         int numVisible;
         _colorParamCount->getValue(numVisible);
         assert(numVisible <= kParamsCount && numVisible >=0);
@@ -1798,7 +1816,7 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             bool visible = i < numVisible;
             _colorParams[i]->setIsSecret(!visible);
         }
-    } else if (paramName == kParamValidate) {
+    } else if (paramName == kParamValidate && args.reason == OFX::eChangeUserEdit) {
         if (!gHostIsNatron) {
             bool validated;
             _validate->getValue(validated);
@@ -1813,16 +1831,15 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             _rgbScript->setEvaluateOnChange(validated);
             _alphaScript->setEnabled(!validated);
             _alphaScript->setEvaluateOnChange(validated);
-            if (validated) {
-                clearPersistentMessage();
-            }
+            clearPersistentMessage();
         }
     } else if (paramName == kParamRegionOfDefinition && args.reason == OFX::eChangeUserEdit) {
-        int boundingbox_i;
-        _boundingBox->getValue(boundingbox_i);
-        bool hasFormat = (boundingbox_i == 3);
-        bool hasSize = (boundingbox_i == 2);
-        
+        int boundingBox_i;
+        _boundingBox->getValue(boundingBox_i);
+        RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+        bool hasFormat = (boundingBox == eRegionOfDefinitionOptionFormat);
+        bool hasSize = (boundingBox == eRegionOfDefinitionOptionSize);
+
         _format->setEnabled(hasFormat);
         _format->setIsSecret(!hasFormat);
         _size->setEnabled(hasSize);
@@ -1831,40 +1848,62 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _btmLeft->setIsSecret(!hasSize);
         _interactive->setEnabled(hasSize);
         _interactive->setIsSecret(!hasSize);
-    } else if (paramName == kParamOutputComponents) {
-        int outputComps_i;
-        _outputComponents->getValue(outputComps_i);
-        if (outputComps_i == 0 || outputComps_i == 1) { // RGB || RGBA
+    } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) {
+        OFX::PixelComponentEnum outputComponents = getOutputComponents();
+        if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
             _rgbScript->setIsSecret(false);
         } else {
             _rgbScript->setIsSecret(true);
         }
-        if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+        if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
             _alphaScript->setIsSecret(false);
         } else {
             _alphaScript->setIsSecret(true);
         }
+    } else if (paramName == kParamShowScript && args.reason == OFX::eChangeUserEdit) {
+        std::string script;
+        _rgbScript->getValueAtTime(args.time, script);
+        sendMessage(OFX::Message::eMessageMessage, "", "RGB Script:\n" + script);
+    } else if (paramName == kParamShowAlphaScript && args.reason == OFX::eChangeUserEdit) {
+        std::string script;
+        _alphaScript->getValueAtTime(args.time, script);
+        sendMessage(OFX::Message::eMessageMessage, "", "Alpha Script:\n" + script);
+    } else {
+        
+        char name[256];
+        for (int i = 0; i < kSourceClipCount; ++i) {
+            snprintf(name, sizeof(name), kParamLayerInput "%d", i+1 );
+            if (paramName == std::string(name) && args.reason == OFX::eChangeUserEdit) {
+                int cur_i;
+                _clipLayerToFetch[i]->getValue(cur_i);
+                std::string opt;
+                _clipLayerToFetch[i]->getOption(cur_i, opt);
+                _clipLayerToFetchString[i]->setValue(opt);
+                break;
+            }
+        }
     }
-
 }
 
 
 bool
 SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
                          OFX::Clip * &identityClip,
-                         double &identityTime)
+                         double &/*identityTime*/)
 {
     // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
     clearPersistentMessage();
 
-    if (_maskClip && _maskClip->isConnected()) {
+
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::MergeImages2D::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::MergeImages2D::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip[0];
                 return true;
             }
@@ -1881,6 +1920,7 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
         return;
     }
     if (args.reason == OFX::eChangeUserEdit) {
+        std::string strName;
         char name[256];
         for (int i = 0; i < kSourceClipCount; ++i) {
             snprintf(name, sizeof(name), "%d", i+1);
@@ -1892,17 +1932,40 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
     }
 }
 
+namespace {
+    static bool hasListChanged(const std::vector<std::string>& oldList, const std::vector<std::string>& newList)
+    {
+        if (oldList.size() != newList.size()) {
+            return true;
+        }
+        
+        std::vector<std::string>::const_iterator itNew = newList.begin();
+        for (std::vector<std::string>::const_iterator it = oldList.begin(); it!=oldList.end(); ++it,++itNew) {
+            if (*it != *itNew) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 void
 SeExprPlugin::buildChannelMenus()
 {
-    
     for (int i = 0; i < kSourceClipCount; ++i) {
-        
+        std::vector<std::string> components;
+        _srcClip[i]->getComponentsPresent(&components);
+        if (!hasListChanged(_clipLayerOptions[i], components)) {
+            continue;
+        }
         _clipLayerToFetch[i]->resetOptions();
-        _clipLayerToFetch[i]->appendOption(kSeExprColorPlaneName);
 
-        std::list<std::string> components = _srcClip[i]->getComponentsPresent();
-        for (std::list<std::string> ::iterator it = components.begin(); it!=components.end(); ++it) {
+        _clipLayerOptions[i] = components;
+        
+        std::vector<std::string> options;
+        options.push_back(kSeExprColorPlaneName);
+        
+        for (std::vector<std::string> ::iterator it = components.begin(); it!=components.end(); ++it) {
             const std::string& comp = *it;
             if (comp == kOfxImageComponentAlpha) {
                 continue;
@@ -1911,11 +1974,11 @@ SeExprPlugin::buildChannelMenus()
             } else if (comp == kOfxImageComponentRGBA) {
                 continue;
             } else if (comp == kFnOfxImageComponentMotionVectors) {
-                _clipLayerToFetch[i]->appendOption(kSeExprBackwardMotionPlaneName);
-                _clipLayerToFetch[i]->appendOption(kSeExprForwardMotionPlaneName);
+                options.push_back(kSeExprBackwardMotionPlaneName);
+                options.push_back(kSeExprForwardMotionPlaneName);
             } else if (comp == kFnOfxImageComponentStereoDisparity) {
-                _clipLayerToFetch[i]->appendOption(kSeExprDisparityLeftPlaneName);
-                _clipLayerToFetch[i]->appendOption(kSeExprDisparityRightPlaneName);
+                options.push_back(kSeExprDisparityLeftPlaneName);
+                options.push_back(kSeExprDisparityRightPlaneName);
 #ifdef OFX_EXTENSIONS_NATRON
             } else {
                 std::vector<std::string> layerChannels = OFX::mapPixelComponentCustomToLayerChannels(*it);
@@ -1923,10 +1986,34 @@ SeExprPlugin::buildChannelMenus()
                     continue;
                 }
                 // first element is layer name
-                _clipLayerToFetch[i]->appendOption(layerChannels[0]);
+                options.push_back(layerChannels[0]);
 #endif
             }
-
+        }
+        for (std::size_t j = 0; j < options.size(); ++j) {
+            _clipLayerToFetch[i]->appendOption(options[j]);
+        }
+        std::string valueStr;
+        _clipLayerToFetchString[i]->getValue(valueStr);
+        if (valueStr.empty()) {
+            int cur_i;
+            _clipLayerToFetch[i]->getValue(cur_i);
+            _clipLayerToFetch[i]->getOption(cur_i, valueStr);
+            _clipLayerToFetchString[i]->setValue(valueStr);
+        } else {
+            int foundOption = -1;
+            for (std::size_t j = 0; j < options.size(); ++j) {
+                if (options[j] == valueStr) {
+                    foundOption = j;
+                    break;
+                }
+            }
+            if (foundOption != -1) {
+                _clipLayerToFetch[i]->setValue(foundOption);
+            } else {
+                _clipLayerToFetch[i]->setValue(0);
+                _clipLayerToFetchString[i]->setValue(options[0]);
+            }
         }
     }
 }
@@ -1937,50 +2024,53 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
     if (gHostIsMultiPlanar) {
         buildChannelMenus();
     }
-    
-    
+
     double par = 0.;
     
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    switch (boundingBox) {
+        case eRegionOfDefinitionOptionSize: {
+            //size
+            break;
+        }
+        case eRegionOfDefinitionOptionFormat: {
+            //format
+            int index;
+            _format->getValue(index);
+            int w, h;
+            getFormatResolution( (OFX::EParamFormat)index, &w, &h, &par );
+            break;
+        }
+        case eRegionOfDefinitionOptionProject: {
+            //project format
 
-    
-    if (boundingBox_i == 2) {
-        //size
-    } else if (boundingBox_i == 3) {
-        //format
-        int index;
-        _format->getValue(index);
-        size_t w,h;
-        getFormatResolution( (OFX::EParamFormat)index, &w, &h, &par );
-    } else if (boundingBox_i == 4) {
-        //project format
-        
-        /// this should be the defalut value given by the host, no need to set it.
-        /// @see Instance::setupClipPreferencesArgs() in HostSupport, it should have
-        /// the line:
-        /// double inputPar = getProjectPixelAspectRatio();
-        
-        //par = getProjectPixelAspectRatio();
+            /// this should be the defalut value given by the host, no need to set it.
+            /// @see Instance::setupClipPreferencesArgs() in HostSupport, it should have
+            /// the line:
+            /// double inputPar = getProjectPixelAspectRatio();
+
+            //par = getProjectPixelAspectRatio();
+            break;
+        }
+        default:
+            break;
     }
     
     if (par != 0.) {
         clipPreferences.setPixelAspectRatio(*_dstClip, par);
     }
-    
+
     //We're frame varying since we don't know what the user may output at any frame
     clipPreferences.setOutputFrameVarying(true);
-    
-    int outputComp_i;
-    _outputComponents->getValue(outputComp_i);
-    if (outputComp_i == 0) { // RGB
+    clipPreferences.setOutputHasContinousSamples(true);
+
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB) {
         clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGB);
-    } else if (outputComp_i == 1) { // RGBA
-        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentRGBA);
-    } else if ( outputComp_i == 2) { // alpha
-        clipPreferences.setClipComponents(*_dstClip, OFX::ePixelComponentAlpha);
     }
+    clipPreferences.setClipComponents(*_dstClip, outputComponents);
 }
 
 void
@@ -2007,7 +2097,16 @@ SeExprPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX::C
 void
 SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::FramesNeededSetter &frames)
 {
-    
+    if (!gHostIsNatron) {
+        bool validated;
+        _validate->getValue(validated);
+        if (!validated) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
+    }
+
     //To determine the frames needed of the expression, we just execute the expression for 1 pixel
     //and record what are the calls made to getPixel in order to figure out the Roi.
     //We trust that only evaluating the expression for 1 pixel will make all the calls to getPixel
@@ -2019,23 +2118,21 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
      srcCol = [0,0,0]
      }
      */
+    const double time = args.time;
     FramesNeeded framesNeeded;
     
-    int outputComps_i;
-    _outputComponents->getValue(outputComps_i);
-    
-    if (outputComps_i == 0 || outputComps_i == 1) {// RGB || RGBA
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) {// RGB || RGBA
         std::string rgbScript;
         _rgbScript->getValue(rgbScript);
         
-        StubSeExpression expr(rgbScript,args.time);
+        StubSeExpression expr(rgbScript, time);
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-        
-        
+
         (void)expr.evaluate();
         const FramesNeeded& rgbNeeded = expr.getFramesNeeded();
         for (FramesNeeded::const_iterator it = rgbNeeded.begin(); it != rgbNeeded.end() ;++it) {
@@ -2056,18 +2153,17 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
             
         }
     }
-    if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+    if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
         std::string alphaScript;
         _alphaScript->getValue(alphaScript);
         
-        StubSeExpression expr(alphaScript,args.time);
+        StubSeExpression expr(alphaScript, time);
         if (!expr.isValid()) {
             setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
             OFX::throwSuiteStatusException(kOfxStatFailed);
             return;
         }
-        
-        
+
         (void)expr.evaluate();
         const FramesNeeded& alphaNeeded = expr.getFramesNeeded();
         for (FramesNeeded::const_iterator it = alphaNeeded.begin(); it != alphaNeeded.end() ;++it) {
@@ -2088,25 +2184,32 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
             
         }
     }
-    
+
+    bool useDefaultRange[kSourceClipCount];
+    std::fill(useDefaultRange, useDefaultRange + kSourceClipCount, false);
     for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
-        
         assert(it->first >= 0  && it->first < kSourceClipCount);
-        OFX::Clip* clip = getClip(it->first);
-        assert(clip);
-        
-        bool hasFetchedCurrentTime = false;
         for (std::size_t i = 0; i < it->second.size(); ++i) {
-            
             if (it->second[i] != it->second[i]) {
                 //This number is NaN! The user probably used something dependant on a pixel value as a time for the getPixel function
-                setPersistentMessage(OFX::Message::eMessageError, "", "Invalid frame for getPixel, see the Limitations in the description.");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
+                // we fall back on using the default frame range
+                useDefaultRange[it->first] = true;
             }
-            
+        }
+    }
+
+    for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
+        if (useDefaultRange[it->first]) {
+            continue;
+        }
+        OFX::Clip* clip = getClip(it->first);
+        assert(clip);
+
+        bool hasFetchedCurrentTime = false;
+        for (std::size_t i = 0; i < it->second.size(); ++i) {
+            assert (it->second[i] == it->second[i]);
             OfxRangeD range;
-            if (it->second[i] == args.time) {
+            if (it->second[i] == time) {
                 hasFetchedCurrentTime = true;
             }
             range.min = range.max = it->second[i];
@@ -2114,12 +2217,33 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         }
         if (!hasFetchedCurrentTime) {
             OfxRangeD range;
-            range.min = range.max = args.time;
+            range.min = range.max = time;
             frames.setFramesNeeded(*clip, range);
         }
-        
     }
 
+    // for clips that could not have their range computed from the expression,
+    // use the default range
+    OfxRangeD range;
+    int t1, t2;
+    _frameRange->getValueAtTime(time, t1, t2);
+    bool absolute;
+    _frameRangeAbsolute->getValueAtTime(time, absolute);
+    if (absolute) {
+        range.min = std::min(t1, t2);
+        range.max = std::max(t1, t2);
+    } else {
+        range.min = time + std::min(t1, t2);
+        range.max = time + std::max(t1, t2);
+    }
+
+    for (int i = 0; i < kSourceClipCount; ++i) {
+        if (useDefaultRange[i]) {
+            OFX::Clip* clip = getClip(i);
+            assert(clip);
+            frames.setFramesNeeded(*clip, range);
+        }
+    }
 }
 
 // override the roi call
@@ -2130,6 +2254,16 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
+    }
+
+    if (!gHostIsNatron) {
+        bool validated;
+        _validate->getValue(validated);
+        if (!validated) {
+            setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return;
+        }
     }
 
     if (!kSupportsTiles) {
@@ -2159,10 +2293,8 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
         
         std::set<OFX::Clip*> processedClips;
         
-        int outputComps_i;
-        _outputComponents->getValue(outputComps_i);
-        
-        if (outputComps_i == 0 || outputComps_i == 1) { // RGB || RGBA
+        OFX::PixelComponentEnum outputComponents = getOutputComponents();
+        if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
             std::string rgbScript;
             _rgbScript->getValue(rgbScript);
             
@@ -2190,7 +2322,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
                 }
             }
         }
-        if (outputComps_i == 1 || outputComps_i == 2) { // RGBA || alpha
+        if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
             std::string alphaScript;
             _alphaScript->getValue(alphaScript);
             
@@ -2235,80 +2367,95 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
     
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
-    
-    if (boundingBox_i == 0) {
-        //union of inputs
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            if (_srcClip[i]->isConnected()) {
-                OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                OFX::MergeImages2D::rectBoundingBox(srcRod, rod, &rod);
-                rodSet = true;
-            }
-        }
-        
-    } else if (boundingBox_i == 1) {
-        //intersection of inputs
-        bool rodSet = false;
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            if (_srcClip[i]->isConnected()) {
-                OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
-                if (rodSet) {
-                    OFX::MergeImages2D::rectIntersection<OfxRectD>(srcRod, rod, &rod);
-                } else {
-                    rod = srcRod;
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    switch (boundingBox) {
+        case eRegionOfDefinitionOptionUnion: {
+            //union of inputs
+            for (int i = 0; i < kSourceClipCount; ++i) {
+                if (_srcClip[i]->isConnected()) {
+                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
+                    if (rodSet) {
+                        OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
+                    } else {
+                        rod = srcRod;
+                        rodSet = true;
+                    }
                 }
-                rodSet = true;
             }
+            break;
         }
-    } else if (boundingBox_i == 2) {
-      // custom size
-        _size->getValue(rod.x2, rod.y2);
-        _btmLeft->getValue(rod.x1, rod.y1);
-        rod.x2 += rod.x1;
-        rod.y2 += rod.y1;
-        
-        rodSet = true;
-    } else if (boundingBox_i == 3) {
-      // format
-        
-        int format_i;
-        _format->getValue(format_i);
-        double par;
-        size_t w,h;
-        getFormatResolution( (OFX::EParamFormat)format_i, &w, &h, &par );
-        rod.x1 = rod.y1 = 0;
-        rod.x2 = w;
-        rod.y2 = h;
-        
-        rodSet = true;
-    } else if (boundingBox_i == 4) {
-      // project
-        OfxPointD extent = getProjectExtent();
-        OfxPointD offset = getProjectOffset();
-        rod.x1 = offset.x;
-        rod.y1 = offset.y;
-        rod.x2 = extent.x;
-        rod.y2 = extent.y;
-        rodSet =true;
-    } else {
-        int inputIndex = boundingBox_i - 2;
-        assert(inputIndex >= 0 && inputIndex < kSourceClipCount);
-        rod = _srcClip[inputIndex]->getRegionOfDefinition(args.time);
-        rodSet = true;
+        case eRegionOfDefinitionOptionIntersection: {
+            //intersection of inputs
+            bool rodSet = false;
+            for (int i = 0; i < kSourceClipCount; ++i) {
+                if (_srcClip[i]->isConnected()) {
+                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
+                    if (rodSet) {
+                        OFX::Coords::rectIntersection<OfxRectD>(srcRod, rod, &rod);
+                    } else {
+                        rod = srcRod;
+                    }
+                    rodSet = true;
+                }
+            }
+            break;
+        }
+        case eRegionOfDefinitionOptionSize: {
+            // custom size
+            _size->getValue(rod.x2, rod.y2);
+            _btmLeft->getValue(rod.x1, rod.y1);
+            rod.x2 += rod.x1;
+            rod.y2 += rod.y1;
+
+            rodSet = true;
+            break;
+        }
+        case eRegionOfDefinitionOptionFormat: {
+            // format
+
+            int format_i;
+            _format->getValue(format_i);
+            double par = -1;
+            int w = 0, h = 0;
+            getFormatResolution( (OFX::EParamFormat)format_i, &w, &h, &par );
+            assert(par != -1);
+            rod.x1 = rod.y1 = 0;
+            rod.x2 = w;
+            rod.y2 = h;
+
+            rodSet = true;
+            break;
+        }
+        case eRegionOfDefinitionOptionProject: {
+            // project
+            OfxPointD size = getProjectSize();
+            OfxPointD offset = getProjectOffset();
+            rod.x1 = offset.x;
+            rod.y1 = offset.y;
+            rod.x2 = offset.x + size.x;
+            rod.y2 = offset.y + size.y;
+            rodSet =true;
+            break;
+        }
+        default: {
+            int inputIndex = boundingBox_i - (int)eRegionOfDefinitionOptionCustom;
+            assert(inputIndex >= 0 && inputIndex < kSourceClipCount);
+            rod = _srcClip[inputIndex]->getRegionOfDefinition(args.time);
+            rodSet = true;
+            break;
+        }
     }
-    
     if (!rodSet) {
-        OfxPointD extent = getProjectExtent();
+        OfxPointD size = getProjectSize();
         OfxPointD offset = getProjectOffset();
         rod.x1 = offset.x;
         rod.y1 = offset.y;
-        rod.x2 = extent.x;
-        rod.y2 = extent.y;
+        rod.x2 = offset.x + size.x;
+        rod.y2 = offset.y + size.y;
     }
     return true;
 }
 
-using namespace OFX;
 
 class SeExprInteract
 : public OFX::RectangleInteract
@@ -2337,14 +2484,14 @@ private:
     virtual bool allowCenterInteraction() const OVERRIDE FINAL;
     
     OFX::ChoiceParam* _boundingBox;
-    int _bboxType;
+    RegionOfDefinitionEnum _bboxType;
 };
 
 SeExprInteract::SeExprInteract(OfxInteractHandle handle,
                                      OFX::ImageEffect* effect)
 : RectangleInteract(handle,effect)
 , _boundingBox(0)
-, _bboxType(0)
+, _bboxType(eRegionOfDefinitionOptionUnion)
 {
     _boundingBox = effect->fetchChoiceParam(kParamRegionOfDefinition);
     assert(_boundingBox);
@@ -2354,46 +2501,46 @@ void SeExprInteract::aboutToCheckInteractivity(OfxTime /*time*/)
 {
     int type_i;
     _boundingBox->getValue(type_i);
-    _bboxType = type_i;
+    _bboxType = (RegionOfDefinitionEnum)type_i;
 }
 
 bool SeExprInteract::allowTopLeftInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowBtmRightInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowBtmLeftInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowBtmMidInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowMidLeftInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool SeExprInteract::allowCenterInteraction() const
 {
-    return _bboxType == 2;
+    return _bboxType == eRegionOfDefinitionOptionSize;
 }
 
 bool
 SeExprInteract::draw(const OFX::DrawArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2403,10 +2550,10 @@ SeExprInteract::draw(const OFX::DrawArgs &args)
 bool
 SeExprInteract::penMotion(const OFX::PenArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2416,10 +2563,10 @@ SeExprInteract::penMotion(const OFX::PenArgs &args)
 bool
 SeExprInteract::penDown(const OFX::PenArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2429,10 +2576,10 @@ SeExprInteract::penDown(const OFX::PenArgs &args)
 bool
 SeExprInteract::penUp(const OFX::PenArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2450,10 +2597,10 @@ SeExprInteract::loseFocus(const OFX::FocusArgs &args)
 bool
 SeExprInteract::keyDown(const OFX::KeyArgs &args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2463,10 +2610,10 @@ SeExprInteract::keyDown(const OFX::KeyArgs &args)
 bool
 SeExprInteract::keyUp(const OFX::KeyArgs & args)
 {
-    int type_i;
-    _boundingBox->getValue(type_i);
-    
-    if (type_i != 2) {
+    int boundingBox_i;
+    _boundingBox->getValue(boundingBox_i);
+    RegionOfDefinitionEnum boundingBox = (RegionOfDefinitionEnum)boundingBox_i;
+    if (boundingBox != eRegionOfDefinitionOptionSize) {
         return false;
     }
     
@@ -2499,7 +2646,7 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedBitDepth(eBitDepthUShort);
     desc.addSupportedBitDepth(eBitDepthHalf);
     desc.addSupportedBitDepth(eBitDepthFloat);
-    desc.addSupportedBitDepth(eBitDepthCustom);
+    //desc.addSupportedBitDepth(eBitDepthCustom);
 
     // set a few flags
     desc.setSingleInstance(false);
@@ -2540,44 +2687,80 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    char name[256];
-    char help[256];
+    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
+
+    for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
+         it != getImageEffectHostDescription()->_supportedComponents.end();
+         ++it) {
+        switch (*it) {
+            case ePixelComponentRGBA:
+                gHostSupportsRGBA  = true;
+                break;
+            case ePixelComponentRGB:
+                gHostSupportsRGB = true;
+                break;
+            case ePixelComponentAlpha:
+                gHostSupportsAlpha = true;
+                break;
+            default:
+                // other components are not supported by this plugin
+                break;
+        }
+    }
+
     // Source clip only in the filter context
     // create the mandated source clip
     for (int i = 0; i < kSourceClipCount; ++i) {
-        snprintf(name, sizeof(name), "%d", i+1);
+        
+        std::string clipName;
+        {
+            char name[256];
+            snprintf(name, sizeof(name), "%d", i+1);
+            clipName.append(name);
+        }
         ClipDescriptor *srcClip;
         if (i == 0 && context == eContextFilter) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
         } else {
-            srcClip = desc.defineClip(name);
+            srcClip = desc.defineClip(clipName);
         }
-        srcClip->addSupportedComponent(ePixelComponentRGB);
-        srcClip->addSupportedComponent(ePixelComponentRGBA);
-        srcClip->addSupportedComponent(ePixelComponentAlpha);
-        srcClip->addSupportedComponent(ePixelComponentCustom);
+        if (gHostSupportsRGBA) {
+            srcClip->addSupportedComponent(ePixelComponentRGBA);
+        }
+        if (gHostSupportsRGB) {
+            srcClip->addSupportedComponent(ePixelComponentRGB);
+        }
+        if (gHostSupportsAlpha) {
+            srcClip->addSupportedComponent(ePixelComponentAlpha);
+        }
+        //srcClip->addSupportedComponent(ePixelComponentCustom);
         srcClip->setTemporalClipAccess(true);
         srcClip->setSupportsTiles(true);
         srcClip->setIsMask(false);
         srcClip->setOptional(true);
     }
 
-    if (context == eContextGeneral || context == eContextPaint) {
-        ClipDescriptor *maskClip = context == eContextGeneral ? desc.defineClip("Mask") : desc.defineClip("Brush");
-        maskClip->addSupportedComponent(ePixelComponentAlpha);
-        maskClip->setTemporalClipAccess(false);
-        if (context == eContextGeneral)
-            maskClip->setOptional(true);
-        maskClip->setSupportsTiles(true);
-        maskClip->setIsMask(true);
+    ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
+    maskClip->addSupportedComponent(ePixelComponentAlpha);
+    maskClip->setTemporalClipAccess(false);
+    if (context != eContextPaint) {
+        maskClip->setOptional(true);
     }
+    maskClip->setSupportsTiles(kSupportsTiles);
+    maskClip->setIsMask(true);
 
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
-    dstClip->addSupportedComponent(ePixelComponentRGB);
-    dstClip->addSupportedComponent(ePixelComponentRGBA);
-    dstClip->addSupportedComponent(ePixelComponentAlpha);
-    dstClip->addSupportedComponent(ePixelComponentCustom);
+    if (gHostSupportsRGBA) {
+        dstClip->addSupportedComponent(ePixelComponentRGBA);
+    }
+    if (gHostSupportsRGB) {
+        dstClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (gHostSupportsAlpha) {
+        dstClip->addSupportedComponent(ePixelComponentAlpha);
+    }
+    //dstClip->addSupportedComponent(ePixelComponentCustom);
     dstClip->setSupportsTiles(true);
 
     // make some pages and to things in
@@ -2587,17 +2770,24 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRegionOfDefinition);
         param->setLabel(kParamRegionOfDefinitionLabel);
         param->setHint(kParamRegionOfDefinitionHint);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
-        
+        param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
+
+        assert(param->getNOptions() == eRegionOfDefinitionOptionUnion);
         param->appendOption(kParamRegionOfDefinitionOptionUnion, kParamRegionOfDefinitionOptionUnionHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionIntersection);
         param->appendOption(kParamRegionOfDefinitionOptionIntersection, kParamRegionOfDefinitionOptionIntersectionHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionSize);
         param->appendOption(kParamRegionOfDefinitionOptionSize, kParamRegionOfDefinitionOptionSizeHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionFormat);
         param->appendOption(kParamRegionOfDefinitionOptionFormat, kParamRegionOfDefinitionOptionFormatHelp);
+        assert(param->getNOptions() == eRegionOfDefinitionOptionProject);
         param->appendOption(kParamRegionOfDefinitionOptionProject, kParamRegionOfDefinitionOptionProjectHelp);
 
+        assert(param->getNOptions() == eRegionOfDefinitionOptionCustom);
+        char name[256], help[256];
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput, i+1);
-            snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp, i+1);
+            snprintf(name, sizeof(name), kParamRegionOfDefinitionOptionCustomInput "%d", i+1);
+            snprintf(help, sizeof(help), kParamRegionOfDefinitionOptionCustomInputHelp "%d", i+1);
             param->appendOption(name, help);
         }
         param->setAnimates(false);
@@ -2610,12 +2800,33 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputComponents);
         param->setLabel(kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
-        
-        param->appendOption(kParamOutputComponentsRGB);
-        param->appendOption(kParamOutputComponentsRGBA);
-        param->appendOption(kParamOutputComponentsAlpha);
+        int i = 0;
+
+        if (gHostSupportsRGBA) {
+            gOutputComponentsMap[i] = ePixelComponentRGBA;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
+            param->appendOption(kParamOutputComponentsOptionRGBA);
+        }
+        if (gHostSupportsRGB) {
+            gOutputComponentsMap[i] = ePixelComponentRGB;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
+            param->appendOption(kParamOutputComponentsOptionRGB);
+        }
+        if (gHostSupportsAlpha) {
+            gOutputComponentsMap[i] = ePixelComponentAlpha;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
+            param->appendOption(kParamOutputComponentsOptionAlpha);
+        }
+        gOutputComponentsMap[i] = ePixelComponentNone;
+
+        param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
-        param->setDefault(0);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -2625,7 +2836,6 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamGeneratorFormat);
         param->setLabel(kParamGeneratorFormatLabel);
-        param->setAnimates(false);
         assert(param->getNOptions() == eParamFormatPCVideo);
         param->appendOption(kParamFormatPCVideoLabel);
         assert(param->getNOptions() == eParamFormatNTSC);
@@ -2660,6 +2870,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamGeneratorFormatHint);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -2673,6 +2884,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
         param->setDefaultCoordinateSystem(OFX::eCoordinatesNormalised);
         param->setDefault(0., 0.);
+        param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+        param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
         param->setIncrement(1.);
         param->setHint("Coordinates of the bottom left corner of the size rectangle.");
         param->setDigits(0);
@@ -2688,6 +2901,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setDoubleType(OFX::eDoubleTypeXY);
         param->setDefaultCoordinateSystem(OFX::eCoordinatesNormalised);
         param->setDefault(1., 1.);
+        param->setRange(0, 0, DBL_MAX, DBL_MAX);
+        param->setDisplayRange(0, 0, 10000., 10000.);
         param->setIncrement(1.);
         param->setDimensionLabels(kParamRectangleInteractSizeDim1, kParamRectangleInteractSizeDim1);
         param->setHint("Width and height of the size rectangle.");
@@ -2709,6 +2924,8 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
     }
 
+    char name[1024], label[1024], hint[1024];
+
     if (gHostIsMultiPlanar) {
         GroupParamDescriptor *group = desc.defineGroupParam("Input layers");
         group->setLabel("Input layers");
@@ -2716,20 +2933,34 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         if (page) {
             page->addChild(*group);
         }
-
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamLayerInput, i+1);
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
-            snprintf(name, sizeof(name), kParamLayerInputLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamLayerInputHint, i+1);
-            param->setHint(name);
-            param->setAnimates(false);
-            param->appendOption(kSeExprColorPlaneName);
-            //param->setIsSecret(true); // done in the plugin constructor
-            param->setParent(*group);
-            if (page) {
-                page->addChild(*param);
+            {
+                snprintf(name, sizeof(name), kParamLayerInput "%d", i+1);
+                snprintf(label, sizeof(label), kParamLayerInputLabel "%d", i+1);
+                snprintf(hint, sizeof(hint), kParamLayerInputHint "%d", i+1);
+                ChoiceParamDescriptor *param = desc.defineChoiceParam(name);
+                param->setLabel(label);
+                param->setHint(hint);
+                param->setAnimates(false);
+                param->appendOption(kSeExprColorPlaneName);
+                //param->setIsSecret(true); // done in the plugin constructor
+                param->setParent(*group);
+                param->setEvaluateOnChange(false);
+                param->setIsPersistant(false);
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                snprintf(name, sizeof(name), kParamLayerInputChoice "%d", i+1);
+                snprintf(label, sizeof(label), kParamLayerInputLabel "Choice %d", i+1);
+                StringParamDescriptor *param = desc.defineStringParam(name);
+                param->setLabel(label);
+                param->setIsSecret(true);
+                param->setParent(*group);
+                if (page) {
+                    page->addChild(*param);
+                }
             }
         }
     }
@@ -2756,14 +2987,16 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamDouble, i+1);
+            snprintf(name, sizeof(name), kParamDouble "%d", i+1);
+            snprintf(label, sizeof(label), kParamDoubleLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamDoubleHint "%d", i+1);
             DoubleParamDescriptor *param = desc.defineDoubleParam(name);
-            snprintf(name, sizeof(name), kParamDoubleLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamDoubleHint, i+1);
-            param->setHint(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             //param->setIsSecret(true); // done in the plugin constructor
+            param->setRange(-DBL_MAX, DBL_MAX);
+            param->setDisplayRange(-1000.,1000.);
             param->setDoubleType(OFX::eDoubleTypePlain);
             param->setParent(*group);
             if (page) {
@@ -2793,16 +3026,23 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
                 page->addChild(*param);
             }
         }
+
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamDouble2D, i+1);
+            snprintf(name, sizeof(name), kParamDouble2D "%d", i+1);
+            snprintf(label, sizeof(label), kParamDouble2DLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamDouble2DHint "%d", i+1);
             Double2DParamDescriptor *param = desc.defineDouble2DParam(name);
-            snprintf(name, sizeof(name), kParamDouble2DLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamDouble2DHint, i+1);
-            param->setHint(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
+            param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+            param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
             //param->setIsSecret(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
+            bool hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
+            if (hostHasNativeOverlayForPosition) {
+                param->setUseHostNativeOverlayHandle(true);
+            }
             param->setParent(*group);
             if (page) {
                 page->addChild(*param);
@@ -2831,18 +3071,39 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             }
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
-            snprintf(name, sizeof(name), kParamColor, i+1);
+            snprintf(name, sizeof(name), kParamColor "%d", i+1);
+            snprintf(label, sizeof(label), kParamColorLabel "%d", i+1);
+            snprintf(hint, sizeof(hint), kParamColorHint "%d", i+1);
             RGBParamDescriptor *param = desc.defineRGBParam(name);
-            snprintf(name, sizeof(name), kParamColorLabel, i+1);
-            param->setLabel(name);
-            snprintf(name, sizeof(name), kParamColorHint, i+1);
-            param->setHint(name);
+            param->setLabel(label);
+            param->setHint(hint);
             param->setAnimates(true);
             param->setParent(*group);
             //param->setIsSecret(true); // done in the plugin constructor
             if (page) {
                 page->addChild(*param);
             }
+        }
+    }
+    {
+        Int2DParamDescriptor *param = desc.defineInt2DParam(kParamFrameRange);
+        param->setDefault(kParamFrameRangeDefault);
+        param->setHint(kParamFrameRangeHint);
+        param->setLabel(kParamFrameRangeLabel);
+        param->setDimensionLabels("min", "max");
+        param->setAnimates(true);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        BooleanParamDescriptor *param = desc.defineBooleanParam(kParamFrameRangeAbsolute);
+        param->setDefault(kParamFrameRangeAbsoluteDefault);
+        param->setHint(kParamFrameRangeAbsoluteHint);
+        param->setLabel(kParamFrameRangeAbsoluteLabel);
+        param->setAnimates(true);
+        if (page) {
+            page->addChild(*param);
         }
     }
 
@@ -2857,7 +3118,15 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
             page->addChild(*param);
         }
     }
-    
+    if (!gHostIsNatron) {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowScript);
+        param->setLabel(kParamShowScriptLabel);
+        param->setHint(kParamShowScriptHint);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamAlphaScript);
         param->setLabel(kParamAlphaScriptLabel);
@@ -2865,6 +3134,14 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault(kSeExprDefaultAlphaScript);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    if (!gHostIsNatron) {
+        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowAlphaScript);
+        param->setLabel(kParamShowAlphaScriptLabel);
+        param->setHint(kParamShowAlphaScriptHint);
         if (page) {
             page->addChild(*param);
         }
@@ -2892,10 +3169,7 @@ OFX::ImageEffect* SeExprPluginFactory::createInstance(OfxImageEffectHandle handl
     return new SeExprPlugin(handle);
 }
 
+static SeExprPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-
-void getSeExprPluginID(OFX::PluginFactoryArray &ids)
-{
-    static SeExprPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+OFXS_NAMESPACE_ANONYMOUS_EXIT

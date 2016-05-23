@@ -1,42 +1,25 @@
-/*
- OFX ffmpegReader plugin.
- Reads a video input file using the libav library.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
- 
- */
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
 
+/*
+ * OFX ffmpeg Reader plugin.
+ * Reads a video input file using the libav library.
+ */
 
 #ifndef __Io__FFmpegHandler__
 #define __Io__FFmpegHandler__
@@ -52,12 +35,9 @@
 #include <string>
 #include <map>
 #include <list>
-
+#include <algorithm>
 #include <locale>
 #include <cstdio>
-#if _WIN32
-#define snprintf sprintf_s
-#endif
 extern "C" {
 #include <errno.h>
 #include <libavformat/avformat.h>
@@ -102,12 +82,17 @@ extern "C" {
 #define kMetaKeyWriter             "uk.co.thefoundry.Writer"
 #define kMetaValueWriter64         "mov64"
 
+#define OFX_FFMPEG_MAX_THREADS 32 // defined in libavcodec/mpegvideo.h and libavcodec/h264.h
 
 ////////////////////////////////////////////////////////////////////////////////
 // Chunksize static names.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define kChunkSizeKey "fn_log2chunksize"
+
+namespace OFX {
+class ImageEffect;
+}
 
 class FFmpegFile {
 
@@ -280,32 +265,15 @@ class FFmpegFile {
     bool _invalidState;     // true if the reader is in an invalid state
     
     AVPacket _avPacket;
-
-    unsigned char* _data;
     
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
     mutable OFX::MultiThread::Mutex _lock;
+    mutable OFX::MultiThread::Mutex _invalidStateLock;
 #endif
 
     // set reader error
-    void setError(const char* msg, const char* prefix = 0)
-    {
-        if (prefix) {
-            _errorMsg = prefix;
-            _errorMsg += msg;
-#if TRACE_DECODE_PROCESS
-            std::cout << "!!ERROR: " << prefix << msg << std::endl;
-#endif
-        }
-        else {
-            _errorMsg = msg;
-#if TRACE_DECODE_PROCESS
-            std::cout << "!!ERROR: " << msg << std::endl;
-#endif
-        }
-        _invalidState = true;
-    }
+    void setError(const char* msg, const char* prefix = 0);
 
     // set FFmpeg library error
     void setInternalError(const int error, const char* prefix = 0)
@@ -451,10 +419,6 @@ public:
         return _streams[0]->_height;
     }
     
-    const unsigned char* getData() const {
-        return _data;
-    }
-    
     std::size_t getSizeOfData() const {
         if (_streams.empty()) {
             return 0;
@@ -463,7 +427,7 @@ public:
     }
 
     // decode a single frame into the buffer (stream 0). Thread safe
-    bool decode(int frame, bool loadNearest, int maxRetries);
+    bool decode(const OFX::ImageEffect* plugin, int frame, bool loadNearest, int maxRetries, unsigned char* buffer);
 
     // get stream information
     bool getFPS(double& fps,
@@ -478,8 +442,7 @@ public:
 
     const char* getColorspace() const;
 
-    int getBufferSize() const;
-    int getRowSize() const;
+    std::size_t getBufferBytesCount() const;
     
     static bool isImageFile(const std::string& filename);
 
@@ -510,8 +473,9 @@ public:
     
     void clear(void* plugin);
     
-    FFmpegFile* getOrCreate(void* plugin,const std::string &filename);
-        
+    FFmpegFile* get(void* plugin, const std::string &filename);
+    FFmpegFile* getOrCreate(void* plugin, const std::string &filename);
+
 };
 
 

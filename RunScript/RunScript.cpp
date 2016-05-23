@@ -1,82 +1,32 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OFX RunScript plugin.
- Run a shell script.
-
- Copyright (C) 2014 INRIA
- Author: Frederic Devernay <frederic.devernay@inria.fr>
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
-
- The skeleton for this source file is from:
- OFX Basic Example plugin, a plugin that illustrates the use of the OFX Support library.
-
- Copyright (C) 2004-2005 The Open Effects Association Ltd
- Author Bruno Nicoletti bruno@thefoundry.co.uk
-
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice,
- this list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice,
- this list of conditions and the following disclaimer in the documentation
- and/or other materials provided with the distribution.
- * Neither the name The Open Effects Association Ltd, nor the names of its
- contributors may be used to endorse or promote products derived from this
- software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- The Open Effects Association Ltd
- 1 Wardour St
- London W1D 6PA
- England
-
+ * OFX RunScript plugin.
+ * Run a shell script.
  */
 
-#ifndef _WINDOWS // Sorry, MS Windows users, this plugin won't work for you
+#if !( defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) // Sorry, MS Windows users, this plugin won't work for you
 
 #include "RunScript.h"
 #include "ofxsMacros.h"
 
+#include <cfloat>
 #undef DEBUG
 #ifdef DEBUG
 #include <iostream>
@@ -91,14 +41,20 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h> // for snprintf & _snprintf
-#ifdef _WINDOWS
-#include <windows.h>
-#define snprintf _snprintf
-#endif
+#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+#  include <windows.h>
+#  if defined(_MSC_VER) && _MSC_VER < 1900
+#    define snprintf _snprintf
+#  endif
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include "ofxsCopier.h"
 
 #include "pstream.h"
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "RunScriptOFX"
 #define kPluginGrouping "Image"
@@ -107,10 +63,10 @@
 "This is mostly useful to execute an external program on a set of input images files, which outputs image files.\n" \
 "Writers should be connected to each input, so that the image files are written before running the script, and the output of this node should be fed into one or more Readers, which read the images written by the script.\n" \
 "Sample node graph:\n" \
-"... <- WriteOIIO(scriptinput#####.png) <- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) <- ReadOIIO(scriptoutput#####.png) <- ...\n" \
+"... +- WriteOIIO(scriptinput#####.png) +- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) +- ReadOIIO(scriptoutput#####.png) +- ...\n" \
 "Keep in mind that the input and output files are never removed in the above graph.\n" \
 "The output of RunScript is a copy of its first input, so that it can be used to execute a script at some point, e.g. to cleanup temporary files, as in:\n" \
-"... <- WriteOIIO(scriptinput#####.png) <- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) <- ReadOIIO(scriptoutput#####.png) <- RunScript(deletes temporary files scriptinput#####.png and scriptoutput#####.png, optional) <- ...\n" \
+"... +- WriteOIIO(scriptinput#####.png) +- RunScript(processes scriptinput#####.png, output is scriptoutput#####.png) +- ReadOIIO(scriptoutput#####.png) +- RunScript(deletes temporary files scriptinput#####.png and scriptoutput#####.png, optional) +- ...\n" \
 "Each argument may be:\n" \
 "- A filename (connect an input to an upstream Writer, and link the parameter to the output filename of this writer, or link to the input filename of a downstream Reader)\n" \
 "- A floating-point value (which can be linked to any plugin)\n" \
@@ -118,7 +74,7 @@
 "- A string\n" \
 "Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
 "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces).\n" \
-"This plugin uses pstream <http://pstreams.sourceforge.net>, which is distributed under the GNU LGPLv3.\n"
+"This plugin uses pstream (http://pstreams.sourceforge.net), which is distributed under the GNU LGPLv3.\n"
 
 #define kPluginIdentifier "fr.inria.openfx.RunScript"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -185,7 +141,7 @@ public:
     virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL
+    virtual bool isIdentity(const OFX::IsIdentityArguments &/*args*/, OFX::Clip * &/*identityClip*/, double &/*identityTime*/) OVERRIDE FINAL
     {
         // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
         clearPersistentMessage();
@@ -222,15 +178,19 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
     char name[256];
-    for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
-        if (i == 0 && getContext() == OFX::eContextFilter) {
-            _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
-        } else {
-            snprintf(name, sizeof(name), "%d", i+1);
-            _srcClip[i] = fetchClip(name);
+    if (getContext() != OFX::eContextGenerator) {
+        for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
+            if (i == 0 && getContext() == OFX::eContextFilter) {
+                _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
+            } else {
+                snprintf(name, sizeof(name), "%d", i+1);
+                _srcClip[i] = fetchClip(name);
+            }
+            assert(_srcClip[i]);
         }
     }
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
+    assert(_dstClip);
 
     _param_count = fetchIntParam(kParamCount);
 
@@ -245,9 +205,11 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
         _double[i] = fetchDoubleParam(name);
         snprintf(name, sizeof(name), kParamTypeIntName, i+1);
         _int[i] = fetchIntParam(name);
+        assert(_type[i] && _filename[i] && _string[i] && _double[i] && _int[i]);
     }
     _script = fetchStringParam(kParamScript);
     _validate = fetchBooleanParam(kParamValidate);
+    assert(_script && _validate);
 
     updateVisibility();
 }
@@ -622,7 +584,6 @@ RunScriptPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &a
     return false;
 }
 
-using namespace OFX;
 
 mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
 
@@ -694,18 +655,25 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 
     {
         GroupParamDescriptor *group = desc.defineGroupParam(kGroupRunScriptPlugin);
-        group->setHint(kGroupRunScriptPluginHint);
-        group->setLabel(kGroupRunScriptPluginLabel);
-        page->addChild(*group);
-
+        if (group) {
+            group->setHint(kGroupRunScriptPluginHint);
+            group->setLabel(kGroupRunScriptPluginLabel);
+            if (page) {
+                page->addChild(*group);
+            }
+        }
         {
             IntParamDescriptor *param = desc.defineIntParam(kParamCount);
             param->setLabel(kParamCountLabel);
             param->setAnimates(true);
             param->setRange(0, kRunScriptPluginArgumentsCount);
             param->setDisplayRange(0, kRunScriptPluginArgumentsCount);
-            param->setParent(*group);
-            page->addChild(*param);
+            if (group) {
+                param->setParent(*group);
+            }
+            if (page) {
+                page->addChild(*param);
+            }
         }
 
         // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
@@ -722,8 +690,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->appendOption(kParamTypeDoubleLabel,   kParamTypeDoubleHint);
                 param->appendOption(kParamTypeIntLabel,      kParamTypeIntHint);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -736,8 +708,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setFilePathExists(false); // the file may or may not exist
                 param->setAnimates(true); // the file name may change with time
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -748,8 +724,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -760,8 +740,14 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                param->setRange(-DBL_MAX, DBL_MAX);
+                param->setDisplayRange(-1000.,1000.);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
 
             {
@@ -772,8 +758,12 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
-                param->setParent(*group);
-                page->addChild(*param);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
             }
         }
     }
@@ -785,7 +775,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault("#!/bin/sh\n");
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 
     {
@@ -793,7 +785,9 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamValidateLabel);
         param->setHint(kParamValidateHint);
         param->setEvaluateOnChange(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 }
 
@@ -803,11 +797,9 @@ OFX::ImageEffect* RunScriptPluginFactory::createInstance(OfxImageEffectHandle ha
 }
 
 
+static RunScriptPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
-void getRunScriptPluginID(OFX::PluginFactoryArray &ids)
-{
-    static RunScriptPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+OFXS_NAMESPACE_ANONYMOUS_EXIT
 
-#endif // _WINDOWS
+#endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)

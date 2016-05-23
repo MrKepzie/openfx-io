@@ -15,17 +15,3 @@
  * You should have received a copy of the GNU General Public License
  * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
  * ***** END LICENSE BLOCK ***** */
-
-/*
- * OFX RunScript plugin.
- * Run a shell script.
- */
-
-#ifndef IO_RunScript_h
-#define IO_RunScript_h
-
-#include "ofxsImageEffect.h"
-
-void getRunScriptPluginID(OFX::PluginFactoryArray &ids);
-
-#endif

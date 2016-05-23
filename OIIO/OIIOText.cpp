@@ -1,51 +1,30 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OIIOText plugin.
- Write text on images using OIIO.
-
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
-
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
-
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
-
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
-
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
-
+ * OIIOText plugin.
+ * Write text on images using OIIO.
  */
 
-#include "OIIOText.h"
-
-
-#include "ofxsProcessing.H"
-#include "ofxsCopier.h"
-#include "ofxsPositionInteract.h"
-
-#include "IOUtility.h"
-#include "ofxNatron.h"
 #include "ofxsMacros.h"
-#include <OpenImageIO/imageio.h>
 
+GCC_DIAG_OFF(unused-parameter)
+#include <OpenImageIO/imageio.h>
 /*
  unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
  which includes boost/thread.hpp,
@@ -57,6 +36,20 @@
 #define OPENIMAGEIO_THREAD_H
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
+GCC_DIAG_ON(unused-parameter)
+#include "OIIOGlobal.h"
+
+#include "ofxsProcessing.H"
+#include "ofxsCopier.h"
+#include "ofxsPositionInteract.h"
+
+#include "IOUtility.h"
+#include "ofxNatron.h"
+
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "TextOIIO"
 #define kPluginGrouping "Draw"
@@ -110,8 +103,6 @@
 "The color of the text to render"
 
 
-using namespace OFX;
-
 class OIIOTextPlugin : public OFX::ImageEffect
 {
 public:
@@ -159,9 +150,12 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
 , _srcClip(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA || _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert(_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA || _srcClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    assert(_dstClip && (_dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
+    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
+           (_srcClip && (_srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
+                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
 
     _position = fetchDouble2DParam(kParamPosition);
     _text = fetchStringParam(kParamText);
@@ -169,6 +163,8 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     _fontName = fetchStringParam(kParamFontName);
     _textColor = fetchRGBAParam(kParamTextColor);
     assert(_position && _text && _fontSize && _fontName && _textColor);
+    
+    initOIIOThreads();
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()
@@ -237,12 +233,7 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
         return;
     }
 
-    if (!_srcClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    assert(_srcClip);
-    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip ? _srcClip->fetchImage(args.time) : 0);
     if (srcImg.get()) {
         if (srcImg->getRenderScale().x != args.renderScale.x ||
             srcImg->getRenderScale().y != args.renderScale.y ||
@@ -301,7 +292,11 @@ OIIOTextPlugin::render(const OFX::RenderArguments &args)
     OIIO::ImageSpec srcSpec;
     std::auto_ptr<const OIIO::ImageBuf> srcBuf;
     OfxRectI dstRod = dstImg->getRegionOfDefinition();
-    if (srcImg.get()) {
+    if (!srcImg.get()) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "Source needs to be connected");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    } else {
         srcRod = srcImg->getRegionOfDefinition();
         srcBounds = srcImg->getBounds();
         pixelComponents = srcImg->getPixelComponents();
@@ -525,12 +520,14 @@ void OIIOTextPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderThreadSafety(kRenderThreadSafety);
 
     desc.setOverlayInteractDescriptor(new PositionOverlayDescriptor<PositionInteractParam>);
+
+    desc.setIsDeprecated(true); // this effect was superseeded by the text plugin in openfx-arena
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum /*context*/)
 {
-    //gHostIsNatron = (OFX::getImageEffectHostDescription()->hostName == kNatronOfxHostName);
+    //gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
     
     // Source clip only in the filter context
     // create the mandated source clip
@@ -558,23 +555,28 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setDoubleType(eDoubleTypeXYAbsolute);
         param->setDefaultCoordinateSystem(eCoordinatesNormalised);
         param->setDefault(0.5, 0.5);
+        param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
+        param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
         param->setAnimates(true);
         hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
         if (hostHasNativeOverlayForPosition) {
-            param->setUseHostOverlayHandle(true);
+            param->setUseHostNativeOverlayHandle(true);
         }
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         BooleanParamDescriptor* param = desc.defineBooleanParam(kParamInteractive);
         param->setLabel(kParamInteractiveLabel);
         param->setHint(kParamInteractiveHint);
         param->setAnimates(false);
-        page->addChild(*param);
-        
         //Do not show this parameter if the host handles the interact
         if (hostHasNativeOverlayForPosition) {
             param->setIsSecret(true);
+        }
+        if (page) {
+            page->addChild(*param);
         }
     }
     
@@ -585,7 +587,9 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault("Enter text");
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         IntParamDescriptor* param = desc.defineIntParam(kParamFontSize);
@@ -593,14 +597,18 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamFontSizeHint);
         param->setDefault(16);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamFontName);
         param->setLabel(kParamFontNameLabel);
         param->setHint(kParamFontNameHint);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         RGBAParamDescriptor* param = desc.defineRGBAParam(kParamTextColor);
@@ -608,7 +616,9 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setHint(kParamTextColorHint);
         param->setDefault(1., 1., 1., 1.);
         param->setAnimates(true);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
 }
 
@@ -619,8 +629,7 @@ ImageEffect* OIIOTextPluginFactory::createInstance(OfxImageEffectHandle handle, 
 }
 
 
-void getOIIOTextPluginID(OFX::PluginFactoryArray &ids)
-{
-    static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static OIIOTextPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT

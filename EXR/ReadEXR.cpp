@@ -1,42 +1,25 @@
+/* ***** BEGIN LICENSE BLOCK *****
+ * This file is part of openfx-io <https://github.com/MrKepzie/openfx-io>,
+ * Copyright (C) 2015 INRIA
+ *
+ * openfx-io is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * openfx-io is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with openfx-io.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>
+ * ***** END LICENSE BLOCK ***** */
+
 /*
- OFX exrReader plugin.
- Reads a an input image using the OpenEXR library.
- 
- Copyright (C) 2013 INRIA
- Author Alexandre Gauthier-Foichat alexandre.gauthier-foichat@inria.fr
- 
- Redistribution and use in source and binary forms, with or without modification,
- are permitted provided that the following conditions are met:
- 
- Redistributions of source code must retain the above copyright notice, this
- list of conditions and the following disclaimer.
- 
- Redistributions in binary form must reproduce the above copyright notice, this
- list of conditions and the following disclaimer in the documentation and/or
- other materials provided with the distribution.
- 
- Neither the name of the {organization} nor the names of its
- contributors may be used to endorse or promote products derived from
- this software without specific prior written permission.
- 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- INRIA
- Domaine de Voluceau
- Rocquencourt - B.P. 105
- 78153 Le Chesnay Cedex - France
- 
+ * OFX exr Reader plugin.
+ * Reads a an input image using the OpenEXR library.
  */
-#include "ReadEXR.h"
 
 #include <algorithm>
 #ifdef DEBUG
@@ -47,20 +30,27 @@
 #include <string>
 #include <windows.h>
 #include <fstream>
+#ifndef __MINGW32__
 #include <ImfStdIO.h>
+#endif
 #endif
 
 #include <ImfPixelType.h>
 #include <ImfChannelList.h>
 #include <ImfInputFile.h>
+#include <IlmThreadPool.h>
 
 #ifdef OFX_IO_MT_EXR
 #include <ofxsMultiThread.h>
 #endif
 
-
+#include "GenericOCIO.h"
 #include "GenericReader.h"
 
+
+using namespace OFX;
+
+OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ReadEXR"
 #define kPluginGrouping "Image/Readers"
@@ -68,7 +58,7 @@
 #define kPluginIdentifier "fr.inria.openfx.ReadEXR"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
-
+#define kPluginEvaluation 10
 
 #ifndef OPENEXR_IMF_NAMESPACE
 #define OPENEXR_IMF_NAMESPACE Imf
@@ -84,7 +74,7 @@ class ReadEXRPlugin : public GenericReaderPlugin
 {
 public:
 
-    ReadEXRPlugin(OfxImageEffectHandle handle);
+    ReadEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~ReadEXRPlugin();
 
@@ -94,11 +84,11 @@ private:
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& newFile, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -296,7 +286,8 @@ namespace Exr {
         std::vector<std::string> views;
         OfxRectI displayWindow;
         OfxRectI dataWindow;
-#ifdef _WIN32
+        float pixelAspectRatio;
+#if defined(_WIN32) && !defined(__MINGW32__)
         std::ifstream* inputStr;
         Imf::StdIFStream* inputStdStream;
 #endif
@@ -325,7 +316,8 @@ namespace Exr {
     , views()
     , displayWindow()
     , dataWindow()
-#ifdef _WIN32
+    , pixelAspectRatio(1.)
+#if defined(_WIN32) && !defined(__MINGW32__)
     , inputStr(0)
     , inputStdStream(0)
 #endif
@@ -335,7 +327,7 @@ namespace Exr {
     {
         
         try{
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
             inputStr = new std::ifstream(s2ws(filename),std::ios_base::binary);
             inputStdStream = new Imf_::StdIFStream(*inputStr,filename.c_str());
             inputfile = new Imf_::InputFile(*inputStdStream);
@@ -406,9 +398,10 @@ namespace Exr {
             dataWindow.x2 = right + 1;
             dataWindow.y1 = bottom;
             dataWindow.y2 = top + 1;
-            
+
+            pixelAspectRatio = inputfile->header().pixelAspectRatio();
         }catch(const std::exception& e) {
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
             delete inputStr;
             delete inputStdStream;
 #endif
@@ -419,7 +412,7 @@ namespace Exr {
     }
     
     File::~File(){
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
         delete inputStr;
         delete inputStdStream;
 #endif
@@ -472,6 +465,9 @@ namespace Exr {
         for (FilesMap::iterator it = _files.begin(); it!= _files.end(); ++it) {
             delete it->second;
         }
+#ifdef OFX_IO_MT_EXR
+        delete _lock;
+#endif
     }
     
     void FileManager::initialize() {
@@ -508,8 +504,8 @@ namespace Exr {
 
 
 
-ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle)
-: GenericReaderPlugin(handle, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
+ReadEXRPlugin::ReadEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
 {
     Exr::FileManager::s_readerManager.initialize();
 }
@@ -534,6 +530,8 @@ struct DecodingChannelsMap {
 void
 ReadEXRPlugin::decode(const std::string& filename,
                       OfxTime /*time*/,
+                      int /*view*/,
+                      bool /*isPlayback*/,
                       const OfxRectI& renderWindow,
                       float *pixelData,
                       const OfxRectI& bounds,
@@ -542,7 +540,7 @@ ReadEXRPlugin::decode(const std::string& filename,
                       int rowBytes)
 {
     /// we only support RGBA output clip
-    if (pixelComponents != OFX::ePixelComponentRGBA) {
+    if (pixelComponents != OFX::ePixelComponentRGBA || pixelComponentCount != 4) {
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
@@ -610,10 +608,17 @@ ReadEXRPlugin::decode(const std::string& filename,
 
 void
 ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
+                                  bool setColorSpace, //!< true is colorspace was not set from the filename
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,
                                   int *componentCount)
 {
+    if (setColorSpace) {
+#     ifdef OFX_IO_USING_OCIO
+        // Unless otherwise specified, exr files are assumed to be linear.
+        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+#     endif
+    }
     assert(premult && components);
     Exr::File* file = Exr::FileManager::s_readerManager.get(newFile);
     bool hasRed;
@@ -645,9 +650,20 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
             *componentCount = 0;
         }
     }
-#pragma message WARN("This is probably wrong, I just set it for the sake of making it compile.")
-    // where can we get premult information in EXR data?
-    *premult = OFX::eImagePreMultiplied;
+    /*
+     OpenEXR is always stored premultiplied.
+     
+     See page five of the Technical Introduction PDF at http://www.openexr.com/documentation.html.
+
+     "alpha/opacity: 0.0 means the pixel is transparent; 1.0 means the pixel is
+     opaque. By convention, all color channels are premultiplied by alpha, so that
+     "foreground + (1-alpha) × background" performs a correct "over" operation."
+     */
+    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+        *premult = OFX::eImageOpaque;
+    } else {
+        *premult = OFX::eImagePreMultiplied;
+    }
 }
 
 bool
@@ -655,7 +671,9 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
                               OfxTime /*time*/,
                               OfxRectI *bounds,
                               double *par,
-                              std::string *error)
+                              std::string *error,
+                              int* tile_width,
+                              int* tile_height)
 {
     assert(bounds && par);
     Exr::File* file = Exr::FileManager::s_readerManager.get(filename);
@@ -669,21 +687,34 @@ ReadEXRPlugin::getFrameBounds(const std::string& filename,
     bounds->x2 = file->dataWindow.x2;
     bounds->y1 = file->dataWindow.y1;
     bounds->y2 = file->dataWindow.y2;
-#pragma message WARN("TODO: get PAR for EXR")
-    *par = 1.0;
+    *par = file->pixelAspectRatio;
+    *tile_width = *tile_height = 0;
 
     return true;
 }
 
-using namespace OFX;
 
-mDeclareReaderPluginFactory(ReadEXRPluginFactory, {}, {},false);
+mDeclareReaderPluginFactory(ReadEXRPluginFactory, ;, false);
+
+void
+ReadEXRPluginFactory::unload()
+{
+    //Kill all threads
+    IlmThread::ThreadPool::globalThreadPool().setNumThreads(0);
+}
+
+void
+ReadEXRPluginFactory::load()
+{
+    _extensions.clear();
+    _extensions.push_back("exr");
+}
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
 ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
-    GenericReaderDescribe(desc, kSupportsTiles, false);
+    GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
     // basic labels
     desc.setLabel("ReadEXROFX");
     desc.setPluginDescription("Read EXR images using OpenEXR.");
@@ -691,11 +722,7 @@ ReadEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderThreadSafety(eRenderFullySafe);
 #endif
 
-#ifdef OFX_EXTENSIONS_TUTTLE
-    const char* extensions[] = { "exr", NULL };
-    desc.addSupportedExtensions(extensions);
-    desc.setPluginEvaluation(10);
-#endif
+    desc.setIsDeprecated(true); // This plugin was superseeded by ReadOIIO
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -705,7 +732,7 @@ ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, true);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
@@ -714,14 +741,13 @@ ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 ImageEffect*
 ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    ReadEXRPlugin* ret =  new ReadEXRPlugin(handle);
+    ReadEXRPlugin* ret =  new ReadEXRPlugin(handle, _extensions);
     ret->restoreStateFromParameters();
     return ret;
 }
 
 
-void getReadEXRPluginID(OFX::PluginFactoryArray &ids)
-{
-    static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-    ids.push_back(&p);
-}
+static ReadEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
+
+OFXS_NAMESPACE_ANONYMOUS_EXIT
