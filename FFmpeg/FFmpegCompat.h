@@ -154,7 +154,6 @@ inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 // 64LE appeared with libav & ffmpeg 53,6,0
 //#           define AV_PIX_FMT_RGBA64LE PIX_FMT_RGBA64LE
 #           define AV_PIX_FMT_RGB24    PIX_FMT_RGB24
-#           define AV_PIX_FMT_FLAG_RGB PIX_FMT_RGB
 #       endif
 namespace {
 inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
@@ -164,6 +163,9 @@ inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
     return &av_pix_fmt_descriptors[pix_fmt];
 }
 };
+#   endif
+#   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 52, 9, 0, 52, 20, 100)
+#     define AV_PIX_FMT_FLAG_RGB PIX_FMT_RGB
 #   endif
 #   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 52, 9, 0, 52, 20, 100)
 #       define av_frame_alloc avcodec_alloc_frame
