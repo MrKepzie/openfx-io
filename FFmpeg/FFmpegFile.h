@@ -186,8 +186,10 @@ class FFmpegFile {
             if (_avFrame)
                 av_free(_avFrame);
 
-            if (_codecContext)
+            if (_codecContext) {
+                avcodec_flush_buffers(_codecContext);
                 avcodec_close(_codecContext);
+            }
 
             if (_convertCtx)
                 sws_freeContext(_convertCtx);
