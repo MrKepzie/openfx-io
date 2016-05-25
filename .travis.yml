@@ -110,11 +110,11 @@ addons:
     packages:
     - gcc-4.9
     - g++-4.9
-    - libavcodec-dev
-    - libavformat-dev
-    - libswscale-dev
-    - libavutil-dev
-    - libswresample-dev
+    #- libavcodec-dev
+    #- libavformat-dev
+    #- libswscale-dev
+    #- libavutil-dev
+    #- libswresample-dev
     - libtinyxml-dev
     - liblcms2-dev
     - libyaml-cpp-dev
