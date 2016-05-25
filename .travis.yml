@@ -40,8 +40,9 @@ before_install:
   - export J='-j3'
   - git submodule update --init --recursive
   - sudo add-apt-repository -y ppa:boost-latest/ppa
-  - sudo add-apt-repository -y ppa:archivematica/externals
-#  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg 
+#  - sudo add-apt-repository -y ppa:archivematica/externals
+#  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg
+  - sudo add-apt-repository -y ppa:spvkgn/ffmpeg-dev
 #  - sudo add-apt-repository -y ppa:irie/boost
   - sudo add-apt-repository -y ppa:kubuntu-ppa/backports
   - sudo apt-get update -qq
@@ -103,8 +104,8 @@ addons:
     - ppa:xorg-edgers/ppa
     # ubuntu-toolchain-r/test contains recent versions of gcc
     - ubuntu-toolchain-r-test
-    # get a recent ffmpeg (>=2.5) for precise from ppa:archivematica/externals(2.5.1) or ppa:pavlyshko/precise(2.6.1)
-    - ppa:archivematica/externals
+    # get a recent ffmpeg (>=2.5) for precise from ppa:archivematica/externals(2.5.1) or ppa:pavlyshko/precise(2.6.1) or ppa:spvkgn/ffmpeg-dev(2.8.6)
+    - ppa:spvkgn/ffmpeg-dev
     - kalakris-cmake
     packages:
     - gcc-4.9
