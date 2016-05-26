@@ -603,16 +603,20 @@ public:
     , _manager()
     {}
     
-    virtual void load();
-    virtual void unload() { _manager.release(); }
+    virtual void load() OVERRIDE FINAL;
+    virtual void unload() OVERRIDE FINAL
+    {
+        _manager.release();
+        _extensions.clear();
+    }
     
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context);
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context) OVERRIDE FINAL;
     
     bool isVideoStreamPlugin() const { return true; }
     
-    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    virtual void describe(OFX::ImageEffectDescriptor &desc) OVERRIDE FINAL;
     
-    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context) OVERRIDE FINAL;
 
     std::vector<std::string> _extensions;
 };

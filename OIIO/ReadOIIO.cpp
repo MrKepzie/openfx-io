@@ -2716,6 +2716,8 @@ template <bool useRGBAChoices>
 void
 ReadOIIOPluginFactory<useRGBAChoices>::unload()
 {
+    _extensions.clear();
+
 #  ifdef OFX_READ_OIIO_SHARED_CACHE
     // get the shared image cache (may be shared with other plugins using OIIO)
     ImageCache* sharedcache = ImageCache::create(true);
