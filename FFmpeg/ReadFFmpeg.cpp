@@ -595,8 +595,8 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
 
 class ReadFFmpegPluginFactory : public OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>
 {
-    FFmpegFileManager _manager;
-    
+    std::auto_ptr<FFmpegFileManager> _manager;
+
 public:
     ReadFFmpegPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
     : OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>(id, verMaj, verMin)
@@ -604,7 +604,7 @@ public:
     {}
     
     virtual void load();
-    virtual void unload() {}
+    virtual void unload() { _manager.release(); }
     
     virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context);
     
@@ -1056,14 +1056,12 @@ ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
 #endif
     
-    
     av_log_set_level(AV_LOG_WARNING);
     avcodec_register_all();
     av_register_all();
-    
-    
-    _manager.init();
-    
+
+    _manager.reset(new FFmpegFileManager);
+    _manager->init();
     
     // Thus effect prefers sequential render, but will still give correct results otherwise
     desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 2, false);
@@ -1098,7 +1096,7 @@ ImageEffect*
 ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
                                         ContextEnum /*context*/)
 {
-    ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(_manager, handle, _extensions);
+    ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(*_manager, handle, _extensions);
     ret->restoreStateFromParameters();
     return ret;
 }
