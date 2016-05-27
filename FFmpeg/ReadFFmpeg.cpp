@@ -683,7 +683,7 @@ FFmpegLockManager(void** mutex, enum AVLockOp op)
     switch (op) {
         case AV_LOCK_CREATE: // Create a mutex.
             try {
-                *mutex = static_cast< void* >(new OFX::MultiThread::Mutex);
+                *mutex = static_cast< void* >(new FFmpegFile::Mutex);
                 return 0;
             }
             catch(...) {
@@ -693,7 +693,7 @@ FFmpegLockManager(void** mutex, enum AVLockOp op)
             
         case AV_LOCK_OBTAIN: // Lock the specified mutex.
             try {
-                static_cast< OFX::MultiThread::Mutex* >(*mutex)->lock();
+                static_cast< FFmpegFile::Mutex* >(*mutex)->lock();
                 return 0;
             }
             catch(...) {
@@ -703,12 +703,12 @@ FFmpegLockManager(void** mutex, enum AVLockOp op)
             
         case AV_LOCK_RELEASE: // Unlock the specified mutex.
             // Mutex unlock can't fail.
-            static_cast< OFX::MultiThread::Mutex* >(*mutex)->unlock();
+            static_cast< FFmpegFile::Mutex* >(*mutex)->unlock();
             return 0;
             
         case AV_LOCK_DESTROY: // Destroy the specified mutex.
             // Mutex destruction can't fail.
-            delete static_cast< OFX::MultiThread::Mutex* >(*mutex);
+            delete static_cast< FFmpegFile::Mutex* >(*mutex);
             *mutex = 0;
             return 0;
             

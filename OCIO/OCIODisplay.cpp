@@ -312,7 +312,7 @@ private:
 
     std::auto_ptr<GenericOCIO> _ocio;
 
-    OFX::MultiThread::Mutex _procMutex;
+    GenericOCIO::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     std::string _procInputSpace;
     ChannelSelectorEnum _procChannel;
@@ -595,7 +595,7 @@ OCIODisplayPlugin::apply(double time, const OfxRectI& renderWindow, float *pixel
     try {
         OCIO::ConstConfigRcPtr config = _ocio->getConfig();
         assert(config);
-        OFX::MultiThread::AutoMutex guard(_procMutex);
+        GenericOCIO::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procInputSpace != inputSpace ||
             _procChannel != channel ||

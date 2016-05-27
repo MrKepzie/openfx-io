@@ -49,6 +49,21 @@ GCC_DIAG_ON(unused-parameter)
 
 #include <ofxsCoords.h>
 #include <ofxsMultiPlane.h>
+#include "ofxsMultiThread.h"
+#ifdef OFX_USE_MULTITHREAD_MUTEX
+namespace {
+typedef OFX::MultiThread::Mutex Mutex;
+typedef OFX::MultiThread::AutoMutex AutoMutex;
+}
+#else
+// some OFX hosts do not have mutex handling in the MT-Suite (e.g. Sony Catalyst Edit)
+// prefer using the fast mutex by Marcus Geelnard http://tinythreadpp.bitsnbites.eu/
+#include "fast_mutex.h"
+namespace {
+typedef tthread::fast_mutex Mutex;
+typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
+}
+#endif
 
 
 #define OFX_READ_OIIO_USES_CACHE
@@ -299,11 +314,11 @@ private:
     //if it changes we can invalidate the last file read from the OIIO cache since it is no longer useful.
     //The host cache will back it up on most case. The only useful case for the OIIO cache is when there are
     //multiple threads trying to read the same image.
-    OFX::MultiThread::Mutex _lastFileReadNoPlaybackMutex;
+    Mutex _lastFileReadNoPlaybackMutex;
     std::string _lastFileReadNoPlayback;
     
     
-    OFX::MultiThread::Mutex _layersMapMutex;
+    Mutex _layersMapMutex;
 
     
     ///Union all layers across views to build the layers choice.
@@ -586,7 +601,7 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
                 clipComponents.addClipComponents(*_outputClip, component);
             }
         } else { // !_useRGBAChoices
-            OFX::MultiThread::AutoMutex lock(_layersMapMutex);
+            AutoMutex lock(_layersMapMutex);
             for (LayersUnionVect::iterator it = _layersUnion.begin(); it != _layersUnion.end(); ++it) {
                 std::string component;
                 if (it->first == kReadOIIOColorLayer) {
@@ -988,7 +1003,7 @@ ReadOIIOPlugin::buildLayersMenu()
 
     //Protect the map
     {
-        OFX::MultiThread::AutoMutex lock(_layersMapMutex);
+        AutoMutex lock(_layersMapMutex);
         _layersUnion.clear();
         
         ViewsLayersMap layersMap;
@@ -2235,7 +2250,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 int layer_i;
                 _outputLayer->getValue(layer_i);
                 
-                OFX::MultiThread::AutoMutex lock(_layersMapMutex);
+                AutoMutex lock(_layersMapMutex);
                 if (layer_i < (int)_layersUnion.size() && layer_i >= 0) {
                     const std::string& layerName = _layersUnion[layer_i].first;
                     getOIIOChannelIndexesFromLayerName(filename, view, layerName, pixelComponents, subimages, channels, numChannels, subImageIndex);

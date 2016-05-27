@@ -231,7 +231,7 @@ private:
     OFX::BooleanParam* _maskInvert;
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
 
-    OFX::MultiThread::Mutex _procMutex;
+    GenericOCIO::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     int _procMode;
 };
@@ -460,7 +460,7 @@ OCIOLogConvertPlugin::apply(double time, const OfxRectI& renderWindow, float *pi
     int mode_i = _mode->getValueAtTime(time);
 
     try {
-        OFX::MultiThread::AutoMutex guard(_procMutex);
+        GenericOCIO::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procMode != mode_i) {
 

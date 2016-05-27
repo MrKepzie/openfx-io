@@ -284,7 +284,7 @@ private:
 
     std::auto_ptr<GenericOCIO> _ocio;
 
-    OFX::MultiThread::Mutex _procMutex;
+    GenericOCIO::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     std::string _procLook;
     std::string _procInputSpace;
@@ -525,7 +525,7 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
     try {
-        OFX::MultiThread::AutoMutex guard(_procMutex);
+        GenericOCIO::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procLook != look ||
             _procInputSpace != inputSpace ||

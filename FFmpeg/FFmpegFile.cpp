@@ -629,8 +629,8 @@ FFmpegFile::FFmpegFile(const std::string & filename)
     , _invalidState(false)
     , _avPacket()
 #ifdef OFX_IO_MT_FFMPEG
-    , _lock(0)
-    , _invalidStateLock(0)
+    , _lock()
+    , _invalidStateLock()
 #endif
 {
 #ifdef OFX_IO_MT_FFMPEG
@@ -849,7 +849,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 FFmpegFile::~FFmpegFile()
 {
 #ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_lock);
+    AutoMutex guard(_lock);
 #endif
 
     // force to close all resources needed for all streams
@@ -935,7 +935,7 @@ void
 FFmpegFile::setError(const char* msg, const char* prefix)
 {
 #ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_invalidStateLock);
+    AutoMutex guard(_invalidStateLock);
 #endif
     if (prefix) {
         _errorMsg = prefix;
@@ -957,7 +957,7 @@ const std::string &
 FFmpegFile::getError() const
 {
 #ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_lock);
+    AutoMutex guard(_lock);
 #endif
 
     return _errorMsg;
@@ -968,7 +968,7 @@ bool
 FFmpegFile::isInvalid() const
 {
 #ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_invalidStateLock);
+    AutoMutex guard(_invalidStateLock);
 #endif
 
     return _invalidState;
@@ -1005,7 +1005,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
     const unsigned int streamIdx = 0;
     
 #ifdef OFX_IO_MT_FFMPEG
-    OFX::MultiThread::AutoMutex guard(_lock);
+    AutoMutex guard(_lock);
 #endif
 
     if ( streamIdx >= _streams.size() ) {
@@ -1557,14 +1557,14 @@ FFmpegFileManager::~FFmpegFileManager()
 void
 FFmpegFileManager::init()
 {
-    _lock = new OFX::MultiThread::Mutex(0);
+    _lock = new FFmpegFile::Mutex;
 }
 
 void
 FFmpegFileManager::clear(void* plugin)
 {
     assert(_lock);
-    OFX::MultiThread::AutoMutex guard(*_lock);
+    FFmpegFile::AutoMutex guard(*_lock);
     FilesMap::iterator found = _files.find(plugin);
     if (found != _files.end()) {
         for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
@@ -1581,7 +1581,7 @@ FFmpegFileManager::get(void* plugin, const std::string &filename)
         return 0;
     }
     assert(_lock);
-    OFX::MultiThread::AutoMutex guard(*_lock);
+    FFmpegFile::AutoMutex guard(*_lock);
     FilesMap::iterator found = _files.find(plugin);
     if (found != _files.end()) {
         for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
@@ -1607,7 +1607,7 @@ FFmpegFileManager::getOrCreate(void* plugin,const std::string &filename)
         return 0;
     }
     assert(_lock);
-    OFX::MultiThread::AutoMutex guard(*_lock);
+    FFmpegFile::AutoMutex guard(*_lock);
     FilesMap::iterator found = _files.find(plugin);
     if (found != _files.end()) {
         for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {

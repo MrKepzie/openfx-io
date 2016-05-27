@@ -81,6 +81,21 @@ extern "C" {
 #include <iostream>
 #endif
 
+#include "ofxsMultiThread.h"
+#ifdef OFX_USE_MULTITHREAD_MUTEX
+namespace {
+typedef OFX::MultiThread::Mutex Mutex;
+typedef OFX::MultiThread::AutoMutex AutoMutex;
+}
+#else
+// some OFX hosts do not have mutex handling in the MT-Suite (e.g. Sony Catalyst Edit)
+// prefer using the fast mutex by Marcus Geelnard http://tinythreadpp.bitsnbites.eu/
+#include "fast_mutex.h"
+namespace {
+typedef tthread::fast_mutex Mutex;
+typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
+}
+#endif
 
 using namespace OFX;
 
@@ -1045,7 +1060,7 @@ private:
     AVStream* _streamAudio;
     AVStream* _streamTimecode;
     
-    OFX::MultiThread::Mutex _nextFrameToEncodeMutex;
+    Mutex _nextFrameToEncodeMutex;
     int _nextFrameToEncode; //< the frame index we need to encode next, INT_MIN means uninitialized
     int _firstFrameToEncode;
     int _lastFrameToEncode;
@@ -1267,7 +1282,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vec
 , _streamVideo(0)
 , _streamAudio(0)
 , _streamTimecode(0)
-, _nextFrameToEncodeMutex(0)
+, _nextFrameToEncodeMutex()
 , _nextFrameToEncode(INT_MIN)
 , _firstFrameToEncode(1)
 , _lastFrameToEncode(1)
@@ -3206,7 +3221,7 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 
     // Flag that we didn't encode any frame yet
     {
-        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        AutoMutex lock(_nextFrameToEncodeMutex);
         _nextFrameToEncode = (int)args.frameRange.min;
         _firstFrameToEncode = (int)args.frameRange.min;
         _lastFrameToEncode = (int)args.frameRange.max;
@@ -3283,7 +3298,7 @@ WriteFFmpegPlugin::encode(const std::string& filename,
     
     ///Check that we're really encoding in sequential order
     {
-        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        AutoMutex lock(_nextFrameToEncodeMutex);
         
         while (_nextFrameToEncode != time && _nextFrameToEncode != INT_MIN) {
             lock.unlock();
@@ -3671,7 +3686,7 @@ void WriteFFmpegPlugin::freeFormat()
         _formatContext = NULL;
     }
     {
-        OFX::MultiThread::AutoMutex lock(_nextFrameToEncodeMutex);
+        AutoMutex lock(_nextFrameToEncodeMutex);
         _nextFrameToEncode = INT_MIN;
         _firstFrameToEncode = 1;
         _lastFrameToEncode = 1;

@@ -26,9 +26,14 @@
 
 #include <string>
 
-#include <ofxsImageEffect.h>
-#include <ofxsMultiThread.h>
+#include "ofxsImageEffect.h"
 #include "ofxsPixelProcessor.h"
+#include "ofxsMultiThread.h"
+#ifndef OFX_USE_MULTITHREAD_MUTEX
+// some OFX hosts do not have mutex handling in the MT-Suite (e.g. Sony Catalyst Edit)
+// prefer using the fast mutex by Marcus Geelnard http://tinythreadpp.bitsnbites.eu/
+#include "fast_mutex.h"
+#endif
 
 // define OFX_OCIO_CHOICE to enable the colorspace choice popup menu
 #define OFX_OCIO_CHOICE
@@ -115,6 +120,15 @@ public:
         outputCheck(time);
     }
 
+public:
+#ifdef OFX_USE_MULTITHREAD_MUTEX
+    typedef OFX::MultiThread::Mutex Mutex;
+    typedef OFX::MultiThread::AutoMutex AutoMutex;
+#else
+    typedef tthread::fast_mutex Mutex;
+    typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
+#endif
+
 private:
     void loadConfig();
     void inputCheck(double time);
@@ -144,7 +158,7 @@ private:
 
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
 
-    OFX::MultiThread::Mutex _procMutex;
+    Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     OCIO_NAMESPACE::ConstContextRcPtr _procContext;
     std::string _procInputSpace;

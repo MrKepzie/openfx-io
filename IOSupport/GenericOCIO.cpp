@@ -684,7 +684,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 OCIO_NAMESPACE::ConstProcessorRcPtr
 GenericOCIO::getProcessor()
 {
-    OFX::MultiThread::AutoMutex guard(_procMutex);
+    AutoMutex guard(_procMutex);
     return _proc;
 };
 
@@ -697,7 +697,7 @@ GenericOCIO::setValues(const std::string& inputSpace, const std::string& outputS
 void
 GenericOCIO::setValues(const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
 {
-    OFX::MultiThread::AutoMutex guard(_procMutex);
+    AutoMutex guard(_procMutex);
     if (!_proc ||
         context != _procContext ||
         inputSpace != _procInputSpace ||

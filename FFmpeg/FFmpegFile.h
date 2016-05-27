@@ -52,6 +52,11 @@ extern "C" {
 #include "FFmpegCompat.h"
 
 #include "ofxsMultiThread.h"
+#ifndef OFX_USE_MULTITHREAD_MUTEX
+// some OFX hosts do not have mutex handling in the MT-Suite (e.g. Sony Catalyst Edit)
+// prefer using the fast mutex by Marcus Geelnard http://tinythreadpp.bitsnbites.eu/
+#include "fast_mutex.h"
+#endif
 
 #define CHECKMSG(x,msg) \
 {\
@@ -95,7 +100,16 @@ class ImageEffect;
 }
 
 class FFmpegFile {
+public:
+#ifdef OFX_USE_MULTITHREAD_MUTEX
+    typedef OFX::MultiThread::Mutex Mutex;
+    typedef OFX::MultiThread::AutoMutex AutoMutex;
+#else
+    typedef tthread::fast_mutex Mutex;
+    typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
+#endif
 
+private:
     struct Stream
     {
         int _idx;                      // stream index
@@ -270,8 +284,8 @@ class FFmpegFile {
     
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
-    mutable OFX::MultiThread::Mutex _lock;
-    mutable OFX::MultiThread::Mutex _invalidStateLock;
+    mutable Mutex _lock;
+    mutable Mutex _invalidStateLock;
 #endif
 
     // set reader error
@@ -463,7 +477,7 @@ class FFmpegFileManager
     ///For each plug-in instance, a list of opened files
     typedef std::map<void*,std::list<FFmpegFile*> > FilesMap;
     FilesMap _files;
-    mutable OFX::MultiThread::Mutex* _lock;
+    mutable FFmpegFile::Mutex* _lock;
     
 public:
     
