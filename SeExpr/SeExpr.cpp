@@ -1441,7 +1441,7 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _clipLayerOptions.resize(kSourceClipCount);
     
     _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
-    assert(!_maskClip || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
+    assert(!_maskClip || !_maskClip->isConnected() || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
 
     _doubleParamCount = fetchIntParam(kParamDoubleParamNumber);
