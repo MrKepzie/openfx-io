@@ -66,7 +66,7 @@ namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
 namespace Exr {
     
-    static std::string const compressionNames[6]={
+    static const char* compressionNames[6] = {
         "No compression",
         "Zip (1 scanline)",
         "Zip (16 scanlines)",
@@ -91,7 +91,7 @@ namespace Exr {
         }
     }
     
-    static  std::string const depthNames[2] = {
+    static const char* depthNames[2] = {
         "16 bit half", "32 bit float"
     };
     
