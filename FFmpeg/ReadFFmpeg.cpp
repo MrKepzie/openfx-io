@@ -606,7 +606,7 @@ public:
     virtual void load() OVERRIDE FINAL;
     virtual void unload() OVERRIDE FINAL
     {
-        _manager.release();
+        _manager.reset(NULL);
         _extensions.clear();
     }
     
