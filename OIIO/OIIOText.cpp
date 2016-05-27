@@ -68,7 +68,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #endif
 #define kSupportsMultiResolution 1
 #define kSupportsRenderScale 1
-#define kRenderThreadSafety eRenderInstanceSafe
+#define kRenderThreadSafety eRenderFullySafe
 
 
 #define kParamPosition "position"
