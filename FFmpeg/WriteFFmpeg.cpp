@@ -1814,7 +1814,9 @@ void WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec,
     bool outLossyParams = false;
     assert(codec);
     if (!codec) {
-        outLossyParams = false;
+        outBitrateParam = false;
+        outBitrateTolParam = false;
+        outQualityParams = false;
         outInterGOPParams = false;
         outInterBParams = false;
         return;

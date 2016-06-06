@@ -1895,7 +1895,9 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
         restoreChannelMenusFromStringParams();
     } else {
         buildLayersMenu();
-        if (!_layersUnion.empty()) {
+        if (_layersUnion.empty()) {
+            *components = OFX::ePixelComponentNone;
+        } else {
             const std::vector<std::string>& channels = _layersUnion[0].second.layer.channelNames;
             switch (channels.size()) {
                 case 0:

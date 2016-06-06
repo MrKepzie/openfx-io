@@ -485,8 +485,8 @@ OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
             double srcPAR = _srcClip->getPixelAspectRatio();
             int index;
             _format->getValue(index);
-            double par;
-            int w, h;
+            double par = 1.;
+            int w = 0, h = 0;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             if (srcPAR != par) {
                 return false;
@@ -611,8 +611,8 @@ OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &
             //specific output format
             int index;
             _format->getValue(index);
-            double par;
-            int w, h;
+            double par = 1.;
+            int w = 0, h = 0;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             OfxRectI rodPixel;
             rodPixel.x1 = rodPixel.y1 = 0;
@@ -689,7 +689,7 @@ OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &ar
 void
 OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
-    double par;
+    double par = 1.;
     int type_i;
     _type->getValue(type_i);
     ResizeTypeEnum type = (ResizeTypeEnum)type_i;
@@ -698,7 +698,7 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
             //specific output format
             int index;
             _format->getValue(index);
-            int w, h;
+            int w = 0, h = 0;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             clipPreferences.setPixelAspectRatio(*_dstClip, par);
             break;
