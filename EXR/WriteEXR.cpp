@@ -348,7 +348,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteEXRPlugin(handle, _extensions);
+    WriteEXRPlugin* ret =  new WriteEXRPlugin(handle, _extensions);
+    ret->restoreState();
+    return ret;
 }
 
 

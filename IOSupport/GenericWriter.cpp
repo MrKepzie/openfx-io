@@ -120,6 +120,9 @@
 #define kParamOutputComponentsLabel "Output Components"
 #define kParamOutputComponentsHint "Map the input layer to this type of components before writing it to the output file."
 
+#define kParamExistingInstance "ParamExistingInstance"
+
+
 static bool gHostIsNatron   = false;
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsMultiView = false;
@@ -146,6 +149,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _sublabel(0)
 , _processChannels()
 , _outputComponents(0)
+, _isExistingWriter(0)
 , _ocio(new GenericOCIO(this))
 , _extensions(extensions)
 , _supportsAlpha(supportsAlpha)
@@ -185,7 +189,9 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
     _processChannels[3] = fetchBooleanParam(kNatronOfxParamProcessA);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     assert(_processChannels[0] && _processChannels[1] && _processChannels[2] && _processChannels[3] && _outputComponents);
-    
+
+    _isExistingWriter = fetchBooleanParam(kParamExistingInstance);
+
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
     double first,last;
@@ -215,6 +221,19 @@ GenericWriterPlugin::~GenericWriterPlugin()
 {
 }
 
+void
+GenericWriterPlugin::restoreState()
+{
+    // Natron explicitly set the value of filename before instanciating a Writer.
+    // We need to know if all parameters were setup already and we are just loading a project
+    // or if we are creating a new Writer from scratch and need toa djust parameters.
+    bool writerExisted;
+    _isExistingWriter->getValue(writerExisted);
+    outputFileChanged(OFX::eChangePluginEdit, writerExisted);
+    if (!writerExisted) {
+        _isExistingWriter->setValue(true);
+    }
+}
 
 bool
 GenericWriterPlugin::checkExtension(const std::string& ext)
@@ -655,7 +674,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     const bool doAnyPacking = args.planes.size() == 1 && !allCheckboxHidden;
     
     //Packing is required if channels are not contiguous, e.g: the user unchecked G but left R,B,A checked
-    bool packingContiguous = false;
+    bool packingContiguous = true;
 
     if (doAnyPacking) {
         
@@ -714,7 +733,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
         for (std::size_t i = 0; i < packingMapping.size(); ++i) {
             if (i > 0) {
                 if (packingMapping[i] != prevChannel + 1) {
-                    packingContiguous = true;
+                    packingContiguous = false;
                     break;
                 }
             }
@@ -1746,6 +1765,60 @@ GenericWriterPlugin::setOutputComponentsParam(OFX::PixelComponentEnum components
 }
 
 void
+GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter)
+{
+    if (restoreExistingWriter) {
+        return;
+    }
+    std::string filename;
+    _fileParam->getValue(filename);
+    // filename = filenameFromPattern(filename, time);
+    {
+        std::string ext = extension(filename);
+        if (!checkExtension(ext)) {
+            if (reason == OFX::eChangeUserEdit) {
+                sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+            } else {
+                setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+            }
+            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+        }
+    }
+
+
+    if (!filename.empty()) {
+        bool setColorSpace = true;
+# ifdef OFX_IO_USING_OCIO
+        // Always try to parse from string first,
+        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+        if (_ocio->getConfig()) {
+            const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
+            if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+                colorSpaceStr = NULL;
+            }
+            if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+                // we're lucky
+                _ocio->setOutputColorspace(colorSpaceStr);
+                setColorSpace = false;
+            }
+        }
+# endif
+
+
+
+        ///let the derive class a chance to initialize any data structure it may need
+        onOutputFileChanged(filename, setColorSpace);
+        _ocio->refreshInputAndOutputState(0);
+
+        if (_clipToProject) {
+            int type;
+            _outputFormatType->getValue(type);
+            _clipToProject->setIsSecret(type != 1 || !displayWindowSupportedByFormat(filename));
+        }
+    }
+}
+
+void
 GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
     if (paramName == kParamFrameRange) {
@@ -1763,48 +1836,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             _lastFrame->setIsSecret(true);
         }
     } else if (paramName == kParamFilename) {
-        std::string filename;
-        _fileParam->getValue(filename);
-        // filename = filenameFromPattern(filename, time);
-        {
-            std::string ext = extension(filename);
-            if (!checkExtension(ext)) {
-                if (args.reason == OFX::eChangeUserEdit) {
-                    sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
-                } else {
-                    setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
-                }
-                OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
-            }
-        }
-
-
-        bool setColorSpace = true;
-# ifdef OFX_IO_USING_OCIO
-        // Always try to parse from string first,
-        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-        if (_ocio->getConfig()) {
-            const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
-            if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
-                colorSpaceStr = NULL;
-            }
-            if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
-                // we're lucky
-                _ocio->setOutputColorspace(colorSpaceStr);
-                setColorSpace = false;
-            }
-        }
-# endif
-        
-        ///let the derive class a chance to initialize any data structure it may need
-        onOutputFileChanged(filename, setColorSpace);
-        
-        if (_clipToProject) {
-            int type;
-            _outputFormatType->getValue(type);
-            _clipToProject->setIsSecret(type != 1 || !displayWindowSupportedByFormat(filename));
-        }
-        
+        outputFileChanged(args.reason, false);
     } else if (paramName == kParamFormatType) {
         int type;
         _outputFormatType->getValue(type);
@@ -2391,6 +2423,18 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
             page->addChild(*param);
         }
     }
+
+    {
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
+        param->setEvaluateOnChange(false);
+        param->setAnimates(false);
+        param->setIsSecret(true);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
     
     return page;
 }

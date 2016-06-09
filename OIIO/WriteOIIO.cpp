@@ -953,7 +953,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
     }
     
     spec.attribute("oiio:BitsPerSample", bitsPerSample);
-    // oiio:UnassociatedAlpha should be set if the data buffer in unassociated/unpremultiplied.
+    // oiio:UnassociatedAlpha should be set if the data buffer is unassociated/unpremultiplied.
     // However, WriteOIIO::getExpectedInputPremultiplication() stated that input to the encode()
     // function should always be premultiplied/associated
     //spec.attribute("oiio:UnassociatedAlpha", premultiply);
@@ -1630,7 +1630,9 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteOIIOPlugin(handle, _extensions);
+    WriteOIIOPlugin* ret = new WriteOIIOPlugin(handle, _extensions);
+    ret->restoreState();
+    return ret;
 }
 
 

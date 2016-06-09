@@ -223,7 +223,9 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WritePFMPlugin(handle, _extensions);
+    WritePFMPlugin* ret = new WritePFMPlugin(handle, _extensions);
+    ret->restoreState();
+    return ret;
 }
 
 

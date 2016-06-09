@@ -135,12 +135,15 @@ public:
      **/
     void purgeCaches(void) OVERRIDE FINAL;
 
-    
+    void restoreState();
+
+
+
 protected:
     
     void setOutputComponentsParam(OFX::PixelComponentEnum components);
-    
-    
+
+
     /**
      * @brief Override this function to actually encode the image in the file pointed to by filename.
      * If the file is a video-stream then you should encode the frame at the time given in parameters.
@@ -258,6 +261,7 @@ protected:
     OFX::StringParam* _sublabel;
     OFX::BooleanParam* _processChannels[4];
     OFX::ChoiceParam* _outputComponents;
+    OFX::BooleanParam* _isExistingWriter;
 
     std::auto_ptr<GenericOCIO> _ocio;
     const std::vector<std::string>& _extensions;
@@ -460,6 +464,8 @@ private:
                           int dstRowBytes);
     
     void getPackingOptions(bool *allCheckboxHidden, std::vector<int>* packingMapping) const;
+
+    void outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter);
 };
 
 class EncodePlanesLocalData_RAII

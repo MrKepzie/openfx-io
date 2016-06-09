@@ -4367,7 +4367,9 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    return new WriteFFmpegPlugin(handle, _extensions);
+    WriteFFmpegPlugin* ret = new WriteFFmpegPlugin(handle, _extensions);
+    ret->restoreState();
+    return ret;
 }
 
 
