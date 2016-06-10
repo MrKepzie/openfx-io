@@ -1827,9 +1827,20 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _frameRange->getValue(choice);
         if (choice == 2) {
             _firstFrame->setIsSecret(false);
-            _firstFrame->setValue((int)first);
+            int curFirstFrame;
+            _firstFrame->getValue(curFirstFrame);
+            // if first-frame has never been set by the user, set it
+            if (first != curFirstFrame && curFirstFrame == 0) {
+                _firstFrame->setValue((int)first);
+            }
             _lastFrame->setIsSecret(false);
-            _lastFrame->setValue((int)last);
+            int curLastFrame;
+            _lastFrame->getValue(curLastFrame);
+            // if last-frame has never been set by the user, set it
+            if (last != curLastFrame && curLastFrame == 0) {
+                _lastFrame->setValue((int)last);
+            }
+
         } else {
             _firstFrame->setIsSecret(true);
             _lastFrame->setIsSecret(true);
