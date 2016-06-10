@@ -1772,21 +1772,20 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
     }
     std::string filename;
     _fileParam->getValue(filename);
-    // filename = filenameFromPattern(filename, time);
-    {
-        std::string ext = extension(filename);
-        if (!checkExtension(ext)) {
-            if (reason == OFX::eChangeUserEdit) {
-                sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
-            } else {
-                setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
-            }
-            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
-        }
-    }
-
 
     if (!filename.empty()) {
+        {
+            std::string ext = extension(filename);
+            if (!checkExtension(ext)) {
+                if (reason == OFX::eChangeUserEdit) {
+                    sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                } else {
+                    setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                }
+                OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+            }
+        }
+
         bool setColorSpace = true;
 # ifdef OFX_IO_USING_OCIO
         // Always try to parse from string first,
