@@ -51,10 +51,40 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSupportsAlpha true
 #define kSupportsXY false
 
-inline bool iequals(const std::string& a, const std::string& b)
-{
+// Try to deduce endianness
+#if (defined(_WIN32) || defined(__i386__) || defined(__x86_64__))
+#  ifndef __LITTLE_ENDIAN__
+#    define __LITTLE_ENDIAN__ 1
+#    undef __BIG_ENDIAN__
+#  endif
+#endif
 
+inline bool littleendian (void)
+{
+#if defined(__BIG_ENDIAN__)
+    return false;
+#elif defined(__LITTLE_ENDIAN__)
+    return true;
+#else
+    // Otherwise, do something quick to compute it
+    int i = 1;
+    return *((char *) &i);
+#endif
 }
+
+/// Writes a scanline.
+///
+inline bool
+write_row (png_structp& sp, png_byte *data)
+{
+    if (setjmp (png_jmpbuf(sp))) {
+        //error ("PNG library error");
+        return false;
+    }
+    png_write_row (sp, data);
+    return true;
+}
+
 
 /// Initializes a PNG write struct.
 /// \return empty string on success, C-string error message on failure.
@@ -324,7 +354,7 @@ WritePNGPlugin::openFile(const std::string& filename,
 }
 
 /// Bitwise circular rotation left by k bits (for 32 bit unsigned integers)
-inline uint32_t rotl32 (uint32_t x, int k) {
+inline unsigned int rotl32 (unsigned int x, int k) {
     return (x<<k) | (x>>(32-k));
 }
 
@@ -332,7 +362,7 @@ inline uint32_t rotl32 (uint32_t x, int k) {
 // It's in the public domain.
 
 // Mix up the bits of a, b, and c (changing their values in place).
-inline void bjmix (uint32_t &a, uint32_t &b, uint32_t &c)
+inline void bjmix (unsigned int &a, unsigned int &b, unsigned int &c)
 {
     a -= c;  a ^= rotl32(c, 4);  c += b;
     b -= a;  b ^= rotl32(a, 6);  a += c;
@@ -342,31 +372,30 @@ inline void bjmix (uint32_t &a, uint32_t &b, uint32_t &c)
     c -= b;  c ^= rotl32(b, 4);  b += a;
 }
 
-void
-add_dither (int nchannels, int width, int height,
-            float *data, stride_t xstride, stride_t ystride,
-            float ditheramplitude,
-            int alpha_channel, unsigned int ditherseed,
-            int chorigin, int xorigin, int yorigin, int zorigin)
+static void add_dither (int nchannels, int width, int height,
+                        float *data, std::size_t xstride, std::size_t ystride,
+                        float ditheramplitude,
+                        int alpha_channel, unsigned int ditherseed,
+                        int chorigin, int xorigin, int yorigin)
 {
-    ImageSpec::auto_stride (xstride, ystride, zstride,
-                            sizeof(float), nchannels, width, height);
-        char *scanline = plane;
-        for (int y = 0;  y < height;  ++y, scanline += ystride) {
-            char *pixel = (char*)data;
-            uint32_t ba = (z+zorigin)*1311 + yorigin+y;
-            uint32_t bb = ditherseed + (chorigin<<24);
-            uint32_t bc = xorigin;
-            for (int x = 0;  x < width;  ++x, pixel += xstride) {
-                float *val = (float *)pixel;
-                for (int c = 0;  c < nchannels;  ++c, ++val, ++bc) {
-                    bjmix (ba, bb, bc);
-                    int channel = c+chorigin;
-                    if (channel == alpha_channel || channel == z_channel)
-                        continue;
-                    float dither = bc / float(std::numeric_limits<uint32_t>::max());
-                    *val += ditheramplitude * (dither - 0.5f);
-                }
+    
+    assert(sizeof(unsigned int) == 4);
+    
+    char *scanline = (char*)data;
+    for (int y = 0;  y < height;  ++y, scanline += ystride) {
+        char *pixel = (char*)data;
+        unsigned int ba = yorigin + y;
+        unsigned int bb = ditherseed + (chorigin << 24);
+        unsigned int bc = xorigin;
+        for (int x = 0;  x < width;  ++x, pixel += xstride) {
+            float *val = (float *)pixel;
+            for (int c = 0;  c < nchannels;  ++c, ++val, ++bc) {
+                bjmix (ba, bb, bc);
+                int channel = c+chorigin;
+                if (channel == alpha_channel)
+                    continue;
+                float dither = bc / float(std::numeric_limits<uint32_t>::max());
+                *val += ditheramplitude * (dither - 0.5f);
             }
         }
     }
@@ -378,7 +407,7 @@ void WritePNGPlugin::encode(const std::string& filename,
                             const std::string& /*viewName*/,
                             const float *pixelData,
                             const OfxRectI& bounds,
-                            const float /*pixelAspectRatio*/,
+                            const float pixelAspectRatio,
                             const int pixelDataNComps,
                             const int dstNCompsStartIndex,
                             const int dstNComps,
@@ -414,7 +443,7 @@ void WritePNGPlugin::encode(const std::string& filename,
     if (compression.empty ()) {
         png_set_compression_strategy(png, Z_DEFAULT_STRATEGY);
     }
-    else if (Strutil::iequals (compression, "default")) {
+    /*else if (Strutil::iequals (compression, "default")) {
         png_set_compression_strategy(png, Z_DEFAULT_STRATEGY);
     }
     else if (Strutil::iequals (compression, "filtered")) {
@@ -431,22 +460,16 @@ void WritePNGPlugin::encode(const std::string& filename,
     }
     else {
         png_set_compression_strategy(png, Z_DEFAULT_STRATEGY);
-    }
+    }*/
 
-    write_info (png, info, color_type, m_spec, m_pngtext,
-                         m_convert_alpha, m_gamma);
+    // TOdo should be a parameter
+    BitDepthEnum pngDetph = eBitDepthUByte;
+    write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, std::string() /*colorSpace*/, pngDetph);
 
 
-    //m_dither = (m_spec.format == TypeDesc::UINT8) ?
-    //m_spec.get_int_attribute ("oiio:dither", 0) : 0;
+    // Todo should be a parameter
+    bool dither = pngDetph == eBitDepthUByte;
 
-    m_convert_alpha = m_spec.alpha_channel != -1 &&
-    !m_spec.get_int_attribute("oiio:UnassociatedAlpha", 0);
-
-    // If user asked for tiles -- which this format doesn't support, emulate
-    // it by buffering the whole image.
-    if (m_spec.tile_width && m_spec.tile_height)
-        m_tilebuffer.resize (m_spec.image_bytes());
 
 
 
