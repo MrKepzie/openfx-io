@@ -43,3 +43,7 @@ SEEXPR_LINKFLAGS = -L$(SEEXPR_HOME)/lib -lSeExpr
 ifeq ($(OS),Linux)
 SEEXPR_LINKFLAGS += -Wl,-rpath,$(SEEXPR_HOME)/lib
 endif
+
+#libPNG
+PNG_CXXFLAGS = `pkg-config --cflags libpng16`
+PNG_LINKFLAGS = `pkg-config --libs libpng16`

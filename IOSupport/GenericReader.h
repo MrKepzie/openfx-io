@@ -144,7 +144,18 @@ protected:
         OFX::PixelComponentEnum comps;
         std::string rawComps;
     };
-    
+
+    void convertDepthAndComponents(const void* srcPixelData,
+                                   const OfxRectI& renderWindow,
+                                   const OfxRectI& srcBounds,
+                                   OFX::PixelComponentEnum srcPixelComponents,
+                                   OFX::BitDepthEnum srcBitDepth,
+                                   int srcRowBytes,
+                                   float *dstPixelData,
+                                   const OfxRectI& dstBounds,
+                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   int dstRowBytes);
+
 private:
     
     
