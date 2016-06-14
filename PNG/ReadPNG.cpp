@@ -422,7 +422,7 @@ ReadPNGPlugin::decode(const std::string& filename,
 
     assert(renderWindow.x1 >= x1 && renderWindow.y1 >= y1 && renderWindow.x2 <= x1 + width && renderWindow.y2 <= y1 + height);
 
-    std::size_t pngRowBytes = pixelComponentCount * width;
+    std::size_t pngRowBytes = nChannels * width;
     if (bitdepth == eBitDepthUShort) {
         pngRowBytes *= sizeof(unsigned short);
     }

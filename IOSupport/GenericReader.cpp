@@ -2414,8 +2414,8 @@ public:
     // and do some processing
     void multiThreadProcessImages(OfxRectI procWindow)
     {
-        assert(nSrcComp == 3 || nSrcComp == 4);
-        assert(nDstComp == 3 || nDstComp == 4);
+        assert(nSrcComp == 1 || nSrcComp == 3 || nSrcComp == 4);
+        assert(nDstComp == 1 || nDstComp == 3 || nDstComp == 4);
 
         for (int dsty = procWindow.y1; dsty < procWindow.y2; ++dsty) {
             if ( _effect.abort() ) {
@@ -2434,13 +2434,127 @@ public:
 
             for (int x = procWindow.x1; x < procWindow.x2; ++x) {
 
-                int srcCol = x * nSrcComp ;
+                int srcCol = x * nSrcComp;
                 int dstCol = x * nDstComp;
-                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
-                dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
-                if (nDstComp == 4) {
-                    dst_pixels[dstCol + 3] = nSrcComp == 4 ? src_pixels[srcCol + 3] / (float)srcMaxValue : 1.f;
+
+                switch (nSrcComp) {
+                    case 1:
+                        switch (nDstComp) {
+                            case 1:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                break;
+                            case 2:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                break;
+
+                            case 3:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                break;
+
+                            case 4:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 3] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                break;
+                            default:
+                                assert(false);
+                                return;
+                        }
+                        break;
+                    case 2:
+                        switch (nDstComp) {
+                            case 1:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                break;
+                            case 2:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                break;
+
+                            case 3:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = 0;
+                                break;
+
+                            case 4:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = 0;
+                                dst_pixels[dstCol + 3] = 1.;
+                                break;
+                            default:
+                                assert(false);
+                                return;
+                        }
+
+                        break;
+                    case 3:
+                        switch (nDstComp) {
+                            case 1: {
+                                // 3 to 1, assume users wants a grayscale luminance map
+                                float l = 0.2126 * src_pixels[srcCol + 0] + 0.7152 * src_pixels[srcCol + 1] + 0.0722 * src_pixels[srcCol + 2]; // Rec.709 luminance formula
+                                dst_pixels[dstCol + 0] = l;
+                            }   break;
+                            case 2:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                break;
+
+                            case 3:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
+                                break;
+
+                            case 4:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 3] = 1.f;
+                                break;
+                            default:
+                                assert(false);
+                                return;
+                        }
+
+                        break;
+
+                    case 4:
+                        switch (nDstComp) {
+                            case 1:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 3] / (float)srcMaxValue;
+                                break;
+                            case 2:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                break;
+
+                            case 3:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
+                                break;
+
+                            case 4:
+                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 3] = src_pixels[srcCol + 3] / (float)srcMaxValue;
+                                break;
+                            default:
+                                assert(false);
+                                return;
+                        }
+
+                        break;
+                    default:
+                        assert(false);
+                        return;
                 }
 
             }

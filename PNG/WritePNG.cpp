@@ -475,7 +475,7 @@ static void add_dither (int nchannels, int width, int height,
                 int channel = c;
                 if (channel == alpha_channel)
                     continue;
-                float dither = bc / float(std::numeric_limits<uint32_t>::max());
+                float dither = bc / float(std::numeric_limits<unsigned int>::max());
                 *val += ditheramplitude * (dither - 0.5f);
             }
         }
