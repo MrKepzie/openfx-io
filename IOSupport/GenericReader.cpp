@@ -2236,6 +2236,8 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             premult = OFX::eImagePreMultiplied;
             break;
 
+        case OFX::ePixelComponentRGBA:
+            break;
         default:
             if (!_supportsRGB) {
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
