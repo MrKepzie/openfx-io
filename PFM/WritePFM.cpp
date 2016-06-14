@@ -29,6 +29,7 @@
 
 #include "GenericWriter.h"
 #include "ofxsMacros.h"
+#include "ofxsFileOpen.h"
 
 using namespace OFX;
 
@@ -139,7 +140,7 @@ void WritePFMPlugin::encode(const std::string& filename,
         return;
     }
 
-    std::FILE *const nfile = std::fopen(filename.c_str(), "wb");
+    std::FILE *const nfile = OFX::open_file(filename, "wb");
     if (!nfile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file \"" + filename + "\"");
         OFX::throwSuiteStatusException(kOfxStatFailed);

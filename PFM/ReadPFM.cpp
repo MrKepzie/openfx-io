@@ -30,6 +30,7 @@
 
 #include "GenericReader.h"
 #include "GenericOCIO.h"
+#include "ofxsFileOpen.h"
 #include "ofxsMacros.h"
 
 using namespace OFX;
@@ -173,7 +174,7 @@ ReadPFMPlugin::decode(const std::string& filename,
     }
 
     // read PFM header
-    std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
+    std::FILE *const nfile = OFX::open_file(filename.c_str(), "rb");
 
     char pfm_type, item[1024] = { 0 };
     int W = 0;

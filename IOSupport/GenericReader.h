@@ -27,6 +27,7 @@
 #include <memory>
 #include <ofxsImageEffect.h>
 #include <ofxsMacros.h>
+#include "IOUtility.h"
 
 class SequenceParser;
 class GenericOCIO;
@@ -144,7 +145,18 @@ protected:
         OFX::PixelComponentEnum comps;
         std::string rawComps;
     };
-    
+
+    void convertDepthAndComponents(const void* srcPixelData,
+                                   const OfxRectI& renderWindow,
+                                   const OfxRectI& srcBounds,
+                                   OFX::PixelComponentEnum srcPixelComponents,
+                                   OFX::BitDepthEnum srcBitDepth,
+                                   int srcRowBytes,
+                                   float *dstPixelData,
+                                   const OfxRectI& dstBounds,
+                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   int dstRowBytes);
+
 private:
     
     
@@ -371,7 +383,8 @@ protected:
     
     OFX::ChoiceParam* _outputComponents;
     OFX::ChoiceParam* _premult;
-    
+    OFX::ChoiceParam* _outputPremult;
+
     OFX::BooleanParam* _timeDomainUserSet; //< true when the time domain has bee nuser edited
     
     OFX::BooleanParam* _customFPS;
@@ -398,6 +411,7 @@ private:
     const bool _isMultiPlanar;
     std::string _filename; // filename used for the last onInputFileChanged() call, to avoid calling it again and again (potentially costly)
 };
+
 
 
 void GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,

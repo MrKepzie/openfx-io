@@ -292,5 +292,34 @@ inline unsigned int getLevelFromScale(double s)
     return retval;
 }
 
+/**
+ * @brief Helper class to make fast buffers that are ensured to be deallocated in a RAII style
+ **/
+class RamBuffer
+{
+    unsigned char* data;
+
+public:
+
+    RamBuffer(std::size_t nBytes)
+    : data(0)
+    {
+        data = (unsigned char*)malloc(nBytes);
+    }
+
+    unsigned char* getData() const
+    {
+        return data;
+    }
+
+    ~RamBuffer()
+    {
+        if (data) {
+            free(data);
+        }
+    }
+};
+
+
 
 #endif

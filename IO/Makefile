@@ -7,12 +7,14 @@ PLUGINOBJECTS = \
 	OIIOText.o \
 	OIIOResize.o \
 	ReadPFM.o WritePFM.o \
+    ReadPNG.o WritePNG.o \
 	OCIOColorSpace.o \
 	OCIODisplay.o \
 	OCIOCDLTransform.o \
 	OCIOFileTransform.o \
 	OCIOLogConvert.o \
 	OCIOLookTransform.o \
+    ofxsFileOpen.o \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
@@ -60,7 +62,11 @@ $(TOP_SRCDIR)/OIIO/fr.inria.openfx.WriteOIIO.svg \
 $(TOP_SRCDIR)/PFM/fr.inria.openfx.ReadPFM.png \
 $(TOP_SRCDIR)/PFM/fr.inria.openfx.ReadPFM.svg \
 $(TOP_SRCDIR)/PFM/fr.inria.openfx.WritePFM.png \
-$(TOP_SRCDIR)/PFM/fr.inria.openfx.WritePFM.svg
+$(TOP_SRCDIR)/PFM/fr.inria.openfx.WritePFM.svg \
+$(TOP_SRCDIR)/PNG/fr.inria.openfx.ReadPNG.png \
+$(TOP_SRCDIR)/PNG/fr.inria.openfx.ReadPNG.svg \
+$(TOP_SRCDIR)/PNG/fr.inria.openfx.WritePNG.png \
+$(TOP_SRCDIR)/PNG/fr.inria.openfx.WritePNG.svg
 
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
 RESOURCES += ../RunScript/fr.inria.openfx.RunScript.png \
@@ -73,6 +79,7 @@ $(TOP_SRCDIR)/FFmpeg \
 $(TOP_SRCDIR)/OCIO \
 $(TOP_SRCDIR)/OIIO \
 $(TOP_SRCDIR)/PFM \
+$(TOP_SRCDIR)/PNG \
 $(TOP_SRCDIR)/SeExpr \
 $(TOP_SRCDIR)/IOSupport/SequenceParsing
 
@@ -82,11 +89,11 @@ endif
 
 include $(TOP_SRCDIR)/Makefile.master
 
-CXXFLAGS += -I$(TOP_SRCDIR)/EXR -I$(TOP_SRCDIR)/FFmpeg -I$(TOP_SRCDIR)/OIIO -I$(TOP_SRCDIR)/PFM -I$(TOP_SRCDIR)/OCIO -I$(TOP_SRCDIR)/SeExpr
+CXXFLAGS += -I$(TOP_SRCDIR)/EXR -I$(TOP_SRCDIR)/FFmpeg -I$(TOP_SRCDIR)/OIIO -I$(TOP_SRCDIR)/PFM -I$(TOP_SRCDIR)/OCIO -I$(TOP_SRCDIR)/SeExpr -I$(TOP_SRCDIR)/PNG
 
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
 CXXFLAGS += -I$(TOP_SRCDIR)/RunScript
 endif
 
-CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS) $(OCIO_CXXFLAGS)
-LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS) $(OCIO_LINKFLAGS)
+CXXFLAGS  += $(OPENEXR_CXXFLAGS)  $(FFMPEG_CXXFLAGS)  $(OIIO_CXXFLAGS)  $(SEEXPR_CXXFLAGS) $(OCIO_CXXFLAGS) $(PNG_CXXFLAGS)
+LINKFLAGS += $(OPENEXR_LINKFLAGS) $(FFMPEG_LINKFLAGS) $(OIIO_LINKFLAGS)  $(SEEXPR_LINKFLAGS) $(OCIO_LINKFLAGS) $(PNG_LINKFLAGS)
