@@ -209,31 +209,6 @@ ReadFFmpegPlugin::isVideoStream(const std::string& filename)
 
 
 
-class RamBuffer
-{
-    unsigned char* data;
-    
-public:
-    
-    RamBuffer(std::size_t nBytes)
-    : data(0)
-    {
-        data = (unsigned char*)malloc(nBytes);
-    }
-    
-    unsigned char* getData() const
-    {
-        return data;
-    }
-    
-    ~RamBuffer()
-    {
-        if (data) {
-            free(data);
-        }
-    }
-};
-
 void
 ReadFFmpegPlugin::decode(const std::string& filename,
                          OfxTime time,

@@ -172,8 +172,8 @@ enum MissingEnum
 #define kParamFilePremultLabel "File Premult"
 #define kParamFilePremultHint \
 "The image file being read is considered to have this premultiplication state.\n"\
-"On output, RGB images are always Opaque, Alpha and RGBA images are always Premultiplied (also called \"associated alpha\").\n"\
-"To get UnPremultiplied (or \"unassociated alpha\") images, use the \"Unpremult\" plugin after this plugin.\n\n"\
+"To get UnPremultiplied (or \"unassociated alpha\") images, set the \"Output Premult\" parameter to Unpremultiplied. \n"\
+"By default the value should be correctly be guessed by the image file, but this parameter can be edited if the metadatas inside the file are wrong.\n" \
 "- Opaque means that the alpha channel is considered to be 1 (one), and it is not taken into account in colorspace conversion.\n" \
 "- Premultiplied, red, green and blue channels are divided by the alpha channel "\
 "before applying the colorspace conversion, and re-multiplied by alpha after colorspace conversion.\n"\
@@ -187,6 +187,10 @@ enum MissingEnum
 "The image is premultiplied by its alpha (also called \"associated alpha\")."
 #define kParamFilePremultOptionUnPreMultipliedHint \
 "The image is unpremultiplied (also called \"unassociated alpha\")."
+
+#define kParamOutputPremult "outputPremult"
+#define kParamOutputPremultLabel "Output Premult"
+#define kParamOutputPremultHint "The alpha premultiplication in output of this node will have this state."
 
 #define kParamOutputComponents "outputComponents"
 #define kParamOutputComponentsLabel "Output Components"
@@ -264,6 +268,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _originalFrameRange(0)
 , _outputComponents(0)
 , _premult(0)
+, _outputPremult(0)
 , _timeDomainUserSet(0)
 , _customFPS(0)
 , _fps(0)
@@ -299,6 +304,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _timeDomainUserSet = fetchBooleanParam(kParamTimeDomainUserEdited);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     _premult = fetchChoiceParam(kParamFilePremult);
+    _outputPremult = fetchChoiceParam(kParamOutputPremult);
     _customFPS = fetchBooleanParam(kParamCustomFps);
     _fps = fetchDoubleParam(kParamFrameRate);
     if (gHostIsNatron) {
@@ -1567,11 +1573,10 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     
     for (std::list<PlaneToRender>::iterator it = planes.begin(); it!=planes.end(); ++it) {
 
-        
-        bool isOCIOIdentity;
+
         // Read into a temporary image, apply colorspace conversion, then copy
-        OFX::PreMultiplicationEnum premult = OFX::eImageUnPreMultiplied;
-        
+        bool isOCIOIdentity;
+
         // if components are custom, remap it to a OFX components with the same number of channels
         OFX::PixelComponentEnum remappedComponents;
         
@@ -1611,17 +1616,25 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 #endif
             remappedComponents = it->comps;
         }
-        
+
+        OFX::PreMultiplicationEnum filePremult = OFX::eImageUnPreMultiplied;
+        OFX::PreMultiplicationEnum outputPremult = OFX::eImageUnPreMultiplied;
         if (it->comps == OFX::ePixelComponentRGB || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGB)) {
-            premult = OFX::eImageOpaque;
+            filePremult = outputPremult = OFX::eImageOpaque;
         } else if (it->comps == OFX::ePixelComponentAlpha  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentAlpha)) {
-            premult = OFX::eImagePreMultiplied;
+            filePremult = outputPremult = OFX::eImagePreMultiplied;
         } else if (it->comps == OFX::ePixelComponentRGBA  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGBA)) {
             int premult_i;
             _premult->getValue(premult_i);
-            premult = (OFX::PreMultiplicationEnum)premult_i;
+            filePremult = (OFX::PreMultiplicationEnum)premult_i;
+
+            int oPremult_i;
+            _outputPremult->getValue(oPremult_i);
+            outputPremult = (OFX::PreMultiplicationEnum)oPremult_i;
         }
-        
+
+
+
         // we have to do the final premultiplication if:
         // - pixelComponents is RGBA
         //  AND
@@ -1629,8 +1642,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
         //   OR
         //   - premult is unpremultiplied
         bool mustPremult = ((remappedComponents == OFX::ePixelComponentRGBA) &&
-                            ((premult == OFX::eImagePreMultiplied && !isOCIOIdentity) ||
-                             premult == OFX::eImageUnPreMultiplied));
+                             ((filePremult == OFX::eImageUnPreMultiplied || !isOCIOIdentity) && outputPremult == OFX::eImagePreMultiplied));
         
         
         
@@ -1707,7 +1719,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             
             ///do the color-space conversion
             if (!isOCIOIdentity && it->comps != OFX::ePixelComponentAlpha) {
-                if (premult == OFX::eImagePreMultiplied) {
+                if (filePremult == OFX::eImagePreMultiplied) {
                     assert(remappedComponents == OFX::ePixelComponentRGBA);
                     DBG(std::printf("unpremult (tmp in-place)\n"));
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
@@ -1936,6 +1948,15 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader)
                 setOutputComponents(components);
             }
             _premult->setValue((int)premult);
+
+            if (components == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
+                // RGB is always opaque
+                _outputPremult->setValue(OFX::eImageOpaque);
+            } else if (components == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
+                // Alpha is always premultiplied
+                _outputPremult->setValue(OFX::eImagePreMultiplied);
+            }
+
         } // isLoadingExistingReader
         
         bool customFps;
@@ -2094,31 +2115,31 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
     
         if (args.reason == OFX::eChangeUserEdit) {
             int premult_i;
-            _premult->getValue(premult_i);
+            _outputPremult->getValue(premult_i);
             OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
             if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
                 // RGB is always opaque
-                _premult->setValue(OFX::eImageOpaque);
+                _outputPremult->setValue(OFX::eImageOpaque);
             } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
                 // Alpha is always premultiplied
-                _premult->setValue(OFX::eImagePreMultiplied);
+                _outputPremult->setValue(OFX::eImagePreMultiplied);
             }
         }
         
         // Even when reason == pluginEdit notify the plug-in that components changed
         onOutputComponentsParamChanged(comps);
-    } else if (paramName == kParamFilePremult && args.reason == OFX::eChangeUserEdit) {
+    } else if (paramName == kParamOutputPremult && args.reason == OFX::eChangeUserEdit) {
         int premult_i;
-        _premult->getValue(premult_i);
+        _outputPremult->getValue(premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
         OFX::PixelComponentEnum comps = getOutputComponents();
         // reset to authorized values if necessary
         if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
             // RGB is always opaque
-            _premult->setValue((int)OFX::eImageOpaque);
+            _outputPremult->setValue((int)OFX::eImageOpaque);
         } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
             // Alpha is always premultiplied
-            _premult->setValue((int)OFX::eImagePreMultiplied);
+            _outputPremult->setValue((int)OFX::eImagePreMultiplied);
         }
     } else if (paramName == kParamCustomFps) {
       
@@ -2200,28 +2221,12 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     clipPreferences.setOutputFrameVarying(frameVarying); // true for readers and frame-varying generators/effects @see kOfxImageEffectFrameVarying
 
     OFX::PixelComponentEnum outputComponents = getOutputComponents();
-    if (outputComponents == OFX::ePixelComponentRGB) {
-        clipPreferences.setOutputPremultiplication(OFX::eImageOpaque);
-    }
     clipPreferences.setClipComponents(*_outputClip, outputComponents);
 
-    // the output of the GenericReader plugin is *always* premultiplied (as long as only float is supported)
     int premult_i;
-    _premult->getValue(premult_i);
+    _outputPremult->getValue(premult_i);
     OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
     switch (outputComponents) {
-        case OFX::ePixelComponentRGBA:
-            if (!_supportsRGBA) {
-                OFX::throwSuiteStatusException(kOfxStatErrFormat);
-                return;
-           }
-            // may be Opaque or PreMultiplied (never UnPremultiplied)
-            if (premult == OFX::eImageUnPreMultiplied) {
-                premult = OFX::eImagePreMultiplied;
-            }
-            assert(premult == OFX::eImagePreMultiplied || premult == OFX::eImageOpaque);
-            break;
-
         case OFX::ePixelComponentAlpha:
             if (!_supportsAlpha) {
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
@@ -2908,6 +2913,27 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFilePremult);
         param->setLabel(kParamFilePremultLabel);
         param->setHint(kParamFilePremultHint);
+        assert(param->getNOptions() == eImageOpaque);
+        param->appendOption(premultString(eImageOpaque), kParamFilePremultOptionOpaqueHint);
+        if (gHostSupportsRGBA && supportsRGBA) {
+            assert(param->getNOptions() == eImagePreMultiplied);
+            param->appendOption(premultString(eImagePreMultiplied), kParamFilePremultOptionPreMultipliedHint);
+            assert(param->getNOptions() == eImageUnPreMultiplied);
+            param->appendOption(premultString(eImageUnPreMultiplied), kParamFilePremultOptionUnPreMultipliedHint);
+            param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
+        }
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    //// Output premult
+    {
+        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputPremult);
+        param->setLabel(kParamOutputPremultLabel);
+        param->setHint(kParamOutputPremultHint);
         assert(param->getNOptions() == eImageOpaque);
         param->appendOption(premultString(eImageOpaque), kParamFilePremultOptionOpaqueHint);
         if (gHostSupportsRGBA && supportsRGBA) {

@@ -380,30 +380,7 @@ ReadPNGPlugin::openFile(const std::string& filename,
     png_set_sig_bytes (*png, 8);  // already read 8 bytes
 }
 
-class RamBuffer
-{
-    unsigned char* data;
 
-public:
-
-    RamBuffer(std::size_t nBytes)
-    : data(0)
-    {
-        data = (unsigned char*)malloc(nBytes);
-    }
-
-    unsigned char* getData() const
-    {
-        return data;
-    }
-
-    ~RamBuffer()
-    {
-        if (data) {
-            free(data);
-        }
-    }
-};
 
 
 void
