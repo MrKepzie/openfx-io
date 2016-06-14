@@ -34,6 +34,8 @@
 #include "GenericWriter.h"
 #include "ofxsMacros.h"
 #include "ofxsFileOpen.h"
+#include "ofxsLut.h"
+#include "ofxsMultiThread.h"
 using namespace OFX;
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
@@ -97,6 +99,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kWritePNGParamDither "enableDithering"
 #define kWritePNGParamDitherLabel "Dithering"
 #define kWritePNGParamDitherHint "When checked, conversion from float input buffers to 8-bit PNG will use a dithering algorithm to reduce quantization artifacts. This has no effect when writing to 16bit PNG"
+
+#ifdef OFX_USE_MULTITHREAD_MUTEX
+typedef OFX::MultiThread::Mutex Mutex;
+typedef OFX::MultiThread::AutoMutex AutoMutex;
+#else
+typedef tthread::fast_mutex Mutex;
+typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
+#endif
 
 // Try to deduce endianness
 #if (defined(_WIN32) || defined(__i386__) || defined(__x86_64__))
@@ -257,13 +267,63 @@ put_parameter (png_structp& sp, png_infop& ip, const std::string &_name,
     return false;
 }*/
 
+inline unsigned int
+hashFunction(unsigned int a)
+{
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
 
+    return a;
+}
+
+struct alias_cast_float
+{
+    alias_cast_float()
+    : raw(0)
+    {
+    };                          // initialize to 0 in case sizeof(T) < 8
+
+    union
+    {
+        unsigned int raw;
+        float data;
+    };
+};
+
+
+inline
+unsigned int pseudoRandomHashSeed(OfxTime time, unsigned int seed)
+{
+
+    // Initialize the random function with a hash that takes time and seed into account
+    unsigned int hash32 = 0;
+    hash32 += seed;
+
+    alias_cast_float ac;
+    ac.data = (float)time;
+    hash32 += ac.raw;
+    return hash32;
+}
+
+inline
+unsigned int generatePseudoRandomHash(unsigned int lastRandomHash)
+{
+    return hashFunction(lastRandomHash);
+}
+
+inline
+int convertPseudoRandomHashToRange(unsigned int lastRandomHash, int min, int max) {
+    return ( (double)lastRandomHash / (double)0x100000000LL ) * (max - min)  + min;
+}
 
 class WritePNGPlugin : public GenericWriterPlugin
 {
 public:
 
-    WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, const OFX::Color::LutBase* lut);
 
     virtual ~WritePNGPlugin();
 
@@ -301,21 +361,45 @@ private:
                 int height,
                 double par,
                 const std::string& outputColorspace,
-                BitDepthEnum bitdepth);
+                     BitDepthEnum bitdepth);
+
+    template <int srcNComps, int dstNComps>
+    void add_dither_for_components(OfxTime time,
+                                   unsigned int seed,
+                                   const float *src_pixels,
+                                   const OfxRectI& bounds,
+                                   unsigned char* dst_pixels,
+                                   int srcRowElements,
+                                   int dstRowElements,
+                                   int dstNCompsStartIndex);
+
+    void add_dither(OfxTime time,
+                    unsigned int seed,
+                    const float *src_pixels,
+                    const OfxRectI& bounds,
+                    unsigned char* dst_pixels,
+                    int srcRowElements,
+                    int dstRowElements,
+                    int dstNCompsStartIndex,
+                    int srcNComps,
+                    int dstNComps);
 
 
     OFX::ChoiceParam* _compression;
     OFX::IntParam* _compressionLevel;
     OFX::ChoiceParam* _bitdepth;
     OFX::BooleanParam* _ditherEnabled;
+
+    const OFX::Color::LutBase* _ditherLut;
 };
 
-WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
+WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, const OFX::Color::LutBase* lut)
 : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
 , _compression(0)
 , _compressionLevel(0)
 , _bitdepth(0)
 , _ditherEnabled(0)
+, _ditherLut(lut)
 {
     _compression = fetchChoiceParam(kWritePNGParamCompression);
     _compressionLevel = fetchIntParam(kWritePNGParamCompressionLevel);
@@ -435,56 +519,99 @@ WritePNGPlugin::write_info (png_structp& sp,
 }
 
 
-/// Bitwise circular rotation left by k bits (for 32 bit unsigned integers)
-inline unsigned int rotl32 (unsigned int x, int k) {
-    return (x<<k) | (x>>(32-k));
-}
-
-// Bob Jenkins "lookup3" hashes:  http://burtleburtle.net/bob/c/lookup3.c
-// It's in the public domain.
-
-// Mix up the bits of a, b, and c (changing their values in place).
-inline void bjmix (unsigned int &a, unsigned int &b, unsigned int &c)
+template <int srcNComps, int dstNComps>
+void
+WritePNGPlugin::add_dither_for_components(OfxTime time,
+                                          unsigned int seed,
+                                          const float *src_pixels,
+                                          const OfxRectI& bounds,
+                                          unsigned char* dst_pixels,
+                                          int srcRowElements,
+                                          int dstRowElements,
+                                          int dstNCompsStartIndex)
 {
-    a -= c;  a ^= rotl32(c, 4);  c += b;
-    b -= a;  b ^= rotl32(a, 6);  a += c;
-    c -= b;  c ^= rotl32(b, 8);  b += a;
-    a -= c;  a ^= rotl32(c,16);  c += b;
-    b -= a;  b ^= rotl32(a,19);  a += c;
-    c -= b;  c ^= rotl32(b, 4);  b += a;
-}
 
-static void add_dither (int nchannels, int width, int height,
-                        float *data, std::size_t xstride, std::size_t ystride,
-                        float ditheramplitude,
-                        int alpha_channel, unsigned int ditherseed)
-{
-    
-    assert(sizeof(unsigned int) == 4);
-    
-    char *scanline = (char*)data;
-    for (int y = 0;  y < height;  ++y, scanline += ystride) {
-        char *pixel = (char*)data;
-        unsigned int ba = y;
-        unsigned int bb = ditherseed + (0 << 24);
-        unsigned int bc = 0;
-        for (int x = 0;  x < width;  ++x, pixel += xstride) {
-            float *val = (float *)pixel;
-            for (int c = 0;  c < nchannels;  ++c, ++val, ++bc) {
-                bjmix (ba, bb, bc);
-                int channel = c;
-                if (channel == alpha_channel)
-                    continue;
-                float dither = bc / float(std::numeric_limits<unsigned int>::max());
-                *val += ditheramplitude * (dither - 0.5f);
+    unsigned int randHash = pseudoRandomHashSeed(time, seed);
+
+
+    assert(srcNComps >= 3 && dstNComps >= 3);
+
+    int width = bounds.x2 - bounds.x1;
+
+    for (int y = bounds.y1; y < bounds.y2; ++y,
+         src_pixels += srcRowElements,
+         dst_pixels += dstRowElements) {
+
+        randHash = generatePseudoRandomHash(randHash);
+        int start = convertPseudoRandomHashToRange(randHash, 0, (bounds.x2 - bounds.x1));
+
+        for (int backward = 0; backward < 2; ++backward) {
+
+            int index = backward ? start - 1 : start;
+            assert( backward == 1 || ( index >= 0 && index < width ) );
+            unsigned error_r = 0x80;
+            unsigned error_g = 0x80;
+            unsigned error_b = 0x80;
+
+            while (index < width && index >= 0) {
+
+                int src_col = index * srcNComps + dstNCompsStartIndex;
+                int dst_col = index * dstNComps;
+                error_r = (error_r & 0xff) + _ditherLut->toColorSpaceUint8xxFromLinearFloatFast(src_pixels[src_col]);
+                error_g = (error_g & 0xff) + _ditherLut->toColorSpaceUint8xxFromLinearFloatFast(src_pixels[src_col + 1]);
+                error_b = (error_b & 0xff) + _ditherLut->toColorSpaceUint8xxFromLinearFloatFast(src_pixels[src_col + 2]);
+                assert(error_r < 0x10000 && error_g < 0x10000 && error_b < 0x10000);
+
+
+                dst_pixels[dst_col] = (unsigned char)(error_r >> 8);
+                dst_pixels[dst_col + 1] = (unsigned char)(error_g >> 8);
+                dst_pixels[dst_col + 2] = (unsigned char)(error_b >> 8);
+
+                if (dstNComps == 4) {
+                    dst_pixels[dst_col + 3] = (srcNComps == 4) ? OFX::Color::floatToInt<256>(src_pixels[src_col + 3]) : 255;
+                }
+
+
+                if (backward) {
+                    --index;
+                } else {
+                    ++index;
+                }
+
             }
         }
     }
 }
 
+void
+WritePNGPlugin::add_dither(OfxTime time,
+                           unsigned int seed,
+                           const float *src_pixels,
+                           const OfxRectI& bounds,
+                           unsigned char* dst_pixels,
+                           int srcRowElements,
+                           int dstRowElements,
+                           int dstNCompsStartIndex,
+                           int srcNComps,
+                           int dstNComps)
+{
+    if (srcNComps == 3) {
+        if (dstNComps == 3) {
+            add_dither_for_components<3,3>(time, seed, src_pixels, bounds, dst_pixels, srcRowElements, dstRowElements, dstNCompsStartIndex);
+        } else if (dstNComps == 4) {
+            add_dither_for_components<3,4>(time, seed, src_pixels, bounds, dst_pixels, srcRowElements, dstRowElements, dstNCompsStartIndex);
+        }
+    } else if (srcNComps == 4) {
+        if (dstNComps == 3) {
+            add_dither_for_components<4,3>(time, seed, src_pixels, bounds, dst_pixels, srcRowElements, dstRowElements, dstNCompsStartIndex);
+        } else if (dstNComps == 4) {
+            add_dither_for_components<4,4>(time, seed, src_pixels, bounds, dst_pixels, srcRowElements, dstRowElements, dstNCompsStartIndex);
+        }
+    }
+}
 
 void WritePNGPlugin::encode(const std::string& filename,
-                            const OfxTime /*time*/,
+                            const OfxTime time,
                             const std::string& /*viewName*/,
                             const float *pixelData,
                             const OfxRectI& bounds,
@@ -549,14 +676,6 @@ void WritePNGPlugin::encode(const std::string& filename,
 
     int bitDepthSize = pngDetph == eBitDepthUShort ? sizeof(unsigned short) : sizeof(unsigned char);
 
-    if (pngDetph == eBitDepthUByte) {
-        bool enableDither;
-        _ditherEnabled->getValue(enableDither);
-        if (enableDither) {
-            add_dither(pixelDataNComps, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, const_cast<float*>(pixelData), pixelDataNComps * bitDepthSize, pixelDataNComps * bitDepthSize * (bounds.x2 - bounds.x1), 1.f / 255.f, pixelDataNComps == 4 ? 3 : -1 /*alphaChannel*/, 1 /*ditherSeed*/);
-        }
-    }
-
     // Convert the float buffer to the buffer used by PNG
     std::size_t pngRowSize =  (bounds.x2 - bounds.x1) * dstNComps;
     int dstRowElements = (int)pngRowSize;
@@ -569,21 +688,32 @@ void WritePNGPlugin::encode(const std::string& filename,
     const int srcRowElements = rowBytes / sizeof(float);
     if (pngDetph == eBitDepthUByte) {
 
+        bool enableDither;
+        _ditherEnabled->getValue(enableDither);
 
-        unsigned char* dst_pixels = scratchBuffer.getData();
         const float* src_pixels = pixelData;
-        for (int y = bounds.y1; y < bounds.y2; ++y,
-             src_pixels += (srcRowElements - ((bounds.x2 - bounds.x1) * pixelDataNComps)),
-             dst_pixels += (dstRowElements - ((bounds.x2 - bounds.x1) * dstNComps))) {
-            for (int x = bounds.x1; x < bounds.x2; ++x,
-                 dst_pixels += dstNComps,
-                 src_pixels += pixelDataNComps) {
-                for (int c = 0; c < nComps; ++c) {
-                    dst_pixels[c] = floatToInt<256>(src_pixels[dstNCompsStartIndex + c]);
+        unsigned char* dst_pixels = scratchBuffer.getData();
+
+        if (!enableDither || nComps < 3) {
+
+            for (int y = bounds.y1; y < bounds.y2; ++y,
+                 src_pixels += (srcRowElements - ((bounds.x2 - bounds.x1) * pixelDataNComps)),
+                 dst_pixels += (dstRowElements - ((bounds.x2 - bounds.x1) * dstNComps))) {
+                for (int x = bounds.x1; x < bounds.x2; ++x,
+                     dst_pixels += dstNComps,
+                     src_pixels += pixelDataNComps) {
+                    for (int c = 0; c < nComps; ++c) {
+                        dst_pixels[c] = floatToInt<256>(src_pixels[dstNCompsStartIndex + c]);
+                    }
                 }
             }
-        }
+        } else {
 
+            assert(nComps >= 3);
+            const unsigned int ditherSeed = 2000;
+            add_dither(time, ditherSeed, src_pixels, bounds, dst_pixels, srcRowElements, dstRowElements, dstNCompsStartIndex, pixelDataNComps, dstNComps);
+
+        }
     } else {
         assert(pngDetph == eBitDepthUShort);
 
@@ -691,13 +821,40 @@ WritePNGPlugin::onOutputFileChanged(const std::string &/*filename*/,
     }
 }
 
+class WritePNGPluginFactory : public OFX::PluginFactoryHelper<WritePNGPluginFactory>
+{
+public:
 
-mDeclareWriterPluginFactory(WritePNGPluginFactory, {}, false);
+    WritePNGPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
+    : OFX::PluginFactoryHelper<WritePNGPluginFactory>(id, verMaj, verMin)
+    , _extensions()
+    , _lut(0)
+    {
+
+    }
+
+    virtual void load();
+    virtual void unload();
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context);
+    bool isVideoStreamPlugin() const { return false; }
+    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+private:
+    std::vector<std::string> _extensions;
+    const OFX::Color::LutBase* _lut;
+};
 
 void WritePNGPluginFactory::load()
 {
     _extensions.clear();
     _extensions.push_back("png");
+    _lut = OFX::Color::LutManager<Mutex>::linearLut();
+}
+
+void
+WritePNGPluginFactory::unload()
+{
+    OFX::Color::LutManager<Mutex>::releaseLut(_lut->getName());
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -772,7 +929,7 @@ void WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WritePNGPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    WritePNGPlugin* ret = new WritePNGPlugin(handle, _extensions);
+    WritePNGPlugin* ret = new WritePNGPlugin(handle, _extensions, _lut);
     ret->restoreState();
     return ret;
 }

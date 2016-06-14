@@ -25,7 +25,8 @@ PLUGINOBJECTS = \
 	ofxsGenerator.o \
 	ofxsTransformInteract.o \
     ofxsMultiPlane.o \
-	ofxsRectangleInteract.o
+	ofxsRectangleInteract.o \
+    ofxsLut.o
 
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
     PLUGINOBJECTS += RunScript.o
