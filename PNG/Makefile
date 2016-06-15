@@ -2,7 +2,7 @@ PLUGINOBJECTS = \
 	ReadPNG.o WritePNG.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o ofxsMultiPlane.o ofxsFileOpen.o ofxsLut.o
 
-PLUGINNAME = PFM
+PLUGINNAME = PNG
 
 RESOURCES = \
 fr.inria.openfx.ReadPNG.png \
