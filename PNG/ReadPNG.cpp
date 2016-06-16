@@ -196,6 +196,7 @@ getPNGInfo(png_structp& sp,
     if (littleendian()) {
         png_set_swap (sp);
     }
+    png_set_interlace_handling(sp);
 
     png_read_update_info (sp, ip);
 
