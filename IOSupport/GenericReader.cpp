@@ -3131,7 +3131,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (addSeparatorAfterLastParameter) {
-            param->setLayoutHint(OFX::eLayoutHintDivider);
+            //param->setLayoutHint(OFX::eLayoutHintDivider);
         }
         if (page) {
             page->addChild(*param);

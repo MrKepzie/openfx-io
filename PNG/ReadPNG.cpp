@@ -392,7 +392,7 @@ ReadPNGPlugin::decode(const std::string& filename,
                       float *pixelData,
                       const OfxRectI& bounds,
                       OFX::PixelComponentEnum pixelComponents,
-                      int pixelComponentCount,
+                      int /*pixelComponentCount*/,
                       int rowBytes)
 {
     if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
@@ -418,7 +418,8 @@ ReadPNGPlugin::decode(const std::string& filename,
     int realbitdepth;
     int colorType;
     double par;
-    getPNGInfo(png, info, &x1, &y1, &width, &height, &par, &nChannels, &bitdepth, &realbitdepth, &colorType, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    int interlace_type;
+    getPNGInfo(png, info, &x1, &y1, &width, &height, &par, &nChannels, &bitdepth, &realbitdepth, &colorType, 0, 0, &interlace_type, 0, 0, 0, 0, 0, 0, 0, 0);
 
     assert(renderWindow.x1 >= x1 && renderWindow.y1 >= y1 && renderWindow.x2 <= x1 + width && renderWindow.y2 <= y1 + height);
 
@@ -429,23 +430,38 @@ ReadPNGPlugin::decode(const std::string& filename,
 
     RamBuffer scratchBuffer(pngRowBytes * height);
     unsigned char* tmpData = scratchBuffer.getData();
-    // Must call this setjmp in every function that does PNG reads
-    if (setjmp (png_jmpbuf (png))) {
-        destroy_read_struct(png, info);
-        fclose(file);
-        setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        return;
+
+
+    if (interlace_type != 0) {
+
+        std::vector<unsigned char *> row_pointers(height);
+        for (int i = 0;  i < height;  ++i) {
+            row_pointers[i] = tmpData + i * pngRowBytes;
+        }
+
+        // Must call this setjmp in every function that does PNG reads
+        if (setjmp (png_jmpbuf (png))) {
+            destroy_read_struct(png, info);
+            fclose(file);
+            setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
+        }
+        png_read_image (png, &row_pointers[0]);
+        png_read_end (png, NULL);
+    } else {
+        for (int y = 0; y < height; ++y) {
+            // Must call this setjmp in every function that does PNG reads
+            if (setjmp (png_jmpbuf (png))) {
+                destroy_read_struct(png, info);
+                fclose(file);
+                setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
+                OFX::throwSuiteStatusException(kOfxStatErrFormat);
+                return;
+            }
+            png_read_row (png, (png_bytep)tmpData + y * pngRowBytes, NULL);
+        }
     }
-
-    std::vector<unsigned char *> row_pointers(height);
-    for (int i = 0;  i < height;  ++i) {
-        row_pointers[i] = tmpData + i * pngRowBytes;
-    }
-
-    png_read_image (png, &row_pointers[0]);
-    png_read_end (png, NULL);
-
     destroy_read_struct(png, info);
     fclose(file);
 
