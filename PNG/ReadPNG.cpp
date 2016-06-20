@@ -357,7 +357,7 @@ ReadPNGPlugin::openFile(const std::string& filename,
 
     *file = OFX::open_file(filename, "rb");
     if (!*file) {
-        throw std::runtime_error("Couldn't not open file");
+        throw std::runtime_error("Could not open file: " + filename);
     }
 
     unsigned char sig[8];
