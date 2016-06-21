@@ -1748,7 +1748,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
                 } else {
                     // allocate a temporary image (we must avoid reading from dstPixelData, in case several threads are rendering the same area)
                     int mem2RowBytes = (firstBounds.x2 - firstBounds.x1) * pixelBytes;
-                    size_t mem2Size = (firstBounds.y2 - firstBounds.y1) * mem2RowBytes;
+                    size_t mem2Size = (size_t)(firstBounds.y2 - firstBounds.y1) * (size_t)mem2RowBytes;
                     OFX::ImageMemory mem2(mem2Size, this);
                     float *scaledPixelData = (float*)mem2.lock();
                     
