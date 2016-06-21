@@ -436,7 +436,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         int pixelBytes = *mappedComponentsCount * getComponentBytes(bitDepth);
         int tmpRowBytes = (renderWindow.x2 - renderWindow.x1) * pixelBytes;
         *rowBytes = tmpRowBytes;
-        size_t memSize = (renderWindow.y2 - renderWindow.y1) * tmpRowBytes;
+        size_t memSize = (size_t)(renderWindow.y2 - renderWindow.y1) * (size_t)tmpRowBytes;
         *tmpMem = new OFX::ImageMemory(memSize,this);
         srcImgsHolder->addMemory(*tmpMem);
         *tmpMemPtr = (float*)(*tmpMem)->lock();
@@ -552,7 +552,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
     if (doAnyPacking && (!packingContiguous || (int)packingMapping.size() != *mappedComponentsCount)) {
         int pixelBytes = packingMapping.size() * getComponentBytes(bitDepth);
         int tmpRowBytes = (renderWindow.x2 - renderWindow.x1) * pixelBytes;
-        size_t memSize = (renderWindow.y2 - renderWindow.y1) * tmpRowBytes;
+        size_t memSize = (size_t)(renderWindow.y2 - renderWindow.y1) * (size_t)tmpRowBytes;
         OFX::ImageMemory *packingBufferMem = new OFX::ImageMemory(memSize,this);
         srcImgsHolder->addMemory(packingBufferMem);
         float* packingBufferData = (float*)packingBufferMem->lock();
@@ -899,7 +899,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                 }
                 int pixelBytes = nChannels * getComponentBytes(OFX::eBitDepthFloat);
                 int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
-                size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
+                size_t memSize = (size_t)(args.renderWindow.y2 - args.renderWindow.y1) * (size_t)tmpRowBytes;
                 OFX::ImageMemory interleavedMem(memSize, this);
                 float* tmpMemPtr = (float*)interleavedMem.lock();
                 if (!tmpMemPtr) {
@@ -982,7 +982,7 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
                     }
                     int pixelBytes = nChannels * getComponentBytes(OFX::eBitDepthFloat);
                     int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
-                    size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
+                    size_t memSize = (size_t)(args.renderWindow.y2 - args.renderWindow.y1) * (size_t)tmpRowBytes;
                     OFX::ImageMemory interleavedMem(memSize, this);
                     float* tmpMemPtr = (float*)interleavedMem.lock();
                     if (!tmpMemPtr) {

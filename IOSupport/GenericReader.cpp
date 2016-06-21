@@ -934,7 +934,7 @@ buildMipMapLevelGeneric(OFX::ImageEffect* instance,
 #     endif
         ///Allocate a temporary image if necessary, or reuse the previously allocated buffer
         int nextRowBytes =  (nextRenderWindow.x2 - nextRenderWindow.x1)  * nComponents * sizeof(PIX);
-        size_t newMemSize =  (nextRenderWindow.y2 - nextRenderWindow.y1) * nextRowBytes;
+        size_t newMemSize =  (size_t)(nextRenderWindow.y2 - nextRenderWindow.y1) * (size_t)nextRowBytes;
         if (tmpMem.get()) {
             // there should be enough memory: no need to reallocate
             assert(tmpMemSize >= memSize);
@@ -1700,7 +1700,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             }
             
             int tmpRowBytes = (renderWindowFullRes.x2-renderWindowFullRes.x1) * pixelBytes;
-            size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * tmpRowBytes;
+            size_t memSize = (size_t)(renderWindowFullRes.y2-renderWindowFullRes.y1) * (size_t)tmpRowBytes;
             OFX::ImageMemory mem(memSize, this);
             float *tmpPixelData = (float*)mem.lock();
             
