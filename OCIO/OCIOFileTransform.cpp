@@ -488,7 +488,9 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
 
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        assert(config);
+        if (!config) {
+            throw std::runtime_error("OCIO: No current config");
+        }
         GenericOCIO::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procFile != file ||
@@ -527,7 +529,7 @@ OCIOFileTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
             _procInterpolation = interpolationi;
         }
         processor.setProcessor(_proc);
-    } catch (const OCIO::Exception &e) {
+    } catch (const std::exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
