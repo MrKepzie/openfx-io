@@ -594,7 +594,9 @@ OCIODisplayPlugin::apply(double time, const OfxRectI& renderWindow, float *pixel
 
     try {
         OCIO::ConstConfigRcPtr config = _ocio->getConfig();
-        assert(config);
+        if (!config) {
+            throw std::runtime_error("OCIO: no current config");
+        }
         GenericOCIO::AutoMutex guard(_procMutex);
         if (!_proc ||
             _procInputSpace != inputSpace ||

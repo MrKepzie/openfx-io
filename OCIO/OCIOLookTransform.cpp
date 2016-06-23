@@ -499,7 +499,11 @@ OCIOLookTransformPlugin::apply(double time, const OfxRectI& renderWindow, float 
     }
 
     OCIO::ConstConfigRcPtr config = _ocio->getConfig();
-    assert(config);
+    if (!config) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OCIO: no current config");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
 
     bool singleLook = _singleLook->getValueAtTime(time);
     std::string lookCombination;

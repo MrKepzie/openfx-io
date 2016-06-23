@@ -768,7 +768,9 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
     clearPersistentMessage();
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-        assert(config);
+        if (!config) {
+            throw std::runtime_error("OCIO: no current config");
+        }
         OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
         cc->setSOP(sop);
         cc->setSat((float)saturation);
@@ -784,7 +786,7 @@ OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Cl
             identityClip = _srcClip;
             return true;
         }
-    } catch (const OCIO::Exception &e) {
+    } catch (const std::exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -965,7 +967,9 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
 
                 try {
                     OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
-                    assert(config);
+                    if (!config) {
+                        throw std::runtime_error("OCIO: no current config");
+                    }
                     OCIO::CDLTransformRcPtr cc = OCIO::CDLTransform::Create();
                     cc->setSOP(sop);
                     cc->setSat((float)saturation);
@@ -977,7 +981,7 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
                     }
 
                     std::fputs(cc->getXML(), file);
-                } catch (const OCIO::Exception &e) {
+                } catch (const std::exception &e) {
                     setPersistentMessage(OFX::Message::eMessageError, "", e.what());
                     std::fclose(file);
                     OFX::throwSuiteStatusException(kOfxStatFailed);
