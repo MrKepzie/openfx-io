@@ -58,6 +58,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
+#define kSupportsXY false
 #define kSupportsAlpha false
 #define kSupportsTiles false
 
@@ -867,7 +868,7 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false);
     
     {
         OFX::IntParamDescriptor *param = desc.defineIntParam(kParamMaxRetries);

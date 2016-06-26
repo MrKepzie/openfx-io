@@ -51,7 +51,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSupportsRGBA true
 #define kSupportsRGB true
 #define kSupportsAlpha true
-#define kSupportsXY false
+#define kSupportsXY true
 
 #define kWritePNGParamCompression "compression"
 #define kWritePNGParamCompressionLabel "Compression"
@@ -621,8 +621,8 @@ void WritePNGPlugin::encode(const std::string& filename,
                             const int dstNComps,
                             const int rowBytes)
 {
-    if (dstNComps != 4 && dstNComps != 3 && dstNComps != 1) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
+    if (dstNComps != 4 && dstNComps != 3 && dstNComps != 2 && dstNComps != 1) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB, IA or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }

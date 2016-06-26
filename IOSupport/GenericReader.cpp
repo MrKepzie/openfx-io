@@ -198,6 +198,7 @@ enum MissingEnum
 " For the Read node it will map (in number of components) the Output Layer choice to these."
 #define kParamOutputComponentsOptionRGBA "RGBA"
 #define kParamOutputComponentsOptionRGB "RGB"
+#define kParamOutputComponentsOptionXY "RG"
 #define kParamOutputComponentsOptionAlpha "Alpha"
 
 #define kParamInputSpaceLabel "File Colorspace"
@@ -224,6 +225,7 @@ enum MissingEnum
 static bool gHostIsNatron   = false;
 static bool gHostSupportsRGBA   = false;
 static bool gHostSupportsRGB    = false;
+static bool gHostSupportsXY    = false;
 static bool gHostSupportsAlpha  = false;
 static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
@@ -1012,6 +1014,7 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
     if (dstPixelDepth != OFX::eBitDepthFloat ||
         (dstPixelComponents != OFX::ePixelComponentRGBA &&
          dstPixelComponents != OFX::ePixelComponentRGB &&
+         dstPixelComponents != OFX::ePixelComponentXY &&
          dstPixelComponents != OFX::ePixelComponentAlpha &&
          dstPixelComponents != OFX::ePixelComponentCustom) ||
         dstPixelDepth != srcPixelDepth ||
@@ -1034,6 +1037,13 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
             return;
         }
         buildMipMapLevel<float, 3>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
+                                   srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
+    } else if (dstPixelComponents == OFX::ePixelComponentXY) {
+        if (!_supportsRGB) {
+            OFX::throwSuiteStatusException(kOfxStatErrFormat);
+            return;
+        }
+        buildMipMapLevel<float, 2>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
         if (!_supportsAlpha) {
@@ -1404,7 +1414,11 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 #ifdef OFX_EXTENSIONS_NUKE
         if (plane.comps != OFX::ePixelComponentCustom) {
 #endif
-            assert(plane.rawComps == kOfxImageComponentAlpha || plane.rawComps == kOfxImageComponentRGB || plane.rawComps == kOfxImageComponentRGBA);
+            assert(plane.rawComps == kOfxImageComponentAlpha ||
+#ifdef OFX_EXTENSIONS_NATRON
+                   plane.rawComps == kNatronOfxImageComponentXY ||
+#endif
+                   plane.rawComps == kOfxImageComponentRGB || plane.rawComps == kOfxImageComponentRGBA);
             OFX::PixelComponentEnum outputComponents = getOutputComponents();
             if (plane.comps != outputComponents) {
                 setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host dit not take into account output components");
@@ -1619,7 +1633,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
 
         OFX::PreMultiplicationEnum filePremult = OFX::eImageUnPreMultiplied;
         OFX::PreMultiplicationEnum outputPremult = OFX::eImageUnPreMultiplied;
-        if (it->comps == OFX::ePixelComponentRGB || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGB)) {
+        if (it->comps == OFX::ePixelComponentRGB || it->comps == OFX::ePixelComponentXY || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGB)) {
             filePremult = outputPremult = OFX::eImageOpaque;
         } else if (it->comps == OFX::ePixelComponentAlpha  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentAlpha)) {
             filePremult = outputPremult = OFX::eImagePreMultiplied;
@@ -1718,7 +1732,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             }
             
             ///do the color-space conversion
-            if (!isOCIOIdentity && it->comps != OFX::ePixelComponentAlpha) {
+            if (!isOCIOIdentity && it->comps != OFX::ePixelComponentAlpha && it->comps != OFX::ePixelComponentXY) {
                 if (filePremult == OFX::eImagePreMultiplied) {
                     assert(remappedComponents == OFX::ePixelComponentRGBA);
                     DBG(std::printf("unpremult (tmp in-place)\n"));
@@ -2414,8 +2428,8 @@ public:
     // and do some processing
     void multiThreadProcessImages(OfxRectI procWindow)
     {
-        assert(nSrcComp == 1 || nSrcComp == 3 || nSrcComp == 4);
-        assert(nDstComp == 1 || nDstComp == 3 || nDstComp == 4);
+        assert(nSrcComp == 1 || nSrcComp == 2 || nSrcComp == 3 || nSrcComp == 4);
+        assert(nDstComp == 1 || nDstComp == 2 || nDstComp == 3 || nDstComp == 4);
 
         for (int dsty = procWindow.y1; dsty < procWindow.y2; ++dsty) {
             if ( _effect.abort() ) {
@@ -2483,9 +2497,9 @@ public:
 
                             case 4:
                                 dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 2] = 0;
-                                dst_pixels[dstCol + 3] = 1.;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 3] = src_pixels[srcCol + 1] / (float)srcMaxValue;
                                 break;
                             default:
                                 assert(false);
@@ -2597,6 +2611,9 @@ convertForSrcNComps(OFX::ImageEffect* effect,
         case OFX::ePixelComponentAlpha: {
             convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
         } break;
+        case OFX::ePixelComponentXY: {
+            convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 2>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        } break;
         case OFX::ePixelComponentRGB: {
             convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
         } break;
@@ -2626,6 +2643,9 @@ convertForDepth(OFX::ImageEffect* effect,
     switch (srcPixelComponents) {
         case OFX::ePixelComponentAlpha:
             convertForSrcNComps<SRCPIX, srcMaxValue, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+            break;
+        case OFX::ePixelComponentXY:
+            convertForSrcNComps<SRCPIX, srcMaxValue, 2>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
             break;
         case OFX::ePixelComponentRGB:
             convertForSrcNComps<SRCPIX, srcMaxValue, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
@@ -2729,6 +2749,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                                     bool /*isVideoStreamPlugin*/,
                                     bool supportsRGBA,
                                     bool supportsRGB,
+                                    bool supportsXY, 
                                     bool supportsAlpha,
                                     bool supportsTiles,
                                     bool addSeparatorAfterLastParameter)
@@ -2744,6 +2765,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
                 break;
             case ePixelComponentRGB:
                 gHostSupportsRGB = true;
+                break;
+            case ePixelComponentXY:
+                gHostSupportsXY = true;
                 break;
             case ePixelComponentAlpha:
                 gHostSupportsAlpha = true;
@@ -2765,6 +2789,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     if (supportsRGB) {
         srcClip->addSupportedComponent(ePixelComponentRGB);
     }
+    if (supportsXY) {
+        srcClip->addSupportedComponent(ePixelComponentXY);
+    }
     if (supportsAlpha) {
         srcClip->addSupportedComponent(ePixelComponentAlpha);
     }
@@ -2778,6 +2805,9 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     }
     if (supportsRGB) {
         dstClip->addSupportedComponent(ePixelComponentRGB);
+    }
+    if (supportsXY) {
+        dstClip->addSupportedComponent(ePixelComponentXY);
     }
     if (supportsAlpha) {
         dstClip->addSupportedComponent(ePixelComponentAlpha);
@@ -3087,6 +3117,14 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
             assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
             param->appendOption(kParamOutputComponentsOptionRGB);
         }
+        if (gHostSupportsXY && supportsXY) {
+            gOutputComponentsMap[i] = ePixelComponentXY;
+            ++i;
+            // coverity[check_return]
+            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentXY);
+            param->appendOption(kParamOutputComponentsOptionXY);
+        }
+
         if (gHostSupportsAlpha && supportsAlpha) {
             gOutputComponentsMap[i] = ePixelComponentAlpha;
             ++i;

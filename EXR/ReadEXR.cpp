@@ -67,6 +67,7 @@ namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
 #define kSupportsRGBA true
 #define kSupportsRGB false
+#define kSupportsXY false
 #define kSupportsAlpha false
 #define kSupportsTiles false
 
@@ -732,7 +733,7 @@ ReadEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, true);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, true);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }

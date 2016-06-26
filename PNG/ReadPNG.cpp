@@ -54,6 +54,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
+#define kSupportsXY true
 #define kSupportsAlpha true
 #define kSupportsTiles false
 
@@ -396,7 +397,7 @@ ReadPNGPlugin::decode(const std::string& filename,
                       int /*pixelComponentCount*/,
                       int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentXY && pixelComponents != OFX::ePixelComponentAlpha) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PNG: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
@@ -677,11 +678,15 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
             *components = OFX::ePixelComponentAlpha;
             break;
         case 2:
-            *components = OFX::ePixelComponentXY;
+            //*components = OFX::ePixelComponentXY;
+            *components = OFX::ePixelComponentRGBA;
+            break;
         case 3:
             *components = OFX::ePixelComponentRGB;
+            break;
         case 4:
             *components = OFX::ePixelComponentRGBA;
+            break;
         default:
             break;
     }
@@ -724,7 +729,7 @@ ReadPNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, true);
+                                                                    kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, true);
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }

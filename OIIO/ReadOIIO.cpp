@@ -91,6 +91,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
+#define kSupportsXY true
 #define kSupportsAlpha true
 #ifdef OFX_READ_OIIO_USES_CACHE
 #define kSupportsTiles true
@@ -2090,6 +2091,20 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
                 channels[2] = layerChannels[2] + kXChannelFirst;
             }
             break;
+        case OFX::ePixelComponentXY:
+        {
+            numChannels = 2;
+            channels.resize(numChannels);
+            channels[0] = layerChannels[0] + kXChannelFirst;
+            if (layerChannels.size() == 1) {
+                channels[1] = layerChannels[0] + kXChannelFirst;
+            } else if (layerChannels.size() == 2 || layerChannels.size() == 3) {
+                channels[1] = layerChannels[1] + kXChannelFirst;
+            } else {
+                channels[1] = layerChannels[3] + kXChannelFirst;
+            }
+
+        }   break;
         case OFX::ePixelComponentAlpha:
             numChannels = 1;
             channels.resize(numChannels);
@@ -2140,9 +2155,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     assert(bounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= bounds.y2);
     
     // we only support RGBA, RGB or Alpha output clip on the color plane
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha
+    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentXY && pixelComponents != OFX::ePixelComponentAlpha
         && pixelComponents != OFX::ePixelComponentCustom) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB, Alpha or custom components images");
+        setPersistentMessage(OFX::Message::eMessageError, "", "OIIO: can only read RGBA, RGB, RG, Alpha or custom components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
@@ -2167,7 +2182,11 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     
     int subImageIndex = 0;
     if (pixelComponents != OFX::ePixelComponentCustom) {
-        assert(rawComponents == kOfxImageComponentAlpha || rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
+        assert(rawComponents == kOfxImageComponentAlpha ||
+#ifdef OFX_EXTENSIONS_NATRON
+               rawComponents == kNatronOfxImageComponentXY ||
+#endif
+               rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
         
         if (_useRGBAChoices) {
             
@@ -2209,6 +2228,12 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                     channels[1] = gChannel;
                     channels[2] = bChannel;
                     break;
+                case OFX::ePixelComponentXY:
+                    numChannels = 2;
+                    channels.resize(numChannels);
+                    channels[0] = rChannel;
+                    channels[1] = gChannel;
+                    break;
                 case OFX::ePixelComponentAlpha:
                     numChannels = 1;
                     channels.resize(numChannels);
@@ -2239,6 +2264,13 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                         channels[1] = 1;
                         channels[2] = 2;
                         break;
+                    case OFX::ePixelComponentXY:
+                        numChannels = 2;
+                        channels.resize(numChannels);
+                        channels[0] = 0;
+                        channels[1] = 1;
+                        break;
+
                     case OFX::ePixelComponentAlpha:
                         numChannels = 1;
                         channels.resize(numChannels);
@@ -2851,7 +2883,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
     gHostSupportsMultiPlane = (OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true)) != 0;
     
     // make some pages and to things in
-    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false);
+    PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(), kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false);
 
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
