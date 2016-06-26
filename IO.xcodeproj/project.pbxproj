@@ -609,7 +609,6 @@
 		AC51C45F1D0ED84B0004B213 /* ReadPNG.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReadPNG.cpp; sourceTree = "<group>"; };
 		AC51C4601D0ED84B0004B213 /* WritePNG.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WritePNG.cpp; sourceTree = "<group>"; };
 		AC51C47C1D0ED85B0004B213 /* PNG.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PNG.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		AC51C47D1D0ED85B0004B213 /* PFM.ofx copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "PFM.ofx copy-Info.plist"; path = "/Users/alexandre/development/openfx-io/PFM.ofx copy-Info.plist"; sourceTree = "<absolute>"; };
 		AC51C48A1D0EF6710004B213 /* ofxsFileOpen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsFileOpen.cpp; sourceTree = "<group>"; };
 		AC51C48B1D0EF6710004B213 /* ofxsFileOpen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsFileOpen.h; sourceTree = "<group>"; };
 		AC5B9D031BC5300C007A650D /* fr.inria.openfx.OCIOCDLTransform.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OCIOCDLTransform.png; sourceTree = "<group>"; };
@@ -1012,7 +1011,6 @@
 				1E9B5F21198A50250095C8AA /* SupportExt */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
 				D74E62471875A7A400D8FA13 /* Products */,
-				AC51C47D1D0ED85B0004B213 /* PFM.ofx copy-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1284,9 +1282,9 @@
 				1ED4999E18A00B66008A2D91 /* OCIO.ofx */,
 				D7330DD018867B35004A6199 /* OIIO.ofx */,
 				1E8B5DA418B7A2F300C31FDC /* PFM.ofx */,
+				AC51C4611D0ED85B0004B213 /* PNG.ofx */,
 				1EDECBB018B9F8040093B6FC /* RunScript.ofx */,
 				ACE0849E1AB4AB9B00BE558C /* SeExpr.ofx */,
-				AC51C4611D0ED85B0004B213 /* PNG.ofx */,
 			);
 		};
 /* End PBXProject section */
@@ -1650,7 +1648,6 @@
 			buildSettings = {
 				INFOPLIST_FILE = PFM/Info.plist;
 				OTHER_LDFLAGS = (
-					"-fsanitize=address",
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
@@ -1663,7 +1660,6 @@
 			buildSettings = {
 				INFOPLIST_FILE = PFM/Info.plist;
 				OTHER_LDFLAGS = (
-					"-fsanitize=address",
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 				);
@@ -1732,9 +1728,8 @@
 		AC51C47A1D0ED85B0004B213 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_FILE = PNG/Info.plist;
 				OTHER_LDFLAGS = (
-					"-fsanitize=address",
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
@@ -1747,9 +1742,8 @@
 		AC51C47B1D0ED85B0004B213 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_FILE = PNG/Info.plist;
 				OTHER_LDFLAGS = (
-					"-fsanitize=address",
 					"-L$(OCIO_PATH)/lib",
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
