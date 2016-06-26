@@ -52,10 +52,24 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 #define kPluginEvaluation 92 // better than ReadOIIO
 
+// All PNG images represent RGBA.
+// Single-channel images are Y
+// Two-channel images are Y+A
+// Three-channel images are RGB
+// Four-channel images are RGBA
+// RGB may be compacted to Y and A may be removed when writing a PNG image.
+// User can still use a Shuffle plugin to select just the Alpha channel.
+//
+// References:
+// https://www.w3.org/TR/PNG/#4Concepts.RGBMerging
+// https://www.w3.org/TR/PNG/#4Concepts.Alpha-indexing
+// Issue:
+// https://github.com/MrKepzie/openfx-io/issues/24
+
 #define kSupportsRGBA true
-#define kSupportsRGB true
-#define kSupportsXY true
-#define kSupportsAlpha true
+#define kSupportsRGB false
+#define kSupportsXY false
+#define kSupportsAlpha false
 #define kSupportsTiles false
 
 #define OFX_IO_LIBPNG_VERSION (PNG_LIBPNG_VER_MAJOR*10000 + PNG_LIBPNG_VER_MINOR*100 + PNG_LIBPNG_VER_RELEASE)
