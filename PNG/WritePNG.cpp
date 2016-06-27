@@ -50,8 +50,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
-#define kSupportsAlpha true
-#define kSupportsXY true
+#define kSupportsXY false
+#define kSupportsAlpha false
 
 #define kWritePNGParamCompression "compression"
 #define kWritePNGParamCompressionLabel "Compression"
