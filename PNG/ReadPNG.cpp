@@ -22,6 +22,7 @@
  */
 
 #include <cstdio> // fopen, fread...
+#include <csetjmp>
 #include <iomanip>
 #include <locale>
 #include <cstdlib>
@@ -51,6 +52,11 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 #define kPluginEvaluation 92 // better than ReadOIIO
+
+#define kParamShowMetadata "showMetadata"
+#define kParamShowMetadataLabel "Image Info..."
+#define kParamShowMetadataHint "Shows information and metadata from the image at current time."
+
 
 // All PNG images represent RGBA.
 // Single-channel images are Y
@@ -249,7 +255,7 @@ getPNGInfo(png_structp& sp,
 
         // is there a srgb intent ?
         int srgb_intent;
-        if (png_get_sRGB (sp, ip, &srgb_intent)) {
+        if (png_get_sRGB (sp, ip, &srgb_intent) == PNG_INFO_sRGB) {
             *colorspace_p = ePNGColorSpacesRGB;
         }
 
@@ -350,6 +356,8 @@ public:
 
 private:
 
+    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
@@ -361,7 +369,9 @@ private:
     void openFile(const std::string& filename,
                   png_structp* png,
                   png_infop* info,
-                  FILE** file);
+                  std::FILE** file);
+
+    std::string metadata(const std::string& filename);
 };
 
 
@@ -375,20 +385,421 @@ ReadPNGPlugin::~ReadPNGPlugin()
 {
 }
 
+std::string
+ReadPNGPlugin::metadata(const std::string& filename)
+{
+    // Open the file
+    std::FILE *image = OFX::fopen_utf8(filename.c_str(), "rb");
+    if (image == NULL) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadPNG: cannot open file ") + filename);
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+
+        return std::string();
+    }
+
+    std::stringstream ss;
+
+    ss << "file: " << filename << std::endl;
+
+    {
+        unsigned char sig[8];
+        // Check that it really is a PNG file
+        std::fread(sig, 1, 8, image);
+        if (png_sig_cmp(sig, 0, 8)) {
+            ss << "  This file is not a valid PNG file\n";
+            std::fclose (image);
+
+            return ss.str();
+        }
+    }
+
+    // Start decompressing
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL,
+                                  NULL, NULL);
+    if (png == NULL) {
+        ss << "Could not create a PNG read structure (out of memory?)\n";
+        std::fclose(image);
+
+        return ss.str();
+    }
+    png_infop info = png_create_info_struct(png);
+    if (info == NULL) {
+        ss << "Could not create PNG info structure (out of memory?)\n";
+        png_destroy_read_struct(&png, NULL, NULL);
+        std::fclose (image);
+
+        return ss.str();
+    }
+
+    if ( setjmp( png_jmpbuf(png) ) ) {
+        png_destroy_read_struct(&png, &info, NULL);
+        ss << "Could not set PNG jump value";
+        std::fclose (image);
+
+        return ss.str();
+    }
+    // Get ready for IO and tell the API we have already read the image signature
+    png_init_io (png, image);
+    png_set_sig_bytes (png, 8);
+    png_read_info (png, info);
+    png_uint_32 width;
+    png_uint_32 height;
+    int bit_depth;
+    int color_type;
+    png_get_IHDR (png, info, &width, &height, &bit_depth, &color_type, NULL, NULL, NULL);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Start displaying information
+    ///////////////////////////////////////////////////////////////////////////
+
+    ss << "  Image Width: " << width << " Image Length: " << height << std::endl;
+    int pixel_depth = bit_depth * png_get_channels(png, info);
+    ss << "  Bitdepth (Bits/Sample): " << bit_depth << std::endl;
+    ss << "  Channels (Samples/Pixel): " << png_get_channels(png, info) << std::endl;
+    ss << "  Pixel depth (Pixel Depth): " << pixel_depth;	// Does this add value?
+
+    // Photometric interp packs a lot of information
+    ss << "  Colour Type (Photometric Interpretation): ";
+
+    switch (color_type) {
+        case PNG_COLOR_TYPE_GRAY: {
+            ss << "GRAYSCALE ";
+            png_bytep trans = NULL;
+            int num_trans = 0;
+            if (png_get_tRNS(png, info, &trans, &num_trans, NULL) == PNG_INFO_tRNS) {
+                ss << "(" << num_trans << " transparent) ";
+            }
+            break;
+        }
+        case PNG_COLOR_TYPE_PALETTE: {
+            ss << "PALETTED COLOUR ";
+            int num_palette = 0;
+            png_color *palette = NULL;
+            png_get_PLTE(png, info, &palette, &num_palette);
+            int num_trans = 0;
+            png_bytep trans = NULL;
+            ;
+            ss << "(" << num_palette << " colours";
+            if (png_get_tRNS(png, info, &trans, &num_trans, NULL) == PNG_INFO_tRNS) {
+                ss << ", " << num_trans << " transparent";
+            }
+            ss << ")";
+            break;
+        }
+        case PNG_COLOR_TYPE_RGB: {
+            ss << "RGB ";
+            break;
+        }
+        case PNG_COLOR_TYPE_RGB_ALPHA: {
+            ss << "RGB with alpha channel ";
+            break;
+        }
+        case PNG_COLOR_TYPE_GRAY_ALPHA: {
+            ss << "GRAYSCALE with alpha channel ";
+            break;
+        }
+        default: {
+            ss << "Unknown photometric interpretation!";
+            break;
+        }
+    }
+    ss << std::endl;
+
+    ss << "  Image filter: ";
+    switch (png_get_filter_type(png, info))
+    {
+        case PNG_FILTER_TYPE_BASE:
+            ss << "Single row per byte filter ";
+            break;
+
+        case PNG_INTRAPIXEL_DIFFERENCING:
+            ss << "Intrapixel differencing (MNG only) ";
+            break;
+
+        default:
+            ss << "Unknown filter! ";
+            break;
+    }
+    ss << std::endl;
+
+#if defined(PNG_READ_INTERLACING_SUPPORTED)
+    ss << "  Interlacing: ";
+    switch (png_get_interlace_type(png, info))
+    {
+        case PNG_INTERLACE_NONE:
+            ss << "No interlacing ";
+            break;
+
+        case PNG_INTERLACE_ADAM7:
+            ss << "Adam7 interlacing ";
+            break;
+
+        default:
+            ss << "Unknown interlacing ";
+            break;
+    }
+    ss << std::endl;
+#endif
+
+    ss << "  Compression Scheme: ";
+    switch (png_get_compression_type(png, info))
+    {
+        case PNG_COMPRESSION_TYPE_BASE:
+            ss << "Deflate method 8, 32k window";
+            break;
+
+        default:
+            ss << "Unknown compression scheme!";
+            break;
+    }
+    ss << std::endl;
+
+#ifdef PNG_pHYs_SUPPORTED
+    {
+        png_uint_32 res_x, res_y;
+        int unit_type;
+
+        if (png_get_pHYs(png, info, &res_x, &res_y,
+                         &unit_type) == PNG_INFO_pHYs) {
+            ss << "  Resolution: " << res_x << ", " << res_y << " ";
+            switch (unit_type) {
+                case PNG_RESOLUTION_UNKNOWN:
+                    ss << "(unit unknown)";
+                    break;
+
+                case PNG_RESOLUTION_METER:
+                    ss << "(pixels per meter)";
+                    break;
+
+                default:
+                    ss << "(Unknown value for unit stored)";
+                    break;
+            }
+            ss << std::endl;
+        }
+    }
+#endif
+
+    // FillOrder is always msb-to-lsb, big endian
+    //ss << "  FillOrder: msb-to-lsb\n  Byte Order: Network (Big Endian)\n";
+
+#ifdef PNG_cHRM_SUPPORTED
+    {
+        double white_x, white_y, red_x, red_y, green_x, green_y, blue_x,
+        blue_y;
+
+        if (png_get_cHRM(png, info, &white_x, &white_y, &red_x,
+                         &red_y, &green_x, &green_y, &blue_x, &blue_y) == PNG_INFO_cHRM) {
+            ss << "  CIE white point: " << white_x  << ", " << white_y  << std::endl;
+            ss << "  CIE chromaticities: ";
+            ss << "red = "  << red_x    << ", " << red_y    << "; ";
+            ss << "green =" << green_x  << ", " << green_y  << "; ";
+            ss << "blue ="  << blue_x   << ", " << blue_y   << std::endl;
+        }
+    }
+#endif
+#ifdef PNG_gAMA_SUPPORTED
+    {
+        double gamma;
+
+        if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA)
+            ss << "  Gamma: " << gamma  << std::endl;
+    }
+#endif
+#ifdef PNG_iCCP_SUPPORTED
+    {
+        png_charp name;
+        png_bytep profile;
+        png_uint_32 proflen;
+        int compression_type;
+
+        if (png_get_iCCP(png, info, &name, &compression_type,
+                         &profile, &proflen) == PNG_INFO_iCCP) {
+            ss << "  ICC profile: " << name;
+        }
+    }
+#endif
+#ifdef PNG_sRGB_SUPPORTED
+    {
+        int intent;
+
+        if (png_get_sRGB(png, info, &intent) == PNG_INFO_sRGB) {
+            ss << "  sRGB intent: ";
+            switch (intent) {
+                case PNG_sRGB_INTENT_PERCEPTUAL:
+                    ss << "perceptual";
+                    break;
+                case PNG_sRGB_INTENT_RELATIVE:
+                    ss << "relative";
+                    break;
+                case PNG_sRGB_INTENT_SATURATION:
+                    ss << "saturation";
+                    break;
+                case PNG_sRGB_INTENT_ABSOLUTE:
+                    ss << "absolute";
+                    break;
+            }
+            ss << std::endl;
+        }
+    }
+#endif
+#ifdef PNG_bKGD_SUPPORTED
+    {
+        png_color_16p background;
+
+        if (png_get_bKGD(png, info, &background) == PNG_INFO_bKGD) {
+            ss << "  Background color present\n";
+        }
+    }
+#endif
+#ifdef PNG_hIST_SUPPORTED
+    {
+        png_uint_16p hist;
+
+        if (png_get_hIST(png, info, &hist) == PNG_INFO_hIST) {
+            ss << "  Histogram present\n";
+        }
+    }
+#endif
+#ifdef PNG_oFFs_SUPPORTED
+    {
+        png_int_32 offset_x, offset_y;
+        int unit_type;
+
+        if (png_get_oFFs(png, info, &offset_x, &offset_y, &unit_type) == PNG_INFO_oFFs) {
+            // see http://www.libpng.org/pub/png/spec/register/pngext-1.4.0-pdg.html#C.oFFs
+            const char* unit = (unit_type == PNG_OFFSET_PIXEL) ? "px" : "um";
+            ss << "  Offset: " << offset_x << unit << ", " << offset_y << unit << std::endl;
+        }
+    }
+#endif
+#ifdef PNG_pCAL_SUPPORTED
+    {
+        png_charp purpose, units;
+        png_charpp params;
+        png_int_32 X0, X1;
+        int type, nparams;
+
+        if (png_get_pCAL(png, info, &purpose, &X0, &X1, &type,
+                         &nparams, &units, &params) == PNG_INFO_pCAL) {
+            // see http://www.libpng.org/pub/png/spec/register/pngext-1.4.0-pdg.html#C.pCAL
+            ss << "  Physical calibration chunk present\n";
+        }
+    }
+#endif
+#ifdef PNG_sBIT_SUPPORTED
+    {
+        png_color_8p sig_bit;
+
+        if (png_get_sBIT(png, info, &sig_bit) == PNG_INFO_sBIT) {
+            ss << "  Significant bits per channel: " << sig_bit << std::endl;
+        }
+    }
+#endif
+#ifdef PNG_sCAL_SUPPORTED
+    {
+        int unit_type;
+        double scal_width, scal_height;
+
+        if (png_get_sCAL(png, info, &unit_type, &scal_width,
+                         &scal_height) == PNG_INFO_sCAL) {
+            // see http://www.libpng.org/pub/png/spec/register/pngext-1.4.0-pdg.html#C.sCAL
+            const char* unit = unit_type == PNG_SCALE_UNKNOWN ? "" : (unit_type == PNG_SCALE_METER ? "m" : "rad");
+            ss << "  Scale: " << scal_width << unit << " x " << scal_height << unit << std::endl;
+        }
+    }
+#endif
+
+#if defined(PNG_TEXT_SUPPORTED)
+    {
+        png_textp text;
+        int num_text = 0;
+
+        if (png_get_text(png, info, &text, &num_text) > 0) {
+            // Text comments
+            ss << "  Number of text strings: " << num_text << std::endl;
+
+            for (int i = 0; i < num_text; ++i) {
+                ss << "   " << text[i].key << " ";
+
+                switch (text[1].compression)
+                {
+                    case -1:
+                        ss << "(tEXt uncompressed)";
+                        break;
+
+                    case 0:
+                        ss << "(xTXt deflate compressed)";
+                        break;
+
+                    case 1:
+                        ss << "(iTXt uncompressed)";
+                        break;
+
+                    case 2:
+                        ss << "(iTXt deflate compressed)";
+                        break;
+
+                    default:
+                        ss << "(unknown compression)";
+                        break;
+                }
+
+                ss << ": ";
+                int j = 0;
+                while (text[i].text[j] != '\0') {
+                    if (text[i].text[j] == '\n') {
+                        ss << std::endl;
+                    } else {
+                        ss << text[i].text[j];
+                    }
+                    j++;
+                }
+                
+                ss << std::endl;
+            }
+        }
+    }
+#endif
+
+    // This cleans things up for us in the PNG library
+    std::fclose (image);
+    png_destroy_read_struct (&png, &info, NULL);
+
+    return ss.str();
+}
+
+void
+ReadPNGPlugin::changedParam(const OFX::InstanceChangedArgs &args,
+                            const std::string &paramName)
+{
+    if (paramName == kParamShowMetadata) {
+        std::string filename;
+        OfxStatus st = getFilenameAtTime(args.time, &filename);
+        std::stringstream ss;
+        if (st == kOfxStatOK) {
+            ss << metadata(filename);
+        } else {
+            ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
+        }
+        sendMessage(OFX::Message::eMessageMessage, "", ss.str());
+    }
+}
+
 void
 ReadPNGPlugin::openFile(const std::string& filename,
-              png_structp* png,
-              png_infop* info,
-              FILE** file)
+                        png_structp* png,
+                        png_infop* info,
+                        std::FILE** file)
 {
 
-    *file = OFX::open_file(filename, "rb");
+    *file = OFX::fopen_utf8(filename.c_str(), "rb");
     if (!*file) {
         throw std::runtime_error("Could not open file: " + filename);
     }
 
     unsigned char sig[8];
-    if (fread (sig, 1, sizeof(sig), *file) != sizeof(sig)) {
+    if (std::fread (sig, 1, sizeof(sig), *file) != sizeof(sig)) {
         throw std::runtime_error("Not a PNG file");
     }
 
@@ -400,7 +811,7 @@ ReadPNGPlugin::openFile(const std::string& filename,
         create_read_struct (*png, *info);
     } catch (const std::exception& e) {
         destroy_read_struct(*png, *info);
-        fclose(*file);
+        std::fclose(*file);
         throw e;
     }
 
@@ -470,7 +881,7 @@ ReadPNGPlugin::decode(const std::string& filename,
         // Must call this setjmp in every function that does PNG reads
         if (setjmp (png_jmpbuf (png))) {
             destroy_read_struct(png, info);
-            fclose(file);
+            std::fclose(file);
             setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
             return;
@@ -482,7 +893,7 @@ ReadPNGPlugin::decode(const std::string& filename,
             // Must call this setjmp in every function that does PNG reads
             if (setjmp (png_jmpbuf (png))) {
                 destroy_read_struct(png, info);
-                fclose(file);
+                std::fclose(file);
                 setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
                 return;
@@ -491,7 +902,7 @@ ReadPNGPlugin::decode(const std::string& filename,
         }
     }
     destroy_read_struct(png, info);
-    fclose(file);
+    std::fclose(file);
 
     OfxRectI srcBounds;
     srcBounds.x1 = x1;
@@ -757,6 +1168,15 @@ ReadPNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, true);
+
+    {
+        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
+        param->setLabel(kParamShowMetadataLabel);
+        param->setHint(kParamShowMetadataHint);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
 
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
 }
