@@ -59,7 +59,7 @@ public:
     
     GenericWriterPlugin(OfxImageEffectHandle handle,
                         const std::vector<std::string>& extensions,
-                        bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY);
+                        bool supportsRGBA, bool supportsRGB, bool supportsXY, bool supportsAlpha);
     
     virtual ~GenericWriterPlugin();
     
@@ -266,7 +266,10 @@ protected:
     std::auto_ptr<GenericOCIO> _ocio;
     const std::vector<std::string>& _extensions;
     
-    bool _supportsAlpha,_supportsXY,_supportsRGB,_supportsRGBA;
+    bool _supportsRGBA;
+    bool _supportsRGB;
+    bool _supportsXY;
+    bool _supportsAlpha;
 
 private:
     
@@ -489,9 +492,29 @@ public:
     void* getData() const  { return data; }
 };
 
-void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc, OFX::RenderSafetyEnum safety, const std::vector<std::string>& extensions, int evaluation, bool isMultiPlanar, bool isMultiView);
-OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow);
-void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context,OFX::PageParamDescriptor* defaultPage);
+void
+GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,
+                      OFX::RenderSafetyEnum safety,
+                      const std::vector<std::string>& extensions,
+                      int evaluation,
+                      bool isMultiPlanar,
+                      bool isMultiView);
+
+OFX::PageParamDescriptor*
+GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
+                                    OFX::ContextEnum context,
+                                    bool supportsRGBA,
+                                    bool supportsRGB,
+                                    bool supportsXY,
+                                    bool supportsAlpha,
+                                    const char* inputSpaceNameDefault,
+                                    const char* outputSpaceNameDefault,
+                                    bool supportsDisplayWindow);
+
+void
+GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
+                                  OFX::ContextEnum context,
+                                  OFX::PageParamDescriptor* defaultPage);
 
 // the load() member has to be provided, and it should fill the _extensions list of valid file extensions
 #define mDeclareWriterPluginFactory(CLASS, UNLOADFUNCDEF,ISVIDEOSTREAM) \

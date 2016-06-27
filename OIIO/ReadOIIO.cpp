@@ -332,7 +332,7 @@ private:
 ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
                                OfxImageEffectHandle handle,
                                const std::vector<std::string>& extensions)
-: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles,
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles,
 #ifdef OFX_EXTENSIONS_NUKE
                       (OFX::getImageEffectHostDescription() && OFX::getImageEffectHostDescription()->isMultiPlanar) ? kIsMultiPlanar : false
 #else

@@ -249,6 +249,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
                                          const std::vector<std::string>& extensions,
                                          bool supportsRGBA,
                                          bool supportsRGB,
+                                         bool supportsXY,
                                          bool supportsAlpha,
                                          bool supportsTiles,
                                          bool isMultiPlanar)
@@ -283,6 +284,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _sequenceFromFiles()
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
+, _supportsXY(supportsXY)
 , _supportsAlpha(supportsAlpha)
 , _supportsTiles(supportsTiles)
 , _isMultiPlanar(isMultiPlanar)
@@ -1039,7 +1041,7 @@ GenericReaderPlugin::scalePixelData(const OfxRectI& originalRenderWindow,
         buildMipMapLevel<float, 3>(this, originalRenderWindow, renderWindow, levels, (const float*)srcPixelData,
                                    srcBounds, srcRowBytes, (float*)dstPixelData, dstBounds, dstRowBytes);
     } else if (dstPixelComponents == OFX::ePixelComponentXY) {
-        if (!_supportsRGB) {
+        if (!_supportsXY) {
             OFX::throwSuiteStatusException(kOfxStatErrFormat);
             return;
         }

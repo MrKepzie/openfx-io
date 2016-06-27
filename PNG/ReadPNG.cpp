@@ -355,7 +355,7 @@ private:
 
 
 ReadPNGPlugin::ReadPNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsTiles, false)
+: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
 {
 }
 

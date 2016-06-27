@@ -53,8 +53,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
-#define kSupportsAlpha true
 #define kSupportsXY true
+#define kSupportsAlpha true
 
 #define kParamBitDepth    "bitDepth"
 #define kParamBitDepthLabel   "Bit Depth"
@@ -378,7 +378,7 @@ private:
 };
 
 WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
 , _bitDepth(0)
 , _quality(0)
 , _dwaCompressionLevel(0)
@@ -1447,7 +1447,10 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,kSupportsXY,
+                                                                    kSupportsRGBA,
+                                                                    kSupportsRGB,
+                                                                    kSupportsXY,
+                                                                    kSupportsAlpha,
                                                                     "reference", "reference", true);
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamTileSize);

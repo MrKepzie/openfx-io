@@ -45,8 +45,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
-#define kSupportsAlpha true
 #define kSupportsXY false
+#define kSupportsAlpha true
 
 /**
  \return \c false for "Little Endian", \c true for "Big Endian".
@@ -86,7 +86,7 @@ private:
 };
 
 WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
 {
 }
 
@@ -215,7 +215,10 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 {    
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,kSupportsXY,
+                                                                    kSupportsRGBA,
+                                                                    kSupportsRGB,
+                                                                    kSupportsXY,
+                                                                    kSupportsAlpha,
                                                                     "reference", "reference", false);
 
     GenericWriterDescribeInContextEnd(desc, context, page);

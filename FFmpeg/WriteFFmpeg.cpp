@@ -1273,7 +1273,7 @@ FFmpegSingleton::~FFmpegSingleton(){
 
 
 WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
 , _filename()
 , _pixelAspectRatio(1.)
 , _isOpen(false)

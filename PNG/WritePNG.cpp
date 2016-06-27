@@ -394,7 +394,7 @@ private:
 };
 
 WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, const OFX::Color::LutBase* lut)
-: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsAlpha, kSupportsXY)
+: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
 , _compression(0)
 , _compressionLevel(0)
 , _bitdepth(0)
@@ -871,7 +871,10 @@ void WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 {    
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
-                                                                    kSupportsRGBA, kSupportsRGB, kSupportsAlpha,kSupportsXY,
+                                                                    kSupportsRGBA,
+                                                                    kSupportsRGB,
+                                                                    kSupportsXY,
+                                                                    kSupportsAlpha,
                                                                     "reference", "reference", false);
 
     {

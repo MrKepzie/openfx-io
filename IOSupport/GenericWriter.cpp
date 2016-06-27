@@ -132,7 +132,7 @@ static std::vector<OFX::PixelComponentEnum> gPluginOutputComponents;
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
                                          const std::vector<std::string>& extensions,
-                                         bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY)
+                                         bool supportsRGBA, bool supportsRGB, bool supportsXY, bool supportsAlpha)
 : OFX::MultiPlane::MultiPlaneEffect(handle)
 , _inputClip(0)
 , _outputClip(0)
@@ -152,10 +152,10 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _isExistingWriter(0)
 , _ocio(new GenericOCIO(this))
 , _extensions(extensions)
-, _supportsAlpha(supportsAlpha)
-, _supportsXY(supportsXY)
-, _supportsRGB(supportsRGB)
 , _supportsRGBA(supportsRGBA)
+, _supportsRGB(supportsRGB)
+, _supportsXY(supportsXY)
+, _supportsAlpha(supportsAlpha)
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -2116,7 +2116,7 @@ GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,
  * GenericWriterPluginFactory<YOUR_FACTORY>::describeInContext(desc,context);
  **/
 PageParamDescriptor*
-GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool supportsXY, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow)
+GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, bool supportsRGBA, bool supportsRGB, bool supportsXY, bool supportsAlpha, const char* inputSpaceNameDefault, const char* outputSpaceNameDefault, bool supportsDisplayWindow)
 {
     gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
 

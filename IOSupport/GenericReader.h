@@ -45,7 +45,14 @@ class GenericReaderPlugin : public OFX::ImageEffect {
     
 public:
     
-    GenericReaderPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, bool supportsTiles, bool supportsRGBA, bool supportsRGB, bool supportsAlpha, bool isMultiPlanar);
+    GenericReaderPlugin(OfxImageEffectHandle handle,
+                        const std::vector<std::string>& extensions,
+                        bool supportsTiles,
+                        bool supportsRGBA,
+                        bool supportsRGB,
+                        bool supportsXY,
+                        bool supportsAlpha,
+                        bool isMultiPlanar);
     
     virtual ~GenericReaderPlugin();
 
@@ -406,6 +413,7 @@ private:
     std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     const bool _supportsRGBA;
     const bool _supportsRGB;
+    const bool _supportsXY;
     const bool _supportsAlpha;
     const bool _supportsTiles;
     const bool _isMultiPlanar;
