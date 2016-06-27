@@ -22,14 +22,13 @@
  */
 
 #include <cstdio> // fopen, fread...
-#include <csetjmp>
 #include <iomanip>
 #include <locale>
 #include <cstdlib>
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-#include <png.h>
+#include <png.h> // includes setjmp.h
 #include <zlib.h>
 
 #ifdef OFX_IO_USING_OCIO
