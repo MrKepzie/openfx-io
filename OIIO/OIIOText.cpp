@@ -21,6 +21,8 @@
  * Write text on images using OIIO.
  */
 
+#include <cfloat> // DBL_MAX
+
 #include "ofxsMacros.h"
 
 GCC_DIAG_OFF(unused-parameter)

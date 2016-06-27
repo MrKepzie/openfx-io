@@ -31,7 +31,7 @@
 
 #include <cstdio>
 #include <cstring>
-#include <cfloat>
+#include <cfloat> // DBL_MAX
 #include <sstream>
 
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)

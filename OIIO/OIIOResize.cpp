@@ -21,9 +21,9 @@
  * Resize images using OIIO.
  */
 
+#include <cfloat> // DBL_MAX
 #include <limits>
 #include <algorithm>
-#include <cfloat>
 
 #include "ofxsMacros.h"
 

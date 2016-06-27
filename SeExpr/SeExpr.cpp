@@ -21,6 +21,7 @@
  * Execute a SeExpr script.
  */
 
+#include <cfloat> // DBL_MAX
 #include <vector>
 #include <algorithm>
 #include <limits>

@@ -24,6 +24,7 @@
 #define SENOISE_VORONOI
 
 #include <cmath>
+#include <cfloat> // DBL_MAX
 #include <algorithm>
 //#include <iostream>
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)

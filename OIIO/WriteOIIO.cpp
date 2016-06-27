@@ -21,7 +21,7 @@
  * Writes an image using the OpenImageIO library.
  */
 
-#include <cfloat>
+#include <cfloat> // DBL_MAX
 
 #include "ofxsMacros.h"
 

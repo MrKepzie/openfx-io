@@ -23,10 +23,11 @@
 
 #include "GenericReader.h"
 
-#include <memory>
-#include <algorithm>
 #include <climits>
 #include <cmath>
+#include <cfloat> // DBL_MAX
+#include <memory>
+#include <algorithm>
 #include <fstream>
 #ifdef DEBUG
 #include <cstdio>

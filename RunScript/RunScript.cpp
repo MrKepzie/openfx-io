@@ -26,7 +26,7 @@
 #include "RunScript.h"
 #include "ofxsMacros.h"
 
-#include <cfloat>
+#include <cfloat> // DBL_MAX
 #undef DEBUG
 #ifdef DEBUG
 #include <iostream>

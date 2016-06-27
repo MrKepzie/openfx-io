@@ -23,9 +23,10 @@
 
 #include "GenericWriter.h"
 
+#include <cfloat> // DBL_MAX
+#include <cstring>
 #include <locale>
 #include <sstream>
-#include <cstring>
 #include <algorithm>
 
 #include "ofxsLog.h"
