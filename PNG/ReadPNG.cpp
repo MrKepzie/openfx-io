@@ -67,7 +67,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 // https://github.com/MrKepzie/openfx-io/issues/24
 
 #define kSupportsRGBA true
-#define kSupportsRGB false
+#define kSupportsRGB true
 #define kSupportsXY false
 #define kSupportsAlpha false
 #define kSupportsTiles false
@@ -207,6 +207,9 @@ getPNGInfo(png_structp& sp,
     // and transparency to alpha.
     png_set_expand (sp);
 
+    /* Expand the grayscale to 24-bit RGB if necessary. */
+    png_set_gray_to_rgb(sp);
+
     // PNG files are naturally big-endian
     if (littleendian()) {
         png_set_swap (sp);
@@ -222,7 +225,16 @@ getPNGInfo(png_structp& sp,
     *width_p = width;
     *height_p = height;
     *bit_depth_p = *real_bit_depth_p == 16 ? eBitDepthUShort : eBitDepthUByte;
-    *nChannels_p = png_get_channels (sp, ip);
+    png_byte channels = png_get_channels (sp, ip);
+#ifndef NDEBUG
+    png_byte color_type = png_get_color_type(sp, ip);
+    assert((channels == 1 && (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE)) ||
+           (channels == 2 && (color_type == PNG_COLOR_TYPE_GRAY_ALPHA)) ||
+           (channels == 3 && (color_type == PNG_COLOR_TYPE_RGB)) ||
+           (channels == 4 && (color_type == PNG_COLOR_TYPE_RGB_ALPHA || color_type == PNG_COLOR_TYPE_RGB)));
+#endif
+    *nChannels_p = channels;
+
     *x1_p = png_get_x_offset_pixels (sp, ip);
     *y1_p = png_get_y_offset_pixels (sp, ip);
 
@@ -689,10 +701,11 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
 
     switch (nChannels) {
         case 1:
+            assert(false);
             *components = OFX::ePixelComponentAlpha;
             break;
         case 2:
-            //*components = OFX::ePixelComponentXY;
+            assert(false);
             *components = OFX::ePixelComponentRGBA;
             break;
         case 3:
