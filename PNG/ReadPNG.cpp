@@ -455,8 +455,8 @@ ReadPNGPlugin::metadata(const std::string& filename)
     ss << "  Image Width: " << width << " Image Length: " << height << std::endl;
     int pixel_depth = bit_depth * png_get_channels(png, info);
     ss << "  Bitdepth (Bits/Sample): " << bit_depth << std::endl;
-    ss << "  Channels (Samples/Pixel): " << png_get_channels(png, info) << std::endl;
-    ss << "  Pixel depth (Pixel Depth): " << pixel_depth;	// Does this add value?
+    ss << "  Channels (Samples/Pixel): " << (int)png_get_channels(png, info) << std::endl;
+    ss << "  Pixel depth (Pixel Depth): " << pixel_depth << std::endl;	// Does this add value?
 
     // Photometric interp packs a lot of information
     ss << "  Colour Type (Photometric Interpretation): ";
@@ -609,7 +609,11 @@ ReadPNGPlugin::metadata(const std::string& filename)
 #ifdef PNG_iCCP_SUPPORTED
     {
         png_charp name;
+#if PNG_LIBPNG_VER_SONUM >=15
         png_bytep profile;
+#else
+        png_charp profile;
+#endif
         png_uint_32 proflen;
         int compression_type;
 
