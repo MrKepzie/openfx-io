@@ -2453,25 +2453,26 @@ public:
 
                 switch (nSrcComp) {
                     case 1:
+                        // alpha
                         switch (nDstComp) {
                             case 1:
                                 dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
                                 break;
                             case 2:
-                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 0] = 0.;
+                                dst_pixels[dstCol + 1] = 0.;
                                 break;
 
                             case 3:
-                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 0] = 0.;
+                                dst_pixels[dstCol + 1] = 0.;
+                                dst_pixels[dstCol + 2] = 0.;
                                 break;
 
                             case 4:
-                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 0] = 0.;
+                                dst_pixels[dstCol + 1] = 0.;
+                                dst_pixels[dstCol + 2] = 0.;
                                 dst_pixels[dstCol + 3] = src_pixels[srcCol + 0] / (float)srcMaxValue;
                                 break;
                             default:
@@ -2480,9 +2481,10 @@ public:
                         }
                         break;
                     case 2:
+                        // XY
                         switch (nDstComp) {
                             case 1:
-                                dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 0] = 0.;
                                 break;
                             case 2:
                                 dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
@@ -2497,9 +2499,9 @@ public:
 
                             case 4:
                                 dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 2] = src_pixels[srcCol + 0] / (float)srcMaxValue;
-                                dst_pixels[dstCol + 3] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                                dst_pixels[dstCol + 2] = 0.;
+                                dst_pixels[dstCol + 3] = 1.f;
                                 break;
                             default:
                                 assert(false);
@@ -2508,11 +2510,10 @@ public:
 
                         break;
                     case 3:
+                        // RGB
                         switch (nDstComp) {
                             case 1: {
-                                // 3 to 1, assume users wants a grayscale luminance map
-                                float l = 0.2126 * src_pixels[srcCol + 0] + 0.7152 * src_pixels[srcCol + 1] + 0.0722 * src_pixels[srcCol + 2]; // Rec.709 luminance formula
-                                dst_pixels[dstCol + 0] = l;
+                                dst_pixels[dstCol + 0] = 0.;
                             }   break;
                             case 2:
                                 dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
