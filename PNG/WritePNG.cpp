@@ -418,10 +418,10 @@ WritePNGPlugin::openFile(const std::string& filename,
                          int nChannels,
                          png_structp* png,
                          png_infop* info,
-                         FILE** file,
+                         std::FILE** file,
                          int *color_type)
 {
-    *file = OFX::open_file(filename, "wb");
+    *file = OFX::fopen_utf8(filename.c_str(), "wb");
     if (!*file) {
         throw std::runtime_error("Could not open file: " + filename);
     }
@@ -430,7 +430,7 @@ WritePNGPlugin::openFile(const std::string& filename,
         create_write_struct (*png, *info, nChannels, color_type);
     } catch (const std::exception& e) {
         destroy_write_struct(*png, *info);
-        fclose(*file);
+        std::fclose(*file);
         throw e;
     }
 
@@ -749,7 +749,7 @@ void WritePNGPlugin::encode(const std::string& filename,
     for (int y = (bounds.y2 - bounds.y1 - 1); y >= 0; --y) {
         if (setjmp (png_jmpbuf(png))) {
             destroy_write_struct(png, info);
-            fclose(file);
+            std::fclose(file);
             setPersistentMessage(OFX::Message::eMessageError,"", "PNG library error");
             throwSuiteStatusException(kOfxStatFailed);
         }
@@ -759,7 +759,7 @@ void WritePNGPlugin::encode(const std::string& filename,
 
     finish_image(png);
     destroy_write_struct(png, info);
-    fclose(file);
+    std::fclose(file);
 }
 
 bool WritePNGPlugin::isImageFile(const std::string& /*fileExtension*/) const {

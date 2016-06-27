@@ -140,7 +140,7 @@ void WritePFMPlugin::encode(const std::string& filename,
         return;
     }
 
-    std::FILE *const nfile = OFX::open_file(filename, "wb");
+    std::FILE *const nfile = OFX::fopen_utf8(filename.c_str(), "wb");
     if (!nfile) {
         setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file \"" + filename + "\"");
         OFX::throwSuiteStatusException(kOfxStatFailed);

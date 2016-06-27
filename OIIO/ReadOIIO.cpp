@@ -2587,7 +2587,6 @@ ReadOIIOPlugin::metadata(const std::string& filename)
 {
     std::stringstream ss;
 
-
 #ifndef OFX_READ_OIIO_USES_CACHE
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
