@@ -591,12 +591,12 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
 #     ifdef OFX_IO_USING_OCIO
         switch (pngColorspace) {
             case ePNGColorSpaceGammaCorrected:
-                if (std::fabs(gamma - 1.8) < 0.01) {
+                if (std::fabs(gamma - 1.8) < 0.05) {
                     if (_ocio->hasColorspace("Gamma1.8")) {
                         // nuke-default
                         _ocio->setInputColorspace("Gamma1.8");
                     }
-                } else if (std::fabs(gamma - 2.2) < 0.01) {
+                } else if (std::fabs(gamma - 2.2) < 0.05) {
                     if (_ocio->hasColorspace("Gamma2.2")) {
                         // nuke-default
                         _ocio->setInputColorspace("Gamma2.2");
