@@ -101,40 +101,6 @@ inline bool littleendian (void)
 }
 
 
-/// Initializes a PNG read struct.
-/// \return empty string on success, error message on failure.
-///
-inline void
-create_read_struct (png_structp& sp, png_infop& ip)
-{
-    sp = png_create_read_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (! sp)
-        throw std::runtime_error("Could not create PNG read structure");
-
-    ip = png_create_info_struct (sp);
-    if (! ip)
-        throw std::runtime_error("Could not create PNG info structure");
-
-    // Must call this setjmp in every function that does PNG reads
-    if (setjmp (png_jmpbuf(sp)))
-        throw std::runtime_error("PNG library error");
-
-}
-
-
-/// Destroys a PNG read struct.
-///
-inline void
-destroy_read_struct (png_structp& sp, png_infop& ip)
-{
-    if (sp && ip) {
-        png_destroy_read_struct (&sp, &ip, NULL);
-        sp = NULL;
-        ip = NULL;
-    }
-}
-
-
 /// Helper function - reads background colour.
 ///
 inline bool
@@ -795,7 +761,8 @@ ReadPNGPlugin::openFile(const std::string& filename,
                         png_infop* info,
                         std::FILE** file)
 {
-
+    *png = NULL;
+    *info = NULL;
     *file = OFX::fopen_utf8(filename.c_str(), "rb");
     if (!*file) {
         throw std::runtime_error("Could not open file: " + filename);
@@ -810,12 +777,29 @@ ReadPNGPlugin::openFile(const std::string& filename,
         throw std::runtime_error("Not a PNG file");
     }
 
-    try {
-        create_read_struct (*png, *info);
-    } catch (const std::exception& e) {
-        destroy_read_struct(*png, *info);
+    *png = png_create_read_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!*png) {
         std::fclose(*file);
-        throw e;
+        *file = NULL;
+
+        throw std::runtime_error("Could not create PNG read structure");
+    }
+
+    *info = png_create_info_struct (*png);
+    if (!*info) {
+        png_destroy_read_struct (png, NULL, NULL);
+        std::fclose(*file);
+        *file = NULL;
+
+        throw std::runtime_error("Could not create PNG info structure");
+    }
+    // Must call this setjmp in every function that does PNG reads
+    if (setjmp (png_jmpbuf(*png))) {
+        png_destroy_read_struct (png, info, NULL);
+        std::fclose(*file);
+        *file = NULL;
+
+        throw std::runtime_error("PNG library error");
     }
 
     png_init_io (*png, *file);
@@ -860,8 +844,7 @@ ReadPNGPlugin::decode(const std::string& filename,
     int realbitdepth;
     int colorType;
     double par;
-    int interlace_type;
-    getPNGInfo(png, info, &x1, &y1, &width, &height, &par, &nChannels, &bitdepth, &realbitdepth, &colorType, 0, 0, &interlace_type, 0, 0, 0, 0, 0, 0, 0, 0);
+    getPNGInfo(png, info, &x1, &y1, &width, &height, &par, &nChannels, &bitdepth, &realbitdepth, &colorType, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     assert(renderWindow.x1 >= x1 && renderWindow.y1 >= y1 && renderWindow.x2 <= x1 + width && renderWindow.y2 <= y1 + height);
 
@@ -874,38 +857,43 @@ ReadPNGPlugin::decode(const std::string& filename,
     unsigned char* tmpData = scratchBuffer.getData();
 
 
-    if (interlace_type != 0) {
+    //if (interlace_type != 0) {
+    std::vector<unsigned char *> row_pointers(height);
+    for (int i = 0;  i < height;  ++i) {
+        row_pointers[i] = tmpData + i * pngRowBytes;
+    }
 
-        std::vector<unsigned char *> row_pointers(height);
-        for (int i = 0;  i < height;  ++i) {
-            row_pointers[i] = tmpData + i * pngRowBytes;
-        }
+    // Must call this setjmp in every function that does PNG reads
+    if (setjmp (png_jmpbuf (png))) {
+        png_destroy_read_struct(&png, &info, NULL);
+        std::fclose(file);
+        setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
 
-        // Must call this setjmp in every function that does PNG reads
-        if (setjmp (png_jmpbuf (png))) {
-            destroy_read_struct(png, info);
-            std::fclose(file);
-            setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            return;
-        }
-        png_read_image (png, &row_pointers[0]);
-        png_read_end (png, NULL);
+        return;
+    }
+    png_read_image(png, &row_pointers[0]);
+    png_read_end(png, NULL);
+    /*
     } else {
         for (int y = 0; y < height; ++y) {
             // Must call this setjmp in every function that does PNG reads
             if (setjmp (png_jmpbuf (png))) {
-                destroy_read_struct(png, info);
+                png_destroy_read_struct(&png, &info, NULL);
                 std::fclose(file);
                 setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
                 OFX::throwSuiteStatusException(kOfxStatErrFormat);
+
                 return;
             }
             png_read_row (png, (png_bytep)tmpData + y * pngRowBytes, NULL);
         }
     }
-    destroy_read_struct(png, info);
+     */
+
+    png_destroy_read_struct(&png, &info, NULL);
     std::fclose(file);
+    file = NULL;
 
     OfxRectI srcBounds;
     srcBounds.x1 = x1;
