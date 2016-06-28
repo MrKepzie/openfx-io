@@ -425,7 +425,7 @@ ReadPNGPlugin::metadata(const std::string& filename)
     if (info == NULL) {
         ss << "Could not create PNG info structure (out of memory?)\n";
         png_destroy_read_struct(&png, NULL, NULL);
-        std::fclose (image);
+        std::fclose(image);
 
         return ss.str();
     }
@@ -433,7 +433,7 @@ ReadPNGPlugin::metadata(const std::string& filename)
     if ( setjmp( png_jmpbuf(png) ) ) {
         png_destroy_read_struct(&png, &info, NULL);
         ss << "Could not set PNG jump value";
-        std::fclose (image);
+        std::fclose(image);
 
         return ss.str();
     }
@@ -766,7 +766,7 @@ ReadPNGPlugin::metadata(const std::string& filename)
 #endif
 
     // This cleans things up for us in the PNG library
-    std::fclose (image);
+    std::fclose(image);
     png_destroy_read_struct (&png, &info, NULL);
 
     return ss.str();
@@ -964,11 +964,16 @@ ReadPNGPlugin::getFrameBounds(const std::string& filename,
     int colorType;
 
     getPNGInfo(png, info, &x1, &y1, &width, &height, par, &nChannels, &bitdepth, &realbitdepth, &colorType, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    png_destroy_read_struct(&png, &info, NULL);
+    std::fclose(file);
+    file = NULL;
+
     bounds->x1 = x1;
     bounds->y1 = y1;
     bounds->x2 = x1 + width;
     bounds->y2 = y1 + height;
     *tile_height = *tile_width = 0;
+
     return true;
 }
 
@@ -1000,6 +1005,9 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
     double gamma;
     PNGColorSpaceEnum pngColorspace;
     getPNGInfo(png, info, &x1, &y1, &width, &height, &par, &nChannels, &bitdepth, &realbitdepth, &colorType, &pngColorspace, &gamma, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    png_destroy_read_struct(&png, &info, NULL);
+    std::fclose(file);
+    file = NULL;
 
     if (setColorSpace) {
 #     ifdef OFX_IO_USING_OCIO
