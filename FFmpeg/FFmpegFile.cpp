@@ -191,7 +191,7 @@ namespace
         { "libx265",        true,  UNSAFEQT0 }, // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
         { "ljpeg",          true,  UNSAFEQT0 }, // Lossless JPEG - write not supported as can't be read in in official qt.
         { "mjpeg",          true,  true }, // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
-        { "mpeg1video",     true,  true }, // MPEG-1 video
+        { "mpeg1video",     true,  TERRIBLE }, // MPEG-1 video - write not supported as it gives random 8x8 blocky errors
         { "mpeg2video",     true,  true }, // MPEG-2 video
         { "mpeg4",          true,  true }, // MPEG-4 part 2
         { "msmpeg4v2",      true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.

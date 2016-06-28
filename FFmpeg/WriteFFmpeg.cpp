@@ -425,7 +425,7 @@ static CodecMap CreateCodecKnobLabelsMap()
 
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
     m["mjpeg"]         = "jpeg\tMotion JPEG";
-    m["mpeg1video"]    = "m1v \tMPEG-1 Video";
+    m["mpeg1video"]    = "m1v \tMPEG-1 Video"; // disabled in whitelist (random blocks)
     m["mpeg2video"]    = "m2v1\tMPEG-2 Video";
     m["mpeg4"]         = "mp4v\tMPEG-4 Video";
     m["msmpeg4v2"]     = "MP42\tMPEG-4 part 2 Microsoft variant version 2";
