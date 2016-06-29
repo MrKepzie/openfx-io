@@ -752,6 +752,8 @@ ReadPNGPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
         }
         sendMessage(OFX::Message::eMessageMessage, "", ss.str());
+    } else {
+        GenericReaderPlugin::changedParam(args, paramName);
     }
 }
 
