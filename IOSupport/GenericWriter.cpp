@@ -542,7 +542,20 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
             }
             
             // copy the source image (the writer is a no-op)
-            copyPixelData(renderWindow, srcPixelData, *bounds, pixelComponents, *mappedComponentsCount, bitDepth, srcRowBytes, dstImg.get());
+            if (*mappedComponentsCount == dstImg->getPixelComponentCount()) {
+                copyPixelData(renderWindow, srcPixelData, *bounds, pixelComponents, *mappedComponentsCount, bitDepth, srcRowBytes, dstImg.get());
+            } else {
+                void* dstPixelData;
+                OfxRectI dstBounds;
+                OFX::PixelComponentEnum dstPixelComponents;
+                OFX::BitDepthEnum dstBitDetph;
+                int dstRowBytes;
+
+                OFX::PixelComponentEnum dstMappedComponents;
+                int dstMappedComponentsCount = getPixelsComponentsCount(dstImg->getPixelComponentsProperty(), &dstMappedComponents);
+                getImageData(dstImg.get(), &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDetph, &dstRowBytes);
+                interleavePixelBuffers(renderWindow, srcPixelData, *bounds, pixelComponents, *mappedComponentsCount, 0, *mappedComponentsCount, bitDepth, srcRowBytes, dstBounds, 0, dstMappedComponentsCount, dstRowBytes, dstPixelData);
+            }
             
         }
         *bounds = renderWindow;
