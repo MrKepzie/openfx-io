@@ -513,12 +513,12 @@ GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, 
             ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
             if (sequenceIntervalsCount % 2 == 0) {
                 if (range != 0) {
-                    timeOffsetFromStart %= (int)range;
+                    timeOffsetFromStart %= range;
                 }
                 *sequenceTime = sequenceTimeDomain.min - timeOffsetFromStart;
             } else {
                 if (range != 0) {
-                    timeOffsetFromStart %= (int)range;
+                    timeOffsetFromStart %= range;
                 }
                 *sequenceTime = sequenceTimeDomain.max + timeOffsetFromStart;
             }
@@ -552,13 +552,15 @@ GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, d
             return eGetSequenceTimeAfterSequence;
             
         case eBeforeAfterBounce: { //bounce
-            int sequenceIntervalsCount = timeOffsetFromStart / (sequenceTimeDomain.max - sequenceTimeDomain.min);
+            int range = sequenceTimeDomain.max - sequenceTimeDomain.min;
+            int sequenceIntervalsCount = range == 0 ? 0 : timeOffsetFromStart / range;
+
             ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
             if (sequenceIntervalsCount % 2 == 0) {
-                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                timeOffsetFromStart %= range;
                 *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
             } else {
-                timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min);
+                timeOffsetFromStart %= range;
                 *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
             }
             return eGetSequenceTimeAfterSequence;
