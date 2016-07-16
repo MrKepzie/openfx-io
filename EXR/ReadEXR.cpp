@@ -89,7 +89,7 @@ private:
 
     virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -609,6 +609,7 @@ ReadEXRPlugin::decode(const std::string& filename,
 
 void
 ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
+                                  bool /*throwErrors*/,
                                   bool setColorSpace, //!< true is colorspace was not set from the filename
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,

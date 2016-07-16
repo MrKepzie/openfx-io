@@ -176,6 +176,7 @@ private:
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
     virtual void onInputFileChanged(const std::string& newFile,
+                                    bool throwErrors,
                                     bool setColorSpace, //!< true is colorspace was not set from the filename
                                     OFX::PreMultiplicationEnum *premult,
                                     OFX::PixelComponentEnum *components,
@@ -292,7 +293,7 @@ private:
     /**
      * @brief Initializes the params depending on the input file.
      **/
-    void inputFileChanged(bool isLoadingExistingReader);
+    void inputFileChanged(bool isLoadingExistingReader, bool throwErrors);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const void *srcPixelData,

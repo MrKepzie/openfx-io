@@ -230,7 +230,7 @@ GenericWriterPlugin::restoreState()
     // or if we are creating a new Writer from scratch and need toa djust parameters.
     bool writerExisted;
     _isExistingWriter->getValue(writerExisted);
-    outputFileChanged(OFX::eChangePluginEdit, writerExisted);
+    outputFileChanged(OFX::eChangePluginEdit, writerExisted, false);
     if (!writerExisted) {
         _isExistingWriter->setValue(true);
     }
@@ -1779,7 +1779,7 @@ GenericWriterPlugin::setOutputComponentsParam(OFX::PixelComponentEnum components
 }
 
 void
-GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter)
+GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter, bool throwErrors)
 {
     if (restoreExistingWriter) {
         return;
@@ -1791,12 +1791,17 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         {
             std::string ext = extension(filename);
             if (!checkExtension(ext)) {
-                if (reason == OFX::eChangeUserEdit) {
-                    sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                if (throwErrors) {
+
+                    if (reason == OFX::eChangeUserEdit) {
+                        sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                    } else {
+                        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                    }
+                    OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
                 } else {
-                    setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
+                    return;
                 }
-                OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
             }
         }
 
@@ -1860,7 +1865,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             _lastFrame->setIsSecret(true);
         }
     } else if (paramName == kParamFilename) {
-        outputFileChanged(args.reason, false);
+        outputFileChanged(args.reason, false, true);
     } else if (paramName == kParamFormatType) {
         int type;
         _outputFormatType->getValue(type);

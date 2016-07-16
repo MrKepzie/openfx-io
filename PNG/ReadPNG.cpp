@@ -329,7 +329,7 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile, bool throwErrors,bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     void openFile(const std::string& filename,
                   png_structp* png,
@@ -969,6 +969,7 @@ ReadPNGPlugin::getFrameBounds(const std::string& filename,
 
 void
 ReadPNGPlugin::onInputFileChanged(const std::string& filename,
+                                  bool throwErrors,
                                   bool setColorSpace,
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,
@@ -983,7 +984,9 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        throwSuiteStatusException(kOfxStatFailed);
+        if (throwErrors) {
+            throwSuiteStatusException(kOfxStatFailed);
+        }
     }
 
     int x1,y1,width,height;

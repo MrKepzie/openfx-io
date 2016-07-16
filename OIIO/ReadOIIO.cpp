@@ -217,7 +217,7 @@ public:
 private:
 
     
-    virtual void onInputFileChanged(const std::string& filename, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
@@ -261,7 +261,7 @@ private:
     
     void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const;
     
-    void updateSpec(const std::string &filename);
+    bool updateSpec(const std::string &filename, std::string* error = 0);
     
     void setOCIOColorspacesFromSpec(const std::string& filename);
 
@@ -1571,8 +1571,8 @@ ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<Image
     }
 }
 
-void
-ReadOIIOPlugin::updateSpec(const std::string &filename)
+bool
+ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
 {
     _specValid = false;
     _subImagesSpec.clear();
@@ -1583,28 +1583,36 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
 # else
     std::auto_ptr<ImageInput> img(ImageInput::open(filename));
     if (!img.get()) {
-        return;
+        if (error) {
+            *error = "Could node open file " + filename;
+        }
+        return false;
     }
     getSpecsFromImageInput(img, _subImagesSpec);
 # endif
     if (_subImagesSpec.empty()) {
-        return;
+        if (error) {
+            *error = "Could node open file " + filename;
+        }
+        return false;
     }
-    _specValid = true;
-    
+
     for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
         if (_subImagesSpec[i].deep) {
             if (_subImagesSpec[0].deep) {
-                sendMessage(OFX::Message::eMessageError, "", "Cannot read deep images yet.");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
+                if (error) {
+                    *error = "Cannot read deep image file " + filename;
+                }
                 _subImagesSpec.clear();
-                _specValid = false;
                 _layersUnion.clear();
-                return;
+                return false;
             }
         }
     }
-    
+
+    _specValid = true;
+
+
 #ifdef OFX_READ_OIIO_USES_CACHE
     //Only support tiles if tile size is set
     int fullHeight = _subImagesSpec[0].full_height == 0 ? _subImagesSpec[0].height : _subImagesSpec[0].full_height;
@@ -1612,6 +1620,7 @@ ReadOIIOPlugin::updateSpec(const std::string &filename)
     
     setSupportsTiles(_subImagesSpec[0].tile_width != 0 && _subImagesSpec[0].tile_width != fullWidth && _subImagesSpec[0].tile_height != 0 && _subImagesSpec[0].tile_height != fullHeight);
 #endif
+    return true;
 }
 
 void
@@ -1636,7 +1645,7 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
         OFX::PixelComponentEnum comps;
         int compsNum;
         try {
-            onInputFileChanged(filename, true, &premult, &comps, &compsNum);
+            onInputFileChanged(filename, false, true, &premult, &comps, &compsNum);
         } catch (...) {
             
         }
@@ -1844,17 +1853,22 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
 
 void
 ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
+                                   bool throwErrors,
                                    bool setColorSpace,
                                    OFX::PreMultiplicationEnum *premult,
                                    OFX::PixelComponentEnum *components,
                                    int *componentCount)
 {
-    updateSpec(filename);
-    if (!_specValid) {
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
+    std::string error;
+    bool updateSpecOk = updateSpec(filename, &error);
+    if (!_specValid || !updateSpecOk) {
+        setPersistentMessage(OFX::Message::eMessageError, "", error);
         *componentCount = 0;
         *components = OFX::ePixelComponentNone;
         *premult = OFX::eImageOpaque;
+        if (throwErrors) {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
         return;
     }
     

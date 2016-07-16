@@ -356,7 +356,7 @@ GenericReaderPlugin::restoreStateFromParameters()
     bool readerExisted;
     _isExistingReader->getValue(readerExisted);
     
-    inputFileChanged(readerExisted);
+    inputFileChanged(readerExisted, !readerExisted);
     
     if (!readerExisted) {
         _isExistingReader->setValue(true);
@@ -1876,7 +1876,7 @@ GenericReaderPlugin::checkExtension(const std::string& ext)
 }
 
 void
-GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader)
+GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader, bool throwErrors)
 {
     std::string filename;
     
@@ -1946,7 +1946,7 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader)
             }
 # endif
             
-            onInputFileChanged(filename, setColorSpace, &premult, &components, &componentCount);
+            onInputFileChanged(filename, throwErrors, setColorSpace, &premult, &components, &componentCount);
             
             
             if (setColorSpace) {
@@ -2004,7 +2004,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
-            inputFileChanged(false);
+            inputFileChanged(false, false);
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
             refreshSubLabel(args.time);

@@ -67,7 +67,7 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& newFile,bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
 };
 
@@ -356,6 +356,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
 
 void
 ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
+                                  bool throwErrors,
                                   bool setColorSpace,
                                   OFX::PreMultiplicationEnum *premult,
                                   OFX::PixelComponentEnum *components,
@@ -389,6 +390,9 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
+        if (throwErrors) {
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+        }
         return;
     }
     std::fclose(nfile);

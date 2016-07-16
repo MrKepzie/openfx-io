@@ -468,7 +468,7 @@ private:
     
     void getPackingOptions(bool *allCheckboxHidden, std::vector<int>* packingMapping) const;
 
-    void outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter);
+    void outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter, bool throwErrors);
 };
 
 class EncodePlanesLocalData_RAII

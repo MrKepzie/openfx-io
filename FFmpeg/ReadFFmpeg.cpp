@@ -83,7 +83,7 @@ private:
 
     virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& filename, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void onInputFileChanged(const std::string& filename, bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
@@ -144,6 +144,7 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
 void
 ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
+                                     bool throwErrors,
                                      bool setColorSpace,
                                      OFX::PreMultiplicationEnum *premult,
                                      OFX::PixelComponentEnum *components,
@@ -193,6 +194,9 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
         *components = OFX::ePixelComponentNone;
         *componentCount = 0;
         *premult = OFX::eImageOpaque;
+        if (throwErrors) {
+            throwSuiteStatusException(kOfxStatFailed);
+        }
         return;
     }
     *componentCount = file->getNumberOfComponents();
