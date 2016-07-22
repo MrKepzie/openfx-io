@@ -2915,7 +2915,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamRChannelHint);
             appendDefaultChannelList(param);
             param->setAnimates(true);
-            param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
+            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
             if (page) {
                 page->addChild(*param);
             }
@@ -2926,7 +2926,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamGChannelHint);
             appendDefaultChannelList(param);
             param->setAnimates(true);
-            param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
+            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
             if (page) {
                 page->addChild(*param);
             }
@@ -2937,7 +2937,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setHint(kParamBChannelHint);
             appendDefaultChannelList(param);
             param->setAnimates(true);
-            param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
+            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
             if (page) {
                 page->addChild(*param);
             }
@@ -2949,7 +2949,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             appendDefaultChannelList(param);
             param->setAnimates(true);
             param->setDefault(1); // opaque by default
-            param->setIsPersistant(false); //don't save, we will restore it using the StringParams holding the index
+            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
             if (page) {
                 page->addChild(*param);
             }
@@ -3005,7 +3005,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setLabel(kParamChannelOutputLayerLabel);
                 param->setHint(kParamChannelOutputLayerHint);
                 param->setEvaluateOnChange(false);
-                param->setIsPersistant(false);
+                param->setIsPersistent(false);
                 param->setAnimates(false);
                 if (page) {
                     page->addChild(*param);
@@ -3028,7 +3028,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setAnimates(false);
                 param->setIsSecret(true);
                 param->setEvaluateOnChange(false);
-                param->setIsPersistant(false);
+                param->setIsPersistent(false);
                 param->setLayoutHint(OFX::eLayoutHintDivider);
                 if (page) {
                     page->addChild(*param);
