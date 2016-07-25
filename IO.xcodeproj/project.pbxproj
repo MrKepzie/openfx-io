@@ -1571,6 +1571,7 @@
 					OFX_IO_MT_FFMPEG,
 					OFX_IO_USING_OCIO,
 					OFX_EXTENSIONS_NATRON,
+					OFX_SUPPORTS_OPENGLRENDER,
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1609,6 +1610,17 @@
 		1E2F4DC9189295F600F4CE25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"NDEBUG=1",
+					"$(inherited)",
+					OFX_EXTENSIONS_NUKE,
+					OFX_EXTENSIONS_VEGAS,
+					OFX_EXTENSIONS_TUTTLE,
+					OFX_EXTENSIONS_NATRON,
+					OFX_IO_USING_OCIO,
+					OFX_IO_MT_FFMPEG,
+					OFX_SUPPORTS_OPENGLRENDER,
+				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(EXR_PATH)/include/OpenEXR",

@@ -10,7 +10,7 @@ CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_TUTTLE
 VPATH += $(TOP_SRCDIR)/IOSupport $(TOP_SRCDIR)/IOSupport/SequenceParsing $(OFXSEXTPATH)
 
 # Comment the following two lines to disable OpenColorIO support
-OCIO_CXXFLAGS += `pkg-config --cflags OpenColorIO` -DOFX_IO_USING_OCIO
+OCIO_CXXFLAGS += `pkg-config --cflags OpenColorIO` -DOFX_IO_USING_OCIO -DOFX_SUPPORTS_OPENGLRENDER
 OCIO_LINKFLAGS += `pkg-config --libs OpenColorIO`
 ifeq ($(OS),Linux)
 OCIO_LINKFLAGS += -Wl,-rpath,`pkg-config --variable=libdir OpenColorIO`

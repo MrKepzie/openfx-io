@@ -48,7 +48,7 @@ static bool gWasOCIOEnvVarFound = false;
 static bool gHostIsNatron   = false;
 #endif
 
-static const int LUT3D_EDGE_SIZE = 32;
+static const int LUT3D_EDGE_SIZE = 8;
 
 static const char * g_fragShaderText = ""
 "\n"
@@ -876,7 +876,7 @@ static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
     memset(&(*lut3D)[0], 0, sizeof(float)*num3Dentries);
 
     glEnable(GL_TEXTURE_3D);
-
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, *lut3dTexID);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -886,7 +886,6 @@ static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
     glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB16F_ARB,
                  LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
                  0, GL_RGB,GL_FLOAT, &(*lut3D)[0]);
-    glBindTexture(GL_TEXTURE_3D, 0);
 }
 
 
@@ -946,6 +945,11 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
         // Unfortunately the LUT3D is not cached yet, or caller does not want caching
         processor->getGpuLut3D(&(*lut3D)[0], shaderDesc);
 
+        /*for (std::size_t i = 0; i < lut3D->size(); ++i) {
+            assert((*lut3D)[i] == (*lut3D)[i] && (*lut3D)[i] != std::numeric_limits<float>::infinity());
+        }*/
+
+        glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_3D, lut3dTexID);
         glTexSubImage3D(GL_TEXTURE_3D, 0,
                         0, 0, 0,
@@ -994,10 +998,16 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
 
 
     // Bind textures and apply texture mapping
-
+    glDisable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(srcImg->getTarget(), srcImg->getIndex());
+    int srcTarget = srcImg->getTarget();
+    glBindTexture(srcTarget, srcImg->getIndex());
+    glTexParameteri(srcTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(srcTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(srcTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(srcTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, lut3dTexID);
 
@@ -1016,11 +1026,19 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     glEnd();
 
     glUseProgram(0);
+    
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, 0);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (!lut3DTexIDParam) {
+        glDeleteTextures(1, &lut3dTexID);
+    }
+    if (!shaderProgramIDParam) {
+        glDeleteProgram(programID);
+    }
 
 #endif
 }

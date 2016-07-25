@@ -106,7 +106,8 @@ public:
      * by shaderProgramIDParam will be used as-is.
      *
      * Note: All lut3DParam, lut3DTexIDParam, shaderProgramIDParam, lut3DCacheIDParam, shaderTextCacheIDParam must be either set to a value different 
-     * than NULL, or all set to NULL. 
+     * than NULL, or all set to NULL.
+     *
      **/
     static void applyGL(const OFX::Texture* srcImg,
                         const OCIO_NAMESPACE::ConstProcessorRcPtr& processor,
