@@ -48,7 +48,7 @@ static bool gWasOCIOEnvVarFound = false;
 static bool gHostIsNatron   = false;
 #endif
 
-static const int LUT3D_EDGE_SIZE = 8;
+static const int LUT3D_EDGE_SIZE = 32;
 
 static const char * g_fragShaderText = ""
 "\n"
@@ -954,7 +954,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
         glTexSubImage3D(GL_TEXTURE_3D, 0,
                         0, 0, 0,
                         LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
-                        GL_RGB,GL_FLOAT, &lut3D[0]);
+                        GL_RGB,GL_FLOAT, &(*lut3D)[0]);
 
         // update the cache ID
         if (lut3DCacheIDParam) {
@@ -998,7 +998,6 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
 
 
     // Bind textures and apply texture mapping
-    glDisable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
     glActiveTexture(GL_TEXTURE0);
     int srcTarget = srcImg->getTarget();
