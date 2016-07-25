@@ -883,7 +883,7 @@ static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB16F_ARB,
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB32F_ARB,
                  LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
                  0, GL_RGB,GL_FLOAT, &(*lut3D)[0]);
 }
