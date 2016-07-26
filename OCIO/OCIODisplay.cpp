@@ -115,17 +115,24 @@ static void
 buildDisplayMenu(OCIO::ConstConfigRcPtr config,
                  ChoiceParamType* choice)
 {
-    choice->resetOptions();
     if (!config) {
         return;
     }
     std::string defaultDisplay = config->getDefaultDisplay();
-    for (int i = 0; i < config->getNumDisplays(); ++i) {
+    std::vector<std::string> displaysVec(config->getNumDisplays());
+
+    int defIndex = -1;
+    for (std::size_t i = 0; i < displaysVec.size(); ++i) {
         std::string display = config->getDisplay(i);
-        choice->appendOption(display);
+        displaysVec[i] = display;
         if (display == defaultDisplay) {
-            choice->setDefault(i);
+            defIndex = (int)i;
         }
+    }
+    choice->resetOptions(displaysVec);
+
+    if (defIndex != -1) {
+        choice->setDefault(defIndex);
     }
 }
 

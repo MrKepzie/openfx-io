@@ -1393,7 +1393,7 @@ void OCIOCDLTransformPluginFactory::describeInContext(OFX::ImageEffectDescriptor
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(false); // necessary for output files
         param->setEvaluateOnChange(false);
-        param->setIsPersistant(false);
+        param->setIsPersistent(false);
         param->setAnimates(false);
         param->setDefault(kParamExportDefault);
         if (page) {

@@ -2990,7 +2990,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(INT_MIN, INT_MAX);
         param->setAnimates(true);
         param->setIsSecret(true); // always secret
-        param->setIsPersistant(false);
+        param->setIsPersistent(false);
         if (page) {
             page->addChild(*param);
         }
@@ -3187,7 +3187,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
         param->setIsSecret(true); // always secret
         param->setEnabled(false);
-        param->setIsPersistant(true);
+        param->setIsPersistent(true);
         param->setEvaluateOnChange(false);
         //param->setDefault();
         if (page) {

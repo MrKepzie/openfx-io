@@ -1531,7 +1531,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         }
         param->setAnimates(true);
         param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
-        param->setIsPersistant(false); // don't save/serialize
+        param->setIsPersistent(false); // don't save/serialize
         if (page) {
             page->addChild(*param);
         }
@@ -1590,7 +1590,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
         }
         param->setAnimates(true);
         param->setEvaluateOnChange(false); // evaluate only when the StringParam is changed
-        param->setIsPersistant(false); // don't save/serialize
+        param->setIsPersistent(false); // don't save/serialize
         if (page) {
             page->addChild(*param);
         }

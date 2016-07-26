@@ -2947,7 +2947,7 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
                 //param->setIsSecret(true); // done in the plugin constructor
                 param->setParent(*group);
                 param->setEvaluateOnChange(false);
-                param->setIsPersistant(false);
+                param->setIsPersistent(false);
                 if (page) {
                     page->addChild(*param);
                 }
