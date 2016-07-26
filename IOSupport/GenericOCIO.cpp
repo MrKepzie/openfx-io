@@ -34,12 +34,10 @@
 #include <ofxsImageEffect.h>
 #include <ofxsLog.h>
 #include <ofxNatron.h>
+#include <ofxsOGLUtilities.h>
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
+// Use OpenGL function directly, no need to use ofxsOGLFunctions.h directly because we don't use OSMesa 
+#include <glad.h>
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
@@ -831,6 +829,38 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
 #endif
 }
 
+#ifdef OFX_SUPPORTS_OPENGLRENDER
+
+
+
+
+OCIOOpenGLContextData::OCIOOpenGLContextData()
+: procLut3D()
+, procShaderCacheID()
+, procLut3DCacheID()
+, procLut3DID(0)
+, procShaderProgramID(0)
+, procFragmentShaderID(0)
+{
+    if (!OFX::ofxsLoadOpenGLOnce()) {
+        // We could use an error message here
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+    }
+}
+
+OCIOOpenGLContextData::~OCIOOpenGLContextData()
+{
+    if (procLut3DID != 0) {
+        glDeleteTextures(1, &procLut3DID);
+    }
+    if (procFragmentShaderID != 0) {
+        glDeleteShader(procFragmentShaderID);
+    }
+    if (procShaderProgramID != 0) {
+        glDeleteProgram(procShaderProgramID);
+    }
+
+}
 
 
 static GLuint
@@ -904,8 +934,9 @@ static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
                  LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
                  0, GL_RGB,GL_FLOAT, &(*lut3D)[0]);
 }
+#endif // OFX_SUPPORTS_OPENGLRENDER
 
-#ifdef OFX_IO_USING_OCIO
+#if defined(OFX_IO_USING_OCIO) && defined(OFX_SUPPORTS_OPENGLRENDER)
 
 void
 GenericOCIO::applyGL(const OFX::Texture* srcImg,
@@ -913,6 +944,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
                      std::vector<float>* lut3DParam,
                      unsigned int *lut3DTexIDParam,
                      unsigned int *shaderProgramIDParam,
+                     unsigned int *fragShaderIDParam,
                      std::string* lut3DCacheIDParam,
                      std::string* shaderTextCacheIDParam)
 {
@@ -992,6 +1024,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     }
 
     GLuint programID;
+    GLuint fragShaderID;
     if (!shaderTextCacheIDParam || *shaderTextCacheIDParam != shaderCacheID) {
         // Unfortunately the shader is not cached yet, or caller does not want caching
         std::string shaderString;
@@ -999,10 +1032,13 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
         shaderString += "\n";
         shaderString += g_fragShaderText;
 
-        GLuint fragShaderID = compileShaderText(GL_FRAGMENT_SHADER, shaderString.c_str());
+        fragShaderID = compileShaderText(GL_FRAGMENT_SHADER, shaderString.c_str());
         programID = linkShaders(fragShaderID);
         if (shaderProgramIDParam) {
             *shaderProgramIDParam = programID;
+        }
+        if (fragShaderIDParam) {
+            *fragShaderIDParam = fragShaderID;
         }
         // update the cache ID
         if (shaderTextCacheIDParam) {
@@ -1010,6 +1046,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
         }
     } else {
         programID = *shaderProgramIDParam;
+        fragShaderID = *fragShaderIDParam;
     }
 
 
@@ -1054,10 +1091,11 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     }
     if (!shaderProgramIDParam) {
         glDeleteProgram(programID);
+        glDeleteShader(fragShaderID);
     }
 
 }
-#endif
+#endif // OFX_SUPPORTS_OPENGLRENDER && OFX_IO_USING_OCIO
 
 
 void

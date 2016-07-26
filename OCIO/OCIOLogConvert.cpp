@@ -25,13 +25,6 @@
 
 #include <OpenColorIO/OpenColorIO.h>
 
-
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
-
 #include <cstdlib>
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
@@ -267,26 +260,7 @@ private:
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     int _procMode;
 
-    struct OpenGLContextData
-    {
-        std::vector<float> procLut3D;
-        std::string procShaderCacheID;
-        std::string procLut3DCacheID;
-        unsigned int procLut3DID;
-        unsigned int procShaderProgramID;
-
-        OpenGLContextData()
-        : procLut3D()
-        , procShaderCacheID()
-        , procLut3DCacheID()
-        , procLut3DID(0)
-        , procShaderProgramID(0)
-        {
-
-        }
-    };
-
-    OpenGLContextData _openGLContextData; // (OpenGL-only) - the single openGL context, in case the host does not support kNatronOfxImageEffectPropOpenGLContextData
+    OCIOOpenGLContextData _openGLContextData; // (OpenGL-only) - the single openGL context, in case the host does not support kNatronOfxImageEffectPropOpenGLContextData
     bool _openGLContextAttached; // (OpenGL-only) - set to true when the contextAttached function is executed - used for checking non-conformant hosts such as Sony Catalyst
 };
 
@@ -723,7 +697,7 @@ OCIOLogConvertPlugin::renderGPU(const OFX::RenderArguments &args)
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    OpenGLContextData* contextData = &_openGLContextData;
+    OCIOOpenGLContextData* contextData = &_openGLContextData;
     if (OFX::getImageEffectHostDescription()->isNatron && !args.openGLContextData) {
 #ifdef DEBUG
         printf("ERROR: Natron did not provide the contextData pointer to the OpenGL render func.\n");
@@ -732,7 +706,7 @@ OCIOLogConvertPlugin::renderGPU(const OFX::RenderArguments &args)
     if (args.openGLContextData) {
         // host provided kNatronOfxImageEffectPropOpenGLContextData,
         // which was returned by kOfxActionOpenGLContextAttached
-        contextData = (OpenGLContextData*)args.openGLContextData;
+        contextData = (OCIOOpenGLContextData*)args.openGLContextData;
     } else if (!_openGLContextAttached) {
         // Sony Catalyst Edit never calls kOfxActionOpenGLContextAttached
 #ifdef DEBUG
@@ -745,7 +719,7 @@ OCIOLogConvertPlugin::renderGPU(const OFX::RenderArguments &args)
     OCIO_NAMESPACE::ConstProcessorRcPtr proc = getProcessor(args.time);
     assert(proc);
 
-    GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);
+    GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procFragmentShaderID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);
     
 } // renderGPU
 
@@ -790,7 +764,8 @@ OCIOLogConvertPlugin::contextAttached(bool createContextData)
     }
 #endif
     if (createContextData) {
-        return new OpenGLContextData;
+        // This will load OpenGL functions the first time it is executed (thread-safe)
+        return new OCIOOpenGLContextData;
     }
     return NULL;
 }
@@ -809,15 +784,7 @@ void
 OCIOLogConvertPlugin::contextDetached(void* contextData)
 {
     if (contextData) {
-        OpenGLContextData* myData = (OpenGLContextData*)contextData;
-        if (myData->procLut3DID != 0) {
-            glDeleteTextures(1, &myData->procLut3DID);
-        }
-        if (myData->procShaderProgramID != 0) {
-            glDeleteProgram(myData->procShaderProgramID);
-        }
-
-
+        OCIOOpenGLContextData* myData = (OCIOOpenGLContextData*)contextData;
         delete myData;
     } else {
         _openGLContextAttached = false;
