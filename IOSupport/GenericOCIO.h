@@ -109,6 +109,7 @@ public:
      * than NULL, or all set to NULL.
      *
      **/
+#ifdef OFX_IO_USING_OCIO
     static void applyGL(const OFX::Texture* srcImg,
                         const OCIO_NAMESPACE::ConstProcessorRcPtr& processor,
                         std::vector<float>* lut3DParam,
@@ -116,6 +117,7 @@ public:
                         unsigned int *shaderProgramIDParam,
                         std::string* lut3DCacheIDParam,
                         std::string* shaderTextCacheIDParam);
+#endif
 
     void apply(double time, const OfxRectI& renderWindow, OFX::Image* dstImg);
     void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
@@ -132,6 +134,8 @@ public:
     OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
     OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
     OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor();
+    OCIO_NAMESPACE::ConstProcessorRcPtr getOrCreateProcessor(double time);
+
 #endif
     bool configIsDefault();
 

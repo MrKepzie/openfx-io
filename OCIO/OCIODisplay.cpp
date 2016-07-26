@@ -956,7 +956,7 @@ OCIODisplayPlugin::renderGPU(const OFX::RenderArguments &args)
 
     GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);
 
-} // OCIODisplayPlugin::renderGPU
+} // renderGPU
 
 /* Override the render */
 void

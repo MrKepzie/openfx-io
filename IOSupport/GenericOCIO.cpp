@@ -771,15 +771,33 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
 }
 #endif // OFX_IO_USING_OCIO
 
+#ifdef OFX_IO_USING_OCIO
+OCIO_NAMESPACE::ConstProcessorRcPtr
+GenericOCIO::getOrCreateProcessor(double time)
+{
+    if (!_config) {
+        return OCIO_NAMESPACE::ConstProcessorRcPtr();
+    }
+    std::string inputSpace;
+    getInputColorspaceAtTime(time, inputSpace);
+    std::string outputSpace;
+    getOutputColorspaceAtTime(time, outputSpace);
+    OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
+    setValues(context, inputSpace, outputSpace);
+    return getProcessor();
+}
+#endif // OFX_IO_USING_OCIO
 
 void
 GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes)
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
-    if (!_config) {
+
+    if (!_created) {
         return;
     }
+
     if (isIdentity(time)) {
         return;
     }
@@ -794,17 +812,16 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
+    OCIO_NAMESPACE::ConstProcessorRcPtr proc = getOrCreateProcessor(time);
+    if (!proc) {
+        return;
+    }
+
     OCIOProcessor processor(*_parent);
     // set the images
     processor.setDstImg(pixelData, bounds, pixelComponents, pixelComponentCount, OFX::eBitDepthFloat, rowBytes);
 
-    std::string inputSpace;
-    getInputColorspaceAtTime(time, inputSpace);
-    std::string outputSpace;
-    getOutputColorspaceAtTime(time, outputSpace);
-    OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
-    setValues(context, inputSpace, outputSpace);
-    processor.setProcessor(getProcessor());
+    processor.setProcessor(proc);
 
     // set the render window
     processor.setRenderWindow(renderWindow);
@@ -888,6 +905,7 @@ static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
                  0, GL_RGB,GL_FLOAT, &(*lut3D)[0]);
 }
 
+#ifdef OFX_IO_USING_OCIO
 
 void
 GenericOCIO::applyGL(const OFX::Texture* srcImg,
@@ -898,7 +916,6 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
                      std::string* lut3DCacheIDParam,
                      std::string* shaderTextCacheIDParam)
 {
-#ifdef OFX_IO_USING_OCIO
 
     // Step 1: Create a GPU Shader Description
     OCIO::GpuShaderDesc shaderDesc;
@@ -1039,8 +1056,8 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
         glDeleteProgram(programID);
     }
 
-#endif
 }
+#endif
 
 
 void
