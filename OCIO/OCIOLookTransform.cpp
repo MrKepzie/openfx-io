@@ -25,6 +25,7 @@
 
 //#include <iostream>
 #include <memory>
+#include <cstdio> // printf...
 
 #include <GenericOCIO.h>
 

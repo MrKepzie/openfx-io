@@ -25,6 +25,7 @@
 //#include <iostream>
 #include <memory>
 #include <algorithm>
+#include <cstdio> // printf...
 
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"

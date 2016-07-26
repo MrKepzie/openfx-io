@@ -26,6 +26,7 @@
 #include <OpenColorIO/OpenColorIO.h>
 
 #include <cstdlib>
+#include <cstdio> // printf...
 #include "ofxsProcessing.H"
 #include "ofxsCopier.h"
 #include "IOUtility.h"
