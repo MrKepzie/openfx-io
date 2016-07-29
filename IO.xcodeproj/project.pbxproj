@@ -608,9 +608,7 @@
 		AC07199E1D476D8500107F5E /* fast_mutex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fast_mutex.h; sourceTree = "<group>"; };
 		AC0719A11D476D8500107F5E /* ofxsOGLDebug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsOGLDebug.h; sourceTree = "<group>"; };
 		AC0719A21D476D8500107F5E /* ofxsOGLFunctions_gl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsOGLFunctions_gl.cpp; sourceTree = "<group>"; };
-		AC0719A31D476D8500107F5E /* ofxsOGLFunctions_gl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsOGLFunctions_gl.h; sourceTree = "<group>"; };
 		AC0719A41D476D8500107F5E /* ofxsOGLFunctions_mesa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsOGLFunctions_mesa.cpp; sourceTree = "<group>"; };
-		AC0719A51D476D8500107F5E /* ofxsOGLFunctions_mesa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsOGLFunctions_mesa.h; sourceTree = "<group>"; };
 		AC0719A61D476D8500107F5E /* ofxsOGLFunctions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsOGLFunctions.h; sourceTree = "<group>"; };
 		AC0719A71D476D8500107F5E /* ofxsOGLUtilities.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsOGLUtilities.cpp; sourceTree = "<group>"; };
 		AC0719A81D476D8500107F5E /* ofxsOGLUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsOGLUtilities.h; sourceTree = "<group>"; };
@@ -884,9 +882,7 @@
 				AC07199E1D476D8500107F5E /* fast_mutex.h */,
 				AC0719A11D476D8500107F5E /* ofxsOGLDebug.h */,
 				AC0719A21D476D8500107F5E /* ofxsOGLFunctions_gl.cpp */,
-				AC0719A31D476D8500107F5E /* ofxsOGLFunctions_gl.h */,
 				AC0719A41D476D8500107F5E /* ofxsOGLFunctions_mesa.cpp */,
-				AC0719A51D476D8500107F5E /* ofxsOGLFunctions_mesa.h */,
 				AC0719A61D476D8500107F5E /* ofxsOGLFunctions.h */,
 				AC0719A71D476D8500107F5E /* ofxsOGLUtilities.cpp */,
 				AC0719A81D476D8500107F5E /* ofxsOGLUtilities.h */,
