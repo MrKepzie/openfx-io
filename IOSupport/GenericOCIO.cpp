@@ -46,6 +46,8 @@ static bool gWasOCIOEnvVarFound = false;
 static bool gHostIsNatron   = false;
 #endif
 
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
+
 static const int LUT3D_EDGE_SIZE = 32;
 
 static const char * g_fragShaderText = ""
@@ -58,6 +60,8 @@ static const char * g_fragShaderText = ""
 "    vec4 col = texture2D(tex1, gl_TexCoord[0].st);\n"
 "    gl_FragColor = OCIODisplay(col, tex2);\n"
 "}\n";
+
+#endif // defined(OFX_SUPPORTS_OPENGLRENDER)
 
 
 // define to disable hiding parameters (useful for debugging)
@@ -829,10 +833,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
 #endif
 }
 
-#ifdef OFX_SUPPORTS_OPENGLRENDER
-
-
-
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
 
 OCIOOpenGLContextData::OCIOOpenGLContextData()
 : procLut3D()
@@ -847,6 +848,7 @@ OCIOOpenGLContextData::OCIOOpenGLContextData()
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 }
+
 
 OCIOOpenGLContextData::~OCIOOpenGLContextData()
 {
@@ -914,7 +916,8 @@ linkShaders(GLuint fragShader)
     return program;
 }
 
-static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
+static void
+allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
 {
     glGenTextures(1, lut3dTexID);
 
@@ -934,7 +937,9 @@ static void allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
                  LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
                  0, GL_RGB,GL_FLOAT, &(*lut3D)[0]);
 }
-#endif // OFX_SUPPORTS_OPENGLRENDER
+
+#endif // defined(OFX_SUPPORTS_OPENGLRENDER)
+
 
 #if defined(OFX_IO_USING_OCIO) && defined(OFX_SUPPORTS_OPENGLRENDER)
 
@@ -1095,7 +1100,8 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     }
 
 }
-#endif // OFX_SUPPORTS_OPENGLRENDER && OFX_IO_USING_OCIO
+
+#endif // defined(OFX_IO_USING_OCIO) && defined(OFX_SUPPORTS_OPENGLRENDER)
 
 
 void

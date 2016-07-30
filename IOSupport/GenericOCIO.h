@@ -79,7 +79,7 @@
 #define kOCIOParamContextKey4 "key4"
 #define kOCIOParamContextValue4 "value4"
 
-#ifdef OFX_SUPPORTS_OPENGLRENDER
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
 
 class OCIOOpenGLContextData
 {
@@ -97,7 +97,9 @@ public:
 
     ~OCIOOpenGLContextData();
 };
-#endif // OFX_SUPPORTS_OPENGLRENDER
+
+#endif // defined(OFX_SUPPORTS_OPENGLRENDER)
+
 
 class GenericOCIO
 {

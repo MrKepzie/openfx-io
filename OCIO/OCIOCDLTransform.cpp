@@ -164,6 +164,8 @@ public:
     // override the roi call
     //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
+private:
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
     /* The purpose of this action is to allow a plugin to set up any data it may need
      to do OpenGL rendering in an instance. */
     virtual void* contextAttached(bool createContextData) OVERRIDE FINAL;
@@ -172,10 +174,8 @@ public:
      decouples a plugin from an OpenGL context. */
     virtual void contextDetached(void* contextData) OVERRIDE FINAL;
 
-private:
-
-    void renderCPU(const OFX::RenderArguments &args);
     void renderGPU(const OFX::RenderArguments &args);
+#endif
 
     OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor(OfxTime time);
 
@@ -332,7 +332,6 @@ private:
     OFX::DoubleParam* _mix;
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
-    OFX::BooleanParam* _enableGPU;
 
     GenericOCIO::Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
@@ -348,8 +347,11 @@ private:
     double _procSaturation;
     int _procDirection;
 
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
+    OFX::BooleanParam* _enableGPU;
     OCIOOpenGLContextData _openGLContextData; // (OpenGL-only) - the single openGL context, in case the host does not support kNatronOfxImageEffectPropOpenGLContextData
     bool _openGLContextAttached; // (OpenGL-only) - set to true when the contextAttached function is executed - used for checking non-conformant hosts such as Sony Catalyst
+#endif
 };
 
 OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
@@ -373,7 +375,6 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
 , _mix(0)
 , _maskApply(0)
 , _maskInvert(0)
-, _enableGPU(0)
 , _procSlope_r(-1)
 , _procSlope_g(-1)
 , _procSlope_b(-1)
@@ -385,8 +386,11 @@ OCIOCDLTransformPlugin::OCIOCDLTransformPlugin(OfxImageEffectHandle handle)
 , _procPower_b(-1)
 , _procSaturation(-1)
 , _procDirection(-1)
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
+, _enableGPU(0)
 , _openGLContextData()
 , _openGLContextAttached(false)
+#endif
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert(_dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
@@ -696,98 +700,56 @@ OCIOCDLTransformPlugin::apply(double time,
     processor.process();
 }
 
-/* Override the render */
-void
-OCIOCDLTransformPlugin::renderCPU(const OFX::RenderArguments &args)
+
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
+
+/*
+ * Action called when an effect has just been attached to an OpenGL
+ * context.
+ *
+ * The purpose of this action is to allow a plugin to set up any data it may need
+ * to do OpenGL rendering in an instance. For example...
+ *  - allocate a lookup table on a GPU,
+ *  - create an openCL or CUDA context that is bound to the host's OpenGL
+ *    context so it can share buffers.
+ */
+void*
+OCIOCDLTransformPlugin::contextAttached(bool createContextData)
 {
-    if (!_srcClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
+#ifdef DEBUG
+    if (OFX::getImageEffectHostDescription()->isNatron && !createContextData) {
+        printf("ERROR: Natron did not ask to create context data\n");
     }
-    assert(_srcClip);
-    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
-    if (!srcImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
+#endif
+    if (createContextData) {
+        // This will load OpenGL functions the first time it is executed (thread-safe)
+        return new OCIOOpenGLContextData;
     }
-    if (srcImg->getRenderScale().x != args.renderScale.x ||
-        srcImg->getRenderScale().y != args.renderScale.y ||
-        srcImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
+    return NULL;
+}
+
+
+/*
+ * Action called when an effect is about to be detached from an
+ * OpenGL context
+ *
+ * The purpose of this action is to allow a plugin to deallocate any resource
+ * allocated in \ref ::kOfxActionOpenGLContextAttached just before the host
+ * decouples a plugin from an OpenGL context.
+ * The host must call this with the same OpenGL context active as it
+ * called with the corresponding ::kOfxActionOpenGLContextAttached.
+ */
+void
+OCIOCDLTransformPlugin::contextDetached(void* contextData)
+{
+    if (contextData) {
+        OCIOOpenGLContextData* myData = (OCIOOpenGLContextData*)contextData;
+        delete myData;
+    } else {
+        _openGLContextAttached = false;
     }
+}
 
-    OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
-    OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
-
-    if (!_dstClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    assert(_dstClip);
-    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
-    if (!dstImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    if (dstImg->getRenderScale().x != args.renderScale.x ||
-        dstImg->getRenderScale().y != args.renderScale.y ||
-        dstImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-
-    OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
-    if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        return;
-    }
-
-    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
-    if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
-        dstComponents != srcComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
-        return;
-    }
-
-    // are we in the image bounds
-    OfxRectI dstBounds = dstImg->getBounds();
-    if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
-       args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
-        OFX::throwSuiteStatusException(kOfxStatErrValue);
-        return;
-        //throw std::runtime_error("render window outside of image bounds");
-    }
-
-    const void* srcPixelData = NULL;
-    OfxRectI bounds;
-    OFX::PixelComponentEnum pixelComponents;
-    OFX::BitDepthEnum bitDepth;
-    int srcRowBytes;
-    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
-    int pixelComponentCount = srcImg->getPixelComponentCount();
-
-    // allocate temporary image
-    int pixelBytes = pixelComponentCount * getComponentBytes(srcBitDepth);
-    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
-    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
-    OFX::ImageMemory mem(memSize,this);
-    float *tmpPixelData = (float*)mem.lock();
-
-    bool premult;
-    _premult->getValueAtTime(args.time, premult);
-
-    // copy renderWindow to the temporary image
-    copyPixelData(premult, false, false, args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
-
-    ///do the color-space conversion
-    apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
-
-    // copy the color-converted window
-    copyPixelData(false, premult, true, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
-} // renderCPU
 
 void
 OCIOCDLTransformPlugin::renderGPU(const OFX::RenderArguments &args)
@@ -870,6 +832,11 @@ OCIOCDLTransformPlugin::renderGPU(const OFX::RenderArguments &args)
     
 } // renderGPU
 
+
+#endif // defined(OFX_SUPPORTS_OPENGLRENDER)
+
+
+/* Override the render */
 void
 OCIOCDLTransformPlugin::render(const OFX::RenderArguments &args)
 {
@@ -882,64 +849,98 @@ OCIOCDLTransformPlugin::render(const OFX::RenderArguments &args)
         return;
     }
     assert(_srcClip && _dstClip);
-    bool openGLRender = false;
+
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
-    openGLRender = args.openGLEnabled;
-#endif
-    if (openGLRender) {
+    if (args.openGLEnabled) {
         renderGPU(args);
-    } else {
-        renderCPU(args);
-    }
-}
-
-/*
- * Action called when an effect has just been attached to an OpenGL
- * context.
- *
- * The purpose of this action is to allow a plugin to set up any data it may need
- * to do OpenGL rendering in an instance. For example...
- *  - allocate a lookup table on a GPU,
- *  - create an openCL or CUDA context that is bound to the host's OpenGL
- *    context so it can share buffers.
- */
-void*
-OCIOCDLTransformPlugin::contextAttached(bool createContextData)
-{
-#ifdef DEBUG
-    if (OFX::getImageEffectHostDescription()->isNatron && !createContextData) {
-        printf("ERROR: Natron did not ask to create context data\n");
+        return;
     }
 #endif
-    if (createContextData) {
-        // This will load OpenGL functions the first time it is executed (thread-safe)
-        return new OCIOOpenGLContextData;
+
+    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
+    if (!srcImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
     }
-    return NULL;
+    if (srcImg->getRenderScale().x != args.renderScale.x ||
+        srcImg->getRenderScale().y != args.renderScale.y ||
+        srcImg->getField() != args.fieldToRender) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+
+    OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
+    OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
+
+    if (!_dstClip) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+    assert(_dstClip);
+    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
+    if (!dstImg.get()) {
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+    if (dstImg->getRenderScale().x != args.renderScale.x ||
+        dstImg->getRenderScale().y != args.renderScale.y ||
+        dstImg->getField() != args.fieldToRender) {
+        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+
+    OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
+    if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
+    }
+
+    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
+    if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
+        dstComponents != srcComponents) {
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        return;
+    }
+
+    // are we in the image bounds
+    OfxRectI dstBounds = dstImg->getBounds();
+    if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
+       args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
+        OFX::throwSuiteStatusException(kOfxStatErrValue);
+        return;
+        //throw std::runtime_error("render window outside of image bounds");
+    }
+
+    const void* srcPixelData = NULL;
+    OfxRectI bounds;
+    OFX::PixelComponentEnum pixelComponents;
+    OFX::BitDepthEnum bitDepth;
+    int srcRowBytes;
+    getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
+    int pixelComponentCount = srcImg->getPixelComponentCount();
+
+    // allocate temporary image
+    int pixelBytes = pixelComponentCount * getComponentBytes(srcBitDepth);
+    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
+    OFX::ImageMemory mem(memSize,this);
+    float *tmpPixelData = (float*)mem.lock();
+
+    bool premult;
+    _premult->getValueAtTime(args.time, premult);
+
+    // copy renderWindow to the temporary image
+    copyPixelData(premult, false, false, args.time, args.renderWindow, srcPixelData, bounds, pixelComponents, pixelComponentCount, bitDepth, srcRowBytes, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes);
+
+    ///do the color-space conversion
+    apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
+
+    // copy the color-converted window
+    copyPixelData(false, premult, true, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
 }
 
-/*
- * Action called when an effect is about to be detached from an
- * OpenGL context
- *
- * The purpose of this action is to allow a plugin to deallocate any resource
- * allocated in \ref ::kOfxActionOpenGLContextAttached just before the host
- * decouples a plugin from an OpenGL context.
- * The host must call this with the same OpenGL context active as it
- * called with the corresponding ::kOfxActionOpenGLContextAttached.
- */
-void
-OCIOCDLTransformPlugin::contextDetached(void* contextData)
-{
-    if (contextData) {
-        OCIOOpenGLContextData* myData = (OCIOOpenGLContextData*)contextData;
-        delete myData;
-    } else {
-        _openGLContextAttached = false;
-    }
-    
-    
-}
 
 bool
 OCIOCDLTransformPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
@@ -1197,8 +1198,8 @@ OCIOCDLTransformPlugin::changedParam(const OFX::InstanceChangedArgs &args, const
 
         // reset back to default
         _export->setValue(kParamExportDefault);
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
     } else if (paramName == kParamEnableGPU) {
-#ifdef OFX_SUPPORTS_OPENGLRENDER
         bool supportsGL = _enableGPU->getValueAtTime(args.time);
         setSupportsOpenGLRender(supportsGL);
         setSupportsTiles(!supportsGL);
@@ -1249,7 +1250,7 @@ void OCIOCDLTransformPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
     desc.setRenderThreadSafety(kRenderThreadSafety);
 
-#ifdef OFX_SUPPORTS_OPENGLRENDER
+#if defined(OFX_SUPPORTS_OPENGLRENDER)
     desc.setSupportsOpenGLRender(true);
 #endif
 }
