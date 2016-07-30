@@ -507,6 +507,10 @@
 		1E4E58341AB24365004D6E04 /* IO.sln */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = IO.sln; sourceTree = "<group>"; };
 		1E4E58351AB24365004D6E04 /* IOPluginProperty.props */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = IOPluginProperty.props; sourceTree = "<group>"; };
 		1E4E58361AB24374004D6E04 /* IO.vcxproj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = IO.vcxproj; path = IO/IO.vcxproj; sourceTree = SOURCE_ROOT; };
+		1E5EBA3F1D4C8DEB0005A5A8 /* gpl-header-c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "gpl-header-c.txt"; sourceTree = "<group>"; };
+		1E5EBA401D4C8DEB0005A5A8 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		1E5EBA411D4C8DEB0005A5A8 /* ofxsMipmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsMipmap.cpp; sourceTree = "<group>"; };
+		1E5EBA421D4C8DEB0005A5A8 /* opengl-readme.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = "opengl-readme.md"; sourceTree = "<group>"; };
 		1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIODisplay.cpp; sourceTree = "<group>"; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
 		1E74D8181891070300E9034B /* ofxsCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCore.h; sourceTree = "<group>"; };
@@ -877,22 +881,15 @@
 		1E9B5F21198A50250095C8AA /* SupportExt */ = {
 			isa = PBXGroup;
 			children = (
+				AC07199E1D476D8500107F5E /* fast_mutex.h */,
 				AC0719B51D479A2700107F5E /* glad.cpp */,
 				AC0719B21D47734D00107F5E /* glad.h */,
-				AC07199E1D476D8500107F5E /* fast_mutex.h */,
-				AC0719A11D476D8500107F5E /* ofxsOGLDebug.h */,
-				AC0719A21D476D8500107F5E /* ofxsOGLFunctions_gl.cpp */,
-				AC0719A41D476D8500107F5E /* ofxsOGLFunctions_mesa.cpp */,
-				AC0719A61D476D8500107F5E /* ofxsOGLFunctions.h */,
-				AC0719A71D476D8500107F5E /* ofxsOGLUtilities.cpp */,
-				AC0719A81D476D8500107F5E /* ofxsOGLUtilities.h */,
-				AC0719A91D476D8500107F5E /* ofxsShutter.cpp */,
-				AC51C48A1D0EF6710004B213 /* ofxsFileOpen.cpp */,
-				AC51C48B1D0EF6710004B213 /* ofxsFileOpen.h */,
-				AC9FFEB51C6B36FE000D073B /* ofxsMultiPlane.cpp */,
-				AC9FFEB61C6B36FE000D073B /* ofxsMultiPlane.h */,
+				1E5EBA3F1D4C8DEB0005A5A8 /* gpl-header-c.txt */,
+				1E5EBA401D4C8DEB0005A5A8 /* LICENSE */,
 				1E3060261B70DA1600A9B507 /* ofxsCoords.h */,
 				1E9B5F22198A505E0095C8AA /* ofxsCopier.h */,
+				AC51C48A1D0EF6710004B213 /* ofxsFileOpen.cpp */,
+				AC51C48B1D0EF6710004B213 /* ofxsFileOpen.h */,
 				1E9B5F23198A505E0095C8AA /* ofxsFilter.h */,
 				1E9B5F24198A505E0095C8AA /* ofxsFormatResolution.h */,
 				ACE90FFB1AB7433D007A49F8 /* ofxsGenerator.cpp */,
@@ -904,17 +901,27 @@
 				1E9B5F25198A505E0095C8AA /* ofxsMaskMix.h */,
 				1E9B5F26198A505E0095C8AA /* ofxsMatrix2D.h */,
 				1E9B5F27198A505E0095C8AA /* ofxsMerging.h */,
+				1E5EBA411D4C8DEB0005A5A8 /* ofxsMipmap.cpp */,
 				1E84DC5C1BC1663C006E7E64 /* ofxsMipmap.h */,
+				AC9FFEB51C6B36FE000D073B /* ofxsMultiPlane.cpp */,
+				AC9FFEB61C6B36FE000D073B /* ofxsMultiPlane.h */,
+				AC0719A11D476D8500107F5E /* ofxsOGLDebug.h */,
 				1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */,
 				1E9B5F29198A505E0095C8AA /* ofxsOGLFontUtils.h */,
+				AC0719A21D476D8500107F5E /* ofxsOGLFunctions_gl.cpp */,
+				AC0719A41D476D8500107F5E /* ofxsOGLFunctions_mesa.cpp */,
+				AC0719A61D476D8500107F5E /* ofxsOGLFunctions.h */,
 				1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */,
 				1E9B5F2B198A505E0095C8AA /* ofxsOGLTextRenderer.h */,
+				AC0719A71D476D8500107F5E /* ofxsOGLUtilities.cpp */,
+				AC0719A81D476D8500107F5E /* ofxsOGLUtilities.h */,
 				1E9B5F2C198A505E0095C8AA /* ofxsPixelProcessor.h */,
 				1E9B5F2D198A505E0095C8AA /* ofxsPositionInteract.h */,
 				1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */,
 				1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */,
 				1E9B5F2E198A505E0095C8AA /* ofxsRectangleInteract.cpp */,
 				1E9B5F2F198A505E0095C8AA /* ofxsRectangleInteract.h */,
+				AC0719A91D476D8500107F5E /* ofxsShutter.cpp */,
 				1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */,
 				1E9B5F30198A505E0095C8AA /* ofxsTracking.cpp */,
 				1E9B5F31198A505E0095C8AA /* ofxsTracking.h */,
@@ -923,6 +930,7 @@
 				1E9B5F34198A505E0095C8AA /* ofxsTransform3x3Processor.h */,
 				1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */,
 				1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */,
+				1E5EBA421D4C8DEB0005A5A8 /* opengl-readme.md */,
 				1E9B5F35198A505E0095C8AA /* README.md */,
 			);
 			path = SupportExt;
