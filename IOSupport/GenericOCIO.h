@@ -79,12 +79,69 @@
 #define kOCIOParamContextKey4 "key4"
 #define kOCIOParamContextValue4 "value4"
 
+#ifdef OFX_SUPPORTS_OPENGLRENDER
+
+class OCIOOpenGLContextData
+{
+
+public:
+
+    std::vector<float> procLut3D;
+    std::string procShaderCacheID;
+    std::string procLut3DCacheID;
+    unsigned int procLut3DID;
+    unsigned int procShaderProgramID;
+    unsigned int procFragmentShaderID;
+    
+    OCIOOpenGLContextData();
+
+    ~OCIOOpenGLContextData();
+};
+#endif // OFX_SUPPORTS_OPENGLRENDER
+
 class GenericOCIO
 {
     friend class OCIOProcessor;
 public:
     GenericOCIO(OFX::ImageEffect* parent);
     bool isIdentity(double time);
+
+    /**
+     * @brief Applies the given OCIO processor using GLSL with the given source texture onto 
+     * the currently bound framebuffer.
+     * @param lut3DParam[in,out] If non NULL, you may pass a storage for the LUT3D so that the allocation
+     * of the LUT only occurs once.
+     *
+     * @param lut3DTexIDParam[in,out] If non NULL, you may pass the ID of the texture 3D that will contain the LUT3D so
+     * that its allocation occurs only once, and subsequent calls only have to call glTexSubImage3D
+     *
+     * @param shaderProgramIDParam[in,out] If non NULL, you may pass the ID of the shader program that will be used to do the processing
+     * so that it is only compiled once. Note that to cache the shaderProgramID, you also need to set the shaderTextCacheIDParam parameter.
+     *
+     * @param fragShaderIDParam[in,out] If nont NULL, you may pass the ID of the fragment shader program that will be used by the OCIO shader program
+     *
+     * @param lut3DCacheIDParam[in,out] If non NULL, you may pass a string that will be used as a key to cache the LUT3D so that internally
+     * the function may determine if computing the LUT again is required. If the cache ID did not change, no call to glTexSubImage3D will be made.
+     *
+     * @param shaderTextCacheIDParam[in,out] if non NULL, you may pass a string that will be used as a key to cache the shader so that internally
+     * the function may determine if generating and compiling the shader again is required. If the shader cache ID did not change, the shader passed
+     * by shaderProgramIDParam will be used as-is.
+     *
+     * Note: All lut3DParam, lut3DTexIDParam, shaderProgramIDParam, lut3DCacheIDParam, shaderTextCacheIDParam must be either set to a value different 
+     * than NULL, or all set to NULL.
+     *
+     **/
+#if defined(OFX_IO_USING_OCIO) && defined(OFX_SUPPORTS_OPENGLRENDER)
+    static void applyGL(const OFX::Texture* srcImg,
+                        const OCIO_NAMESPACE::ConstProcessorRcPtr& processor,
+                        std::vector<float>* lut3DParam,
+                        unsigned int *lut3DTexIDParam,
+                        unsigned int *shaderProgramIDParam,
+                        unsigned int *fragShaderIDParam,
+                        std::string* lut3DCacheIDParam,
+                        std::string* shaderTextCacheIDParam);
+#endif
+
     void apply(double time, const OfxRectI& renderWindow, OFX::Image* dstImg);
     void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
@@ -100,6 +157,8 @@ public:
     OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
     OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
     OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor();
+    OCIO_NAMESPACE::ConstProcessorRcPtr getOrCreateProcessor(double time);
+
 #endif
     bool configIsDefault();
 

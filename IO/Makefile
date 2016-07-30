@@ -21,6 +21,9 @@ PLUGINOBJECTS = \
 	SeExpr.o \
 	SeGrain.o \
 	SeNoise.o \
+    glad.o \
+    ofxsOGLFunctions_gl.o \
+    ofxsOGLUtilities.o \
 	ofxsRamp.o \
 	ofxsGenerator.o \
 	ofxsTransformInteract.o \
