@@ -9,9 +9,10 @@ include $(PATHTOROOT)/Plugins/Makefile.master
 CXXFLAGS += -DOFX_EXTENSIONS_VEGAS -DOFX_EXTENSIONS_NUKE -DOFX_EXTENSIONS_TUTTLE -DOFX_EXTENSIONS_NATRON -I$(TOP_SRCDIR)/IOSupport -I$(OFXSEXTPATH) -I$(OFXSEXTPATH)/glad
 VPATH += $(TOP_SRCDIR)/IOSupport $(TOP_SRCDIR)/IOSupport/SequenceParsing $(OFXSEXTPATH) $(OFXSEXTPATH)/glad
 
-# Comment the following two lines to disable OpenColorIO support
-OCIO_CXXFLAGS += `pkg-config --cflags OpenColorIO` -DOFX_IO_USING_OCIO -DOFX_SUPPORTS_OPENGLRENDER 
-OCIO_LINKFLAGS += `pkg-config --libs OpenColorIO`
+# Comment the following three lines to disable OpenColorIO support
+OCIO_OPENGL_CXXFLAGS += -DOFX_SUPPORTS_OPENGLRENDER
+OCIO_CXXFLAGS += `pkg-config --cflags OpenColorIO` -DOFX_IO_USING_OCIO $(OCIO_OPENGL_CXXFLAGS)
+OCIO_LINKFLAGS += `pkg-config --libs OpenColorIO` $(OCIO_OPENGL_LINKFLAGS)
 ifeq ($(OS),Linux)
 OCIO_LINKFLAGS += -Wl,-rpath,`pkg-config --variable=libdir OpenColorIO`
 endif

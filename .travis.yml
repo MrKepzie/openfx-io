@@ -92,6 +92,8 @@ script:
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
   - make clean
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_OPENGL_CXXFLAGS= OCIO_OPENGL_LINKFLAGS=
+  - make clean
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
 
 addons:
