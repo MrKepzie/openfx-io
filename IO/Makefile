@@ -17,19 +17,19 @@ PLUGINOBJECTS = \
     ofxsFileOpen.o \
 	ofxsOGLTextRenderer.o \
 	ofxsOGLFontData.o \
-	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \
+	GenericReader.o GenericWriter.o SequenceParsing.o \
 	SeExpr.o \
 	SeGrain.o \
 	SeNoise.o \
-    glad.o \
-    ofxsOGLFunctions_gl.o \
-    ofxsOGLUtilities.o \
 	ofxsRamp.o \
 	ofxsGenerator.o \
 	ofxsTransformInteract.o \
     ofxsMultiPlane.o \
 	ofxsRectangleInteract.o \
-    ofxsLut.o
+    ofxsLut.o \
+    GenericOCIO.o $(OCIO_OPENGL_OBJS)
+
+OCIO_OPENGL_OBJS = GenericOCIOOpenGL.o glad.o ofxsOGLUtilities.o
 
 ifeq ($(OS),$(filter $(OS),Linux FreeBSD Darwin))
     PLUGINOBJECTS += RunScript.o
