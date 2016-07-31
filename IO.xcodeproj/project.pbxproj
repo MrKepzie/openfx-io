@@ -76,6 +76,8 @@
 		1E378A88194DE27400800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 		1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 		1E378A8B194DE31700800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
+		1E5EBBC31D4E0D5E0005A5A8 /* GenericOCIOOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */; };
+		1E5EBBC41D4E0D620005A5A8 /* GenericOCIOOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */; };
 		1E74D8311891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E74D8321891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -511,6 +513,7 @@
 		1E5EBA401D4C8DEB0005A5A8 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		1E5EBA411D4C8DEB0005A5A8 /* ofxsMipmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsMipmap.cpp; sourceTree = "<group>"; };
 		1E5EBA421D4C8DEB0005A5A8 /* opengl-readme.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = "opengl-readme.md"; sourceTree = "<group>"; };
+		1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIOOpenGL.cpp; sourceTree = "<group>"; };
 		1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIODisplay.cpp; sourceTree = "<group>"; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
 		1E74D8181891070300E9034B /* ofxsCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCore.h; sourceTree = "<group>"; };
@@ -774,6 +777,7 @@
 				1E00B38A188EE887003BC7F3 /* GenericWriter.h */,
 				1E74D84E1891137B00E9034B /* GenericOCIO.h */,
 				1E74D84F189115BC00E9034B /* GenericOCIO.cpp */,
+				1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */,
 				1EA1571C18A642C30054B814 /* IOUtility.h */,
 			);
 			path = IOSupport;
@@ -1362,6 +1366,7 @@
 				AC0719AD1D476DB600107F5E /* ofxsOGLFunctions_gl.cpp in Sources */,
 				AC51C48E1D0F08D90004B213 /* ofxsFileOpen.cpp in Sources */,
 				AC178B4F1D103DE0001569CC /* ofxsLut.cpp in Sources */,
+				1E5EBBC31D4E0D5E0005A5A8 /* GenericOCIOOpenGL.cpp in Sources */,
 				1E9B5F71198A5A4B0095C8AA /* ofxsOGLTextRenderer.cpp in Sources */,
 				1E9B5F73198A5A510095C8AA /* ofxsOGLFontData.cpp in Sources */,
 				1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */,
@@ -1423,6 +1428,7 @@
 				1ED499A918A00B66008A2D91 /* ofxsLog.cpp in Sources */,
 				1ED499AB18A00B66008A2D91 /* ofxsInteract.cpp in Sources */,
 				1ED499AE18A00B66008A2D91 /* ofxsMultiThread.cpp in Sources */,
+				1E5EBBC41D4E0D620005A5A8 /* GenericOCIOOpenGL.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

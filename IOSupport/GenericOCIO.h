@@ -25,6 +25,7 @@
 #define IO_GenericOCIO_h
 
 #include <string>
+#include <vector>
 
 #include "ofxsImageEffect.h"
 #include "ofxsPixelProcessor.h"
@@ -79,26 +80,21 @@
 #define kOCIOParamContextKey4 "key4"
 #define kOCIOParamContextValue4 "value4"
 
-#if defined(OFX_SUPPORTS_OPENGLRENDER)
-
 class OCIOOpenGLContextData
 {
-
 public:
-
     std::vector<float> procLut3D;
     std::string procShaderCacheID;
     std::string procLut3DCacheID;
     unsigned int procLut3DID;
     unsigned int procShaderProgramID;
     unsigned int procFragmentShaderID;
-    
+
+public:
     OCIOOpenGLContextData();
 
     ~OCIOOpenGLContextData();
 };
-
-#endif // defined(OFX_SUPPORTS_OPENGLRENDER)
 
 
 class GenericOCIO
@@ -133,7 +129,7 @@ public:
      * than NULL, or all set to NULL.
      *
      **/
-#if defined(OFX_IO_USING_OCIO) && defined(OFX_SUPPORTS_OPENGLRENDER)
+#if defined(OFX_IO_USING_OCIO)
     static void applyGL(const OFX::Texture* srcImg,
                         const OCIO_NAMESPACE::ConstProcessorRcPtr& processor,
                         std::vector<float>* lut3DParam,
