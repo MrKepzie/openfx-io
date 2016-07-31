@@ -521,14 +521,12 @@ OCIOLogConvertPlugin::getProcessor(OfxTime time)
 
             _proc = _config->getProcessor(src, dst);
         }
-        return _proc;
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
-        return _proc;
     }
-    return _proc;
 
+    return _proc;
 } // getProcessor
 
 void

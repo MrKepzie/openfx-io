@@ -350,6 +350,8 @@ ReadPNGPlugin::~ReadPNGPlugin()
 {
 }
 
+#define PNG_BYTES_TO_CHECK 8
+
 std::string
 ReadPNGPlugin::metadata(const std::string& filename)
 {
@@ -369,8 +371,9 @@ ReadPNGPlugin::metadata(const std::string& filename)
     {
         unsigned char sig[8];
         // Check that it really is a PNG file
-        std::fread(sig, 1, 8, image);
-        if (png_sig_cmp(sig, 0, 8)) {
+        /* Read in some of the signature bytes */
+        if (std::fread(sig, 1, PNG_BYTES_TO_CHECK, image) != PNG_BYTES_TO_CHECK ||
+            png_sig_cmp(sig, 0, PNG_BYTES_TO_CHECK) ) {
             ss << "  This file is not a valid PNG file\n";
             std::fclose (image);
 
@@ -405,7 +408,7 @@ ReadPNGPlugin::metadata(const std::string& filename)
     }
     // Get ready for IO and tell the API we have already read the image signature
     png_init_io (png, image);
-    png_set_sig_bytes (png, 8);
+    png_set_sig_bytes (png, PNG_BYTES_TO_CHECK);
     png_read_info (png, info);
     png_uint_32 width;
     png_uint_32 height;

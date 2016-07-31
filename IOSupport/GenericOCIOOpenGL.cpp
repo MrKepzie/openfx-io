@@ -196,7 +196,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     }
 
     // Allocate CPU lut + init lut 3D texture, this should be done only once
-    GLuint lut3dTexID;
+    GLuint lut3dTexID = 0;
     std::vector<float>* lut3D = 0;
     if (lut3DParam) {
         lut3D = lut3DParam;

@@ -569,13 +569,12 @@ OCIOFileTransformPlugin::getProcessor(OfxTime time)
             _procDirection = directioni;
             _procInterpolation = interpolationi;
         }
-        return _proc;
     } catch (const std::exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
-        return _proc;
     }
 
+    return _proc;
 } // getProcessor
 
 void

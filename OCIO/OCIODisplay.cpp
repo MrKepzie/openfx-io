@@ -737,11 +737,11 @@ OCIODisplayPlugin::getProcessor(OfxTime time)
             _procGain = gain;
             _procGamma = gamma;
         }
-        return _proc;
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+
     return _proc;
 }
 

@@ -1968,10 +1968,10 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader, bool throwEr
             }
             _premult->setValue((int)premult);
 
-            if (components == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
+            if (components == OFX::ePixelComponentRGB) {
                 // RGB is always opaque
                 _outputPremult->setValue(OFX::eImageOpaque);
-            } else if (components == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
+            } else if (components == OFX::ePixelComponentAlpha) {
                 // Alpha is always premultiplied
                 _outputPremult->setValue(OFX::eImagePreMultiplied);
             }

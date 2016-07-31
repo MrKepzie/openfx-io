@@ -661,11 +661,11 @@ OCIOCDLTransformPlugin::getProcessor(OfxTime time)
             _procSaturation = saturation;
             _procDirection = directioni;
         }
-        return _proc;
     } catch (const OCIO::Exception &e) {
         setPersistentMessage(OFX::Message::eMessageError, "", e.what());
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
+    
     return _proc;
 } // getProecssor
 
