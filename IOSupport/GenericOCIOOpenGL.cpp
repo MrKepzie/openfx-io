@@ -106,7 +106,9 @@ compileShaderText(GLenum shaderType, const char *text)
         GLchar log[1000];
         GLsizei len;
         glGetShaderInfoLog(shader, 1000, &len, log);
-        fprintf(stderr, "Error: problem compiling shader: %s\n", log);
+#ifdef DEBUG
+        std::fprintf(stderr, "Error: problem compiling shader: %s\n", log);
+#endif
         return 0;
     }
 
@@ -133,7 +135,9 @@ linkShaders(GLuint fragShader)
             GLchar log[1000];
             GLsizei len;
             glGetProgramInfoLog(program, 1000, &len, log);
-            fprintf(stderr, "Shader link error:\n%s\n", log);
+#ifdef DEBUG
+            std::fprintf(stderr, "Shader link error:\n%s\n", log);
+#endif
             return 0;
         }
     }
