@@ -65,6 +65,7 @@
 #endif
 
 #define kOCIOParamContext "Context"
+#define kOCIOParamContextLabel "OCIO Context"
 #define kOCIOParamContextHint \
 "OCIO Contexts allow you to apply specific LUTs or grades to different shots.\n" \
 "Here you can specify the context name (key) and its corresponding value.\n" \

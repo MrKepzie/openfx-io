@@ -1319,6 +1319,7 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
 {
 #ifdef OFX_IO_USING_OCIO
     OFX::GroupParamDescriptor* group = desc.defineGroupParam(kOCIOParamContext);
+    group->setLabel(kOCIOParamContextLabel);
     group->setHint(kOCIOParamContextHint);
     group->setOpen(false);
 
