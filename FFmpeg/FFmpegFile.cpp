@@ -85,19 +85,20 @@ static bool
 extensionCorrespondToImageFile(const std::string & ext)
 {
     return (ext == "bmp" ||
-            ext == "pix" ||
+            ext == "cin" ||
             ext == "dpx" ||
             ext == "exr" ||
             ext == "gif" ||
             ext == "jpeg" ||
             ext == "jpg" ||
+            ext == "pix" ||
             ext == "png" ||
             ext == "ppm" ||
             ext == "ptx" ||
-            ext == "tiff" ||
-            ext == "tga" ||
-            ext == "rgba" ||
             ext == "rgb" ||
+            ext == "rgba" ||
+            ext == "tga" ||
+            ext == "tiff" ||
             ext == "webp");
 }
 
