@@ -1626,7 +1626,6 @@ ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
 void
 ReadOIIOPlugin::restoreState(const std::string& filename)
 {
-    
     if (_useRGBAChoices) {
         //Update OIIO spec
         updateSpec(filename);
@@ -1653,16 +1652,12 @@ ReadOIIOPlugin::restoreState(const std::string& filename)
     
     ///http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
     ///The Create instance action is in the list of actions where you can set param values
-    
-    
-    
 }
 
 void
-ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
-    
-    
-#     ifdef OFX_IO_USING_OCIO
+ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
+{
+#ifdef OFX_IO_USING_OCIO
     ///find-out the image color-space
     const ParamValue* colorSpaceValue = _subImagesSpec[0].find_attribute("oiio:ColorSpace", TypeDesc::STRING);
     const ParamValue* photoshopICCProfileValue = _subImagesSpec[0].find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
@@ -1717,9 +1712,15 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
     if (colorSpaceStr) {
         if (colorSpaceStr && !strcmp(colorSpaceStr, "GammaCorrected")) {
             float gamma = _subImagesSpec[0].get_float_attribute("oiio:Gamma");
-            if (gamma == 0.) {
-                // Cineon files (e.g. Kodak Digital LAD, see link below) have gamma=0
+            if ( endsWith(filename, ".cin") || endsWith(filename, ".CIN") ) {
+                // Cineon files (e.g. Kodak Digital LAD, see link below) get wrongly attributed
+                // a GammaCorrected colorspace <https://github.com/OpenImageIO/oiio/issues/1463>
+                // The standard Kodak DLAD images get gamma=0 for example:
                 // http://motion.kodak.com/motion/support/technical_information/lab_tools_and_techniques/digital_lad/default.htm
+                // Digital_LAD_cin/Digital_LAD_2048x1556.cin gets oiio:Gamma: 0
+                // Nuke_BasicWorkflows_Media/BasicWorkflows_ColourManagement/COLOR MANAGEMENT/Source Pics/clouds.cin gets oiio:Gamma: 1
+                // Nuke_BasicWorkflows_Media/BasicWorkflows_ColourManagement/COLOR MANAGEMENT/Source Pics/greenscreen_boy.cin gets oiio:Gamma: 4.6006e-41
+                // all these files are in reality log-encoded.
                 colorSpaceStr = "KodakLog";
             } else if (std::fabs(gamma-1.8) < 0.01) {
                 if (_ocio->hasColorspace("Gamma1.8")) {
@@ -1866,8 +1867,7 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename) {
             // unknown color-space or Linear, don't do anything
         }
     }
-
-#     endif // OFX_IO_USING_OCIO
+#endif // OFX_IO_USING_OCIO
 }
 
 void
