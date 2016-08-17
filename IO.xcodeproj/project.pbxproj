@@ -512,7 +512,6 @@
 		1E5EBA3F1D4C8DEB0005A5A8 /* gpl-header-c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "gpl-header-c.txt"; sourceTree = "<group>"; };
 		1E5EBA401D4C8DEB0005A5A8 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		1E5EBA411D4C8DEB0005A5A8 /* ofxsMipmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsMipmap.cpp; sourceTree = "<group>"; };
-		1E5EBA421D4C8DEB0005A5A8 /* opengl-readme.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = "opengl-readme.md"; sourceTree = "<group>"; };
 		1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIOOpenGL.cpp; sourceTree = "<group>"; };
 		1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIODisplay.cpp; sourceTree = "<group>"; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
@@ -588,6 +587,7 @@
 		1E9B5F6F198A557A0095C8AA /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		1EA1571C18A642C30054B814 /* IOUtility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOUtility.h; sourceTree = "<group>"; };
 		1EC04CAF193C8E4100E47D42 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		1EC505A01D63C3440030D7DC /* ofxsOGLFunctions-README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = "ofxsOGLFunctions-README.md"; sourceTree = "<group>"; };
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
 		1EC7C7F418BF4D4F002A246F /* fnPublicOfxExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fnPublicOfxExtensions.h; sourceTree = "<group>"; };
 		1EC7C7F618BF4D75002A246F /* ofxReadWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxReadWrite.h; sourceTree = "<group>"; };
@@ -912,6 +912,7 @@
 				AC0719A11D476D8500107F5E /* ofxsOGLDebug.h */,
 				1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */,
 				1E9B5F29198A505E0095C8AA /* ofxsOGLFontUtils.h */,
+				1EC505A01D63C3440030D7DC /* ofxsOGLFunctions-README.md */,
 				AC0719A21D476D8500107F5E /* ofxsOGLFunctions_gl.cpp */,
 				AC0719A41D476D8500107F5E /* ofxsOGLFunctions_mesa.cpp */,
 				AC0719A61D476D8500107F5E /* ofxsOGLFunctions.h */,
@@ -934,7 +935,6 @@
 				1E9B5F34198A505E0095C8AA /* ofxsTransform3x3Processor.h */,
 				1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */,
 				1E84DC5E1BC1663C006E7E64 /* ofxsTransformInteract.h */,
-				1E5EBA421D4C8DEB0005A5A8 /* opengl-readme.md */,
 				1E9B5F35198A505E0095C8AA /* README.md */,
 			);
 			path = SupportExt;

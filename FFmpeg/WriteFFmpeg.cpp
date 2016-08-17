@@ -33,6 +33,9 @@
 #include <cstring>
 #include <cfloat> // DBL_MAX
 #include <sstream>
+#include <algorithm>
+#include <string>
+#include <cctype> // ::tolower
 
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #    define NOMINMAX 1
@@ -3577,39 +3580,63 @@ WriteFFmpegPlugin::onOutputFileChanged(const std::string &filename, bool setColo
     // Switch the 'format' knob based on the new filename suffix
     std::string suffix = filename.substr(filename.find_last_of(".") + 1);
     if (!suffix.empty()) {
+        // downcase the suffix
+        std::transform(suffix.begin(), suffix.end(), suffix.begin(), ::tolower);
         // Compare found suffix to known formats
         const std::vector<std::string>& formatsShortNames = FFmpegSingleton::Instance().getFormatsShortNames();
         for (size_t i = 0; i < formatsShortNames.size(); ++i) {
+            bool setFormat = false;
             if (suffix.compare(formatsShortNames[i]) == 0) {
-                _format->setValue(i);
-                break;
-            }
-            if (formatsShortNames[i] == "matroska") {
+                setFormat = true;;
+            } else if (formatsShortNames[i] == "matroska") {
                 if (suffix.compare("mkv") == 0 ||
                     suffix.compare("mk3d") == 0) {
-                    _format->setValue(i);
-                    break;
+                    setFormat = true;;
                 }
             } else if (formatsShortNames[i] == "mpeg") {
                 if (suffix.compare("mpg") == 0) {
-                    _format->setValue(i);
-                    break;
+                    setFormat = true;;
                 }
             } else if (formatsShortNames[i] == "mpegts") {
                 if (suffix.compare("m2ts") == 0 ||
                     suffix.compare("mts") == 0 ||
                     suffix.compare("ts") == 0) {
-                    _format->setValue(i);
-                    break;
+                    setFormat = true;;
                 }
             } else if (formatsShortNames[i] == "mp4") {
                 if (suffix.compare("mov") == 0 ||
                     suffix.compare("3gp") == 0 ||
                     suffix.compare("3g2") == 0 ||
                     suffix.compare("mj2") == 0) {
-                    _format->setValue(i);
-                    break;
+                    setFormat = true;;
                 }
+            }
+            if (setFormat) {
+                _format->setValue(i);
+                AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[i].c_str(), NULL, NULL);
+                const std::vector<AVCodecID>& codecs = FFmpegSingleton::Instance().getCodecsIds();
+                // is the current codec compatible with this format ?
+                if ( !codecCompatible(fmt, codecs[_codec->getValue()]) ) {
+                    // set the default codec for this format, or the first compatible codec
+                    enum AVCodecID default_video_codec = fmt->video_codec;
+                    bool codecSet = false;
+                    int compatible_codec = -1;
+                    for (size_t c = 0; !codecSet && c < codecs.size(); ++c) {
+                        if (codecs[c] == default_video_codec) {
+                            _codec->setValue(c);
+                            // exit loop
+                            codecSet = true;
+                        } else if (compatible_codec == -1 && codecCompatible(fmt, codecs[c])) {
+                            compatible_codec = c;
+                        }
+                    }
+                    // if the default codec was not available, use the first compatible codec
+                    if (!codecSet && compatible_codec != -1) {
+                        _codec->setValue(compatible_codec);
+                    }
+                }
+                // exit loop
+                break;;
             }
         }
     }
