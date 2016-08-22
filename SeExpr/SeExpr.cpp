@@ -75,69 +75,117 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kPluginName "SeExpr"
 #define kPluginGrouping "Merge"
 #define kPluginDescription \
-"Use the Walt Disney Animation Studio SeExpr expresion language to process pixels of the input image.\n" \
-"SeExpr Home Page: http://www.disneyanimation.com/technology/seexpr.html\n" \
-"SeExpr Language Documentation: http://wdas.github.io/SeExpr/doxygen/userdoc.html\n" \
-"SeExpr is licensed under the Apache License v2 and is copyright of Disney Enterprises, Inc.\n\n" \
-"Some extensions were added to the language for filtering and blending several input images. " \
-"The following pre-defined variables can be used in the script:\n\n" \
-"- x: X coordinate (in pixel units) of the pixel to render.\n\n" \
-"- y: Y coordinate (in pixel units) of the pixel to render.\n\n" \
-"- u: X coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
-"- v: Y coordinate (normalized in the [0,1] range) of the output pixel to render.\n\n" \
-"- sx, sy: Scale at which the image is being rendered. Depending on the zoom level " \
-"of the viewer, the image might be rendered at a lower scale than usual. This parameter is useful when producing spatial " \
-"effects that need to be invariant to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
-"image is being rendered at half of its original size.\n\n" \
-"- par: The pixel aspect ratio.\n\n" \
-"- cx, cy: Shortcuts for (x + 0.5)/par/sx and (y + 0.5)/sy, a.k.a. the canonical coordinates of the current pixel.\n\n" \
-"- frame: Current frame being rendered\n\n" \
-"- Cs, As: Color (RGB vector) and alpha (scalar) of the image from input 1.\n\n" \
-"- CsN, AsN: Color (RGB vector) and alpha (scalar) of the image from input N, e.g. Cs2 and As2 for input 2.\n\n" \
-"- output_width: Width of the output image being rendered.\n\n" \
-"- output_height: Height of the output image being rendered.\n\n" \
-"- input_width, input_height: Size of image from input 1, in pixels.\n\n" \
-"- input_widthN, input_heightN: Size of image from input N, e.g. input_width2 and input_height2 for input 2.\n\n" \
-"- color cpixel(int i, int f, float x, float y, int interp = 0): interpolates the color from input i at the pixel position (x,y) in the image, at frame f.\n" \
-"- float apixel(int i, int f, float x, float y, int interp = 0): interpolates the alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
-"The pixel position of the center of the bottom-left pixel is (0., 0.).\n"\
-"First input has index i=1.\n"\
-"'interp' controls the interpolation filter, and can take one of the following values:\n"\
-"0: impulse - (nearest neighbor / box) Use original values\n"\
-"1: bilinear - (tent / triangle) Bilinear interpolation between original values\n"\
-"2: cubic - (cubic spline) Some smoothing\n"\
-"3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n"\
-"4: Simon - Some smoothing, plus medium sharpening (*)\n"\
-"5: Rifman - Some smoothing, plus significant sharpening (*)\n"\
-"6: Mitchell - Some smoothing, plus blurring to hide pixelation (*+)\n"\
-"7: Parzen - (cubic B-spline) Greatest smoothing of all filters (+)\n"\
-"8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n"\
-"Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n\n" \
-"Usage example (Application of the Multiply Merge operator on the input 1 and 2):\n\n" \
-"Cs * Cs2\n\n" \
-"Another merge operator example (over):\n\n" \
-"Cs + Cs2 * (1 -  As)\n\n" \
-"Generating a time-varying colored Perlin noise with size x1:\n" \
-"cnoise([cx/x1,cy/x1,frame])\n\n" \
-"A more complex example used to average pixels over the previous, current and next frame:\n\n" \
-"prev = cpixel(1,frame - 1,x,y);\n" \
-"cur = Cs;\n" \
-"next = cpixel(1,frame + 1,x,y);\n" \
-"(prev + cur + next) / 3;\n\n" \
+"Use the SeExpr expression language (by Walt Disney Animation Studios) to process images.\n" \
+"\n" \
+"See the [SeExpr Home Page](http://www.disneyanimation.com/technology/seexpr.html) and " \
+"[SeExpr Language Documentation](http://wdas.github.io/SeExpr/doxygen/userdoc.html) " \
+"for more information.\n" \
+"\n" \
+"SeExpr is licensed under the Apache License, Version 2.0, and is Copyright Disney Enterprises, Inc.\n" \
+"\n" \
+"### SeExpr extensions\n" \
+"\n" \
+"A few pre-defined variables and functions were added to the language for filtering and blending several input images.\n" \
+"\n" \
+"The following pre-defined variables can be used in the script:\n" \
+"\n" \
+"- `x`: X coordinate (in pixel units) of the pixel to render.\n" \
+"- `y`: Y coordinate (in pixel units) of the pixel to render.\n" \
+"- `u`: X coordinate (normalized in the [0,1] range) of the output pixel to render.\n" \
+"- `v`: Y coordinate (normalized in the [0,1] range) of the output pixel to render.\n" \
+"- `sx`, `sy`: Scale at which the image is being rendered. Depending on the zoom level " \
+"of the viewer, the image might be rendered at a lower scale than usual. " \
+"This parameter is useful when producing spatial effects that need to be invariant " \
+"to the pixel scale, especially when using X and Y coordinates. (0.5,0.5) means that the " \
+"image is being rendered at half of its original size.\n" \
+"- `par`: The pixel aspect ratio.\n" \
+"- `cx`, `cy`: Shortcuts for `(x + 0.5)/par/sx` and `(y + 0.5)/sy`, i.e. the canonical " \
+"coordinates of the current pixel.\n" \
+"- `frame`: Current frame being rendered\n" \
+"- `Cs`, `As`: Color (RGB vector) and alpha (scalar) of the image from input 1.\n" \
+"- `CsN`, `AsN`: Color (RGB vector) and alpha (scalar) of the image from input N, " \
+"e.g. `Cs2` and `As2` for input 2.\n" \
+"- `output_width`, `output_height`: Dimensions of the output image being rendered.\n" \
+"- `input_width`, `input_height`: Dimensions of image from input 1, in pixels.\n" \
+"- `input_widthN`, `input_heightN`: Dimensions of image from input N, e.g. `input_width2` and " \
+"`input_height2` for input 2.\n" \
+"\n" \
+"The following additional functions are available:\n" \
+"\n" \
+"- `color cpixel(int i, int f, float x, float y, int interp = 0)`: interpolates the " \
+"color from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"- `float apixel(int i, int f, float x, float y, int interp = 0)`: interpolates the " \
+"alpha from input i at the pixel position (x,y) in the image, at frame f.\n" \
+"\n" \
+"The pixel position of the center of the bottom-left pixel is (0., 0.).\n" \
+"\n"\
+"The first input has index i=1.\n" \
+"\n"\
+"`interp` controls the interpolation filter, and can take one of the following values:\n" \
+"\n"\
+"- 0: impulse - (nearest neighbor / box) Use original values\n"\
+"- 1: bilinear - (tent / triangle) Bilinear interpolation between original values\n"\
+"- 2: cubic - (cubic spline) Some smoothing\n"\
+"- 3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n"\
+"- 4: Simon - Some smoothing, plus medium sharpening (*)\n"\
+"- 5: Rifman - Some smoothing, plus significant sharpening (*)\n"\
+"- 6: Mitchell - Some smoothing, plus blurring to hide pixelation (*+)\n"\
+"- 7: Parzen - (cubic B-spline) Greatest smoothing of all filters (+)\n"\
+"- 8: notch - Flat smoothing (which tends to hide moire' patterns) (+)\n" \
+"\n"\
+"Some filters may produce values outside of the initial range (*) or modify the values even at integer positions (+).\n" \
+"\n" \
+"### Sample scripts\n" \
+"\n" \
+"#### Add green channel to red, keep green, and apply a 50% gain on blue\n" \
+"\n" \
+"    [Cs[0]+Cs[1], Cs[1], 0.5*Cs[2]]\n" \
+"\n" \
+"#### \"Multiply\" merge operator on inputs 1 and 2\n" \
+"\n" \
+"    Cs * Cs2\n" \
+"\n" \
+"#### \"Over\" merge operator on inputs 1 and 2\n" \
+"\n" \
+"    Cs + Cs2 * (1 -  As)\n" \
+"\n" \
+"#### Generating a time-varying colored Perlin noise with size x1\n" \
+"\n" \
+"    cnoise([cx/x1,cy/x1,frame])\n" \
+"\n" \
+"#### Average pixels over the previous, current and next frame\n" \
+"\n" \
+"    prev = cpixel(1,frame - 1,x,y);\n" \
+"    cur = Cs;\n" \
+"    next = cpixel(1,frame + 1,x,y);\n" \
+"    (prev + cur + next) / 3;\n" \
+"\n" \
+"### Custom parameters\n" \
+"\n" \
 "To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
-"using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n\n" \
-"Cs + x1\n\n" \
-"Note that for expressions that span multiple lines, you must end each instruction by a semicolumn (';') as you would do in C/C++. The last line " \
-"of your expression will always be considered as the final value of the pixel and must not be terminated by a semicolumn.\n" \
-"More documentation is available on the SeExpr website: \n\n" \
+"using their script-name in the expression. For example, the parameter x1 can be referenced using x1 in the script:\n" \
+"\n" \
+"    Cs + x1\n" \
+"\n" \
+"### Multi-instruction expressions\n" \
+"\n" \
+"If an expression spans multiple instructions (usually written one per line), " \
+"each instruction must end with a semicolumn (';'). The last instruction " \
+"of the expression is considered as the final value of the pixel (a RGB vector or an Alpha scalar, depending " \
+"on the script), and must not be terminated by a semicolumn.\n" \
+"More documentation is available on the [SeExpr website](http://www.disneyanimation.com/technology/seexpr.html).\n" \
+"\n" \
+"### Accessing pixel values from other frames\n" \
+"\n" \
 "The input frame range used to render a given output frame is computed automatically if the following conditions hold:\n"\
-"- The 'frame' parameter to cpixel/apixel must not depend on the color or alpha of a pixel, nor on the result of another call to cpixel/apixel\n" \
-"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, as in the following:\n\n" \
-"if (As > 0.1) {\n" \
-"    src = cpixel(1,frame,x,y);\n" \
-"} else {\n" \
-"    src = [0,0,0];\n" \
-"}\n" \
+"- The `frame` parameter to cpixel/apixel must not depend on the color or alpha of a pixel, nor on the result of another call to cpixel/apixel\n" \
+"- A call to cpixel/apixel must not depend on the color or alpha of a pixel, as in the following:\n" \
+"\n" \
+"    if (As > 0.1) {\n" \
+"        src = cpixel(1,frame,x,y);\n" \
+"    } else {\n" \
+"        src = [0,0,0];\n" \
+"    }\n" \
 "If one of these conditions does not hold, all frames from the specified input frame range are asked for.\n"
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
@@ -2635,7 +2683,12 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
-    desc.setPluginDescription(kPluginDescription);
+    if (desc.getPropertySet().propGetDimension(kNatronOfxPropDescriptionIsMarkdown, false)) {
+        desc.setPluginDescription(kPluginDescription/*Markdown*/, false);
+        desc.getPropertySet().propSetInt(kNatronOfxPropDescriptionIsMarkdown, 1);
+    } else {
+        desc.setPluginDescription(kPluginDescription);
+    }
 
     // add the supported contexts
     desc.addSupportedContext(eContextFilter);
