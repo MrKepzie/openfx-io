@@ -69,6 +69,9 @@ typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
 #define OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SUPPORTS_SUBIMAGES
 
+// Not working
+//#define USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
+
 #ifdef OFX_READ_OIIO_USES_CACHE
 #define OFX_READ_OIIO_SHARED_CACHE
 #endif
@@ -1615,10 +1618,11 @@ ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
 
 #ifdef OFX_READ_OIIO_USES_CACHE
     //Only support tiles if tile size is set
-    int fullHeight = _subImagesSpec[0].full_height == 0 ? _subImagesSpec[0].height : _subImagesSpec[0].full_height;
-    int fullWidth = _subImagesSpec[0].full_width == 0 ? _subImagesSpec[0].width : _subImagesSpec[0].full_width;
-    
-    setSupportsTiles(_subImagesSpec[0].tile_width != 0 && _subImagesSpec[0].tile_width != fullWidth && _subImagesSpec[0].tile_height != 0 && _subImagesSpec[0].tile_height != fullHeight);
+    const ImageSpec& spec = _subImagesSpec[0];
+    int width = /*spec.width == 0 ? spec.full_width :*/ spec.width;
+    int height = /*spec.height == 0 ? spec.full_height :*/ spec.height;
+
+    setSupportsTiles(spec.tile_width != 0 && spec.tile_width != width && spec.tile_height != 0 && spec.tile_height != height);
 #endif
     return true;
 }
@@ -2384,6 +2388,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
         return;
         
     }
+
+    // Non const because ImageSpec::valid_tile_range is not const...
+    ImageSpec& spec = subimages[subImageIndex];
     
     
     size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
@@ -2413,32 +2420,64 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                    channels[i+incr] == channels[i+incr-1]+1) {
                 ++incr;
             }
+
+            int xStride = numChannels *  sizeof(float);
+            int yStride = -rowBytes;
+
             const int outputChannelBegin = i;
             const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
+
             size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
+            float* outputPixelData =  (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin;
+
+            int width = spec.full_width == 0 ? spec.width : spec.full_width;
+            int height = spec.full_height == 0 ? spec.height : spec.full_height;
+
+            int zbegin = 0;
+            int zend = 1;
+
+            // We must invert ybegin and yend because OIIO Y axis is top bottom
+            int xbegin,xend, ybegin, yend;
+            if (useDisplayWindowOrigin) {
+                // Since the coordinates are relative to the full display window, revert what was substracted in getFrameBounds
+                xbegin = renderWindow.x1 + spec.full_x;
+                xend = xbegin + (renderWindow.x2 - renderWindow.x1);
+                //ybegin = renderWindow.y1 + spec.full_y;
+                //yend = ybegin + (renderWindow.y2 - renderWindow.y1);
+                ybegin = spec.y + height - renderWindow.y2;
+                yend = spec.y + height - renderWindow.y1;
+
+            } else {
+                xbegin = renderWindow.x1;
+                xend = renderWindow.x2;
+                //ybegin = renderWindow.y1;
+                //yend = renderWindow.y2;
+                ybegin = spec.y + height - renderWindow.y2;
+                yend = spec.y + height - renderWindow.y1;
+
+            }
+            
 
 #         ifdef OFX_READ_OIIO_USES_CACHE
             if (useCache) {
-                
-                int fullHeight = subimages[subImageIndex].full_height == 0 ? subimages[subImageIndex].height : subimages[subImageIndex].full_height;
-                
+
                 if (!_cache->get_pixels(ustring(filename),
                                         subImageIndex, //subimage
                                         0, //miplevel
-                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_x + renderWindow.x1 : renderWindow.x1, //x begin
-                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_x + renderWindow.x2 : renderWindow.x2, //x end
-                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_y + fullHeight - renderWindow.y2 : renderWindow.y2, //y begin
-                                        useDisplayWindowOrigin ? subimages[subImageIndex].full_y + fullHeight - renderWindow.y1 : renderWindow.y1, //y end
-                                        0, //z begin
-                                        1, //z end
+                                        xbegin, //x begin
+                                        xend, //x end
+                                        ybegin, //y begin
+                                        yend, //y end
+                                        zbegin, //z begin
+                                        zend, //z end
                                         chbegin, //chan begin
                                         chend, // chan end
                                         TypeDesc::FLOAT, // data type
                                         //(float*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y2 - 1) + outputChannelBegin,// output buffer
-                                        (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,// output buffer
-                                        numChannels * sizeof(float), //x stride
-                                        -rowBytes, //y stride < make it invert Y
+                                        outputPixelData,// output buffer
+                                        xStride, //x stride
+                                        yStride, //y stride < make it invert Y
                                         AutoStride //z stride
 #                                     if OIIO_VERSION >= 10605
                                         ,
@@ -2453,20 +2492,47 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             } else // warning: '{' must follow #endif
 #         endif
             { // !useCache
-                assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == subimages[subImageIndex].width && (renderWindow.y2 - renderWindow.y1) == subimages[subImageIndex].height));
-                
-                if (subimages[subImageIndex].tile_width == 0 ||
-                    !subimages[subImageIndex].valid_tile_range(renderWindow.x1, renderWindow.x2, subimages[subImageIndex].height - renderWindow.y2, subimages[subImageIndex].height - renderWindow.y1, 0, 1)) {
-                    ///read by scanlines
-                    if (!img->read_scanlines(subimages[subImageIndex].height - renderWindow.y2, //y begin
-                                             subimages[subImageIndex].height - renderWindow.y1, //y end
-                                             0, // z
+
+
+                assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == width && (renderWindow.y2 - renderWindow.y1) == height));
+
+                // Clear scanlines out of data window to black
+                // Usually the ImageCache does it for us, but here we use the API directly
+                char* yptr = (char*)outputPixelData;
+                for (int y = ybegin;  y < yend;  ++y, yptr += -rowBytes) {
+                    if (y < spec.y || y >= (spec.y+spec.height)) {
+                        memset (yptr, 0, numChannels * sizeof(float) * (xend - xbegin));
+                        continue;
+                    }
+                    char *xptr = yptr;
+                    for (int x = xbegin;  x < xend;  ++x, xptr += xStride) {
+                        if (x < spec.x || x >= (spec.x+spec.width)) {
+                            // nonexistant columns
+                            memset (xptr, 0, numChannels * sizeof(float));
+                            continue;
+                        }
+                    }
+                }
+
+                // We clamp to the valid scanlines portion.
+                int ybeginClamped = std::min(std::max(spec.y, ybegin), spec.y + height - 1);
+                int yendClamped = std::min(std::max(spec.y, yend), spec.y + height - 1);
+                int xbeginClamped = std::min(std::max(spec.x, xbegin), spec.x + width - 1);
+                int xendClamped = std::min(std::max(spec.x, xend), spec.x + width - 1);
+
+                if (spec.tile_width == 0 ||
+                    !spec.valid_tile_range(xbegin, xend, ybegin, yend, zbegin, zend)) {
+                    // Read by scanlines
+
+                    if (!img->read_scanlines(ybeginClamped, //y begin
+                                             yendClamped, //y end
+                                             zbegin, // z
                                              chbegin, // chan begin
                                              chend, // chan end
                                              TypeDesc::FLOAT, // data type
-                                             (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                                             numChannels * sizeof(float), //x stride
-                                             -rowBytes)) //y stride < make it invert Y;
+                                             outputPixelData,
+                                             xStride, //x stride
+                                             yStride)) //y stride < make it invert Y;
                     {
                         setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
                         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2477,18 +2543,18 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                      This call will be expensive for multi-layred EXRs because the function internally
                      calls ImageInput::read_tile without chbegin,chend
                      */
-                    if (!img->read_tiles(renderWindow.x1, //x begin
-                                         renderWindow.x2,//x end
-                                         subimages[subImageIndex].height - renderWindow.y2,//y begin
-                                         subimages[subImageIndex].height - renderWindow.y1,//y end
-                                         0, // z begin
-                                         1, // z end
+                    if (!img->read_tiles(xbeginClamped, //x begin
+                                         xendClamped,//x end
+                                         ybeginClamped,//y begin
+                                         yendClamped,//y end
+                                         zbegin, // z begin
+                                         zend, // z end
                                          chbegin, // chan begin
                                          chend, // chan end
                                          TypeDesc::FLOAT,  // data type
-                                         (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin,
-                                         numChannels * sizeof(float), //x stride
-                                         -rowBytes, //y stride < make it invert Y
+                                         outputPixelData,
+                                         xStride, //x stride
+                                         yStride, //y stride < make it invert Y
                                          AutoStride)) //z stride
                     {
                         setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
@@ -2572,32 +2638,44 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     OfxRectD mergeBounds = {0., 0., 0., 0.}; // start with empty bounds - rectBoundingBox grows them
     for (std::size_t i = 0; i < specs.size(); ++i) {
         OfxRectD specBounds;
-        
+
+        const ImageSpec& spec = specs[i];
+
+        int width = spec.width;
+        int height = spec.height;
+        //int width = spec.full_width == 0 ? spec.width : spec.full_width;
+        //int height = spec.full_height == 0 ? spec.height : spec.full_height;
+
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
         if (originAtDisplayWindow)
 #endif
         {
             // the image coordinates are expressed in the "full/display" image.
             // The RoD are the coordinates of the data window with respect to that full window
-            
-            specBounds.x1 = (specs[i].x - specs[i].full_x);
-            specBounds.x2 = (specs[i].x + specs[i].width - specs[i].full_x);
-            
-            int fullHeight = specs[i].full_height == 0 ? specs[i].height : specs[i].full_height;
-            
-            specBounds.y1 = specs[i].full_y + fullHeight - (specs[i].y + specs[i].height);
-            specBounds.y2 = fullHeight + (specs[i].full_y - specs[i].y);
+
+            specBounds.x1 = (spec.x - spec.full_x);
+            specBounds.x2 = (specBounds.x1 + width);
+
+            specBounds.y1 = (spec.y - spec.full_y);
+            specBounds.y2 = (specBounds.y1 + height);
+            // This is what was before
+            //specBounds.y1 = spec.full_y + height - (spec.y + spec.height);
+            //specBounds.y2 = height + (spec.full_y - spec.y);
+
         }
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
         else {
-            specBounds.x1 = specs[i].x;
-            specBounds.x2 = specs[i].x + specs[i].width;
-            specBounds.y1 =  specs[i].y;
-            specBounds.y2 =  specs[i].y + specs[i].height;
+            specBounds.x1 = spec.x;
+            specBounds.y1 =  spec.y;
+            specBounds.x2 = (specBounds.x1 + width);
+            specBounds.y2 = (specBounds.y1 + height);
         }
 #endif
-
-        OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
+        if (i == 0) {
+            mergeBounds = specBounds;
+        } else {
+            OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
+        }
     }
     
     bounds->x1 = mergeBounds.x1;
@@ -3048,7 +3126,9 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setIsSecret(true);
                 param->setEvaluateOnChange(false);
                 param->setIsPersistent(false);
+#ifndef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
                 param->setLayoutHint(OFX::eLayoutHintDivider);
+#endif
                 if (page) {
                     page->addChild(*param);
                 }
@@ -3062,6 +3142,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
         param->setLabel(kParamUseDisplayWindowAsOriginLabel);
         param->setHint(kParamUseDisplayWindowAsOriginHint);
         param->setDefault(true);
+        param->setLayoutHint(OFX::eLayoutHintDivider);
         if (page) {
             page->addChild(*param);
         }
