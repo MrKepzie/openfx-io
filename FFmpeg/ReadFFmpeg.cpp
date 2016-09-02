@@ -31,6 +31,12 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
+#ifdef DEBUG
+#include <cstdio>
+#define DBG(x) x
+#else
+#define DBG(x) (void)0
+#endif
 
 #include "IOUtility.h"
 
@@ -527,7 +533,7 @@ ReadFFmpegPluginFactory::load()
     std::list<std::string> extensionsl;
     AVInputFormat* iFormat = av_iformat_next(NULL);
     while (iFormat != NULL) {
-        //printf("ReadFFmpeg: \"%s\", // %s (%s)\n", iFormat->extensions ? iFormat->extensions : iFormat->name, iFormat->name, iFormat->long_name);
+        //DBG(std::printf("ReadFFmpeg: \"%s\", // %s (%s)\n", iFormat->extensions ? iFormat->extensions : iFormat->name, iFormat->name, iFormat->long_name));
         if (iFormat->extensions != NULL) {
             std::string extStr( iFormat->extensions );
             split(extStr, ',', extensionsl);

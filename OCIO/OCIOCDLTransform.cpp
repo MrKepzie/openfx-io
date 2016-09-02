@@ -718,7 +718,7 @@ OCIOCDLTransformPlugin::contextAttached(bool createContextData)
 {
 #ifdef DEBUG
     if (OFX::getImageEffectHostDescription()->isNatron && !createContextData) {
-        printf("ERROR: Natron did not ask to create context data\n");
+        std::printf("ERROR: Natron did not ask to create context data\n");
     }
 #endif
     if (createContextData) {
@@ -809,7 +809,7 @@ OCIOCDLTransformPlugin::renderGPU(const OFX::RenderArguments &args)
     OCIOOpenGLContextData* contextData = &_openGLContextData;
     if (OFX::getImageEffectHostDescription()->isNatron && !args.openGLContextData) {
 #ifdef DEBUG
-        printf("ERROR: Natron did not provide the contextData pointer to the OpenGL render func.\n");
+        std::printf("ERROR: Natron did not provide the contextData pointer to the OpenGL render func.\n");
 #endif
     }
     if (args.openGLContextData) {
@@ -819,7 +819,7 @@ OCIOCDLTransformPlugin::renderGPU(const OFX::RenderArguments &args)
     } else if (!_openGLContextAttached) {
         // Sony Catalyst Edit never calls kOfxActionOpenGLContextAttached
 #ifdef DEBUG
-        printf( ("ERROR: OpenGL render() called without calling contextAttached() first. Calling it now.\n") );
+        std::printf( ("ERROR: OpenGL render() called without calling contextAttached() first. Calling it now.\n") );
 #endif
         contextAttached(false);
         _openGLContextAttached = true;

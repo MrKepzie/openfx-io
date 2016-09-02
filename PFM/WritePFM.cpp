@@ -21,7 +21,7 @@
  * Writes an image in the Portable Float Map (PFM) format.
  */
 
-#include <cstdio> // fopen, fwrite...
+#include <cstdio> // fopen, fwrite, fprintf...
 #include <vector>
 #include <algorithm>
 

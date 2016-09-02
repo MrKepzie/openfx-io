@@ -27,6 +27,9 @@
 #include <cstdlib>
 #ifdef DEBUG
 #include <cstdio>
+#define DBG(x) x
+#else
+#define DBG(x) (void)0
 #endif
 #include <string>
 #include <stdexcept>
@@ -106,9 +109,7 @@ compileShaderText(GLenum shaderType, const char *text)
         GLchar log[1000];
         GLsizei len;
         glGetShaderInfoLog(shader, 1000, &len, log);
-#ifdef DEBUG
-        std::fprintf(stderr, "Error: problem compiling shader: %s\n", log);
-#endif
+        DBG( std::fprintf(stderr, "Error: problem compiling shader: %s\n", log) );
         return 0;
     }
 
@@ -135,9 +136,7 @@ linkShaders(GLuint fragShader)
             GLchar log[1000];
             GLsizei len;
             glGetProgramInfoLog(program, 1000, &len, log);
-#ifdef DEBUG
-            std::fprintf(stderr, "Shader link error:\n%s\n", log);
-#endif
+            DBG( std::fprintf(stderr, "Shader link error:\n%s\n", log) );
             return 0;
         }
     }

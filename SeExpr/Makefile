@@ -4,7 +4,7 @@ PLUGINOBJECTS = \
 	ofxsOGLTextRenderer.o ofxsOGLFontData.o
 
 PLUGINNAME = SeExpr
-RESOURCES = fr.inria.openfx.SeExpr.png fr.inria.openfx.SeExpr.svg
+RESOURCES = fr.inria.openfx.SeExpr.png fr.inria.openfx.SeExpr.svg fr.inria.openfx.SeExprSimple.png fr.inria.openfx.SeExprSimple.svg
 
 TOP_SRCDIR = ..
 include $(TOP_SRCDIR)/Makefile.master

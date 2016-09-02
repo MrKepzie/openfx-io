@@ -31,7 +31,7 @@
 #include <fstream>
 #ifdef DEBUG
 #include <cstdio>
-#define DBG(x) (void)0//x
+#define DBG(x) x
 #else
 #define DBG(x) (void)0
 #endif

@@ -162,6 +162,10 @@
 		1EB199151A482EAC0009D9DF /* fr.inria.openfx.WritePFM.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC6486ED1A41BDD40088844F /* fr.inria.openfx.WritePFM.svg */; };
 		1EB6CCF21993B8FC000DDB1A /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
 		1EB6CCF31993B98D000DDB1A /* OIIOResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5EAC19869F200095C8AA /* OIIOResize.cpp */; };
+		1ECB67711D799F5100C94D1F /* fr.inria.openfx.SeExprSimple.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ECB67701D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.png */; };
+		1ECB67721D799F5400C94D1F /* fr.inria.openfx.SeExprSimple.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ECB676F1D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.svg */; };
+		1ECB67731D799F6000C94D1F /* fr.inria.openfx.SeExprSimple.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ECB67701D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.png */; };
+		1ECB67741D799F6200C94D1F /* fr.inria.openfx.SeExprSimple.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ECB676F1D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.svg */; };
 		1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EDECBAE18B9F7F10093B6FC /* RunScript.cpp */; };
 		1ED3A2611BBC30A3008128B1 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
 		1ED3A2621BBC30A5008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = 1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */; };
@@ -451,6 +455,8 @@
 				1E814C9019C9814C00C2C668 /* fr.inria.openfx.OIIOText.svg in CopyFiles */,
 				AC0626691ABDC1D800B3D105 /* fr.inria.openfx.SeExpr.png in CopyFiles */,
 				1ED3A2631BBC30AF008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */,
+				1ECB67731D799F6000C94D1F /* fr.inria.openfx.SeExprSimple.png in CopyFiles */,
+				1ECB67741D799F6200C94D1F /* fr.inria.openfx.SeExprSimple.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -475,6 +481,8 @@
 			files = (
 				1ED3A2611BBC30A3008128B1 /* fr.inria.openfx.SeExpr.png in CopyFiles */,
 				1ED3A2621BBC30A5008128B1 /* fr.inria.openfx.SeExpr.svg in CopyFiles */,
+				1ECB67711D799F5100C94D1F /* fr.inria.openfx.SeExprSimple.png in CopyFiles */,
+				1ECB67721D799F5400C94D1F /* fr.inria.openfx.SeExprSimple.svg in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -591,6 +599,8 @@
 		1EC7C7F318BF4D4F002A246F /* camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = camera.h; sourceTree = "<group>"; };
 		1EC7C7F418BF4D4F002A246F /* fnPublicOfxExtensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fnPublicOfxExtensions.h; sourceTree = "<group>"; };
 		1EC7C7F618BF4D75002A246F /* ofxReadWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxReadWrite.h; sourceTree = "<group>"; };
+		1ECB676F1D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.SeExprSimple.svg; sourceTree = "<group>"; };
+		1ECB67701D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExprSimple.png; sourceTree = "<group>"; };
 		1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = fr.inria.openfx.SeExpr.svg; sourceTree = "<group>"; };
 		1ED499CC18A00B66008A2D91 /* OCIO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OCIO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOColorSpace.cpp; sourceTree = "<group>"; };
@@ -1019,6 +1029,8 @@
 				ACE0849A1AB4AB7E00BE558C /* Makefile */,
 				AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */,
 				1ED3A2601BBC306C008128B1 /* fr.inria.openfx.SeExpr.svg */,
+				1ECB67701D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.png */,
+				1ECB676F1D799F2900C94D1F /* fr.inria.openfx.SeExprSimple.svg */,
 			);
 			path = SeExpr;
 			sourceTree = "<group>";

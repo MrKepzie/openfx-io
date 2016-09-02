@@ -36,6 +36,12 @@
 #include <algorithm>
 #include <string>
 #include <cctype> // ::tolower
+#ifdef DEBUG
+#include <cstdio>
+#define DBG(x) x
+#else
+#define DBG(x) (void)0
+#endif
 
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #    define NOMINMAX 1
@@ -1664,25 +1670,25 @@ void WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec, AVPixelFormat& outN
         // FF_LOSS_ALPHA
         // FF_LOSS_COLORQUANT
         // FF_LOSS_CHROMA
-        printf("WriteFFmpeg: pixel format selected: %s->%s\n", av_get_pix_fmt_name(outNukeBufferPixelFormat),
+        std::printf("WriteFFmpeg: pixel format selected: %s->%s\n", av_get_pix_fmt_name(outNukeBufferPixelFormat),
                av_get_pix_fmt_name(outTargetPixelFormat));
         if (loss & FF_LOSS_RESOLUTION) {
-            printf("WriteFFmpeg: pixel format loses RESOLUTION\n");
+            std::printf("WriteFFmpeg: pixel format loses RESOLUTION\n");
         }
         if (loss & FF_LOSS_DEPTH) {
-            printf("WriteFFmpeg: pixel format loses DEPTH\n");
+            std::printf("WriteFFmpeg: pixel format loses DEPTH\n");
         }
         if (loss & FF_LOSS_COLORSPACE) {
-            printf("WriteFFmpeg: pixel format loses COLORSPACE\n");
+            std::printf("WriteFFmpeg: pixel format loses COLORSPACE\n");
         }
         if (loss & FF_LOSS_ALPHA) {
-            printf("WriteFFmpeg: pixel format loses ALPHA\n");
+            std::printf("WriteFFmpeg: pixel format loses ALPHA\n");
         }
         if (loss & FF_LOSS_COLORQUANT) {
-            printf("WriteFFmpeg: pixel format loses COLORQUANT\n");
+            std::printf("WriteFFmpeg: pixel format loses COLORQUANT\n");
         }
         if (loss & FF_LOSS_CHROMA) {
-            printf("WriteFFmpeg: pixel format loses CHROMA\n");
+            std::printf("WriteFFmpeg: pixel format loses CHROMA\n");
         }
 #endif
 
@@ -3787,7 +3793,7 @@ WriteFFmpegPluginFactory::load()
         std::list<std::string> extensionsl;
         AVOutputFormat* oFormat = av_oformat_next(NULL);
         while (oFormat != NULL) {
-            //printf("WriteFFmpeg: \"%s\", // %s (%s)\n", oFormat->extensions ? oFormat->extensions : oFormat->name, oFormat->name, oFormat->long_name);
+            //DBG(std::printf("WriteFFmpeg: \"%s\", // %s (%s)\n", oFormat->extensions ? oFormat->extensions : oFormat->name, oFormat->name, oFormat->long_name));
             if (oFormat->extensions != NULL) {
                 std::string extStr(oFormat->extensions);
                 split(extStr, ',', extensionsl);

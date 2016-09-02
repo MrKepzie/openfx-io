@@ -27,6 +27,9 @@
 #include <cstdlib>
 #ifdef DEBUG
 #include <cstdio>
+#define DBG(x) x
+#else
+#define DBG(x) (void)0
 #endif
 #include <string>
 #include <stdexcept>
@@ -293,9 +296,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
                 bool cascading,
                 const std::string& name = "")
 {
-#ifdef DEBUG
-    //printf("%p->resetOptions\n", (void*)choice);
-#endif
+    //DBG(std::printf("%p->resetOptions\n", (void*)choice));
     choice->resetOptions();
     assert(choice->getNOptions() == 0);
     if (!config) {
@@ -390,9 +391,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         if (roles > 0) {
             msg += ')';
         }
-#ifdef DEBUG
-        //printf("%p->appendOption(\"%s\",\"%s\") (%d->%d options)\n", (void*)choice, csname.c_str(), msg.c_str(), i, i+1);
-#endif
+        //DBG(printf("%p->appendOption(\"%s\",\"%s\") (%d->%d options)\n", (void*)choice, csname.c_str(), msg.c_str(), i, i+1));
         assert(choice->getNOptions() == i);
         choice->appendOption(csname, msg);
         assert(choice->getNOptions() == i+1);
