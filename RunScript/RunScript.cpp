@@ -40,7 +40,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <stdio.h> // for snprintf & _snprintf
+//#include <stdio.h> // for snprintf & _snprintf
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #  include <windows.h>
 #  if defined(_MSC_VER) && _MSC_VER < 1900
@@ -95,20 +95,20 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamCount                   "paramCount"
 #define kParamCountLabel              "Number of Parameters"
 
-#define kParamType                    "type%d"
-#define kParamTypeLabel               "Type of Parameter %d"
+#define kParamType                    "type"
+#define kParamTypeLabel               "Type of Parameter "
 
-#define kParamTypeFilenameName  "filename%d"
-#define kParamTypeFilenameLabel "File Name %d"
+#define kParamTypeFilenameName  "filename"
+#define kParamTypeFilenameLabel "File Name "
 #define kParamTypeFilenameHint  "A constant or animated string containing a filename.\nIf the string contains hashes (like ####) or a printf token (like %04d), they will be replaced by the frame number, and if it contains %v or %V, it will be replaced by the view ID (\"l\" or \"r\" for %v, \"left\" or \"right\" for %V).\nThis is usually linked to the output filename of an upstream Writer node, or to the input filename of a downstream Reader node."
-#define kParamTypeStringName          "string%d"
-#define kParamTypeStringLabel         "String %d"
+#define kParamTypeStringName          "string"
+#define kParamTypeStringLabel         "String "
 #define kParamTypeStringHint          "A string (or sequence of characters)."
-#define kParamTypeDoubleName          "double%d"
-#define kParamTypeDoubleLabel         "Floating Point %d"
+#define kParamTypeDoubleName          "double"
+#define kParamTypeDoubleLabel         "Floating Point "
 #define kParamTypeDoubleHint          "A floating point numerical value."
-#define kParamTypeIntName             "integer%d"
-#define kParamTypeIntLabel            "Integer %d"
+#define kParamTypeIntName             "integer"
+#define kParamTypeIntLabel            "Integer "
 #define kParamTypeIntHint             "An integer numerical value."
 
 
@@ -128,6 +128,21 @@ enum ERunScriptPluginParamType
     eRunScriptPluginParamTypeDouble,
 	eRunScriptPluginParamTypeInteger
 };
+
+static
+std::string
+unsignedToString(unsigned i)
+{
+    if (i == 0) {
+        return "0";
+    }
+    std::string nb;
+    for (unsigned j = i; j != 0; j /= 10) {
+        nb += ( '0' + (j % 10) );
+    }
+
+    return nb;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,14 +192,13 @@ private:
 RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
 : ImageEffect(handle)
 {
-    char name[256];
     if (getContext() != OFX::eContextGenerator) {
         for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
             if (i == 0 && getContext() == OFX::eContextFilter) {
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
-                snprintf(name, sizeof(name), "%d", i+1);
-                _srcClip[i] = fetchClip(name);
+                const std::string istr = unsignedToString(i+1);
+                _srcClip[i] = fetchClip(istr);
             }
             assert(_srcClip[i]);
         }
@@ -195,16 +209,12 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     _param_count = fetchIntParam(kParamCount);
 
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
-        snprintf(name, sizeof(name), kParamType, i+1);
-        _type[i] = fetchChoiceParam(name);
-        snprintf(name, sizeof(name), kParamTypeFilenameName, i+1);
-        _filename[i] = fetchStringParam(name);
-        snprintf(name, sizeof(name), kParamTypeStringName, i+1);
-        _string[i] = fetchStringParam(name);
-        snprintf(name, sizeof(name), kParamTypeDoubleName, i+1);
-        _double[i] = fetchDoubleParam(name);
-        snprintf(name, sizeof(name), kParamTypeIntName, i+1);
-        _int[i] = fetchIntParam(name);
+        const std::string istr = unsignedToString(i+1);
+        _type[i] = fetchChoiceParam(kParamType + istr);
+        _filename[i] = fetchStringParam(kParamTypeFilenameName + istr);
+        _string[i] = fetchStringParam(kParamTypeStringName + istr);
+        _double[i] = fetchDoubleParam(kParamTypeDoubleName + istr);
+        _int[i] = fetchIntParam(kParamTypeIntName + istr);
         assert(_type[i] && _filename[i] && _string[i] && _double[i] && _int[i]);
     }
     _script = fetchStringParam(kParamScript);
@@ -620,7 +630,6 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    char name[256];
     DBG(std::cout << "describing in context " << (int)context << std::endl);
     // Source clip only in the filter context
     // create the mandated source clip
@@ -629,8 +638,8 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         if (i == 0 && context == eContextFilter) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
         } else {
-            snprintf(name, sizeof(name), "%d", i+1);
-            srcClip = desc.defineClip(name);
+            const std::string istr = unsignedToString(i+1);
+            srcClip = desc.defineClip(istr);
         }
         srcClip->addSupportedComponent(ePixelComponentRGB);
         srcClip->addSupportedComponent(ePixelComponentRGBA);
@@ -679,11 +688,10 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
         // We thus hide them in updateVisibility(), which is called after instance creation
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
+            const std::string istr = unsignedToString(i+1);
             {
-                snprintf(name, sizeof(name), kParamType, i+1);
-                ChoiceParamDescriptor* param = desc.defineChoiceParam(name);
-                snprintf(name, sizeof(name), kParamTypeLabel, i+1);
-                param->setLabel(name);
+                ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamType + istr);
+                param->setLabel(kParamTypeLabel + istr);
                 param->setAnimates(true);
                 param->appendOption(kParamTypeFilenameLabel, kParamTypeFilenameHint);
                 param->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
@@ -699,10 +707,8 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), kParamTypeFilenameName, i+1);
-                StringParamDescriptor* param = desc.defineStringParam(name);
-                snprintf(name, sizeof(name), kParamTypeFilenameLabel, i+1);
-                param->setLabel(name);
+                StringParamDescriptor* param = desc.defineStringParam(kParamTypeFilenameName + istr);
+                param->setLabel(kParamTypeFilenameLabel + istr);
                 param->setHint(kParamTypeFilenameHint);
                 param->setStringType(eStringTypeFilePath);
                 param->setFilePathExists(false); // the file may or may not exist
@@ -717,10 +723,8 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), kParamTypeStringName, i+1);
-                StringParamDescriptor* param = desc.defineStringParam(name);
-                snprintf(name, sizeof(name), kParamTypeStringLabel, i+1);
-                param->setLabel(name);
+                StringParamDescriptor* param = desc.defineStringParam(kParamTypeStringName + istr);
+                param->setLabel(kParamTypeStringLabel + istr);
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -733,10 +737,8 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), kParamTypeDoubleName, i+1);
-                DoubleParamDescriptor* param = desc.defineDoubleParam(name);
-                snprintf(name, sizeof(name), kParamTypeDoubleLabel, i+1);
-                param->setLabel(name);
+                DoubleParamDescriptor* param = desc.defineDoubleParam(kParamTypeDoubleName + istr);
+                param->setLabel(kParamTypeDoubleLabel + istr);
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor
@@ -751,10 +753,8 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
             }
 
             {
-                snprintf(name, sizeof(name), kParamTypeIntName, i+1);
-                IntParamDescriptor* param = desc.defineIntParam(name);
-                snprintf(name, sizeof(name), kParamTypeIntLabel, i+1);
-                param->setLabel(name);
+                IntParamDescriptor* param = desc.defineIntParam(kParamTypeIntName + istr);
+                param->setLabel(kParamTypeIntLabel + istr);
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
                 //param->setIsSecret(true); // done in the plugin constructor

@@ -30,7 +30,7 @@
 #endif
 
 #include <cstdio>
-#include <cstring>
+#include <cstring> // strncpy
 #include <cfloat> // DBL_MAX
 #include <sstream>
 #include <algorithm>
@@ -2992,8 +2992,9 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
 #     endif
     }
 
-    snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
-
+    //snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
+    std::strncpy( _formatContext->filename, filename.c_str(), sizeof(_formatContext->filename) );
+    
     /////////////////////                            ////////////////////
     ////////////////////    INITIALISE STREAM     ////////////////////
 
