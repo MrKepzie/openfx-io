@@ -73,15 +73,27 @@ using namespace OFX;
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "SeExpr"
+#define kPluginNameSimple "SeExprSimple"
 #define kPluginGrouping "Merge"
-#define kPluginDescription \
+#define kPluginDescriptionHead \
 "Use the SeExpr expression language (by Walt Disney Animation Studios) to process images.\n" \
+"\n" \
+"### What is SeExpr?\n" \
+"\n" \
+"SeExpr is a very simple mathematical expression language used in graphics software (RenderMan, Maya, Mudbox, Yeti).\n" \
 "\n" \
 "See the [SeExpr Home Page](http://www.disneyanimation.com/technology/seexpr.html) and " \
 "[SeExpr Language Documentation](http://wdas.github.io/SeExpr/doxygen/userdoc.html) " \
 "for more information.\n" \
 "\n" \
 "SeExpr is licensed under the Apache License, Version 2.0, and is Copyright Disney Enterprises, Inc.\n" \
+"\n" \
+"### SeExpr vs. SeExprSimple\n" \
+"\n" \
+"The SeExpr plugin comes in two versions:\n"\
+"\n" \
+"- *SeExpr* has a single vector expression for the color channels, and a scalar expression for the alpha channel. The source color is accessed through the `Cs`vector, and alpha through the `As` scalar, as specified in the original SeExpr language.\n" \
+"- *SeExprSimple* has one scalar expression per channel, and the source channels may also be accessed through scalars (`r`, `g`, `b`, `a`).\n" \
 "\n" \
 "### SeExpr extensions\n" \
 "\n" \
@@ -101,7 +113,13 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 "- `par`: The pixel aspect ratio.\n" \
 "- `cx`, `cy`: Shortcuts for `(x + 0.5)/par/sx` and `(y + 0.5)/sy`, i.e. the canonical " \
 "coordinates of the current pixel.\n" \
-"- `frame`: Current frame being rendered\n" \
+"- `frame`: Current frame being rendered\n"
+#define kPluginDescriptionMid ""
+#define kPluginDescriptionMidSimple \
+"- *SeExprSimple only:* `r`, `g`, `b`, `a`: RGBA channels (scalar) of the image from input 1.\n" \
+"- *SeExprSimple only:* `rN`, `gN`, `bN`, `aN`: RGBA channels (scalar) of the image from input N, " \
+"e.g. `r2` and `a2` are red and alpha channels from input 2.\n"
+#define kPluginDescriptionFoot \
 "- `Cs`, `As`: Color (RGB vector) and alpha (scalar) of the image from input 1.\n" \
 "- `CsN`, `AsN`: Color (RGB vector) and alpha (scalar) of the image from input N, " \
 "e.g. `Cs2` and `As2` for input 2.\n" \
@@ -139,21 +157,51 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 "\n" \
 "#### Add green channel to red, keep green, and apply a 50% gain on blue\n" \
 "\n" \
+"*SeExprSimple:*\n" \
+"\n" \
+"    r+g\n" \
+"    g\n" \
+"    0.5*b\n" \
+"\n" \
+"*SeExpr:*\n" \
+"\n" \
 "    [Cs[0]+Cs[1], Cs[1], 0.5*Cs[2]]\n" \
 "\n" \
 "#### \"Multiply\" merge operator on inputs 1 and 2\n" \
 "\n" \
+"*SeExprSimple:*\n" \
+"\n" \
+"    r*r2\n" \
+"    g*g2" \
+"    b*b2\n" \
+"    a+a2-a*a2\n" \
+"\n" \
+"*SeExpr:*\n" \
+"\n" \
 "    Cs * Cs2\n" \
+"    As + As2 - As * As2\n" \
 "\n" \
 "#### \"Over\" merge operator on inputs 1 and 2\n" \
 "\n" \
+"*SeExprSimple:*\n" \
+"\n" \
+"    r+r2*(1-a)\n" \
+"    g+g2*(1-a)\n" \
+"    b+b2*(1-a)\n" \
+"    a+a2-a*a2\n" \
+"\n" \
+"*SeExpr:*\n" \
+"\n" \
 "    Cs + Cs2 * (1 -  As)\n" \
+"    As + As2 - As * As2\n" \
 "\n" \
 "#### Generating a time-varying colored Perlin noise with size x1\n" \
 "\n" \
 "    cnoise([cx/x1,cy/x1,frame])\n" \
 "\n" \
 "#### Average pixels over the previous, current and next frame\n" \
+"\n" \
+"*SeExpr:*\n" \
 "\n" \
 "    prev = cpixel(1,frame - 1,x,y);\n" \
 "    cur = Cs;\n" \
@@ -187,8 +235,11 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 "        src = [0,0,0];\n" \
 "    }\n" \
 "If one of these conditions does not hold, all frames from the specified input frame range are asked for.\n"
+#define kPluginDescription kPluginDescriptionHead kPluginDescriptionMid kPluginDescriptionFoot
+#define kPluginDescriptionSimple kPluginDescriptionHead kPluginDescriptionMidSimple kPluginDescriptionFoot
 
 #define kPluginIdentifier "fr.inria.openfx.SeExpr"
+#define kPluginIdentifierSimple "fr.inria.openfx.SeExprSimple"
 #define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 // History:
@@ -219,6 +270,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSeExprOutputHeightVarName "output_height"
 #define kSeExprColorVarName "Cs"
 #define kSeExprAlphaVarName "As"
+#define kSeExprRVarName "r"
+#define kSeExprGVarName "g"
+#define kSeExprBVarName "b"
+#define kSeExprAVarName "a"
 #define kSeExprRenderScaleXVarName "sx"
 #define kSeExprRenderScaleYVarName "sy"
 
@@ -299,26 +354,45 @@ enum RegionOfDefinitionEnum {
 
 #define kParamFrameRangeAbsolute "frameRangeAbsolute"
 #define kParamFrameRangeAbsoluteLabel "Absolute Frame Range"
-#define kParamFrameRangeAbsoluteHint "If checked, the frame range is relative to the current frame."
+#define kParamFrameRangeAbsoluteHint "If checked, the frame range is given as absolute frame numbers, else it is relative to the current frame."
 #define kParamFrameRangeAbsoluteDefault false
+
+#define kParamRExpr "rExpr"
+#define kParamRExprLabel "R="
+#define kParamRExprHint "Expression to compute the output red channel. If empty, the channel is left unchanged."
+#define kParamGExpr "gExpr"
+#define kParamGExprLabel "G="
+#define kParamGExprHint "Expression to compute the output green channel. If empty, the channel is left unchanged."
+#define kParamBExpr "bExpr"
+#define kParamBExprLabel "B="
+#define kParamBExprHint "Expression to compute the output blue channel. If empty, the channel is left unchanged."
+#define kParamAExpr "aExpr"
+#define kParamAExprLabel "A="
+#define kParamAExprHint "Expression to compute the output alpha channel. If empty, the channel is left unchanged."
+
+#define kNukeWarnTcl "On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
 
 #define kParamScript "script"
 #define kParamScriptLabel "RGB Script"
-#define kParamScriptHint "Contents of the SeExpr expression. This expression should output the RGB components. See the description of the plug-in and " \
-"http://www.disneyanimation.com/technology/seexpr.html for documentation. On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
+#define kParamScriptHint "Contents of the SeExpr expression. This expression should output the RGB components as a SeExpr vector. See the description of the plug-in and " \
+"http://www.disneyanimation.com/technology/seexpr.html for documentation."
+
+#define kParamShowExprs "showExprs"
+#define kParamShowExprsLabel "Show Exprs"
+#define kParamShowExprsHint "Show the contents of the expressions as seen by SeExpr in a dialog window. It may be different from the expressions visible in the GUI, because the host may perform variable or expression substitution on the expressions."
 
 #define kParamShowScript "showScript"
 #define kParamShowScriptLabel "Show RGB Script"
-#define kParamShowScriptHint "Show the contents of the RGB script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform vcariable or expression substitution on the RGB script parameter."
+#define kParamShowScriptHint "Show the contents of the RGB script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform variable or expression substitution on the RGB script parameter."
 
 #define kParamAlphaScript "alphaScript"
 #define kParamAlphaScriptLabel "Alpha Script"
-#define kParamAlphaScriptHint "Contents of the SeExpr expression. This expression should output the alpha component only. See the description of the plug-in and " \
-"http://www.disneyanimation.com/technology/seexpr.html for documentation. On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
+#define kParamAlphaScriptHint "Contents of the SeExpr expression. This expression should output the alpha component only as a scalar. See the description of the plug-in and " \
+"http://www.disneyanimation.com/technology/seexpr.html for documentation."
 
 #define kParamShowAlphaScript "showAlphaScript"
 #define kParamShowAlphaScriptLabel "Show Alpha Script"
-#define kParamShowAlphaScriptHint "Show the contents of the Alpha script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform vcariable or expression substitution on the Alpha script parameter."
+#define kParamShowAlphaScriptHint "Show the contents of the Alpha script as seen by SeExpr in a dialog window. It may be different from the script visible in the GUI, because the host may perform variable or expression substitution on the Alpha script parameter."
 
 #define kParamValidate                  "validate"
 #define kParamValidateLabel             "Validate"
@@ -346,11 +420,23 @@ unsignedToString(unsigned i)
     }
     std::string nb;
     for (unsigned j = i; j != 0; j /= 10) {
-        nb += ( '0' + (j % 10) );
+        nb = (char)( '0' + (j % 10) ) + nb;
     }
 
     return nb;
 }
+
+// Check if s consists only of whitespaces
+static
+bool
+isSpaces(const std::string& s)
+{
+    return s.find_first_not_of(" \t\n\v\f\r") == std::string::npos;
+}
+
+template<typename T>
+static inline void
+unused(const T&) {}
 
 class SeExprProcessorBase;
 
@@ -361,7 +447,7 @@ class SeExprProcessorBase;
 class SeExprPlugin : public OFX::ImageEffect {
 public:
     /** @brief ctor */
-    SeExprPlugin(OfxImageEffectHandle handle);
+    SeExprPlugin(OfxImageEffectHandle handle, bool simple);
 
     /* Override the render */
     virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
@@ -408,6 +494,9 @@ private:
     std::string getOfxComponentsForClip(int inputNumber) const;
     
     std::string getOfxPlaneForClip(int inputNumber) const;
+
+private:
+    const bool _simple;
     
     OFX::Clip *_srcClip[kSourceClipCount];
     OFX::Clip* _maskClip;
@@ -428,6 +517,11 @@ private:
 
     OFX::Int2DParam *_frameRange;
     OFX::BooleanParam *_frameRangeAbsolute;
+
+    OFX::StringParam *_rExpr;
+    OFX::StringParam *_gExpr;
+    OFX::StringParam *_bExpr;
+    OFX::StringParam *_aExpr;
 
     OFX::StringParam *_rgbScript;
     OFX::StringParam *_alphaScript;
@@ -469,6 +563,9 @@ protected:
     int _renderView;
     SeExprPlugin* _plugin;
     std::string _layersToFetch[kSourceClipCount];
+    OFXSeExpression* _rExpr;
+    OFXSeExpression* _gExpr;
+    OFXSeExpression* _bExpr;
     OFXSeExpression* _rgbExpr;
     OFXSeExpression* _alphaExpr;
     const OFX::Image* _srcCurTime[kSourceClipCount];
@@ -504,9 +601,32 @@ public:
     
 
     
-    void setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers,
-                   const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale, double par);
-    
+    void setValues(OfxTime time,
+                   int view,
+                   double mix,
+                   const std::string& rgbExpr,
+                   const std::string& alphaExpr,
+                   std::string* layers,
+                   const OfxRectI& dstPixelRod,
+                   OfxPointI* inputSizes,
+                   const OfxPointI& outputSize,
+                   const OfxPointD& renderScale,
+                   double par);
+
+    void setValuesSimple(OfxTime time,
+                         int view,
+                         double mix,
+                         const std::string& rExpr,
+                         const std::string& gExpr,
+                         const std::string& bExpr,
+                         const std::string& aExpr,
+                         std::string* layers,
+                         const OfxRectI& dstPixelRod,
+                         OfxPointI* inputSizes,
+                         const OfxPointI& outputSize,
+                         const OfxPointD& renderScale,
+                         double par);
+
     bool isExprOk(std::string* error);
 
     void prefetchImage(int inputIndex,
@@ -556,6 +676,30 @@ public:
     }
 
     virtual void process(OfxRectI procWindow) = 0;
+
+private:
+    void setExprs(OfxTime time,
+                  const std::string& rgbExpr,
+                  const std::string& alphaExpr,
+                  const OfxRectI& dstPixelRod,
+                  const OfxPointD& renderScale,
+                  double par);
+
+    void setExprsSimple(OfxTime time,
+                        const std::string& rExpr,
+                        const std::string& gExpr,
+                        const std::string& bExpr,
+                        const std::string& aExpr,
+                        const OfxRectI& dstPixelRod,
+                        const OfxPointD& renderScale,
+                        double par);
+
+    void setValuesOther(OfxTime time,
+                        int view,
+                        double mix,
+                        std::string* layers,
+                        OfxPointI* inputSizes,
+                        const OfxPointI& outputSize);
 };
 
 
@@ -943,7 +1087,9 @@ class StubSeExpression : public SeExpression
     
 public:
     
-    StubSeExpression(const std::string& expr, OfxTime time);
+    StubSeExpression(const std::string& expr,
+                     bool wantVec,
+                     OfxTime time);
     
     virtual ~StubSeExpression();
     
@@ -977,6 +1123,7 @@ public:
 
 class OFXSeExpression : public SeExpression
 {
+    const bool _simple;
     mutable PixelFuncX<false> _cpixel;
     mutable SeExprFunc _cpixelFunction;
     mutable PixelFuncX<true> _apixel;
@@ -1002,6 +1149,9 @@ class OFXSeExpression : public SeExpression
     SimpleScalar _inputWidths[kSourceClipCount];
     SimpleScalar _inputHeights[kSourceClipCount];
     
+    SimpleScalar _inputR[kSourceClipCount];
+    SimpleScalar _inputG[kSourceClipCount];
+    SimpleScalar _inputB[kSourceClipCount];
     SimpleVec _inputColors[kSourceClipCount];
     SimpleScalar _inputAlphas[kSourceClipCount];
     
@@ -1013,8 +1163,14 @@ public:
     
     
     
-    OFXSeExpression(SeExprProcessorBase* processor,const std::string& expr, OfxTime time,
-                    const OfxPointD& renderScale, double par, const OfxRectI& outputRod);
+    OFXSeExpression(SeExprProcessorBase* processor,
+                    const std::string& expr,
+                    bool wantVec,
+                    bool simple,
+                    OfxTime time,
+                    const OfxPointD& renderScale,
+                    double par,
+                    const OfxRectI& outputRod);
     
     virtual ~OFXSeExpression();
     
@@ -1035,6 +1191,11 @@ public:
     }
     
     void setRGBA(int inputIndex, float r, float g, float b, float a) {
+        if (_simple) {
+            _inputR[inputIndex]._value = r;
+            _inputG[inputIndex]._value = g;
+            _inputB[inputIndex]._value = b;
+        }
         _inputColors[inputIndex]._value[0] = r;
         _inputColors[inputIndex]._value[1] = g;
         _inputColors[inputIndex]._value[2] = b;
@@ -1054,9 +1215,16 @@ public:
     
 };
 
-OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::string& expr, OfxTime time,
-                                 const OfxPointD& renderScale, double par, const OfxRectI& outputRod)
-: SeExpression(expr)
+OFXSeExpression::OFXSeExpression(SeExprProcessorBase* processor,
+                                 const std::string& expr,
+                                 bool wantVec,
+                                 bool simple,
+                                 OfxTime time,
+                                 const OfxPointD& renderScale,
+                                 double par,
+                                 const OfxRectI& outputRod)
+: SeExpression(expr, wantVec)
+, _simple(simple)
 , _cpixel(processor)
 , _cpixelFunction(_cpixel, 4, 5)
 , _apixel(processor)
@@ -1117,12 +1285,24 @@ OFXSeExpression::OFXSeExpression( SeExprProcessorBase* processor, const std::str
         const std::string istr = unsignedToString(i+1);
         _variables[kSeExprInputWidthVarName + istr] = &_inputWidths[i];
         _variables[kSeExprInputHeightVarName + istr] = &_inputHeights[i];
+        if (_simple) {
+            _variables[kSeExprRVarName + istr] = &_inputR[i];
+            _variables[kSeExprGVarName + istr] = &_inputG[i];
+            _variables[kSeExprBVarName + istr] = &_inputB[i];
+            _variables[kSeExprAVarName + istr] = &_inputAlphas[i];
+        }
         _variables[kSeExprColorVarName + istr] = &_inputColors[i];
         _variables[kSeExprAlphaVarName + istr] = &_inputAlphas[i];
         if (i == 0) {
             // default names for the first input
             _variables[kSeExprInputWidthVarName] = &_inputWidths[i];
             _variables[kSeExprInputHeightVarName] = &_inputHeights[i];
+            if (_simple) {
+                _variables[kSeExprRVarName] = &_inputR[i];
+                _variables[kSeExprGVarName] = &_inputG[i];
+                _variables[kSeExprBVarName] = &_inputB[i];
+                _variables[kSeExprAVarName] = &_inputAlphas[i];
+            }
             _variables[kSeExprColorVarName] = &_inputColors[i];
             _variables[kSeExprAlphaVarName] = &_inputAlphas[i];
         }
@@ -1227,8 +1407,10 @@ StubPixelFuncX::eval(const SeExprFuncNode* node, SeVec3d& result) const
     result[0] = result[1] = result[2] = std::numeric_limits<double>::quiet_NaN();
 }
 
-StubSeExpression::StubSeExpression(const std::string& expr, OfxTime time)
-: SeExpression(expr)
+StubSeExpression::StubSeExpression(const std::string& expr,
+                                   bool wantVec,
+                                   OfxTime time)
+: SeExpression(expr, wantVec)
 , _nanScalar()
 , _zeroScalar()
 , _pixel(this)
@@ -1250,34 +1432,6 @@ StubSeExpression::resolveVar(const std::string& varName) const
 {
     if (varName == kSeExprCurrentTimeVarName) {
         return &_currentTime;
-    } else if (varName == kSeExprXCoordVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprYCoordVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprUCoordVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprUCoordVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprXCanCoordVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprYCanCoordVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprOutputWidthVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprOutputHeightVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprColorVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprAlphaVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprInputWidthVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprInputHeightVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprRenderScaleXVarName) {
-        return &_nanScalar;
-    } else if (varName == kSeExprRenderScaleYVarName) {
-        return &_nanScalar;
     }
 
     return &_nanScalar;
@@ -1302,6 +1456,9 @@ SeExprProcessorBase::SeExprProcessorBase(SeExprPlugin* instance)
 : _renderTime(0)
 , _renderView(0)
 , _plugin(instance)
+, _rExpr(0)
+, _gExpr(0)
+, _bExpr(0)
 , _rgbExpr(0)
 , _alphaExpr(0)
 , _srcCurTime()
@@ -1320,6 +1477,9 @@ SeExprProcessorBase::SeExprProcessorBase(SeExprPlugin* instance)
 
 SeExprProcessorBase::~SeExprProcessorBase()
 {
+    delete _rExpr;
+    delete _gExpr;
+    delete _bExpr;
     delete _rgbExpr;
     delete _alphaExpr;
     for (FetchedImagesMap::iterator it = _images.begin(); it!=_images.end(); ++it) {
@@ -1330,22 +1490,106 @@ SeExprProcessorBase::~SeExprProcessorBase()
 }
 
 void
-SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::string& rgbExpr, const std::string& alphaExpr, std::string* layers, const OfxRectI& dstPixelRod, OfxPointI* inputSizes, const OfxPointI& outputSize, const OfxPointD& renderScale, double par)
+SeExprProcessorBase::setValues(OfxTime time,
+                               int view,
+                               double mix,
+                               const std::string& rgbExpr,
+                               const std::string& alphaExpr,
+                               std::string* layers,
+                               const OfxRectI& dstPixelRod,
+                               OfxPointI* inputSizes,
+                               const OfxPointI& outputSize,
+                               const OfxPointD& renderScale,
+                               double par)
+{
+    setExprs(time, rgbExpr, alphaExpr, dstPixelRod, renderScale, par);
+    setValuesOther(time, view, mix, layers, inputSizes, outputSize);
+}
+
+void
+SeExprProcessorBase::setValuesSimple(OfxTime time,
+                                     int view,
+                                     double mix,
+                                     const std::string& rExpr,
+                                     const std::string& gExpr,
+                                     const std::string& bExpr,
+                                     const std::string& aExpr,
+                                     std::string* layers,
+                                     const OfxRectI& dstPixelRod,
+                                     OfxPointI* inputSizes,
+                                     const OfxPointI& outputSize,
+                                     const OfxPointD& renderScale,
+                                     double par)
+{
+    setExprsSimple(time, rExpr, gExpr, bExpr, aExpr, dstPixelRod, renderScale, par);
+    setValuesOther(time, view, mix, layers, inputSizes, outputSize);
+}
+
+void
+SeExprProcessorBase::setExprs(OfxTime time,
+                              const std::string& rgbExpr,
+                              const std::string& alphaExpr,
+                              const OfxRectI& dstPixelRod,
+                              const OfxPointD& renderScale,
+                              double par)
+{
+    if ( !isSpaces(rgbExpr) ) {
+        _rgbExpr = new OFXSeExpression(this, rgbExpr, /*wantVec=*/ true, /*simple=*/ false, time, renderScale, par, dstPixelRod);
+    }
+    if ( !isSpaces(alphaExpr) ) {
+        _alphaExpr = new OFXSeExpression(this, alphaExpr, /*wantVec=*/ false, /*simple=*/ false, time, renderScale, par, dstPixelRod);
+    }
+}
+
+void
+SeExprProcessorBase::setExprsSimple(OfxTime time,
+                                    const std::string& rExpr,
+                                    const std::string& gExpr,
+                                    const std::string& bExpr,
+                                    const std::string& aExpr,
+                                    const OfxRectI& dstPixelRod,
+                                    const OfxPointD& renderScale,
+                                    double par)
+{
+    if ( !isSpaces(rExpr) ) {
+        _rExpr = new OFXSeExpression(this, rExpr, /*wantVec=*/ false, /*simple=*/ true, time, renderScale, par, dstPixelRod);
+    }
+    if ( !isSpaces(gExpr) ) {
+        _gExpr = new OFXSeExpression(this, gExpr, /*wantVec=*/ false, /*simple=*/ true, time, renderScale, par, dstPixelRod);
+    }
+    if ( !isSpaces(bExpr) ) {
+        _bExpr = new OFXSeExpression(this, bExpr, /*wantVec=*/ false, /*simple=*/ true, time, renderScale, par, dstPixelRod);
+    }
+    if ( !isSpaces(aExpr) ) {
+        _alphaExpr = new OFXSeExpression(this, aExpr, /*wantVec=*/ false, /*simple=*/ true, time, renderScale, par, dstPixelRod);
+    }
+}
+
+void
+SeExprProcessorBase::setValuesOther(OfxTime time,
+                                    int view,
+                                    double mix,
+                                    std::string* layers,
+                                    OfxPointI* inputSizes,
+                                    const OfxPointI& outputSize)
 {
     _renderTime = time;
     _renderView = view;
-    if (!rgbExpr.empty()) {
-        _rgbExpr = new OFXSeExpression(this, rgbExpr, time, renderScale, par, dstPixelRod);
-    }
-    if (!alphaExpr.empty()) {
-        _alphaExpr = new OFXSeExpression(this, alphaExpr, time, renderScale, par, dstPixelRod);
-    }
     if (gHostIsMultiPlanar) {
         for (int i = 0; i < kSourceClipCount; ++i) {
             _layersToFetch[i] = layers[i];
         }
     }
     for (int i = 0; i < kSourceClipCount; ++i) {
+        if (_rExpr) {
+            _rExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
+        }
+        if (_gExpr) {
+            _gExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
+        }
+        if (_bExpr) {
+            _bExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
+        }
         if (_rgbExpr) {
             _rgbExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
         }
@@ -1353,19 +1597,40 @@ SeExprProcessorBase::setValues(OfxTime time, int view, double mix, const std::st
             _alphaExpr->setSize(i, inputSizes[i].x, inputSizes[i].y);
         }
     }
+    if (_rExpr) {
+        _rExpr->setSize(-1, outputSize.x, outputSize.y);
+    }
+    if (_gExpr) {
+        _gExpr->setSize(-1, outputSize.x, outputSize.y);
+    }
+    if (_bExpr) {
+        _bExpr->setSize(-1, outputSize.x, outputSize.y);
+    }
     if (_rgbExpr) {
         _rgbExpr->setSize(-1, outputSize.x, outputSize.y);
     }
     if (_alphaExpr) {
         _alphaExpr->setSize(-1, outputSize.x, outputSize.y);
     }
-    assert(_alphaExpr || _rgbExpr);
+    //assert(_alphaExpr || _rgbExpr); // both may be empty!
     _mix = mix;
 }
 
 bool
 SeExprProcessorBase::isExprOk(std::string* error)
 {
+    if (_rExpr && !_rExpr->isValid()) {
+        *error = _rExpr->parseError();
+        return false;
+    }
+    if (_gExpr && !_gExpr->isValid()) {
+        *error = _gExpr->parseError();
+        return false;
+    }
+    if (_bExpr && !_bExpr->isValid()) {
+        *error = _bExpr->parseError();
+        return false;
+    }
     if (_rgbExpr && !_rgbExpr->isValid()) {
         *error = _rgbExpr->parseError();
         return false;
@@ -1376,6 +1641,15 @@ SeExprProcessorBase::isExprOk(std::string* error)
     }
     
     //Run the expression once to initialize all the images fields before multi-threading
+    if (_rExpr) {
+        (void)_rExpr->evaluate();
+    }
+    if (_gExpr) {
+        (void)_gExpr->evaluate();
+    }
+    if (_bExpr) {
+        (void)_bExpr->evaluate();
+    }
     if (_rgbExpr) {
         (void)_rgbExpr->evaluate();
     }
@@ -1405,13 +1679,14 @@ public:
     SeExprProcessor(SeExprPlugin* instance)
     : SeExprProcessorBase(instance)
     {}
-    
+
+private:
     // and do some processing
     virtual void process(OfxRectI procWindow) OVERRIDE FINAL
     {
-        assert((nComponents == 4 && _rgbExpr && _alphaExpr) ||
-               (nComponents == 3 && _rgbExpr && !_alphaExpr) ||
-               (nComponents == 1 && !_rgbExpr && _alphaExpr));
+        assert((nComponents == 4 /*&& _rgbExpr && _alphaExpr*/) ||
+               (nComponents == 3 /*&& _rgbExpr && !_alphaExpr*/) ||
+               (nComponents == 1 /*&& !_rgbExpr && _alphaExpr*/));
 
         
         float tmpPix[4];
@@ -1438,7 +1713,16 @@ public:
                     float r = srcPixels[i][0] / (float)maxValue;
                     float g = srcPixels[i][1] / (float)maxValue;
                     float b = srcPixels[i][2] / (float)maxValue;
-                    float a = srcPixels[i][nComponents == 4 ? 3 : 0] / (float)maxValue;
+                    float a = srcPixels[i][_nSrcComponents[i] == 4 ? 3 : 0] / (float)maxValue;
+                    if (_rExpr) {
+                        _rExpr->setRGBA(i, r, g, b, a);
+                    }
+                    if (_gExpr) {
+                        _gExpr->setRGBA(i, r, g, b, a);
+                    }
+                    if (_bExpr) {
+                        _bExpr->setRGBA(i, r, g, b, a);
+                    }
                     if (_rgbExpr) {
                         _rgbExpr->setRGBA(i, r, g, b, a);
                     }
@@ -1446,32 +1730,60 @@ public:
                         _alphaExpr->setRGBA(i, r, g, b, a);
                     }
                 }
-                
+
+                // initialize with values from first input (some expressions may be empty)
+                if (nComponents == 1) {
+                    tmpPix[0] = srcPixels[0][3];
+                }
+                if (nComponents >= 3) {
+                    tmpPix[0] = srcPixels[0][0];
+                    tmpPix[1] = srcPixels[0][1];
+                    tmpPix[2] = srcPixels[0][2];
+                }
+                if (nComponents == 4) {
+                    tmpPix[3] = srcPixels[0][3];
+                }
+
+                // execute the valid expressions
+                if (_rExpr) {
+                    _rExpr->setXY(x, y);
+                    SeVec3d result = _rExpr->evaluate();
+                    if (nComponents >= 3) {
+                        tmpPix[0] = result[0] * maxValue;
+                    }
+                }
+                if (_gExpr) {
+                    _gExpr->setXY(x, y);
+                    SeVec3d result = _gExpr->evaluate();
+                    if (nComponents >= 3) {
+                        tmpPix[1] = result[0] * maxValue;
+                    }
+                }
+                if (_bExpr) {
+                    _bExpr->setXY(x, y);
+                    SeVec3d result = _bExpr->evaluate();
+                    if (nComponents >= 3) {
+                        tmpPix[2] = result[0] * maxValue;
+                    }
+                }
                 if (_rgbExpr) {
                     _rgbExpr->setXY(x, y);
                     SeVec3d result = _rgbExpr->evaluate();
-                    tmpPix[0] = result[0];
-                    tmpPix[1] = result[1];
-                    tmpPix[2] = result[2];
-                } else {
-                    tmpPix[0] = 0.;
-                    tmpPix[1] = 0.;
-                    tmpPix[2] = 0.;
+                    if (nComponents >= 3) {
+                        tmpPix[0] = result[0] * maxValue;
+                        tmpPix[1] = result[1] * maxValue;
+                        tmpPix[2] = result[2] * maxValue;
+                    }
                 }
                 if (_alphaExpr) {
                     _alphaExpr->setXY(x, y);
                     SeVec3d result = _alphaExpr->evaluate();
                     if (nComponents == 4) {
-                        tmpPix[3] = result[0];
-                    } else {
-                        tmpPix[0] = result[0];
-                        tmpPix[3] = 0.;
+                        tmpPix[3] = result[0] * maxValue;
+                    } else if (nComponents == 1) {
+                        tmpPix[0] = result[0] * maxValue;
                     }
-                    
-                } else {
-                    tmpPix[3] = 0.;
                 }
-                
                 
                 OFX::ofxsMaskMixPix<PIX, nComponents, maxValue, true>(tmpPix, x, y, srcPixels[0], _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 
@@ -1482,8 +1794,10 @@ public:
     }
 };
 
-SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
+SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
+                           bool simple)
 : ImageEffect(handle)
+, _simple(simple)
 {
     if (getContext() != OFX::eContextGenerator) {
         for (int i = 0; i < kSourceClipCount; ++i) {
@@ -1527,10 +1841,20 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle)
     _frameRangeAbsolute = fetchBooleanParam(kParamFrameRangeAbsolute);
     assert(_frameRange && _frameRangeAbsolute);
 
-    _rgbScript = fetchStringParam(kParamScript);
-    assert(_rgbScript);
-    _alphaScript = fetchStringParam(kParamAlphaScript);
-    assert(_alphaScript);
+    if (_simple) {
+        _rExpr = fetchStringParam(kParamRExpr);
+        _gExpr = fetchStringParam(kParamGExpr);
+        _bExpr = fetchStringParam(kParamBExpr);
+        _aExpr = fetchStringParam(kParamAExpr);
+        assert(_rExpr && _gExpr && _bExpr && _aExpr);
+        _rgbScript = _alphaScript = NULL;
+    } else {
+        _rExpr = _gExpr = _bExpr = _aExpr = NULL;
+        _rgbScript = fetchStringParam(kParamScript);
+        assert(_rgbScript);
+        _alphaScript = fetchStringParam(kParamAlphaScript);
+        assert(_alphaScript);
+    }
     _validate = fetchBooleanParam(kParamValidate);
     assert(_validate);
 
@@ -1635,8 +1959,9 @@ SeExprPlugin::getOfxPlaneForClip(int inputNumber) const
 void
 SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::RenderArguments &args)
 {
-    
-    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(args.time));
+    const double time = args.time;
+
+    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(time));
     if (!dst.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -1657,12 +1982,29 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
         return;
     }
 
-    std::string rgbScript,alphaScript;
+    std::string rExpr, gExpr, bExpr, aExpr;
+    std::string rgbScript, alphaScript;
     if (dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA) {
-        _rgbScript->getValue(rgbScript);
+        if (_simple) {
+            _rExpr->getValue(rExpr);
+            _gExpr->getValue(gExpr);
+            _bExpr->getValue(bExpr);
+            unused(rgbScript);
+        } else {
+            unused(rExpr);
+            unused(gExpr);
+            unused(bExpr);
+            _rgbScript->getValue(rgbScript);
+        }
     }
     if (dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentAlpha) {
-        _alphaScript->getValue(alphaScript);
+        if (_simple) {
+            _aExpr->getValue(aExpr);
+            unused(alphaScript);
+        } else {
+            unused(_aExpr);
+            _alphaScript->getValue(alphaScript);
+        }
     }
     
     
@@ -1679,12 +2021,12 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     processor.setDstImg(dst.get());
     
     // auto ptr for the mask.
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
-    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(args.time) : 0);
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     // do we do masking
     if (doMasking) {
         bool maskInvert;
-        _maskInvert->getValueAtTime(args.time, maskInvert);
+        _maskInvert->getValueAtTime(time, maskInvert);
         
         // say we are masking
         processor.doMasking(true);
@@ -1696,7 +2038,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     OfxPointI inputSizes[kSourceClipCount];
     for (int i = 0; i < kSourceClipCount; ++i) {
         if (_srcClip[i]->isConnected()) {
-            OfxRectD rod = _srcClip[i]->getRegionOfDefinition(args.time);
+            OfxRectD rod = _srcClip[i]->getRegionOfDefinition(time);
             double par = _srcClip[i]->getPixelAspectRatio();
             OfxRectI pixelRod;
             OFX::Coords::toPixelEnclosing(rod, args.renderScale, par, &pixelRod);
@@ -1708,7 +2050,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     }
     
     OFX::RegionOfDefinitionArguments rodArgs;
-    rodArgs.time = args.time;
+    rodArgs.time = time;
     rodArgs.view = args.viewsToRender;
     rodArgs.renderScale = args.renderScale;
     OfxRectD outputRod;
@@ -1722,8 +2064,12 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor, const OFX::Render
     outputSize.x = outputPixelRod.x2 - outputPixelRod.x1;
     outputSize.y = outputPixelRod.y2 - outputPixelRod.y1;
     
-    processor.setValues(args.time, args.renderView, mix, rgbScript, alphaScript, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale, par);
-    
+    if (_simple) {
+        processor.setValuesSimple(time, args.renderView, mix, rExpr, gExpr, bExpr, aExpr, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale, par);
+    } else {
+        processor.setValues(time, args.renderView, mix, rgbScript, alphaScript, inputLayers, outputPixelRod, inputSizes, outputSize, args.renderScale, par);
+    }
+
     std::string error;
     if (!processor.isExprOk(&error)) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
@@ -1840,6 +2186,8 @@ SeExprPlugin::render(const OFX::RenderArguments &args)
 void
 SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
+    const double time = args.time;
+
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -1880,10 +2228,21 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
             _doubleParamCount->setEvaluateOnChange(validated);
             _double2DParamCount->setEvaluateOnChange(validated);
             _colorParamCount->setEvaluateOnChange(validated);
-            _rgbScript->setEnabled(!validated);
-            _rgbScript->setEvaluateOnChange(validated);
-            _alphaScript->setEnabled(!validated);
-            _alphaScript->setEvaluateOnChange(validated);
+            if (_simple) {
+                _rExpr->setEnabled(!validated);
+                _rExpr->setEvaluateOnChange(validated);
+                _gExpr->setEnabled(!validated);
+                _gExpr->setEvaluateOnChange(validated);
+                _bExpr->setEnabled(!validated);
+                _bExpr->setEvaluateOnChange(validated);
+                _aExpr->setEnabled(!validated);
+                _aExpr->setEvaluateOnChange(validated);
+            } else {
+                _rgbScript->setEnabled(!validated);
+                _rgbScript->setEvaluateOnChange(validated);
+                _alphaScript->setEnabled(!validated);
+                _alphaScript->setEvaluateOnChange(validated);
+            }
             clearPersistentMessage();
         }
     } else if (paramName == kParamRegionOfDefinition && args.reason == OFX::eChangeUserEdit) {
@@ -1903,23 +2262,46 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         _interactive->setIsSecret(!hasSize);
     } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) {
         OFX::PixelComponentEnum outputComponents = getOutputComponents();
-        if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
-            _rgbScript->setIsSecret(false);
+        const bool hasRGB = (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA); // RGB || RGBA
+        if (_simple) {
+            _rExpr->setIsSecret(!hasRGB);
+            _gExpr->setIsSecret(!hasRGB);
+            _bExpr->setIsSecret(!hasRGB);
         } else {
-            _rgbScript->setIsSecret(true);
+            _rgbScript->setIsSecret(!hasRGB);
         }
-        if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
-            _alphaScript->setIsSecret(false);
+        const bool hasAlpha = (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha); // RGBA || alpha
+        if (_simple) {
+            _aExpr->setIsSecret(!hasAlpha);
         } else {
-            _alphaScript->setIsSecret(true);
+            _alphaScript->setIsSecret(!hasAlpha);
         }
+    } else if (paramName == kParamShowExprs && args.reason == OFX::eChangeUserEdit) {
+        std::string rExpr, gExpr, bExpr, aExpr;
+        if (_rExpr) {
+            _rExpr->getValueAtTime(time, rExpr);
+        }
+        if (_gExpr) {
+            _gExpr->getValueAtTime(time, gExpr);
+        }
+        if (_bExpr) {
+            _bExpr->getValueAtTime(time, bExpr);
+        }
+        if (_aExpr) {
+            _aExpr->getValueAtTime(time, aExpr);
+        }
+        sendMessage(OFX::Message::eMessageMessage, "", "R Expr:\n" + rExpr + "\n\nG Expr:\n" + gExpr + "\n\nB Expr:\n" + bExpr + "\n\nA Expr:\n" + aExpr);
     } else if (paramName == kParamShowScript && args.reason == OFX::eChangeUserEdit) {
-        std::string script;
-        _rgbScript->getValueAtTime(args.time, script);
+                    std::string script;
+        if (_rgbScript) {
+            _rgbScript->getValueAtTime(time, script);
+        }
         sendMessage(OFX::Message::eMessageMessage, "", "RGB Script:\n" + script);
     } else if (paramName == kParamShowAlphaScript && args.reason == OFX::eChangeUserEdit) {
         std::string script;
-        _alphaScript->getValueAtTime(args.time, script);
+        if (_alphaScript) {
+            _alphaScript->getValueAtTime(time, script);
+        }
         sendMessage(OFX::Message::eMessageMessage, "", "Alpha Script:\n" + script);
     } else {
         for (int i = 0; i < kSourceClipCount; ++i) {
@@ -1942,17 +2324,19 @@ SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
                          OFX::Clip * &identityClip,
                          double &/*identityTime*/)
 {
+    const double time = args.time;
+
     // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
     clearPersistentMessage();
 
 
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
     if (doMasking) {
         bool maskInvert;
-        _maskInvert->getValueAtTime(args.time, maskInvert);
+        _maskInvert->getValueAtTime(time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
             if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip[0];
@@ -1961,7 +2345,47 @@ SeExprPlugin::isIdentity(const OFX::IsIdentityArguments &args,
         }
     }
 
-    return false;
+    // check if all expressions are empty
+    OFX::PixelComponentEnum outputComponents = getOutputComponents();
+    std::string script;
+    if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
+        if (_simple) {
+            assert(_rExpr && _gExpr && _bExpr);
+            _rExpr->getValueAtTime(time, script);
+            if ( !isSpaces(script) ) {
+                return false;
+            }
+            _gExpr->getValueAtTime(time, script);
+            if ( !isSpaces(script) ) {
+                return false;
+            }
+            _bExpr->getValueAtTime(time, script);
+            if ( !isSpaces(script) ) {
+                return false;
+            }
+        } else {
+            assert(_rgbScript);
+            _rgbScript->getValueAtTime(time, script);
+            if ( !isSpaces(script) ) {
+                return false;
+            }
+        }
+    }
+    if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
+        if (_simple) {
+            assert(_aExpr);
+            _aExpr->getValueAtTime(time, script);
+        } else {
+            assert(_alphaScript);
+            _alphaScript->getValueAtTime(time, script);
+        }
+        if ( !isSpaces(script) ) {
+            return false;
+        }
+    }
+
+    identityClip = _srcClip[0];
+    return true;
 }
 
 void
@@ -2126,8 +2550,9 @@ SeExprPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 void
 SeExprPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX::ClipComponentsSetter& clipComponents)
 {
+    const double time = args.time;
+
     for (int i = 0; i < kSourceClipCount; ++i) {
-        
         if (!_srcClip[i]->isConnected()) {
             continue;
         }
@@ -2140,12 +2565,12 @@ SeExprPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX::C
     
     OFX::PixelComponentEnum outputComps = _dstClip->getPixelComponents();
     clipComponents.addClipComponents(*_dstClip, outputComps);
-    clipComponents.setPassThroughClip(_srcClip[0], args.time, args.view);
+    clipComponents.setPassThroughClip(_srcClip[0], time, args.view);
 }
 
 
 void
-SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::FramesNeededSetter &frames)
+SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::FramesNeededSetter &framesNeededSetter)
 {
     if (!gHostIsNatron) {
         bool validated;
@@ -2173,65 +2598,81 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
     
     OFX::PixelComponentEnum outputComponents = getOutputComponents();
     if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) {// RGB || RGBA
-        std::string rgbScript;
-        _rgbScript->getValue(rgbScript);
-        
-        StubSeExpression expr(rgbScript, time);
-        if (!expr.isValid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
-        }
+        for (int e = 0; e < (_simple ? 3 : 1); ++e) {
+            OFX::StringParam* param = !_simple ? _rgbScript : ( e == 0 ? _rExpr : (e == 1 ? _gExpr : _bExpr) );
+            std::string script;
+            if (param) {
+                param->getValue(script);
+            }
 
-        (void)expr.evaluate();
-        const FramesNeeded& rgbNeeded = expr.getFramesNeeded();
-        for (FramesNeeded::const_iterator it = rgbNeeded.begin(); it != rgbNeeded.end() ;++it) {
-            std::vector<OfxTime>& frames = framesNeeded[it->first];
-            for (std::size_t j = 0; j < it->second.size(); ++j) {
-                
-                bool found = false;
-                for (std::size_t i = 0;  i < frames.size() ; ++i) {
-                    if (frames[i] == it->second[j]) {
-                        found = true;
-                        break;
-                    }
+            if ( isSpaces(script) ) {
+                framesNeeded[0].push_back(time);
+            } else {
+                StubSeExpression expr(script, /*wantVec=*/ !_simple, time);
+                if (!expr.isValid()) {
+                    setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
+                    OFX::throwSuiteStatusException(kOfxStatFailed);
+                    return;
                 }
-                if (!found) {
-                    frames.push_back(it->second[j]);
+
+                (void)expr.evaluate();
+                const FramesNeeded& rgbNeeded = expr.getFramesNeeded();
+                for (FramesNeeded::const_iterator it = rgbNeeded.begin(); it != rgbNeeded.end() ;++it) {
+                    std::vector<OfxTime>& frames = framesNeeded[it->first];
+                    for (std::size_t j = 0; j < it->second.size(); ++j) {
+
+                        bool found = false;
+                        for (std::size_t i = 0;  i < frames.size() ; ++i) {
+                            if (frames[i] == it->second[j]) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            frames.push_back(it->second[j]);
+                        }
+                    }
+                    
                 }
             }
-            
         }
     }
     if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
-        std::string alphaScript;
-        _alphaScript->getValue(alphaScript);
-        
-        StubSeExpression expr(alphaScript, time);
-        if (!expr.isValid()) {
-            setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
+        OFX::StringParam* param = !_simple ? _alphaScript : _aExpr;
+        std::string script;
+        if (param) {
+            param->getValue(script);
         }
 
-        (void)expr.evaluate();
-        const FramesNeeded& alphaNeeded = expr.getFramesNeeded();
-        for (FramesNeeded::const_iterator it = alphaNeeded.begin(); it != alphaNeeded.end() ;++it) {
-            std::vector<OfxTime>& frames = framesNeeded[it->first];
-            for (std::size_t j = 0; j < it->second.size(); ++j) {
-                
-                bool found = false;
-                for (std::size_t i = 0;  i < frames.size() ; ++i) {
-                    if (frames[i] == it->second[j]) {
-                        found = true;
-                        break;
+        if ( isSpaces(script) ) {
+            framesNeeded[0].push_back(time);
+        } else {
+            StubSeExpression expr(script, false, time);
+            if (!expr.isValid()) {
+                setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
+            }
+
+            (void)expr.evaluate();
+            const FramesNeeded& alphaNeeded = expr.getFramesNeeded();
+            for (FramesNeeded::const_iterator it = alphaNeeded.begin(); it != alphaNeeded.end() ;++it) {
+                std::vector<OfxTime>& frames = framesNeeded[it->first];
+                for (std::size_t j = 0; j < it->second.size(); ++j) {
+
+                    bool found = false;
+                    for (std::size_t i = 0;  i < frames.size() ; ++i) {
+                        if (frames[i] == it->second[j]) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        frames.push_back(it->second[j]);
                     }
                 }
-                if (!found) {
-                    frames.push_back(it->second[j]);
-                }
+                
             }
-            
         }
     }
 
@@ -2263,12 +2704,12 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
                 hasFetchedCurrentTime = true;
             }
             range.min = range.max = it->second[i];
-            frames.setFramesNeeded(*clip, range);
+            framesNeededSetter.setFramesNeeded(*clip, range);
         }
         if (!hasFetchedCurrentTime) {
             OfxRangeD range;
             range.min = range.max = time;
-            frames.setFramesNeeded(*clip, range);
+            framesNeededSetter.setFramesNeeded(*clip, range);
         }
     }
 
@@ -2291,7 +2732,7 @@ SeExprPlugin::getFramesNeeded(const OFX::FramesNeededArguments &args, OFX::Frame
         if (useDefaultRange[i]) {
             OFX::Clip* clip = getClip(i);
             assert(clip);
-            frames.setFramesNeeded(*clip, range);
+            framesNeededSetter.setFramesNeeded(*clip, range);
         }
     }
 }
@@ -2301,6 +2742,8 @@ void
 SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
                                       OFX::RegionOfInterestSetter &rois)
 {
+    const double time = args.time;
+
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -2322,7 +2765,7 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
             OfxRectD srcRoI;
 
             if (_srcClip[i] && _srcClip[i]->isConnected()) {
-                srcRoI = _srcClip[i]->getRegionOfDefinition(args.time);
+                srcRoI = _srcClip[i]->getRegionOfDefinition(time);
                 rois.setRegionOfInterest(*_srcClip[i], srcRoI);
             }
         }
@@ -2344,11 +2787,59 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
         std::set<OFX::Clip*> processedClips;
         
         OFX::PixelComponentEnum outputComponents = getOutputComponents();
-        if (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) { // RGB || RGBA
-            std::string rgbScript;
-            _rgbScript->getValue(rgbScript);
-            
-            StubSeExpression expr(rgbScript,args.time);
+
+        for (int e = 0; e < 6; ++e) {
+            std::string script;
+            bool wantVec = false;
+            switch (e) {
+                case 0: // rExpr
+                    if ( _rExpr && _simple &&
+                        (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) ) {
+                        _rExpr->getValue(script);
+                    }
+                    break;
+
+                case 1: // gExpr
+                    if ( _gExpr && _simple &&
+                        (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) ) {
+                        _gExpr->getValue(script);
+                    }
+                    break;
+
+                case 2: // bExpr
+                    if ( _bExpr && _simple &&
+                        (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) ) {
+                        _bExpr->getValue(script);
+                    }
+                    break;
+
+                case 3: // aExpr
+                    if ( _aExpr && _simple &&
+                        (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) ) {
+                        _aExpr->getValue(script);
+                    }
+                    break;
+
+                case 4: // rgbScript
+                    if ( _rgbScript && !_simple &&
+                        (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA) ) {
+                        _rgbScript->getValue(script);
+                        wantVec = true;
+                    }
+                    break;
+
+                case 5: // alphaScript
+                    if ( _alphaScript && !_simple &&
+                        (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) ) {
+                        _alphaScript->getValue(script);
+                    }
+                    break;
+            }
+            if (isSpaces(script)) {
+                continue;
+            }
+
+            StubSeExpression expr(script, wantVec, time);
             if (!expr.isValid()) {
                 setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
                 OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -2367,40 +2858,11 @@ SeExprPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
                 std::pair<std::set<OFX::Clip*>::iterator,bool> ret = processedClips.insert(clip);
                 if (ret.second) {
                     if (clip->isConnected()) {
-                        rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(args.time));
+                        rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(time));
                     }
                 }
             }
         }
-        if (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha) { // RGBA || alpha
-            std::string alphaScript;
-            _alphaScript->getValue(alphaScript);
-            
-            StubSeExpression expr(alphaScript,args.time);
-            if (!expr.isValid()) {
-                setPersistentMessage(OFX::Message::eMessageError, "", expr.parseError());
-                OFX::throwSuiteStatusException(kOfxStatFailed);
-                return;
-            }
-            //Now evaluate the expression once and determine whether the user will call getPixel.
-            //If he/she does, then we have no choice but to ask for the entire input image because we do not know
-            //what the user may need (typically when applying UVMaps and stuff)
-            
-            (void)expr.evaluate();
-            const FramesNeeded& framesNeeded = expr.getFramesNeeded();
-            
-            for (FramesNeeded::const_iterator it = framesNeeded.begin(); it != framesNeeded.end(); ++it) {
-                OFX::Clip* clip = getClip(it->first);
-                assert(clip);
-                std::pair<std::set<OFX::Clip*>::iterator,bool> ret = processedClips.insert(clip);
-                if (ret.second) {
-                    if (clip->isConnected()) {
-                        rois.setRegionOfInterest(*clip, clip->getRegionOfDefinition(args.time));
-                    }
-                }
-            }
-        }
-        
     }
 }
 
@@ -2408,6 +2870,8 @@ bool
 SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
                                        OfxRectD &rod)
 {
+    const double time = args.time;
+
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return false;
@@ -2423,7 +2887,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
             //union of inputs
             for (int i = 0; i < kSourceClipCount; ++i) {
                 if (_srcClip[i]->isConnected()) {
-                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
+                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(time);
                     if (rodSet) {
                         OFX::Coords::rectBoundingBox(srcRod, rod, &rod);
                     } else {
@@ -2439,7 +2903,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
             bool rodSet = false;
             for (int i = 0; i < kSourceClipCount; ++i) {
                 if (_srcClip[i]->isConnected()) {
-                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(args.time);
+                    OfxRectD srcRod = _srcClip[i]->getRegionOfDefinition(time);
                     if (rodSet) {
                         OFX::Coords::rectIntersection<OfxRectD>(srcRod, rod, &rod);
                     } else {
@@ -2490,7 +2954,7 @@ SeExprPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args
         default: {
             int inputIndex = boundingBox_i - (int)eRegionOfDefinitionOptionCustom;
             assert(inputIndex >= 0 && inputIndex < kSourceClipCount);
-            rod = _srcClip[inputIndex]->getRegionOfDefinition(args.time);
+            rod = _srcClip[inputIndex]->getRegionOfDefinition(time);
             rodSet = true;
             break;
         }
@@ -2677,18 +3141,38 @@ class SeExprOverlayDescriptor
 {
 };
 
-mDeclarePluginFactory(SeExprPluginFactory, {}, {});
+//mDeclarePluginFactory(SeExprPluginFactory, {}, {});
 
-void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+template<bool simple>
+class SeExprPluginFactory
+    : public OFX::PluginFactoryHelper<SeExprPluginFactory<simple> >
+{
+public:
+    SeExprPluginFactory(const std::string& id,
+                          unsigned int verMaj,
+                          unsigned int verMin) : OFX::PluginFactoryHelper<SeExprPluginFactory>(id, verMaj, verMin) {}
+
+    virtual void describe(OFX::ImageEffectDescriptor &desc);
+    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context);
+};
+
+template<bool simple>
+void
+SeExprPluginFactory<simple>::describe(OFX::ImageEffectDescriptor &desc)
 {
     // basic labels
-    desc.setLabel(kPluginName);
+    desc.setLabel(simple ? kPluginNameSimple : kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
     if (desc.getPropertySet().propGetDimension(kNatronOfxPropDescriptionIsMarkdown, false)) {
-        desc.setPluginDescription(kPluginDescription/*Markdown*/, false);
+        desc.setPluginDescription(simple ?
+                                  kPluginDescriptionSimple/*Markdown*/ :
+                                  kPluginDescription/*Markdown*/, false);
         desc.getPropertySet().propSetInt(kNatronOfxPropDescriptionIsMarkdown, 1);
     } else {
-        desc.setPluginDescription(kPluginDescription);
+        desc.setPluginDescription(simple ?
+                                  kPluginDescriptionSimple :
+                                  kPluginDescription);
     }
 
     // add the supported contexts
@@ -2740,9 +3224,14 @@ void SeExprPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setOverlayInteractDescriptor(new SeExprOverlayDescriptor);
 }
 
-void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
+template<bool simple>
+void
+SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
+    const ImageEffectHostDescription &gHostDescription = *OFX::getImageEffectHostDescription();
+    gHostIsNatron = gHostDescription.isNatron;
+    bool hostIsNuke = (gHostDescription.hostName.find("nuke") != std::string::npos ||
+                       gHostDescription.hostName.find("Nuke") != std::string::npos);
 
     for (ImageEffectHostDescription::PixelComponentArray::const_iterator it = getImageEffectHostDescription()->_supportedComponents.begin();
          it != getImageEffectHostDescription()->_supportedComponents.end();
@@ -3142,43 +3631,128 @@ void SeExprPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OF
         }
     }
 
-    {
-        StringParamDescriptor *param = desc.defineStringParam(kParamScript);
-        param->setLabel(kParamScriptLabel);
-        param->setHint(kParamScriptHint);
-        param->setStringType(eStringTypeMultiLine);
-        param->setAnimates(true);
-        param->setDefault(kSeExprDefaultRGBScript);
-        if (page) {
-            page->addChild(*param);
+    if (simple) {
+        {
+            StringParamDescriptor *param = desc.defineStringParam(kParamRExpr);
+            param->setLabel(kParamRExprLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamRExprHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamRExprHint);
+            }
+            param->setAnimates(true);
+            if (page) {
+                page->addChild(*param);
+            }
         }
-    }
-    if (!gHostIsNatron) {
-        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowScript);
-        param->setLabel(kParamShowScriptLabel);
-        param->setHint(kParamShowScriptHint);
-        if (page) {
-            page->addChild(*param);
+        {
+            StringParamDescriptor *param = desc.defineStringParam(kParamGExpr);
+            param->setLabel(kParamGExprLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamGExprHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamGExprHint);
+            }
+            param->setAnimates(true);
+            if (page) {
+                page->addChild(*param);
+            }
         }
-    }
+        {
+            StringParamDescriptor *param = desc.defineStringParam(kParamBExpr);
+            param->setLabel(kParamBExprLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamBExprHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamBExprHint);
+            }
+            param->setAnimates(true);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+        {
+            StringParamDescriptor *param = desc.defineStringParam(kParamAExpr);
+            param->setLabel(kParamAExprLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamAExprHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamAExprHint);
+            }
+            param->setAnimates(true);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
 
-    {
-        StringParamDescriptor *param = desc.defineStringParam(kParamAlphaScript);
-        param->setLabel(kParamAlphaScriptLabel);
-        param->setHint(kParamAlphaScriptHint);
-        param->setStringType(eStringTypeMultiLine);
-        param->setAnimates(true);
-        param->setDefault(kSeExprDefaultAlphaScript);
-        if (page) {
-            page->addChild(*param);
+        if (!gHostIsNatron) {
+            PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowExprs);
+            param->setLabel(kParamShowExprsLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamShowExprsHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamShowExprsHint);
+            }
+            if (page) {
+                page->addChild(*param);
+            }
         }
-    }
-    if (!gHostIsNatron) {
-        PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowAlphaScript);
-        param->setLabel(kParamShowAlphaScriptLabel);
-        param->setHint(kParamShowAlphaScriptHint);
-        if (page) {
-            page->addChild(*param);
+
+    } else {
+        {
+            StringParamDescriptor *param = desc.defineStringParam(kParamScript);
+            param->setLabel(kParamScriptLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamScriptHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamScriptHint);
+            }
+            param->setStringType(eStringTypeMultiLine);
+            param->setAnimates(true);
+            //param->setDefault(kSeExprDefaultRGBScript);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+        if (!gHostIsNatron) {
+            PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowScript);
+            param->setLabel(kParamShowScriptLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamShowScriptHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamShowScriptHint);
+            }
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+
+        {
+            StringParamDescriptor *param = desc.defineStringParam(kParamAlphaScript);
+            param->setLabel(kParamAlphaScriptLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamAlphaScriptHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamAlphaScriptHint);
+            }
+            param->setStringType(eStringTypeMultiLine);
+            param->setAnimates(true);
+            //param->setDefault(kSeExprDefaultAlphaScript);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+        if (!gHostIsNatron) {
+            PushButtonParamDescriptor *param = desc.definePushButtonParam(kParamShowAlphaScript);
+            param->setLabel(kParamShowAlphaScriptLabel);
+            if (hostIsNuke) {
+                param->setHint(std::string(kParamShowAlphaScriptHint) + " " kNukeWarnTcl);
+            } else {
+                param->setHint(kParamShowAlphaScriptHint);
+            }
+            if (page) {
+                page->addChild(*param);
+            }
         }
     }
 
