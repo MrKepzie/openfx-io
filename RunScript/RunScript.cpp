@@ -40,7 +40,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-//#include <stdio.h> // for snprintf & _snprintf
+#include <stdio.h> // for snprintf & _snprintf
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 #  include <windows.h>
 #  if defined(_MSC_VER) && _MSC_VER < 1900
