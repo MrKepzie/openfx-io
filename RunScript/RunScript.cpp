@@ -111,6 +111,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamTypeIntLabel            "Integer "
 #define kParamTypeIntHint             "An integer numerical value."
 
+#define kNukeWarnTcl "On Nuke, the characters '$', '[' ']' must be preceded with a backslash (as '\\$', '\\[', '\\]') to avoid TCL variable and expression substitution."
 
 #define kParamScript                  "script"
 #define kParamScriptLabel             "Script"
@@ -138,7 +139,7 @@ unsignedToString(unsigned i)
     }
     std::string nb;
     for (unsigned j = i; j != 0; j /= 10) {
-        nb += ( '0' + (j % 10) );
+        nb = (char)( '0' + (j % 10) ) + nb;
     }
 
     return nb;
@@ -631,6 +632,11 @@ void RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
 {
     DBG(std::cout << "describing in context " << (int)context << std::endl);
+
+    const ImageEffectHostDescription &gHostDescription = *OFX::getImageEffectHostDescription();
+    bool hostIsNuke = (gHostDescription.hostName.find("nuke") != std::string::npos ||
+                       gHostDescription.hostName.find("Nuke") != std::string::npos);
+
     // Source clip only in the filter context
     // create the mandated source clip
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
@@ -771,7 +777,11 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     {
         StringParamDescriptor *param = desc.defineStringParam(kParamScript);
         param->setLabel(kParamScriptLabel);
-        param->setHint(kParamScriptHint);
+        if (hostIsNuke) {
+            param->setHint(std::string(kParamScriptHint) + " " kNukeWarnTcl);
+        } else {
+            param->setHint(kParamScriptHint);
+        }
         param->setStringType(eStringTypeMultiLine);
         param->setAnimates(true);
         param->setDefault("#!/bin/sh\n");
