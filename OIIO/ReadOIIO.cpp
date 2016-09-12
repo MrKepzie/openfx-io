@@ -2515,10 +2515,10 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 }
 
                 // We clamp to the valid scanlines portion.
-                int ybeginClamped = std::min(std::max(spec.y, ybegin), spec.y + height - 1);
-                int yendClamped = std::min(std::max(spec.y, yend), spec.y + height - 1);
-                int xbeginClamped = std::min(std::max(spec.x, xbegin), spec.x + width - 1);
-                int xendClamped = std::min(std::max(spec.x, xend), spec.x + width - 1);
+                int ybeginClamped = std::min(std::max(spec.y, ybegin), spec.y + height);
+                int yendClamped = std::min(std::max(spec.y, yend), spec.y + height);
+                int xbeginClamped = std::min(std::max(spec.x, xbegin), spec.x + width);
+                int xendClamped = std::min(std::max(spec.x, xend), spec.x + width);
 
                 if (spec.tile_width == 0 ||
                     !spec.valid_tile_range(xbegin, xend, ybegin, yend, zbegin, zend)) {
