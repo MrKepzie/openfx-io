@@ -87,6 +87,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamSeedHint "Change this value to make different instances of this operator produce different noise."
 #define kParamSeedDefault 134.
 
+#define kParamStaticSeed "staticSeed"
+#define kParamStaticSeedLabel "Static Seed"
+#define kParamStaticSeedHint "When enabled, the seed is not combined with the frame number, and thus the effect is the same for all frames for a given seed number."
+
 #define kParamPresets "grainPresets"
 #define kParamPresetsLabel "Presets"
 #define kParamPresetsHint "Presets for common types of film."
@@ -245,6 +249,7 @@ public:
 
     void setValues(double mix,
                    double seed,
+                   bool staticSeed,
                    double size[3],
                    double irregularity[3],
                    double intensity[3],
@@ -265,7 +270,7 @@ public:
 
             Matrix3x3 sizeMat(1./_renderScale.x/std::max(size[c], kSizeMin), 0., 0.,
                               0., 1./_renderScale.x/std::max(size[c], kSizeMin), 0.,
-                              0., 0., _time + (1+c) * seed + irregularity[c]/2.);
+                              0., 0., (staticSeed ? 0. : _time) + (1+c) * seed + irregularity[c]/2.);
             double rads = irregularity[c] * 45. * M_PI / 180.;
             double ca = std::cos(rads);
             double sa = std::sin(rads);
@@ -377,21 +382,22 @@ public:
         assert(_mix && _maskInvert);
 
         _seed = fetchDoubleParam(kParamSeed);
+        _staticSeed = fetchBooleanParam(kParamStaticSeed);
         _presets = fetchChoiceParam(kParamPresets);
         _sizeAll = fetchDoubleParam(kParamSizeAll);
-        _sizeRed = fetchDoubleParam(kParamSizeRed);
-        _sizeGreen = fetchDoubleParam(kParamSizeGreen);
-        _sizeBlue = fetchDoubleParam(kParamSizeBlue);
-        _irregularityRed = fetchDoubleParam(kParamIrregularityRed);
-        _irregularityGreen = fetchDoubleParam(kParamIrregularityGreen);
-        _irregularityBlue = fetchDoubleParam(kParamIrregularityBlue);
-        _intensityRed = fetchDoubleParam(kParamIntensityRed);
-        _intensityGreen = fetchDoubleParam(kParamIntensityGreen);
-        _intensityBlue = fetchDoubleParam(kParamIntensityBlue);
+        _size[0] = fetchDoubleParam(kParamSizeRed);
+        _size[1] = fetchDoubleParam(kParamSizeGreen);
+        _size[2] = fetchDoubleParam(kParamSizeBlue);
+        _irregularity[0] = fetchDoubleParam(kParamIrregularityRed);
+        _irregularity[1] = fetchDoubleParam(kParamIrregularityGreen);
+        _irregularity[2] = fetchDoubleParam(kParamIrregularityBlue);
+        _intensity[0] = fetchDoubleParam(kParamIntensityRed);
+        _intensity[1] = fetchDoubleParam(kParamIntensityGreen);
+        _intensity[2] = fetchDoubleParam(kParamIntensityBlue);
         _colorCorr = fetchDoubleParam(kParamColorCorr);
         _intensityBlack = fetchRGBParam(kParamIntensityBlack);
         _intensityMinimum = fetchRGBParam(kParamIntensityMinimum);
-        assert(_seed && _presets && _sizeAll && _sizeRed && _sizeGreen && _sizeBlue && _irregularityRed && _irregularityGreen && _irregularityBlue && _intensityRed && _intensityGreen && _intensityBlue && _colorCorr && _intensityBlack && _intensityMinimum);
+        assert(_seed && _staticSeed && _presets && _sizeAll && _size[0] && _size[1] && _size[2] && _irregularity[0] && _irregularity[1] && _irregularity[2] && _intensity[0] && _intensity[1] && _intensity[2] && _colorCorr && _intensityBlack && _intensityMinimum);
         _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
         assert(_sublabel);
     }
@@ -418,7 +424,10 @@ private:
     /* Override the clip preferences, we need to say we are setting the frame varying flag */
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL
     {
-        clipPreferences.setOutputFrameVarying(true);
+        bool staticSeed = _staticSeed->getValue();
+        if (!staticSeed) {
+            clipPreferences.setOutputFrameVarying(true);
+        }
         clipPreferences.setOutputHasContinousSamples(true);
     }
 
@@ -433,17 +442,12 @@ private:
     BooleanParam* _maskInvert;
 
     DoubleParam* _seed;
+    BooleanParam* _staticSeed;
     ChoiceParam* _presets;
     DoubleParam* _sizeAll;
-    DoubleParam* _sizeRed;
-    DoubleParam* _sizeGreen;
-    DoubleParam* _sizeBlue;
-    DoubleParam* _irregularityRed;
-    DoubleParam* _irregularityGreen;
-    DoubleParam* _irregularityBlue;
-    DoubleParam* _intensityRed;
-    DoubleParam* _intensityGreen;
-    DoubleParam* _intensityBlue;
+    DoubleParam* _size[3];
+    DoubleParam* _irregularity[3];
+    DoubleParam* _intensity[3];
     DoubleParam* _colorCorr;
     RGBParam* _intensityBlack;
     RGBParam* _intensityMinimum;
@@ -462,7 +466,7 @@ void
 SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::RenderArguments &args)
 {
     const double time = args.time;
-    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(args.time));
+    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(time));
     if (!dst.get()) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
@@ -480,7 +484,7 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
     std::auto_ptr<const OFX::Image> src((_srcClip && _srcClip->isConnected()) ?
-                                        _srcClip->fetchImage(args.time) : 0);
+                                        _srcClip->fetchImage(time) : 0);
     if (src.get()) {
         if (src->getRenderScale().x != args.renderScale.x ||
             src->getRenderScale().y != args.renderScale.y ||
@@ -494,8 +498,8 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
             OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
         }
     }
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
-    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(args.time) : 0);
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     if (mask.get()) {
         if (mask->getRenderScale().x != args.renderScale.x ||
             mask->getRenderScale().y != args.renderScale.y ||
@@ -506,7 +510,7 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
     }
     if (doMasking) {
         bool maskInvert;
-        _maskInvert->getValueAtTime(args.time, maskInvert);
+        _maskInvert->getValueAtTime(time, maskInvert);
         processor.doMasking(true);
         processor.setMaskImg(mask.get(), maskInvert);
     }
@@ -517,28 +521,19 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
 
     // fetch grain parameter values
 
-    double mix;
-    _mix->getValueAtTime(time, mix);
+    double mix = _mix->getValueAtTime(time);
 
-    double seed;
-    _seed->getValueAtTime(time, seed);
-    double sizeAll;
+    double seed = _seed->getValueAtTime(time);
+    bool staticSeed = _staticSeed->getValueAtTime(time);
+    double sizeAll = _sizeAll->getValueAtTime(time);
     double size[3];
-    _sizeAll->getValueAtTime(time, sizeAll);
-    _sizeRed->getValueAtTime(time, size[0]);
-    _sizeGreen->getValueAtTime(time, size[1]);
-    _sizeBlue->getValueAtTime(time, size[2]);
-    size[0] *= sizeAll;
-    size[1] *= sizeAll;
-    size[2] *= sizeAll;
     double irregularity[3];
-    _irregularityRed->getValueAtTime(time, irregularity[0]);
-    _irregularityGreen->getValueAtTime(time, irregularity[1]);
-    _irregularityBlue->getValueAtTime(time, irregularity[2]);
     double intensity[3];
-    _intensityRed->getValueAtTime(time, intensity[0]);
-    _intensityGreen->getValueAtTime(time, intensity[1]);
-    _intensityBlue->getValueAtTime(time, intensity[2]);
+    for (int c=0; c < 3; ++c) {
+        size[c] = _size[c]->getValueAtTime(time) * sizeAll;
+        irregularity[c] = _irregularity[c]->getValueAtTime(time);
+        intensity[c] = _intensity[c]->getValueAtTime(time);
+    }
     double colorCorr;
     _colorCorr->getValueAtTime(time, colorCorr);
     double black[3];
@@ -546,7 +541,7 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
     double minimum[3];
     _intensityMinimum->getValueAtTime(time, minimum[0], minimum[1], minimum[2]);
 
-    processor.setValues(mix, seed, size, irregularity, intensity, colorCorr, black, minimum);
+    processor.setValues(mix, seed, staticSeed, size, irregularity, intensity, colorCorr, black, minimum);
     processor.process();
 }
 
@@ -619,8 +614,9 @@ bool
 SeGrainPlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &/*identityTime*/)
 {
     //std::cout << "isIdentity!\n";
+    const double time = args.time;
     double mix;
-    _mix->getValueAtTime(args.time, mix);
+    _mix->getValueAtTime(time, mix);
 
     if (mix == 0. /*|| (!processR && !processG && !processB && !processA)*/) {
         identityClip = _srcClip;
@@ -634,13 +630,13 @@ SeGrainPlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip,
     //    return true;
     //}
 
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
     if (doMasking) {
         bool maskInvert;
-        _maskInvert->getValueAtTime(args.time, maskInvert);
+        _maskInvert->getValueAtTime(time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
             if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
                 identityClip = _srcClip;
@@ -666,15 +662,15 @@ SeGrainPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         } else {
             _sublabel->setValue(gPresets[preset].label);
             _sizeAll->setValue(1.);
-            _sizeRed->setValue(gPresets[preset].red_size);
-            _sizeGreen->setValue(gPresets[preset].green_size);
-            _sizeBlue->setValue(gPresets[preset].blue_size);
-            _irregularityRed->setValue(gPresets[preset].red_i);
-            _irregularityGreen->setValue(gPresets[preset].green_i);
-            _irregularityBlue->setValue(gPresets[preset].blue_i);
-            _intensityRed->setValue(gPresets[preset].red_m);
-            _intensityGreen->setValue(gPresets[preset].green_m);
-            _intensityBlue->setValue(gPresets[preset].blue_m);
+            _size[0]->setValue(gPresets[preset].red_size);
+            _size[1]->setValue(gPresets[preset].green_size);
+            _size[2]->setValue(gPresets[preset].blue_size);
+            _irregularity[0]->setValue(gPresets[preset].red_i);
+            _irregularity[1]->setValue(gPresets[preset].green_i);
+            _irregularity[2]->setValue(gPresets[preset].blue_i);
+            _intensity[0]->setValue(gPresets[preset].red_m);
+            _intensity[1]->setValue(gPresets[preset].green_m);
+            _intensity[2]->setValue(gPresets[preset].blue_m);
             _colorCorr->setValue(0.);
             _intensityBlack->setValue(0., 0., 0.);
             _intensityMinimum->setValue(0., 0., 0.);
@@ -764,6 +760,19 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setDefault(kParamSeedDefault);
         param->setRange(-DBL_MAX, DBL_MAX);
         param->setDisplayRange(-DBL_MAX, DBL_MAX);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    {
+        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamStaticSeed);
+        param->setLabel(kParamStaticSeedLabel);
+        param->setHint(kParamStaticSeedHint);
+        param->setDefault(false);
+        param->setAnimates(false);
+        desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
         }
