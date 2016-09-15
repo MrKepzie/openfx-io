@@ -261,8 +261,10 @@ private:
     std::string metadata(const std::string& filename);
 
     void getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& subimages) const;
-    
+
+#ifdef OFX_READ_OIIO_USES_CACHE
     void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const;
+#endif
     
     bool updateSpec(const std::string &filename, std::string* error = 0);
     
@@ -1560,6 +1562,7 @@ ReadOIIOPlugin::getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& 
     }
 }
 
+#ifdef OFX_READ_OIIO_USES_CACHE
 void
 ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const
 {
@@ -1573,6 +1576,7 @@ ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<Image
 #endif
     }
 }
+#endif // #ifdef OFX_READ_OIIO_USES_CACHE
 
 bool
 ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
@@ -1591,7 +1595,7 @@ ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
         }
         return false;
     }
-    getSpecsFromImageInput(img, _subImagesSpec);
+    getSpecsFromImageInput(img.get(), _subImagesSpec);
 # endif
     if (_subImagesSpec.empty()) {
         if (error) {
@@ -1999,9 +2003,14 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
 void
 ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput** img, std::vector<ImageSpec>* subimages)
 {
+#ifdef OFX_READ_OIIO_USES_CACHE
     if (useCache) {
         getSpecsFromCache(filename, *subimages);
-    } else {
+    } else
+#else
+        (void)useCache;
+#endif
+    {
         
         // Always keep unassociated alpha.
         // Don't let OIIO premultiply, because if the image is 8bits,

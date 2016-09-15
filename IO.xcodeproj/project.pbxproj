@@ -1640,7 +1640,6 @@
 				);
 				INFOPLIST_FILE = IO/Info.plist;
 				OTHER_LDFLAGS = (
-					"$(inherited)",
 					"-L$(EXR_PATH)/lib",
 					"-lIlmThread",
 					"-lImath",
@@ -1660,6 +1659,7 @@
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
 					"-lpng16",
+					"$(inherited)",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1688,7 +1688,6 @@
 				);
 				INFOPLIST_FILE = IO/Info.plist;
 				OTHER_LDFLAGS = (
-					"$(inherited)",
 					"-L$(EXR_PATH)/lib",
 					"-lIlmThread",
 					"-lImath",
@@ -1708,6 +1707,7 @@
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
 					"-lpng16",
+					"$(inherited)",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1973,7 +1973,7 @@
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
-				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
+				LIBRARY_SEARCH_PATHS = "";
 				OFX_PATH = openfx;
 				ONLY_ACTIVE_ARCH = YES;
 				WARNING_CFLAGS = (
@@ -2011,7 +2011,7 @@
 				);
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/OFX/Plugins/$(PROJECT_NAME)";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks @loader_path/../Libraries";
-				LIBRARY_SEARCH_PATHS = "$(OCIO_PATH)/lib";
+				LIBRARY_SEARCH_PATHS = "";
 				OFX_PATH = openfx;
 				WARNING_CFLAGS = (
 					"-Wall",
