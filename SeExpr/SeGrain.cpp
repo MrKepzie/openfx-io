@@ -767,7 +767,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     {
-        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamStaticSeed);
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamStaticSeed);
         param->setLabel(kParamStaticSeedLabel);
         param->setHint(kParamStaticSeedHint);
         param->setDefault(false);
