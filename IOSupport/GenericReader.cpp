@@ -1477,7 +1477,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     ///We only support downscaling at a power of two.
     unsigned int renderMipmapLevel = getLevelFromScale(std::min(args.renderScale.x,args.renderScale.y));
     unsigned int proxyMipMapThresholdLevel = (proxyScaleThreshold.x == 0 || proxyScaleThreshold.y == 0) ? renderMipmapLevel :  getLevelFromScale(std::min(proxyScaleThreshold.x, proxyScaleThreshold.y));
-    unsigned int originalProxyMipMapLevel = getLevelFromScale(std::min(proxyOriginalScale.x, proxyOriginalScale.y));
+    unsigned int originalProxyMipMapLevel = (proxyOriginalScale.x == 0 || proxyOriginalScale.y == 0) ? renderMipmapLevel : getLevelFromScale(std::min(proxyOriginalScale.x, proxyOriginalScale.y));
     
     if (kSupportsRenderScale && (renderMipmapLevel >= proxyMipMapThresholdLevel)) {
         useProxy = true;
