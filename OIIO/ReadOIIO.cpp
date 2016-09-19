@@ -2453,10 +2453,10 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 // Since the coordinates are relative to the full display window, revert what was substracted in getFrameBounds
                 xbegin = renderWindow.x1 + spec.full_x;
                 xend = xbegin + (renderWindow.x2 - renderWindow.x1);
-                //ybegin = renderWindow.y1 + spec.full_y;
-                //yend = ybegin + (renderWindow.y2 - renderWindow.y1);
-                ybegin = spec.y + height - renderWindow.y2;
-                yend = spec.y + height - renderWindow.y1;
+                ybegin = renderWindow.y1 + spec.full_y;
+                yend = ybegin + (renderWindow.y2 - renderWindow.y1);
+                //ybegin = spec.y + height - renderWindow.y2;
+                //yend = spec.y + height - renderWindow.y1;
 
             } else {
                 xbegin = renderWindow.x1;
