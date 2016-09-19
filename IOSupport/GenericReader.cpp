@@ -1861,7 +1861,7 @@ GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
     
     
     _sequenceFromFiles.clear();
-    SequenceParsing::filesListFromPattern(pattern, &_sequenceFromFiles);
+    SequenceParsing::filesListFromPattern_slow(pattern, &_sequenceFromFiles);
 
 }
 
