@@ -456,12 +456,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
         // Clip the render window to the bounds of the source image.
         OfxRectI renderWindowClipped;
         if (!intersect(renderWindow, *bounds, &renderWindowClipped)) {
-            std::stringstream ss;
-            ss << "Output format does not intersect the input image bounds: Render Window : (x1=" << renderWindow.x1 <<
-            ",y1="<<renderWindow.y1 <<",x2="<<renderWindow.x2<<",y2="<<renderWindow.y2<< ") vs. Input bounds : (x1=" << bounds->x1 <<
-            ",y1="<<bounds->y1<<",x2="<<bounds->x2<<",y2="<<bounds->y2<<")";
-            setPersistentMessage(OFX::Message::eMessageError, "", ss.str());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+            // Nothing to do, exit
             return;
         }
         
