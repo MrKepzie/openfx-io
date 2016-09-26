@@ -256,10 +256,10 @@ GenericOCIO::GenericOCIO(OFX::ImageEffect* parent)
     if (!_config) {
 #     ifndef OFX_OCIO_NOSECRET
         if (_inputSpace) {
-            _inputSpaceChoice->setIsSecret(true);
+            _inputSpaceChoice->setIsSecretAndDisabled(true);
         }
         if (_outputSpace) {
-            _outputSpaceChoice->setIsSecret(true);
+            _outputSpaceChoice->setIsSecretAndDisabled(true);
         }
 #     endif
     }
@@ -580,11 +580,12 @@ GenericOCIO::inputCheck(double time)
     }
     if (!_choiceIsOk) {
         // choice menu is dirty, only use the text entry
+#ifdef OFX_OCIO_NOSECRET
         _inputSpace->setEnabled(true);
         _inputSpaceChoice->setEnabled(false);
-#ifndef OFX_OCIO_NOSECRET
-        _inputSpace->setIsSecret(false);
-        _inputSpaceChoice->setIsSecret(true);
+#else
+        _inputSpace->setIsSecretAndDisabled(false);
+        _inputSpaceChoice->setIsSecretAndDisabled(true);
 #endif
         return;
     }
@@ -598,19 +599,21 @@ GenericOCIO::inputCheck(double time)
         if (inputSpaceIndexOld != inputSpaceIndex) {
             _inputSpaceChoice->setValue(inputSpaceIndex);
         }
+#ifdef OFX_OCIO_NOSECRET
         _inputSpace->setEnabled(false);
         _inputSpaceChoice->setEnabled(true);
-#ifndef OFX_OCIO_NOSECRET
-        _inputSpace->setIsSecret(true);
-        _inputSpaceChoice->setIsSecret(false);
+#else
+        _inputSpace->setIsSecretAndDisabled(true);
+        _inputSpaceChoice->setIsSecretAndDisabled(false);
 #endif
     } else {
         // the input space name is not valid
+#ifdef OFX_OCIO_NOSECRET
         _inputSpace->setEnabled(true);
         _inputSpaceChoice->setEnabled(false);
-#ifndef OFX_OCIO_NOSECRET
-        _inputSpace->setIsSecret(false);
-        _inputSpaceChoice->setIsSecret(true);
+#else        
+        _inputSpace->setIsSecretAndDisabled(false);
+        _inputSpaceChoice->setIsSecretAndDisabled(true);
 #endif
     }
 #endif
@@ -628,11 +631,12 @@ GenericOCIO::outputCheck(double time)
     }
     if (!_choiceIsOk) {
         // choice menu is dirty, only use the text entry
+#ifdef OFX_OCIO_NOSECRET
         _outputSpace->setEnabled(true);
         _outputSpaceChoice->setEnabled(false);
-#ifndef OFX_OCIO_NOSECRET
-        _outputSpace->setIsSecret(false);
-        _outputSpaceChoice->setIsSecret(true);
+#else
+        _outputSpace->setIsSecretAndDisabled(false);
+        _outputSpaceChoice->setIsSecretAndDisabled(true);
 #endif
         return;
     }
@@ -646,19 +650,21 @@ GenericOCIO::outputCheck(double time)
         if (outputSpaceIndexOld != outputSpaceIndex) {
             _outputSpaceChoice->setValue(outputSpaceIndex);
         }
+#ifdef OFX_OCIO_NOSECRET
         _outputSpace->setEnabled(false);
         _outputSpaceChoice->setEnabled(true);
-#ifndef OFX_OCIO_NOSECRET
-        _outputSpace->setIsSecret(true);
-        _outputSpaceChoice->setIsSecret(false);
+#else
+        _outputSpace->setIsSecretAndDisabled(true);
+        _outputSpaceChoice->setIsSecretAndDisabled(false);
 #endif
     } else {
         // the output space name is not valid
+#ifdef OFX_OCIO_NOSECRET
         _outputSpace->setEnabled(true);
         _outputSpaceChoice->setEnabled(false);
-#ifndef OFX_OCIO_NOSECRET
-        _outputSpace->setIsSecret(false);
-        _outputSpaceChoice->setIsSecret(true);
+#else
+        _outputSpace->setIsSecretAndDisabled(false);
+        _outputSpaceChoice->setIsSecretAndDisabled(true);
 #endif
     }
 #endif
@@ -1199,7 +1205,6 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
         // disable it, and set the default from the env variable.
         assert(OFX::getImageEffectHostDescription());
-        param->setEnabled(true);
         if (file == NULL) {
             param->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
         } else if (config) {
@@ -1224,7 +1229,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         if (config) {
             param->setDefault(inputSpaceName);
         } else {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in constructor
         }
         if (page) {
             page->addChild(*param);
@@ -1240,7 +1245,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
         if (config) {
             buildChoiceMenu(config, param, OFX::getImageEffectHostDescription()->supportsCascadingChoices, inputSpaceName);
         } else {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in the plugin constructor
             //param->setIsSecret(true); // done in the plugin constructor
         }
         param->setAnimates(true);
@@ -1284,7 +1289,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
         if (config) {
             param->setDefault(outputSpaceName);
         } else {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in constructor
         }
         if (page) {
             page->addChild(*param);
@@ -1299,7 +1304,7 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
         if (config) {
             buildChoiceMenu(config, param, OFX::getImageEffectHostDescription()->supportsCascadingChoices, outputSpaceName);
         } else {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in the plugin constructor
             //param->setIsSecret(true); // done in the plugin constructor
         }
         param->setAnimates(true);

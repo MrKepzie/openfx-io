@@ -3479,17 +3479,12 @@ WriteFFmpegPlugin::updateVisibility()
         GetCodecSupportedParams(codec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
     }
 
-    _bitrate->setEnabled(bitrateParam);
-    _bitrate->setIsSecret(!bitrateParam);
-    _bitrateTolerance->setEnabled(bitrateTolParam);
-    _bitrateTolerance->setIsSecret(!bitrateTolParam);
-    _quality->setEnabled(qualityParams);
-    _quality->setIsSecret(!qualityParams);
+    _bitrate->setIsSecretAndDisabled(!bitrateParam);
+    _bitrateTolerance->setIsSecretAndDisabled(!bitrateTolParam);
+    _quality->setIsSecretAndDisabled(!qualityParams);
 
-    _gopSize->setEnabled(interGOPParams);
-    _gopSize->setIsSecret(!interGOPParams);
-    _bFrames->setEnabled(interBParams);
-    _bFrames->setIsSecret(!interBParams);
+    _gopSize->setIsSecretAndDisabled(!interGOPParams);
+    _bFrames->setIsSecretAndDisabled(!interBParams);
 
     //We use the bitrate to set the min range for bitrate tolerance.
     updateBitrateToleranceRange();
@@ -3500,18 +3495,16 @@ WriteFFmpegPlugin::updateVisibility()
     // Only enable the video range knob if the Avid DNxHD codec
     // has been selected.
     bool isdnxhd = (!strcmp(codecShortName.c_str(), "dnxhd"));
-    _dnxhdCodecProfile->setEnabled(isdnxhd);
-    _dnxhdCodecProfile->setIsSecret(!isdnxhd);
-    _encodeVideoRange->setEnabled(isdnxhd);
-    _encodeVideoRange->setIsSecret(!isdnxhd);
+    _dnxhdCodecProfile->setIsSecretAndDisabled(!isdnxhd);
+    _encodeVideoRange->setIsSecretAndDisabled(!isdnxhd);
 #endif
     
     
     ///Do not allow custom channel shuffling for the user, it's either RGB or RGBA
     for (int i = 0; i < 4; ++i) {
-        _processChannels[i]->setIsSecret(true);
+        _processChannels[i]->setIsSecretAndDisabled(true);
     }
-    _outputComponents->setIsSecret(true);
+    _outputComponents->setIsSecretAndDisabled(true);
 }
 
 

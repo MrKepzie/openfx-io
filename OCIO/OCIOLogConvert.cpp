@@ -1001,7 +1001,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         // Nuke, for example, doesn't support changing the entries in a ChoiceParam outside of describeInContext.
         // disable it, and set the default from the env variable.
         assert(OFX::getImageEffectHostDescription());
-        param->setEnabled(true);
+        //param->setEnabled(false); // done in constructor
         if (file == NULL) {
             param->setDefault("WARNING: Open an OCIO config file, or set the OCIO environnement variable");
         } else if (!config) {
@@ -1033,7 +1033,7 @@ void OCIOLogConvertPluginFactory::describeInContext(OFX::ImageEffectDescriptor &
         param->appendOption(kParamOperationOptionLogToLin);
         param->appendOption(kParamOperationOptionLinToLog);
         if (!config) {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in constructor
         }
         if (page) {
             page->addChild(*param);

@@ -575,7 +575,7 @@ void OIIOTextPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
         param->setAnimates(false);
         //Do not show this parameter if the host handles the interact
         if (hostHasNativeOverlayForPosition) {
-            param->setIsSecret(true);
+            param->setIsSecretAndDisabled(true);
         }
         if (page) {
             page->addChild(*param);

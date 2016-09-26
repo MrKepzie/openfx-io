@@ -367,12 +367,12 @@ GenericReaderPlugin::restoreStateFromParameters()
     FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
     switch (frameMode) {
         case eFrameModeStartingTime: //starting frame
-            _startingTime->setIsSecret(false);
-            _timeOffset->setIsSecret(true);
+            _startingTime->setIsSecretAndDisabled(false);
+            _timeOffset->setIsSecretAndDisabled(true);
             break;
         case eFrameModeTimeOffset: //time offset
-            _startingTime->setIsSecret(true);
-            _timeOffset->setIsSecret(false);
+            _startingTime->setIsSecretAndDisabled(true);
+            _timeOffset->setIsSecretAndDisabled(false);
             break;
     }
     
@@ -380,14 +380,16 @@ GenericReaderPlugin::restoreStateFromParameters()
     std::string proxyFile;
     _proxyFileParam->getValue(proxyFile);
     if (!proxyFile.empty()) {
-        _proxyThreshold->setIsSecret(false);
-        _enableCustomScale->setIsSecret(false);
+        _proxyThreshold->setIsSecretAndDisabled(false);
+        _enableCustomScale->setIsSecretAndDisabled(false);
     } else {
-        _proxyThreshold->setIsSecret(true);
-        _enableCustomScale->setIsSecret(true);
+        _proxyThreshold->setIsSecretAndDisabled(true);
+        _enableCustomScale->setIsSecretAndDisabled(true);
     }
     
-    
+    bool customFps = _customFPS->getValue();
+    _fps->setEnabled(customFps);
+
     if (gHostIsNatron) {
         refreshSubLabel(timeLineGetTime());
     }
@@ -1995,6 +1997,8 @@ void
 GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
                                   const std::string &paramName)
 {
+    const double time = args.time;
+
     if (!kSupportsRenderScale && (args.renderScale.x != 1. || args.renderScale.y != 1.)) {
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
@@ -2030,32 +2034,31 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
                     proxyFile != originalFileName) {
                     assert(!proxyFile.empty());
                     ///show the scale param
-                    _proxyThreshold->setIsSecret(false);
-                    _enableCustomScale->setIsSecret(false);
+                    _proxyThreshold->setIsSecretAndDisabled(false);
+                    _enableCustomScale->setIsSecretAndDisabled(false);
 
                     OfxPointD scale = detectProxyScale(originalFileName,proxyFile,args.time);
                     _proxyThreshold->setValue(scale.x, scale.y);
                     _originalProxyScale->setValue(scale.x, scale.y);
                 } else {
-                    _proxyThreshold->setIsSecret(true);
-                    _enableCustomScale->setIsSecret(true);
+                    _proxyThreshold->setIsSecretAndDisabled(true);
+                    _enableCustomScale->setIsSecretAndDisabled(true);
                 }
             }   break;
         }
 
     } else if (paramName == kParamCustomProxyScale) {
-        bool enabled;
-        _enableCustomScale->getValue(enabled);
+        bool enabled = _enableCustomScale->getValueAtTime(time);
         _proxyThreshold->setEnabled(enabled);
 
     } else if (paramName == kParamOriginalFrameRange) {
         int oFirst,oLast;
         std::string filename;
-        _fileParam->getValue(filename);
+        _fileParam->getValueAtTime(time, filename);
         if (isVideoStream(filename)) {
             return;
         }
-        _originalFrameRange->getValue(oFirst, oLast);
+        _originalFrameRange->getValueAtTime(time, oFirst, oLast);
         _firstFrame->setValue(oFirst);
         _lastFrame->setValue(oLast);
         _firstFrame->setRange(INT_MIN, oLast);
@@ -2067,13 +2070,13 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
         int first;
         int oFirst,oLast;
-        _originalFrameRange->getValue(oFirst, oLast);
-        _firstFrame->getValue(first);
+        _originalFrameRange->getValueAtTime(time, oFirst, oLast);
+        _firstFrame->getValueAtTime(time, first);
         _lastFrame->setRange(first, INT_MAX);
         _lastFrame->setDisplayRange(first, oLast);
 
         int offset;
-        _timeOffset->getValue(offset);
+        _timeOffset->getValueAtTime(time, offset);
         _startingTime->setValue(first + offset); // will be called with reason == eChangePluginEdit
         
         _timeDomainUserSet->setValue(true);
@@ -2082,9 +2085,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int first;
         int last;
         int oFirst,oLast;
-        _originalFrameRange->getValue(oFirst, oLast);
+        _originalFrameRange->getValueAtTime(time, oFirst, oLast);
         _firstFrame->getValue(first);
-        _lastFrame->getValue(last);
+        _lastFrame->getValueAtTime(time, last);
         _firstFrame->setRange(INT_MIN, last);
         _firstFrame->setDisplayRange(oFirst, last);
         
@@ -2092,16 +2095,16 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     } else if (paramName == kParamFrameMode && args.reason == OFX::eChangeUserEdit) {
         int frameMode_i;
-        _frameMode->getValue(frameMode_i);
+        _frameMode->getValueAtTime(time, frameMode_i);
         FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
         switch (frameMode) {
             case eFrameModeStartingTime: //starting frame
-                _startingTime->setIsSecret(false);
-                _timeOffset->setIsSecret(true);
+                _startingTime->setIsSecretAndDisabled(false);
+                _timeOffset->setIsSecretAndDisabled(true);
                 break;
             case eFrameModeTimeOffset: //time offset
-                _startingTime->setIsSecret(true);
-                _timeOffset->setIsSecret(false);
+                _startingTime->setIsSecretAndDisabled(true);
+                _timeOffset->setIsSecretAndDisabled(false);
                 break;
         }
 
@@ -2112,10 +2115,10 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         
         //also update the time offset
         int startingTime;
-        _startingTime->getValue(startingTime);
+        _startingTime->getValueAtTime(time, startingTime);
         
         int firstFrame;
-        _firstFrame->getValue(firstFrame);
+        _firstFrame->getValueAtTime(time, firstFrame);
         
         _timeOffset->setValue(startingTime - firstFrame);
          _timeDomainUserSet->setValue(true);
@@ -2123,9 +2126,9 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
         //also update the starting frame
         int offset;
-        _timeOffset->getValue(offset);
+        _timeOffset->getValueAtTime(time, offset);
         int first;
-        _firstFrame->getValue(first);
+        _firstFrame->getValueAtTime(time, first);
         
         _startingTime->setValue(offset + first);
          _timeDomainUserSet->setValue(true);
@@ -2134,7 +2137,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
     
         if (args.reason == OFX::eChangeUserEdit) {
             int premult_i;
-            _outputPremult->getValue(premult_i);
+            _outputPremult->getValueAtTime(time, premult_i);
             OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
             if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
                 // RGB is always opaque
@@ -2149,7 +2152,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         onOutputComponentsParamChanged(comps);
     } else if (paramName == kParamOutputPremult && args.reason == OFX::eChangeUserEdit) {
         int premult_i;
-        _outputPremult->getValue(premult_i);
+        _outputPremult->getValueAtTime(time, premult_i);
         OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
         OFX::PixelComponentEnum comps = getOutputComponents();
         // reset to authorized values if necessary
@@ -2161,9 +2164,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             _outputPremult->setValue((int)OFX::eImagePreMultiplied);
         }
     } else if (paramName == kParamCustomFps) {
-      
-        bool customFps;
-        _customFPS->getValue(customFps);
+        bool customFps = _customFPS->getValueAtTime(time);
         _fps->setEnabled(customFps);
         
         if (!customFps) {
@@ -2965,7 +2966,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamTimeOffsetHint);
         param->setDefault(0);
         param->setAnimates(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         if (page) {
             page->addChild(*param);
         }
@@ -2975,7 +2976,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamTimeDomainUserEdited);
         param->setLabel(kParamTimeDomainUserEdited);
-        param->setIsSecret(true); // always secret
+        param->setIsSecretAndDisabled(true); // always secret
         param->setDefault(false);
         param->setAnimates(false);
         if (page) {
@@ -2989,7 +2990,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setLabel(kParamOriginalFrameRangeLabel);
         param->setDefault(INT_MIN, INT_MAX);
         param->setAnimates(true);
-        param->setIsSecret(true); // always secret
+        param->setIsSecretAndDisabled(true); // always secret
         param->setIsPersistent(false);
         if (page) {
             page->addChild(*param);
@@ -3019,8 +3020,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(1., 1.);
         param->setRange(0., 0., 1., 1.);
         param->setDisplayRange(0., 0., 1., 1.);
-        param->setIsSecret(true); // always secret
-        param->setEnabled(false);
+        param->setIsSecretAndDisabled(true); // always secret
         param->setHint(kParamOriginalProxyScaleHint);
         // param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setAnimates(true);
@@ -3036,8 +3036,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setDefault(1., 1.);
         param->setRange(0.01, 0.01, 1., 1.);
         param->setDisplayRange(0.01, 0.01, 1., 1.);
-        //param->setIsSecret(true); // done in the plugin constructor
-        param->setEnabled(false);
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setHint(kParamOriginalProxyScaleHint);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
         param->setAnimates(true);
@@ -3050,7 +3049,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamCustomProxyScale);
         param->setLabel(kParamCustomProxyScaleLabel);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setDefault(false);
         param->setHint(kParamCustomProxyScaleHint);
         param->setAnimates(false);
@@ -3155,7 +3154,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamFrameRateHint);
         param->setEvaluateOnChange(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
-        param->setEnabled(false);
+        //param->setEnabled(false); // done in the restoreStateFromParameters()
         param->setDefault(24.);
         param->setRange(0., DBL_MAX);
         param->setDisplayRange(0.,300.);
@@ -3185,8 +3184,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     // sublabel
     if (gHostIsNatron) {
         StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
-        param->setIsSecret(true); // always secret
-        param->setEnabled(false);
+        param->setIsSecretAndDisabled(true); // always secret
         param->setIsPersistent(true);
         param->setEvaluateOnChange(false);
         //param->setDefault();
@@ -3199,7 +3197,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
         param->setEvaluateOnChange(false);
         param->setAnimates(false);
-        param->setIsSecret(true);
+        param->setIsSecretAndDisabled(true);
         param->setDefault(false);
         if (page) {
             page->addChild(*param);

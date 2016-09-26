@@ -1057,28 +1057,23 @@ SeNoisePlugin::changedParam(const OFX::InstanceChangedArgs &args,
         ;
 #ifdef SENOISE_VORONOI
         bool isvoronoi = (noiseType == eNoiseTypeVoronoi);
-        _voronoiType->setIsSecret(!isvoronoi);
-        _jitter->setIsSecret(!isvoronoi);
-        _fbmScale->setIsSecret(!isvoronoi);
+        _voronoiType->setIsSecretAndDisabled(!isvoronoi);
+        _jitter->setIsSecretAndDisabled(!isvoronoi);
+        _fbmScale->setIsSecretAndDisabled(!isvoronoi);
 #endif
-        _octaves->setIsSecret(!isfbm);
-        _lacunarity->setIsSecret(!isfbm);
-        _gain->setIsSecret(!isfbm);
+        _octaves->setIsSecretAndDisabled(!isfbm);
+        _lacunarity->setIsSecretAndDisabled(!isfbm);
+        _gain->setIsSecretAndDisabled(!isfbm);
     } else if (paramName == kParamRampType && args.reason == OFX::eChangeUserEdit) {
         int type_i;
         _type->getValue(type_i);
         RampTypeEnum type = (RampTypeEnum)type_i;
         bool noramp = (type == eRampTypeNone);
-        _color0->setIsSecret(noramp);
-        _point0->setIsSecret(noramp);
-        _point1->setIsSecret(noramp);
-        _rampInteractOpen->setIsSecret(noramp);
-        _rampInteractive->setIsSecret(noramp);
-        _color0->setEnabled(!noramp);
-        _point0->setEnabled(!noramp);
-        _point1->setEnabled(!noramp);
-        _rampInteractOpen->setEnabled(!noramp);
-        _rampInteractive->setEnabled(!noramp);
+        _color0->setIsSecretAndDisabled(noramp);
+        _point0->setIsSecretAndDisabled(noramp);
+        _point1->setIsSecretAndDisabled(noramp);
+        _rampInteractOpen->setIsSecretAndDisabled(noramp);
+        _rampInteractive->setIsSecretAndDisabled(noramp);
     }
 }
 
@@ -1356,7 +1351,7 @@ void SeNoisePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
         param->setDisplayRange(0., 1.);
         param->setDefault(kParamGammaDefault);
         param->setEnabled(false); // TODO: gamma parameter
-        param->setIsSecret(true);
+        param->setIsSecret(true); // TODO: gamma parameter
         if (page) {
             page->addChild(*param);
         }

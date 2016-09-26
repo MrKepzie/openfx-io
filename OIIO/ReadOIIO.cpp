@@ -438,22 +438,22 @@ void ReadOIIOPlugin::updateChannelMenusVisibility(OFX::PixelComponentEnum output
     assert(_useRGBAChoices);
     switch (outputComponents) {
         case OFX::ePixelComponentRGBA: {
-            _rChannel->setIsSecret(false);
-            _bChannel->setIsSecret(false);
-            _gChannel->setIsSecret(false);
-            _aChannel->setIsSecret(false);
+            _rChannel->setIsSecretAndDisabled(false);
+            _bChannel->setIsSecretAndDisabled(false);
+            _gChannel->setIsSecretAndDisabled(false);
+            _aChannel->setIsSecretAndDisabled(false);
         }   break;
         case OFX::ePixelComponentRGB: {
-            _rChannel->setIsSecret(false);
-            _bChannel->setIsSecret(false);
-            _gChannel->setIsSecret(false);
-            _aChannel->setIsSecret(true);
+            _rChannel->setIsSecretAndDisabled(false);
+            _bChannel->setIsSecretAndDisabled(false);
+            _gChannel->setIsSecretAndDisabled(false);
+            _aChannel->setIsSecretAndDisabled(true);
         }   break;
         case OFX::ePixelComponentAlpha: {
-            _rChannel->setIsSecret(true);
-            _bChannel->setIsSecret(true);
-            _gChannel->setIsSecret(true);
-            _aChannel->setIsSecret(false);
+            _rChannel->setIsSecretAndDisabled(true);
+            _bChannel->setIsSecretAndDisabled(true);
+            _gChannel->setIsSecretAndDisabled(true);
+            _aChannel->setIsSecretAndDisabled(false);
         }   break;
         default:
             // unsupported components
@@ -3067,7 +3067,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setLabel(kParamRChannelLabel);
             param->setHint(kParamRChannelHint);
             param->setAnimates(false);
-            param->setIsSecret(true); // never meant to be visible
+            param->setIsSecretAndDisabled(true); // never meant to be visible
             if (page) {
                 page->addChild(*param);
             }
@@ -3077,7 +3077,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setLabel(kParamGChannelLabel);
             param->setHint(kParamGChannelHint);
             param->setAnimates(false);
-            param->setIsSecret(true); // never meant to be visible
+            param->setIsSecretAndDisabled(true); // never meant to be visible
             if (page) {
                 page->addChild(*param);
             }
@@ -3088,7 +3088,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setLabel(kParamBChannelLabel);
             param->setHint(kParamBChannelHint);
             param->setAnimates(false);
-            param->setIsSecret(true); // never meant to be visible
+            param->setIsSecretAndDisabled(true); // never meant to be visible
             if (page) {
                 page->addChild(*param);
             }
@@ -3099,7 +3099,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             param->setLabel(kParamAChannelLabel);
             param->setHint(kParamAChannelHint);
             param->setAnimates(false);
-            param->setIsSecret(true); // never meant to be visible
+            param->setIsSecretAndDisabled(true); // never meant to be visible
             if (page) {
                 page->addChild(*param);
             }
@@ -3121,7 +3121,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
             {
                 StringParamDescriptor* param = desc.defineStringParam(kParamChannelOutputLayerChoice);
                 param->setLabel(kParamChannelOutputLayerChoice);
-                param->setIsSecret(true);
+                param->setIsSecretAndDisabled(true);
                 param->setAnimates(false);
                 desc.addClipPreferencesSlaveParam(*param);
                 if (page) {
@@ -3133,7 +3133,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
                 param->setLabel(kParamAvailableViewsLabel);
                 param->setHint(kParamAvailableViewsHint);
                 param->setAnimates(false);
-                param->setIsSecret(true);
+                param->setIsSecretAndDisabled(true);
                 param->setEvaluateOnChange(false);
                 param->setIsPersistent(false);
 #ifndef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW

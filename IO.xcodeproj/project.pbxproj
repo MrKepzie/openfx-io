@@ -52,6 +52,16 @@
 		1E00B3EF188EEBC5003BC7F3 /* WriteOIIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */; };
 		1E0524AD19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E0524AB19813C5B00260F03 /* OCIOFileTransform.cpp */; };
 		1E0524AE19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E0524AB19813C5B00260F03 /* OCIOFileTransform.cpp */; };
+		1E2E98F71D994AE3000D1E98 /* ofxsLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82B1891074000E9034B /* ofxsLog.cpp */; };
+		1E2E98F81D994AE3000D1E98 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
+		1E2E98F91D994AE3000D1E98 /* ofxsImageEffect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8291891074000E9034B /* ofxsImageEffect.cpp */; };
+		1E2E98FA1D994AE3000D1E98 /* ofxsPropertyValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82F1891074000E9034B /* ofxsPropertyValidation.cpp */; };
+		1E2E98FB1D994AE3000D1E98 /* ofxsParams.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82D1891074000E9034B /* ofxsParams.cpp */; };
+		1E2E98FC1D994AE3000D1E98 /* ofxsInteract.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82A1891074000E9034B /* ofxsInteract.cpp */; };
+		1E2E98FD1D994AE3000D1E98 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
+		1E2E98FE1D994AE3000D1E98 /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82C1891074000E9034B /* ofxsMultiThread.cpp */; };
+		1E2E99001D994AE3000D1E98 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
+		1E2E990B1D994B11000D1E98 /* CTL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E98CE1D9949B5000D1E98 /* CTL.cpp */; };
 		1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */; };
 		1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
@@ -341,6 +351,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		1E2E99011D994AE3000D1E98 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1EB199021A482E2C0009D9DF /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -509,6 +528,10 @@
 		1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReadOIIO.cpp; sourceTree = "<group>"; };
 		1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WriteOIIO.cpp; sourceTree = "<group>"; };
 		1E0524AB19813C5B00260F03 /* OCIOFileTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOFileTransform.cpp; sourceTree = "<group>"; };
+		1E2E98CE1D9949B5000D1E98 /* CTL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CTL.cpp; sourceTree = "<group>"; };
+		1E2E98CF1D9949B5000D1E98 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1E2E98D01D9949B5000D1E98 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		1E2E99091D994AE3000D1E98 /* CTL.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CTL.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E2F4D94189295DA00F4CE25 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E2F4D95189295DA00F4CE25 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2F4DCA189295F600F4CE25 /* IO.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = IO.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -700,6 +723,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		1E2E98FF1D994AE3000D1E98 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E2E99001D994AE3000D1E98 /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1E2F4DAA189295F600F4CE25 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -846,6 +877,16 @@
 				1E814C8F19C9814700C2C668 /* fr.inria.openfx.OIIOText.svg */,
 			);
 			path = OIIO;
+			sourceTree = "<group>";
+		};
+		1E2E98CD1D994998000D1E98 /* CTL */ = {
+			isa = PBXGroup;
+			children = (
+				1E2E98CE1D9949B5000D1E98 /* CTL.cpp */,
+				1E2E98CF1D9949B5000D1E98 /* Info.plist */,
+				1E2E98D01D9949B5000D1E98 /* Makefile */,
+			);
+			path = CTL;
 			sourceTree = "<group>";
 		};
 		1E2F4D93189295B000F4CE25 /* IO */ = {
@@ -1057,6 +1098,7 @@
 				1E00B3C0188EE8A1003BC7F3 /* FFmpeg */,
 				1E00B386188EE860003BC7F3 /* IOSupport */,
 				ACE084981AB4AB7E00BE558C /* SeExpr */,
+				1E2E98CD1D994998000D1E98 /* CTL */,
 				D74E62931875AABD00D8FA13 /* OpenFX */,
 				1E9B5F21198A50250095C8AA /* SupportExt */,
 				D74E62481875A7A400D8FA13 /* Frameworks */,
@@ -1076,6 +1118,7 @@
 				1EDECBE018B9F8040093B6FC /* RunScript.ofx.bundle */,
 				ACE084B21AB4AB9B00BE558C /* SeExpr.ofx.bundle */,
 				AC51C47C1D0ED85B0004B213 /* PNG.ofx.bundle */,
+				1E2E99091D994AE3000D1E98 /* CTL.ofx.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1151,6 +1194,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1E2E98EE1D994AE3000D1E98 /* CTL.ofx */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1E2E99061D994AE3000D1E98 /* Build configuration list for PBXNativeTarget "CTL.ofx" */;
+			buildPhases = (
+				1E2E98EF1D994AE3000D1E98 /* Sources */,
+				1E2E98FF1D994AE3000D1E98 /* Frameworks */,
+				1E2E99011D994AE3000D1E98 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CTL.ofx;
+			productName = exrReader;
+			productReference = 1E2E99091D994AE3000D1E98 /* CTL.ofx.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 		1E2F4D97189295F600F4CE25 /* IO.ofx */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1E2F4DC7189295F600F4CE25 /* Build configuration list for PBXNativeTarget "IO.ofx" */;
@@ -1335,11 +1395,28 @@
 				AC51C4611D0ED85B0004B213 /* PNG.ofx */,
 				1EDECBB018B9F8040093B6FC /* RunScript.ofx */,
 				ACE0849E1AB4AB9B00BE558C /* SeExpr.ofx */,
+				1E2E98EE1D994AE3000D1E98 /* CTL.ofx */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1E2E98EF1D994AE3000D1E98 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E2E990B1D994B11000D1E98 /* CTL.cpp in Sources */,
+				1E2E98F71D994AE3000D1E98 /* ofxsLog.cpp in Sources */,
+				1E2E98F81D994AE3000D1E98 /* ofxsProperty.cpp in Sources */,
+				1E2E98F91D994AE3000D1E98 /* ofxsImageEffect.cpp in Sources */,
+				1E2E98FA1D994AE3000D1E98 /* ofxsPropertyValidation.cpp in Sources */,
+				1E2E98FB1D994AE3000D1E98 /* ofxsParams.cpp in Sources */,
+				1E2E98FC1D994AE3000D1E98 /* ofxsInteract.cpp in Sources */,
+				1E2E98FD1D994AE3000D1E98 /* ofxsCore.cpp in Sources */,
+				1E2E98FE1D994AE3000D1E98 /* ofxsMultiThread.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1E2F4D98189295F600F4CE25 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1618,6 +1695,60 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		1E2E99071D994AE3000D1E98 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(EXR_PATH)/include/OpenEXR",
+				);
+				INFOPLIST_FILE = CTL/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(EXR_PATH)/lib",
+					"$(CTL_PATH)/lib",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(EXR_PATH)/lib",
+					"-lIlmThread",
+					"-lHalf",
+					"-lIexMath",
+					"-lIlmImf",
+					"-L$(CTL_PATH)/lib",
+					"-lIlmCtl",
+					"-lIlmCtlSimd",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		1E2E99081D994AE3000D1E98 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(EXR_PATH)/include/OpenEXR",
+				);
+				INFOPLIST_FILE = CTL/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(EXR_PATH)/lib",
+					"$(CTL_PATH)/lib",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-L$(EXR_PATH)/lib",
+					"-lIlmThread",
+					"-lHalf",
+					"-lIexMath",
+					"-lIlmImf",
+					"-L$(CTL_PATH)/lib",
+					"-lIlmCtl",
+					"-lIlmCtlSimd",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		1E2F4DC8189295F600F4CE25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2084,6 +2215,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1E2E99061D994AE3000D1E98 /* Build configuration list for PBXNativeTarget "CTL.ofx" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1E2E99071D994AE3000D1E98 /* Debug */,
+				1E2E99081D994AE3000D1E98 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		1E2F4DC7189295F600F4CE25 /* Build configuration list for PBXNativeTarget "IO.ofx" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

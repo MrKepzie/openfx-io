@@ -1018,8 +1018,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     // sublabel
     {
         StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
-        param->setIsSecret(true); // always secret
-        param->setEnabled(false);
+        param->setIsSecretAndDisabled(true); // always secret
         param->setIsPersistent(true);
         param->setEvaluateOnChange(false);
         param->setDefault(gPresets[0].label);

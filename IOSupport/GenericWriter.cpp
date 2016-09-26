@@ -198,23 +198,23 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
     double first,last;
     timeLineGetBounds(first,last);
     if (frameRangeChoice == 2) {
-        _firstFrame->setIsSecret(false);
-        _lastFrame->setIsSecret(false);
+        _firstFrame->setIsSecretAndDisabled(false);
+        _lastFrame->setIsSecretAndDisabled(false);
     } else {
-        _firstFrame->setIsSecret(true);
-        _lastFrame->setIsSecret(true);
+        _firstFrame->setIsSecretAndDisabled(true);
+        _lastFrame->setIsSecretAndDisabled(true);
     }
     int outputFormat_i;
     _outputFormatType->getValue(outputFormat_i);
     if (_clipToProject) {
         std::string filename;
         _fileParam->getValue(filename);
-        _clipToProject->setIsSecret(outputFormat_i != 1 || !displayWindowSupportedByFormat(filename));
+        _clipToProject->setIsSecretAndDisabled(outputFormat_i != 1 || !displayWindowSupportedByFormat(filename));
     }
     if (outputFormat_i == 0 || outputFormat_i == 1) {
-        _outputFormat->setIsSecret(true);
+        _outputFormat->setIsSecretAndDisabled(true);
     } else {
-        _outputFormat->setIsSecret(false);
+        _outputFormat->setIsSecretAndDisabled(false);
     }
 }
 
@@ -1826,7 +1826,7 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         if (_clipToProject) {
             int type;
             _outputFormatType->getValue(type);
-            _clipToProject->setIsSecret(type != 1 || !displayWindowSupportedByFormat(filename));
+            _clipToProject->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
         }
     }
 }
@@ -1840,14 +1840,14 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         timeLineGetBounds(first,last);
         _frameRange->getValue(choice);
         if (choice == 2) {
-            _firstFrame->setIsSecret(false);
+            _firstFrame->setIsSecretAndDisabled(false);
             int curFirstFrame;
             _firstFrame->getValue(curFirstFrame);
             // if first-frame has never been set by the user, set it
             if (first != curFirstFrame && curFirstFrame == 0) {
                 _firstFrame->setValue((int)first);
             }
-            _lastFrame->setIsSecret(false);
+            _lastFrame->setIsSecretAndDisabled(false);
             int curLastFrame;
             _lastFrame->getValue(curLastFrame);
             // if last-frame has never been set by the user, set it
@@ -1856,8 +1856,8 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             }
 
         } else {
-            _firstFrame->setIsSecret(true);
-            _lastFrame->setIsSecret(true);
+            _firstFrame->setIsSecretAndDisabled(true);
+            _lastFrame->setIsSecretAndDisabled(true);
         }
     } else if (paramName == kParamFilename) {
         outputFileChanged(args.reason, false, true);
@@ -1867,12 +1867,12 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         if (_clipToProject) {
             std::string filename;
             _fileParam->getValue(filename);
-            _clipToProject->setIsSecret(type != 1 || !displayWindowSupportedByFormat(filename));
+            _clipToProject->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
         }
         if (type == 0 || type == 1) {
-            _outputFormat->setIsSecret(true);
+            _outputFormat->setIsSecretAndDisabled(true);
         } else {
-            _outputFormat->setIsSecret(false);
+            _outputFormat->setIsSecretAndDisabled(false);
         }
         
         
@@ -1981,17 +1981,17 @@ GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         
         if (checkboxesLabels.size() == 1) {
             for (int i = 0; i < 3; ++i) {
-                _processChannels[i]->setIsSecret(true);
+                _processChannels[i]->setIsSecretAndDisabled(true);
             }
-            _processChannels[3]->setIsSecret(false);
+            _processChannels[3]->setIsSecretAndDisabled(false);
             _processChannels[3]->setLabel(checkboxesLabels[0]);
         } else {
             for (int i = 0; i < 4; ++i) {
                 if (i < (int)checkboxesLabels.size()) {
-                    _processChannels[i]->setIsSecret(false);
+                    _processChannels[i]->setIsSecretAndDisabled(false);
                     _processChannels[i]->setLabel(checkboxesLabels[i]);
                 } else {
-                    _processChannels[i]->setIsSecret(true);
+                    _processChannels[i]->setIsSecretAndDisabled(true);
                 }
             }
         }
@@ -2319,13 +2319,14 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     }
     
     {
+        // secret parameters to handle custom formats
         int w = 0, h = 0;
         double par = -1;
         getFormatResolution(eParamFormatHD, &w, &h, &par);
         assert(par != -1);
         {
             Int2DParamDescriptor* param = desc.defineInt2DParam(kParamFormatSize);
-            param->setIsSecret(true);
+            param->setIsSecretAndDisabled(true);
             param->setDefault(w, h);
             if (page) {
                 page->addChild(*param);
@@ -2334,7 +2335,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         
         {
             DoubleParamDescriptor* param = desc.defineDoubleParam(kParamFormatPar);
-            param->setIsSecret(true);
+            param->setIsSecretAndDisabled(true);
             param->setRange(0., DBL_MAX);
             param->setDisplayRange(0.5, 2.);
             param->setDefault(par);
@@ -2418,7 +2419,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
         param->setLabel(kParamFirstFrameLabel);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setAnimates(true);
         if (page) {
             page->addChild(*param);
@@ -2429,7 +2430,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     {
         OFX::IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
         param->setLabel(kParamLastFrameLabel);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setAnimates(true);
         if (page) {
             page->addChild(*param);
@@ -2439,8 +2440,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     // sublabel
     if (gHostIsNatron) {
         StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
-        param->setIsSecret(true); // always secret
-        param->setEnabled(false);
+        param->setIsSecretAndDisabled(true); // always secret
         param->setIsPersistent(true);
         param->setEvaluateOnChange(false);
         //param->setDefault();
@@ -2453,7 +2453,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
         param->setEvaluateOnChange(false);
         param->setAnimates(false);
-        param->setIsSecret(true);
+        param->setIsSecretAndDisabled(true);
         param->setDefault(false);
         if (page) {
             page->addChild(*param);

@@ -202,26 +202,26 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     switch (type) {
         case eResizeTypeFormat:
             //specific output format
-            _size->setIsSecret(true);
-            _preservePAR->setIsSecret(true);
-            _scale->setIsSecret(true);
-            _format->setIsSecret(false);
+            _size->setIsSecretAndDisabled(true);
+            _preservePAR->setIsSecretAndDisabled(true);
+            _scale->setIsSecretAndDisabled(true);
+            _format->setIsSecretAndDisabled(false);
             break;
 
         case eResizeTypeSize:
             //size
-            _size->setIsSecret(false);
-            _preservePAR->setIsSecret(false);
-            _scale->setIsSecret(true);
-            _format->setIsSecret(true);
+            _size->setIsSecretAndDisabled(false);
+            _preservePAR->setIsSecretAndDisabled(false);
+            _scale->setIsSecretAndDisabled(true);
+            _format->setIsSecretAndDisabled(true);
             break;
 
         case eResizeTypeScale:
             //scaled
-            _size->setIsSecret(true);
-            _preservePAR->setIsSecret(true);
-            _scale->setIsSecret(false);
-            _format->setIsSecret(true);
+            _size->setIsSecretAndDisabled(true);
+            _preservePAR->setIsSecretAndDisabled(true);
+            _scale->setIsSecretAndDisabled(false);
+            _format->setIsSecretAndDisabled(true);
             break;
     }
     
@@ -545,26 +545,26 @@ OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
         switch (type) {
             case eResizeTypeFormat:
                 //specific output format
-                _size->setIsSecret(true);
-                _preservePAR->setIsSecret(true);
-                _scale->setIsSecret(true);
-                _format->setIsSecret(false);
+                _size->setIsSecretAndDisabled(true);
+                _preservePAR->setIsSecretAndDisabled(true);
+                _scale->setIsSecretAndDisabled(true);
+                _format->setIsSecretAndDisabled(false);
                 break;
 
             case eResizeTypeSize:
                 //size
-                _size->setIsSecret(false);
-                _preservePAR->setIsSecret(false);
-                _scale->setIsSecret(true);
-                _format->setIsSecret(true);
+                _size->setIsSecretAndDisabled(false);
+                _preservePAR->setIsSecretAndDisabled(false);
+                _scale->setIsSecretAndDisabled(true);
+                _format->setIsSecretAndDisabled(true);
                 break;
                 
             case eResizeTypeScale:
                 //scaled
-                _size->setIsSecret(true);
-                _preservePAR->setIsSecret(true);
-                _scale->setIsSecret(false);
-                _format->setIsSecret(true);
+                _size->setIsSecretAndDisabled(true);
+                _preservePAR->setIsSecretAndDisabled(true);
+                _scale->setIsSecretAndDisabled(false);
+                _format->setIsSecretAndDisabled(true);
                 break;
         }
     }
@@ -844,7 +844,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setDefault(200, 200);
         param->setDisplayRange(0, 0, 10000, 10000);
         param->setAnimates(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
@@ -858,7 +858,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setHint(kParamPreservePARHint);
         param->setAnimates(false);
         param->setDefault(false);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setDefault(true);
         if (page) {
             page->addChild(*param);
@@ -869,7 +869,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setHint(kParamScaleHint);
         param->setLabel(kParamScaleLabel);
         param->setAnimates(true);
-        //param->setIsSecret(true); // done in the plugin constructor
+        //param->setIsSecretAndDisabled(true); // done in the plugin constructor
         param->setDefault(1., 1.);
         param->setRange(0., 0., DBL_MAX, DBL_MAX);
         param->setIncrement(0.05);
@@ -903,7 +903,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
     {
         OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kSrcClipChanged);
         param->setDefault(false);
-        param->setIsSecret(true);
+        param->setIsSecretAndDisabled(true); // always secret
         param->setAnimates(false);
         param->setEvaluateOnChange(false);
         if (page) {

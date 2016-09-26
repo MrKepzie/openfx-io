@@ -415,8 +415,8 @@ OCIODisplayPlugin::OCIODisplayPlugin(OfxImageEffectHandle handle)
 #endif
 
     if (gHostIsNatron) {
-        _display->setIsSecret(true);
-        _view->setIsSecret(true);
+        _display->setIsSecretAndDisabled(true);
+        _view->setIsSecretAndDisabled(true);
         _displayChoice = fetchChoiceParam(kParamDisplayChoice);
         _viewChoice = fetchChoiceParam(kParamViewChoice);
         // the choice menu can only be modified in Natron
@@ -463,16 +463,12 @@ OCIODisplayPlugin::displayCheck(double time)
         if (displayIndexOld != displayIndex) {
             _displayChoice->setValue(displayIndex);
         }
-        _display->setEnabled(false);
-        _display->setIsSecret(true);
-        _displayChoice->setEnabled(true);
-        _displayChoice->setIsSecret(false);
+        _display->setIsSecretAndDisabled(true);
+        _displayChoice->setIsSecretAndDisabled(false);
     } else {
         // the input space name is not valid
-        _display->setEnabled(true);
-        _display->setIsSecret(false);
-        _displayChoice->setEnabled(false);
-        _displayChoice->setIsSecret(true);
+        _display->setIsSecretAndDisabled(false);
+        _displayChoice->setIsSecretAndDisabled(true);
     }
 }
 
@@ -505,19 +501,15 @@ OCIODisplayPlugin::viewCheck(double time, bool setDefaultIfInvalid)
         if (viewIndexOld != viewIndex) {
             _viewChoice->setValue(viewIndex);
         }
-        _view->setEnabled(false);
-        _view->setIsSecret(true);
-        _viewChoice->setEnabled(true);
-        _viewChoice->setIsSecret(false);
+        _view->setIsSecretAndDisabled(true);
+        _viewChoice->setIsSecretAndDisabled(false);
     } else {
         // the view name is not valid
         if (setDefaultIfInvalid) {
             _view->setValue(config->getDefaultView(displayName.c_str()));
         } else {
-            _view->setEnabled(true);
-            _view->setIsSecret(false);
-            _viewChoice->setEnabled(false);
-            _viewChoice->setIsSecret(true);
+            _view->setIsSecretAndDisabled(false);
+            _viewChoice->setIsSecretAndDisabled(true);
         }
     }
 }
@@ -1173,7 +1165,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         if (config) {
             buildDisplayMenu(config, param);
         } else {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in constructor
         }
         param->setAnimates(false);
         if (page) {
@@ -1201,7 +1193,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
         if (config) {
             buildViewMenu(config, param, config->getDefaultDisplay());
         } else {
-            param->setEnabled(false);
+            //param->setEnabled(false); // done in constructor
         }
         param->setAnimates(true);
         if (page) {

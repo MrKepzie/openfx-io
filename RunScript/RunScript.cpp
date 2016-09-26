@@ -457,10 +457,10 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::s
                 int t_int;
                 _type[i]->getValue(t_int);
                 ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
-                _filename[i]->setIsSecret(t != eRunScriptPluginParamTypeFilename);
-                _string[i]->setIsSecret(t != eRunScriptPluginParamTypeString);
-                _double[i]->setIsSecret(t != eRunScriptPluginParamTypeDouble);
-                _int[i]->setIsSecret(t != eRunScriptPluginParamTypeInteger);
+                _filename[i]->setIsSecretAndDisabled(t != eRunScriptPluginParamTypeFilename);
+                _string[i]->setIsSecretAndDisabled(t != eRunScriptPluginParamTypeString);
+                _double[i]->setIsSecretAndDisabled(t != eRunScriptPluginParamTypeDouble);
+                _int[i]->setIsSecretAndDisabled(t != eRunScriptPluginParamTypeInteger);
             }
         }
     }
@@ -703,7 +703,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->appendOption(kParamTypeStringLabel,   kParamTypeStringHint);
                 param->appendOption(kParamTypeDoubleLabel,   kParamTypeDoubleHint);
                 param->appendOption(kParamTypeIntLabel,      kParamTypeIntHint);
-                //param->setIsSecret(true); // done in the plugin constructor
+                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
                 if (group) {
                     param->setParent(*group);
                 }
@@ -719,7 +719,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setStringType(eStringTypeFilePath);
                 param->setFilePathExists(false); // the file may or may not exist
                 param->setAnimates(true); // the file name may change with time
-                //param->setIsSecret(true); // done in the plugin constructor
+                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
                 if (group) {
                     param->setParent(*group);
                 }
@@ -733,7 +733,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setLabel(kParamTypeStringLabel + istr);
                 param->setHint(kParamTypeStringHint);
                 param->setAnimates(true);
-                //param->setIsSecret(true); // done in the plugin constructor
+                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
                 if (group) {
                     param->setParent(*group);
                 }
@@ -747,7 +747,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setLabel(kParamTypeDoubleLabel + istr);
                 param->setHint(kParamTypeDoubleHint);
                 param->setAnimates(true);
-                //param->setIsSecret(true); // done in the plugin constructor
+                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
                 param->setRange(-DBL_MAX, DBL_MAX);
                 param->setDisplayRange(-1000.,1000.);
                 if (group) {
@@ -763,7 +763,7 @@ void RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setLabel(kParamTypeIntLabel + istr);
                 param->setHint(kParamTypeIntHint);
                 param->setAnimates(true);
-                //param->setIsSecret(true); // done in the plugin constructor
+                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
                 if (group) {
                     param->setParent(*group);
                 }

@@ -895,9 +895,9 @@ OCIOFileTransformPlugin::updateCCCId()
     const std::string ccext = "cc";
     if(std::equal(cccext.rbegin(), cccext.rend(), srcstring.rbegin()) ||
        std::equal(ccext.rbegin(), ccext.rend(), srcstring.rbegin())) {
-        _cccid->setIsSecret(false);
+        _cccid->setIsSecretAndDisabled(false);
     } else {
-        _cccid->setIsSecret(true);
+        _cccid->setIsSecretAndDisabled(true);
     }
 }
 
@@ -1037,7 +1037,7 @@ void OCIOFileTransformPluginFactory::describeInContext(OFX::ImageEffectDescripto
     }
     {
         IntParamDescriptor *param = desc.defineIntParam(kParamVersion);
-        param->setIsSecret(true); // always secret
+        param->setIsSecretAndDisabled(true); // always secret
         param->setDefault(1);
         if (page) {
             page->addChild(*param);

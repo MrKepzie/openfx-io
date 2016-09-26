@@ -477,12 +477,12 @@ WriteOIIOPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
             
         
         if (ofxComponents == kPlaneLabelAll) {
-            _outputComponents->setIsSecret(true);
+            _outputComponents->setIsSecretAndDisabled(true);
             for (int i = 0; i < 4; ++i) {
-                _processChannels[i]->setIsSecret(true);
+                _processChannels[i]->setIsSecretAndDisabled(true);
             }
         } else {
-            _outputComponents->setIsSecret(false);
+            _outputComponents->setIsSecretAndDisabled(false);
         }
         
     }
@@ -724,8 +724,8 @@ WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
 {
     std::auto_ptr<ImageOutput> output(ImageOutput::create(filename));
     if (output.get()) {
-        _tileSize->setIsSecret(!output->supports("tiles"));
-        //_outputLayers->setIsSecret(!output->supports("nchannels"));
+        _tileSize->setIsSecretAndDisabled(!output->supports("tiles"));
+        //_outputLayers->setIsSecretAndDisabled(!output->supports("nchannels"));
         bool hasQuality = (strcmp(output->format_name(), "jpeg") == 0 ||
                            strcmp(output->format_name(), "webp") == 0);
         if (!hasQuality && (strcmp(output->format_name(), "tiff") == 0)) {
@@ -733,7 +733,7 @@ WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
             _compression->getValue(compression_i);
             hasQuality = ((EParamCompression)compression_i == eParamCompressionJPEG);
         }
-        _quality->setIsSecret(!hasQuality);
+        _quality->setIsSecretAndDisabled(!hasQuality);
         bool isEXR = strcmp(output->format_name(), "openexr") == 0;
         bool hasDWA = isEXR;
         if (hasDWA) {
@@ -742,23 +742,23 @@ WriteOIIOPlugin::refreshParamsVisibility(const std::string& filename)
             EParamCompression compression = (EParamCompression)compression_i;
             hasDWA = (compression == eParamCompressionDWAa) || (compression == eParamCompressionDWAb);
         }
-        _dwaCompressionLevel->setIsSecret(!hasDWA);
+        _dwaCompressionLevel->setIsSecretAndDisabled(!hasDWA);
         if (_views) {
-            _views->setIsSecret(!isEXR);
+            _views->setIsSecretAndDisabled(!isEXR);
         }
         if (_parts) {
-            _parts->setIsSecret(!output->supports("multiimage"));
+            _parts->setIsSecretAndDisabled(!output->supports("multiimage"));
         }
     } else {
-        _tileSize->setIsSecret(true);
-        //_outputLayers->setIsSecret(true);
-        _quality->setIsSecret(true);
-        _dwaCompressionLevel->setIsSecret(true);
+        _tileSize->setIsSecretAndDisabled(true);
+        //_outputLayers->setIsSecretAndDisabled(true);
+        _quality->setIsSecretAndDisabled(true);
+        _dwaCompressionLevel->setIsSecretAndDisabled(true);
         if (_views) {
-            _views->setIsSecret(true);
+            _views->setIsSecretAndDisabled(true);
         }
         if (_parts) {
-            _parts->setIsSecret(true);
+            _parts->setIsSecretAndDisabled(true);
         }
     }
 

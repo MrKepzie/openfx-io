@@ -2252,29 +2252,25 @@ SeExprPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::stri
         bool hasFormat = (boundingBox == eRegionOfDefinitionOptionFormat);
         bool hasSize = (boundingBox == eRegionOfDefinitionOptionSize);
 
-        _format->setEnabled(hasFormat);
-        _format->setIsSecret(!hasFormat);
-        _size->setEnabled(hasSize);
-        _size->setIsSecret(!hasSize);
-        _btmLeft->setEnabled(hasSize);
-        _btmLeft->setIsSecret(!hasSize);
-        _interactive->setEnabled(hasSize);
-        _interactive->setIsSecret(!hasSize);
+        _format->setIsSecretAndDisabled(!hasFormat);
+        _size->setIsSecretAndDisabled(!hasSize);
+        _btmLeft->setIsSecretAndDisabled(!hasSize);
+        _interactive->setIsSecretAndDisabled(!hasSize);
     } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) {
         OFX::PixelComponentEnum outputComponents = getOutputComponents();
         const bool hasRGB = (outputComponents == OFX::ePixelComponentRGB || outputComponents == OFX::ePixelComponentRGBA); // RGB || RGBA
         if (_simple) {
-            _rExpr->setIsSecret(!hasRGB);
-            _gExpr->setIsSecret(!hasRGB);
-            _bExpr->setIsSecret(!hasRGB);
+            _rExpr->setIsSecretAndDisabled(!hasRGB);
+            _gExpr->setIsSecretAndDisabled(!hasRGB);
+            _bExpr->setIsSecretAndDisabled(!hasRGB);
         } else {
-            _rgbScript->setIsSecret(!hasRGB);
+            _rgbScript->setIsSecretAndDisabled(!hasRGB);
         }
         const bool hasAlpha = (outputComponents == OFX::ePixelComponentRGBA || outputComponents == OFX::ePixelComponentAlpha); // RGBA || alpha
         if (_simple) {
-            _aExpr->setIsSecret(!hasAlpha);
+            _aExpr->setIsSecretAndDisabled(!hasAlpha);
         } else {
-            _alphaScript->setIsSecret(!hasAlpha);
+            _alphaScript->setIsSecretAndDisabled(!hasAlpha);
         }
     } else if (paramName == kParamShowExprs && args.reason == OFX::eChangeUserEdit) {
         std::string rExpr, gExpr, bExpr, aExpr;
@@ -2400,7 +2396,7 @@ SeExprPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::strin
             const std::string istr = unsignedToString(i+1);
             if (istr == clipName) {
                 assert(_srcClip[i]);
-                _clipLayerToFetch[i]->setIsSecret(!_srcClip[i]->isConnected());
+                _clipLayerToFetch[i]->setIsSecretAndDisabled(!_srcClip[i]->isConnected());
             }
         }
     }
@@ -3475,7 +3471,7 @@ SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc,
                 param->setHint(kParamLayerInputHint + istr);
                 param->setAnimates(false);
                 param->appendOption(kSeExprColorPlaneName);
-                //param->setIsSecret(true); // done in the plugin constructor
+                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
                 param->setParent(*group);
                 param->setEvaluateOnChange(false);
                 param->setIsPersistent(false);
@@ -3486,7 +3482,7 @@ SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc,
             {
                 StringParamDescriptor *param = desc.defineStringParam(kParamLayerInputChoice + istr);
                 param->setLabel(kParamLayerInputChoiceLabel + istr);
-                param->setIsSecret(true);
+                param->setIsSecretAndDisabled(true); // always secret
                 param->setParent(*group);
                 if (page) {
                     page->addChild(*param);
@@ -3522,7 +3518,7 @@ SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->setLabel(kParamDoubleLabel + istr);
             param->setHint(kParamDoubleHint + istr);
             param->setAnimates(true);
-            //param->setIsSecret(true); // done in the plugin constructor
+            //param->setIsSecretAndDisabled(true); // done in the plugin constructor
             param->setRange(-DBL_MAX, DBL_MAX);
             param->setDisplayRange(-1000.,1000.);
             param->setDoubleType(OFX::eDoubleTypePlain);
@@ -3563,7 +3559,7 @@ SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->setAnimates(true);
             param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
             param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
-            //param->setIsSecret(true); // done in the plugin constructor
+            //param->setIsSecretAndDisabled(true); // done in the plugin constructor
             param->setDoubleType(OFX::eDoubleTypeXYAbsolute);
             bool hostHasNativeOverlayForPosition = param->getHostHasNativeOverlayHandle();
             if (hostHasNativeOverlayForPosition) {
@@ -3603,7 +3599,7 @@ SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc,
             param->setHint(kParamColorHint + istr);
             param->setAnimates(true);
             param->setParent(*group);
-            //param->setIsSecret(true); // done in the plugin constructor
+            //param->setIsSecretAndDisabled(true); // done in the plugin constructor
             if (page) {
                 page->addChild(*param);
             }
@@ -3763,7 +3759,7 @@ SeExprPluginFactory<simple>::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamValidateHint);
         param->setEvaluateOnChange(true);
         if (gHostIsNatron) {
-            param->setIsSecret(true);
+            param->setIsSecretAndDisabled(true);
         }
         if (page) {
             page->addChild(*param);
