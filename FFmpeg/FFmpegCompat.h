@@ -24,6 +24,13 @@
 #ifndef FFMPEGCOMPAT_H
 #define FFMPEGCOMPAT_H
 
+
+#ifdef __GNUC__
+#	define ffms_used __attribute__((used))
+#else
+#	define ffms_used
+#endif
+
 // Defaults to libav compatibility, uncomment (when building with msvc) to force ffmpeg compatibility.
 //#define FFMS_USE_FFMPEG_COMPAT
 
@@ -124,6 +131,31 @@ inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 #   ifndef AVCODEC_MAX_AUDIO_FRAME_SIZE
 #       define AVCODEC_MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
 #   endif
+#   if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 54, 28, 0, 54, 59, 100)
+static void av_frame_free(AVFrame **frame) { av_freep(frame); }
+#		define av_frame_unref avcodec_get_frame_defaults
+#   elif VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 55, 28, 1, 55, 45, 101)
+#		define av_frame_free avcodec_free_frame
+#		define av_frame_unref avcodec_get_frame_defaults
+#   endif
+#	if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 57, 8, 0, 57, 12, 100)
+#		define av_packet_unref av_free_packet
+#	endif
+
+// should the following check be on (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(57,5,0)) ?
+// https://ffmpeg.org/pipermail/ffmpeg-cvslog/2016-April/099192.html
+// https://ffmpeg.org/pipermail/ffmpeg-cvslog/2016-April/099152.html
+#	if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 57, 14, 0, 57, 33, 100)
+#		define FFMSCODEC codec
+namespace {
+inline ffms_used int make_context(AVCodecContext *dst, AVStream *src) { return avcodec_copy_context(dst, src->codec); }
+};
+#	else
+#		define FFMSCODEC codecpar
+namespace {
+inline ffms_used int make_context(AVCodecContext *dst, AVStream *src) { return avcodec_parameters_to_context(dst, src->codecpar); }
+}
+# endif
 #endif
 
 #ifdef LIBAVUTIL_VERSION_INT
@@ -188,6 +220,11 @@ inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
 #   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 52, 9, 0, 52, 20, 100)
 #       define av_frame_alloc avcodec_alloc_frame
 #   endif
+#	if VERSION_CHECK(LIBAVUTIL_VERSION_INT, >, 55, 0, 0, 55, 0, 100) || defined(FF_API_PLUS1_MINUS1)
+#		define FFMS_DEPTH(x) ((x).depth)
+#	else
+#		define FFMS_DEPTH(x) ((x).depth_minus1 + 1)
+# endif
 #endif
 #ifdef AVERROR 
 #define AVERROR_IO AVERROR(EIO) 

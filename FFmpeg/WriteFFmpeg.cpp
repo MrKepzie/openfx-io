@@ -860,8 +860,8 @@ public:
     MyAVPicture()
     {
         for (int i = 0; i < 4; ++i) {
-            _avPicture.data[i] = NULL;
-            _avPicture.linesize[i] = 0;
+            data[i] = NULL;
+            linesize[i] = 0;
         }
     }
 
@@ -886,6 +886,10 @@ public:
     //
     int alloc(int width, int height, enum AVPixelFormat avPixelFormat);
 
+#if 1
+    uint8_t *data[4];    ///< pointers to the image data planes
+    int linesize[4];     ///< number of bytes per line
+#else
     // operator dereference overload.
     AVPicture* operator->() { return &_avPicture; }
     // operator type cast overload.
@@ -893,7 +897,9 @@ public:
 
 private:
     AVPicture _avPicture;
+#endif
 
+private:
     // Release any memory allocated to the data member variable of
     // the AVPicture structure.
     void deallocateAVPictureData();
@@ -950,7 +956,11 @@ MyAVPicture::~MyAVPicture()
 int MyAVPicture::alloc(int width, int height, enum AVPixelFormat avPixelFormat)
 {
     deallocateAVPictureData(); // In case this method is called multiple times on the same object.
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(51, 63, 100) // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-October/094884.html
+    int ret = av_image_alloc(data, linesize, width, height, avPixelFormat, 1);
+#else
     int ret = avpicture_alloc(&_avPicture, avPixelFormat, width, height);
+#endif
     return ret;
 }
 
@@ -959,6 +969,15 @@ int MyAVPicture::alloc(int width, int height, enum AVPixelFormat avPixelFormat)
 // the AVPicture structure.
 void MyAVPicture::deallocateAVPictureData()
 {
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(51, 63, 100) // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-October/094884.html
+    if (data[0]) {
+        av_freep(&data[0]);
+        for (int i = 0; i < 4; ++i) {
+            data[i] = NULL;
+            linesize[i] = 0;
+        }
+    }
+#else
     if (_avPicture.data[0]) {
         avpicture_free(&_avPicture);
         for (int i = 0; i < 4; ++i) {
@@ -966,6 +985,7 @@ void MyAVPicture::deallocateAVPictureData()
             _avPicture.linesize[i] = 0;
         }
     }
+#endif
 }
 
 
@@ -1047,7 +1067,7 @@ private:
     int writeVideo(AVFormatContext* avFormatContext, AVStream* avStream, bool flush, double time, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
     int writeToFile(AVFormatContext* avFormatContext, bool finalise, double time, const float *pixelData = NULL, const OfxRectI* bounds = NULL, int pixelDataNComps = 0, int dstNComps = 0, int rowBytes = 0);
 
-    int colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext);
+    int colourSpaceConvert(MyAVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext);
 
     // Returns true if the selected channels contain alpha and that the channel is valid
     bool alphaEnabled() const;
@@ -2149,7 +2169,9 @@ void WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec, AVStream* avStrea
     // NOTE: in new ffmpeg, bframes don't seem to work correctly - ffmpeg crashes...
     if (interBParams && bFrames) {
         avCodecContext->max_b_frames = bFrames;
+#if FF_API_PRIVATE_OPT
         avCodecContext->b_frame_strategy = 0;
+#endif
         avCodecContext->b_quant_factor = 2.0f;
     }
 
@@ -2587,7 +2609,7 @@ static int handle_jpeg(enum AVPixelFormat *format)
 // VIDEO levels for all formats. Specifically, 4:4:4 requires video levels on
 // the input RGB component data!
 //
-int WriteFFmpegPlugin::colourSpaceConvert(AVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext)
+int WriteFFmpegPlugin::colourSpaceConvert(MyAVPicture* avPicture, AVFrame* avFrame, AVPixelFormat srcPixelFormat, AVPixelFormat dstPixelFormat, AVCodecContext* avCodecContext)
 {
     if (!avPicture || !avFrame || !avCodecContext) {
         return -1;
@@ -2697,7 +2719,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
     int width = _rodPixel.x2-_rodPixel.x1;
     int height = _rodPixel.y2-_rodPixel.y1;
     
-    AVPicture avPicture = {{0}, {0}};
+    MyAVPicture avPicture;
     AVFrame* avFrame = NULL;
 
     if (!flush) {
@@ -2713,7 +2735,7 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
         else
             pixelFormatNuke = (avCodecContext->bits_per_raw_sample > 8) ? AV_PIX_FMT_RGB48LE : AV_PIX_FMT_RGB24;
 
-        ret = avpicture_alloc(&avPicture, pixelFormatNuke, width, height);
+        ret = avPicture.alloc(width, height, pixelFormatNuke);
         if (!ret) {
 
             // Convert floating point values to unsigned values.
@@ -2879,9 +2901,6 @@ int WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext, AVStream* av
             av_freep(avFrame->data);
         av_frame_free(&avFrame);
     }
-
-    if (avPicture.data[0])
-        avpicture_free(&avPicture);
 
     return ret;
 }
@@ -3112,7 +3131,11 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
         AVCodecContext* avCodecContext = _streamVideo->codec;
         avCodecContext->pix_fmt = targetPixelFormat;
         
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(51, 63, 100) // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-October/094884.html
+        std::size_t picSize = av_image_get_buffer_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1, 1);
+#else
         std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1);
+#endif
         if (_scratchBufferSize < picSize) {
             delete [] _scratchBuffer;
             _scratchBuffer = new uint8_t[picSize];

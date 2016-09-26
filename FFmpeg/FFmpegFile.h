@@ -202,7 +202,7 @@ private:
 
             if (_codecContext) {
                 avcodec_flush_buffers(_codecContext);
-                avcodec_close(_codecContext);
+                avcodec_free_context(&_codecContext);
             }
 
             if (_convertCtx)

@@ -42,6 +42,9 @@
 #  include <unistd.h> // for sysconf()
 #endif
 
+// FFMPEG 3.1
+#define USE_NEW_FFMPEG_API (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57,48,0))
+
 #define CHECK(x) \
     { \
         int error = x; \
@@ -468,7 +471,7 @@ FFmpegFile::getStreamStartTime(Stream & stream)
                     startPTS = _avPacket.pts;
                 }
 
-                av_free_packet(&_avPacket);
+                av_packet_unref(&_avPacket);
             } while ( startPTS ==  int64_t(AV_NOPTS_VALUE) );
         }
 #if TRACE_FILE_OPEN
@@ -600,7 +603,7 @@ FFmpegFile::getStreamFrames(Stream & stream)
             if ( (_avPacket.stream_index == stream._idx) && ( _avPacket.pts != int64_t(AV_NOPTS_VALUE) ) && (_avPacket.pts > maxPts) ) {
                 maxPts = _avPacket.pts;
             }
-            av_free_packet(&_avPacket);
+            av_packet_unref(&_avPacket);
         }
 #if TRACE_FILE_OPEN
         std::cout << "          Start PTS=" << stream._startPTS << ", Max PTS found=" << maxPts << std::endl;
@@ -661,21 +664,36 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         AVStream* avstream = _context->streams[i];
 
         // be sure to have a valid stream
-        if (!avstream || !avstream->codec) {
+        if (!avstream || !avstream->FFMSCODEC) {
 #if TRACE_FILE_OPEN
             std::cout << "No valid stream or codec, skipping..." << std::endl;
 #endif
             continue;
         }
 
+        AVCodecContext *avctx;
+        avctx = avcodec_alloc_context3(NULL);
+        if (!avctx) {
+            setError( "cannot allocate codec context" );
+            return;
+        }
+        
+        int ret = make_context(avctx, avstream);
+        if (ret < 0) {
+#if TRACE_FILE_OPEN
+            std::cout << "Could not convert to context, skipping..." << std::endl;
+#endif
+            continue;
+        }
+
         // considering only video streams, skipping audio
-        if (avstream->codec->codec_type != AVMEDIA_TYPE_VIDEO) {
+        if (avctx->codec_type != AVMEDIA_TYPE_VIDEO) {
 #if TRACE_FILE_OPEN
             std::cout << "Not a video stream, skipping..." << std::endl;
 #endif
             continue;
         }
-        if (avstream->codec->pix_fmt == AV_PIX_FMT_NONE) {
+        if (avctx->pix_fmt == AV_PIX_FMT_NONE) {
 #         if TRACE_FILE_OPEN
             std::cout << "Unknown pixel format, skipping..." << std::endl;
 #         endif
@@ -683,7 +701,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         }
 
         // find the codec
-        AVCodec* videoCodec = avcodec_find_decoder(avstream->codec->codec_id);
+        AVCodec* videoCodec = avcodec_find_decoder(avctx->codec_id);
         if (videoCodec == NULL) {
 #if TRACE_FILE_OPEN
             std::cout << "Decoder not found, skipping..." << std::endl;
@@ -701,7 +719,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             continue;
         }
 
-        if (avstream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+        if (avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
             // source: http://git.savannah.gnu.org/cgit/bino.git/tree/src/media_object.cpp
 
             // Some codecs support multi-threaded decoding (eg mpeg). Its fast but causes problems when opening many readers
@@ -717,11 +735,11 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             //} else
 #          endif
             {
-                avstream->codec->thread_count = std::min((int)OFX::MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS); // ask for the number of available cores for multithreading
+                avctx->thread_count = std::min((int)OFX::MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS); // ask for the number of available cores for multithreading
 #             ifdef AV_CODEC_CAP_SLICE_THREADS
-                if (avstream->codec->codec && (avstream->codec->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS)) {
+                if (avctx->codec && (avctx->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS)) {
                     // multiple threads are used to decode a single frame. Reduces delay
-                    avstream->codec->thread_type = FF_THREAD_SLICE;
+                    avctx->thread_type = FF_THREAD_SLICE;
                 }
 #             endif
                 //avstream->codec->thread_count = video_decoding_threads(); // bino's strategy (disabled)
@@ -731,15 +749,15 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             // described in this thread: http://lists.nongnu.org/archive/html/bino-list/2012-02/msg00039.html
             int lowres = 0;
 #ifdef FF_API_LOWRES
-            lowres = avstream->codec->lowres;
+            lowres = avctx->lowres;
 #endif
             if ( lowres || ( videoCodec && (videoCodec->capabilities & CODEC_CAP_DR1) ) ) {
-                avstream->codec->flags |= CODEC_FLAG_EMU_EDGE;
+                avctx->flags |= CODEC_FLAG_EMU_EDGE;
             }
         }
 
         // skip if the codec can't be open
-        if (avcodec_open2(avstream->codec, videoCodec, NULL) < 0) {
+        if (avcodec_open2(avctx, videoCodec, NULL) < 0) {
 #if TRACE_FILE_OPEN
             std::cout << "Decoder \"" << videoCodec->name << "\" failed to open, skipping..." << std::endl;
 #endif
@@ -753,7 +771,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         Stream* stream = new Stream();
         stream->_idx = i;
         stream->_avstream = avstream;
-        stream->_codecContext = avstream->codec;
+        stream->_codecContext = avctx;
         stream->_videoCodec = videoCodec;
         stream->_avFrame = av_frame_alloc();
         {
@@ -761,11 +779,11 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             // Now it will use the bit depth reported by the decoder so
             // that if a decoder outputs 10-bits then |engine| will convert
             // this correctly. This means that the following change is
-            // required for FFmpeg decoders. Currently |_bitDepth| is used
+            // requireded for FFmpeg decoders. Currently |_bitDepth| is used
             // internally so this change has no side effects.
             // [openfx-io note] when using insternal ffmpeg 8bits->16 bits conversion,
             // (255 = 100%) becomes (65280 =99.6%)
-            stream->_bitDepth = avstream->codec->bits_per_raw_sample;
+            stream->_bitDepth = avctx->bits_per_raw_sample;
             //stream->_bitDepth = 16; // enabled in Nuke's reader
 
             const AVPixFmtDescriptor* avPixFmtDescriptor = av_pix_fmt_desc_get(stream->_codecContext->pix_fmt);
@@ -825,8 +843,8 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         }
 #endif
 
-        stream->_width  = avstream->codec->width;
-        stream->_height = avstream->codec->height;
+        stream->_width  = avctx->width;
+        stream->_height = avctx->height;
 #if TRACE_FILE_OPEN
         std::cout << "      Image size=" << stream->_width << "x" << stream->_height << std::endl;
 #endif
@@ -1291,9 +1309,22 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                     // Decode the frame just read. frameDecoded indicates whether a decoded frame was output.
                     decodeAttempted = true;
 
-                    {
-                        error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
+#if USE_NEW_FFMPEG_API
+                    error = avcodec_send_packet(stream->_codecContext, &_avPacket);
+                    if (error == 0) {
+                        error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
+                        if (error == AVERROR(EAGAIN)) {
+                            frameDecoded = 0;
+                            error = 0;
+                        } else if (error < 0) {
+                            frameDecoded = 0;
+                        } else {
+                            frameDecoded = 1;
+                        }
                     }
+#else
+                    error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
+#endif
                     if (error < 0) {
                         // Decode error. Abort attempt to read and decode frames.
                         setInternalError(error, "FFmpeg Reader failed to decode frame: ");
@@ -1325,7 +1356,23 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                 // The ProRes codec is I-frame only so will not have any
                 // remaining frames.
             } else {
+#if USE_NEW_FFMPEG_API
+                error = avcodec_send_packet(stream->_codecContext, &_avPacket);
+                if (error == 0) {
+                    error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
+                    if (error == AVERROR(EAGAIN)) {
+                        frameDecoded = 0;
+                        error = 0;
+                    } else if (error < 0) {
+                        frameDecoded = 0;
+                        // Decode error. Abort attempt to read and decode frames.
+                    } else {
+                        frameDecoded = 1;
+                    }
+                }
+#else
                 error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
+#endif
             }
             if (error < 0) {
                 // Decode error. Abort attempt to read and decode frames.
@@ -1362,15 +1409,31 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                 // context. Otherwise, no scaling/conversion is required after
                 // decoding the frame.
                 if (context) {
-                    AVPicture output;
-                    avpicture_fill(&output, buffer, stream->_outputPixelFormat, stream->_width, stream->_height);
+                    uint8_t *data[4];
+                    int linesize[4];
+#if 0
+                    {
+                        AVPicture output;
+                        avpicture_fill(&output, buffer, stream->_outputPixelFormat, stream->_width, stream->_height);
+                        data[0] = output.data[0];
+                        data[1] = output.data[1];
+                        data[2] = output.data[2];
+                        data[3] = output.data[3];
+                        linesize[0] = output.linesize[0];
+                        linesize[1] = output.linesize[1];
+                        linesize[2] = output.linesize[2];
+                        linesize[3] = output.linesize[3];
+                    }
+#else
+                    av_image_fill_arrays(data, linesize, buffer, stream->_outputPixelFormat, stream->_width, stream->_height, 1);
+#endif
                     sws_scale(context,
                               stream->_avFrame->data,
                               stream->_avFrame->linesize,
                               0,
                               stream->_height,
-                              output.data,
-                              output.linesize);
+                              data,
+                              linesize);
                 }
 
                 hasPicture = true;
@@ -1459,7 +1522,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                 }
             } // if (decodeAttempted)
         } // if (stream->_decodeNextFrameIn < stream->_frames)
-        av_free_packet(&_avPacket);
+        av_packet_unref(&_avPacket);
         if (plugin->abort()) {
             return false;
         }
@@ -1474,7 +1537,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
     // loop when hasPicture is false).
     if (!hasPicture) {
         if (_avPacket.size > 0) {
-            av_free_packet(&_avPacket);
+            av_packet_unref(&_avPacket);
         }
         stream->_decodeNextFrameOut = -1;
     }
