@@ -40,6 +40,7 @@ GCC_DIAG_ON(unused-parameter)
 #endif
 
 using namespace OFX;
+using namespace OFX::IO;
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 

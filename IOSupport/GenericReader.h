@@ -29,11 +29,15 @@
 #include <ofxsMacros.h>
 #include "IOUtility.h"
 
-class SequenceParser;
-class GenericOCIO;
 namespace SequenceParsing {
-    class SequenceFromFiles;
+class SequenceFromFiles;
 }
+
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
+
+class GenericOCIO;
+
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
  * This class propose to handle the common stuff among readers: 
@@ -444,5 +448,8 @@ void GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc, OFX::Co
     virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
     std::vector<std::string> _extensions; \
   }; 
+
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT
 
 #endif

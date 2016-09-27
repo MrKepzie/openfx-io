@@ -41,6 +41,15 @@
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
+#endif
+
+#include "IOUtility.h"
+
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
+
+
+#ifdef OFX_IO_USING_OCIO
 #define kOCIOParamConfigFile "ocioConfigFile"
 #define kOCIOParamConfigFileLabel "OCIO Config File"
 #define kOCIOParamConfigFileHint "OpenColorIO configuration file"
@@ -247,5 +256,8 @@ private:
     OFX::ImageEffect* _instance;
 };
 #endif
+
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT
 
 #endif

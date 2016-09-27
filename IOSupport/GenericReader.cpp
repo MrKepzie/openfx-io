@@ -56,6 +56,9 @@
 #endif
 #include "IOUtility.h"
 
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
+
 #define kPluginGrouping "Image/Readers"
 
 // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
@@ -2695,7 +2698,6 @@ GenericReaderPlugin::convertDepthAndComponents(const void* srcPixelData,
     }
 }
 
-using namespace OFX;
 
 void
 GenericReaderDescribe(OFX::ImageEffectDescriptor &desc,
@@ -3231,4 +3233,6 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
 #endif
 }
 
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT
 

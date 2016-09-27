@@ -33,8 +33,11 @@
 #include "ofxsCopier.h" // for copyPixels
 
 namespace OFX {
-    class PixelProcessorFilterBase;
-}
+
+class PixelProcessorFilterBase;
+
+namespace IO {
+
 class GenericOCIO;
 
 enum LayerViewsPartsEnum
@@ -531,5 +534,8 @@ GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
   private: \
     std::vector<std::string> _extensions; \
   };
+
+} // namespace IO
+} // namespace OFX
 
 #endif

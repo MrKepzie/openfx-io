@@ -48,6 +48,7 @@
 namespace OCIO = OCIO_NAMESPACE;
 
 using namespace OFX;
+using namespace OFX::IO;
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 

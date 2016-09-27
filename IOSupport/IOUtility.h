@@ -50,24 +50,36 @@
 
 #include "ofxsImageEffect.h"
 
-struct MatchPathSeparator
-{
-    bool operator()( char ch ) const
-    {
-#if defined(_WIN32) || defined(WIN64)
-        return ch == '\\' || ch == '/';
-#else
-        return ch == '/';
-#endif
-    }
-};
+#define NAMESPACE_OFX_ENTER namespace OFX {
+#define NAMESPACE_OFX_EXIT }
+
+#define NAMESPACE_OFX_IO_ENTER namespace IO {
+#define NAMESPACE_OFX_IO_EXIT }
+
+
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
 
 inline std::string
 basename( std::string const& pathname )
 {
-    return std::string(std::find_if(pathname.rbegin(), pathname.rend(),
-                                    MatchPathSeparator() ).base(),
-                       pathname.end() );
+#if defined(_WIN32) || defined(WIN64)
+    std::size_t found = pathname.find_last_of("/\\");
+#else
+    std::size_t found = pathname.find_last_of("/");
+#endif
+    return pathname.substr(found + 1);
+}
+
+inline std::string
+dirname( std::string const& pathname )
+{
+#if defined(_WIN32) || defined(WIN64)
+    std::size_t found = pathname.find_last_of("/\\");
+#else
+    std::size_t found = pathname.find_last_of("/");
+#endif
+    return pathname.substr(0, found);
 }
 
 inline std::string
@@ -321,5 +333,7 @@ public:
 };
 
 
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT
 
 #endif

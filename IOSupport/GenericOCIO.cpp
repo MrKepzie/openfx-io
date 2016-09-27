@@ -41,6 +41,12 @@
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
 namespace OCIO = OCIO_NAMESPACE;
+#endif
+
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
+
+#ifdef OFX_IO_USING_OCIO
 static bool gWasOCIOEnvVarFound = false;
 static bool gHostIsNatron   = false;
 #endif
@@ -1409,3 +1415,5 @@ GenericOCIO::describeInContextContext(OFX::ImageEffectDescriptor &desc, OFX::Con
 #endif
 }
 
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT

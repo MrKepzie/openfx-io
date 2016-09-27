@@ -47,6 +47,9 @@
 namespace OCIO = OCIO_NAMESPACE;
 #endif
 
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
+
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 
 static const int LUT3D_EDGE_SIZE = 32;
@@ -330,3 +333,6 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
 #endif // defined(OFX_IO_USING_OCIO)
 
 #endif // defined(OFX_SUPPORTS_OPENGLRENDER)
+
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT

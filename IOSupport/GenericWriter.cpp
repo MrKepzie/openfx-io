@@ -41,6 +41,9 @@
 #include "../SupportExt/ofxsFormatResolution.h"
 #include "GenericOCIO.h"
 
+NAMESPACE_OFX_ENTER
+NAMESPACE_OFX_IO_ENTER
+
 #define kPluginGrouping "Image/Writers"
 
 #define kSupportsTiles 0
@@ -2469,3 +2472,5 @@ GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &/*desc*/, OFX::Con
 {
 }
 
+NAMESPACE_OFX_IO_EXIT
+NAMESPACE_OFX_EXIT
