@@ -654,7 +654,7 @@ OCIODisplayPlugin::getProcessor(OfxTime time)
             {
                 float m44[16];
                 float offset4[4];
-                const float slope4f[] = { gain, gain, gain, gain };
+                const float slope4f[] = { (float)gain, (float)gain, (float)gain, (float)gain };
                 OCIO::MatrixTransform::Scale(m44, offset4, slope4f);
 
                 OCIO::MatrixTransformRcPtr mtx =  OCIO::MatrixTransform::Create();
