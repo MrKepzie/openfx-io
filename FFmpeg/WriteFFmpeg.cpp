@@ -959,6 +959,9 @@ int MyAVPicture::alloc(int width, int height, enum AVPixelFormat avPixelFormat)
     deallocateAVPictureData(); // In case this method is called multiple times on the same object.
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(51, 63, 100) // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-October/094884.html
     int ret = av_image_alloc(data, linesize, width, height, avPixelFormat, 1);
+    if (ret > 0) { // av_image_alloc returns bytes on success
+        ret = 0;
+    }
 #else
     int ret = avpicture_alloc(&_avPicture, avPixelFormat, width, height);
 #endif
