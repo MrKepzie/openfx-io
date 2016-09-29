@@ -727,6 +727,10 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
 {
     assert(_dstBounds.x1 <= renderWindow.x1 && renderWindow.x1 <= renderWindow.x2 && renderWindow.x2 <= _dstBounds.x2);
     assert(_dstBounds.y1 <= renderWindow.y1 && renderWindow.y1 <= renderWindow.y2 && renderWindow.y2 <= _dstBounds.y2);
+    // Ensure there are pixels to render otherwise OCIO::PackedImageDesc will throw an exception.
+    if (renderWindow.y2 <= renderWindow.y1 || renderWindow.x2 <= renderWindow.x1) {
+        return;
+    }
 #ifdef OFX_IO_USING_OCIO
     if (!_proc) {
         throw std::logic_error("OCIO configuration not loaded");
