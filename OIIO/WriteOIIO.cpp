@@ -110,7 +110,7 @@ enum ETuttlePluginComponents
 #define kParamOutputQuality        "quality"
 #define kParamOutputQualityLabel   "Quality"
 #define kParamOutputQualityHint \
-"Indicates the quality of compression to use (0–100), for those plugins and compression methods that allow a variable amount of compression, with higher numbers indicating higher image fidelity. [JPEG, TIFF w/ JPEG comp., WEBP]"
+"Indicates the quality of compression to use (0-100), for those plugins and compression methods that allow a variable amount of compression, with higher numbers indicating higher image fidelity. [JPEG, TIFF w/ JPEG comp., WEBP]"
 #define kParamOutputQualityDefault 100
 
 #define kParamOutputDWACompressionLevel        "dwaCompressionLevel"
@@ -198,7 +198,7 @@ enum EOutputOrientation
 #define kParamOutputCompressionOptionDWAa        "dwaa"
 #define kParamOutputCompressionOptionDWAaHint     "lossy DCT based compression, in blocks of 32 scanlines. More efficient for partial buffer access. [EXR]"
 #define kParamOutputCompressionOptionDWAb        "dwab"
-#define kParamOutputCompressionOptionDWAbHint     "lossy DCT based compression, in blocks of 256 scanlines. More efficient space wise and faster to decode full frames than DWAA. [EXR]"
+#define kParamOutputCompressionOptionDWAbHint     "lossy DCT based compression, in blocks of 256 scanlines. More efficient space wise and faster to decode full frames than DWAA. [EXR]"
 #define kParamOutputCompressionOptionLZW         "lzw"
 #define kParamOutputCompressionOptionLZWHint      "Lempel-Ziv Welsch compression (lossless) [TIFF]"
 #define kParamOutputCompressionOptionCCITTRLE    "ccittrle"
