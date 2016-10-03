@@ -2286,6 +2286,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
             bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error,&tile_width, &tile_height);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
+                clipPreferences.setOutputFormat(bounds);
             }
             
             bool customFPS;

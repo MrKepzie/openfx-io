@@ -259,7 +259,7 @@ protected:
     OFX::Int2DParam* _outputFormatSize;
     OFX::DoubleParam* _outputFormatPar;
     OFX::ChoiceParam* _premult;
-    OFX::BooleanParam* _clipToProject;
+    OFX::BooleanParam* _clipToFormat;
 
     OFX::StringParam* _sublabel;
     OFX::BooleanParam* _processChannels[4];
@@ -346,7 +346,7 @@ private:
      **/
     virtual void clearAnyCache() {}
     
-    void getOutputFormat(OfxTime time,OfxRectD& rod);
+    void getOutputFormat(OfxTime time, int view, OfxRectD& rod);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,

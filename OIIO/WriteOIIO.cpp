@@ -1033,18 +1033,18 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         spec.full_x = bounds.x1;
         spec.full_y = bounds.y1;
         
-        bool clipToProject = true;
-        if (_clipToProject && !_clipToProject->getIsSecret()) {
-            _clipToProject->getValue(clipToProject);
+        bool clipToFormat = true;
+        if (_clipToFormat && !_clipToFormat->getIsSecret()) {
+            _clipToFormat->getValue(clipToFormat);
         }
-        if (!clipToProject) {
-            //Spec has already been set to bounds which are the input RoD, so post-fix by setting display window to project size
-            OfxPointD size = getProjectSize();
-            OfxPointD offset = getProjectOffset();
-            spec.full_x = offset.x;
-            spec.full_y = offset.y;
-            spec.full_width = size.x;
-            spec.full_height = size.y;
+        if (!clipToFormat) {
+            //Spec has already been set to bounds which are the input RoD, so post-fix by setting display window to format size
+            OfxRectI format;
+            _inputClip->getFormat(format);
+            spec.full_x = format.x1;
+            spec.full_y = format.y1;
+            spec.full_width = format.x2 - format.x1;
+            spec.full_height = format.y2 - format.y1;
         }
         
         int tileSize_i;

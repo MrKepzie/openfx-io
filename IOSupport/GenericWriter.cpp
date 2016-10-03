@@ -112,10 +112,10 @@ NAMESPACE_OFX_IO_ENTER
 
 #define kParamOutputSpaceLabel "File Colorspace"
 
-#define kParamClipToProject "clipToProject"
-#define kParamClipToProjectLabel "Clip To Project"
-#define kParamClipToProjectHint "When checked, the portion of the image written will be the size of the image in input and not the format of the project. " \
-"For the EXR file format, this will distinguish the data window (size of the image in input) from the display window (size of the project)."
+#define kParamClipToFormat "clipToFormat"
+#define kParamClipToFormatLabel "Clip To Format"
+#define kParamClipToFormatHint "When checked, the portion of the image written will be the size of the image in input and not the format selected format. " \
+"For the EXR file format, this will distinguish the data window (size of the image in input) from the display window (the format)."
 
 #define kParamProcessHint  "When checked, this channel of the layer will be written to the file otherwise it will be skipped. Most file formats will " \
 "pack the channels into the first N channels of the file. If for some reason it's not possible, the channel will be filled with 0."
@@ -149,7 +149,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _outputFormatSize(0)
 , _outputFormatPar(0)
 , _premult(0)
-, _clipToProject(0)
+, _clipToFormat(0)
 , _sublabel(0)
 , _processChannels()
 , _outputComponents(0)
@@ -178,8 +178,8 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 
 
     ///Param does not necessarily exist for all IO plugins
-    if (paramExists(kParamClipToProject)) {
-        _clipToProject = fetchBooleanParam(kParamClipToProject);
+    if (paramExists(kParamClipToFormat)) {
+        _clipToFormat = fetchBooleanParam(kParamClipToFormat);
     }
 
     if (gHostIsNatron) {
@@ -209,10 +209,10 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
     }
     int outputFormat_i;
     _outputFormatType->getValue(outputFormat_i);
-    if (_clipToProject) {
+    if (_clipToFormat) {
         std::string filename;
         _fileParam->getValue(filename);
-        _clipToProject->setIsSecretAndDisabled(outputFormat_i != 1 || !displayWindowSupportedByFormat(filename));
+        _clipToFormat->setIsSecretAndDisabled(outputFormat_i != 1 || !displayWindowSupportedByFormat(filename));
     }
     if (outputFormat_i == 0 || outputFormat_i == 1) {
         _outputFormat->setIsSecretAndDisabled(true);
@@ -1437,7 +1437,7 @@ GenericWriterPlugin::beginSequenceRender(const OFX::BeginSequenceRenderArguments
     }
 
     OfxRectD rod;
-    getOutputFormat(args.frameRange.min, rod);
+    getOutputFormat(args.frameRange.min, args.view, rod);
     
     ////Since the generic writer doesn't support tiles and multi-resolution, the RoD is necesserarily the
     ////output image size.
@@ -1571,69 +1571,57 @@ GenericWriterPlugin::premultPixelData(const OfxRectI &renderWindow,
 }
 
 void
-GenericWriterPlugin::getOutputFormat(OfxTime time,OfxRectD& rod)
+GenericWriterPlugin::getOutputFormat(OfxTime time, int view, OfxRectD& rod)
 {
     
     int formatType;
     _outputFormatType->getValue(formatType);
     
     bool doDefaultBehaviour = false;
-    if (formatType == 0) {
-        doDefaultBehaviour = true;
-    } else if (formatType == 1) {
-        
-        
-        bool clipToProject = true;
-        if (_clipToProject && !_clipToProject->getIsSecret()) {
-            _clipToProject->getValue(clipToProject);
-        }
-        if (!clipToProject) {
+    bool clipToFormat = true;
+    if (_clipToFormat && !_clipToFormat->getIsSecret()) {
+        _clipToFormat->getValue(clipToFormat);
+    }
+    // user wants RoD written, don't care about format
+    if (!clipToFormat) {
+        rod = _inputClip->getRegionOfDefinition(time, view);
+    } else {
+        if (formatType == 0) {
             doDefaultBehaviour = true;
-        } else {
+        } else if (formatType == 1) {
             OfxPointD size = getProjectSize();
             OfxPointD offset = getProjectOffset();
             rod.x1 = offset.x;
             rod.y1 = offset.y;
             rod.x2 = offset.x + size.x;
             rod.y2 = offset.y + size.y;
-        }
-    } else if (formatType == 2) {
+        } else if (formatType == 2) {
 
-        int w,h;
-        double par;
-        _outputFormatSize->getValue(w,h);
-        _outputFormatPar->getValue(par);
-        
-        OfxRectI rodPixel;
-        rodPixel.x1 = rodPixel.y1 = 0;
-        rodPixel.x2 = w;
-        rodPixel.y2 = h;
-        OfxPointD renderScale = {1., 1.};
-        OFX::Coords::toCanonical(rodPixel, renderScale, par, &rod);
-    }
-    if (doDefaultBehaviour) {
-        // union RoD across all views
-        int viewsToRender = getViewToRender();
-        if (viewsToRender == kGenericWriterViewDefault || !gHostIsMultiView) {
-            rod = _inputClip->getRegionOfDefinition(time);
-        } else {
-            if (viewsToRender == kGenericWriterViewAll) {
-                //Union all views
-                bool rodSet = false;
-                for (int i = 0; i < getViewCount(); ++i) {
-                    OfxRectD subRod = _inputClip->getRegionOfDefinition(time, i);
-                    if (!rodSet) {
-                        rodSet = true;
-                        rod = subRod;
-                    } else {
-                        OFX::Coords::rectBoundingBox(rod, subRod, &rod);
-                    }
-                }
-            } else {
-                rod = _inputClip->getRegionOfDefinition(viewsToRender);
-            }
+            int w,h;
+            double par;
+            _outputFormatSize->getValue(w,h);
+            _outputFormatPar->getValue(par);
+
+            OfxRectI rodPixel;
+            rodPixel.x1 = rodPixel.y1 = 0;
+            rodPixel.x2 = w;
+            rodPixel.y2 = h;
+            OfxPointD renderScale = {1., 1.};
+            OFX::Coords::toCanonical(rodPixel, renderScale, par, &rod);
+        }
+        if (doDefaultBehaviour) {
+            // union RoD across all views
+            OfxRectI format;
+            _inputClip->getFormat(format);
+            double par = _inputClip->getPixelAspectRatio();
+            rod.x1 = format.x1 * par;
+            rod.x2 = format.x2 * par;
+            rod.y1 = format.y1;
+            rod.y2 = format.y2;
         }
     }
+
+
 }
 
 bool
@@ -1643,7 +1631,7 @@ GenericWriterPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return false;
     }
-    getOutputFormat(args.time, rod);
+    getOutputFormat(args.time, args.view, rod);
     return true;
 }
 
@@ -1826,10 +1814,10 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         onOutputFileChanged(filename, setColorSpace);
         _ocio->refreshInputAndOutputState(0);
 
-        if (_clipToProject) {
+        if (_clipToFormat) {
             int type;
             _outputFormatType->getValue(type);
-            _clipToProject->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
+            _clipToFormat->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
         }
     }
 }
@@ -1867,10 +1855,10 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else if (paramName == kParamFormatType) {
         int type;
         _outputFormatType->getValue(type);
-        if (_clipToProject) {
+        if (_clipToFormat) {
             std::string filename;
             _fileParam->getValue(filename);
-            _clipToProject->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
+            _clipToFormat->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
         }
         if (type == 0 || type == 1) {
             _outputFormat->setIsSecretAndDisabled(true);
@@ -2352,9 +2340,9 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     
     /////////// Clip to project
     if (supportsDisplayWindow) {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamClipToProject);
-        param->setLabel(kParamClipToProjectLabel);
-        param->setHint(kParamClipToProjectHint);
+        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamClipToFormat);
+        param->setLabel(kParamClipToFormatLabel);
+        param->setHint(kParamClipToFormatHint);
         param->setDefault(true);
         if (page) {
             page->addChild(*param);
