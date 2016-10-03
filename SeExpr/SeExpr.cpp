@@ -51,11 +51,14 @@
 #include "ofxsRectangleInteract.h"
 #include "ofxsFilter.h"
 
+GCC_DIAG_OFF(deprecated)
 #include <SeExpression.h>
 #include <SeExprFunc.h>
 #include <SeExprNode.h>
 #include <SeExprBuiltins.h>
 #include <SeMutex.h>
+GCC_DIAG_ON(deprecated)
+
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 // fix SePlatform.h's bad defines, see https://github.com/wdas/SeExpr/issues/33
 #undef snprintf

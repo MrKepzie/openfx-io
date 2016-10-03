@@ -48,8 +48,12 @@
 #define DBG(x) (void)0
 #endif
 
+#include "ofxsMacros.h"
+
+GCC_DIAG_OFF(deprecated)
 #include <SeNoise.h>
 #include <SeExprBuiltins.h>
+GCC_DIAG_ON(deprecated)
 
 #ifdef SENOISE_VORONOI
 // SeExprBuiltins.cpp doesn't export Voronoi functions and data structures, see https://github.com/wdas/SeExpr/issues/32
@@ -83,7 +87,6 @@ namespace SeExpr {
 #include "ofxsProcessing.H"
 #include "ofxsMaskMix.h"
 #include "ofxsCoords.h"
-#include "ofxsMacros.h"
 #include "ofxsRamp.h"
 #include "ofxsTransformInteract.h"
 #include "ofxsMatrix2D.h"

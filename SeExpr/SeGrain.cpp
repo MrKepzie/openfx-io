@@ -39,8 +39,12 @@
 #  endif
 #endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
+#include "ofxsMacros.h"
+
+GCC_DIAG_OFF(deprecated)
 #include <SeNoise.h>
 #include <SeExprBuiltins.h>
+GCC_DIAG_ON(deprecated)
 
 #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 // fix SePlatform.h's bad defines, see https://github.com/wdas/SeExpr/issues/33
@@ -57,7 +61,6 @@
 #include "ofxsProcessing.H"
 #include "ofxsMaskMix.h"
 #include "ofxsCoords.h"
-#include "ofxsMacros.h"
 #include "ofxsRamp.h"
 #include "ofxsTransformInteract.h"
 #include "ofxsMatrix2D.h"
