@@ -110,6 +110,9 @@ typedef tthread::fast_mutex Mutex;
 typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
 #endif
 
+static OFX::Color::LutManager<Mutex>* gLutManager;
+
+
 // Try to deduce endianness
 #if (defined(_WIN32) || defined(__i386__) || defined(__x86_64__))
 #  ifndef __LITTLE_ENDIAN__
@@ -325,7 +328,7 @@ class WritePNGPlugin : public GenericWriterPlugin
 {
 public:
 
-    WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, const OFX::Color::LutBase* lut);
+    WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
 
     virtual ~WritePNGPlugin();
 
@@ -392,16 +395,16 @@ private:
     OFX::ChoiceParam* _bitdepth;
     OFX::BooleanParam* _ditherEnabled;
 
-    const OFX::Color::LutBase* _ditherLut;
+    const OFX::Color::Lut* _ditherLut;
 };
 
-WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions, const OFX::Color::LutBase* lut)
+WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
 : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
 , _compression(0)
 , _compressionLevel(0)
 , _bitdepth(0)
 , _ditherEnabled(0)
-, _ditherLut(lut)
+, _ditherLut(gLutManager->linearLut())
 {
     _compression = fetchChoiceParam(kWritePNGParamCompression);
     _compressionLevel = fetchIntParam(kWritePNGParamCompressionLevel);
@@ -830,9 +833,7 @@ public:
     WritePNGPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
     : OFX::PluginFactoryHelper<WritePNGPluginFactory>(id, verMaj, verMin)
     , _extensions()
-    , _lut(0)
     {
-
     }
 
     virtual void load();
@@ -843,20 +844,19 @@ public:
     virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
 private:
     std::vector<std::string> _extensions;
-    const OFX::Color::LutBase* _lut;
 };
 
 void WritePNGPluginFactory::load()
 {
     _extensions.clear();
     _extensions.push_back("png");
-    _lut = OFX::Color::LutManager<Mutex>::linearLut();
+    gLutManager = new OFX::Color::LutManager<Mutex>;
 }
 
 void
 WritePNGPluginFactory::unload()
 {
-    OFX::Color::LutManager<Mutex>::releaseLut(_lut->getName());
+    gLutManager;
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
@@ -934,7 +934,7 @@ void WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
 ImageEffect* WritePNGPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    WritePNGPlugin* ret = new WritePNGPlugin(handle, _extensions, _lut);
+    WritePNGPlugin* ret = new WritePNGPlugin(handle, _extensions);
     ret->restoreState();
     return ret;
 }
