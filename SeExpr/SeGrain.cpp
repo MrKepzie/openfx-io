@@ -68,7 +68,13 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "SeGrain"
 #define kPluginGrouping "Draw"
-#define kPluginDescription "Adds synthetic grain. Push \"presets\" to get predefined types of grain, these are the correct size for 2K scans.\n\nYou can also adjust the sliders to match a sample piece of grain. Find a sample with a rather constant background, blur it to remove the grain, and use as input to this. View with a wipe in the viewer so you can make a match. It helps to view and match each of the red, green, blue separately."
+#define kPluginDescription \
+"Adds synthetic grain.\n" \
+"Push \"presets\" to get predefined types of grain, these are the correct size for 2K scans.\n" \
+"\n" \
+"You can also adjust the sliders to match a sample piece of grain. Find a sample with a rather constant background, blur it to remove the grain, and use as input to this. View with a wipe in the viewer so you can make a match. It helps to view and match each of the red, green, blue separately.\n" \
+"See also http://opticalenquiry.com/nuke/index.php?title=Integration#Matching_grain"
+
 #define kPluginIdentifier "net.sf.openfx.SeGrain"
 // History:
 // version 1.0: initial version
