@@ -2453,45 +2453,47 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
         edgePixelsMode = (EdgePixelsEnum)edgeMode_i;
     }
 
-    int zbegin = 0;
-    int zend = 1;
 
-    // Invert what was done in getframesbounds
-    int xbegin,xend, ybegin, yend;
-    xbegin = renderWindow.x1 - dataOffset;
-    xend = renderWindow.x2 - dataOffset;
+    // Where to write the data in the buffer, everything outside of that is black
+    // It depends on the extra padding we added in getFrameBounds
+    OfxRectI renderWindowUnPadded = renderWindow;
 
-    // Invert what was done in getframebound
-    yend = spec.full_height + spec.full_y - renderWindow.y1;
-    ybegin = spec.full_height + spec.full_y - renderWindow.y2;
+    // True if we padded the renderWindow
+    bool renderWindowPadded = false;
 
     switch (edgePixelsMode) {
         case eEdgePixelsAuto:
             if (spec.x != spec.full_x || spec.y != spec.full_y || spec.width != spec.full_width || spec.height != spec.full_height) {
-                --yend;
-                --xend;
-                ++xbegin;
-                ++ybegin;
+                renderWindowUnPadded.y2 -= 1;
+                renderWindowUnPadded.x2 -= 1;
+                renderWindowUnPadded.y1 += 1;
+                renderWindowUnPadded.x1 += 1;
+                renderWindowPadded = true;
             }
             break;
         case eEdgePixelsEdgeDetect:
             if (spec.x != spec.full_x && spec.y != spec.full_y && spec.width != spec.full_width && spec.height != spec.full_height) {
-                --yend;
-                --xend;
-                ++xbegin;
-                ++ybegin;
+                renderWindowUnPadded.y2 -= 1;
+                renderWindowUnPadded.x2 -= 1;
+                renderWindowUnPadded.y1 += 1;
+                renderWindowUnPadded.x1 += 1;
+                renderWindowPadded = true;
             } else {
                 if (spec.x != spec.full_x) {
-                    ++xbegin;
+                    renderWindowUnPadded.x1 += 1;
+                    renderWindowPadded = true;
                 }
                 if (spec.width != spec.full_width) {
-                    --xend;
+                    renderWindowUnPadded.x2 -= 1;
+                    renderWindowPadded = true;
                 }
                 if (spec.y != spec.full_y) {
-                    --yend;
+                    renderWindowUnPadded.y2 -= 1;
+                    renderWindowPadded = true;
                 }
                 if (spec.height != spec.full_height) {
-                    ++ybegin;
+                    renderWindowUnPadded.y1 += 1;
+                    renderWindowPadded = true;
                 }
             }
             break;
@@ -2500,12 +2502,30 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             break;
         case eEdgePixelsBlack:
             // Always add black pixels around the edges of the box.
-            --yend;
-            --xend;
-            ++xbegin;
-            ++ybegin;
+            renderWindowUnPadded.y2 -= 1;
+            renderWindowUnPadded.x2 -= 1;
+            renderWindowUnPadded.y1 += 1;
+            renderWindowUnPadded.x1 += 1;
+            renderWindowPadded = true;
             break;
     }
+
+
+    // The renderWindowUnPadded must be contained in the original render Window
+    assert(renderWindowUnPadded.x1 >= renderWindow.x1 && renderWindowUnPadded.x2 <= renderWindow.x2 &&
+           renderWindowUnPadded.y1 >= renderWindow.y1 && renderWindowUnPadded.y2 <= renderWindow.y2);
+
+    int zbegin = 0;
+    int zend = 1;
+
+    // Invert what was done in getframesbounds
+    int xbegin,xend, ybegin, yend;
+    xbegin = renderWindowUnPadded.x1 - dataOffset;
+    xend = renderWindowUnPadded.x2 - dataOffset;
+
+    // Invert what was done in getframebound
+    yend = spec.full_height + spec.full_y - renderWindowUnPadded.y1;
+    ybegin = spec.full_height + spec.full_y - renderWindowUnPadded.y2;
 
 
 
@@ -2514,16 +2534,16 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
     const int yStride = -rowBytes;
 
     // Pixel offset to the start of the render window first line
-    size_t pixelDataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+    size_t bottomScanLineDataStartOffset = (size_t)(renderWindowUnPadded.y1 - bounds.y1) * rowBytes + (size_t)(renderWindowUnPadded.x1 - bounds.x1) * pixelBytes;
     // Pixel offset to the start of the last line of the render window
-    size_t pixelDataOffset2 = (size_t)(renderWindow.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
+    size_t topScanLineDataStartOffset = (size_t)(renderWindowUnPadded.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindowUnPadded.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
 
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i+=incr) {
         incr = 1;
         if (channels[i] < kXChannelFirst) {
             // fill channel with constant value
-            char* lineStart = (char*)pixelData + pixelDataOffset; // (char*)dstImg->getPixelAddress(renderWindow.x1, renderWindow.y1);
+            char* lineStart = (char*)pixelData + bottomScanLineDataStartOffset;
             for (int y = renderWindow.y1; y < renderWindow.y2; ++y, lineStart += rowBytes) {
                 float *cur = (float*)lineStart;
                 for (int x = renderWindow.x1; x < renderWindow.x2; ++x, cur += numChannels) {
@@ -2542,8 +2562,31 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
 
+            if (renderWindowPadded) {
+                // Clear any padding we added outside of renderWindowUnPadded to black
+                // Clear scanlines out of data window to black
+                size_t dataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+                char* yptr = (char*)((float*)((char*)pixelData + dataOffset) + outputChannelBegin);
+                for (int y = renderWindow.y1;  y < renderWindow.y2;  ++y, yptr += rowBytes) {
+                    if (y < renderWindowUnPadded.y1 || y >= renderWindowUnPadded.y2) {
+                        memset (yptr, 0, pixelBytes * (renderWindow.x2 - renderWindow.x1));
+                        continue;
+                    }
 
-            float* outputPixelData =  (float*)((char*)pixelData + pixelDataOffset2) + outputChannelBegin;
+                    char *xptr = yptr;
+                    for (int x = renderWindow.x1;  x < renderWindow.x2;  ++x, xptr += xStride) {
+                        if (x < renderWindowUnPadded.x1 || x >= renderWindowUnPadded.x2) {
+                            memset (xptr, 0, pixelBytes);
+                            continue;
+                        }
+                    }
+                }
+            }
+
+
+            // Start on the last line to invert Y with a negative stride
+            float* outputPixelData =  (float*)((char*)pixelData + topScanLineDataStartOffset) + outputChannelBegin;
+
 
 
 
@@ -2585,18 +2628,20 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
 
                 // Clear scanlines out of data window to black
                 // Usually the ImageCache does it for us, but here we use the API directly
-                char* yptr = (char*)outputPixelData;
-                for (int y = ybegin;  y < yend;  ++y, yptr += -rowBytes) {
-                    if (y < spec.y || y >= (spec.y+spec.height)) {
-                        memset (yptr, 0, numChannels * sizeof(float) * (xend - xbegin));
-                        continue;
-                    }
-                    char *xptr = yptr;
-                    for (int x = xbegin;  x < xend;  ++x, xptr += xStride) {
-                        if (x < spec.x || x >= (spec.x+spec.width)) {
-                            // nonexistant columns
-                            memset (xptr, 0, numChannels * sizeof(float));
+                {
+                    char* yptr = (char*)outputPixelData;
+                    for (int y = ybegin;  y < yend;  ++y, yptr += -rowBytes) {
+                        if (y < spec.y || y >= (spec.y+spec.height)) {
+                            memset (yptr, 0, pixelBytes * (xend - xbegin));
                             continue;
+                        }
+                        char *xptr = yptr;
+                        for (int x = xbegin;  x < xend;  ++x, xptr += xStride) {
+                            if (x < spec.x || x >= (spec.x+spec.width)) {
+                                // nonexistant columns
+                                memset (xptr, 0, pixelBytes);
+                                continue;
+                            }
                         }
                     }
                 }
