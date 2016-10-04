@@ -253,7 +253,7 @@ private:
     
     void openFile(const std::string& filename, bool useCache, ImageInput** img, std::vector<ImageSpec>* subimages);
 
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error,  int* tile_width, int* tile_height) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error,  int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
     
@@ -2587,6 +2587,7 @@ bool
 ReadOIIOPlugin::getFrameBounds(const std::string& filename,
                                OfxTime /*time*/,
                                OfxRectI *bounds,
+                               OfxRectI *format,
                                double *par,
                                std::string *error,
                                int* tile_width,
@@ -2641,12 +2642,12 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     bool originAtDisplayWindow;
     _useDisplayWindowAsOrigin->getValue(originAtDisplayWindow);
 #endif
-    
-    /*
-     Union bounds across all specs
-     */
+
+    // Union bounds across all specs to get the RoD
+    // Intersect formats across all specs to get the format
     
     OfxRectD mergeBounds = {0., 0., 0., 0.}; // start with empty bounds - rectBoundingBox grows them
+    OfxRectD formatIntersection = {0., 0., 0., 0.};
     for (std::size_t i = 0; i < specs.size(); ++i) {
         OfxRectD specBounds;
 
@@ -2654,8 +2655,6 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
 
         int width = spec.width;
         int height = spec.height;
-        //int width = spec.full_width == 0 ? spec.width : spec.full_width;
-        //int height = spec.full_height == 0 ? spec.height : spec.full_height;
 
 #ifdef USE_READ_OIIO_PARAM_USE_DISPLAY_WINDOW
         if (originAtDisplayWindow)
@@ -2664,11 +2663,11 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
             // the image coordinates are expressed in the "full/display" image.
             // The RoD are the coordinates of the data window with respect to that full window
 
-            specBounds.x1 = (spec.x - spec.full_x);
-            specBounds.x2 = (specBounds.x1 + width);
+            specBounds.x1 = spec.x;
+            specBounds.x2 = specBounds.x1 + width;
 
-            specBounds.y1 = (spec.y - spec.full_y);
-            specBounds.y2 = (specBounds.y1 + height);
+            specBounds.y1 = spec.y;
+            specBounds.y2 = specBounds.y1 + height;
             // This is what was before
             //specBounds.y1 = spec.full_y + height - (spec.y + spec.height);
             //specBounds.y2 = height + (spec.full_y - spec.y);
@@ -2682,17 +2681,27 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
             specBounds.y2 = (specBounds.y1 + height);
         }
 #endif
+        OfxRectD specFormat;
+        specFormat.x1 = spec.full_x;
+        specFormat.x2 = spec.full_x + spec.full_width;
+        specFormat.y1 = spec.full_y;
+        specFormat.y2 = spec.full_y + spec.full_height;
         if (i == 0) {
             mergeBounds = specBounds;
+            formatIntersection = specFormat;
         } else {
             OFX::Coords::rectBoundingBox(specBounds, mergeBounds, &mergeBounds);
+            OFX::Coords::rectIntersection(specFormat, formatIntersection, &formatIntersection);
         }
     }
-    
     bounds->x1 = mergeBounds.x1;
     bounds->x2 = mergeBounds.x2;
     bounds->y1 = mergeBounds.y1;
     bounds->y2 = mergeBounds.y2;
+    format->x1 = formatIntersection.x1;
+    format->x2 = formatIntersection.x2;
+    format->y1 = formatIntersection.y1;
+    format->y2 = formatIntersection.y2;
     *tile_width = specs[0].tile_width;
     *tile_height = specs[0].tile_height;
     

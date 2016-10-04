@@ -1264,10 +1264,10 @@ GenericReaderPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArgument
     }
 
     std::string error;
-    OfxRectI bounds;
+    OfxRectI bounds, format;
     double par = 1.;
     int tile_width,tile_height;
-    bool success = getFrameBounds(filename, sequenceTime, &bounds, &par, &error, &tile_width, &tile_height);
+    bool success = getFrameBounds(filename, sequenceTime, &bounds, &format, &par, &error, &tile_width, &tile_height);
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
         OFX::throwSuiteStatusException(kOfxStatFailed);
@@ -1568,13 +1568,13 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
     }
 
     OfxRectI renderWindowFullRes, renderWindowNotRounded;
-    OfxRectI frameBounds;
+    OfxRectI frameBounds, format;
     double par = 1.;
     int tile_width,tile_height;
     std::string error;
 
     ///if the plug-in doesn't support tiles, just render the full rod
-    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &par, &error, &tile_width, &tile_height);
+    bool success = getFrameBounds(filename, sequenceTime, &frameBounds, &format, &par, &error, &tile_width, &tile_height);
     ///We shouldve checked above for any failure, now this is too late.
     if (!success) {
         setPersistentMessage(OFX::Message::eMessageError, "", error);
@@ -2279,14 +2279,14 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
         std::string filename;
         GetFilenameRetCodeEnum e = getFilenameAtSequenceTime(tmp.min, false, true, &filename);
         if (e == eGetFileNameReturnedFullRes) {
-            OfxRectI bounds;
+            OfxRectI bounds, format;
             double par = 1.;
             std::string error;
             int tile_width,tile_height;
-            bool success = getFrameBounds(filename, tmp.min, &bounds, &par, &error,&tile_width, &tile_height);
+            bool success = getFrameBounds(filename, tmp.min, &bounds, &format, &par, &error,&tile_width, &tile_height);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
-                clipPreferences.setOutputFormat(bounds);
+                clipPreferences.setOutputFormat(format);
             }
             
             bool customFPS;
@@ -2375,13 +2375,13 @@ GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
                                       const std::string& proxyFileName,
                                       OfxTime time)
 {
-    OfxRectI originalBounds, proxyBounds;
+    OfxRectI originalBounds, proxyBounds, originalFormat, proxyFormat;
     std::string error;
     double originalPAR = 1., proxyPAR = 1.;
     int tile_width,tile_height;
-    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalPAR, &error,&tile_width,&tile_height);
+    bool success = getFrameBounds(originalFileName, time, &originalBounds, &originalFormat, &originalPAR, &error,&tile_width,&tile_height);
     proxyBounds.x1 = proxyBounds.x2 = proxyBounds.y1 = proxyBounds.y2 = 0.f;
-    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyPAR, &error,&tile_width,&tile_height);
+    success = success && getFrameBounds(proxyFileName, time, &proxyBounds, &proxyFormat, &proxyPAR, &error,&tile_width,&tile_height);
     OfxPointD ret;
     if (!success ||
         (originalBounds.x1 == originalBounds.x2) ||

@@ -66,7 +66,7 @@ private:
 
     virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     virtual void onInputFileChanged(const std::string& newFile,bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
@@ -298,6 +298,7 @@ bool
 ReadPFMPlugin::getFrameBounds(const std::string& filename,
                               OfxTime /*time*/,
                               OfxRectI *bounds,
+                              OfxRectI *format,
                               double *par,
                               std::string *error,
                               int* tile_width,
@@ -350,6 +351,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     bounds->x2 = W;
     bounds->y1 = 0;
     bounds->y2 = H;
+    *format = *bounds;
     *par = 1.;
     *tile_width = *tile_height = 0;
     return true;

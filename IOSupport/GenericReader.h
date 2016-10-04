@@ -210,6 +210,7 @@ private:
     virtual bool getFrameBounds(const std::string& filename,
                                 OfxTime time,
                                 OfxRectI *bounds,
+                                OfxRectI *format,
                                 double *par,
                                 std::string *error,
                                 int* tile_width,
