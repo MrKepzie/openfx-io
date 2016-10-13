@@ -61,7 +61,7 @@
 		1E2E98FD1D994AE3000D1E98 /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E2E98FE1D994AE3000D1E98 /* ofxsMultiThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82C1891074000E9034B /* ofxsMultiThread.cpp */; };
 		1E2E99001D994AE3000D1E98 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D74E62491875A7A400D8FA13 /* CoreFoundation.framework */; };
-		1E2E990B1D994B11000D1E98 /* CTL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E98CE1D9949B5000D1E98 /* CTL.cpp */; };
+		1E2E990B1D994B11000D1E98 /* CTLTransform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E98CE1D9949B5000D1E98 /* CTLTransform.cpp */; };
 		1E2F4D99189295F600F4CE25 /* ReadFFmpeg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */; };
 		1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E00B389188EE887003BC7F3 /* GenericWriter.cpp */; };
 		1E2F4D9B189295F600F4CE25 /* ofxsProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D82E1891074000E9034B /* ofxsProperty.cpp */; };
@@ -528,7 +528,7 @@
 		1E00B3E7188EEBC5003BC7F3 /* ReadOIIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReadOIIO.cpp; sourceTree = "<group>"; };
 		1E00B3E9188EEBC5003BC7F3 /* WriteOIIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WriteOIIO.cpp; sourceTree = "<group>"; };
 		1E0524AB19813C5B00260F03 /* OCIOFileTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOFileTransform.cpp; sourceTree = "<group>"; };
-		1E2E98CE1D9949B5000D1E98 /* CTL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CTL.cpp; sourceTree = "<group>"; };
+		1E2E98CE1D9949B5000D1E98 /* CTLTransform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CTLTransform.cpp; sourceTree = "<group>"; };
 		1E2E98CF1D9949B5000D1E98 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1E2E98D01D9949B5000D1E98 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		1E2E99091D994AE3000D1E98 /* CTL.ofx.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CTL.ofx.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -882,7 +882,7 @@
 		1E2E98CD1D994998000D1E98 /* CTL */ = {
 			isa = PBXGroup;
 			children = (
-				1E2E98CE1D9949B5000D1E98 /* CTL.cpp */,
+				1E2E98CE1D9949B5000D1E98 /* CTLTransform.cpp */,
 				1E2E98CF1D9949B5000D1E98 /* Info.plist */,
 				1E2E98D01D9949B5000D1E98 /* Makefile */,
 			);
@@ -1405,7 +1405,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1E2E990B1D994B11000D1E98 /* CTL.cpp in Sources */,
+				1E2E990B1D994B11000D1E98 /* CTLTransform.cpp in Sources */,
 				1E2E98F71D994AE3000D1E98 /* ofxsLog.cpp in Sources */,
 				1E2E98F81D994AE3000D1E98 /* ofxsProperty.cpp in Sources */,
 				1E2E98F91D994AE3000D1E98 /* ofxsImageEffect.cpp in Sources */,
@@ -1698,8 +1698,13 @@
 		1E2E99071D994AE3000D1E98 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					_THREAD_SAFE,
+				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					"$(CTL_PATH)/include/CTL",
 					"$(EXR_PATH)/include/OpenEXR",
 				);
 				INFOPLIST_FILE = CTL/Info.plist;
@@ -1725,8 +1730,13 @@
 		1E2E99081D994AE3000D1E98 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					_THREAD_SAFE,
+				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					"$(CTL_PATH)/include/CTL",
 					"$(EXR_PATH)/include/OpenEXR",
 				);
 				INFOPLIST_FILE = CTL/Info.plist;
