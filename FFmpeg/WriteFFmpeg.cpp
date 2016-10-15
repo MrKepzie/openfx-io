@@ -3022,7 +3022,8 @@ void WriteFFmpegPlugin::beginEncode(const std::string& filename,
     }
 
     //snprintf(_formatContext->filename, sizeof(_formatContext->filename), "%s", filename.c_str());
-    std::strncpy( _formatContext->filename, filename.c_str(), sizeof(_formatContext->filename) );
+    _formatContext->filename[sizeof(_formatContext->filename) - 1] = 0; // force NUL terminated string
+    std::strncpy( _formatContext->filename, filename.c_str(), sizeof(_formatContext->filename) - 1 );
     
     /////////////////////                            ////////////////////
     ////////////////////    INITIALISE STREAM     ////////////////////
