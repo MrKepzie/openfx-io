@@ -186,6 +186,10 @@ enum EdgePixelsEnum
     eEdgePixelsBlack
 };
 
+template<typename T>
+static inline void
+unused(const T&) {}
+
 static bool gHostSupportsDynamicChoices   = false;
 static bool gHostSupportsMultiPlane = false;
 
@@ -2224,6 +2228,7 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
 
 void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
 {
+    unused(pixelComponentCount);
 #if defined(OFX_READ_OIIO_USES_CACHE) && OIIO_VERSION >= 10605
     // Use cache only if not during playback and if the files are tiled. If untiled there is no point in using the OIIO cache.
     // Do not use cache in OIIO 1.5.x because it does not support channel ranges correctly.

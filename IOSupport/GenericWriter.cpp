@@ -73,6 +73,17 @@ NAMESPACE_OFX_IO_ENTER
 #define kParamFormatTypeLabel "Format Type"
 #define kParamFormatTypeHint \
 "Whether to choose the input stream's format as output format or one from the drop-down menu"
+#define kParamFormatTypeOptionInput "Input stream format"
+#define kParamFormatTypeOptionInputHint "Renders using for format the input stream's format."
+#define kParamFormatTypeOptionProject "Project format"
+#define kParamFormatTypeOptionProjectHint "Renders using the format of the current project"
+#define kParamFormatTypeOptionFixed "Fixed format"
+#define kParamFormatTypeOptionFixedHint "Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter."
+enum FormatTypeEnum {
+    eFormatTypeInput = 0,
+    eFormatTypeProject,
+    eFormatTypeFixed,
+};
 
 #define kParamFormatSize kNatronParamFormatSize
 
@@ -207,14 +218,13 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
         _firstFrame->setIsSecretAndDisabled(true);
         _lastFrame->setIsSecretAndDisabled(true);
     }
-    int outputFormat_i;
-    _outputFormatType->getValue(outputFormat_i);
+    FormatTypeEnum outputFormat = (FormatTypeEnum)_outputFormatType->getValue();
     if (_clipToFormat) {
         std::string filename;
         _fileParam->getValue(filename);
-        _clipToFormat->setIsSecretAndDisabled(outputFormat_i != 1 || !displayWindowSupportedByFormat(filename));
+        _clipToFormat->setIsSecretAndDisabled(outputFormat != eFormatTypeProject || !displayWindowSupportedByFormat(filename));
     }
-    if (outputFormat_i == 0 || outputFormat_i == 1) {
+    if (outputFormat == eFormatTypeInput || outputFormat == eFormatTypeProject) {
         _outputFormat->setIsSecretAndDisabled(true);
     } else {
         _outputFormat->setIsSecretAndDisabled(false);
@@ -1574,10 +1584,8 @@ void
 GenericWriterPlugin::getOutputFormat(OfxTime time, int view, OfxRectD& rod)
 {
     
-    int formatType;
-    _outputFormatType->getValue(formatType);
+    FormatTypeEnum formatType = (FormatTypeEnum)_outputFormatType->getValue();
     
-    bool doDefaultBehaviour = false;
     bool clipToFormat = true;
     if (_clipToFormat && !_clipToFormat->getIsSecret()) {
         _clipToFormat->getValue(clipToFormat);
@@ -1586,17 +1594,28 @@ GenericWriterPlugin::getOutputFormat(OfxTime time, int view, OfxRectD& rod)
     if (!clipToFormat) {
         rod = _inputClip->getRegionOfDefinition(time, view);
     } else {
-        if (formatType == 0) {
-            doDefaultBehaviour = true;
-        } else if (formatType == 1) {
+        switch (formatType) {
+        case eFormatTypeInput: {
+            // union RoD across all views
+            OfxRectI format;
+            _inputClip->getFormat(format);
+            double par = _inputClip->getPixelAspectRatio();
+            rod.x1 = format.x1 * par;
+            rod.x2 = format.x2 * par;
+            rod.y1 = format.y1;
+            rod.y2 = format.y2;
+            break;
+        }
+        case eFormatTypeProject: {
             OfxPointD size = getProjectSize();
             OfxPointD offset = getProjectOffset();
             rod.x1 = offset.x;
             rod.y1 = offset.y;
             rod.x2 = offset.x + size.x;
             rod.y2 = offset.y + size.y;
-        } else if (formatType == 2) {
-
+            break;
+        }
+        case eFormatTypeFixed: {
             int w,h;
             double par;
             _outputFormatSize->getValue(w,h);
@@ -1608,16 +1627,12 @@ GenericWriterPlugin::getOutputFormat(OfxTime time, int view, OfxRectD& rod)
             rodPixel.y2 = h;
             OfxPointD renderScale = {1., 1.};
             OFX::Coords::toCanonical(rodPixel, renderScale, par, &rod);
+            break;
         }
-        if (doDefaultBehaviour) {
-            // union RoD across all views
-            OfxRectI format;
-            _inputClip->getFormat(format);
-            double par = _inputClip->getPixelAspectRatio();
-            rod.x1 = format.x1 * par;
-            rod.x2 = format.x2 * par;
-            rod.y1 = format.y1;
-            rod.y2 = format.y2;
+        default:
+            assert(false);
+            rod.x1 = rod.y1 =  rod.x2 =  rod.y2 = 0.;
+            break;
         }
     }
 
@@ -1815,9 +1830,8 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         _ocio->refreshInputAndOutputState(0);
 
         if (_clipToFormat) {
-            int type;
-            _outputFormatType->getValue(type);
-            _clipToFormat->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
+            FormatTypeEnum type = (FormatTypeEnum)_outputFormatType->getValue();
+            _clipToFormat->setIsSecretAndDisabled(type != eFormatTypeProject || !displayWindowSupportedByFormat(filename));
         }
     }
 }
@@ -1853,14 +1867,13 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
     } else if (paramName == kParamFilename) {
         outputFileChanged(args.reason, false, true);
     } else if (paramName == kParamFormatType) {
-        int type;
-        _outputFormatType->getValue(type);
+        FormatTypeEnum type = (FormatTypeEnum)_outputFormatType->getValue();
         if (_clipToFormat) {
             std::string filename;
             _fileParam->getValue(filename);
-            _clipToFormat->setIsSecretAndDisabled(type != 1 || !displayWindowSupportedByFormat(filename));
+            _clipToFormat->setIsSecretAndDisabled(type != eFormatTypeProject || !displayWindowSupportedByFormat(filename));
         }
-        if (type == 0 || type == 1) {
+        if (type == eFormatTypeInput || type == eFormatTypeProject) {
             _outputFormat->setIsSecretAndDisabled(true);
         } else {
             _outputFormat->setIsSecretAndDisabled(false);
@@ -2251,10 +2264,13 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormatType);
         param->setLabel(kParamFormatTypeLabel);
-        param->appendOption("Input stream format","Renders using for format the input stream's format.");
-        param->appendOption("Project format","Renders using the format of the current project");
-        param->appendOption("Fixed format","Renders using for format the format indicated by the " kParamOutputFormatLabel " parameter.");
-        param->setDefault(1);
+        assert(param->getNOptions() == (int)eFormatTypeInput);
+        param->appendOption(kParamFormatTypeOptionInput, kParamFormatTypeOptionInputHint);
+        assert(param->getNOptions() == (int)eFormatTypeProject);
+        param->appendOption(kParamFormatTypeOptionProject, kParamFormatTypeOptionProjectHint);
+        assert(param->getNOptions() == (int)eFormatTypeFixed);
+        param->appendOption(kParamFormatTypeOptionFixed, kParamFormatTypeOptionFixedHint);
+        param->setDefault((int)eFormatTypeProject);
         param->setAnimates(false);
         param->setHint(kParamFormatTypeHint);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);

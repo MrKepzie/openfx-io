@@ -547,36 +547,45 @@ GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, d
 
     
     switch (afterChoice) {
-        case eBeforeAfterHold: //hold
+        case eBeforeAfterHold: { //hold
             *sequenceTime = sequenceTimeDomain.max;
+
             return eGetSequenceTimeAfterSequence;
-            
-        case eBeforeAfterLoop: //loop
-            timeOffsetFromStart %= (int)(sequenceTimeDomain.max - sequenceTimeDomain.min + 1);
+        }
+        case eBeforeAfterLoop: { //loop
+            int range = sequenceTimeDomain.max - sequenceTimeDomain.min + 1;
+            if (range > 0) {
+                timeOffsetFromStart %= range;
+            }
             *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
+
             return eGetSequenceTimeAfterSequence;
-            
+        }
         case eBeforeAfterBounce: { //bounce
             int range = sequenceTimeDomain.max - sequenceTimeDomain.min;
             int sequenceIntervalsCount = range == 0 ? 0 : timeOffsetFromStart / range;
 
             ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
-            if (sequenceIntervalsCount % 2 == 0) {
+            if (range > 0) {
                 timeOffsetFromStart %= range;
+            }
+            if (sequenceIntervalsCount % 2 == 0) {
                 *sequenceTime = sequenceTimeDomain.min + timeOffsetFromStart;
             } else {
-                timeOffsetFromStart %= range;
                 *sequenceTime = sequenceTimeDomain.max - timeOffsetFromStart;
             }
+
             return eGetSequenceTimeAfterSequence;
         }
-        case eBeforeAfterBlack: //black
+        case eBeforeAfterBlack: { //black
+
             return eGetSequenceTimeBlack;
-            break;
-            
-        case eBeforeAfterError: //error
+        }
+        case eBeforeAfterError: { //error
             setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+
             return eGetSequenceTimeError;
+        }
     }
     return eGetSequenceTimeError;
 }
