@@ -142,8 +142,6 @@ static bool gHostIsNatron   = false;
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsMultiView = false;
 
-static std::vector<OFX::PixelComponentEnum> gPluginOutputComponents;
-
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
                                          const std::vector<std::string>& extensions,
@@ -171,6 +169,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _supportsRGB(supportsRGB)
 , _supportsXY(supportsXY)
 , _supportsAlpha(supportsAlpha)
+, _outputComponentsTable()
 {
     _inputClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
     _outputClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -228,6 +227,18 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
         _outputFormat->setIsSecretAndDisabled(true);
     } else {
         _outputFormat->setIsSecretAndDisabled(false);
+    }
+
+
+    // must be in sync with GenericWriterDescribeInContextBegin
+    if (supportsAlpha) {
+        _outputComponentsTable.push_back(OFX::ePixelComponentAlpha);
+    }
+    if (supportsRGB) {
+        _outputComponentsTable.push_back(OFX::ePixelComponentRGB);
+    }
+    if (supportsRGBA) {
+        _outputComponentsTable.push_back(OFX::ePixelComponentRGBA);
     }
 }
 
@@ -1936,8 +1947,8 @@ GenericWriterPlugin::changedClip(const OFX::InstanceChangedArgs &args, const std
             
             
             int index = -1;
-            for (std::size_t i = 0; i < gPluginOutputComponents.size(); ++i) {
-                if (gPluginOutputComponents[i] == components) {
+            for (std::size_t i = 0; i < _outputComponentsTable.size(); ++i) {
+                if (_outputComponentsTable[i] == components) {
                     index = i;
                     break;
                 }
@@ -1965,8 +1976,8 @@ GenericWriterPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     if (!_outputComponents->getIsSecret()) {
         int index;
         _outputComponents->getValue(index);
-        assert(index >= 0 && index < (int)gPluginOutputComponents.size());
-        OFX::PixelComponentEnum comps = gPluginOutputComponents[index];
+        assert(index >= 0 && index < (int)_outputComponentsTable.size());
+        OFX::PixelComponentEnum comps = _outputComponentsTable[index];
         
         
         std::vector<std::string> checkboxesLabels;
@@ -2184,20 +2195,18 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamOutputComponents);
         param->setLabel(kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
+        // must be in sync with the end of the plugin construction
         if (supportsAlpha) {
             param->appendOption("Alpha");
-            gPluginOutputComponents.push_back(OFX::ePixelComponentAlpha);
         }
         if (supportsRGB) {
             param->appendOption("RGB");
-            gPluginOutputComponents.push_back(OFX::ePixelComponentRGB);
         }
         if (supportsRGBA) {
             param->appendOption("RGBA");
-            gPluginOutputComponents.push_back(OFX::ePixelComponentRGBA);
         }
         param->setLayoutHint(eLayoutHintNoNewLine);
-        param->setDefault(gPluginOutputComponents.size() - 1);
+        param->setDefault(param->getNOptions() - 1);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

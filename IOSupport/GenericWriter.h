@@ -274,6 +274,8 @@ protected:
     bool _supportsXY;
     bool _supportsAlpha;
 
+    std::vector<OFX::PixelComponentEnum> _outputComponentsTable;
+
 private:
     
     

@@ -231,7 +231,6 @@ static bool gHostSupportsRGBA   = false;
 static bool gHostSupportsRGB    = false;
 static bool gHostSupportsXY    = false;
 static bool gHostSupportsAlpha  = false;
-static OFX::PixelComponentEnum gOutputComponentsMap[4];
 
 
 
@@ -320,6 +319,29 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
         assert(_sublabel);
     }
     _isExistingReader = fetchBooleanParam(kParamExistingInstance);
+
+    // must be in sync with GenericReaderDescribeInContextBegin
+    int i = 0;
+
+    if (gHostSupportsRGBA && supportsRGBA) {
+        _outputComponentsTable[i] = ePixelComponentRGBA;
+        ++i;
+    }
+    if (gHostSupportsRGB && supportsRGB) {
+        _outputComponentsTable[i] = ePixelComponentRGB;
+        ++i;
+    }
+    if (gHostSupportsXY && supportsXY) {
+        _outputComponentsTable[i] = ePixelComponentXY;
+        ++i;
+    }
+
+    if (gHostSupportsAlpha && supportsAlpha) {
+        _outputComponentsTable[i] = ePixelComponentAlpha;
+        ++i;
+    }
+    _outputComponentsTable[i] = ePixelComponentNone;
+
 }
 
 GenericReaderPlugin::~GenericReaderPlugin()
@@ -2211,16 +2233,15 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 OFX::PixelComponentEnum
 GenericReaderPlugin::getOutputComponents() const
 {
-    int outputComponents_i;
-    _outputComponents->getValue(outputComponents_i);
-    return gOutputComponentsMap[outputComponents_i];
+    int outputComponents_i = _outputComponents->getValue();
+    return _outputComponentsTable[outputComponents_i];
 }
 
 void
 GenericReaderPlugin::setOutputComponents(OFX::PixelComponentEnum comps)
 {
     int i;
-    for (i = 0; i < 4 && gOutputComponentsMap[i] != comps; ++i) {
+    for (i = 0; i < 4 && _outputComponentsTable[i] != comps; ++i) {
     }
     if (i >= 4) {
         // not found, set the first supported component
@@ -3118,38 +3139,21 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamOutputComponents);
         param->setLabel(kParamOutputComponentsLabel);
         param->setHint(kParamOutputComponentsHint);
-        int i = 0;
 
+        // must be in sync with the building of _outputComponentsTable in the GenericReaderPlugin constructor
         if (gHostSupportsRGBA && supportsRGBA) {
-            gOutputComponentsMap[i] = ePixelComponentRGBA;
-            ++i;
-            // coverity[check_return]
-            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGBA);
             param->appendOption(kParamOutputComponentsOptionRGBA);
         }
         if (gHostSupportsRGB && supportsRGB) {
-            gOutputComponentsMap[i] = ePixelComponentRGB;
-            ++i;
-            // coverity[check_return]
-            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentRGB);
             param->appendOption(kParamOutputComponentsOptionRGB);
         }
         if (gHostSupportsXY && supportsXY) {
-            gOutputComponentsMap[i] = ePixelComponentXY;
-            ++i;
-            // coverity[check_return]
-            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentXY);
             param->appendOption(kParamOutputComponentsOptionXY);
         }
 
         if (gHostSupportsAlpha && supportsAlpha) {
-            gOutputComponentsMap[i] = ePixelComponentAlpha;
-            ++i;
-            // coverity[check_return]
-            assert(param->getNOptions() >= 0 && gOutputComponentsMap[param->getNOptions()] == ePixelComponentAlpha);
             param->appendOption(kParamOutputComponentsOptionAlpha);
         }
-        gOutputComponentsMap[i] = ePixelComponentNone;
 
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
         param->setAnimates(false);
