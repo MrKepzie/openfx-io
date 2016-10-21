@@ -234,7 +234,10 @@ class ReadOIIOPlugin : public GenericReaderPlugin {
 
 public:
 
-    ReadOIIOPlugin(bool useRGBAChoices,OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    ReadOIIOPlugin(bool useRGBAChoices,
+                   OfxImageEffectHandle handle,
+                   const std::vector<std::string>& extensions,
+                   bool useOIIOCache); // does the host prefer images to be cached by OIIO (e.g. Natron < 2.2)?
 
     virtual ~ReadOIIOPlugin();
 
@@ -290,10 +293,8 @@ private:
 
     void getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& subimages) const;
 
-#ifdef OFX_READ_OIIO_USES_CACHE
     void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const;
-#endif
-    
+
     bool updateSpec(const std::string &filename, std::string* error = 0);
     
     void setOCIOColorspacesFromSpec(const std::string& filename);
@@ -316,10 +317,8 @@ private:
     
     bool _useRGBAChoices;
 
-#ifdef OFX_READ_OIIO_USES_CACHE
     //// OIIO image cache
     ImageCache* _cache;
-#endif
 
     ///V1 params
     OFX::ChoiceParam *_rChannel;
@@ -363,7 +362,8 @@ private:
 
 ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
                                OfxImageEffectHandle handle,
-                               const std::vector<std::string>& extensions)
+                               const std::vector<std::string>& extensions,
+                               bool useOIIOCache) // does the host prefer images to be cached by OIIO (e.g. Natron < 2.2)?
 : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles,
 #ifdef OFX_EXTENSIONS_NUKE
                       (OFX::getImageEffectHostDescription() && OFX::getImageEffectHostDescription()->isMultiPlanar) ? kIsMultiPlanar : false
@@ -372,13 +372,7 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
 #endif
                       )
 , _useRGBAChoices(useRGBAChoices)
-#ifdef OFX_READ_OIIO_USES_CACHE
-#  ifdef OFX_READ_OIIO_SHARED_CACHE
-, _cache(ImageCache::create(true)) // shared cache
-#  else
-, _cache(ImageCache::create(false)) // non-shared cache
-#  endif
-#endif
+, _cache(0)
 , _rChannel(0)
 , _gChannel(0)
 , _bChannel(0)
@@ -400,12 +394,19 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
 , _layersUnion()
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
-    // Always keep unassociated alpha.
-    // Don't let OIIO premultiply, because if the image is 8bits,
-    // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
-    // which causes a lot of precision loss.
-    // see also https://github.com/OpenImageIO/oiio/issues/960
-    _cache->attribute("unassociatedalpha", 1);
+    if (useOIIOCache) {
+#     ifdef OFX_READ_OIIO_SHARED_CACHE
+        _cache = ImageCache::create(true); // shared cache
+#     else
+        _cache = ImageCache::create(false); // non-shared cache
+#     endif
+        // Always keep unassociated alpha.
+        // Don't let OIIO premultiply, because if the image is 8bits,
+        // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
+        // which causes a lot of precision loss.
+        // see also https://github.com/OpenImageIO/oiio/issues/960
+        _cache->attribute("unassociatedalpha", 1);
+    }
 #endif
     
     if (_useRGBAChoices) {
@@ -441,21 +442,21 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
 
 ReadOIIOPlugin::~ReadOIIOPlugin()
 {
-#ifdef OFX_READ_OIIO_USES_CACHE
-#  ifdef OFX_READ_OIIO_SHARED_CACHE
-    ImageCache::destroy(_cache); // don't teardown if it's a shared cache
-#  else
-    ImageCache::destroy(_cache, true); // teardown non-shared cache
-#  endif
-#endif
+    if (_cache) {
+#     ifdef OFX_READ_OIIO_SHARED_CACHE
+        ImageCache::destroy(_cache); // don't teardown if it's a shared cache
+#     else
+        ImageCache::destroy(_cache, true); // teardown non-shared cache
+#     endif
+    }
 }
 
 void ReadOIIOPlugin::clearAnyCache()
 {
-#ifdef OFX_READ_OIIO_USES_CACHE
-    ///flush the OIIO cache
-    _cache->invalidate_all(true);
-#endif
+    if (_cache) {
+        ///flush the OIIO cache
+        _cache->invalidate_all(true);
+    }
 }
 
 void ReadOIIOPlugin::updateChannelMenusVisibility(OFX::PixelComponentEnum outputComponents)
@@ -1587,10 +1588,13 @@ ReadOIIOPlugin::getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& 
     }
 }
 
-#ifdef OFX_READ_OIIO_USES_CACHE
 void
 ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const
 {
+    assert(_cache);
+    if (!_cache) {
+        return;
+    }
     ImageSpec spec;
     int subImageIndex = 0;
     while (_cache->get_imagespec(ustring(filename), spec, subImageIndex)) {
@@ -1601,27 +1605,28 @@ ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<Image
 #endif
     }
 }
-#endif // #ifdef OFX_READ_OIIO_USES_CACHE
 
 bool
 ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
 {
     _specValid = false;
     _subImagesSpec.clear();
-# ifdef OFX_READ_OIIO_USES_CACHE
-    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    getSpecsFromCache(filename, _subImagesSpec);
-
-# else
-    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
-    if (!img.get()) {
-        if (error) {
-            *error = "Could node open file " + filename;
-        }
-        return false;
+    bool gotSpec = false;
+    if (_cache) {
+        //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
+        getSpecsFromCache(filename, _subImagesSpec);
+        gotSpec = true;
     }
-    getSpecsFromImageInput(img.get(), _subImagesSpec);
-# endif
+    if (!gotSpec) {
+        std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+        if (!img.get()) {
+            if (error) {
+                *error = "Could node open file " + filename;
+            }
+            return false;
+        }
+        getSpecsFromImageInput(img.get(), _subImagesSpec);
+    }
     if (_subImagesSpec.empty()) {
         if (error) {
             *error = "Could node open file " + filename;
@@ -2042,31 +2047,26 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
 void
 ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput** img, std::vector<ImageSpec>* subimages)
 {
-#ifdef OFX_READ_OIIO_USES_CACHE
-    if (useCache) {
+    if (_cache && useCache) {
         getSpecsFromCache(filename, *subimages);
-    } else
-#else
-        (void)useCache;
-#endif
-    {
-        
-        // Always keep unassociated alpha.
-        // Don't let OIIO premultiply, because if the image is 8bits,
-        // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
-        // which causes a lot of precision loss.
-        // see also https://github.com/OpenImageIO/oiio/issues/960
-        ImageSpec config;
-        config.attribute("oiio:UnassociatedAlpha", 1);
-        
-        *img = ImageInput::open(filename, &config);
-        if (!(*img)) {
-            setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot open file ") + filename);
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-            return;
-        }
-        getSpecsFromImageInput(*img, *subimages);
+
+        return;
     }
+    // Always keep unassociated alpha.
+    // Don't let OIIO premultiply, because if the image is 8bits,
+    // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
+    // which causes a lot of precision loss.
+    // see also https://github.com/OpenImageIO/oiio/issues/960
+    ImageSpec config;
+    config.attribute("oiio:UnassociatedAlpha", 1);
+
+    *img = ImageInput::open(filename, &config);
+    if (!(*img)) {
+        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Cannot open file ") + filename);
+        OFX::throwSuiteStatusException(kOfxStatFailed);
+        return;
+    }
+    getSpecsFromImageInput(*img, *subimages);
 }
 
 
@@ -2229,12 +2229,12 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
 void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
 {
     unused(pixelComponentCount);
-#if defined(OFX_READ_OIIO_USES_CACHE) && OIIO_VERSION >= 10605
+#if OIIO_VERSION >= 10605
     // Use cache only if not during playback and if the files are tiled. If untiled there is no point in using the OIIO cache.
     // Do not use cache in OIIO 1.5.x because it does not support channel ranges correctly.
-    bool useCache = !isPlayback && getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0);
+    const bool useCache = _cache && !isPlayback && getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0);
 #else
-    bool useCache = false;
+    const bool useCache = false;
 #endif
     
     
@@ -2562,7 +2562,6 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 ++incr;
             }
 
-
             const int outputChannelBegin = i;
             const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
@@ -2588,47 +2587,40 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 }
             }
 
-
             // Start on the last line to invert Y with a negative stride
             float* outputPixelData =  (float*)((char*)pixelData + topScanLineDataStartOffset) + outputChannelBegin;
 
-
-
-
-#         ifdef OFX_READ_OIIO_USES_CACHE
-            if (useCache) {
-
-                if (!_cache->get_pixels(ustring(filename),
-                                        subImageIndex, //subimage
-                                        0, //miplevel
-                                        xbegin, //x begin
-                                        xend, //x end
-                                        ybegin, //y begin
-                                        yend, //y end
-                                        zbegin, //z begin
-                                        zend, //z end
-                                        chbegin, //chan begin
-                                        chend, // chan end
-                                        TypeDesc::FLOAT, // data type
-                                        outputPixelData,// output buffer
-                                        xStride, //x stride
-                                        yStride, //y stride < make it invert Y
-                                        AutoStride //z stride
-#                                     if OIIO_VERSION >= 10605
-                                        ,
-                                        chbegin, // only cache these channels
-                                        chend
-#                                     endif
-                                        )) {
+            bool gotPixels = false;
+            if (_cache && useCache) {
+                gotPixels = _cache->get_pixels(ustring(filename),
+                                               subImageIndex, //subimage
+                                               0, //miplevel
+                                               xbegin, //x begin
+                                               xend, //x end
+                                               ybegin, //y begin
+                                               yend, //y end
+                                               zbegin, //z begin
+                                               zend, //z end
+                                               chbegin, //chan begin
+                                               chend, // chan end
+                                               TypeDesc::FLOAT, // data type
+                                               outputPixelData,// output buffer
+                                               xStride, //x stride
+                                               yStride, //y stride < make it invert Y
+                                               AutoStride //z stride
+#                                            if OIIO_VERSION >= 10605
+                                               ,
+                                               chbegin, // only cache these channels
+                                               chend
+#                                            endif
+                                               );
+                if (!gotPixels) {
                     setPersistentMessage(OFX::Message::eMessageError, "", _cache->geterror());
                     OFX::throwSuiteStatusException(kOfxStatFailed);
                     return;
                 }
-            } else // warning: '{' must follow #endif
-#         endif
-            { // !useCache
-
-
+            }
+            if (!gotPixels) { // !useCache
                 assert(kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height));
 
                 // Clear scanlines out of data window to black
@@ -2721,49 +2713,50 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
 {
     assert(bounds && par);
     std::vector<ImageSpec> specs;
-# ifdef OFX_READ_OIIO_USES_CACHE
+    bool gotSpecs = false;
     //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    {
+    if (_cache) {
         ImageSpec spec;
         int subImageIndex = 0;
         while (_cache->get_imagespec(ustring(filename), spec, subImageIndex)) {
             specs.push_back(spec);
             ++subImageIndex;
-#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
+#         ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
             break;
-#endif
+#         endif
+        }
+        if (specs.empty()) {
+            if (error) {
+                *error = _cache->geterror();
+            }
+            return false;
+        }
+        gotSpecs = true;
+    }
+    if (!gotSpecs) {
+        std::auto_ptr<ImageInput> img(ImageInput::open(filename));
+        if (!img.get()) {
+            if (error) {
+                *error = std::string("ReadOIIO: cannot open file ") + filename;
+            }
+            return false;
+        }
+        {
+            int subImageIndex = 0;
+            ImageSpec spec;
+            while (img->seek_subimage(subImageIndex, 0, spec)) {
+                specs.push_back(spec);
+                ++subImageIndex;
+#             ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
+                break;
+#             endif
+            }
+        }
+        img->close();
+        if (specs.empty()) {
+            return false;
         }
     }
-    if (specs.empty()) {
-        if (error) {
-            *error = _cache->geterror();
-        }
-        return false;
-    }
-# else
-    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
-    if (!img.get()) {
-        if (error) {
-            *error = std::string("ReadOIIO: cannot open file ") + filename;
-        }
-        return;
-    }
-    {
-        int subImageIndex = 0;
-        ImageSpec spec;
-        while (img->seek_subimage(subImageIndex, 0, spec)) {
-            specs.push_back(spec);
-            ++subImageIndex;
-#ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-            break;
-#endif
-        }
-    }
-    if (specs.empty()) {
-        return;
-    }
-# endif
-
 
     bool offsetNegativeDisplayWindow;
     _offsetNegativeDispWindow->getValue(offsetNegativeDisplayWindow);
@@ -2880,10 +2873,7 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
     *tile_height = specs[0].tile_height;
     
     *par = specs[0].get_float_attribute("PixelAspectRatio", 1);
-#ifdef OFX_READ_OIIO_USES_CACHE
-#else
-    img->close();
-#endif
+
     return true;
 }
 
@@ -2891,27 +2881,36 @@ std::string
 ReadOIIOPlugin::metadata(const std::string& filename)
 {
     std::stringstream ss;
+    std::auto_ptr<ImageInput> img;
 
-#ifndef OFX_READ_OIIO_USES_CACHE
-    std::auto_ptr<ImageInput> img(ImageInput::open(filename));
-    if (!img.get()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return std::string();
+    if (!_cache) {
+        img.reset(ImageInput::open(filename));
+        if (!img.get()) {
+            setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadOIIO: cannot open file ") + filename);
+            OFX::throwSuiteStatusException(kOfxStatFailed);
+            return std::string();
+        }
     }
-#endif
     std::vector<ImageSpec> subImages;
     {
         int subImageIndex = 0;
         ImageSpec spec;
-#ifdef OFX_READ_OIIO_USES_CACHE
-        while (_cache->get_imagespec(ustring(filename), spec,subImageIndex))
-#else
-        while (img->seek_subimage(subImageIndex, 0, spec))
-#endif
-        {
+        bool gotSpec;
+        if (_cache) {
+            gotSpec = _cache->get_imagespec(ustring(filename), spec,subImageIndex);
+        } else {
+            assert(img.get());
+            gotSpec = img->seek_subimage(subImageIndex, 0, spec);
+        }
+        while (gotSpec) {
             subImages.push_back(spec);
             ++subImageIndex;
+            if (_cache) {
+                gotSpec = _cache->get_imagespec(ustring(filename), spec,subImageIndex);
+            } else {
+                assert(img.get());
+                gotSpec = img->seek_subimage(subImageIndex, 0, spec);
+            }
         }
     }
     if (subImages.empty()) {
@@ -2996,10 +2995,10 @@ ReadOIIOPlugin::metadata(const std::string& filename)
             ss << std::endl;
         }
     }
-#ifdef OFX_READ_OIIO_USES_CACHE
-#else
-    img->close();
-#endif
+    if (!_cache) {
+        assert( img.get() );
+        img->close();
+    }
 
     return ss.str();
 }
@@ -3368,7 +3367,10 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
 template <bool useRGBAChoices>
 ImageEffect* ReadOIIOPluginFactory<useRGBAChoices>::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
-    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(useRGBAChoices, handle, _extensions);
+    const ImageEffectHostDescription* h = getImageEffectHostDescription();
+    // use OIIO Cache exclusively on Natron < 2.2
+    bool useOIIOCache = h->isNatron && ( h->versionMajor < 2 || (h->versionMajor == 2 && h->versionMinor < 2) );
+    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(useRGBAChoices, handle, _extensions, useOIIOCache);
     ret->restoreStateFromParameters();
     return ret;
 }
