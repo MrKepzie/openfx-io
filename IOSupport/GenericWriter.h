@@ -438,6 +438,7 @@ private:
                                 const OFX::BitDepthEnum bitDepth,
                                 const int srcRowBytes,
                                 const OfxRectI& dstBounds,
+                                const OFX::PixelComponentEnum dstPixelComponents,
                                 const int dstPixelComponentStartIndex,
                                 const int dstPixelComponentCount,
                                 const int dstRowBytes,

@@ -717,9 +717,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
     getSequenceTimeDomainInternal(sequenceTimeDomain,false);
     timeDomainFromSequenceTimeDomain(sequenceTimeDomain, false);
     
-    int missingFrame_i;
-    _missingFrameParam->getValue(missingFrame_i);
-    const MissingEnum missingFrame = MissingEnum(missingFrame_i);
+    const MissingEnum missingFrame = (MissingEnum)_missingFrameParam->getValue();
 
     std::string filename0;
 
