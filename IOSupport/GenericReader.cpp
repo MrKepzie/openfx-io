@@ -536,7 +536,8 @@ GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, 
             
         case eBeforeAfterBounce: { //bounce
             int range = sequenceTimeDomain.max - sequenceTimeDomain.min;
-            int sequenceIntervalsCount = range == 0 ? 0 : timeOffsetFromStart / range;
+            // guard against division by zero
+            int sequenceIntervalsCount = range ? (timeOffsetFromStart / range) : 0;
             ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
             if (sequenceIntervalsCount % 2 == 0) {
                 if (range != 0) {
@@ -585,7 +586,8 @@ GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, d
         }
         case eBeforeAfterBounce: { //bounce
             int range = sequenceTimeDomain.max - sequenceTimeDomain.min;
-            int sequenceIntervalsCount = range == 0 ? 0 : timeOffsetFromStart / range;
+            // guard against division by zero
+            int sequenceIntervalsCount = range ? (timeOffsetFromStart / range) : 0;
 
             ///if the sequenceIntervalsCount is odd then do exactly like loop, otherwise do the load the opposite frame
             if (range > 0) {
@@ -924,7 +926,10 @@ halveWindow(const OfxRectI& nextRenderWindow,
 
                 assert(sumW == 2 || (sumW == 1 && ((a == 0 && c == 0) || (b == 0 && d == 0))));
                 assert(sumH == 2 || (sumH == 1 && ((a == 0 && b == 0) || (c == 0 && d == 0))));
-                dstLineStart[x * nComponents + k] = (a + b + c + d) / (sumH * sumW);
+                int sum = sumH * sumW;
+                // guard against division by zero
+                assert(sum);
+                dstLineStart[x * nComponents + k] = sum ? ( (a + b + c + d) / sum ) : 0;
             }
         }
     }
@@ -2421,6 +2426,8 @@ GenericReaderPlugin::detectProxyScale(const std::string& originalFileName,
         setPersistentMessage(OFX::Message::eMessageError, "", "Cannot read the proxy file.");
         return ret;
     }
+    assert(originalBounds.x2 - originalBounds.x1);
+    assert(originalBounds.y2 - originalBounds.y1);
     ret.x = ((proxyBounds.x2 - proxyBounds.x1)  * proxyPAR) / ((originalBounds.x2 - originalBounds.x1) * originalPAR);
     ret.y = (proxyBounds.y2 - proxyBounds.y1) / (double)(originalBounds.y2 - originalBounds.y1);
     return ret;
@@ -2444,6 +2451,7 @@ public:
     , _dstBufferRowBytes(0)
     , _srcBufferRowBytes(0)
     {
+        assert(srcMaxValue);
         _srcBufferBounds.x1 = _srcBufferBounds.y1 = _srcBufferBounds.x2 = _srcBufferBounds.y2 = 0;
     }
 

@@ -1187,6 +1187,8 @@ public:
     void setXY(int x, int y) {
         _xCoord._value = x;
         _yCoord._value = y;
+        assert(_dstPixelRod.x2 - _dstPixelRod.x1);
+        assert(_dstPixelRod.y2 - _dstPixelRod.y1);
         _uCoord._value = (x + 0.5 - _dstPixelRod.x1) / (_dstPixelRod.x2 - _dstPixelRod.x1);
         _vCoord._value = (y + 0.5 - _dstPixelRod.y1) / (_dstPixelRod.y2 - _dstPixelRod.y1);
         _xCanCoord._value = (x + 0.5) * _par._value /_scalex._value;
@@ -1681,7 +1683,9 @@ public:
     // ctor
     SeExprProcessor(SeExprPlugin* instance)
     : SeExprProcessorBase(instance)
-    {}
+    {
+        assert(maxValue);
+    }
 
 private:
     // and do some processing

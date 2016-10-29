@@ -232,7 +232,8 @@ getPNGInfo(png_structp& sp,
             if (!png_get_gAMA (sp, ip, gamma_p)) {
                 *gamma_p = 1.0;
             } else {
-                *gamma_p = 1. / *gamma_p;
+                // guard against division by zero
+                *gamma_p = *gamma_p ? (1. / *gamma_p) : 1.;
                 gotGamma = true;
                 if (*gamma_p > 1.) {
                     *colorspace_p = ePNGColorSpaceGammaCorrected;

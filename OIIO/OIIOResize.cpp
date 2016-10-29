@@ -434,6 +434,7 @@ OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
         FilterDesc fd;
         Filter2D::get_filterdesc(filter - 1, &fd);
         // older versions of OIIO 1.2 don't have ImageBufAlgo::resize(dstBuf, srcBuf, fd.name, fd.width)
+        assert(srcSpec.full_width && srcSpec.full_height);
         float wratio = float(dstSpec.full_width) / float(srcSpec.full_width);
         float hratio = float(dstSpec.full_height) / float(srcSpec.full_height);
         float w = fd.width * std::max(1.0f, wratio);

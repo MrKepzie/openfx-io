@@ -3525,7 +3525,8 @@ void WriteFFmpegPlugin::updateBitrateToleranceRange()
     //We're not force limiting the range since the upper range is not bounded.
     double bitrate = _bitrate->getValue();
     double fps = _fps->getValue();
-    double minRange = bitrate / fps;
+    // guard agains division by zero
+    double minRange = (fps > 0.) ? bitrate / fps : bitrate;
     _bitrateTolerance->setRange(minRange, DBL_MAX);
     _bitrateTolerance->setDisplayRange(minRange, kParamBitrateMax);
 }

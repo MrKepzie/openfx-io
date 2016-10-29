@@ -218,14 +218,18 @@ private:
         {
             int64_t numerator = int64_t(frame) * _fpsDen *  _avstream->time_base.den;
             int64_t denominator = int64_t(_fpsNum) * _avstream->time_base.num;
-            return _startPTS + (numerator / denominator);
+            // guard against division by zero
+            assert(denominator);
+            return _startPTS + denominator ? (numerator / denominator) : numerator;
         }
 
         int ptsToFrame(int64_t pts) const
         {
             int64_t numerator = int64_t(pts - _startPTS) * _avstream->time_base.num * _fpsNum;
             int64_t denominator = int64_t(_avstream->time_base.den) * _fpsDen;
-            return static_cast<int>(numerator / denominator);
+            // guard against division by zero
+            assert(denominator);
+            return static_cast<int>(denominator ? (numerator / denominator) : numerator);
         }
 
         bool isRec709Format()

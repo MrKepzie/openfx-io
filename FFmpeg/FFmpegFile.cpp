@@ -1556,7 +1556,9 @@ FFmpegFile::getFPS(double & fps,
 
     // get the stream
     Stream* stream = _streams[streamIdx];
-    fps = (double)stream->_fpsNum / stream->_fpsDen;
+    // guard against division by zero
+    assert(stream->_fpsDen);
+    fps = stream->_fpsDen ? ( (double)stream->_fpsNum / stream->_fpsDen ) : stream->_fpsNum;
 
     return true;
 }
