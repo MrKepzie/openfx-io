@@ -56,7 +56,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ResizeOIIO"
 #define kPluginGrouping "Transform"
-#define kPluginDescription  "Use OpenImageIO to resize images."
+#define kPluginDescription  "Resize input stream, using OpenImageIO.\n" \
+"Note that only full images can be rendered, so it may be slower for interactive editing than the Reformat plugin.\n" \
+"However, the rendering algorithms are different between Reformat and Resize: Resize applies 1-dimensional filters in the horizontal and vertical directins, whereas Reformat resamples the image, so in some cases this plugin may give more visually pleasant results than Reformat.\n" \
+"This plugin does not concatenate transforms (as opposed to Reformat)."
 
 #define kPluginIdentifier "fr.inria.openfx.OIIOResize"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -691,23 +694,32 @@ void
 OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
 {
     double par = 1.;
-    int type_i;
-    _type->getValue(type_i);
-    ResizeTypeEnum type = (ResizeTypeEnum)type_i;
+    int w = 0, h = 0;
+    bool setFormat = false;
+    ResizeTypeEnum type = (ResizeTypeEnum)_type->getValue();
     switch (type) {
         case eResizeTypeFormat: {
             //specific output format
             int index;
             _format->getValue(index);
-            int w = 0, h = 0;
             getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
             clipPreferences.setPixelAspectRatio(*_dstClip, par);
+            setFormat = true;
             break;
         }
         case eResizeTypeSize:
+            _size->getValue(w, h);
+            setFormat = true;
+            break;
         case eResizeTypeScale:
             // don't change the pixel aspect ratio
             break;
+    }
+    if (setFormat) {
+#ifdef OFX_EXTENSIONS_NATRON
+        OfxRectI format = { 0, 0, w, h };
+        clipPreferences.setOutputFormat(format);
+#endif
     }
 }
 
@@ -752,7 +764,8 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setPassThroughForNotProcessedPlanes(OFX::ePassThroughLevelRenderAllRequestedPlanes);
 #endif
     
-    desc.setIsDeprecated(true);
+    //Openfx-misc got the Reformat node which is much faster, but Resize still gives better quality
+    //desc.setIsDeprecated(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
