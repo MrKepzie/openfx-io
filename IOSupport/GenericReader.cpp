@@ -1879,7 +1879,7 @@ GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
     int nbFrameNumbers = content.getPotentialFrameNumbersCount();
     content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
     
-    int numHashes = content.getNumPrependingZeroes();
+    int numHashes = content.getLeadingZeroes();
     
     std::string noStrWithoutZeroes;
     for (std::size_t i = 0; i < noStr.size(); ++i) {
