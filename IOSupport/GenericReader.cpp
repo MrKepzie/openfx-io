@@ -494,10 +494,10 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mus
         frameRangeLast = range.max;
         startingTime = frameRangeFirst;
         
-        _firstFrame->setRange(INT_MIN, range.min);
-        _firstFrame->setDisplayRange(INT_MIN, range.min);
-        _lastFrame->setRange(range.min, INT_MAX);
-        _lastFrame->setDisplayRange(range.min, INT_MAX);
+        _firstFrame->setRange(range.min, range.max);
+        _firstFrame->setDisplayRange(range.min, range.max);
+        _lastFrame->setRange(range.min, range.max);
+        _lastFrame->setDisplayRange(range.min, range.max);
 
         if (setFirstLastFrame) {
             _firstFrame->setValue(range.min);
@@ -2095,25 +2095,25 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         if (isVideoStream(filename)) {
             return;
         }
-        _originalFrameRange->getValueAtTime(time, oFirst, oLast);
+        _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->setValue(oFirst);
         _lastFrame->setValue(oLast);
-        _firstFrame->setRange(INT_MIN, oLast);
+        _firstFrame->setRange(oFirst, oLast);
         _firstFrame->setDisplayRange(oFirst, oLast);
-        _lastFrame->setRange(oFirst, INT_MAX);
+        _lastFrame->setRange(oFirst, oLast);
         _lastFrame->setDisplayRange(oFirst, oLast);
         _startingTime->setValue(oFirst);
     } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
 
         int first;
         int oFirst,oLast;
-        _originalFrameRange->getValueAtTime(time, oFirst, oLast);
-        _firstFrame->getValueAtTime(time, first);
-        _lastFrame->setRange(first, INT_MAX);
+        _originalFrameRange->getValue(oFirst, oLast);
+        _firstFrame->getValue(first);
+        _lastFrame->setRange(first, oLast);
         _lastFrame->setDisplayRange(first, oLast);
 
         int offset;
-        _timeOffset->getValueAtTime(time, offset);
+        _timeOffset->getValue(offset);
         _startingTime->setValue(first + offset); // will be called with reason == eChangePluginEdit
         
         _timeDomainUserSet->setValue(true);
@@ -2122,10 +2122,10 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int first;
         int last;
         int oFirst,oLast;
-        _originalFrameRange->getValueAtTime(time, oFirst, oLast);
+        _originalFrameRange->getValue(oFirst, oLast);
         _firstFrame->getValue(first);
-        _lastFrame->getValueAtTime(time, last);
-        _firstFrame->setRange(INT_MIN, last);
+        _lastFrame->getValue(last);
+        _firstFrame->setRange(oFirst, last);
         _firstFrame->setDisplayRange(oFirst, last);
         
         _timeDomainUserSet->setValue(true);
