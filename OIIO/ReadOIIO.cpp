@@ -2649,8 +2649,9 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                 int xbeginClamped = std::min(std::max(spec.x, xbegin), spec.x + spec.width);
                 int xendClamped = std::min(std::max(spec.x, xend), spec.x + spec.width);
 
-                if (spec.tile_width == 0 ||
-                    !spec.valid_tile_range(xbegin, xend, ybegin, yend, zbegin, zend)) {
+                // Do not call valid_tile_range because a tiled file can only be read with read_tiles with OpenImageIO.
+                // Otherwise it will give the following error: called OpenEXRInput::read_native_scanlines without an open file
+                if (spec.tile_width == 0) {
                     // Read by scanlines
 
                     if (!img->read_scanlines(ybeginClamped, //y begin
@@ -2668,27 +2669,89 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                         return;
                     }
                 } else {
-                    /*
-                     This call will be expensive for multi-layred EXRs because the function internally
-                     calls ImageInput::read_tile without chbegin,chend
-                     */
-                    if (!img->read_tiles(xbeginClamped, //x begin
-                                         xendClamped,//x end
-                                         ybeginClamped,//y begin
-                                         yendClamped,//y end
+
+                    // If the region to read is not a multiple of tile size we must provide a buffer
+                    // with the appropriate size.
+                    float* tiledBuffer = outputPixelData;
+                    float* tiledBufferToFree = 0;
+                    int tiledXBegin = xbeginClamped;
+                    int tiledYBegin = ybeginClamped;
+                    int tiledXEnd = xendClamped;
+                    int tiledYEnd = yendClamped;
+                    bool validRange = spec.valid_tile_range(xbegin, xend, ybegin, yend, zbegin, zend);
+
+                    int xBeginPadToTileSize = 0;
+                    int yEndPadToTileSize = 0;
+                    std::size_t tiledBufferRowSize = rowBytes;
+                    if (!validRange) {
+
+                        tiledXBegin = std::max(spec.x, (int)std::floor( ((double)xbeginClamped)  / spec.tile_width ) * spec.tile_width);
+                        tiledYBegin = std::max(spec.y, (int)std::floor( ((double)ybeginClamped)  / spec.tile_height ) * spec.tile_height);
+                        tiledXEnd = std::min(spec.x + spec.width, (int)std::ceil( ((double)xendClamped)  / spec.tile_width ) * spec.tile_width);
+                        tiledYEnd = std::min(spec.y + spec.height, (int)std::ceil( ((double)yendClamped)  / spec.tile_height ) * spec.tile_height);
+
+
+                        assert(tiledXBegin <= xbeginClamped &&
+                               tiledYBegin <= ybeginClamped &&
+                               tiledXEnd >= xendClamped &&
+                               tiledYEnd >= yendClamped);
+
+                        assert(spec.valid_tile_range(tiledXBegin, tiledXEnd, tiledYBegin, tiledYEnd, zbegin, zend));
+
+                        xBeginPadToTileSize = xbeginClamped - tiledXBegin;
+                        yEndPadToTileSize = tiledYEnd - yendClamped;
+
+                        tiledBufferRowSize = (tiledXEnd - tiledXBegin) * pixelBytes;
+                        std::size_t nBytes = tiledBufferRowSize * (tiledYEnd - tiledYBegin);
+                        tiledBufferToFree = (float*)malloc(nBytes);
+                        if (!tiledBufferToFree) {
+                            OFX::throwSuiteStatusException(kOfxStatErrMemory);
+                            return;
+                        }
+                        // Make tile buffer point to the last scan-line start
+                        tiledBuffer = (float*)((char*)tiledBufferToFree + (tiledYEnd - tiledYBegin - 1) * tiledBufferRowSize);
+
+                    }
+
+                    if (!img->read_tiles(tiledXBegin, //x begin
+                                         tiledXEnd,//x end
+                                         tiledYBegin,//y begin
+                                         tiledYEnd,//y end
                                          zbegin, // z begin
                                          zend, // z end
                                          chbegin, // chan begin
                                          chend, // chan end
                                          TypeDesc::FLOAT,  // data type
-                                         outputPixelData,
+                                         tiledBuffer,
                                          xStride, //x stride
-                                         yStride, //y stride < make it invert Y
+                                         -tiledBufferRowSize, //y stride < make it invert Y
                                          AutoStride)) //z stride
                     {
                         setPersistentMessage(OFX::Message::eMessageError, "", img->geterror());
                         OFX::throwSuiteStatusException(kOfxStatFailed);
                         return;
+                    }
+
+                    if (!validRange) {
+                        // Copy the tile of interest
+                        char* dst_pix = (char*)outputPixelData;
+                        std::size_t outputBufferSizeToCopy = (xendClamped - xbeginClamped) * pixelBytes;
+
+                        // Copy each scan-line from our temporary buffer to the final buffer. Since each buffer is pointing to the last
+                        // scan-line at the begining, we pass negative pixel offsets in the iteration loop.
+
+                        // Position tiled buffer start
+                        const char* src_pix = (const char*)((char*)tiledBuffer - yEndPadToTileSize * tiledBufferRowSize + xBeginPadToTileSize * pixelBytes);
+
+                        for (int y = ybeginClamped; y < yendClamped;
+                             ++y,
+                             src_pix -= tiledBufferRowSize,
+                             dst_pix -= rowBytes) {
+
+                            memcpy(dst_pix, src_pix, outputBufferSizeToCopy);
+
+                        }
+                        free(tiledBufferToFree);
                     }
                 }
             } // !useCache
@@ -2785,7 +2848,7 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
 
         // EXR origin is top left, but OpenFX expects lower left
         // keep data where it is and set spec.full_height at y = 0
-        specFormat.y2 = spec.full_height + spec.full_y - spec.full_y;
+        specFormat.y2 = spec.full_height;
 
         int dataOffset = 0;
         if (spec.full_x != 0) {
@@ -2796,7 +2859,7 @@ ReadOIIOPlugin::getFrameBounds(const std::string& filename,
             } else {
                 // Shift both to get dispwindow over to 0,0.
                 dataOffset = -spec.full_x;
-                specFormat.x2 = spec.full_width + spec.full_x -spec.full_x;
+                specFormat.x2 = spec.full_width;
             }
         }
 
