@@ -1045,6 +1045,9 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
             spec.full_y = format.y1;
             spec.full_width = format.x2 - format.x1;
             spec.full_height = format.y2 - format.y1;
+
+            // Invert y
+            spec.y = spec.full_y + spec.full_height - (spec.y + spec.height);
         }
         
         int tileSize_i;
@@ -1467,7 +1470,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->appendOption("256");
         assert(param->getNOptions() == eParamTileSize512);
         param->appendOption("512");
-        param->setDefault(eParamTileSize256);
+        param->setDefault(eParamTileSizeUntiled);
         if (page) {
             page->addChild(*param);
         }
