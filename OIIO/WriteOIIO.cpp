@@ -644,7 +644,7 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
         switch (finalBitDepth) {
             case eTuttlePluginBitDepth8: {
                 if (_ocio->hasColorspace("sRGB")) {
-                    // nuke-default
+                    // nuke-default, blender, natron
                     _ocio->setOutputColorspace("sRGB");
                 } else if (_ocio->hasColorspace("sRGB D65")) {
                     // blender-cycles
@@ -665,8 +665,11 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
                     has_suffix(filename, ".CIN") || has_suffix(filename, ".DPX")) {
                     // Cineon or DPX file
                     if (_ocio->hasColorspace("Cineon")) {
-                        // Cineon in nuke-default
+                        // Cineon in nuke-default, blender
                         _ocio->setOutputColorspace("Cineon");
+                    } else if (_ocio->hasColorspace("Cineon Log Curve")) {
+                        // Curves/Cineon Log Curve in natron
+                        _ocio->setOutputColorspace("Cineon Log Curve");
                     } else if (_ocio->hasColorspace("REDlogFilm")) {
                         // REDlogFilm in aces 1.0.0
                         _ocio->setOutputColorspace("REDlogFilm");
@@ -692,6 +695,9 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
                     } else if (_ocio->hasColorspace("nuke_rec709")) {
                         // blender
                         _ocio->setOutputColorspace("nuke_rec709");
+                    } else if (_ocio->hasColorspace("Rec 709 Curve")) {
+                        // natron
+                        _ocio->setOutputColorspace("Rec 709 Curve");
                     } else if (_ocio->hasColorspace("Rec.709 - Full")) {
                         // out_rec709full or "Rec.709 - Full" in aces 1.0.0
                         _ocio->setOutputColorspace("Rec.709 - Full");
@@ -980,14 +986,14 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         // rrt_srgb in aces
         // srgb8 in spi-vfx
         colorSpaceStr = "sRGB";
-    } else if (ocioColorspace == "Rec709" || ocioColorspace == "nuke_rec709" || ocioColorspace == "Rec.709 - Full" || ocioColorspace == "out_rec709full" || ocioColorspace == "rrt_rec709" || ocioColorspace == "hd10") {
+    } else if (ocioColorspace == "Rec709" || ocioColorspace == "nuke_rec709" || ocioColorspace == "Rec 709 Curve" || ocioColorspace == "Rec.709 - Full" || ocioColorspace == "out_rec709full" || ocioColorspace == "rrt_rec709" || ocioColorspace == "hd10") {
         // Rec709 in nuke-default
         // nuke_rec709 in blender
         // out_rec709full or "Rec.709 - Full" in aces 1.0.0
         // rrt_rec709 in aces
         // hd10 in spi-anim and spi-vfx
         colorSpaceStr = "Rec709";
-    } else if (ocioColorspace == "KodakLog" || ocioColorspace == "Cineon" || ocioColorspace == "REDlogFilm" || ocioColorspace == "lg10") {
+    } else if (ocioColorspace == "KodakLog" || ocioColorspace == "Cineon" || ocioColorspace == "Cineon Log Curve" || ocioColorspace == "REDlogFilm" || ocioColorspace == "lg10") {
         // Cineon in nuke-default
         // REDlogFilm in aces 1.0.0
         // lg10 in spi-vfx and blender

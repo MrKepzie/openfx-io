@@ -1514,7 +1514,7 @@ WriteFFmpegPlugin::getColorInfo(AVColorPrimaries *color_primaries,
         *color_trc = AVCOL_TRC_BT709;///< also ITU-R BT1361
     } else if (selection.find("KodakLog") != std::string::npos ||
                selection.find("kodaklog") != std::string::npos ||
-               selection.find("Cineon") != std::string::npos || // Cineon in nuke-default
+               selection.find("Cineon") != std::string::npos || // Cineon in nuke-default, blender
                selection.find("cineon") != std::string::npos ||
                selection == "Cineon Log Curve" || // natron
                selection == "REDlogFilm" || // REDlogFilm in aces 1.0.0

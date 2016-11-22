@@ -37,6 +37,7 @@
 #include <ofxsImageEffect.h>
 #include <ofxsLog.h>
 #include <ofxNatron.h>
+#include "ofxsMacros.h"
 
 #ifdef OFX_IO_USING_OCIO
 #include <OpenColorIO/OpenColorIO.h>
@@ -90,7 +91,7 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
     OpenColorIO::ConstColorSpaceRcPtr cs;
     if (!strcmp(colorSpaceNameDefault, "sRGB") || !strcmp(colorSpaceNameDefault, "srgb")) {
         if ((cs = config->getColorSpace("sRGB"))) {
-            // nuke-default and blender
+            // nuke-default, blender, natron
             return cs->getName();
         } else if ((cs = config->getColorSpace("sRGB D65"))) {
             // blender-cycles
@@ -117,8 +118,11 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
             // VD16 in blender
             return cs->getName();
         }
-        //} else if(!strcmp(inputSpaceNameDefault, "AdobeRGB") || !strcmp(inputSpaceNameDefault, "adobergb")) {
-        // ???
+    } else if(!strcmp(colorSpaceNameDefault, "AdobeRGB") || !strcmp(colorSpaceNameDefault, "adobergb")) {
+        if ((cs = config->getColorSpace("AdobeRGB"))) {
+            // natron
+            return cs->getName();
+        }
     } else if (!strcmp(colorSpaceNameDefault, "Rec709") || !strcmp(colorSpaceNameDefault, "rec709")) {
         if ((cs = config->getColorSpace("Rec709"))) {
             // nuke-default
@@ -1032,6 +1036,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     } else if (paramName == kOCIOParamInputSpace) {
         assert(_inputSpace);
         if (args.reason == OFX::eChangeUserEdit) {
+#pragma message WARN("TODO: set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
             // if the inputspace doesn't correspond to a valid one, reset to default.
             // first, canonicalize.
             std::string inputSpace;
@@ -1058,6 +1063,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         assert(_inputSpace);
+#pragma message WARN("TODO: set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
         int inputSpaceIndex;
         _inputSpaceChoice->getValueAtTime(args.time, inputSpaceIndex);
         std::string inputSpaceOld;
@@ -1072,6 +1078,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     else if (paramName == kOCIOParamOutputSpace) {
         assert(_outputSpace);
         if (args.reason == OFX::eChangeUserEdit) {
+#pragma message WARN("TODO: set the outputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
             // if the outputspace doesn't correspond to a valid one, reset to default.
             // first, canonicalize.
             std::string outputSpace;
@@ -1086,7 +1093,14 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (args.reason == OFX::eChangeUserEdit) {
                     _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+outputSpace+"\"");
                 }
-                outputSpace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT)->getName();
+                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
+                if (!cs) {
+                    cs = _config->getColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
+                }
+                if (!cs) {
+                    cs = _config->getColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                }
+                outputSpace = cs ? cs->getName() : OCIO_NAMESPACE::ROLE_DEFAULT;
                 _outputSpace->setValue(outputSpace);
                 outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
                 assert(outputSpaceIndex >= 0);
@@ -1097,6 +1111,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         assert(_outputSpace);
+#pragma message WARN("TODO: set the outputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
         int outputSpaceIndex;
         _outputSpaceChoice->getValueAtTime(args.time, outputSpaceIndex);
         std::string outputSpaceOld;
@@ -1245,6 +1260,7 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
             page->addChild(*param);
         }
     }
+#pragma message WARN("TODO: define secret inputSpaceSet param https://github.com/MrKepzie/Natron/issues/1492")
 
 #ifdef OFX_OCIO_CHOICE
     {
@@ -1305,6 +1321,8 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
             page->addChild(*param);
         }
     }
+#pragma message WARN("TODO: define secret outputSpaceSet param https://github.com/MrKepzie/Natron/issues/1492")
+
 #ifdef OFX_OCIO_CHOICE
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamOutputSpaceChoice);

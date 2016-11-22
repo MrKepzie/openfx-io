@@ -1800,7 +1800,7 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "sRGB")) {
             if (_ocio->hasColorspace("sRGB")) {
-                // nuke-default and blender
+                // nuke-default, blender, natron
                 _ocio->setInputColorspace("sRGB");
                 colorSpaceStr = NULL;
             } else if (_ocio->hasColorspace("sRGB D65")) {
@@ -1842,7 +1842,11 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "AdobeRGB")) {
-            // ???
+            if (_ocio->hasColorspace("AdobeRGB")) {
+                // natron
+                _ocio->setInputColorspace("AdobeRGB");
+                colorSpaceStr = NULL;
+            }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "Rec709")) {
             if (_ocio->hasColorspace("Rec709")) {
@@ -1852,6 +1856,10 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
             } else if (_ocio->hasColorspace("nuke_rec709")) {
                 // blender
                 _ocio->setInputColorspace("nuke_rec709");
+                colorSpaceStr = NULL;
+            } else if (_ocio->hasColorspace("Rec 709 Curve")) {
+                // natron
+                _ocio->setInputColorspace("Rec 709 Curve");
                 colorSpaceStr = NULL;
             } else if (_ocio->hasColorspace("Rec.709 - Full")) {
                 // out_rec709full or "Rec.709 - Full" in aces 1.0.0
@@ -1879,6 +1887,10 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
             if (_ocio->hasColorspace("Cineon")) {
                 // Cineon in nuke-default
                 _ocio->setInputColorspace("Cineon");
+                colorSpaceStr = NULL;
+            } else if (_ocio->hasColorspace("Cineon Log Curve")) {
+                // Curves/Cineon Log Curve in natron
+                _ocio->setInputColorspace("Cineon Log Curve");
                 colorSpaceStr = NULL;
             } else if (_ocio->hasColorspace("REDlogFilm")) {
                 // REDlogFilm in aces 1.0.0

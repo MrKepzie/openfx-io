@@ -1916,9 +1916,7 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         }
 # endif
 
-
-
-        ///let the derive class a chance to initialize any data structure it may need
+        // give the derived class a chance to initialize any data structure it may need
         onOutputFileChanged(filename, setColorSpace);
         _ocio->refreshInputAndOutputState(0);
 
