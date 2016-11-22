@@ -34,6 +34,7 @@ GCC_DIAG_ON(unused-parameter)
 #include "GenericWriter.h"
 
 #include <ofxsMultiPlane.h>
+#include <ofxsCoords.h>
 
 #ifdef _WIN32
 #include <IlmThreadPool.h>
@@ -1033,14 +1034,16 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         spec.full_x = bounds.x1;
         spec.full_y = bounds.y1;
         
-        bool clipToFormat = true;
-        if (_clipToFormat && !_clipToFormat->getIsSecret()) {
-            _clipToFormat->getValue(clipToFormat);
+        bool clipToRoD = false;
+        if (_clipToRoD && !_clipToRoD->getIsSecret()) {
+            _clipToRoD->getValue(clipToRoD);
         }
-        if (!clipToFormat) {
-            //Spec has already been set to bounds which are the input RoD, so post-fix by setting display window to format size
+        if (clipToRoD) {
+            // The bounds were set to the input RoD.
+            // Set the display window to format using user prefs
             OfxRectI format;
-            _inputClip->getFormat(format);
+            double formatPar;
+            getSelectedOutputFormat(&format, &formatPar);
             spec.full_x = format.x1;
             spec.full_y = format.y1;
             spec.full_width = format.x2 - format.x1;
