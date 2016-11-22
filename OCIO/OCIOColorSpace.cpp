@@ -256,8 +256,7 @@ private:
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     OFX::BooleanParam* _enableGPU;
-    OCIOOpenGLContextData _openGLContextData; // (OpenGL-only) - the single openGL context, in case the host does not support kNatronOfxImageEffectPropOpenGLContextData
-    bool _openGLContextAttached; // (OpenGL-only) - set to true when the contextAttached function is executed - used for checking non-conformant hosts such as Sony Catalyst
+    OCIOOpenGLContextData* _openGLContextData; // (OpenGL-only) - the single openGL context, in case the host does not support kNatronOfxImageEffectPropOpenGLContextData
 #endif
 };
 
@@ -273,8 +272,7 @@ OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 , _ocio(new GenericOCIO(this))
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 , _enableGPU(0)
-, _openGLContextData()
-, _openGLContextAttached(false)
+, _openGLContextData(NULL)
 #endif
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
@@ -494,6 +492,14 @@ OCIOColorSpacePlugin::contextAttached(bool createContextData)
     if (createContextData) {
         // This will load OpenGL functions the first time it is executed (thread-safe)
         return new OCIOOpenGLContextData;
+    } else {
+        if (_openGLContextData) {
+#         ifdef DEBUG
+            std::printf("ERROR: contextAttached() called but context already attached\n");
+#         endif
+            contextDetached(NULL);
+        }
+        _openGLContextData = new OCIOOpenGLContextData;
     }
     return NULL;
 }
@@ -516,7 +522,13 @@ OCIOColorSpacePlugin::contextDetached(void* contextData)
         OCIOOpenGLContextData* myData = (OCIOOpenGLContextData*)contextData;
         delete myData;
     } else {
-        _openGLContextAttached = false;
+        if (!_openGLContextData) {
+#         ifdef DEBUG
+            std::printf("ERROR: contextDetached() called but no context attached\n");
+#         endif
+        }
+        delete _openGLContextData;
+        _openGLContextData = NULL;
     }
 
 
@@ -578,23 +590,29 @@ OCIOColorSpacePlugin::renderGPU(const OFX::RenderArguments &args)
         //throw std::runtime_error("render window outside of image bounds");
     }
 
-    OCIOOpenGLContextData* contextData = &_openGLContextData;
+    OCIOOpenGLContextData* contextData = NULL;
     if (OFX::getImageEffectHostDescription()->isNatron && !args.openGLContextData) {
-#ifdef DEBUG
+#     ifdef DEBUG
         std::printf("ERROR: Natron did not provide the contextData pointer to the OpenGL render func.\n");
-#endif
+#     endif
     }
     if (args.openGLContextData) {
         // host provided kNatronOfxImageEffectPropOpenGLContextData,
         // which was returned by kOfxActionOpenGLContextAttached
         contextData = (OCIOOpenGLContextData*)args.openGLContextData;
-    } else if (!_openGLContextAttached) {
-        // Sony Catalyst Edit never calls kOfxActionOpenGLContextAttached
-#ifdef DEBUG
-        std::printf( ("ERROR: OpenGL render() called without calling contextAttached() first. Calling it now.\n") );
-#endif
-        contextAttached(false);
-        _openGLContextAttached = true;
+    } else {
+        if (!_openGLContextData) {
+            // Sony Catalyst Edit never calls kOfxActionOpenGLContextAttached
+#         ifdef DEBUG
+            std::printf( ("ERROR: OpenGL render() called without calling contextAttached() first. Calling it now.\n") );
+#         endif
+            contextAttached(false);
+            assert(_openGLContextData);
+        }
+        contextData = _openGLContextData;
+    }
+    if (!contextData) {
+        throwSuiteStatusException(kOfxStatFailed);
     }
 
     if (_ocio->isIdentity(args.time)) {
