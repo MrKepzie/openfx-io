@@ -36,7 +36,9 @@ class SequenceFromFiles;
 NAMESPACE_OFX_ENTER
 NAMESPACE_OFX_IO_ENTER
 
+#ifdef OFX_IO_USING_OCIO
 class GenericOCIO;
+#endif
 
 /**
  * @brief A generic reader plugin, derive this to create a new reader for a specific file format.
@@ -407,6 +409,7 @@ protected:
     OFX::BooleanParam* _isExistingReader;
     
 #ifdef OFX_IO_USING_OCIO
+    OFX::BooleanParam* _inputSpaceSet;
     std::auto_ptr<GenericOCIO> _ocio;
 #endif
     

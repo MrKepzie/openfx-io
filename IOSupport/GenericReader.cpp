@@ -56,6 +56,10 @@
 #endif
 #include "IOUtility.h"
 
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
+
 NAMESPACE_OFX_ENTER
 NAMESPACE_OFX_IO_ENTER
 
@@ -219,6 +223,10 @@ enum MissingEnum
 
 #define kParamExistingInstance "ParamExistingInstance"
 
+#ifdef OFX_IO_USING_OCIO
+#define kParamInputSpaceSet "ocioInputSpaceSet" // was the input colorspace set by user?
+#endif
+
 #define MISSING_FRAME_NEAREST_RANGE 100
 
 #define kSupportsMultiResolution 1
@@ -281,6 +289,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _sublabel(0)
 , _isExistingReader(0)
 #ifdef OFX_IO_USING_OCIO
+, _inputSpaceSet(NULL)
 , _ocio(new GenericOCIO(this))
 #endif
 , _extensions(extensions)
@@ -319,6 +328,10 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
         assert(_sublabel);
     }
     _isExistingReader = fetchBooleanParam(kParamExistingInstance);
+#ifdef OFX_IO_USING_OCIO
+    _inputSpaceSet = fetchBooleanParam(kParamInputSpaceSet);
+#endif
+
 
     // must be in sync with GenericReaderDescribeInContextBegin
     int i = 0;
@@ -1969,10 +1982,14 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader, bool throwEr
             
             bool setColorSpace = true;
 # ifdef OFX_IO_USING_OCIO
+            // if inputSpaceSet == true (input space was manually set by user) then setColorSpace = false
+            if ( _inputSpaceSet->getValue() ) {
+                setColorSpace = false;
+            }
             // Always try to parse from string first,
             // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-            OCIO_NAMESPACE::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
-            if (ocioConfig) {
+            OCIO::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
+            if (setColorSpace && ocioConfig) {
                 const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
                 if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
                     colorSpaceStr = NULL;
@@ -2225,12 +2242,17 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             }
             
         }
-        
-    } else {
 #ifdef OFX_IO_USING_OCIO
-        _ocio->changedParam(args, paramName);
+    } else if ((paramName == kOCIOParamInputSpace || paramName == kOCIOParamInputSpaceChoice) &&
+               args.reason == OFX::eChangeUserEdit) {
+        // set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492
+        _inputSpaceSet->setValue(true);
 #endif
     }
+
+#ifdef OFX_IO_USING_OCIO
+    _ocio->changedParam(args, paramName);
+#endif
 }
 
 OFX::PixelComponentEnum
@@ -3240,6 +3262,16 @@ GenericReaderDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
 #ifdef OFX_IO_USING_OCIO
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault, kParamInputSpaceLabel);
+    {
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamInputSpaceSet);
+        param->setEvaluateOnChange(false);
+        param->setAnimates(false);
+        param->setIsSecretAndDisabled(true);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault);
     GenericOCIO::describeInContextContext(desc, context, page);
     {

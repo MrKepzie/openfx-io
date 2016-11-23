@@ -138,6 +138,9 @@ enum FormatTypeEnum {
 
 #define kParamExistingInstance "ParamExistingInstance"
 
+#ifdef OFX_IO_USING_OCIO
+#define kParamOutputSpaceSet "ocioOutputSpaceSet" // was the output colorspace set by user?
+#endif
 
 static bool gHostIsNatron   = false;
 static bool gHostIsMultiPlanar = false;
@@ -164,7 +167,10 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _processChannels()
 , _outputComponents(0)
 , _isExistingWriter(0)
+#ifdef OFX_IO_USING_OCIO
+, _outputSpaceSet(NULL)
 , _ocio(new GenericOCIO(this))
+#endif
 , _extensions(extensions)
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
@@ -206,6 +212,10 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
     assert(_processChannels[0] && _processChannels[1] && _processChannels[2] && _processChannels[3] && _outputComponents);
 
     _isExistingWriter = fetchBooleanParam(kParamExistingInstance);
+
+#ifdef OFX_IO_USING_OCIO
+    _outputSpaceSet = fetchBooleanParam(kParamOutputSpaceSet);
+#endif
 
     int frameRangeChoice;
     _frameRange->getValue(frameRangeChoice);
@@ -1901,9 +1911,13 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
 
         bool setColorSpace = true;
 # ifdef OFX_IO_USING_OCIO
+        // if outputSpaceSet == true (output space was manually set by user) then setColorSpace = false
+        if ( _outputSpaceSet->getValue() ) {
+            setColorSpace = false;
+        }
         // Always try to parse from string first,
         // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-        if (_ocio->getConfig()) {
+        if (setColorSpace &&_ocio->getConfig()) {
             const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
             if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
                 colorSpaceStr = NULL;
@@ -2003,10 +2017,17 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         }
         msg += "\n";
         sendMessage(OFX::Message::eMessageMessage, "", msg);
+#ifdef OFX_IO_USING_OCIO
+    } else if ((paramName == kOCIOParamOutputSpace || paramName == kOCIOParamOutputSpaceChoice) &&
+               args.reason == OFX::eChangeUserEdit) {
+        // set the outputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492
+        _outputSpaceSet->setValue(true);
+#endif
     }
 
-
+#ifdef OFX_IO_USING_OCIO
     _ocio->changedParam(args, paramName);
+#endif
 }
 
 void
@@ -2457,6 +2478,16 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     // insert OCIO parameters
     GenericOCIO::describeInContextInput(desc, context, page, inputSpaceNameDefault);
     GenericOCIO::describeInContextOutput(desc, context, page, outputSpaceNameDefault, kParamOutputSpaceLabel);
+    {
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamOutputSpaceSet);
+        param->setEvaluateOnChange(false);
+        param->setAnimates(false);
+        param->setIsSecretAndDisabled(true);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
     GenericOCIO::describeInContextContext(desc, context, page);
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
