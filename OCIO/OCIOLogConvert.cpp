@@ -23,8 +23,6 @@
 
 #ifdef OFX_IO_USING_OCIO
 
-#include <OpenColorIO/OpenColorIO.h>
-
 #include <cstdlib>
 #ifdef DEBUG
 #include <cstdio> // printf

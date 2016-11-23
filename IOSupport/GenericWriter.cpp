@@ -558,10 +558,12 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const std::string& plane,
                 unPremultPixelData(renderWindow, srcPixelData, *bounds, srcMappedComponents, srcMappedComponentsCount
                                    , bitDepth, srcRowBytes, tmpPixelData, renderWindow, srcMappedComponents, srcMappedComponentsCount, bitDepth, tmpRowBytes);
             }
+#         ifdef OFX_IO_USING_OCIO
             // do the color-space conversion
             if (srcMappedComponents == OFX::ePixelComponentRGB || srcMappedComponents == OFX::ePixelComponentRGBA) {
                 _ocio->apply(time, renderWindowClipped, tmpPixelData, renderWindow, srcMappedComponents, srcMappedComponentsCount, tmpRowBytes);
             }
+#         endif
             
             ///If needed, re-premult the image for the plugin to work correctly
             if (pluginExpectedPremult == OFX::eImagePreMultiplied && srcMappedComponents == OFX::ePixelComponentRGBA) {
@@ -840,7 +842,11 @@ GenericWriterPlugin::render(const OFX::RenderArguments &args)
     //
     
    
+#ifdef OFX_IO_USING_OCIO
     bool isOCIOIdentity = _ocio->isIdentity(time);
+#else
+    bool isOCIOIdentity = true;
+#endif
 
     //The host required that we render all views into 1 file. This is for now only supported by EXR.
     
@@ -1910,7 +1916,7 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         }
 
         bool setColorSpace = true;
-# ifdef OFX_IO_USING_OCIO
+#     ifdef OFX_IO_USING_OCIO
         // if outputSpaceSet == true (output space was manually set by user) then setColorSpace = false
         if ( _outputSpaceSet->getValue() ) {
             setColorSpace = false;
@@ -1928,11 +1934,13 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
                 setColorSpace = false;
             }
         }
-# endif
+#     endif
 
         // give the derived class a chance to initialize any data structure it may need
         onOutputFileChanged(filename, setColorSpace);
+#     ifdef OFX_IO_USING_OCIO
         _ocio->refreshInputAndOutputState(0);
+#     endif
 
         if (_clipToRoD) {
             _clipToRoD->setIsSecretAndDisabled(!displayWindowSupportedByFormat(filename));
@@ -2172,7 +2180,9 @@ void
 GenericWriterPlugin::purgeCaches()
 {
     clearAnyCache();
+#ifdef OFX_IO_USING_OCIO
     _ocio->purgeCaches();
+#endif
 }
 
 
