@@ -263,8 +263,7 @@ GenericWriterPlugin::restoreState()
     // Natron explicitly set the value of filename before instanciating a Writer.
     // We need to know if all parameters were setup already and we are just loading a project
     // or if we are creating a new Writer from scratch and need toa djust parameters.
-    bool writerExisted;
-    _isExistingWriter->getValue(writerExisted);
+    bool writerExisted = _isExistingWriter->getValue();
     outputFileChanged(OFX::eChangePluginEdit, writerExisted, false);
     if (!writerExisted) {
         _isExistingWriter->setValue(true);
@@ -1897,6 +1896,14 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
     std::string filename;
     _fileParam->getValue(filename);
 
+    if ( filename.empty() ) {
+        // if the file name is set to an empty string,
+        // reset everything so that values are automatically set on next call to inputFileChanged()
+        _isExistingWriter->setValue(false);
+
+        return;
+    }
+
     if (!filename.empty()) {
         {
             std::string ext = extension(filename);
@@ -1945,6 +1952,11 @@ GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool re
         if (_clipToRoD) {
             _clipToRoD->setIsSecretAndDisabled(!displayWindowSupportedByFormat(filename));
         }
+
+
+        // mark that most parameters should not be set automagically if the filename is changed
+        // (the user must keep control over what happens)
+        _isExistingWriter->setValue(true);
     }
 }
 
@@ -1977,7 +1989,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             _lastFrame->setIsSecretAndDisabled(true);
         }
     } else if (paramName == kParamFilename) {
-        outputFileChanged(args.reason, false, true);
+        outputFileChanged(args.reason, _isExistingWriter->getValue(), true);
     } else if (paramName == kParamFormatType) {
         FormatTypeEnum type = (FormatTypeEnum)_outputFormatType->getValue();
         if (_clipToRoD) {

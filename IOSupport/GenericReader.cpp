@@ -1974,6 +1974,13 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader, bool throwEr
         }
         _filename = filename;
 
+        if ( filename.empty() ) {
+            // if the file name is set to an empty string,
+            // reset everything so that values are automatically set on next call to inputFileChanged()
+            _isExistingReader->setValue(false);
+
+            return;
+        }
         if (isLoadingExistingReader) {
             restoreState(filename);
         } else {
@@ -2046,8 +2053,12 @@ GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader, bool throwEr
                 _fps->setValue(fps);
             }
         }
+
+        // mark that most parameters should not be set automagically if the filename is changed
+        // (the user must keep control over what happens)
+        _isExistingReader->setValue(true);
     }
-    
+
 }
 
 void
@@ -2065,7 +2076,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
-            inputFileChanged(false, false);
+            inputFileChanged(_isExistingReader->getValue(), false);
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
             refreshSubLabel(args.time);
