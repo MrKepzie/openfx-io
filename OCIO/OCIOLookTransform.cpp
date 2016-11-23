@@ -164,7 +164,7 @@ private:
     void renderGPU(const OFX::RenderArguments &args);
 #endif
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor(OfxTime time, bool singleLook, const std::string& lookCombination);
+    OCIO::ConstProcessorRcPtr getProcessor(OfxTime time, bool singleLook, const std::string& lookCombination);
     
     void copyPixelData(bool unpremult,
                        bool premult,
@@ -313,7 +313,7 @@ private:
     std::auto_ptr<GenericOCIO> _ocio;
 
     GenericOCIO::Mutex _procMutex;
-    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OCIO::ConstProcessorRcPtr _proc;
     std::string _procLook;
     std::string _procInputSpace;
     std::string _procOutputSpace;
@@ -540,7 +540,7 @@ OCIOLookTransformPlugin::copyPixelData(bool unpremult,
 }
 
 
-OCIO_NAMESPACE::ConstProcessorRcPtr
+OCIO::ConstProcessorRcPtr
 OCIOLookTransformPlugin::getProcessor(OfxTime time, bool singleLook, const std::string& lookCombination)
 {
 
@@ -787,7 +787,7 @@ OCIOLookTransformPlugin::renderGPU(const OFX::RenderArguments &args)
         return; // isIdentity
     }
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = getProcessor(args.time, singleLook, lookCombination);
+    OCIO::ConstProcessorRcPtr proc = getProcessor(args.time, singleLook, lookCombination);
     assert(proc);
 
     GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procFragmentShaderID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);

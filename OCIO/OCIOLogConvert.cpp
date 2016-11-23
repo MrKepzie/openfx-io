@@ -113,7 +113,7 @@ private:
     void renderGPU(const OFX::RenderArguments &args);
 #endif
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor(OfxTime time);
+    OCIO::ConstProcessorRcPtr getProcessor(OfxTime time);
     
     void copyPixelData(bool unpremult,
                        bool premult,
@@ -257,10 +257,10 @@ private:
     OFX::BooleanParam* _maskApply;
     OFX::BooleanParam* _maskInvert;
 
-    OCIO_NAMESPACE::ConstConfigRcPtr _config;
+    OCIO::ConstConfigRcPtr _config;
 
     GenericOCIO::Mutex _procMutex;
-    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OCIO::ConstProcessorRcPtr _proc;
     int _procMode;
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
@@ -497,7 +497,7 @@ OCIOLogConvertPlugin::copyPixelData(bool unpremult,
     }
 }
 
-OCIO_NAMESPACE::ConstProcessorRcPtr
+OCIO::ConstProcessorRcPtr
 OCIOLogConvertPlugin::getProcessor(OfxTime time)
 {
     int mode_i = _mode->getValueAtTime(time);
@@ -698,7 +698,7 @@ OCIOLogConvertPlugin::renderGPU(const OFX::RenderArguments &args)
         throwSuiteStatusException(kOfxStatFailed);
     }
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = getProcessor(args.time);
+    OCIO::ConstProcessorRcPtr proc = getProcessor(args.time);
     assert(proc);
 
     GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procFragmentShaderID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);
@@ -865,7 +865,7 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
         std::string msg = "OpenColorIO Help\n"
         "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
         "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
-        msg += OCIO_NAMESPACE::GetVersion();
+        msg += OCIO::GetVersion();
         msg += '\n';
         if (_config) {
             const char* configdesc = _config->getDescription();
@@ -880,11 +880,11 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
             msg += '\n';
 
             {
-                int csidx = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                int csidx = _config->getIndexForColorSpace(OCIO::ROLE_SCENE_LINEAR);
                 const char* csname = _config->getColorSpaceNameByIndex(csidx);;
                 msg += "SCENE_LINEAR colorspace: ";
                 msg += csname;
-                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
+                OCIO::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
                 std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
                 csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
                 int csdesclen = csdesc.size();
@@ -898,11 +898,11 @@ OCIOLogConvertPlugin::changedParam(const OFX::InstanceChangedArgs &args, const s
             }
             msg += '\n';
             {
-                int csidx = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                int csidx = _config->getIndexForColorSpace(OCIO::ROLE_COMPOSITING_LOG);
                 const char* csname = _config->getColorSpaceNameByIndex(csidx);;
                 msg += "COMPOSITING_LOG colorspace: ";
                 msg += csname;
-                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
+                OCIO::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
                 std::string csdesc = cs ? cs->getDescription() : "(no colorspace)";
                 csdesc.erase(csdesc.find_last_not_of(" \n\r\t")+1);
                 int csdesclen = csdesc.size();

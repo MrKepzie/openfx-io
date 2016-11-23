@@ -77,6 +77,9 @@ typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
 
 using namespace OFX;
 using namespace OFX::IO;
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -1913,12 +1916,12 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
                 _ocio->setInputColorspace("lm10");
                 colorSpaceStr = NULL;
             } else {
-                _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                _ocio->setInputColorspace(OCIO::ROLE_COMPOSITING_LOG);
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "Linear")) {
-            _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+            _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
             colorSpaceStr = NULL;
             // lnf in spi-vfx
         }
@@ -3453,7 +3456,7 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
 
 
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
+    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

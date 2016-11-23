@@ -152,7 +152,7 @@ private:
     void renderGPU(const OFX::RenderArguments &args);
 #endif
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor(OfxTime time);
+    OCIO::ConstProcessorRcPtr getProcessor(OfxTime time);
     
     void updateCCCId();
 
@@ -299,7 +299,7 @@ private:
     OFX::BooleanParam* _maskInvert;
 
     GenericOCIO::Mutex _procMutex;
-    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OCIO::ConstProcessorRcPtr _proc;
     std::string _procFile;
     std::string _procCCCId;
     int _procDirection;
@@ -520,7 +520,7 @@ OCIOFileTransformPlugin::copyPixelData(bool unpremult,
     }
 }
 
-OCIO_NAMESPACE::ConstProcessorRcPtr
+OCIO::ConstProcessorRcPtr
 OCIOFileTransformPlugin::getProcessor(OfxTime time)
 {
     std::string file;
@@ -748,7 +748,7 @@ OCIOFileTransformPlugin::renderGPU(const OFX::RenderArguments &args)
         throwSuiteStatusException(kOfxStatFailed);
     }
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = getProcessor(args.time);
+    OCIO::ConstProcessorRcPtr proc = getProcessor(args.time);
     assert(proc);
 
     GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procFragmentShaderID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);

@@ -24,10 +24,6 @@
 #include <cstdio> // fopen, fread...
 #include <algorithm>
 
-#ifdef OFX_IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-#endif
-
 #include "GenericReader.h"
 #include "GenericOCIO.h"
 #include "ofxsFileOpen.h"
@@ -35,6 +31,10 @@
 
 using namespace OFX;
 using namespace OFX::IO;
+
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -368,7 +368,7 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     if (setColorSpace) {
 #     ifdef OFX_IO_USING_OCIO
         // Unless otherwise specified, pfm files are assumed to be linear.
-        _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+        _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
 #     endif
     }
     assert(premult && components);
@@ -451,7 +451,7 @@ ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, true);
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
+    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

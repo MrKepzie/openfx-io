@@ -877,7 +877,7 @@ void WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
                                                                     kSupportsRGB,
                                                                     kSupportsXY,
                                                                     kSupportsAlpha,
-                                                                    "reference", "reference", false);
+                                                                    "scene_linear", "reference", false);
 
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamCompression);

@@ -33,6 +33,9 @@
 
 using namespace OFX;
 using namespace OFX::IO;
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -188,7 +191,7 @@ WritePFMPlugin::onOutputFileChanged(const std::string &/*filename*/,
     if (setColorSpace) {
 #     ifdef OFX_IO_USING_OCIO
         // Unless otherwise specified, pfm files are assumed to be linear.
-        _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+        _ocio->setOutputColorspace(OCIO::ROLE_SCENE_LINEAR);
 #     endif
     }
 }
@@ -220,7 +223,7 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
                                                                     kSupportsRGB,
                                                                     kSupportsXY,
                                                                     kSupportsAlpha,
-                                                                    "reference", "reference", false);
+                                                                    "scene_linear", "reference", false);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

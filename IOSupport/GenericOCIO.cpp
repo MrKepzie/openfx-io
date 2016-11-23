@@ -23,6 +23,22 @@
 
 #include "GenericOCIO.h"
 
+/*
+ http://opencolorio.org/userguide/config_syntax.html#roles
+
+ A description of all roles. Note that applications may interpret or use these differently.
+
+ color_picking - Colors in a color-selection UI can be displayed in this space, while selecting colors in a different working space (e.g scene_linear or texture_paint)
+ color_timing - colorspace used for applying color corrections, e.g user-specified grade within an image viewer (if the application uses the DisplayTransform::setDisplayCC API method)
+ compositing_log - a log colorspace used for certain processing operations (plate resizing, pulling keys, degrain, etc). Used by the OCIOLogConvert Nuke node.
+ data - used when writing data outputs such as normals, depth data, and other “non color” data. The colorspace in this role should typically have data: true specified, so no color transforms are applied.
+ default - when strictparsing: false, this colorspace is used as a fallback. If not defined, the scene_linear role is used
+ matte_paint - Colorspace which matte-paintings are created in (for more information, see the guide on baking ICC profiles for Photoshop, and spi-vfx)
+ reference - Colorspace used for reference imagery (e.g sRGB images from the internet)
+ scene_linear - The scene-referred linear-to-light colorspace, typically used as reference space (see Terminology)
+ texture_paint - Similar to matte_paint but for painting textures for 3D objects (see the description of texture painting in SPI’s pipeline)
+*/
+
 #include <cstring>
 #include <cstdlib>
 #ifdef DEBUG
@@ -86,7 +102,7 @@ whitespacify(std::string str)
 }
 
 #ifdef OFX_IO_USING_OCIO
-static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const char* colorSpaceNameDefault)
+static const char* colorSpaceName(OCIO::ConstConfigRcPtr config, const char* colorSpaceNameDefault)
 {
     OpenColorIO::ConstColorSpaceRcPtr cs;
     if (!strcmp(colorSpaceNameDefault, "sRGB") || !strcmp(colorSpaceNameDefault, "srgb")) {
@@ -166,10 +182,10 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
             // lm10 in spi-anim
             return cs->getName();
         } else {
-            return OCIO_NAMESPACE::ROLE_COMPOSITING_LOG; // reasonable default
+            return OCIO::ROLE_COMPOSITING_LOG; // reasonable default
         }
     } else if (!strcmp(colorSpaceNameDefault, "Linear") || !strcmp(colorSpaceNameDefault, "linear")) {
-        return OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+        return OCIO::ROLE_SCENE_LINEAR;
         // lnf in spi-vfx
     } else if ((cs = config->getColorSpace(colorSpaceNameDefault))) {
         // maybe we're lucky
@@ -180,40 +196,40 @@ static const char* colorSpaceName(OCIO_NAMESPACE::ConstConfigRcPtr config, const
 }
 
 static std::string
-canonicalizeColorSpace(OCIO_NAMESPACE::ConstConfigRcPtr config, const std::string &csname)
+canonicalizeColorSpace(OCIO::ConstConfigRcPtr config, const std::string &csname)
 {
     if (!config) {
         return csname;
     }
-    const int defaultcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
-    const int referencecs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
-    const int datacs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
-    const int colorpickingcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_PICKING);
-    const int scenelinearcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
-    const int compositinglogcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
-    const int colortimingcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_TIMING);
-    const int texturepaintcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
-    const int mattepaintcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
+    const int defaultcs = config->getIndexForColorSpace(OCIO::ROLE_DEFAULT);
+    const int referencecs = config->getIndexForColorSpace(OCIO::ROLE_REFERENCE);
+    const int datacs = config->getIndexForColorSpace(OCIO::ROLE_DATA);
+    const int colorpickingcs = config->getIndexForColorSpace(OCIO::ROLE_COLOR_PICKING);
+    const int scenelinearcs = config->getIndexForColorSpace(OCIO::ROLE_SCENE_LINEAR);
+    const int compositinglogcs = config->getIndexForColorSpace(OCIO::ROLE_COMPOSITING_LOG);
+    const int colortimingcs = config->getIndexForColorSpace(OCIO::ROLE_COLOR_TIMING);
+    const int texturepaintcs = config->getIndexForColorSpace(OCIO::ROLE_TEXTURE_PAINT);
+    const int mattepaintcs = config->getIndexForColorSpace(OCIO::ROLE_MATTE_PAINT);
 
     int inputSpaceIndex = config->getIndexForColorSpace(csname.c_str());
     if (inputSpaceIndex == scenelinearcs) {
-        return OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+        return OCIO::ROLE_SCENE_LINEAR;
     } else if (inputSpaceIndex == defaultcs) {
-        return OCIO_NAMESPACE::ROLE_DEFAULT;
+        return OCIO::ROLE_DEFAULT;
     } else if (inputSpaceIndex == referencecs) {
-        return OCIO_NAMESPACE::ROLE_REFERENCE;
+        return OCIO::ROLE_REFERENCE;
     } else if (inputSpaceIndex == datacs) {
-        return OCIO_NAMESPACE::ROLE_DATA;
+        return OCIO::ROLE_DATA;
     } else if (inputSpaceIndex == colorpickingcs) {
-        return OCIO_NAMESPACE::ROLE_COLOR_PICKING;
+        return OCIO::ROLE_COLOR_PICKING;
     } else if (inputSpaceIndex == compositinglogcs) {
-        return OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
+        return OCIO::ROLE_COMPOSITING_LOG;
     } else if (inputSpaceIndex == colortimingcs) {
-        return OCIO_NAMESPACE::ROLE_COLOR_TIMING;
+        return OCIO::ROLE_COLOR_TIMING;
     } else if (inputSpaceIndex == texturepaintcs) {
-        return OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
+        return OCIO::ROLE_TEXTURE_PAINT;
     } else if (inputSpaceIndex == mattepaintcs) {
-        return OCIO_NAMESPACE::ROLE_MATTE_PAINT;
+        return OCIO::ROLE_MATTE_PAINT;
     }
     return csname;
 }
@@ -313,15 +329,15 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         return;
     }
     int def = -1;
-    int defaultcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
-    int referencecs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
-    int datacs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
-    int colorpickingcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_PICKING);
-    int scenelinearcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
-    int compositinglogcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
-    int colortimingcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_TIMING);
-    int texturepaintcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
-    int mattepaintcs = config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
+    int defaultcs = config->getIndexForColorSpace(OCIO::ROLE_DEFAULT);
+    int referencecs = config->getIndexForColorSpace(OCIO::ROLE_REFERENCE);
+    int datacs = config->getIndexForColorSpace(OCIO::ROLE_DATA);
+    int colorpickingcs = config->getIndexForColorSpace(OCIO::ROLE_COLOR_PICKING);
+    int scenelinearcs = config->getIndexForColorSpace(OCIO::ROLE_SCENE_LINEAR);
+    int compositinglogcs = config->getIndexForColorSpace(OCIO::ROLE_COMPOSITING_LOG);
+    int colortimingcs = config->getIndexForColorSpace(OCIO::ROLE_COLOR_TIMING);
+    int texturepaintcs = config->getIndexForColorSpace(OCIO::ROLE_TEXTURE_PAINT);
+    int mattepaintcs = config->getIndexForColorSpace(OCIO::ROLE_MATTE_PAINT);
     for (int i = 0; i < config->getNumColorSpaces(); ++i) {
         std::string csname = config->getColorSpaceNameByIndex(i);
         std::string msg;
@@ -329,7 +345,7 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         if (!name.empty() && csname == name) {
             def = i;
         }
-        OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
+        OCIO::ConstColorSpaceRcPtr cs = config->getColorSpace(csname.c_str());
         if (cascading) {
             std::string family = config->getColorSpace(csname.c_str())->getFamily();
             if (!family.empty()) {
@@ -346,55 +362,55 @@ buildChoiceMenu(OCIO::ConstConfigRcPtr config,
         int roles = 0;
         if (i == defaultcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_DEFAULT;
+            msg += OCIO::ROLE_DEFAULT;
             first = false;
             ++roles;
         }
         if (i == referencecs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_REFERENCE;
+            msg += OCIO::ROLE_REFERENCE;
             first = false;
             ++roles;
         }
         if (i == datacs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_DATA;
+            msg += OCIO::ROLE_DATA;
             first = false;
             ++roles;
         }
         if (i == colorpickingcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_COLOR_PICKING;
+            msg += OCIO::ROLE_COLOR_PICKING;
             first = false;
             ++roles;
         }
         if (i == scenelinearcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+            msg += OCIO::ROLE_SCENE_LINEAR;
             first = false;
             ++roles;
         }
         if (i == compositinglogcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
+            msg += OCIO::ROLE_COMPOSITING_LOG;
             first = false;
             ++roles;
         }
         if (i == colortimingcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_COLOR_TIMING;
+            msg += OCIO::ROLE_COLOR_TIMING;
             first = false;
             ++roles;
         }
         if (i == texturepaintcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
+            msg += OCIO::ROLE_TEXTURE_PAINT;
             first = false;
             ++roles;
         }
         if (i == mattepaintcs) {
             msg += first ? " (" : ", ";
-            msg += OCIO_NAMESPACE::ROLE_MATTE_PAINT;
+            msg += OCIO::ROLE_MATTE_PAINT;
             first = false;
             ++roles;
         }
@@ -566,7 +582,7 @@ GenericOCIO::isIdentity(double time)
     try {
         // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
         OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
-        OCIO_NAMESPACE::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
+        OCIO::ConstProcessorRcPtr proc = _config->getProcessor(context, inputSpace.c_str(), outputSpace.c_str());
         return proc->isNoOp();
     } catch (const std::exception& e) {
         _parent->setPersistentMessage(OFX::Message::eMessageError, "", e.what());
@@ -697,7 +713,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 
 
 #ifdef OFX_IO_USING_OCIO
-OCIO_NAMESPACE::ConstProcessorRcPtr
+OCIO::ConstProcessorRcPtr
 GenericOCIO::getProcessor()
 {
     AutoMutex guard(_procMutex);
@@ -711,7 +727,7 @@ GenericOCIO::setValues(const std::string& inputSpace, const std::string& outputS
 }
 
 void
-GenericOCIO::setValues(const OCIO_NAMESPACE::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
+GenericOCIO::setValues(const OCIO::ConstContextRcPtr &context, const std::string& inputSpace, const std::string& outputSpace)
 {
     AutoMutex guard(_procMutex);
     if (!_proc ||
@@ -772,11 +788,11 @@ OCIOProcessor::multiThreadProcessImages(OfxRectI renderWindow)
 #endif // OFX_IO_USING_OCIO
 
 #ifdef OFX_IO_USING_OCIO
-OCIO_NAMESPACE::ConstProcessorRcPtr
+OCIO::ConstProcessorRcPtr
 GenericOCIO::getOrCreateProcessor(double time)
 {
     if (!_config) {
-        return OCIO_NAMESPACE::ConstProcessorRcPtr();
+        return OCIO::ConstProcessorRcPtr();
     }
     std::string inputSpace;
     getInputColorspaceAtTime(time, inputSpace);
@@ -812,7 +828,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, float *pixelData, 
         OFX::throwSuiteStatusException(kOfxStatFailed);
     }
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = getOrCreateProcessor(time);
+    OCIO::ConstProcessorRcPtr proc = getOrCreateProcessor(time);
     if (!proc) {
         return;
     }
@@ -862,7 +878,16 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
             getInputColorspaceAtTime(args.time, inputSpaceName);
             int inputSpaceIndex = _config->getIndexForColorSpace(inputSpaceName.c_str());
             if (inputSpaceIndex < 0) {
-                _inputSpace->setValue(OCIO_NAMESPACE::ROLE_DEFAULT);
+                OCIO::ConstColorSpaceRcPtr cs;
+                if (!cs) {
+                    cs = _config->getColorSpace(OCIO::ROLE_DEFAULT);
+                }
+                if (!cs) {
+                    // no default colorspace, fallback to the first one
+                    cs = _config->getColorSpace( _config->getColorSpaceNameByIndex(0) );
+                }
+                inputSpaceName = cs ? cs->getName() : OCIO::ROLE_DEFAULT;
+                _inputSpace->setValue(inputSpaceName);
             }
         }
         inputCheck(args.time);
@@ -871,7 +896,16 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
             getOutputColorspaceAtTime(args.time, outputSpaceName);
             int outputSpaceIndex = _config->getIndexForColorSpace(outputSpaceName.c_str());
             if (outputSpaceIndex < 0) {
-                _outputSpace->setValue(OCIO_NAMESPACE::ROLE_DEFAULT);
+                OCIO::ConstColorSpaceRcPtr cs;
+                if (!cs) {
+                    cs = _config->getColorSpace(OCIO::ROLE_DEFAULT);
+                }
+                if (!cs) {
+                    // no default colorspace, fallback to the first one
+                    cs = _config->getColorSpace( _config->getColorSpaceNameByIndex(0) );
+                }
+                outputSpaceName = cs ? cs->getName() : OCIO::ROLE_DEFAULT;
+               _outputSpace->setValue(OCIO::ROLE_DEFAULT);
             }
         }
         outputCheck(args.time);
@@ -885,7 +919,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
         std::string msg = "OpenColorIO Help\n"
             "The OCIO configuration file can be set using the \"OCIO\" environment variable, which should contain the full path to the .ocio file.\n"
             "OpenColorIO version (compiled with / running with): " OCIO_VERSION "/";
-        msg += OCIO_NAMESPACE::GetVersion();
+        msg += OCIO::GetVersion();
         msg += '\n';
         if (_config) {
             std::string configdesc = _config->getDescription();
@@ -900,7 +934,7 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 msg += (_config->getNumLooks() <= 0 ? "No look available in this OCIO configuration.\n" : "Available looks in this OCIO Configuration (applied in the given colorspace):\n");
                 for (int i = 0; i < _config->getNumLooks(); ++i) {
                     const char* lkname = _config->getLookNameByIndex(i);
-                    OCIO_NAMESPACE::ConstLookRcPtr lk = _config->getLook(lkname);
+                    OCIO::ConstLookRcPtr lk = _config->getLook(lkname);
                     msg += "- ";
                     msg += lkname;
                     std::string lkspace = lk->getProcessSpace();
@@ -944,74 +978,74 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 msg += '\n';
             }
             msg += "Available colorspaces in this OCIO Configuration:\n";
-            int defaultcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
-            int referencecs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
-            int datacs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_DATA);
-            int colorpickingcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_PICKING);
-            int scenelinearcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
-            int compositinglogcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
-            int colortimingcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_COLOR_TIMING);
-            int texturepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_TEXTURE_PAINT);
-            int mattepaintcs = _config->getIndexForColorSpace(OCIO_NAMESPACE::ROLE_MATTE_PAINT);
+            int defaultcs = _config->getIndexForColorSpace(OCIO::ROLE_DEFAULT);
+            int referencecs = _config->getIndexForColorSpace(OCIO::ROLE_REFERENCE);
+            int datacs = _config->getIndexForColorSpace(OCIO::ROLE_DATA);
+            int colorpickingcs = _config->getIndexForColorSpace(OCIO::ROLE_COLOR_PICKING);
+            int scenelinearcs = _config->getIndexForColorSpace(OCIO::ROLE_SCENE_LINEAR);
+            int compositinglogcs = _config->getIndexForColorSpace(OCIO::ROLE_COMPOSITING_LOG);
+            int colortimingcs = _config->getIndexForColorSpace(OCIO::ROLE_COLOR_TIMING);
+            int texturepaintcs = _config->getIndexForColorSpace(OCIO::ROLE_TEXTURE_PAINT);
+            int mattepaintcs = _config->getIndexForColorSpace(OCIO::ROLE_MATTE_PAINT);
 
             for (int i = 0; i < _config->getNumColorSpaces(); ++i) {
                 const char* csname = _config->getColorSpaceNameByIndex(i);;
-                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
+                OCIO::ConstColorSpaceRcPtr cs = _config->getColorSpace(csname);
                 msg += "- ";
                 msg += csname;
                 bool first = true;
                 //int roles = 0;
                 if (i == defaultcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_DEFAULT;
+                    msg += OCIO::ROLE_DEFAULT;
                     first = false;
                     //++roles;
                 }
                 if (i == referencecs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_REFERENCE;
+                    msg += OCIO::ROLE_REFERENCE;
                     first = false;
                     //++roles;
                 }
                 if (i == datacs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_DATA;
+                    msg += OCIO::ROLE_DATA;
                     first = false;
                     //++roles;
                 }
                 if (i == colorpickingcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_COLOR_PICKING;
+                    msg += OCIO::ROLE_COLOR_PICKING;
                     first = false;
                     //++roles;
                 }
                 if (i == scenelinearcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_SCENE_LINEAR;
+                    msg += OCIO::ROLE_SCENE_LINEAR;
                     first = false;
                     //++roles;
                 }
                 if (i == compositinglogcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_COMPOSITING_LOG;
+                    msg += OCIO::ROLE_COMPOSITING_LOG;
                     first = false;
                     //++roles;
                 }
                 if (i == colortimingcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_COLOR_TIMING;
+                    msg += OCIO::ROLE_COLOR_TIMING;
                     first = false;
                     //++roles;
                 }
                 if (i == texturepaintcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_TEXTURE_PAINT;
+                    msg += OCIO::ROLE_TEXTURE_PAINT;
                     first = false;
                     //++roles;
                 }
                 if (i == mattepaintcs) {
                     msg += first ? " (" : ", ";
-                    msg += OCIO_NAMESPACE::ROLE_MATTE_PAINT;
+                    msg += OCIO::ROLE_MATTE_PAINT;
                     first = false;
                     //++roles;
                 }
@@ -1036,7 +1070,6 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     } else if (paramName == kOCIOParamInputSpace) {
         assert(_inputSpace);
         if (args.reason == OFX::eChangeUserEdit) {
-#pragma message WARN("TODO: set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
             // if the inputspace doesn't correspond to a valid one, reset to default.
             // first, canonicalize.
             std::string inputSpace;
@@ -1051,11 +1084,18 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (args.reason == OFX::eChangeUserEdit) {
                     _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+inputSpace+"\"");
                 }
-                OCIO::ConstColorSpaceRcPtr colorspace = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
-                if (colorspace) {
-                    inputSpace = colorspace->getName();
-                    _inputSpace->setValue(inputSpace);
-                } 
+                OCIO::ConstColorSpaceRcPtr cs;
+                if (!cs) {
+                    cs = _config->getColorSpace(OCIO::ROLE_DEFAULT);
+                }
+                if (!cs) {
+                    // no default colorspace, fallback to the first one
+                    cs = _config->getColorSpace( _config->getColorSpaceNameByIndex(0) );
+                }
+                inputSpace = cs ? cs->getName() : OCIO::ROLE_DEFAULT;
+                _inputSpace->setValue(inputSpace);
+                inputSpaceIndex = _config->getIndexForColorSpace(inputSpace.c_str());
+                assert(inputSpaceIndex >= 0);
             }
         }
         inputCheck(args.time);
@@ -1063,7 +1103,6 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamInputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         assert(_inputSpace);
-#pragma message WARN("TODO: set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
         int inputSpaceIndex;
         _inputSpaceChoice->getValueAtTime(args.time, inputSpaceIndex);
         std::string inputSpaceOld;
@@ -1078,7 +1117,6 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
     else if (paramName == kOCIOParamOutputSpace) {
         assert(_outputSpace);
         if (args.reason == OFX::eChangeUserEdit) {
-#pragma message WARN("TODO: set the outputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
             // if the outputspace doesn't correspond to a valid one, reset to default.
             // first, canonicalize.
             std::string outputSpace;
@@ -1093,14 +1131,15 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
                 if (args.reason == OFX::eChangeUserEdit) {
                     _parent->sendMessage(OFX::Message::eMessageWarning, "", std::string("Unknown OCIO colorspace \"")+outputSpace+"\"");
                 }
-                OCIO_NAMESPACE::ConstColorSpaceRcPtr cs = _config->getColorSpace(OCIO_NAMESPACE::ROLE_DEFAULT);
+                OCIO::ConstColorSpaceRcPtr cs;
                 if (!cs) {
-                    cs = _config->getColorSpace(OCIO_NAMESPACE::ROLE_REFERENCE);
+                    cs = _config->getColorSpace(OCIO::ROLE_DEFAULT);
                 }
                 if (!cs) {
-                    cs = _config->getColorSpace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                    // no default colorspace, fallback to the first one
+                    cs = _config->getColorSpace( _config->getColorSpaceNameByIndex(0) );
                 }
-                outputSpace = cs ? cs->getName() : OCIO_NAMESPACE::ROLE_DEFAULT;
+                outputSpace = cs ? cs->getName() : OCIO::ROLE_DEFAULT;
                 _outputSpace->setValue(outputSpace);
                 outputSpaceIndex = _config->getIndexForColorSpace(outputSpace.c_str());
                 assert(outputSpaceIndex >= 0);
@@ -1111,7 +1150,6 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 #ifdef OFX_OCIO_CHOICE
     else if ( paramName == kOCIOParamOutputSpaceChoice && args.reason == OFX::eChangeUserEdit) {
         assert(_outputSpace);
-#pragma message WARN("TODO: set the outputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492")
         int outputSpaceIndex;
         _outputSpaceChoice->getValueAtTime(args.time, outputSpaceIndex);
         std::string outputSpaceOld;
@@ -1260,7 +1298,6 @@ GenericOCIO::describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::Conte
             page->addChild(*param);
         }
     }
-#pragma message WARN("TODO: define secret inputSpaceSet param https://github.com/MrKepzie/Natron/issues/1492")
 
 #ifdef OFX_OCIO_CHOICE
     {
@@ -1321,7 +1358,6 @@ GenericOCIO::describeInContextOutput(OFX::ImageEffectDescriptor &desc, OFX::Cont
             page->addChild(*param);
         }
     }
-#pragma message WARN("TODO: define secret outputSpaceSet param https://github.com/MrKepzie/Natron/issues/1492")
 
 #ifdef OFX_OCIO_CHOICE
     {

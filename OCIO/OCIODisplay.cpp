@@ -207,7 +207,7 @@ private:
 
     void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor(OfxTime time);
+    OCIO::ConstProcessorRcPtr getProcessor(OfxTime time);
 
     void copyPixelData(bool unpremult,
                        bool premult,
@@ -349,7 +349,7 @@ private:
     std::auto_ptr<GenericOCIO> _ocio;
 
     GenericOCIO::Mutex _procMutex;
-    OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
+    OCIO::ConstProcessorRcPtr _proc;
     std::string _procInputSpace;
     ChannelSelectorEnum _procChannel;
     std::string _procDisplay;
@@ -614,7 +614,7 @@ OCIODisplayPlugin::copyPixelData(bool unpremult,
     }
 }
 
-OCIO_NAMESPACE::ConstProcessorRcPtr
+OCIO::ConstProcessorRcPtr
 OCIODisplayPlugin::getProcessor(OfxTime time)
 {
     std::string inputSpace;
@@ -917,7 +917,7 @@ OCIODisplayPlugin::renderGPU(const OFX::RenderArguments &args)
         throwSuiteStatusException(kOfxStatFailed);
     }
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = getProcessor(args.time);
+    OCIO::ConstProcessorRcPtr proc = getProcessor(args.time);
     assert(proc);
 
     GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procFragmentShaderID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);
@@ -1159,7 +1159,7 @@ void OCIODisplayPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
-    GenericOCIO::describeInContextInput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
+    GenericOCIO::describeInContextInput(desc, context, page, OCIO::ROLE_REFERENCE);
     OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
     const char * display = config ? config->getDefaultDisplay() : NULL;
     const char * view = display ? config->getDefaultView(display) : NULL;

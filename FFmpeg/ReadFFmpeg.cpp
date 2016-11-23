@@ -895,7 +895,7 @@ ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         page->addChild(*param);
     }
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "reference");
+    GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "scene_linear");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

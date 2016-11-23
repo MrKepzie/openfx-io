@@ -40,6 +40,7 @@
 
 using namespace OFX;
 using namespace OFX::IO;
+namespace OCIO = OCIO_NAMESPACE;
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -619,7 +620,7 @@ OCIOColorSpacePlugin::renderGPU(const OFX::RenderArguments &args)
         return;
     }
 
-    OCIO_NAMESPACE::ConstProcessorRcPtr proc = _ocio->getOrCreateProcessor(args.time);
+    OCIO::ConstProcessorRcPtr proc = _ocio->getOrCreateProcessor(args.time);
     if (!proc) {
         return;
     }
@@ -869,8 +870,8 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
     // insert OCIO parameters
-    GenericOCIO::describeInContextInput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
-    GenericOCIO::describeInContextOutput(desc, context, page, OCIO_NAMESPACE::ROLE_REFERENCE);
+    GenericOCIO::describeInContextInput(desc, context, page, OCIO::ROLE_REFERENCE);
+    GenericOCIO::describeInContextOutput(desc, context, page, OCIO::ROLE_REFERENCE);
     GenericOCIO::describeInContextContext(desc, context, page);
     {
         OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);

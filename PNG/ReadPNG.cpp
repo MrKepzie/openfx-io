@@ -31,10 +31,6 @@
 #include <png.h> // includes setjmp.h
 #include <zlib.h>
 
-#ifdef OFX_IO_USING_OCIO
-#include <OpenColorIO/OpenColorIO.h>
-#endif
-
 #include "GenericReader.h"
 #include "GenericOCIO.h"
 #include "ofxsMacros.h"
@@ -42,6 +38,9 @@
 
 using namespace OFX;
 using namespace OFX::IO;
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -1115,7 +1114,7 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
                 }
                 break;
             case ePNGColorSpaceLinear:
-                _ocio->setInputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
                 break;
         }
 #     endif
@@ -1189,7 +1188,7 @@ ReadPNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         }
     }
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "reference");
+    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */

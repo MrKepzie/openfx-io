@@ -42,6 +42,9 @@ GCC_DIAG_ON(unused-parameter)
 
 using namespace OFX;
 using namespace OFX::IO;
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -686,7 +689,7 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
                         // lm10 in spi-anim
                         _ocio->setOutputColorspace("lm10");
                     } else {
-                        _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_COMPOSITING_LOG);
+                        _ocio->setOutputColorspace(OCIO::ROLE_COMPOSITING_LOG);
                     }
                 } else {
                     if (_ocio->hasColorspace("Rec709")) {
@@ -718,7 +721,7 @@ WriteOIIOPlugin::onOutputFileChanged(const std::string &filename,
                 break;
             }
             default:
-                _ocio->setOutputColorspace(OCIO_NAMESPACE::ROLE_SCENE_LINEAR);
+                _ocio->setOutputColorspace(OCIO::ROLE_SCENE_LINEAR);
         }
 #     endif
     }
@@ -1464,7 +1467,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                                                                     kSupportsRGB,
                                                                     kSupportsXY,
                                                                     kSupportsAlpha,
-                                                                    "reference", "reference", true);
+                                                                    "scene_linear", "reference", true);
     {
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamTileSize);
         param->setLabel(kParamTileSizeLabel);

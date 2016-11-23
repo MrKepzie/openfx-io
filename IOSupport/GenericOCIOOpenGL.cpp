@@ -174,7 +174,7 @@ allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
 
 void
 GenericOCIO::applyGL(const OFX::Texture* srcImg,
-                     const OCIO_NAMESPACE::ConstProcessorRcPtr& processor,
+                     const OCIO::ConstProcessorRcPtr& processor,
                      std::vector<float>* lut3DParam,
                      unsigned int *lut3DTexIDParam,
                      unsigned int *shaderProgramIDParam,
