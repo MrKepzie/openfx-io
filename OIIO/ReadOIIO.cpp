@@ -2245,7 +2245,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
 {
     unused(pixelComponentCount);
 #if OIIO_VERSION >= 10605
-    // Use cache only if not during playback and if the files are tiled. If untiled there is no point in using the OIIO cache.
+    // Use cache only if not during playback and if the files are tiled. If scan-line based there is no point in using the OIIO cache.
     // Do not use cache in OIIO 1.5.x because it does not support channel ranges correctly.
     const bool useCache = _cache && !isPlayback && getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0);
 #else

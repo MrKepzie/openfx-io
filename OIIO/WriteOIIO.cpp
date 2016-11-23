@@ -233,11 +233,16 @@ enum EParamCompression
 
 #define kParamTileSize "tileSize"
 #define kParamTileSizeLabel "Tile Size"
-#define kParamTileSizeHint "Size of a tile in the output file for formats that support tiles. If Untiled, the whole image will have a single tile."
+#define kParamTileSizeHint "Size of a tile in the output file for formats that support tiles. If scan-line based, the whole image will have a single tile."
+#define kParamTileSizeOptionScanLineBased "Scan-Line Based"
+#define kParamTileSizeOption64 "64"
+#define kParamTileSizeOption128 "128"
+#define kParamTileSizeOption256 "256"
+#define kParamTileSizeOption512 "512"
 
 enum EParamTileSize
 {
-    eParamTileSizeUntiled = 0,
+    eParamTileSizeScanLineBased = 0,
     eParamTileSize64,
     eParamTileSize128,
     eParamTileSize256,
@@ -1082,7 +1087,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                 spec.tile_width = std::min(512,spec.full_width);
                 spec.tile_height = std::min(512,spec.full_height);
                 break;
-            case eParamTileSizeUntiled:
+            case eParamTileSizeScanLineBased:
             default:
                 break;
         }
@@ -1472,17 +1477,17 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamTileSize);
         param->setLabel(kParamTileSizeLabel);
         param->setHint(kParamTileSizeHint);
-        assert(param->getNOptions() == eParamTileSizeUntiled);
-        param->appendOption("Untiled");
+        assert(param->getNOptions() == eParamTileSizeScanLineBased);
+        param->appendOption(kParamTileSizeOptionScanLineBased);
         assert(param->getNOptions() == eParamTileSize64);
-        param->appendOption("64");
+        param->appendOption(kParamTileSizeOption64);
         assert(param->getNOptions() == eParamTileSize128);
-        param->appendOption("128");
+        param->appendOption(kParamTileSizeOption128);
         assert(param->getNOptions() == eParamTileSize256);
-        param->appendOption("256");
+        param->appendOption(kParamTileSizeOption256);
         assert(param->getNOptions() == eParamTileSize512);
-        param->appendOption("512");
-        param->setDefault(eParamTileSizeUntiled);
+        param->appendOption(kParamTileSizeOption512);
+        param->setDefault(eParamTileSizeScanLineBased);
         if (page) {
             page->addChild(*param);
         }
