@@ -2116,14 +2116,17 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
             return;
         }
         _originalFrameRange->getValue(oFirst, oLast);
-        _firstFrame->setValue(oFirst);
-        _firstFrame->setDefault(oFirst);
-        _lastFrame->setValue(oLast);
-        _lastFrame->setDefault(oLast);
+        
         _firstFrame->setRange(oFirst, oLast);
         _firstFrame->setDisplayRange(oFirst, oLast);
         _lastFrame->setRange(oFirst, oLast);
         _lastFrame->setDisplayRange(oFirst, oLast);
+
+        _firstFrame->setValue(oFirst);
+        _firstFrame->setDefault(oFirst);
+        _lastFrame->setValue(oLast);
+        _lastFrame->setDefault(oLast);
+
         _startingTime->setValue(oFirst);
         _startingTime->setDefault(oFirst);
     } else if (paramName == kParamFirstFrame &&  args.reason == OFX::eChangeUserEdit) {
@@ -2138,7 +2141,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int offset;
         _timeOffset->getValue(offset);
         _startingTime->setValue(first + offset); // will be called with reason == eChangePluginEdit
-        
+
         _timeDomainUserSet->setValue(true);
 
     } else if (paramName == kParamLastFrame && args.reason == OFX::eChangeUserEdit) {
