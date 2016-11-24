@@ -1959,7 +1959,7 @@ GenericReaderPlugin::inputFileChanged(const OFX::InstanceChangedArgs &args)
 #ifdef OFX_IO_USING_OCIO
         _ocio->getInputColorspaceDefault(colorspace);
 #else
-        colorspace = "default"
+        colorspace = "default";
 #endif
         OFX::PixelComponentEnum components = ePixelComponentNone;
         int componentCount = 0;
