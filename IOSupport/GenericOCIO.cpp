@@ -1168,6 +1168,13 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 
 #ifdef OFX_IO_USING_OCIO
 void
+GenericOCIO::getInputColorspaceDefault(std::string &v)
+{
+    assert(_inputSpace);
+    _inputSpace->getDefault(v);
+}
+
+void
 GenericOCIO::getInputColorspace(std::string &v)
 {
     assert(_inputSpace);
@@ -1179,6 +1186,13 @@ GenericOCIO::getInputColorspaceAtTime(double time, std::string &v)
 {
     assert(_inputSpace);
     _inputSpace->getValueAtTime(time, v);
+}
+
+void
+GenericOCIO::getOutputColorspaceDefault(std::string &v)
+{
+    assert(_outputSpace);
+    _outputSpace->getDefault(v);
 }
 
 void
