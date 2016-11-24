@@ -221,7 +221,7 @@ enum MissingEnum
 #define kParamCustomFpsHint "If checked, you can freely force the value of the frame rate parameter. The frame-rate is just the meta-data that will be passed " \
 "downstream to the graph, no retime will actually take place."
 
-#define kParamExistingInstance "ParamExistingInstance"
+#define kParamGuessedParams "ParamExistingInstance" // was guessParamsFromFilename already successfully called once on this instance
 
 #ifdef OFX_IO_USING_OCIO
 #define kParamInputSpaceSet "ocioInputSpaceSet" // was the input colorspace set by user?
@@ -281,19 +281,18 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _startingTime(0)
 , _originalFrameRange(0)
 , _outputComponents(0)
-, _premult(0)
+, _filePremult(0)
 , _outputPremult(0)
 , _timeDomainUserSet(0)
 , _customFPS(0)
 , _fps(0)
 , _sublabel(0)
-, _isExistingReader(0)
+, _guessedParams(0)
 #ifdef OFX_IO_USING_OCIO
-, _inputSpaceSet(NULL)
 , _ocio(new GenericOCIO(this))
 #endif
 , _extensions(extensions)
-, _sequenceFromFiles()
+, _sequenceRangeSet(false)
 , _supportsRGBA(supportsRGBA)
 , _supportsRGB(supportsRGB)
 , _supportsXY(supportsXY)
@@ -319,7 +318,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     _originalFrameRange = fetchInt2DParam(kParamOriginalFrameRange);
     _timeDomainUserSet = fetchBooleanParam(kParamTimeDomainUserEdited);
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
-    _premult = fetchChoiceParam(kParamFilePremult);
+    _filePremult = fetchChoiceParam(kParamFilePremult);
     _outputPremult = fetchChoiceParam(kParamOutputPremult);
     _customFPS = fetchBooleanParam(kParamCustomFps);
     _fps = fetchDoubleParam(kParamFrameRate);
@@ -327,10 +326,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
         _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
         assert(_sublabel);
     }
-    _isExistingReader = fetchBooleanParam(kParamExistingInstance);
-#ifdef OFX_IO_USING_OCIO
-    _inputSpaceSet = fetchBooleanParam(kParamInputSpaceSet);
-#endif
+    _guessedParams = fetchBooleanParam(kParamGuessedParams);
 
 
     // must be in sync with GenericReaderDescribeInContextBegin
@@ -384,22 +380,16 @@ GenericReaderPlugin::refreshSubLabel(OfxTime time)
 }
 
 
+/**
+ * @brief Restore any state from the parameters set
+ * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+ * state of the Reader, such as Choice param options, data members and non-persistent param values.
+ * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+ * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
+ **/
 void
-GenericReaderPlugin::restoreStateFromParameters()
+GenericReaderPlugin::restoreStateFromParams()
 {
-    
-    // Natron explicitly set the value of filename before instanciating a Reader.
-    // We need to know if all parameters were setup already and we are just loading a project
-    // or if we are creating a new Reader from scratch and need toa djust parameters.
-    bool readerExisted;
-    _isExistingReader->getValue(readerExisted);
-    
-    inputFileChanged(readerExisted, !readerExisted);
-    
-    if (!readerExisted) {
-        _isExistingReader->setValue(true);
-    }
-    
     int frameMode_i;
     _frameMode->getValue(frameMode_i);
     FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
@@ -431,7 +421,6 @@ GenericReaderPlugin::restoreStateFromParameters()
     if (gHostIsNatron) {
         refreshSubLabel(timeLineGetTime());
     }
-    
 }
 
 bool
@@ -440,7 +429,12 @@ GenericReaderPlugin::getTimeDomain(OfxRangeD &range)
     OfxRangeI rangeI;
     bool ret = getSequenceTimeDomainInternal(rangeI, false);
     if (ret) {
-        timeDomainFromSequenceTimeDomain(rangeI, false);
+        ///these are the value held by the "First frame" and "Last frame" param
+        OfxRangeI sequenceTimeDomain;
+        sequenceTimeDomain.min = _firstFrame->getValue();
+        sequenceTimeDomain.max = _lastFrame->getValue();
+        int startingTime = _startingTime->getValue();
+        timeDomainFromSequenceTimeDomain(sequenceTimeDomain, startingTime, &rangeI);
         range.min = rangeI.min;
         range.max = rangeI.max;
     }
@@ -455,6 +449,8 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSet
     ///case we don't bother calculating the frame range
     int originalMin,originalMax;
     _originalFrameRange->getValue(originalMin, originalMax);
+
+    // test if the host (probably Natron) set kParamOriginalFrameRange
     if (originalMin != INT_MIN && originalMax != INT_MAX) {
         range.min = originalMin;
         range.max = originalMax;
@@ -463,32 +459,63 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSet
     
     std::string filename;
     _fileParam->getValue(filename);
-    
-    
+
     ///call the plugin specific getTimeDomain (if it is a video-stream , it is responsible to
     ///find-out the time domain. If this function return false, it means this is an image sequence
     ///in which case our sequence parser will give us the sequence range
-    if (!getSequenceTimeDomain(filename, range)) {
+    bool gotRange = getSequenceTimeDomain(filename, range);
 
-        if (_sequenceFromFiles.size() == 1) {
-            range.min = range.max = 1;
-        } else if (_sequenceFromFiles.size() > 1) {
-            range.min = _sequenceFromFiles.begin()->first;
-            range.max = _sequenceFromFiles.rbegin()->first;
+    if (!gotRange) {
+        // POOR MAN's solution: try to guess the range
+
+        SequenceParsing::FileNameContent content(filename);
+        std::string pattern;
+        ///We try to match all the files in the same directory that match the pattern with the frame number
+        ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
+        ///everything as it would take too much time.
+        std::string noStr;
+        int nbFrameNumbers = content.getPotentialFrameNumbersCount();
+        content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
+
+        int numHashes = content.getLeadingZeroes();
+
+        std::string noStrWithoutZeroes;
+        for (std::size_t i = 0; i < noStr.size(); ++i) {
+            if (noStr[i] == '0' && noStrWithoutZeroes.empty()) {
+                continue;
+            }
+            noStrWithoutZeroes.push_back(noStr[i]);
+        }
+
+        if ((int)noStr.size() > numHashes) {
+            numHashes += noStrWithoutZeroes.size();
         } else {
-            range.min = range.max = 1;
+            numHashes = 1;
+        }
+        content.generatePatternWithFrameNumberAtIndex(nbFrameNumbers - 1,
+                                                      numHashes,
+                                                      &pattern);
+
+
+        SequenceParsing::SequenceFromPattern sequenceFromFiles;
+        SequenceParsing::filesListFromPattern_slow(pattern, &sequenceFromFiles);
+
+        range.min = range.max = 1;
+        if (sequenceFromFiles.size() > 1) {
+            range.min = sequenceFromFiles.begin()->first;
+            range.max = sequenceFromFiles.rbegin()->first;
         }
     }
     
 
     //// From http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
-//    Plugins are free to set parameters in limited set of circumstances, typically relating to user interaction. You can only set parameters in the following actions passed to the plug-in's main entry function...
-//    
-//    The Create Instance Action
-//    The The Begin Instance Changed Action
-//    The The Instance Changed Action
-//    The The End Instance Changed Action
-//    The The Sync Private Data Action
+    //    Plugins are free to set parameters in limited set of circumstances, typically relating to user interaction. You can only set parameters in the following actions passed to the plug-in's main entry function...
+    //
+    //    The Create Instance Action
+    //    The The Begin Instance Changed Action
+    //    The The Instance Changed Action
+    //    The The End Instance Changed Action
+    //    The The Sync Private Data Action
     if (!filename.empty() && canSetOriginalFrameRange) {
         _originalFrameRange->setValue(range.min, range.max);
     }
@@ -497,40 +524,10 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSet
 
 
 void
-GenericReaderPlugin::timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mustSetFrameRange, bool setFirstLastFrame)
+GenericReaderPlugin::timeDomainFromSequenceTimeDomain(const OfxRangeI& sequenceTimeDomain, int startingTime, OfxRangeI* timeDomain)
 {
-    ///the values held by GUI parameters
-    int frameRangeFirst,frameRangeLast;
-    int startingTime;
-    if (mustSetFrameRange) {
-        frameRangeFirst = range.min;
-        frameRangeLast = range.max;
-        startingTime = frameRangeFirst;
-        
-        _firstFrame->setRange(range.min, range.max);
-        _firstFrame->setDisplayRange(range.min, range.max);
-        _lastFrame->setRange(range.min, range.max);
-        _lastFrame->setDisplayRange(range.min, range.max);
-
-        if (setFirstLastFrame) {
-            _firstFrame->setValue(range.min);
-            _firstFrame->setDefault(range.min);
-            _lastFrame->setValue(range.max);
-            _lastFrame->setDefault(range.max);
-            _startingTime->setValue(range.min);
-            _startingTime->setDefault(range.min);
-        }
-        
-        _originalFrameRange->setValue(range.min, range.max);
-    } else {
-        ///these are the value held by the "First frame" and "Last frame" param
-        _firstFrame->getValue(frameRangeFirst);
-        _lastFrame->getValue(frameRangeLast);
-        _startingTime->getValue(startingTime);
-    }
-    
-    range.min = startingTime;
-    range.max = startingTime + frameRangeLast - frameRangeFirst;
+    timeDomain->min = startingTime;
+    timeDomain->max = startingTime + (sequenceTimeDomain.max - sequenceTimeDomain.min);
 }
 
 
@@ -731,10 +728,6 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                std::string *filename)
 {
     GetFilenameRetCodeEnum ret;
-    OfxRangeI sequenceTimeDomain;
-    getSequenceTimeDomainInternal(sequenceTimeDomain,false);
-    timeDomainFromSequenceTimeDomain(sequenceTimeDomain, false);
-    
     const MissingEnum missingFrame = (MissingEnum)_missingFrameParam->getValue();
 
     std::string filename0;
@@ -1699,7 +1692,7 @@ GenericReaderPlugin::render(const OFX::RenderArguments &args)
             filePremult = outputPremult = OFX::eImagePreMultiplied;
         } else if (it->comps == OFX::ePixelComponentRGBA  || (isCustom && isColor && remappedComponents == OFX::ePixelComponentRGBA)) {
             int premult_i;
-            _premult->getValue(premult_i);
+            _filePremult->getValue(premult_i);
             filePremult = (OFX::PreMultiplicationEnum)premult_i;
 
             int oPremult_i;
@@ -1877,49 +1870,6 @@ GenericReaderPlugin::decodePlane(const std::string& /*filename*/, OfxTime /*time
     //does nothing
 }
 
-void
-GenericReaderPlugin::setSequenceFromFile(const std::string& filename)
-{
-    ///Do this only when the host is not Natron because we can't rely on the host to compute the frame range for us.
-    ///Natron will set automatically the originalRange parameter when the user selects a file
-    if (gHostIsNatron) {
-        return;
-    }
-    
-    SequenceParsing::FileNameContent content(filename);
-    std::string pattern;
-    ///We try to match all the files in the same directory that match the pattern with the frame number
-    ///assumed to be in the last part of the filename. This is a harsh assumption but we can't just verify
-    ///everything as it would take too much time.
-    std::string noStr;
-    int nbFrameNumbers = content.getPotentialFrameNumbersCount();
-    content.getNumberByIndex(nbFrameNumbers - 1, &noStr);
-    
-    int numHashes = content.getLeadingZeroes();
-    
-    std::string noStrWithoutZeroes;
-    for (std::size_t i = 0; i < noStr.size(); ++i) {
-        if (noStr[i] == '0' && noStrWithoutZeroes.empty()) {
-            continue;
-        }
-        noStrWithoutZeroes.push_back(noStr[i]);
-    }
-    
-    if ((int)noStr.size() > numHashes) {
-        numHashes += noStrWithoutZeroes.size();
-    } else {
-        numHashes = 1;
-    }
-    content.generatePatternWithFrameNumberAtIndex(nbFrameNumbers - 1,
-                                                  numHashes,
-                                                  &pattern);
-    
-    
-    _sequenceFromFiles.clear();
-    SequenceParsing::filesListFromPattern_slow(pattern, &_sequenceFromFiles);
-
-}
-
 bool
 GenericReaderPlugin::checkExtension(const std::string& ext)
 {
@@ -1930,135 +1880,137 @@ GenericReaderPlugin::checkExtension(const std::string& ext)
     return std::find(_extensions.begin(), _extensions.end(), ext) != _extensions.end();
 }
 
+/**
+ * @brief Called from changedParam() when kParamFilename is changed for any reason other than eChangeTime.
+ * Calls restoreStateFromParams() to update any non-persistent params that may depend on the filename.
+ * If reason is eChangeUserEdit and the params where never guessed (see _guessedParams) also sets these from the file contents.
+ * Any derived implementation must call GenericReaderPlugin::inputFileChanged() first
+ **/
 void
-GenericReaderPlugin::inputFileChanged(bool isLoadingExistingReader, bool throwErrors)
+GenericReaderPlugin::inputFileChanged(const OFX::InstanceChangedArgs &args)
 {
-    std::string filename;
-    
-    if (!gHostIsNatron) {
-        _fileParam->getValue(filename);
-
-        if (!filename.empty()) {
-            setSequenceFromFile(filename);
-        }
-        
-        clearPersistentMessage();
-        
-        //reset the original range param only if not Natron
-        _originalFrameRange->setValue(INT_MIN, INT_MAX);
+    assert(args.reason != eChangeTime);
+    if (args.reason == eChangeTime) {
+        return;
     }
-    
-    
-    OfxRangeI tmp;
-    if (getSequenceTimeDomainInternal(tmp, true)) {
-        
-        if (isLoadingExistingReader) {
-            bool timeDomainUserEdited;
-            _timeDomainUserSet->getValue(timeDomainUserEdited);
-            if (!timeDomainUserEdited) {
-                timeDomainFromSequenceTimeDomain(tmp, true, true);
-            }
-        } else {
-            
-            timeDomainFromSequenceTimeDomain(tmp, true);
-            _startingTime->setValue(tmp.min);
+    std::string filename;
+
+    _fileParam->getValue(filename);
+
+    clearPersistentMessage();
+
+    if (filename.empty()) {
+        // if the file name is set to an empty string,
+        // reset so that values are automatically set on next call to inputFileChanged()
+        _guessedParams->resetToDefault();
+
+        return;
+    }
+
+    OfxRangeI sequenceTimeDomain;
+
+    bool gotSequenceTimeDomain = getSequenceTimeDomainInternal(sequenceTimeDomain, true);
+    if (!gotSequenceTimeDomain) {
+
+        return;
+    }
+
+    bool customFps;
+    _customFPS->getValue(customFps);
+    if (!customFps) {
+        double fps;
+        bool gotFps = getFrameRate(filename, &fps);
+        if (gotFps) {
+            _fps->setValue(fps);
         }
-        
-        ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
+    }
+
+    OfxRangeI timeDomain;
+
+    timeDomainFromSequenceTimeDomain(sequenceTimeDomain, sequenceTimeDomain.min, &timeDomain);
+
+    if (args.reason == OFX::eChangeUserEdit) {
+        _firstFrame->setValue(sequenceTimeDomain.min);
+        _firstFrame->setDefault(sequenceTimeDomain.min);
+        _lastFrame->setValue(sequenceTimeDomain.max);
+        _lastFrame->setDefault(sequenceTimeDomain.max);
+        _startingTime->setDefault(sequenceTimeDomain.min);
+    }
+
+    // restore state! let the derived class (which calls GenericReaderPlugin::restoreStateFromParams()) initialize any other parameters or structures
+    restoreStateFromParams();
+
+    // should we guess some parameters? only if it's user-set and it's the first time
+    if ( args.reason == OFX::eChangeUserEdit && !_guessedParams->getValue() ) {
+        _startingTime->setValue(timeDomain.min);
+
+        ///We call guessParamsFromFilename with the first frame of the sequence so we're almost sure it will work
         ///unless the user did a mistake. We are also safe to assume that images specs are the same for
         ///all the sequence
-        _fileParam->getValueAtTime(tmp.min, filename);
-        if (filename == _filename && !isLoadingExistingReader) {
-            // file name did not really change
-            return;
-        }
-        _filename = filename;
-
+        _fileParam->getValueAtTime(timeDomain.min, filename);
         if ( filename.empty() ) {
-            // if the file name is set to an empty string,
-            // reset everything so that values are automatically set on next call to inputFileChanged()
-            _isExistingReader->setValue(false);
+            // no need to trigger a useless error or a persistent message
 
             return;
         }
-        if (isLoadingExistingReader) {
-            restoreState(filename);
-        } else {
-            ///let the derive class a chance to initialize any data structure it may need
-            
-            OFX::PixelComponentEnum components;
-            int componentCount;
-            OFX::PreMultiplicationEnum premult;
-            
-            bool setColorSpace = true;
-# ifdef OFX_IO_USING_OCIO
-            // if inputSpaceSet == true (input space was manually set by user) then setColorSpace = false
-            if ( _inputSpaceSet->getValue() ) {
-                setColorSpace = false;
-            }
-            // Always try to parse from string first,
-            // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-            OCIO::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
-            if (setColorSpace && ocioConfig) {
-                const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
-                if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
-                    colorSpaceStr = NULL;
-                }
-                if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
-                    // we're lucky
-                    _ocio->setInputColorspace(colorSpaceStr);
-                    setColorSpace = false;
-                }
-            }
-# endif
-            
-            onInputFileChanged(filename, throwErrors, setColorSpace, &premult, &components, &componentCount);
-            
-            
-            if (setColorSpace) {
-# ifdef OFX_IO_USING_OCIO
-                
-                // Refreshing the choice menus of ocio is required since the instanceChanged action
-                // may not be called recursively during the createInstance action
-                 _ocio->refreshInputAndOutputState(tmp.min);
+
+        std::string colorspace;
+
+#ifdef OFX_IO_USING_OCIO
+        _ocio->getInputColorspaceDefault(colorspace);
+#else
+        colorspace = "default"
 #endif
-            }
-            // RGB is always Opaque, Alpha is always PreMultiplied
-            if (components == OFX::ePixelComponentRGB) {
-                premult = OFX::eImageOpaque;
-            } else if (components == OFX::ePixelComponentAlpha) {
-                premult = OFX::eImagePreMultiplied;
-            }
-            if (components != OFX::ePixelComponentNone) {
-                setOutputComponents(components);
-            }
-            _premult->setValue((int)premult);
+        OFX::PixelComponentEnum components = ePixelComponentNone;
+        int componentCount = 0;
+        OFX::PreMultiplicationEnum premult = OFX::eImageOpaque;
 
-            if (components == OFX::ePixelComponentRGB) {
-                // RGB is always opaque
-                _outputPremult->setValue(OFX::eImageOpaque);
-            } else if (components == OFX::ePixelComponentAlpha) {
-                // Alpha is always premultiplied
-                _outputPremult->setValue(OFX::eImagePreMultiplied);
-            }
+        assert(!_guessedParams->getValue());
+        bool success = guessParamsFromFilename(filename, &colorspace, &premult, &components, &componentCount);
+        if (!success) {
+            return;
+        }
 
-        } // isLoadingExistingReader
-        
-        bool customFps;
-        _customFPS->getValue(customFps);
-        if (!customFps) {
-            double fps;
-            bool gotFps = getFrameRate(filename, &fps);
-            if (gotFps) {
-                _fps->setValue(fps);
+# ifdef OFX_IO_USING_OCIO
+        // Colorspace parsed from filename overrides the file colorspace,
+        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+        OCIO::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
+        if (ocioConfig) {
+            const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString(filename.c_str());
+            if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+                // we're lucky
+                colorspace = colorSpaceStr;
             }
         }
 
-        // mark that most parameters should not be set automagically if the filename is changed
-        // (the user must keep control over what happens)
-        _isExistingReader->setValue(true);
-    }
+        _ocio->setInputColorspace( colorspace.c_str() );
 
+        // Refreshing the choice menus of ocio is required since the instanceChanged action
+        // may not be called recursively during the createInstance action
+        _ocio->refreshInputAndOutputState(timeDomain.min);
+#endif
+        // RGB is always Opaque, Alpha is always PreMultiplied
+        if (components == OFX::ePixelComponentRGB) {
+            premult = OFX::eImageOpaque;
+        } else if (components == OFX::ePixelComponentAlpha) {
+            premult = OFX::eImagePreMultiplied;
+        }
+        if (components != OFX::ePixelComponentNone) {
+            setOutputComponents(components);
+        }
+        _filePremult->setValue((int)premult);
+
+        if (components == OFX::ePixelComponentRGB) {
+            // RGB is always opaque
+            _outputPremult->setValue(OFX::eImageOpaque);
+        } else if (components == OFX::ePixelComponentAlpha) {
+            // Alpha is always premultiplied
+            _outputPremult->setValue(OFX::eImagePreMultiplied);
+        }
+
+        _guessedParams->setValue(true); // do not try to guess params anymore on this instance
+
+    } // if ( args.reason == OFX::eChangeUserEdit && !_guessedParams->getValue() ) {
 }
 
 void
@@ -2076,7 +2028,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
-            inputFileChanged(_isExistingReader->getValue(), false);
+            inputFileChanged(args);
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
             refreshSubLabel(args.time);
@@ -2168,9 +2120,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _timeDomainUserSet->setValue(true);
 
     } else if (paramName == kParamFrameMode && args.reason == OFX::eChangeUserEdit) {
-        int frameMode_i;
-        _frameMode->getValueAtTime(time, frameMode_i);
-        FrameModeEnum frameMode = FrameModeEnum(frameMode_i);
+        FrameModeEnum frameMode = (FrameModeEnum)_frameMode->getValueAtTime(time);
         switch (frameMode) {
             case eFrameModeStartingTime: //starting frame
                 _startingTime->setIsSecretAndDisabled(false);
@@ -2188,46 +2138,33 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         getSequenceTimeDomainInternal(sequenceTimeDomain,true);
         
         //also update the time offset
-        int startingTime;
-        _startingTime->getValueAtTime(time, startingTime);
+        int startingTime = _startingTime->getValueAtTime(time);
         
-        int firstFrame;
-        _firstFrame->getValueAtTime(time, firstFrame);
+        int firstFrame = _firstFrame->getValueAtTime(time);
         
         _timeOffset->setValue(startingTime - firstFrame);
          _timeDomainUserSet->setValue(true);
     } else if (paramName == kParamTimeOffset && args.reason == OFX::eChangeUserEdit) {
 
         //also update the starting frame
-        int offset;
-        _timeOffset->getValueAtTime(time, offset);
-        int first;
-        _firstFrame->getValueAtTime(time, first);
+        int offset = _timeOffset->getValueAtTime(time);
+        int first = _firstFrame->getValueAtTime(time);
         
         _startingTime->setValue(offset + first);
          _timeDomainUserSet->setValue(true);
-    } else if (paramName == kParamOutputComponents) {
+    } else if (paramName == kParamOutputComponents && args.reason == OFX::eChangeUserEdit) {
         OFX::PixelComponentEnum comps = getOutputComponents();
-    
-        if (args.reason == OFX::eChangeUserEdit) {
-            int premult_i;
-            _outputPremult->getValueAtTime(time, premult_i);
-            OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
-            if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
-                // RGB is always opaque
-                _outputPremult->setValue(OFX::eImageOpaque);
-            } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
-                // Alpha is always premultiplied
-                _outputPremult->setValue(OFX::eImagePreMultiplied);
-            }
+
+        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)_outputPremult->getValueAtTime(time);
+        if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
+            // RGB is always opaque
+            _outputPremult->setValue(OFX::eImageOpaque);
+        } else if (comps == OFX::ePixelComponentAlpha && premult != OFX::eImagePreMultiplied) {
+            // Alpha is always premultiplied
+            _outputPremult->setValue(OFX::eImagePreMultiplied);
         }
-        
-        // Even when reason == pluginEdit notify the plug-in that components changed
-        onOutputComponentsParamChanged(comps);
     } else if (paramName == kParamOutputPremult && args.reason == OFX::eChangeUserEdit) {
-        int premult_i;
-        _outputPremult->getValueAtTime(time, premult_i);
-        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)premult_i;
+        OFX::PreMultiplicationEnum premult = (OFX::PreMultiplicationEnum)_outputPremult->getValueAtTime(time);
         OFX::PixelComponentEnum comps = getOutputComponents();
         // reset to authorized values if necessary
         if (comps == OFX::ePixelComponentRGB && premult != OFX::eImageOpaque) {
@@ -2242,32 +2179,29 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         _fps->setEnabled(customFps);
         
         if (!customFps) {
-            OfxRangeI tmp;
-            if (getSequenceTimeDomainInternal(tmp,false)) {
-                timeDomainFromSequenceTimeDomain(tmp, false);
-                _startingTime->setValue(tmp.min);
-                
-                ///We call onInputFileChanged with the first frame of the sequence so we're almost sure it will work
+            OfxRangeI sequenceTimeDomain;
+            if (getSequenceTimeDomainInternal(sequenceTimeDomain, false)) {
+                OfxRangeI timeDomain;
+                ///these are the value held by the "First frame" and "Last frame" param
+                sequenceTimeDomain.min = _firstFrame->getValue();
+                sequenceTimeDomain.max = _lastFrame->getValue();
+                int startingTime = _startingTime->getValue();
+                timeDomainFromSequenceTimeDomain(sequenceTimeDomain, startingTime, &timeDomain);
+                _startingTime->setValue(timeDomain.min);
+
+                ///We call guessParamsFromFilename with the first frame of the sequence so we're almost sure it will work
                 ///unless the user did a mistake. We are also safe to assume that images specs are the same for
                 ///all the sequence
                 std::string filename;
-                _fileParam->getValueAtTime(tmp.min, filename);
-                
+                _fileParam->getValueAtTime(timeDomain.min, filename);
+
                 double fps;
                 bool gotFps = getFrameRate(filename, &fps);
                 if  (gotFps) {
                     _fps->setValue(fps);
                 }
-
             }
-            
         }
-#ifdef OFX_IO_USING_OCIO
-    } else if ((paramName == kOCIOParamInputSpace || paramName == kOCIOParamInputSpaceChoice) &&
-               args.reason == OFX::eChangeUserEdit) {
-        // set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492
-        _inputSpaceSet->setValue(true);
-#endif
     }
 
 #ifdef OFX_IO_USING_OCIO
@@ -2304,7 +2238,7 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     // the output is not framevarying
     bool frameVarying = true;
     OfxRangeI sequenceTimeDomain;
-    getSequenceTimeDomainInternal(sequenceTimeDomain, false);
+    bool gotSequenceTimeDomain = getSequenceTimeDomainInternal(sequenceTimeDomain, false);
     if (sequenceTimeDomain.min == sequenceTimeDomain.max) {
         int beforeChoice_i;
         _beforeFirst->getValue(beforeChoice_i);
@@ -2348,17 +2282,22 @@ GenericReaderPlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferen
     clipPreferences.setOutputPremultiplication(premult);
 
     // get the pixel aspect ratio from the first frame
-    OfxRangeI tmp;
-    if (getSequenceTimeDomainInternal(tmp, false)) {
-        timeDomainFromSequenceTimeDomain(tmp, false);
+    if (gotSequenceTimeDomain) {
+        OfxRangeI timeDomain;
+        ///these are the value held by the "First frame" and "Last frame" param
+        sequenceTimeDomain.min = _firstFrame->getValue();
+        sequenceTimeDomain.max = _lastFrame->getValue();
+        int startingTime = _startingTime->getValue();
+        timeDomainFromSequenceTimeDomain(sequenceTimeDomain, startingTime, &timeDomain);
+
         std::string filename;
-        GetFilenameRetCodeEnum e = getFilenameAtSequenceTime(tmp.min, false, true, &filename);
+        GetFilenameRetCodeEnum e = getFilenameAtSequenceTime(timeDomain.min, false, true, &filename);
         if (e == eGetFileNameReturnedFullRes) {
             OfxRectI bounds, format;
             double par = 1.;
             std::string error;
             int tile_width,tile_height;
-            bool success = getFrameBounds(filename, tmp.min, &bounds, &format, &par, &error,&tile_width, &tile_height);
+            bool success = getFrameBounds(filename, timeDomain.min, &bounds, &format, &par, &error,&tile_width, &tile_height);
             if (success) {
                 clipPreferences.setPixelAspectRatio(*_outputClip, par);
                 clipPreferences.setOutputFormat(format);
@@ -2388,7 +2327,6 @@ GenericReaderPlugin::purgeCaches()
 #ifdef OFX_IO_USING_OCIO
     _ocio->purgeCaches();
 #endif
-    _filename.clear();
 }
 
 bool
@@ -3218,7 +3156,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
         param->setHint(kParamFrameRateHint);
         param->setEvaluateOnChange(false);
         param->setLayoutHint(OFX::eLayoutHintNoNewLine, 1);
-        //param->setEnabled(false); // done in the restoreStateFromParameters()
+        //param->setEnabled(false); // done in the restoreStateFromParams()
         param->setDefault(24.);
         param->setRange(0., DBL_MAX);
         param->setDisplayRange(0.,300.);
@@ -3258,7 +3196,7 @@ GenericReaderDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
     }
     
     {
-        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamGuessedParams);
         param->setEvaluateOnChange(false);
         param->setAnimates(false);
         param->setIsSecretAndDisabled(true);

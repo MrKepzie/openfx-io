@@ -93,7 +93,20 @@ private:
 
     virtual bool getFrameBounds(const std::string& /*filename*/,OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
     
-    virtual void onInputFileChanged(const std::string& newFile, bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    /**
+     * @brief Called when the input image/video file changed.
+     *
+     * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     *
+     * The colorspace may be set if available, else a default colorspace is used.
+     *
+     * You must also return the premultiplication state and pixel components of the image.
+     * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+     **/
+    virtual bool guessParamsFromFilename(const std::string& newFile, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -611,32 +624,43 @@ ReadEXRPlugin::decode(const std::string& filename,
     
 }
 
-void
-ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
-                                  bool /*throwErrors*/,
-                                  bool setColorSpace, //!< true is colorspace was not set from the filename
-                                  OFX::PreMultiplicationEnum *premult,
-                                  OFX::PixelComponentEnum *components,
-                                  int *componentCount)
+/**
+ * @brief Called when the input image/video file changed.
+ *
+ * returns true if file exists and parameters successfully guessed, false in case of error.
+ *
+ * You shouldn't do any strong processing as this is called on the main thread and
+ * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+ *
+ * The colorspace may be set if available, else a default colorspace is used.
+ *
+ * You must also return the premultiplication state and pixel components of the image.
+ * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+ **/
+bool
+ReadEXRPlugin::guessParamsFromFilename(const std::string& newFile,
+                                       std::string *colorspace,
+                                       OFX::PreMultiplicationEnum *premult,
+                                       OFX::PixelComponentEnum *components,
+                                       int *componentCount)
 {
-    if (setColorSpace) {
-#     ifdef OFX_IO_USING_OCIO
-        // Unless otherwise specified, exr files are assumed to be linear.
-        _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
-#     endif
+    assert(colorspace && premult && components && componentCount);
+
+    Exr::File* file = newFile.empty() ? NULL : Exr::FileManager::s_readerManager.get(newFile);
+    if (!file) {
+        return false;
     }
-    assert(premult && components);
-    Exr::File* file = Exr::FileManager::s_readerManager.get(newFile);
-    bool hasRed;
-    bool hasGreen;
-    bool hasBlue;
-    bool hasAlpha;
     
-    hasRed = file->channel_map.find(Exr::Channel_red) != file->channel_map.end();
-    hasGreen = file->channel_map.find(Exr::Channel_green) != file->channel_map.end();
-    hasBlue = file->channel_map.find(Exr::Channel_blue) != file->channel_map.end();
-    hasAlpha = file->channel_map.find(Exr::Channel_alpha) != file->channel_map.end();
-    
+# ifdef OFX_IO_USING_OCIO
+    // Unless otherwise specified, exr files are assumed to be linear.
+    *colorspace = OCIO::ROLE_SCENE_LINEAR;
+# endif
+
+    bool hasRed = file->channel_map.find(Exr::Channel_red) != file->channel_map.end();
+    bool hasGreen = file->channel_map.find(Exr::Channel_green) != file->channel_map.end();
+    bool hasBlue = file->channel_map.find(Exr::Channel_blue) != file->channel_map.end();
+    bool hasAlpha = file->channel_map.find(Exr::Channel_alpha) != file->channel_map.end();
+
     if (hasAlpha) {
         // if any color channel is present, let it be RGBA
         if (hasRed || hasGreen || hasBlue) {
@@ -670,6 +694,8 @@ ReadEXRPlugin::onInputFileChanged(const std::string& newFile,
     } else {
         *premult = OFX::eImagePreMultiplied;
     }
+
+    return true; // success
 }
 
 bool
@@ -753,7 +779,7 @@ ImageEffect*
 ReadEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     ReadEXRPlugin* ret =  new ReadEXRPlugin(handle, _extensions);
-    ret->restoreStateFromParameters();
+    ret->restoreStateFromParams();
     return ret;
 }
 

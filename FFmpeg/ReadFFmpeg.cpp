@@ -86,11 +86,33 @@ public:
 
     bool loadNearestFrame() const;
 
+    /**
+     * @brief Restore any state from the parameters set
+     * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+     * state of the Reader, such as Choice param options, data members and non-persistent param values.
+     * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+     * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
+     **/
+    virtual void restoreStateFromParams() OVERRIDE FINAL;
+
 private:
 
     virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& filename, bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    /**
+     * @brief Called when the input image/video file changed.
+     *
+     * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     *
+     * The colorspace may be set if available, else a default colorspace is used.
+     *
+     * You must also return the premultiplication state and pixel components of the image.
+     * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+     **/
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
@@ -99,10 +121,6 @@ private:
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
     
     virtual bool getFrameRate(const std::string& filename, double* fps) OVERRIDE FINAL;
-    
-    virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
-    
-
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
@@ -128,9 +146,17 @@ ReadFFmpegPlugin::~ReadFFmpegPlugin()
     
 }
 
+/**
+ * @brief Restore any state from the parameters set
+ * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+ * state of the Reader, such as Choice param options, data members and non-persistent param values.
+ * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+ * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
+ **/
 void
-ReadFFmpegPlugin::restoreState(const std::string& /*filename*/)
+ReadFFmpegPlugin::restoreStateFromParams()
 {
+    GenericReaderPlugin::restoreStateFromParams();
     //_manager.getOrCreate(this, filename);
 }
 
@@ -149,41 +175,26 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
     GenericReaderPlugin::changedParam(args, paramName);
 }
 
-void
-ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
-                                     bool throwErrors,
-                                     bool setColorSpace,
-                                     OFX::PreMultiplicationEnum *premult,
-                                     OFX::PixelComponentEnum *components,
-                                     int *componentCount)
+/**
+ * @brief Called when the input image/video file changed.
+ *
+ * returns true if file exists and parameters successfully guessed, false in case of error.
+ *
+ * You shouldn't do any strong processing as this is called on the main thread and
+ * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+ *
+ * The colorspace may be set if available, else a default colorspace is used.
+ *
+ * You must also return the premultiplication state and pixel components of the image.
+ * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+ **/
+bool
+ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
+                                          std::string *colorspace,
+                                          OFX::PreMultiplicationEnum *premult,
+                                          OFX::PixelComponentEnum *components,
+                                          int *componentCount)
 {
-    if (setColorSpace) {
-#     ifdef OFX_IO_USING_OCIO
-        // Unless otherwise specified, video files are assumed to be rec709.
-        if (_ocio->hasColorspace("Rec709")) {
-            // nuke-default
-            _ocio->setInputColorspace("Rec709");
-        } else if (_ocio->hasColorspace("nuke_rec709")) {
-            // blender
-            _ocio->setInputColorspace("nuke_rec709");
-        } else if (_ocio->hasColorspace("Rec.709 - Full")) {
-            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-            _ocio->setInputColorspace("Rec.709 - Full");
-        } else if (_ocio->hasColorspace("out_rec709full")) {
-            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-            _ocio->setInputColorspace("out_rec709full");
-        } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
-            // rrt_rec709_full_100nits in aces 0.7.1
-            _ocio->setInputColorspace("rrt_rec709_full_100nits");
-        } else if (_ocio->hasColorspace("rrt_rec709")) {
-            // rrt_rec709 in aces 0.1.1
-            _ocio->setInputColorspace("rrt_rec709");
-        } else if (_ocio->hasColorspace("hd10")) {
-            // hd10 in spi-anim and spi-vfx
-            _ocio->setInputColorspace("hd10");
-        }
-#     endif
-    }
     assert(premult && components && componentCount);
     FFmpegFile* file = _manager.get(this, filename);
     if (!file) {
@@ -198,18 +209,42 @@ ReadFFmpegPlugin::onInputFileChanged(const std::string& filename,
         } else {
             setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file.");
         }
-        *components = OFX::ePixelComponentNone;
-        *componentCount = 0;
-        *premult = OFX::eImageOpaque;
-        if (throwErrors) {
-            throwSuiteStatusException(kOfxStatFailed);
-        }
-        return;
+
+        return false;
     }
+
+#   ifdef OFX_IO_USING_OCIO
+    // Unless otherwise specified, video files are assumed to be rec709.
+    if (_ocio->hasColorspace("Rec709")) {
+        // nuke-default
+        *colorspace = "Rec709";
+    } else if (_ocio->hasColorspace("nuke_rec709")) {
+        // blender
+        *colorspace = "nuke_rec709";
+    } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+        // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+        *colorspace = "Rec.709 - Full";
+    } else if (_ocio->hasColorspace("out_rec709full")) {
+        // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+        *colorspace = "out_rec709full";
+    } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+        // rrt_rec709_full_100nits in aces 0.7.1
+        *colorspace = "rrt_rec709_full_100nits";
+    } else if (_ocio->hasColorspace("rrt_rec709")) {
+        // rrt_rec709 in aces 0.1.1
+        *colorspace = "rrt_rec709";
+    } else if (_ocio->hasColorspace("hd10")) {
+        // hd10 in spi-anim and spi-vfx
+        *colorspace = "hd10";
+    }
+#   endif
+
     *componentCount = file->getNumberOfComponents();
     *components = (*componentCount > 3) ? OFX::ePixelComponentRGBA : OFX::ePixelComponentRGB;
     ///Ffmpeg is RGB opaque.
     *premult = (*componentCount > 3) ? OFX::eImageUnPreMultiplied : OFX::eImageOpaque;
+
+    return true;
 }
 
 
@@ -904,7 +939,7 @@ ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
                                         ContextEnum /*context*/)
 {
     ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(*_manager, handle, _extensions);
-    ret->restoreStateFromParameters();
+    ret->restoreStateFromParams();
     return ret;
 }
 
