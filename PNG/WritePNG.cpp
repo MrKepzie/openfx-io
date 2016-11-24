@@ -935,7 +935,7 @@ void WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 ImageEffect* WritePNGPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     WritePNGPlugin* ret = new WritePNGPlugin(handle, _extensions);
-    ret->restoreState();
+    ret->restoreStateFromParams();
     return ret;
 }
 

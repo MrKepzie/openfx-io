@@ -232,7 +232,7 @@ void WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 ImageEffect* WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     WritePFMPlugin* ret = new WritePFMPlugin(handle, _extensions);
-    ret->restoreState();
+    ret->restoreStateFromParams();
     return ret;
 }
 

@@ -1655,7 +1655,7 @@ void WriteOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
 ImageEffect* WriteOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     WriteOIIOPlugin* ret = new WriteOIIOPlugin(handle, _extensions);
-    ret->restoreState();
+    ret->restoreStateFromParams();
     return ret;
 }
 

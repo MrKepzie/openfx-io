@@ -353,7 +353,7 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     WriteEXRPlugin* ret =  new WriteEXRPlugin(handle, _extensions);
-    ret->restoreState();
+    ret->restoreStateFromParams();
     return ret;
 }
 
