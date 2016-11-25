@@ -2531,9 +2531,9 @@ public:
             }
 
             int srcY = _dstBounds.y2 - dsty - 1;
-            float* dst_pixels = (float*)( (char*)_dstPixelData + _dstBufferRowBytes * (dsty - _dstBounds.y1) )
+            float* dst_pixels = (float*)( (char*)_dstPixelData + (size_t)_dstBufferRowBytes * (dsty - _dstBounds.y1) )
                                 + (_dstBounds.x1 * nDstComp);
-            const SRCPIX* src_pixels = (const SRCPIX*)( (const char*)_srcPixelData + _srcBufferRowBytes * (srcY - _srcBufferBounds.y1) )
+            const SRCPIX* src_pixels = (const SRCPIX*)( (const char*)_srcPixelData + (size_t)_srcBufferRowBytes * (srcY - _srcBufferBounds.y1) )
                                        + (_srcBufferBounds.x1 * nSrcComp);
 
 
