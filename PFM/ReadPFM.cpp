@@ -52,7 +52,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSupportsAlpha true
 #define kSupportsTiles false
 
-class ReadPFMPlugin : public GenericReaderPlugin
+class ReadPFMPlugin
+    : public GenericReaderPlugin
 {
 public:
 
@@ -65,7 +66,6 @@ private:
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
-
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     /**
@@ -88,52 +88,56 @@ private:
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
     virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
-
 };
 
 
 /**
- \return \c false for "Little Endian", \c true for "Big Endian".
+   \return \c false for "Little Endian", \c true for "Big Endian".
  **/
-static inline bool endianness()
+static inline bool
+endianness()
 {
     const int x = 1;
-    return ((unsigned char *)&x)[0] ? false : true;
+
+    return ( (unsigned char *)&x )[0] ? false : true;
 }
 
 //! Invert endianness of a memory buffer.
 template<typename T>
-static void invert_endianness(T *const buffer, const unsigned int size)
+static void
+invert_endianness(T *const buffer,
+                  const unsigned int size)
 {
     if (size) {
-        switch (sizeof(T)) {
-            case 1:
-                break;
-            case 2:
-                for (unsigned short *ptr = (unsigned short *)buffer + size; ptr > (unsigned short *)buffer;) {
-                    const unsigned short val = *(--ptr);
-                    *ptr = (unsigned short)((val >> 8) | ((val << 8)));
+        switch ( sizeof(T) ) {
+        case 1:
+            break;
+        case 2:
+            for (unsigned short *ptr = (unsigned short *)buffer + size; ptr > (unsigned short *)buffer; ) {
+                const unsigned short val = *(--ptr);
+                *ptr = (unsigned short)( (val >> 8) | ( (val << 8) ) );
+            }
+            break;
+        case 4:
+            for (unsigned int *ptr = (unsigned int *)buffer + size; ptr > (unsigned int *)buffer; ) {
+                const unsigned int val = *(--ptr);
+                *ptr = (val >> 24) | ( (val >> 8) & 0xff00 ) | ( (val << 8) & 0xff0000 ) | (val << 24);
+            }
+            break;
+        default:
+            for (T *ptr = buffer + size; ptr > buffer; ) {
+                unsigned char *pb = (unsigned char *)(--ptr), *pe = pb + sizeof(T);
+                for (int i = 0; i < (int)sizeof(T) / 2; ++i) {
+                    std::swap( *(pb++), *(--pe) );
                 }
-                break;
-            case 4:
-                for (unsigned int *ptr = (unsigned int *)buffer + size; ptr > (unsigned int *)buffer;) {
-                    const unsigned int val = *(--ptr);
-                    *ptr = (val >> 24) | ((val >> 8) & 0xff00) | ((val << 8) & 0xff0000) | (val << 24);
-                }
-                break;
-            default:
-                for (T *ptr = buffer + size; ptr > buffer;) {
-                    unsigned char *pb = (unsigned char *)(--ptr), *pe = pb + sizeof(T);
-                    for (int i = 0; i < (int)sizeof(T) / 2; ++i) {
-                        std::swap(*(pb++), *(--pe));
-                    }
-                }
+            }
         }
     }
 }
 
-ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
+ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle,
+                             const std::vector<std::string>& extensions)
+    : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
 {
 }
 
@@ -142,22 +146,27 @@ ReadPFMPlugin::~ReadPFMPlugin()
 }
 
 template <class PIX, int srcC, int dstC>
-static void copyLine(PIX *image, int x1, int x2, int C, PIX *dstPix)
+static void
+copyLine(PIX *image,
+         int x1,
+         int x2,
+         int C,
+         PIX *dstPix)
 {
     assert(srcC == C);
 
     const PIX *srcPix = image + x1 * C;
     dstPix += x1 * dstC;
 
-    for(int x = x1; x < x2; ++x) {
-        if(srcC == 1) {
+    for (int x = x1; x < x2; ++x) {
+        if (srcC == 1) {
             // alpha/grayscale image
-            for (int c = 0; c < std::min(dstC,3); ++c) {
+            for (int c = 0; c < std::min(dstC, 3); ++c) {
                 dstPix[c] = srcPix[0];
             }
         } else {
             // color image (if dstC == 1, only the red channel is extracted)
-            for (int c = 0; c < std::min(dstC,3); ++c) {
+            for (int c = 0; c < std::min(dstC, 3); ++c) {
                 dstPix[c] = srcPix[c];
             }
         }
@@ -188,9 +197,10 @@ ReadPFMPlugin::decode(const std::string& filename,
                       int pixelComponentCount,
                       int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentAlpha) {
+    if ( (pixelComponents != OFX::ePixelComponentRGBA) && (pixelComponents != OFX::ePixelComponentRGB) && (pixelComponents != OFX::ePixelComponentAlpha) ) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
@@ -203,7 +213,7 @@ ReadPFMPlugin::decode(const std::string& filename,
     int C = 0;
     int err = 0;
     double scale = 0.0;
-    while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+    while ( ( err = std::fscanf(nfile, "%1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
         int c = std::fgetc(nfile);
         (void)c;
     }
@@ -211,9 +221,10 @@ ReadPFMPlugin::decode(const std::string& filename,
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("PFM header not found in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+    while ( ( err = std::fscanf(nfile, " %1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
         int c = std::fgetc(nfile);
         (void)c;
     }
@@ -221,17 +232,19 @@ ReadPFMPlugin::decode(const std::string& filename,
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    if (W <= 0 || H <= 0 || 0xffff < W || 0xffff < H) {
+    if ( (W <= 0) || (H <= 0) || (0xffff < W) || (0xffff < H) ) {
         std::fclose(nfile);
         setPersistentMessage(OFX::Message::eMessageError, "", std::string("invalid WIDTH or HEIGHT fields in file \"") + filename + "\".");
         OFX::throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
 
     clearPersistentMessage();
-    while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+    while ( ( err = std::fscanf(nfile, " %1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
         int c = std::fgetc(nfile);
         (void)c;
     }
@@ -265,6 +278,7 @@ ReadPFMPlugin::decode(const std::string& filename,
             std::fclose(nfile);
             setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
             OFX::throwSuiteStatusException(kOfxStatFailed);
+
             return;
         }
 
@@ -273,45 +287,45 @@ ReadPFMPlugin::decode(const std::string& filename,
         }
 
         // now copy to the dstImg
-        float* dstPix = (float*)((char*)pixelData + (y - bounds.y1)*rowBytes);
+        float* dstPix = (float*)( (char*)pixelData + (y - bounds.y1) * rowBytes );
         if (C == 1) {
             switch (pixelComponentCount) {
-                case 1:
-                    copyLine<float,1,1>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                case 2:
-                    copyLine<float,1,2>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                case 3:
-                    copyLine<float,1,3>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                case 4:
-                    copyLine<float,1,4>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                default:
-                    break;
+            case 1:
+                copyLine<float, 1, 1>(&image.front(), x1, x2, C, dstPix);
+                break;
+            case 2:
+                copyLine<float, 1, 2>(&image.front(), x1, x2, C, dstPix);
+                break;
+            case 3:
+                copyLine<float, 1, 3>(&image.front(), x1, x2, C, dstPix);
+                break;
+            case 4:
+                copyLine<float, 1, 4>(&image.front(), x1, x2, C, dstPix);
+                break;
+            default:
+                break;
             }
         } else if (C == 3) {
             switch (pixelComponentCount) {
-                case 1:
-                    copyLine<float,3,1>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                case 2:
-                    copyLine<float,3,2>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                case 3:
-                    copyLine<float,3,3>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                case 4:
-                    copyLine<float,3,4>(&image.front(), x1, x2, C, dstPix);
-                    break;
-                default:
-                    break;
+            case 1:
+                copyLine<float, 3, 1>(&image.front(), x1, x2, C, dstPix);
+                break;
+            case 2:
+                copyLine<float, 3, 2>(&image.front(), x1, x2, C, dstPix);
+                break;
+            case 3:
+                copyLine<float, 3, 3>(&image.front(), x1, x2, C, dstPix);
+                break;
+            case 4:
+                copyLine<float, 3, 4>(&image.front(), x1, x2, C, dstPix);
+                break;
+            default:
+                break;
             }
         }
     }
     std::fclose(nfile);
-}
+} // ReadPFMPlugin::decode
 
 bool
 ReadPFMPlugin::getFrameBounds(const std::string& filename,
@@ -332,7 +346,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     int H = 0;
     int err = 0;
     double scale = 0.0;
-    while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+    while ( ( err = std::fscanf(nfile, "%1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
         int c = std::fgetc(nfile);
         (void)c;
     }
@@ -341,22 +355,24 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
         if (error) {
             *error = std::string("PFM header not found in file \"") + filename + "\".";
         }
+
         return false;
     }
-    while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+    while ( ( err = std::fscanf(nfile, " %1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
         int c = std::fgetc(nfile);
         (void)c;
     }
-    if ((err = std::sscanf(item, " %d %d", &W, &H)) < 2) {
+    if ( ( err = std::sscanf(item, " %d %d", &W, &H) ) < 2 ) {
         std::fclose(nfile);
         if (error) {
             *error =  std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".";
         }
+
         return false;
     }
     if (err == 2) {
         clearPersistentMessage();
-        while ((err = std::fscanf(nfile, " %1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+        while ( ( err = std::fscanf(nfile, " %1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
             int c = std::fgetc(nfile);
             (void)c;
         }
@@ -373,8 +389,9 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     *format = *bounds;
     *par = 1.;
     *tile_width = *tile_height = 0;
+
     return true;
-}
+} // ReadPFMPlugin::getFrameBounds
 
 /**
  * @brief Called when the input image/video file changed.
@@ -410,23 +427,24 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
     int startingTime = getStartingTime();
     std::string filename;
     OfxStatus st = getFilenameAtTime(startingTime, &filename);
-    if ( st != kOfxStatOK || filename.empty() ) {
+    if ( (st != kOfxStatOK) || filename.empty() ) {
         return false;
     }
     std::stringstream ss;
-    
+
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
-    
+
     char pfm_type = 0;
     char item[1024] = { 0 };
     int err = 0;
-    while ((err = std::fscanf(nfile, "%1023[^\n]", item)) != EOF && (*item == '#' || !err)) {
+    while ( ( err = std::fscanf(nfile, "%1023[^\n]", item) ) != EOF && (*item == '#' || !err) ) {
         int c = std::fgetc(nfile);
         (void)c;
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
+
         //setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
         return false;
     }
@@ -446,7 +464,7 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
 
         return false;
     }
-    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+    if ( (*components != OFX::ePixelComponentRGBA) && (*components != OFX::ePixelComponentAlpha) ) {
         *filePremult = OFX::eImageOpaque;
     } else {
         // output is always premultiplied
@@ -454,11 +472,9 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
     }
 
     return true;
-}
-
+} // ReadPFMPlugin::guessParamsFromFilename
 
 mDeclareReaderPluginFactory(ReadPFMPluginFactory, {}, false);
-
 void
 ReadPFMPluginFactory::load()
 {
@@ -471,7 +487,7 @@ void
 ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
-    
+
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
@@ -495,10 +511,11 @@ ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
     ReadPFMPlugin* ret =  new ReadPFMPlugin(handle, _extensions);
+
     ret->restoreStateFromParams();
+
     return ret;
 }
-
 
 static ReadPFMPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
