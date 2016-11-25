@@ -54,6 +54,9 @@
 
 using namespace OFX;
 
+using std::string;
+using std::vector;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "RunScriptOFX"
@@ -132,13 +135,13 @@ enum ERunScriptPluginParamType
 };
 
 static
-std::string
+string
 unsignedToString(unsigned i)
 {
     if (i == 0) {
         return "0";
     }
-    std::string nb;
+    string nb;
     for (unsigned j = i; j != 0; j /= 10) {
         nb = (char)( '0' + (j % 10) ) + nb;
     }
@@ -170,7 +173,7 @@ public:
     }
 
     /* override changedParam */
-    virtual void changedParam(const InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
 
     // override the rod call
     virtual bool getRegionOfDefinition(const RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
@@ -202,7 +205,7 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
             if ( (i == 0) && (getContext() == eContextFilter) ) {
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
-                const std::string istr = unsignedToString(i + 1);
+                const string istr = unsignedToString(i + 1);
                 _srcClip[i] = fetchClip(istr);
             }
             assert(_srcClip[i]);
@@ -214,7 +217,7 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     _param_count = fetchIntParam(kParamCount);
 
     for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
-        const std::string istr = unsignedToString(i + 1);
+        const string istr = unsignedToString(i + 1);
         _type[i] = fetchChoiceParam(kParamType + istr);
         _filename[i] = fetchStringParam(kParamTypeFilenameName + istr);
         _string[i] = fetchStringParam(kParamTypeStringName + istr);
@@ -305,7 +308,7 @@ RunScriptPlugin::render(const RenderArguments &args)
 
         return;
     }
-    std::string script;
+    string script;
     _script->getValue(script);
     ssize_t s = write( fd, script.c_str(), script.size() );
     close(fd);
@@ -324,7 +327,7 @@ RunScriptPlugin::render(const RenderArguments &args)
     }
 
     // build the command-line
-    std::vector<std::string> argv;
+    vector<string> argv;
     argv.push_back(scriptname);
 
     int param_count;
@@ -338,7 +341,7 @@ RunScriptPlugin::render(const RenderArguments &args)
         ValueParam *p = NULL;
         switch (t) {
         case eRunScriptPluginParamTypeFilename: {
-            std::string s;
+            string s;
             _filename[i]->getValue(s);
             p = _filename[i];
             DBG(std::cout << p->getName() << "=" << s);
@@ -346,7 +349,7 @@ RunScriptPlugin::render(const RenderArguments &args)
             break;
         }
         case eRunScriptPluginParamTypeString: {
-            std::string s;
+            string s;
             _string[i]->getValue(s);
             p = _string[i];
             DBG(std::cout << p->getName() << "=" << s);
@@ -381,9 +384,9 @@ RunScriptPlugin::render(const RenderArguments &args)
     }
 
     // execute the script
-    std::vector<std::string> errors;
+    vector<string> errors;
     redi::ipstream in(scriptname, argv, redi::pstreambuf::pstderr | redi::pstreambuf::pstderr);
-    std::string errmsg;
+    string errmsg;
     while ( std::getline(in, errmsg) ) {
         errors.push_back(errmsg);
         DBG(std::cout << "output: " << errmsg << std::endl);
@@ -433,7 +436,7 @@ RunScriptPlugin::render(const RenderArguments &args)
 
 void
 RunScriptPlugin::changedParam(const InstanceChangedArgs &args,
-                              const std::string &paramName)
+                              const string &paramName)
 {
     DBG(std::cout << "changed param " << paramName << " at time " << args.time << " reason = " << (int)args.reason <<  std::endl);
 
@@ -490,14 +493,14 @@ RunScriptPlugin::changedParam(const InstanceChangedArgs &args,
         ValueParam *p = NULL;
         switch (t) {
         case eRunScriptPluginParamTypeFilename: {
-            std::string s;
+            string s;
             _filename[i]->getValue(s);
             p = _filename[i];
             DBG(std::cout << p->getName() << "=" << s);
             break;
         }
         case eRunScriptPluginParamTypeString: {
-            std::string s;
+            string s;
             _string[i]->getValue(s);
             p = _string[i];
             DBG(std::cout << p->getName() << "=" << s);
@@ -650,8 +653,8 @@ RunScriptPluginFactory::describeInContext(ImageEffectDescriptor &desc,
     DBG(std::cout << "describing in context " << (int)context << std::endl);
 
     const ImageEffectHostDescription &gHostDescription = *getImageEffectHostDescription();
-    bool hostIsNuke = (gHostDescription.hostName.find("nuke") != std::string::npos ||
-                       gHostDescription.hostName.find("Nuke") != std::string::npos);
+    bool hostIsNuke = (gHostDescription.hostName.find("nuke") != string::npos ||
+                       gHostDescription.hostName.find("Nuke") != string::npos);
 
     // Source clip only in the filter context
     // create the mandated source clip
@@ -660,7 +663,7 @@ RunScriptPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         if ( (i == 0) && (context == eContextFilter) ) {
             srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName); // mandatory clip for the filter context
         } else {
-            const std::string istr = unsignedToString(i + 1);
+            const string istr = unsignedToString(i + 1);
             srcClip = desc.defineClip(istr);
         }
         srcClip->addSupportedComponent(ePixelComponentRGB);
@@ -710,7 +713,7 @@ RunScriptPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         // Note: if we use setIsSecret() here, the parameters cannot be shown again in Nuke.
         // We thus hide them in updateVisibility(), which is called after instance creation
         for (int i = 0; i < kRunScriptPluginArgumentsCount; ++i) {
-            const std::string istr = unsignedToString(i + 1);
+            const string istr = unsignedToString(i + 1);
             {
                 ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamType + istr);
                 param->setLabel(kParamTypeLabel + istr);
@@ -794,7 +797,7 @@ RunScriptPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         StringParamDescriptor *param = desc.defineStringParam(kParamScript);
         param->setLabel(kParamScriptLabel);
         if (hostIsNuke) {
-            param->setHint(std::string(kParamScriptHint) + " " kNukeWarnTcl);
+            param->setHint(string(kParamScriptHint) + " " kNukeWarnTcl);
         } else {
             param->setHint(kParamScriptHint);
         }
