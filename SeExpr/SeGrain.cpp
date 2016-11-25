@@ -54,7 +54,7 @@ GCC_DIAG_ON(deprecated)
 #    define snprintf _snprintf
 #  endif
 #  if defined(_MSC_VER) && _MSC_VER >= 1400
-#    define strtok_r(s,d,p) strtok_s(s,d,p)
+#    define strtok_r(s, d, p) strtok_s(s, d, p)
 #  endif
 #endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
@@ -67,16 +67,18 @@ GCC_DIAG_ON(deprecated)
 
 using namespace OFX;
 
+using std::string;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "SeGrain"
 #define kPluginGrouping "Draw"
 #define kPluginDescription \
-"Adds synthetic grain.\n" \
-"Push \"presets\" to get predefined types of grain, these are the correct size for 2K scans.\n" \
-"\n" \
-"You can also adjust the sliders to match a sample piece of grain. Find a sample with a rather constant background, blur it to remove the grain, and use as input to this. View with a wipe in the viewer so you can make a match. It helps to view and match each of the red, green, blue separately.\n" \
-"See also http://opticalenquiry.com/nuke/index.php?title=Integration#Matching_grain"
+    "Adds synthetic grain.\n" \
+    "Push \"presets\" to get predefined types of grain, these are the correct size for 2K scans.\n" \
+    "\n" \
+    "You can also adjust the sliders to match a sample piece of grain. Find a sample with a rather constant background, blur it to remove the grain, and use as input to this. View with a wipe in the viewer so you can make a match. It helps to view and match each of the red, green, blue separately.\n" \
+    "See also http://opticalenquiry.com/nuke/index.php?title=Integration#Matching_grain"
 
 #define kPluginIdentifier "net.sf.openfx.SeGrain"
 // History:
@@ -107,7 +109,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kSizeMin 0.001 // minimum grain size
 
-struct PresetStruct {
+struct PresetStruct
+{
     // Size:
     double red_size;
     double green_size;
@@ -126,12 +129,12 @@ struct PresetStruct {
 #define NUMPRESETS 6
 static struct PresetStruct gPresets[NUMPRESETS] =
 {
-  { /*red_size*/ 3.30, /*green_size*/ 2.90, /*blue_size*/ 2.50, /*red_i*/ 0.60, /*green_i*/ 0.60, /*blue_i*/ 0.60, /*red_m*/ 0.42, /*green_m*/ 0.46, /*blue_m*/ 0.85, /*label*/ "Kodak 5248" },
-  { /*red_size*/ 2.70, /*green_size*/ 2.60, /*blue_size*/ 2.40, /*red_i*/ 1.00, /*green_i*/ 0.76, /*blue_i*/ 0.65, /*red_m*/ 0.37, /*green_m*/ 0.60, /*blue_m*/ 1.65, /*label*/ "Kodak 5279" },
-  { /*red_size*/ 1.87, /*green_size*/ 2.60, /*blue_size*/ 2.44, /*red_i*/ 1.00, /*green_i*/ 0.76, /*blue_i*/ 0.79, /*red_m*/ 0.41, /*green_m*/ 0.60, /*blue_m*/ 1.80, /*label*/ "Kodak FX214" },
-  { /*red_size*/ 0.04, /*green_size*/ 0.10, /*blue_size*/ 0.90, /*red_i*/ 0.90, /*green_i*/ 0.76, /*blue_i*/ 0.81, /*red_m*/ 0.49, /*green_m*/ 0.50, /*blue_m*/ 1.55, /*label*/ "Kodak GT5274" },
-  { /*red_size*/ 0.23, /*green_size*/ 1.20, /*blue_size*/ 1.40, /*red_i*/ 0.60, /*green_i*/ 0.86, /*blue_i*/ 0.60, /*red_m*/ 0.48, /*green_m*/ 0.42, /*blue_m*/ 0.87, /*label*/ "Kodak 5217" },
-  { /*red_size*/ 0.10, /*green_size*/ 1.60, /*blue_size*/ 1.91, /*red_i*/ 0.60, /*green_i*/ 0.86, /*blue_i*/ 0.73, /*red_m*/ 0.38, /*green_m*/ 0.17, /*blue_m*/ 0.87, /*label*/ "Kodak 5218" },
+    { /*red_size*/ 3.30, /*green_size*/ 2.90, /*blue_size*/ 2.50, /*red_i*/ 0.60, /*green_i*/ 0.60, /*blue_i*/ 0.60, /*red_m*/ 0.42, /*green_m*/ 0.46, /*blue_m*/ 0.85, /*label*/ "Kodak 5248" },
+    { /*red_size*/ 2.70, /*green_size*/ 2.60, /*blue_size*/ 2.40, /*red_i*/ 1.00, /*green_i*/ 0.76, /*blue_i*/ 0.65, /*red_m*/ 0.37, /*green_m*/ 0.60, /*blue_m*/ 1.65, /*label*/ "Kodak 5279" },
+    { /*red_size*/ 1.87, /*green_size*/ 2.60, /*blue_size*/ 2.44, /*red_i*/ 1.00, /*green_i*/ 0.76, /*blue_i*/ 0.79, /*red_m*/ 0.41, /*green_m*/ 0.60, /*blue_m*/ 1.80, /*label*/ "Kodak FX214" },
+    { /*red_size*/ 0.04, /*green_size*/ 0.10, /*blue_size*/ 0.90, /*red_i*/ 0.90, /*green_i*/ 0.76, /*blue_i*/ 0.81, /*red_m*/ 0.49, /*green_m*/ 0.50, /*blue_m*/ 1.55, /*label*/ "Kodak GT5274" },
+    { /*red_size*/ 0.23, /*green_size*/ 1.20, /*blue_size*/ 1.40, /*red_i*/ 0.60, /*green_i*/ 0.86, /*blue_i*/ 0.60, /*red_m*/ 0.48, /*green_m*/ 0.42, /*blue_m*/ 0.87, /*label*/ "Kodak 5217" },
+    { /*red_size*/ 0.10, /*green_size*/ 1.60, /*blue_size*/ 1.91, /*red_i*/ 0.60, /*green_i*/ 0.86, /*blue_i*/ 0.73, /*red_m*/ 0.38, /*green_m*/ 0.17, /*blue_m*/ 0.87, /*label*/ "Kodak 5218" },
 };
 
 #define kParamGroupSize "grainSize"
@@ -206,22 +209,23 @@ static struct PresetStruct gPresets[NUMPRESETS] =
 #define kParamIntensityBlack "grainBlack"
 #define kParamIntensityBlackLabel "Black"
 #define kParamIntensityBlackHint "Amount of grain to add everywhere."
-#define kParamIntensityBlackDefault 0.,0.,0.
+#define kParamIntensityBlackDefault 0., 0., 0.
 
 #define kParamIntensityMinimum "grainMinimum"
 #define kParamIntensityMinimumLabel "Minimum"
 #define kParamIntensityMinimumHint "Minimum black level."
-#define kParamIntensityMinimumDefault 0.,0.,0.
+#define kParamIntensityMinimumDefault 0., 0., 0.
 
 
 static bool gHostIsNatron   = false;
 
-class SeGrainProcessorBase : public OFX::ImageProcessor
+class SeGrainProcessorBase
+    : public ImageProcessor
 {
 protected:
-    const OFX::Image *_srcImg;
-    const OFX::Image *_maskImg;
-    bool  _doMasking;
+    const Image *_srcImg;
+    const Image *_maskImg;
+    bool _doMasking;
     double _mix;
     bool _maskInvert;
     OfxPointD _renderScale;
@@ -233,28 +237,30 @@ protected:
     double _colorCorr;
     double _black[3];
     double _minimum[3];
-    OFX::Matrix3x3 _invtransform[3];
+    Matrix3x3 _invtransform[3];
 
 public:
-    SeGrainProcessorBase(OFX::ImageEffect &instance, const OFX::RenderArguments &args)
-    : OFX::ImageProcessor(instance)
-    , _srcImg(0)
-    , _maskImg(0)
-    , _doMasking(false)
-    , _mix(1.)
-    , _maskInvert(false)
-    , _renderScale(args.renderScale)
-    , _time(args.time)
-    , _seed(0)
-    , _colorCorr(0.)
+    SeGrainProcessorBase(ImageEffect &instance,
+                         const RenderArguments &args)
+        : ImageProcessor(instance)
+        , _srcImg(0)
+        , _maskImg(0)
+        , _doMasking(false)
+        , _mix(1.)
+        , _maskInvert(false)
+        , _renderScale(args.renderScale)
+        , _time(args.time)
+        , _seed(0)
+        , _colorCorr(0.)
     {
     }
 
-    void setSrcImg(const OFX::Image *v) {_srcImg = v;}
+    void setSrcImg(const Image *v) {_srcImg = v; }
 
-    void setMaskImg(const OFX::Image *v, bool maskInvert) {_maskImg = v; _maskInvert = maskInvert;}
+    void setMaskImg(const Image *v,
+                    bool maskInvert) {_maskImg = v; _maskInvert = maskInvert; }
 
-    void doMasking(bool v) {_doMasking = v;}
+    void doMasking(bool v) {_doMasking = v; }
 
     void setValues(double mix,
                    double seed,
@@ -270,40 +276,39 @@ public:
         // set plugin parameter values
         _seed = seed;
         _colorCorr = colorCorr;
-        for (int c = 0;c < 3; ++c) {
+        for (int c = 0; c < 3; ++c) {
             //_size[c] = size[c];
             //_irregularity[c] = irregularity[c];
             _intensity[c] = intensity[c];
             _black[c] = black[c];
             _minimum[c] = minimum[c];
 
-            Matrix3x3 sizeMat(1./_renderScale.x/std::max(size[c], kSizeMin), 0., 0.,
-                              0., 1./_renderScale.x/std::max(size[c], kSizeMin), 0.,
-                              0., 0., (staticSeed ? 0. : _time) + (1+c) * seed + irregularity[c]/2.);
+            Matrix3x3 sizeMat(1. / _renderScale.x / std::max(size[c], kSizeMin), 0., 0.,
+                              0., 1. / _renderScale.x / std::max(size[c], kSizeMin), 0.,
+                              0., 0., (staticSeed ? 0. : _time) + (1 + c) * seed + irregularity[c] / 2.);
             double rads = irregularity[c] * 45. * M_PI / 180.;
             double ca = std::cos(rads);
             double sa = std::sin(rads);
             Matrix3x3 rotX(1, 0, 0,
                            0, ca, sa,
-                           0,-sa, ca);
+                           0, -sa, ca);
             Matrix3x3 rotY(0, 1, 0,
                            sa, 0, ca,
                            ca, 0, -sa);
             _invtransform[c] = rotY * rotX * sizeMat;
         }
     }
-
 };
 
 
-
 template <class PIX, int nComponents, int maxValue>
-class SeGrainProcessor : public SeGrainProcessorBase
+class SeGrainProcessor
+    : public SeGrainProcessorBase
 {
-    
 public:
-    SeGrainProcessor(OFX::ImageEffect &instance, const OFX::RenderArguments &args)
-    : SeGrainProcessorBase(instance,args)
+    SeGrainProcessor(ImageEffect &instance,
+                     const RenderArguments &args)
+        : SeGrainProcessorBase(instance, args)
     {
         //const double time = args.time;
 
@@ -318,7 +323,7 @@ public:
         float unpPix[4];
 
         for (int y = procWindow.y1; y < procWindow.y2; y++) {
-            if (_effect.abort()) {
+            if ( _effect.abort() ) {
                 break;
             }
 
@@ -334,7 +339,7 @@ public:
                     double args[3] = { pc.x, pc.y, pc.z };
                     // process the pixel (the actual computation goes here)
                     // double fbm(int n, const SeVec3d* args) in SeExprBuiltins.cpp
-                    SeExpr::FBM<3,1,false>(args, &result[c], octaves, lacunarity, gain);
+                    SeExpr::FBM<3, 1, false>(args, &result[c], octaves, lacunarity, gain);
                 }
                 if (_colorCorr != 0.) {
                     // apply color correction:
@@ -346,7 +351,7 @@ public:
                     }
                 }
                 for (int c = 0; c < 3; ++c) {
-                    unpPix[c] = std::max(_minimum[c], unpPix[c] + result[c] *(unpPix[c] * _intensity[c] + _black[c]));
+                    unpPix[c] = std::max( _minimum[c], unpPix[c] + result[c] * (unpPix[c] * _intensity[c] + _black[c]) );
                 }
                 ofxsMaskMixPix<PIX, nComponents, maxValue, true>(unpPix, x, y, srcPix, _doMasking, _maskImg, (float)_mix, _maskInvert, dstPix);
                 dstPix += nComponents;
@@ -357,30 +362,31 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /** @brief The plugin that does our work */
-class SeGrainPlugin : public OFX::ImageEffect
+class SeGrainPlugin
+    : public ImageEffect
 {
 public:
 
     /** @brief ctor */
     SeGrainPlugin(OfxImageEffectHandle handle)
-    : ImageEffect(handle)
-    , _dstClip(0)
-    , _srcClip(0)
-    , _maskClip(0)
-    , _mix(0)
-    , _maskApply(0)
-    , _maskInvert(0)
+        : ImageEffect(handle)
+        , _dstClip(0)
+        , _srcClip(0)
+        , _maskClip(0)
+        , _mix(0)
+        , _maskApply(0)
+        , _maskInvert(0)
     {
         _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-        assert(_dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == ePixelComponentRGB ||
-                            _dstClip->getPixelComponents() == ePixelComponentRGBA ||
-                            _dstClip->getPixelComponents() == ePixelComponentAlpha));
-        _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
-        assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
-               (_srcClip && (!_srcClip->isConnected() || _srcClip->getPixelComponents() == ePixelComponentRGB ||
-                             _srcClip->getPixelComponents() == ePixelComponentRGBA ||
-                             _srcClip->getPixelComponents() == ePixelComponentAlpha)));
-        _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
+        assert( _dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == ePixelComponentRGB ||
+                             _dstClip->getPixelComponents() == ePixelComponentRGBA ||
+                             _dstClip->getPixelComponents() == ePixelComponentAlpha) );
+        _srcClip = getContext() == eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+        assert( (!_srcClip && getContext() == eContextGenerator) ||
+                ( _srcClip && (!_srcClip->isConnected() || _srcClip->getPixelComponents() == ePixelComponentRGB ||
+                               _srcClip->getPixelComponents() == ePixelComponentRGBA ||
+                               _srcClip->getPixelComponents() == ePixelComponentAlpha) ) );
+        _maskClip = fetchClip(getContext() == eContextPaint ? "Brush" : "Mask");
         assert(!_maskClip || !_maskClip->isConnected() || _maskClip->getPixelComponents() == ePixelComponentAlpha);
 
         // fetch noise parameters
@@ -413,27 +419,27 @@ public:
 
 private:
     /* Override the render */
-    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
+    virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     template<int nComponents>
-    void renderForComponents(const OFX::RenderArguments &args);
+    void renderForComponents(const RenderArguments &args);
 
     template <class PIX, int nComponents, int maxValue>
-    void renderForBitDepth(const OFX::RenderArguments &args);
+    void renderForBitDepth(const RenderArguments &args);
 
     /* set up and run a processor */
-    void setupAndProcess(SeGrainProcessorBase &, const OFX::RenderArguments &args);
+    void setupAndProcess(SeGrainProcessorBase &, const RenderArguments &args);
 
-    bool getInverseTransformCanonical(double time, OFX::Matrix3x3* invtransform) const;
+    bool getInverseTransformCanonical(double time, Matrix3x3* invtransform) const;
 
     virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
-
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
 
     /* Override the clip preferences, we need to say we are setting the frame varying flag */
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL
+    virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL
     {
         bool staticSeed = _staticSeed->getValue();
+
         if (!staticSeed) {
             clipPreferences.setOutputFrameVarying(true);
         }
@@ -442,14 +448,12 @@ private:
 
 private:
     // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *_dstClip;
-    OFX::Clip *_srcClip;
-    OFX::Clip *_maskClip;
-
+    Clip *_dstClip;
+    Clip *_srcClip;
+    Clip *_maskClip;
     DoubleParam* _mix;
     BooleanParam* _maskApply;
     BooleanParam* _maskInvert;
-
     DoubleParam* _seed;
     BooleanParam* _staticSeed;
     ChoiceParam* _presets;
@@ -472,49 +476,51 @@ private:
 
 /* set up and run a processor */
 void
-SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::RenderArguments &args)
+SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor,
+                               const RenderArguments &args)
 {
     const double time = args.time;
-    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(time));
-    if (!dst.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+
+    std::auto_ptr<Image> dst( _dstClip->fetchImage(time) );
+    if ( !dst.get() ) {
+        throwSuiteStatusException(kOfxStatFailed);
     }
-    OFX::BitDepthEnum         dstBitDepth    = dst->getPixelDepth();
-    OFX::PixelComponentEnum   dstComponents  = dst->getPixelComponents();
-    if (dstBitDepth != _dstClip->getPixelDepth() ||
-        dstComponents != _dstClip->getPixelComponents()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong depth or components");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    BitDepthEnum dstBitDepth    = dst->getPixelDepth();
+    PixelComponentEnum dstComponents  = dst->getPixelComponents();
+    if ( ( dstBitDepth != _dstClip->getPixelDepth() ) ||
+         ( dstComponents != _dstClip->getPixelComponents() ) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong depth or components");
+        throwSuiteStatusException(kOfxStatFailed);
     }
-    if (dst->getRenderScale().x != args.renderScale.x ||
-        dst->getRenderScale().y != args.renderScale.y ||
-        (dst->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && dst->getField() != args.fieldToRender)) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    if ( (dst->getRenderScale().x != args.renderScale.x) ||
+         ( dst->getRenderScale().y != args.renderScale.y) ||
+         ( ( dst->getField() != eFieldNone) /* for DaVinci Resolve */ && ( dst->getField() != args.fieldToRender) ) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
     }
-    std::auto_ptr<const OFX::Image> src((_srcClip && _srcClip->isConnected()) ?
-                                        _srcClip->fetchImage(time) : 0);
-    if (src.get()) {
-        if (src->getRenderScale().x != args.renderScale.x ||
-            src->getRenderScale().y != args.renderScale.y ||
-            (src->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && src->getField() != args.fieldToRender)) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+    std::auto_ptr<const Image> src( ( _srcClip && _srcClip->isConnected() ) ?
+                                    _srcClip->fetchImage(time) : 0 );
+    if ( src.get() ) {
+        if ( (src->getRenderScale().x != args.renderScale.x) ||
+             ( src->getRenderScale().y != args.renderScale.y) ||
+             ( ( src->getField() != eFieldNone) /* for DaVinci Resolve */ && ( src->getField() != args.fieldToRender) ) ) {
+            setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            throwSuiteStatusException(kOfxStatFailed);
         }
-        OFX::BitDepthEnum    srcBitDepth      = src->getPixelDepth();
-        OFX::PixelComponentEnum srcComponents = src->getPixelComponents();
-        if (srcBitDepth != dstBitDepth || srcComponents != dstComponents) {
-            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+        BitDepthEnum srcBitDepth      = src->getPixelDepth();
+        PixelComponentEnum srcComponents = src->getPixelComponents();
+        if ( (srcBitDepth != dstBitDepth) || (srcComponents != dstComponents) ) {
+            throwSuiteStatusException(kOfxStatErrImageFormat);
         }
     }
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
-    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
-    if (mask.get()) {
-        if (mask->getRenderScale().x != args.renderScale.x ||
-            mask->getRenderScale().y != args.renderScale.y ||
-            (mask->getField() != OFX::eFieldNone /* for DaVinci Resolve */ && mask->getField() != args.fieldToRender)) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+    bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(time) ) && _maskClip && _maskClip->isConnected() );
+    std::auto_ptr<const Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    if ( mask.get() ) {
+        if ( (mask->getRenderScale().x != args.renderScale.x) ||
+             ( mask->getRenderScale().y != args.renderScale.y) ||
+             ( ( mask->getField() != eFieldNone) /* for DaVinci Resolve */ && ( mask->getField() != args.fieldToRender) ) ) {
+            setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            throwSuiteStatusException(kOfxStatFailed);
         }
     }
     if (doMasking) {
@@ -523,22 +529,21 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
         processor.doMasking(true);
         processor.setMaskImg(mask.get(), maskInvert);
     }
-    
-    processor.setDstImg(dst.get());
-    processor.setSrcImg(src.get());
+
+    processor.setDstImg( dst.get() );
+    processor.setSrcImg( src.get() );
     processor.setRenderWindow(args.renderWindow);
 
     // fetch grain parameter values
 
     double mix = _mix->getValueAtTime(time);
-
     double seed = _seed->getValueAtTime(time);
     bool staticSeed = _staticSeed->getValueAtTime(time);
     double sizeAll = _sizeAll->getValueAtTime(time);
     double size[3];
     double irregularity[3];
     double intensity[3];
-    for (int c=0; c < 3; ++c) {
+    for (int c = 0; c < 3; ++c) {
         size[c] = _size[c]->getValueAtTime(time) * sizeAll;
         irregularity[c] = _irregularity[c]->getValueAtTime(time);
         intensity[c] = _intensity[c]->getValueAtTime(time);
@@ -552,83 +557,87 @@ SeGrainPlugin::setupAndProcess(SeGrainProcessorBase &processor, const OFX::Rende
 
     processor.setValues(mix, seed, staticSeed, size, irregularity, intensity, colorCorr, black, minimum);
     processor.process();
-}
+} // SeGrainPlugin::setupAndProcess
 
 // the overridden render function
 void
-SeGrainPlugin::render(const OFX::RenderArguments &args)
+SeGrainPlugin::render(const RenderArguments &args)
 {
     //std::cout << "render!\n";
     // instantiate the render code based on the pixel depth of the dst clip
-    OFX::PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
-    
-    assert(kSupportsMultipleClipPARs   || !_srcClip || _srcClip->getPixelAspectRatio() == _dstClip->getPixelAspectRatio());
-    assert(kSupportsMultipleClipDepths || !_srcClip || _srcClip->getPixelDepth()       == _dstClip->getPixelDepth());
-    assert(dstComponents == OFX::ePixelComponentRGBA || dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentXY || dstComponents == OFX::ePixelComponentAlpha);
+    PixelComponentEnum dstComponents  = _dstClip->getPixelComponents();
+
+    assert( kSupportsMultipleClipPARs   || !_srcClip || _srcClip->getPixelAspectRatio() == _dstClip->getPixelAspectRatio() );
+    assert( kSupportsMultipleClipDepths || !_srcClip || _srcClip->getPixelDepth()       == _dstClip->getPixelDepth() );
+    assert(dstComponents == ePixelComponentRGBA || dstComponents == ePixelComponentRGB || dstComponents == ePixelComponentXY || dstComponents == ePixelComponentAlpha);
     // do the rendering
     switch (dstComponents) {
-        case OFX::ePixelComponentRGBA:
-            renderForComponents<4>(args);
-            break;
-        case OFX::ePixelComponentRGB:
-            renderForComponents<3>(args);
-            break;
-        case OFX::ePixelComponentXY:
-            renderForComponents<2>(args);
-            break;
-        case OFX::ePixelComponentAlpha:
-            renderForComponents<1>(args);
-            break;
-        default:
-            //std::cout << "components usupported\n";
-            OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-            break;
+    case ePixelComponentRGBA:
+        renderForComponents<4>(args);
+        break;
+    case ePixelComponentRGB:
+        renderForComponents<3>(args);
+        break;
+    case ePixelComponentXY:
+        renderForComponents<2>(args);
+        break;
+    case ePixelComponentAlpha:
+        renderForComponents<1>(args);
+        break;
+    default:
+        //std::cout << "components usupported\n";
+        throwSuiteStatusException(kOfxStatErrUnsupported);
+        break;
     } // switch
-    //std::cout << "render! OK\n";
+      //std::cout << "render! OK\n";
 }
 
 template<int nComponents>
 void
-SeGrainPlugin::renderForComponents(const OFX::RenderArguments &args)
+SeGrainPlugin::renderForComponents(const RenderArguments &args)
 {
-    OFX::BitDepthEnum dstBitDepth    = _dstClip->getPixelDepth();
+    BitDepthEnum dstBitDepth    = _dstClip->getPixelDepth();
+
     switch (dstBitDepth) {
-        case OFX::eBitDepthUByte:
-            renderForBitDepth<unsigned char, nComponents, 255>(args);
-            break;
+    case eBitDepthUByte:
+        renderForBitDepth<unsigned char, nComponents, 255>(args);
+        break;
 
-        case OFX::eBitDepthUShort:
-            renderForBitDepth<unsigned short, nComponents, 65535>(args);
-            break;
+    case eBitDepthUShort:
+        renderForBitDepth<unsigned short, nComponents, 65535>(args);
+        break;
 
-        case OFX::eBitDepthFloat:
-            renderForBitDepth<float, nComponents, 1>(args);
-            break;
-        default:
-            //std::cout << "depth usupported\n";
-            OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
+    case eBitDepthFloat:
+        renderForBitDepth<float, nComponents, 1>(args);
+        break;
+    default:
+        //std::cout << "depth usupported\n";
+        throwSuiteStatusException(kOfxStatErrUnsupported);
     }
 }
 
 template <class PIX, int nComponents, int maxValue>
 void
-SeGrainPlugin::renderForBitDepth(const OFX::RenderArguments &args)
+SeGrainPlugin::renderForBitDepth(const RenderArguments &args)
 {
     SeGrainProcessor<PIX, nComponents, maxValue> fred(*this, args);
     setupAndProcess(fred, args);
 }
 
-
 bool
-SeGrainPlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &/*identityTime*/)
+SeGrainPlugin::isIdentity(const IsIdentityArguments &args,
+                          Clip * &identityClip,
+                          double & /*identityTime*/)
 {
     //std::cout << "isIdentity!\n";
     const double time = args.time;
     double mix;
+
     _mix->getValueAtTime(time, mix);
 
     if (mix == 0. /*|| (!processR && !processG && !processB && !processA)*/) {
         identityClip = _srcClip;
+
         return true;
     }
 
@@ -639,16 +648,17 @@ SeGrainPlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip,
     //    return true;
     //}
 
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
+    bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(time) ) && _maskClip && _maskClip->isConnected() );
     if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if ( !Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0) ) {
                 identityClip = _srcClip;
+
                 return true;
             }
         }
@@ -659,11 +669,12 @@ SeGrainPlugin::isIdentity(const IsIdentityArguments &args, Clip * &identityClip,
 }
 
 void
-SeGrainPlugin::changedParam(const OFX::InstanceChangedArgs &args,
-                         const std::string &paramName)
+SeGrainPlugin::changedParam(const InstanceChangedArgs &args,
+                            const string &paramName)
 {
     const double time = args.time;
-    if (paramName == kParamPresets && args.reason == OFX::eChangeUserEdit) {
+
+    if ( (paramName == kParamPresets) && (args.reason == eChangeUserEdit) ) {
         int preset;
         _presets->getValueAtTime(time, preset);
         if (preset >= NUMPRESETS) {
@@ -687,11 +698,15 @@ SeGrainPlugin::changedParam(const OFX::InstanceChangedArgs &args,
     }
 }
 
-class SeGrainOverlayDescriptor : public DefaultEffectOverlayDescriptor<SeGrainOverlayDescriptor, OFX::OverlayInteractFromHelpers2<TransformInteractHelper, RampInteractHelper> > {};
+class SeGrainOverlayDescriptor
+    : public DefaultEffectOverlayDescriptor<SeGrainOverlayDescriptor, OverlayInteractFromHelpers2<TransformInteractHelper, RampInteractHelper> >
+{
+};
 
 mDeclarePluginFactory(SeGrainPluginFactory, {}, {});
 
-void SeGrainPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+SeGrainPluginFactory::describe(ImageEffectDescriptor &desc)
 {
     //std::cout << "describe!\n";
     // basic labels
@@ -705,7 +720,7 @@ void SeGrainPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedBitDepth(eBitDepthUByte);
     desc.addSupportedBitDepth(eBitDepthUShort);
     desc.addSupportedBitDepth(eBitDepthFloat);
-    
+
     // set a few flags
     desc.setSingleInstance(false);
     desc.setHostFrameThreading(false);
@@ -719,15 +734,16 @@ void SeGrainPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.setOverlayInteractDescriptor(new SeGrainOverlayDescriptor);
 
 #ifdef OFX_EXTENSIONS_NATRON
-    desc.setChannelSelector(OFX::ePixelComponentNone); // we have our own channel selector
+    desc.setChannelSelector(ePixelComponentNone); // we have our own channel selector
 #endif
     //std::cout << "describe! OK\n";
 }
 
-
-void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context)
+void
+SeGrainPluginFactory::describeInContext(ImageEffectDescriptor &desc,
+                                        ContextEnum context)
 {
-    gHostIsNatron = (OFX::getImageEffectHostDescription()->isNatron);
+    gHostIsNatron = (getImageEffectHostDescription()->isNatron);
 
     //std::cout << "describeInContext!\n";
     // Source clip only in the filter context
@@ -741,7 +757,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     srcClip->setSupportsTiles(kSupportsTiles);
     srcClip->setIsMask(false);
     srcClip->setOptional(false);
-    
+
     // create the mandated output clip
     ClipDescriptor *dstClip = desc.defineClip(kOfxImageEffectOutputClipName);
     dstClip->addSupportedComponent(ePixelComponentRGBA);
@@ -749,7 +765,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     dstClip->addSupportedComponent(ePixelComponentXY);
     //dstClip->addSupportedComponent(ePixelComponentAlpha);
     dstClip->setSupportsTiles(kSupportsTiles);
-    
+
     ClipDescriptor *maskClip = (context == eContextPaint) ? desc.defineClip("Brush") : desc.defineClip("Mask");
     maskClip->addSupportedComponent(ePixelComponentAlpha);
     maskClip->setTemporalClipAccess(false);
@@ -761,9 +777,9 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
 
     // make some pages and to things in
     PageParamDescriptor *page = desc.definePageParam("Controls");
-    
+
     {
-        OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSeed);
+        DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSeed);
         param->setLabel(kParamSeedLabel);
         param->setHint(kParamSeedHint);
         param->setDefault(kParamSeedDefault);
@@ -776,7 +792,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamStaticSeed);
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kParamStaticSeed);
         param->setLabel(kParamStaticSeedLabel);
         param->setHint(kParamStaticSeedHint);
         param->setDefault(false);
@@ -788,7 +804,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPresets);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPresets);
         param->setLabel(kParamPresetsLabel);
         param->setHint(kParamPresetsHint);
         for (int i = 0; i < NUMPRESETS; ++i) {
@@ -802,15 +818,15 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     {
-        OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupSize);
+        GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupSize);
         if (group) {
             group->setLabel(kParamGroupSizeLabel);
             group->setHint(kParamGroupSizeHint);
             group->setOpen(true);
         }
-        
+
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeAll);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeAll);
             param->setLabel(kParamSizeAllLabel);
             param->setHint(kParamSizeAllHint);
             param->setRange(0., DBL_MAX);
@@ -825,7 +841,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeRed);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeRed);
             param->setLabel(kParamSizeRedLabel);
             param->setHint(kParamSizeRedHint);
             param->setRange(0., DBL_MAX);
@@ -839,7 +855,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeGreen);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeGreen);
             param->setLabel(kParamSizeGreenLabel);
             param->setHint(kParamSizeGreenHint);
             param->setRange(0., DBL_MAX);
@@ -853,7 +869,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeBlue);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamSizeBlue);
             param->setLabel(kParamSizeBlueLabel);
             param->setHint(kParamSizeBlueHint);
             param->setRange(0., DBL_MAX);
@@ -873,14 +889,14 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     {
-        OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupIrregularity);
+        GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupIrregularity);
         if (group) {
             group->setLabel(kParamGroupIrregularityLabel);
             group->setHint(kParamGroupIrregularityHint);
             group->setOpen(true);
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityRed);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityRed);
             param->setLabel(kParamIrregularityRedLabel);
             param->setHint(kParamIrregularityRedHint);
             param->setDefault(kParamIrregularityRedDefault);
@@ -894,7 +910,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityGreen);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityGreen);
             param->setLabel(kParamIrregularityGreenLabel);
             param->setHint(kParamIrregularityGreenHint);
             param->setDefault(kParamIrregularityGreenDefault);
@@ -908,7 +924,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityBlue);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIrregularityBlue);
             param->setLabel(kParamIrregularityBlueLabel);
             param->setHint(kParamIrregularityBlueHint);
             param->setDefault(kParamIrregularityBlueDefault);
@@ -928,14 +944,14 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     {
-        OFX::GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupIntensity);
+        GroupParamDescriptor* group = desc.defineGroupParam(kParamGroupIntensity);
         if (group) {
             group->setLabel(kParamGroupIntensityLabel);
             group->setHint(kParamGroupIntensityHint);
             group->setOpen(true);
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityRed);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityRed);
             param->setLabel(kParamIntensityRedLabel);
             param->setHint(kParamIntensityRedHint);
             param->setDefault(kParamIntensityRedDefault);
@@ -949,7 +965,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityGreen);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityGreen);
             param->setLabel(kParamIntensityGreenLabel);
             param->setHint(kParamIntensityGreenHint);
             param->setDefault(kParamIntensityGreenDefault);
@@ -963,7 +979,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityBlue);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamIntensityBlue);
             param->setLabel(kParamIntensityBlueLabel);
             param->setHint(kParamIntensityBlueHint);
             param->setDefault(kParamIntensityBlueDefault);
@@ -977,7 +993,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::DoubleParamDescriptor* param = desc.defineDoubleParam(kParamColorCorr);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamColorCorr);
             param->setLabel(kParamColorCorrLabel);
             param->setHint(kParamColorCorrHint);
             param->setDefault(kParamColorCorrDefault);
@@ -992,7 +1008,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::RGBParamDescriptor* param = desc.defineRGBParam(kParamIntensityBlack);
+            RGBParamDescriptor* param = desc.defineRGBParam(kParamIntensityBlack);
             param->setLabel(kParamIntensityBlackLabel);
             param->setHint(kParamIntensityBlackHint);
             param->setDefault(kParamIntensityBlackDefault);
@@ -1004,7 +1020,7 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
             }
         }
         {
-            OFX::RGBParamDescriptor* param = desc.defineRGBParam(kParamIntensityMinimum);
+            RGBParamDescriptor* param = desc.defineRGBParam(kParamIntensityMinimum);
             param->setLabel(kParamIntensityMinimumLabel);
             param->setHint(kParamIntensityMinimumHint);
             param->setDisplayRange(0., 0., 0., 0.01, 0.01, 0.01);
@@ -1037,13 +1053,14 @@ void SeGrainPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, O
     }
 
     //std::cout << "describeInContext! OK\n";
-}
+} // SeGrainPluginFactory::describeInContext
 
-OFX::ImageEffect* SeGrainPluginFactory::createInstance(OfxImageEffectHandle handle, OFX::ContextEnum /*context*/)
+ImageEffect*
+SeGrainPluginFactory::createInstance(OfxImageEffectHandle handle,
+                                     ContextEnum /*context*/)
 {
     return new SeGrainPlugin(handle);
 }
-
 
 static SeGrainPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
