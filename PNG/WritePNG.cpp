@@ -40,6 +40,9 @@
 using namespace OFX;
 using namespace OFX::IO;
 
+using std::string;
+using std::vector;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "WritePNG"
@@ -103,14 +106,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kWritePNGParamDitherHint "When checked, conversion from float input buffers to 8-bit PNG will use a dithering algorithm to reduce quantization artifacts. This has no effect when writing to 16bit PNG"
 
 #ifdef OFX_USE_MULTITHREAD_MUTEX
-typedef OFX::MultiThread::Mutex Mutex;
-typedef OFX::MultiThread::AutoMutex AutoMutex;
+typedef MultiThread::Mutex Mutex;
+typedef MultiThread::AutoMutex AutoMutex;
 #else
 typedef tthread::fast_mutex Mutex;
-typedef OFX::MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
+typedef MultiThread::AutoMutexT<tthread::fast_mutex> AutoMutex;
 #endif
 
-static OFX::Color::LutManager<Mutex>* gLutManager;
+static Color::LutManager<Mutex>* gLutManager;
 
 
 // Try to deduce endianness
@@ -229,10 +232,10 @@ destroy_write_struct (png_structp& sp,
 /// Helper function - writes a single parameter.
 ///
 /*inline bool
-   put_parameter (png_structp& sp, png_infop& ip, const std::string &_name,
-               TypeDesc type, const void *data, std::vector<png_text>& text)
+   put_parameter (png_structp& sp, png_infop& ip, const string &_name,
+               TypeDesc type, const void *data, vector<png_text>& text)
    {
-    std::string name = _name;
+    string name = _name;
 
     // Things to skip
    if (Strutil::iequals(name, "planarconfig"))  // No choice for PNG files
@@ -346,15 +349,15 @@ class WritePNGPlugin
 {
 public:
 
-    WritePNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    WritePNGPlugin(OfxImageEffectHandle handle, const vector<string>& extensions);
 
     virtual ~WritePNGPlugin();
 
 private:
 
-    virtual void encode(const std::string& filename,
+    virtual void encode(const string& filename,
                         const OfxTime time,
-                        const std::string& viewName,
+                        const string& viewName,
                         const float *pixelData,
                         const OfxRectI& bounds,
                         const float pixelAspectRatio,
@@ -362,12 +365,12 @@ private:
                         const int dstNCompsStartIndex,
                         const int dstNComps,
                         const int rowBytes) OVERRIDE FINAL;
-    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImageUnPreMultiplied; }
+    virtual bool isImageFile(const string& fileExtension) const OVERRIDE FINAL;
+    virtual PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return eImageUnPreMultiplied; }
 
-    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
+    virtual void onOutputFileChanged(const string& newFile, bool setColorSpace) OVERRIDE FINAL;
 
-    void openFile(const std::string& filename,
+    void openFile(const string& filename,
                   int nChannels,
                   png_structp* png,
                   png_infop* info,
@@ -381,7 +384,7 @@ private:
                      int width,
                      int height,
                      double par,
-                     const std::string& outputColorspace,
+                     const string& outputColorspace,
                      BitDepthEnum bitdepth);
 
     template <int srcNComps, int dstNComps>
@@ -406,16 +409,15 @@ private:
                     int dstNComps);
 
 
-    OFX::ChoiceParam* _compression;
-    OFX::IntParam* _compressionLevel;
-    OFX::ChoiceParam* _bitdepth;
-    OFX::BooleanParam* _ditherEnabled;
-
-    const OFX::Color::Lut* _ditherLut;
+    ChoiceParam* _compression;
+    IntParam* _compressionLevel;
+    ChoiceParam* _bitdepth;
+    BooleanParam* _ditherEnabled;
+    const Color::Lut* _ditherLut;
 };
 
 WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle,
-                               const std::vector<std::string>& extensions)
+                               const vector<string>& extensions)
     : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
     , _compression(0)
     , _compressionLevel(0)
@@ -435,14 +437,14 @@ WritePNGPlugin::~WritePNGPlugin()
 }
 
 void
-WritePNGPlugin::openFile(const std::string& filename,
+WritePNGPlugin::openFile(const string& filename,
                          int nChannels,
                          png_structp* png,
                          png_infop* info,
                          std::FILE** file,
                          int *color_type) const
 {
-    *file = OFX::fopen_utf8(filename.c_str(), "wb");
+    *file = fopen_utf8(filename.c_str(), "wb");
     if (!*file) {
         throw std::runtime_error("Could not open file: " + filename);
     }
@@ -467,7 +469,7 @@ WritePNGPlugin::write_info (png_structp& sp,
                             int width,
                             int height,
                             double par,
-                            const std::string& ocioColorspace,
+                            const string& ocioColorspace,
                             BitDepthEnum bitdepth)
 {
     int pixelBytes = bitdepth == eBitDepthUByte ? sizeof(unsigned char) : sizeof(unsigned short);
@@ -507,7 +509,7 @@ WritePNGPlugin::write_info (png_structp& sp,
        time (&now);
        struct tm mytm;
        Sysutil::get_local_time (&now, &mytm);
-       std::string date = Strutil::format ("%4d:%02d:%02d %2d:%02d:%02d",
+       string date = Strutil::format ("%4d:%02d:%02d %2d:%02d:%02d",
        mytm.tm_year+1900, mytm.tm_mon+1, mytm.tm_mday,
        mytm.tm_hour, mytm.tm_min, mytm.tm_sec);
        spec.attribute ("DateTime", date);
@@ -584,7 +586,7 @@ WritePNGPlugin::add_dither_for_components(OfxTime time,
                 dst_pixels[dst_col + 2] = (unsigned char)(error_b >> 8);
 
                 if (dstNComps == 4) {
-                    dst_pixels[dst_col + 3] = (srcNComps == 4) ? OFX::Color::floatToInt<256>(src_pixels[src_col + 3]) : 255;
+                    dst_pixels[dst_col + 3] = (srcNComps == 4) ? Color::floatToInt<256>(src_pixels[src_col + 3]) : 255;
                 }
 
 
@@ -626,9 +628,9 @@ WritePNGPlugin::add_dither(OfxTime time,
 }
 
 void
-WritePNGPlugin::encode(const std::string& filename,
+WritePNGPlugin::encode(const string& filename,
                        const OfxTime time,
-                       const std::string& /*viewName*/,
+                       const string& /*viewName*/,
                        const float *pixelData,
                        const OfxRectI& bounds,
                        const float pixelAspectRatio,
@@ -638,8 +640,8 @@ WritePNGPlugin::encode(const std::string& filename,
                        const int rowBytes)
 {
     if ( (dstNComps != 4) && (dstNComps != 3) && (dstNComps != 2) && (dstNComps != 1) ) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB, IA or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        setPersistentMessage(Message::eMessageError, "", "PFM: can only write RGBA, RGB, IA or Alpha components images");
+        throwSuiteStatusException(kOfxStatErrFormat);
 
         return;
     }
@@ -651,7 +653,7 @@ WritePNGPlugin::encode(const std::string& filename,
     try {
         openFile(filename, dstNComps, &png, &info, &file, &color_type);
     } catch (const std::exception& e) {
-        setPersistentMessage( OFX::Message::eMessageError, "", e.what() );
+        setPersistentMessage( Message::eMessageError, "", e.what() );
         throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -689,7 +691,7 @@ WritePNGPlugin::encode(const std::string& filename,
     _bitdepth->getValue(bitdepth_i);
 
     BitDepthEnum pngDetph = bitdepth_i == 0 ? eBitDepthUByte : eBitDepthUShort;
-    write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, std::string() /*colorSpace*/, pngDetph);
+    write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, string() /*colorSpace*/, pngDetph);
 
     int bitDepthSize = pngDetph == eBitDepthUShort ? sizeof(unsigned short) : sizeof(unsigned char);
 
@@ -759,7 +761,7 @@ WritePNGPlugin::encode(const std::string& filename,
         if ( setjmp ( png_jmpbuf(png) ) ) {
             destroy_write_struct(png, info);
             std::fclose(file);
-            setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
+            setPersistentMessage(Message::eMessageError, "", "PNG library error");
             throwSuiteStatusException(kOfxStatFailed);
         }
         png_write_row (png, (png_byte*)scratchBuffer.getData() + y * pngRowSize);
@@ -771,13 +773,13 @@ WritePNGPlugin::encode(const std::string& filename,
 } // WritePNGPlugin::encode
 
 bool
-WritePNGPlugin::isImageFile(const std::string& /*fileExtension*/) const
+WritePNGPlugin::isImageFile(const string& /*fileExtension*/) const
 {
     return true;
 }
 
 void
-WritePNGPlugin::onOutputFileChanged(const std::string & /*filename*/,
+WritePNGPlugin::onOutputFileChanged(const string & /*filename*/,
                                     bool setColorSpace)
 {
     if (setColorSpace) {
@@ -831,28 +833,28 @@ WritePNGPlugin::onOutputFileChanged(const std::string & /*filename*/,
 } // WritePNGPlugin::onOutputFileChanged
 
 class WritePNGPluginFactory
-    : public OFX::PluginFactoryHelper<WritePNGPluginFactory>
+    : public PluginFactoryHelper<WritePNGPluginFactory>
 {
 public:
 
-    WritePNGPluginFactory(const std::string& id,
+    WritePNGPluginFactory(const string& id,
                           unsigned int verMaj,
                           unsigned int verMin)
-        : OFX::PluginFactoryHelper<WritePNGPluginFactory>(id, verMaj, verMin)
+        : PluginFactoryHelper<WritePNGPluginFactory>(id, verMaj, verMin)
         , _extensions()
     {
     }
 
     virtual void load();
     virtual void unload();
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context);
+    virtual ImageEffect* createInstance(OfxImageEffectHandle handle, ContextEnum context);
     bool isVideoStreamPlugin() const { return false; }
 
-    virtual void describe(OFX::ImageEffectDescriptor &desc);
-    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context);
+    virtual void describe(ImageEffectDescriptor &desc);
+    virtual void describeInContext(ImageEffectDescriptor &desc, ContextEnum context);
 
 private:
-    std::vector<std::string> _extensions;
+    vector<string> _extensions;
 };
 
 void
@@ -860,7 +862,7 @@ WritePNGPluginFactory::load()
 {
     _extensions.clear();
     _extensions.push_back("png");
-    gLutManager = new OFX::Color::LutManager<Mutex>;
+    gLutManager = new Color::LutManager<Mutex>;
 }
 
 void
@@ -871,9 +873,9 @@ WritePNGPluginFactory::unload()
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
-WritePNGPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+WritePNGPluginFactory::describe(ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc, OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
+    GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
@@ -881,7 +883,7 @@ WritePNGPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void
-WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+WritePNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                          ContextEnum context)
 {
     // make some pages and to things in
@@ -893,7 +895,7 @@ WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                                                                     "scene_linear", "reference", false);
 
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamCompression);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamCompression);
         param->setLabel(kWritePNGParamCompressionLabel);
         param->setHint(kWritePNGParamCompressionHint);
         param->appendOption(kWritePNGParamCompressionDefault, kWritePNGParamCompressionDefaultHint);
@@ -902,14 +904,14 @@ WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
         param->appendOption(kWritePNGParamCompressionRLE, kWritePNGParamCompressionRLEHint);
         param->appendOption(kWritePNGParamCompressionFixed, kWritePNGParamCompressionFixedHint);
         param->setDefault(0);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine);
         if (page) {
             page->addChild(*param);
         }
     }
 
     {
-        OFX::IntParamDescriptor* param = desc.defineIntParam(kWritePNGParamCompressionLevel);
+        IntParamDescriptor* param = desc.defineIntParam(kWritePNGParamCompressionLevel);
         param->setLabel(kWritePNGParamCompressionLevelLabel);
         param->setHint(kWritePNGParamCompressionLevelHint);
         param->setRange(0, 9);
@@ -920,20 +922,20 @@ WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     }
 
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamBitDepth);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamBitDepth);
         param->setLabel(kWritePNGParamBitDepthLabel);
         param->setHint(kWritePNGParamBitDepthHint);
         param->appendOption(kWritePNGParamBitDepthUByte);
         param->appendOption(kWritePNGParamBitDepthUShort);
         param->setDefault(0);
-        param->setLayoutHint(OFX::eLayoutHintNoNewLine);
+        param->setLayoutHint(eLayoutHintNoNewLine);
         if (page) {
             page->addChild(*param);
         }
     }
 
     {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kWritePNGParamDither);
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kWritePNGParamDither);
         param->setLabel(kWritePNGParamDitherLabel);
         param->setHint(kWritePNGParamDitherHint);
         param->setDefault(true);
@@ -945,7 +947,7 @@ WritePNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     GenericWriterDescribeInContextEnd(desc, context, page);
 } // WritePNGPluginFactory::describeInContext
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
 ImageEffect*
 WritePNGPluginFactory::createInstance(OfxImageEffectHandle handle,
                                       ContextEnum /*context*/)

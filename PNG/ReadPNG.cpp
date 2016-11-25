@@ -42,6 +42,11 @@ using namespace OFX::IO;
 namespace OCIO = OCIO_NAMESPACE;
 #endif
 
+using std::string;
+using std::stringstream;
+using std::vector;
+using std::map;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ReadPNG"
@@ -177,8 +182,8 @@ getPNGInfo(png_structp& sp,
            bool* isResolutionInches_p, // optional
            double* xResolution_p, // optional
            double* yResolution_p, // optional
-           std::string* date_p, // optional
-           std::map<std::string, std::string>* additionalComments_p) // optional
+           string* date_p, // optional
+           map<string, string>* additionalComments_p) // optional
 {
     png_read_info (sp, ip);
 
@@ -277,7 +282,7 @@ getPNGInfo(png_structp& sp,
 
     png_timep mod_time;
     if ( date_p && png_get_tIME (sp, ip, &mod_time) ) {
-        std::stringstream ss;
+        stringstream ss;
         ss << std::setfill('0') << std::setw(4) << mod_time->year << ':' << std::setw(2) << mod_time->month << ':' << mod_time->day << ' ';
         ss << mod_time->hour << ':' << mod_time->minute << ':' << mod_time->second;
         *date_p = ss.str();
@@ -287,9 +292,9 @@ getPNGInfo(png_structp& sp,
         png_textp text_ptr;
         int num_comments = png_get_text (sp, ip, &text_ptr, NULL);
         if (num_comments) {
-            std::string comments;
+            string comments;
             for (int i = 0; i < num_comments; ++i) {
-                (*additionalComments_p)[std::string(text_ptr[i].key)] = std::string(text_ptr[i].text);
+                (*additionalComments_p)[string(text_ptr[i].key)] = string(text_ptr[i].text);
             }
         }
     }
@@ -324,17 +329,17 @@ class ReadPNGPlugin
 {
 public:
 
-    ReadPNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    ReadPNGPlugin(OfxImageEffectHandle handle, const vector<string>& extensions);
 
     virtual ~ReadPNGPlugin();
 
 private:
 
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
-    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
+    virtual bool isVideoStream(const string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
+    virtual void decode(const string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     /**
      * @brief Called when the input image/video file changed.
@@ -344,7 +349,7 @@ private:
      * This function is only called once: when the filename is first set.
      *
      * Besides returning colorspace, premult, components, and componentcount, if it returns true
-     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * this function may also set extra format-specific parameters using Param::setValue.
      * The parameters must not be animated, since their value must remain the same for a whole sequence.
      *
      * You shouldn't do any strong processing as this is called on the main thread and
@@ -355,18 +360,18 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
-    static void openFile(const std::string& filename,
+    virtual bool guessParamsFromFilename(const string& filename, string *colorspace, PreMultiplicationEnum *filePremult, PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    static void openFile(const string& filename,
                          png_structp* png,
                          png_infop* info,
                          std::FILE** file);
 
-    std::string metadata(const std::string& filename);
+    string metadata(const string& filename);
 };
 
 
 ReadPNGPlugin::ReadPNGPlugin(OfxImageEffectHandle handle,
-                             const std::vector<std::string>& extensions)
+                             const vector<string>& extensions)
     : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
 {
 }
@@ -377,19 +382,19 @@ ReadPNGPlugin::~ReadPNGPlugin()
 
 #define PNG_BYTES_TO_CHECK 8
 
-std::string
-ReadPNGPlugin::metadata(const std::string& filename)
+string
+ReadPNGPlugin::metadata(const string& filename)
 {
     // Open the file
-    std::FILE *image = OFX::fopen_utf8(filename.c_str(), "rb");
+    std::FILE *image = fopen_utf8(filename.c_str(), "rb");
     if (image == NULL) {
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("ReadPNG: cannot open file ") + filename);
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", string("ReadPNG: cannot open file ") + filename);
+        throwSuiteStatusException(kOfxStatFailed);
 
-        return std::string();
+        return string();
     }
 
-    std::stringstream ss;
+    stringstream ss;
 
     ss << "file: " << filename << std::endl;
 
@@ -764,33 +769,33 @@ ReadPNGPlugin::metadata(const std::string& filename)
 } // ReadPNGPlugin::metadata
 
 void
-ReadPNGPlugin::changedParam(const OFX::InstanceChangedArgs &args,
-                            const std::string &paramName)
+ReadPNGPlugin::changedParam(const InstanceChangedArgs &args,
+                            const string &paramName)
 {
     if (paramName == kParamShowMetadata) {
-        std::string filename;
+        string filename;
         OfxStatus st = getFilenameAtTime(args.time, &filename);
-        std::stringstream ss;
+        stringstream ss;
         if (st == kOfxStatOK) {
             ss << metadata(filename);
         } else {
             ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
         }
-        sendMessage( OFX::Message::eMessageMessage, "", ss.str() );
+        sendMessage( Message::eMessageMessage, "", ss.str() );
     } else {
         GenericReaderPlugin::changedParam(args, paramName);
     }
 }
 
 void
-ReadPNGPlugin::openFile(const std::string& filename,
+ReadPNGPlugin::openFile(const string& filename,
                         png_structp* png,
                         png_infop* info,
                         std::FILE** file)
 {
     *png = NULL;
     *info = NULL;
-    *file = OFX::fopen_utf8(filename.c_str(), "rb");
+    *file = fopen_utf8(filename.c_str(), "rb");
     if (!*file) {
         throw std::runtime_error("Could not open file: " + filename);
     }
@@ -834,20 +839,20 @@ ReadPNGPlugin::openFile(const std::string& filename,
 }
 
 void
-ReadPNGPlugin::decode(const std::string& filename,
+ReadPNGPlugin::decode(const string& filename,
                       OfxTime /*time*/,
                       int /*view*/,
                       bool /*isPlayback*/,
                       const OfxRectI& renderWindow,
                       float *pixelData,
                       const OfxRectI& bounds,
-                      OFX::PixelComponentEnum pixelComponents,
+                      PixelComponentEnum pixelComponents,
                       int /*pixelComponentCount*/,
                       int rowBytes)
 {
-    if ( (pixelComponents != OFX::ePixelComponentRGBA) && (pixelComponents != OFX::ePixelComponentRGB) && (pixelComponents != OFX::ePixelComponentXY) && (pixelComponents != OFX::ePixelComponentAlpha) ) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "PNG: can only read RGBA, RGB or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    if ( (pixelComponents != ePixelComponentRGBA) && (pixelComponents != ePixelComponentRGB) && (pixelComponents != ePixelComponentXY) && (pixelComponents != ePixelComponentAlpha) ) {
+        setPersistentMessage(Message::eMessageError, "", "PNG: can only read RGBA, RGB or Alpha components images");
+        throwSuiteStatusException(kOfxStatErrFormat);
 
         return;
     }
@@ -859,7 +864,7 @@ ReadPNGPlugin::decode(const std::string& filename,
     try {
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
-        setPersistentMessage( OFX::Message::eMessageError, "", e.what() );
+        setPersistentMessage( Message::eMessageError, "", e.what() );
         throwSuiteStatusException(kOfxStatFailed);
     }
 
@@ -883,7 +888,7 @@ ReadPNGPlugin::decode(const std::string& filename,
 
 
     //if (interlace_type != 0) {
-    std::vector<unsigned char *> row_pointers(height);
+    vector<unsigned char *> row_pointers(height);
     for (int i = 0; i < height; ++i) {
         row_pointers[i] = tmpData + i * pngRowBytes;
     }
@@ -892,8 +897,8 @@ ReadPNGPlugin::decode(const std::string& filename,
     if ( setjmp ( png_jmpbuf (png) ) ) {
         png_destroy_read_struct(&png, &info, NULL);
         std::fclose(file);
-        setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        setPersistentMessage(Message::eMessageError, "", "PNG library error");
+        throwSuiteStatusException(kOfxStatErrFormat);
 
         return;
     }
@@ -906,8 +911,8 @@ ReadPNGPlugin::decode(const std::string& filename,
             if (setjmp (png_jmpbuf (png))) {
                 png_destroy_read_struct(&png, &info, NULL);
                 std::fclose(file);
-                setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
-                OFX::throwSuiteStatusException(kOfxStatErrFormat);
+                setPersistentMessage(Message::eMessageError, "", "PNG library error");
+                throwSuiteStatusException(kOfxStatErrFormat);
 
                 return;
             }
@@ -941,8 +946,8 @@ ReadPNGPlugin::decode(const std::string& filename,
         srcComponents = ePixelComponentRGBA;
         break;
     default:
-        setPersistentMessage(OFX::Message::eMessageError, "", "This plug-in only supports images with 1 to 4 channels");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        setPersistentMessage(Message::eMessageError, "", "This plug-in only supports images with 1 to 4 channels");
+        throwSuiteStatusException(kOfxStatErrFormat);
 
         return;
     }
@@ -951,12 +956,12 @@ ReadPNGPlugin::decode(const std::string& filename,
 } // ReadPNGPlugin::decode
 
 bool
-ReadPNGPlugin::getFrameBounds(const std::string& filename,
+ReadPNGPlugin::getFrameBounds(const string& filename,
                               OfxTime /*time*/,
                               OfxRectI *bounds,
                               OfxRectI *format,
                               double *par,
-                              std::string *error,
+                              string *error,
                               int* tile_width,
                               int* tile_height)
 {
@@ -1002,7 +1007,7 @@ ReadPNGPlugin::getFrameBounds(const std::string& filename,
  * This function is only called once: when the filename is first set.
  *
  * Besides returning colorspace, premult, components, and componentcount, if it returns true
- * this function may also set extra format-specific parameters using OFX::Param::setValue.
+ * this function may also set extra format-specific parameters using Param::setValue.
  * The parameters must not be animated, since their value must remain the same for a whole sequence.
  *
  * You shouldn't do any strong processing as this is called on the main thread and
@@ -1014,10 +1019,10 @@ ReadPNGPlugin::getFrameBounds(const std::string& filename,
  * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
  **/
 bool
-ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
-                                       std::string *colorspace,
-                                       OFX::PreMultiplicationEnum *filePremult,
-                                       OFX::PixelComponentEnum *components,
+ReadPNGPlugin::guessParamsFromFilename(const string& filename,
+                                       string *colorspace,
+                                       PreMultiplicationEnum *filePremult,
+                                       PixelComponentEnum *components,
                                        int *componentCount)
 {
     assert(colorspace && filePremult && components && componentCount);
@@ -1027,7 +1032,7 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
     try {
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
-        //setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        //setPersistentMessage(Message::eMessageError, "", e.what());
 
         return false;
     }
@@ -1157,17 +1162,17 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
     switch (nChannels) {
     case 1:
         assert(false);
-        *components = OFX::ePixelComponentAlpha;
+        *components = ePixelComponentAlpha;
         break;
     case 2:
         assert(false);
-        *components = OFX::ePixelComponentRGBA;
+        *components = ePixelComponentRGBA;
         break;
     case 3:
-        *components = OFX::ePixelComponentRGB;
+        *components = ePixelComponentRGB;
         break;
     case 4:
-        *components = OFX::ePixelComponentRGBA;
+        *components = ePixelComponentRGBA;
         break;
     default:
         break;
@@ -1175,12 +1180,14 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
 
     *componentCount = nChannels;
 
-    if ( (*components != OFX::ePixelComponentRGBA) && (*components != OFX::ePixelComponentAlpha) ) {
-        *filePremult = OFX::eImageOpaque;
+    if ( (*components != ePixelComponentRGBA) && (*components != ePixelComponentAlpha) ) {
+        *filePremult = eImageOpaque;
     } else {
         // output is always unpremultiplied
-        *filePremult = OFX::eImageUnPreMultiplied;
+        *filePremult = eImageUnPreMultiplied;
     }
+
+    return true;
 } // ReadPNGPlugin::guessParamsFromFilename
 
 mDeclareReaderPluginFactory(ReadPNGPluginFactory, {}, false);
@@ -1193,7 +1200,7 @@ ReadPNGPluginFactory::load()
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
-ReadPNGPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+ReadPNGPluginFactory::describe(ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
 
@@ -1204,7 +1211,7 @@ ReadPNGPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void
-ReadPNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+ReadPNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                         ContextEnum context)
 {
     // make some pages and to things in
@@ -1212,7 +1219,7 @@ ReadPNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, true);
 
     {
-        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
         param->setLabel(kParamShowMetadataLabel);
         param->setHint(kParamShowMetadataHint);
         if (page) {
@@ -1223,7 +1230,7 @@ ReadPNGPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
 }
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
 ImageEffect*
 ReadPNGPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
