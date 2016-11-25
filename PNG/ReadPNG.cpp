@@ -174,8 +174,13 @@ static const struct
 };
 
 static int
-png_compare_ICC_profile_with_sRGB(png_const_structrp /*png_ptr*/,
-    png_const_bytep profile, uLong adler)
+png_compare_ICC_profile_with_sRGB(png_structp /*png_ptr*/,
+#if OFX_IO_LIBPNG_VERSION > 10500   /* PNG function signatures changed */
+                                  png_bytep profile,
+#else
+                                  png_charp profile,
+#endif
+                                  uLong adler)
 {
    /* The quick check is to verify just the MD5 signature and trust the
     * rest of the data.  Because the profile has already been verified for
@@ -230,7 +235,7 @@ png_compare_ICC_profile_with_sRGB(png_const_structrp /*png_ptr*/,
             if (adler == 0)
             {
                adler = adler32(0, NULL, 0);
-               adler = adler32(adler, profile, length);
+               adler = adler32(adler, (const Bytef *)profile, length);
             }
 
             if (adler == png_sRGB_checks[i].adler)
@@ -297,8 +302,8 @@ png_compare_ICC_profile_with_sRGB(png_const_structrp /*png_ptr*/,
 /// Helper function - reads background colour.
 ///
 inline bool
-get_background (png_structp& sp,
-                png_infop& ip,
+get_background (png_structp sp,
+                png_infop ip,
                 BitDepthEnum bitdepth,
                 int real_bit_depth,
                 int nChannels,
@@ -347,8 +352,8 @@ enum PNGColorSpaceEnum
 /// Read information from a PNG file and fill the ImageSpec accordingly.
 ///
 inline void
-getPNGInfo(png_structp& sp,
-           png_infop& ip,
+getPNGInfo(png_structp sp,
+           png_infop ip,
            int* x1_p,
            int* y1_p,
            int* width_p,
