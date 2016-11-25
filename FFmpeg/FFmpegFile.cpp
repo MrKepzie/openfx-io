@@ -42,8 +42,13 @@
 #  include <unistd.h> // for sysconf()
 #endif
 
+using namespace OFX;
+
+using std::string;
+using std::make_pair;
+
 // FFMPEG 3.1
-#define USE_NEW_FFMPEG_API (LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57,48,0))
+#define USE_NEW_FFMPEG_API ( LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57, 48, 0) )
 
 #define CHECK(x) \
     { \
@@ -82,10 +87,11 @@ video_decoding_threads()
 
     return n;
 }
+
 #endif
 
 static bool
-extensionCorrespondToImageFile(const std::string & ext)
+extensionCorrespondToImageFile(const string & ext)
 {
     return (ext == "bmp" ||
             ext == "cin" ||
@@ -106,58 +112,57 @@ extensionCorrespondToImageFile(const std::string & ext)
 }
 
 bool
-FFmpegFile::isImageFile(const std::string & filename)
+FFmpegFile::isImageFile(const string & filename)
 {
     ///find the last index of the '.' character
     size_t lastDot = filename.find_last_of('.');
 
-    if (lastDot == std::string::npos) { //we reached the start of the file, return false because we can't determine from the extension
+    if (lastDot == string::npos) { //we reached the start of the file, return false because we can't determine from the extension
         return false;
     }
     ++lastDot;//< bypass the '.' character
-    std::string ext;
+    string ext;
     std::locale loc;
     while ( lastDot < filename.size() ) {
-        ext.append( 1,std::tolower(filename.at(lastDot),loc) );
+        ext.append( 1, std::tolower(filename.at(lastDot), loc) );
         ++lastDot;
     }
 
     return extensionCorrespondToImageFile(ext);
 }
 
-namespace
+namespace {
+struct FilterEntry
 {
-    struct FilterEntry
-    {
-        const char* name;
-        bool        enableReader;
-        bool        enableWriter;
-    };
+    const char* name;
+    bool enableReader;
+    bool enableWriter;
+};
 
-    // Bug 11027 - Nuke write: ffmpeg codec fails has details on individual codecs
+// Bug 11027 - Nuke write: ffmpeg codec fails has details on individual codecs
 
-    // For a full list of formats, define FN_FFMPEGWRITER_PRINT_CODECS in ffmpegWriter.cpp
-    const FilterEntry kFormatWhitelist[] =
-    {
-        { "3gp",            true,  true },
-        { "3g2",            true,  true },
-        { "avi",            true,  true },
-        { "flv",            true,  false }, // only used with flv codec, which doesn't play in Qt anyway
-        { "h264",           true,  true },
-        { "hevc",           true,  false }, // hevc codec cannot be read in official qt
-        { "m4v",            true,  true },
-        { "matroska",       true,  true }, // not readable in Qt but may be used with other software
-        { "mov",            true,  true },
-        { "mp4",            true,  true },
-        { "mpeg",           true,  true },
-        { "mpegts",         true,  true },
-        { "mxf",            true,  true }, // not readable in Qt but may be used with other software
-        { NULL, false, false}
-    };
+// For a full list of formats, define FN_FFMPEGWRITER_PRINT_CODECS in ffmpegWriter.cpp
+const FilterEntry kFormatWhitelist[] =
+{
+    { "3gp",            true,  true },
+    { "3g2",            true,  true },
+    { "avi",            true,  true },
+    { "flv",            true,  false },     // only used with flv codec, which doesn't play in Qt anyway
+    { "h264",           true,  true },
+    { "hevc",           true,  false },     // hevc codec cannot be read in official qt
+    { "m4v",            true,  true },
+    { "matroska",       true,  true },     // not readable in Qt but may be used with other software
+    { "mov",            true,  true },
+    { "mp4",            true,  true },
+    { "mpeg",           true,  true },
+    { "mpegts",         true,  true },
+    { "mxf",            true,  true },     // not readable in Qt but may be used with other software
+    { NULL, false, false}
+};
 
-    // For a full list of formats, define FN_FFMPEGWRITER_PRINT_CODECS in ffmpegWriter.cpp
-    // A range of codecs are omitted for licensing reasons, or because they support obselete/unnecessary
-    // formats that confuse the interface.
+// For a full list of formats, define FN_FFMPEGWRITER_PRINT_CODECS in ffmpegWriter.cpp
+// A range of codecs are omitted for licensing reasons, or because they support obselete/unnecessary
+// formats that confuse the interface.
 
 #define UNSAFEQT0 true // set to true: not really harmful
 #define UNSAFEQT false // set to false: we care about QuickTime, because it is used widely - mainly colorshift issues
@@ -165,139 +170,152 @@ namespace
 #define TERRIBLE false
 //#define SHOULDWORK true
 #define SHOULDWORK false
-    const FilterEntry kCodecWhitelist[] =
-    {
-        // Video codecs.
-        { "aic",            true,  false }, // Apple Intermediate Codec (no encoder)
-        { "avrp",           true,  UNSAFEQT0 && UNSAFEVLC }, // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec.
-        { "avui",           true,  false }, // Avid Meridien Uncompressed - write not supported as this is an SD only codec. Only 720x486 and 720x576 are supported. experimental in ffmpeg 2.6.1.
-        { "ayuv",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable.
-        { "cfhd",           true,  false }, // Cineform HD.
-        { "cinepak",        true,  true }, // Cinepak.
-        { "dxv",            true,  false }, // Resolume DXV
-        { "dnxhd",          true,  true }, // VC3/DNxHD
-        { "ffv1",           true,  UNSAFEQT0 && UNSAFEVLC }, // FFmpeg video codec #1 - write not supported as not official qt readable.
-        { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC }, // Huffyuv FFmpeg variant - write not supported as not official qt readable.
-        { "flv",            true,  UNSAFEQT0 }, // FLV / Sorenson Spark / Sorenson H.263 (Flash Video) - write not supported as not official qt readable.
-        { "gif",            true,  false }, // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
-        { "h264",           true,  false }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
-        { "hevc",           true,  false }, // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
-        { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC }, // HuffYUV - write not supported as not official qt readable.
-        { "jpeg2000",       true,  UNSAFEQT0 }, // JPEG 2000 - write not supported as not official qt readable.
-        { "jpegls",         true,  UNSAFEQT0 }, // JPEG-LS - write not supported as can't be read in in official qt.
-        { "libopenh264",    true,  true }, // Cisco libopenh264 H.264/MPEG-4 AVC encoder
-        { "libschroedinger", true,  UNSAFEQT0 && UNSAFEVLC }, // libschroedinger Dirac - write untested. VLC plays with a wrong format
-        { "libtheora",      true,  UNSAFEQT }, // libtheora Theora - write untested.
-        { "libvpx",         true,  UNSAFEQT0 }, // On2 VP8
-        { "libvpx-vp9",     true,  UNSAFEQT0 && TERRIBLE }, // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
-        { "libx264",        true,  UNSAFEQT0 }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
-        { "libx264rgb",     true,  UNSAFEQT0 }, // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB (encoder)
-        { "libx265",        true,  UNSAFEQT0 }, // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
-        { "ljpeg",          true,  UNSAFEQT0 }, // Lossless JPEG - write not supported as can't be read in in official qt.
-        { "mjpeg",          true,  true }, // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
-        { "mpeg1video",     true,  TERRIBLE }, // MPEG-1 video - write not supported as it gives random 8x8 blocky errors
-        { "mpeg2video",     true,  true }, // MPEG-2 video
-        { "mpeg4",          true,  true }, // MPEG-4 part 2
-        { "msmpeg4v2",      true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
-        { "msmpeg4",        true,  UNSAFEQT0 }, // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
-        { "png",            true,  true }, // PNG (Portable Network Graphics) image
-        { "prores",         true,  false }, // Apple ProRes (the encoder is prores_ks)
-        { "qtrle",          true,  true }, // QuickTime Animation (RLE) video
-        { "r10k",           true,  UNSAFEQT && UNSAFEVLC }, // AJA Kono 10-bit RGB - write not supported as not official qt readable without colourshifts.
-        { "r210",           true,  UNSAFEQT && UNSAFEVLC }, // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
-        { "rawvideo",       true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
-        { "svq1",           true,  true }, // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
-        { "targa",          true,  true }, // Truevision Targa image.
-        { "theora",         true,  false }, // Theora (decoder).
-        { "tiff",           true,  true }, // TIFF Image
-        { "v210",           true,  UNSAFEQT }, // Uncompressed 4:2:2 10-bit- write not supported as not official qt readable without colourshifts.
-        { "v308",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
-        { "v408",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed packed QT 4:4:4:4 - write not supported as official qt can't write, so bad round trip choice and 8-bit only.
-        { "v410",           true,  UNSAFEQT0 && UNSAFEVLC }, // Uncompressed 4:4:4 10-bit - write not supported as not official qt readable with standard codecs.
-        { "vc2",            true,  UNSAFEQT0 && UNSAFEVLC }, // SMPTE VC-2 (previously BBC Dirac Pro).
-        { "vp8",            true,  false }, // On2 VP8 (decoder)
-        { "vp9",            true,  false }, // Google VP9 (decoder)
+const FilterEntry kCodecWhitelist[] =
+{
+    // Video codecs.
+    { "aic",            true,  false },     // Apple Intermediate Codec (no encoder)
+    { "avrp",           true,  UNSAFEQT0 && UNSAFEVLC },     // Avid 1:1 10-bit RGB Packer - write not supported as not official qt readable with relevant 3rd party codec.
+    { "avui",           true,  false },     // Avid Meridien Uncompressed - write not supported as this is an SD only codec. Only 720x486 and 720x576 are supported. experimental in ffmpeg 2.6.1.
+    { "ayuv",           true,  UNSAFEQT0 && UNSAFEVLC },     // Uncompressed packed MS 4:4:4:4 - write not supported as not official qt readable.
+    { "cfhd",           true,  false },     // Cineform HD.
+    { "cinepak",        true,  true },     // Cinepak.
+    { "dxv",            true,  false },     // Resolume DXV
+    { "dnxhd",          true,  true },     // VC3/DNxHD
+    { "ffv1",           true,  UNSAFEQT0 && UNSAFEVLC },     // FFmpeg video codec #1 - write not supported as not official qt readable.
+    { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC },     // Huffyuv FFmpeg variant - write not supported as not official qt readable.
+    { "flv",            true,  UNSAFEQT0 },     // FLV / Sorenson Spark / Sorenson H.263 (Flash Video) - write not supported as not official qt readable.
+    { "gif",            true,  false },     // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
+    { "h264",           true,  false },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
+    { "hevc",           true,  false },     // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
+    { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC },     // HuffYUV - write not supported as not official qt readable.
+    { "jpeg2000",       true,  UNSAFEQT0 },     // JPEG 2000 - write not supported as not official qt readable.
+    { "jpegls",         true,  UNSAFEQT0 },     // JPEG-LS - write not supported as can't be read in in official qt.
+    { "libopenh264",    true,  true },     // Cisco libopenh264 H.264/MPEG-4 AVC encoder
+    { "libschroedinger", true,  UNSAFEQT0 && UNSAFEVLC },     // libschroedinger Dirac - write untested. VLC plays with a wrong format
+    { "libtheora",      true,  UNSAFEQT },     // libtheora Theora - write untested.
+    { "libvpx",         true,  UNSAFEQT0 },     // On2 VP8
+    { "libvpx-vp9",     true,  UNSAFEQT0 && TERRIBLE },     // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
+    { "libx264",        true,  UNSAFEQT0 },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
+    { "libx264rgb",     true,  UNSAFEQT0 },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB (encoder)
+    { "libx265",        true,  UNSAFEQT0 },     // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
+    { "ljpeg",          true,  UNSAFEQT0 },     // Lossless JPEG - write not supported as can't be read in in official qt.
+    { "mjpeg",          true,  true },     // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
+    { "mpeg1video",     true,  TERRIBLE },     // MPEG-1 video - write not supported as it gives random 8x8 blocky errors
+    { "mpeg2video",     true,  true },     // MPEG-2 video
+    { "mpeg4",          true,  true },     // MPEG-4 part 2
+    { "msmpeg4v2",      true,  UNSAFEQT0 },     // MPEG-4 part 2 Microsoft variant version 2 - write not supported as doesn't read in official qt.
+    { "msmpeg4",        true,  UNSAFEQT0 },     // MPEG-4 part 2 Microsoft variant version 3 - write not supported as doesn't read in official qt.
+    { "png",            true,  true },     // PNG (Portable Network Graphics) image
+    { "prores",         true,  false },     // Apple ProRes (the encoder is prores_ks)
+    { "qtrle",          true,  true },     // QuickTime Animation (RLE) video
+    { "r10k",           true,  UNSAFEQT && UNSAFEVLC },     // AJA Kono 10-bit RGB - write not supported as not official qt readable without colourshifts.
+    { "r210",           true,  UNSAFEQT && UNSAFEVLC },     // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
+    { "rawvideo",       true,  UNSAFEQT0 && UNSAFEVLC },     // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
+    { "svq1",           true,  true },     // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
+    { "targa",          true,  true },     // Truevision Targa image.
+    { "theora",         true,  false },     // Theora (decoder).
+    { "tiff",           true,  true },     // TIFF Image
+    { "v210",           true,  UNSAFEQT },     // Uncompressed 4:2:2 10-bit- write not supported as not official qt readable without colourshifts.
+    { "v308",           true,  UNSAFEQT0 && UNSAFEVLC },     // Uncompressed packed 4:4:4 - write not supported as not official qt readable and 8-bit only.
+    { "v408",           true,  UNSAFEQT0 && UNSAFEVLC },     // Uncompressed packed QT 4:4:4:4 - write not supported as official qt can't write, so bad round trip choice and 8-bit only.
+    { "v410",           true,  UNSAFEQT0 && UNSAFEVLC },     // Uncompressed 4:4:4 10-bit - write not supported as not official qt readable with standard codecs.
+    { "vc2",            true,  UNSAFEQT0 && UNSAFEVLC },     // SMPTE VC-2 (previously BBC Dirac Pro).
+    { "vp8",            true,  false },     // On2 VP8 (decoder)
+    { "vp9",            true,  false },     // Google VP9 (decoder)
 
-        // Audio codecs.
-        { "pcm_alaw",       true,  true }, // PCM A-law / G.711 A-law
-        { "pcm_f32be",      true,  true }, // PCM 32-bit floating point big-endian
-        { "pcm_f32le",      true,  true }, // PCM 32-bit floating point little-endian
-        { "pcm_f64be",      true,  true }, // PCM 64-bit floating point big-endian
-        { "pcm_f64le",      true,  true }, // PCM 64-bit floating point little-endian
-        { "pcm_mulaw",      true,  true }, // PCM mu-law / G.711 mu-law
-        { "pcm_s16be",      true,  true }, // PCM signed 16-bit big-endian
-        { "pcm_s16le",      true,  true }, // PCM signed 16-bit little-endian
-        { "pcm_s24be",      true,  true }, // PCM signed 24-bit big-endian
-        { "pcm_s24le",      true,  true }, // PCM signed 24-bit little-endian
-        { "pcm_s32be",      true,  true }, // PCM signed 32-bit big-endian
-        { "pcm_s32le",      true,  true }, // PCM signed 32-bit little-endian
-        { "pcm_s8",         true,  true }, // PCM signed 8-bit
-        { "pcm_u16be",      true,  true }, // PCM unsigned 16-bit big-endian
-        { "pcm_u16le",      true,  true }, // PCM unsigned 16-bit little-endian
-        { "pcm_u24be",      true,  true }, // PCM unsigned 24-bit big-endian
-        { "pcm_u24le",      true,  true }, // PCM unsigned 24-bit little-endian
-        { "pcm_u32be",      true,  true }, // PCM unsigned 32-bit big-endian
-        { "pcm_u32le",      true,  true }, // PCM unsigned 32-bit little-endian
-        { "pcm_u8",         true,  true }, // PCM unsigned 8-bit
-        { NULL, false, false}
-    };
+    // Audio codecs.
+    { "pcm_alaw",       true,  true },     // PCM A-law / G.711 A-law
+    { "pcm_f32be",      true,  true },     // PCM 32-bit floating point big-endian
+    { "pcm_f32le",      true,  true },     // PCM 32-bit floating point little-endian
+    { "pcm_f64be",      true,  true },     // PCM 64-bit floating point big-endian
+    { "pcm_f64le",      true,  true },     // PCM 64-bit floating point little-endian
+    { "pcm_mulaw",      true,  true },     // PCM mu-law / G.711 mu-law
+    { "pcm_s16be",      true,  true },     // PCM signed 16-bit big-endian
+    { "pcm_s16le",      true,  true },     // PCM signed 16-bit little-endian
+    { "pcm_s24be",      true,  true },     // PCM signed 24-bit big-endian
+    { "pcm_s24le",      true,  true },     // PCM signed 24-bit little-endian
+    { "pcm_s32be",      true,  true },     // PCM signed 32-bit big-endian
+    { "pcm_s32le",      true,  true },     // PCM signed 32-bit little-endian
+    { "pcm_s8",         true,  true },     // PCM signed 8-bit
+    { "pcm_u16be",      true,  true },     // PCM unsigned 16-bit big-endian
+    { "pcm_u16le",      true,  true },     // PCM unsigned 16-bit little-endian
+    { "pcm_u24be",      true,  true },     // PCM unsigned 24-bit big-endian
+    { "pcm_u24le",      true,  true },     // PCM unsigned 24-bit little-endian
+    { "pcm_u32be",      true,  true },     // PCM unsigned 32-bit big-endian
+    { "pcm_u32le",      true,  true },     // PCM unsigned 32-bit little-endian
+    { "pcm_u8",         true,  true },     // PCM unsigned 8-bit
+    { NULL, false, false}
+};
 
-    const FilterEntry* getEntry(const char* name, const FilterEntry* whitelist, const FilterEntry* blacklist = NULL)
-    {
-        const FilterEntry* iterWhitelist = whitelist;
+const FilterEntry*
+getEntry(const char* name,
+         const FilterEntry* whitelist,
+         const FilterEntry* blacklist = NULL)
+{
+    const FilterEntry* iterWhitelist = whitelist;
+    const size_t nameLength = strlen(name);
 
-        const size_t nameLength = strlen(name);
-        // check for normal mode
-        while (iterWhitelist->name != NULL) {
-            size_t iteNameLength = strlen(iterWhitelist->name);
-            size_t maxLength = (nameLength > iteNameLength) ? nameLength : iteNameLength;
-            if (strncmp(name, iterWhitelist->name, maxLength) == 0) {
-                // Found in whitelist, now check blacklist
-                if (blacklist) {
-                    const FilterEntry* iterBlacklist = blacklist;
+    // check for normal mode
+    while (iterWhitelist->name != NULL) {
+        size_t iteNameLength = strlen(iterWhitelist->name);
+        size_t maxLength = (nameLength > iteNameLength) ? nameLength : iteNameLength;
+        if (strncmp(name, iterWhitelist->name, maxLength) == 0) {
+            // Found in whitelist, now check blacklist
+            if (blacklist) {
+                const FilterEntry* iterBlacklist = blacklist;
 
-                    while (iterBlacklist->name != NULL) {
-                        iteNameLength = strlen(iterBlacklist->name);
-                        maxLength = (nameLength > iteNameLength) ? nameLength : iteNameLength;
-                        if (strncmp(name, iterBlacklist->name, maxLength) == 0) {
-                            // Found in codec whitelist but blacklisted too
-                            return NULL;
-                        }
-
-                        ++iterBlacklist;
+                while (iterBlacklist->name != NULL) {
+                    iteNameLength = strlen(iterBlacklist->name);
+                    maxLength = (nameLength > iteNameLength) ? nameLength : iteNameLength;
+                    if (strncmp(name, iterBlacklist->name, maxLength) == 0) {
+                        // Found in codec whitelist but blacklisted too
+                        return NULL;
                     }
-                }
-                // Found in whitelist and not in blacklist
-                return iterWhitelist;
-            }
-            
-            ++iterWhitelist;
-        }
-        return NULL;
-    }
-}
 
-bool FFmpegFile::isFormatWhitelistedForReading(const char* formatName)
+                    ++iterBlacklist;
+                }
+            }
+
+            // Found in whitelist and not in blacklist
+            return iterWhitelist;
+        }
+
+        ++iterWhitelist;
+    }
+
+    return NULL;
+}
+} // namespace {
+
+bool
+FFmpegFile::isFormatWhitelistedForReading(const char* formatName)
 {
     const FilterEntry* whitelistEntry = getEntry(formatName, kFormatWhitelist);
+
     return (whitelistEntry && whitelistEntry->enableReader);
 }
 
-bool FFmpegFile::isFormatWhitelistedForWriting(const char* formatName)
+bool
+FFmpegFile::isFormatWhitelistedForWriting(const char* formatName)
 {
     const FilterEntry* whitelistEntry = getEntry(formatName, kFormatWhitelist);
+
     return (whitelistEntry && whitelistEntry->enableWriter);
 }
 
-bool FFmpegFile::isCodecWhitelistedForReading(const char* codecName)
+bool
+FFmpegFile::isCodecWhitelistedForReading(const char* codecName)
 {
     const FilterEntry* whitelistEntry = getEntry(codecName, kCodecWhitelist);
+
     return (whitelistEntry && whitelistEntry->enableReader);
 }
 
-bool FFmpegFile::isCodecWhitelistedForWriting(const char* codecName)
+bool
+FFmpegFile::isCodecWhitelistedForWriting(const char* codecName)
 {
     const FilterEntry* whitelistEntry = getEntry(codecName, kCodecWhitelist);
+
     return (whitelistEntry && whitelistEntry->enableWriter);
 }
 
@@ -328,23 +346,27 @@ FFmpegFile::Stream::getConvertCtx(AVPixelFormat srcPixelFormat,
         switch (srcPixelFormat) {
         case AV_PIX_FMT_YUVJ420P:
             srcPixelFormat = AV_PIX_FMT_YUV420P;
-            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED) {
                 srcColorRange = AVCOL_RANGE_JPEG;
+            }
             break;
         case AV_PIX_FMT_YUVJ422P:
             srcPixelFormat = AV_PIX_FMT_YUV422P;
-            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED) {
                 srcColorRange = AVCOL_RANGE_JPEG;
+            }
             break;
         case AV_PIX_FMT_YUVJ444P:
             srcPixelFormat = AV_PIX_FMT_YUV444P;
-            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED) {
                 srcColorRange = AVCOL_RANGE_JPEG;
+            }
             break;
         case AV_PIX_FMT_YUVJ440P:
             srcPixelFormat = AV_PIX_FMT_YUV440P;
-            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED)
+            if (srcColorRange == AVCOL_RANGE_UNSPECIFIED) {
                 srcColorRange = AVCOL_RANGE_JPEG;
+            }
         default:
             break;
         }
@@ -364,7 +386,7 @@ FFmpegFile::Stream::getConvertCtx(AVPixelFormat srcPixelFormat,
         if (_colorMatrixTypeOverride > 0) {
             if (_colorMatrixTypeOverride == 1) {
                 colorspace = SWS_CS_ITU709;
-            } else   {
+            } else {
                 colorspace = SWS_CS_ITU601;
             }
         }
@@ -413,7 +435,7 @@ FFmpegFile::Stream::GetStreamAspectRatio(Stream* stream)
 #endif
 
         return av_q2d(stream->_avstream->sample_aspect_ratio);
-    } else if (stream->_codecContext->sample_aspect_ratio.num)   {
+    } else if (stream->_codecContext->sample_aspect_ratio.num) {
 #if TRACE_FILE_OPEN
         std::cout << "      Aspect ratio (from codec)=" << av_q2d(stream->_codecContext->sample_aspect_ratio) << std::endl;
 #endif
@@ -547,7 +569,7 @@ FFmpegFile::getStreamFrames(Stream & stream)
         // leads to an extra frame being reported.  To attempt to work around this, compare against the number of
         // frames in the stream, and if they differ by one, use that value instead.
         int64_t streamFrames = stream._avstream->nb_frames;
-        if ( (streamFrames > 0) && (std::abs((double)(frames - streamFrames)) <= 1) ) {
+        if ( (streamFrames > 0) && (std::abs( (double)(frames - streamFrames) ) <= 1) ) {
             frames = streamFrames;
         }
 #if TRACE_FILE_OPEN
@@ -624,7 +646,7 @@ FFmpegFile::getStreamFrames(Stream & stream)
     return frames;
 } // FFmpegFile::getStreamFrames
 
-FFmpegFile::FFmpegFile(const std::string & filename)
+FFmpegFile::FFmpegFile(const string & filename)
     : _filename(filename)
     , _context(NULL)
     , _format(NULL)
@@ -638,14 +660,14 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 #endif
 {
 #ifdef OFX_IO_MT_FFMPEG
-    //OFX::MultiThread::AutoMutex guard(_lock); // not needed in a constructor: we are the only owner
+    //MultiThread::AutoMutex guard(_lock); // not needed in a constructor: we are the only owner
 #endif
 
 #if TRACE_FILE_OPEN
     std::cout << "FFmpeg Reader=" << this << "::c'tor(): filename=" << filename << std::endl;
 #endif
 
-    assert(!_filename.empty());
+    assert( !_filename.empty() );
     CHECK( avformat_open_input(&_context, _filename.c_str(), _format, NULL) );
     CHECK( avformat_find_stream_info(_context, NULL) );
 
@@ -675,9 +697,10 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         avctx = avcodec_alloc_context3(NULL);
         if (!avctx) {
             setError( "cannot allocate codec context" );
+
             return;
         }
-        
+
         int ret = make_context(avctx, avstream);
         if (ret < 0) {
 #if TRACE_FILE_OPEN
@@ -710,8 +733,8 @@ FFmpegFile::FFmpegFile(const std::string & filename)
         }
 
         // skip codecs not in the white list
-        std::string reason;
-        if (!isCodecWhitelistedForReading(videoCodec->name)) {
+        string reason;
+        if ( !isCodecWhitelistedForReading(videoCodec->name) ) {
 # if TRACE_FILE_OPEN
             std::cout << "Decoder \"" << videoCodec->name << "\" disallowed, skipping..." << std::endl;
 # endif
@@ -735,9 +758,9 @@ FFmpegFile::FFmpegFile(const std::string & filename)
             //} else
 #          endif
             {
-                avctx->thread_count = std::min((int)OFX::MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS); // ask for the number of available cores for multithreading
+                avctx->thread_count = std::min( (int)MultiThread::getNumCPUs(), OFX_FFMPEG_MAX_THREADS ); // ask for the number of available cores for multithreading
 #             ifdef AV_CODEC_CAP_SLICE_THREADS
-                if (avctx->codec && (avctx->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS)) {
+                if ( avctx->codec && (avctx->codec->capabilities & AV_CODEC_CAP_SLICE_THREADS) ) {
                     // multiple threads are used to decode a single frame. Reduces delay
                     avctx->thread_type = FF_THREAD_SLICE;
                 }
@@ -815,7 +838,7 @@ FFmpegFile::FFmpegFile(const std::string & filename)
 #         else
             stream->_outputPixelFormat = (4 == stream->_numberOfComponents) ? AV_PIX_FMT_RGBA64LE : AV_PIX_FMT_RGB48LE; // 16-bit.
 #         endif
-        } else                                                                                                                                     {
+        } else {
             stream->_outputPixelFormat = (4 == stream->_numberOfComponents) ? AV_PIX_FMT_RGBA : AV_PIX_FMT_RGB24; // 8-bit
         }
 #if TRACE_FILE_OPEN
@@ -938,8 +961,8 @@ FFmpegFile::getColorspace() const
     //and 1.8 for 4444. Protected to deal with ffmpeg vagaries.
     if (!_streams.empty() && _streams[0]->_codecContext && _streams[0]->_codecContext->codec_id) {
         if (_streams[0]->_codecContext->codec_id == AV_CODEC_ID_PRORES) {
-            if (_streams[0]->_codecContext->codec_tag == MKTAG('a', 'p', '4', 'h') ||
-                _streams[0]->_codecContext->codec_tag == MKTAG('a', 'p', '4', 'x')) {
+            if ( ( _streams[0]->_codecContext->codec_tag == MKTAG('a', 'p', '4', 'h') ) ||
+                 ( _streams[0]->_codecContext->codec_tag == MKTAG('a', 'p', '4', 'x') ) ) {
                 return "Gamma1.8";
             } else {
                 return "Gamma2.2";
@@ -948,10 +971,11 @@ FFmpegFile::getColorspace() const
     }
 
     return isYUV() ? "Gamma2.2" : "Gamma1.8";
-}
+} // FFmpegFile::getColorspace
 
 void
-FFmpegFile::setError(const char* msg, const char* prefix)
+FFmpegFile::setError(const char* msg,
+                     const char* prefix)
 {
 #ifdef OFX_IO_MT_FFMPEG
     AutoMutex guard(_invalidStateLock);
@@ -962,8 +986,7 @@ FFmpegFile::setError(const char* msg, const char* prefix)
 #if TRACE_DECODE_PROCESS
         std::cout << "!!ERROR: " << prefix << msg << std::endl;
 #endif
-    }
-    else {
+    } else {
         _errorMsg = msg;
 #if TRACE_DECODE_PROCESS
         std::cout << "!!ERROR: " << msg << std::endl;
@@ -972,7 +995,7 @@ FFmpegFile::setError(const char* msg, const char* prefix)
     _invalidState = true;
 }
 
-const std::string &
+const string &
 FFmpegFile::getError() const
 {
 #ifdef OFX_IO_MT_FFMPEG
@@ -1014,15 +1037,14 @@ FFmpegFile::seekFrame(int frame,
 
 // decode a single frame into the buffer thread safe
 bool
-FFmpegFile::decode(const OFX::ImageEffect* plugin,
+FFmpegFile::decode(const ImageEffect* plugin,
                    int frame,
                    bool loadNearest,
                    int maxRetries,
                    unsigned char* buffer)
 {
-    
     const unsigned int streamIdx = 0;
-    
+
 #ifdef OFX_IO_MT_FFMPEG
     AutoMutex guard(_lock);
 #endif
@@ -1035,7 +1057,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
 
     // get the stream
     Stream* stream = _streams[streamIdx];
-    
+
     // Translate from the 1-based frames expected to 0-based frame offsets for use in the rest of this code.
     int desiredFrame = frame - 1;
 
@@ -1069,7 +1091,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
     // file but those same frames will decode succesfully on a second attempt. The root cause of this is not understood but
     // it appears to be some oddity of FFmpeg. While I don't really like it, retrying decode enables us to successfully
     // decode those files rather than having to fail the read.
-    int retriesRemaining = std::max(1,maxRetries);
+    int retriesRemaining = std::max(1, maxRetries);
 
     // Whether we have just performed a seek and are still awaiting the first decoded frame after that seek. This controls
     // how we respond when a decode stall is detected.
@@ -1201,8 +1223,8 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                     // timestamp. Likewise, if the landing frame is after the seek target frame (this can happen, presumably a bug
                     // in FFmpeg seeking), we need to seek back to an earlier frame so that we can start decoding at or before the
                     // desired frame.
-                    int landingFrame = (_avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) ? -1 :
-                                        stream->ptsToFrame(_avPacket.*stream->_timestampField));
+                    int landingFrame = ( _avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) ? -1 :
+                                         stream->ptsToFrame(_avPacket.*stream->_timestampField) );
 
                     if ( ( _avPacket.*stream->_timestampField == int64_t(AV_NOPTS_VALUE) ) || (landingFrame  > lastSeekedFrame) ) {
 #if TRACE_DECODE_PROCESS
@@ -1277,7 +1299,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                         if (remain < 4) {
                             std::cout << "    Insufficient remaining bytes (" << remain << ") for block size at BlockOffset=" << (data - _avPacket.data) << std::endl;
                             remain = 0;
-                        } else   {
+                        } else {
                             uint32_t blockSize = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
                             data += 4;
                             remain -= 4;
@@ -1285,7 +1307,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                             if (remain < blockSize) {
                                 std::cout << ", Insufficient remaining bytes (" << remain << ")" << std::endl;
                                 remain = 0;
-                            } else   {
+                            } else {
                                 std::cout << ", Bytes:";
                                 int count = (blockSize > 16 ? 16 : blockSize);
                                 for (int offset = 0; offset < count; offset++) {
@@ -1313,7 +1335,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                     error = avcodec_send_packet(stream->_codecContext, &_avPacket);
                     if (error == 0) {
                         error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
-                        if (error == AVERROR(EAGAIN)) {
+                        if ( error == AVERROR(EAGAIN) ) {
                             frameDecoded = 0;
                             error = 0;
                         } else if (error < 0) {
@@ -1350,8 +1372,8 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
             // was output.
             decodeAttempted = true;
             int error = 0;
-            if ((AV_CODEC_ID_PRORES == stream->_codecContext->codec_id) ||
-                (AV_CODEC_ID_DNXHD == stream->_codecContext->codec_id)) {
+            if ( (AV_CODEC_ID_PRORES == stream->_codecContext->codec_id) ||
+                 (AV_CODEC_ID_DNXHD == stream->_codecContext->codec_id) ) {
                 // Apple ProRes specific.
                 // The ProRes codec is I-frame only so will not have any
                 // remaining frames.
@@ -1360,7 +1382,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
                 error = avcodec_send_packet(stream->_codecContext, &_avPacket);
                 if (error == 0) {
                     error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
-                    if (error == AVERROR(EAGAIN)) {
+                    if ( error == AVERROR(EAGAIN) ) {
                         frameDecoded = 0;
                         error = 0;
                     } else if (error < 0) {
@@ -1523,7 +1545,7 @@ FFmpegFile::decode(const OFX::ImageEffect* plugin,
             } // if (decodeAttempted)
         } // if (stream->_decodeNextFrameIn < stream->_frames)
         av_packet_unref(&_avPacket);
-        if (plugin->abort()) {
+        if ( plugin->abort() ) {
             return false;
         }
     } while (!hasPicture);
@@ -1549,7 +1571,6 @@ bool
 FFmpegFile::getFPS(double & fps,
                    unsigned streamIdx)
 {
-
     if ( streamIdx >= _streams.size() ) {
         return false;
     }
@@ -1571,8 +1592,6 @@ FFmpegFile::getInfo(int & width,
                     int & frames,
                     unsigned streamIdx)
 {
-
-
     if ( streamIdx >= _streams.size() ) {
         return false;
     }
@@ -1591,22 +1610,21 @@ FFmpegFile::getInfo(int & width,
 std::size_t
 FFmpegFile::getBufferBytesCount() const
 {
-    if (_streams.empty()) {
+    if ( _streams.empty() ) {
         return 0;
     }
-    
+
     Stream* stream = _streams[0];
     std::size_t pixelDepth = stream->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
+
     // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
     return stream->_width * stream->_height * stream->_numberOfComponents * pixelDepth;
 }
 
-
 FFmpegFileManager::FFmpegFileManager()
-: _files()
-, _lock(0)
+    : _files()
+    , _lock(0)
 {
-    
 }
 
 FFmpegFileManager::~FFmpegFileManager()
@@ -1632,7 +1650,7 @@ FFmpegFileManager::clear(void const * plugin)
     assert(_lock);
     FFmpegFile::AutoMutex guard(*_lock);
     FilesMap::iterator found = _files.find(plugin);
-    if (found != _files.end()) {
+    if ( found != _files.end() ) {
         for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
             delete *it;
         }
@@ -1641,7 +1659,8 @@ FFmpegFileManager::clear(void const * plugin)
 }
 
 FFmpegFile*
-FFmpegFileManager::get(void const * plugin, const std::string &filename) const
+FFmpegFileManager::get(void const * plugin,
+                       const string &filename) const
 {
     if (filename.empty() || !plugin) {
         return 0;
@@ -1649,10 +1668,10 @@ FFmpegFileManager::get(void const * plugin, const std::string &filename) const
     assert(_lock);
     FFmpegFile::AutoMutex guard(*_lock);
     FilesMap::iterator found = _files.find(plugin);
-    if (found != _files.end()) {
+    if ( found != _files.end() ) {
         for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
-            if ((*it)->getFilename() == filename) {
-                if ((*it)->isInvalid()) {
+            if ( (*it)->getFilename() == filename ) {
+                if ( (*it)->isInvalid() ) {
                     delete *it;
                     found->second.erase(it);
                     break;
@@ -1667,7 +1686,8 @@ FFmpegFileManager::get(void const * plugin, const std::string &filename) const
 }
 
 FFmpegFile*
-FFmpegFileManager::getOrCreate(void const * plugin,const std::string &filename) const
+FFmpegFileManager::getOrCreate(void const * plugin,
+                               const string &filename) const
 {
     if (filename.empty() || !plugin) {
         return 0;
@@ -1675,10 +1695,10 @@ FFmpegFileManager::getOrCreate(void const * plugin,const std::string &filename) 
     assert(_lock);
     FFmpegFile::AutoMutex guard(*_lock);
     FilesMap::iterator found = _files.find(plugin);
-    if (found != _files.end()) {
+    if ( found != _files.end() ) {
         for (std::list<FFmpegFile*>::iterator it = found->second.begin(); it != found->second.end(); ++it) {
-            if ((*it)->getFilename() == filename) {
-                if ((*it)->isInvalid()) {
+            if ( (*it)->getFilename() == filename ) {
+                if ( (*it)->isInvalid() ) {
                     delete *it;
                     found->second.erase(it);
                     break;
@@ -1688,16 +1708,15 @@ FFmpegFileManager::getOrCreate(void const * plugin,const std::string &filename) 
             }
         }
     }
-    
+
     FFmpegFile* file = new FFmpegFile(filename);
-    if (found == _files.end()) {
+    if ( found == _files.end() ) {
         std::list<FFmpegFile*> fileList;
         fileList.push_back(file);
-        _files.insert(std::make_pair(plugin, fileList));
+        _files.insert( make_pair(plugin, fileList) );
     } else {
         found->second.push_back(file);
     }
+
     return file;
 }
-
-

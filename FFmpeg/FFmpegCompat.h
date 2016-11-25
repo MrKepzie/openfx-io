@@ -26,9 +26,9 @@
 
 
 #ifdef __GNUC__
-#	define ffms_used __attribute__((used))
+#       define ffms_used __attribute__( (used) )
 #else
-#	define ffms_used
+#       define ffms_used
 #endif
 
 // Defaults to libav compatibility, uncomment (when building with msvc) to force ffmpeg compatibility.
@@ -36,40 +36,40 @@
 
 // Attempt to auto-detect whether or not we are using ffmpeg.  Newer versions of ffmpeg have their micro versions 100+
 #if LIBAVFORMAT_VERSION_MICRO > 99 || LIBAVUTIL_VERSION_MICRO > 99 || LIBAVCODEC_VERSION_MICRO > 99 || LIBSWSCALE_VERSION_MICRO > 99
-#	ifndef FFMS_USE_FFMPEG_COMPAT
-#		define FFMS_USE_FFMPEG_COMPAT
-#	endif
+#       ifndef FFMS_USE_FFMPEG_COMPAT
+#               define FFMS_USE_FFMPEG_COMPAT
+#       endif
 #endif
 
 // Helper to handle checking for different versions in libav and ffmpeg
 // First version is required libav versio, second is required ffmpeg version
 #ifdef FFMS_USE_FFMPEG_COMPAT
-#  define VERSION_CHECK(LIB, cmp, u1, u2, u3, major, minor, micro) ((LIB) cmp (AV_VERSION_INT(major, minor, micro)))
+#  define VERSION_CHECK(LIB, cmp, u1, u2, u3, major, minor, micro) ( (LIB) cmp ( AV_VERSION_INT(major, minor, micro) ) )
 #else
-#  define VERSION_CHECK(LIB, cmp, major, minor, micro, u1, u2, u3) ((LIB) cmp (AV_VERSION_INT(major, minor, micro)))
+#  define VERSION_CHECK(LIB, cmp, major, minor, micro, u1, u2, u3) ( (LIB) cmp ( AV_VERSION_INT(major, minor, micro) ) )
 #endif
 
 // Compatibility with older/newer ffmpegs
 #ifdef LIBAVFORMAT_VERSION_INT
-#	if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(53,2,0))
-#		define avformat_open_input(c,s,f,o) av_open_input_file(c,s,f,0,o) // this works because the parameters/options are not used
-#	endif
-#	if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(53,3,0))
-#		define avformat_find_stream_info(c,o) av_find_stream_info(c)
-#	endif
-#	if VERSION_CHECK(LIBAVFORMAT_VERSION_INT, <, 53, 17, 0, 53, 25, 0)
-#		define avformat_close_input(c) av_close_input_file(*c)
-#	endif
+#       if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(53, 2, 0 ) )
+#               define avformat_open_input(c, s, f, o) av_open_input_file(c, s, f, 0, o) // this works because the parameters/options are not used
+#       endif
+#       if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(53, 3, 0 ) )
+#               define avformat_find_stream_info(c, o) av_find_stream_info(c)
+#       endif
+#       if VERSION_CHECK(LIBAVFORMAT_VERSION_INT, <, 53, 17, 0, 53, 25, 0)
+#               define avformat_close_input(c) av_close_input_file(*c)
+#       endif
 #   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(53, 10, 0)
-#		define avformat_new_stream(s,c) av_new_stream(s,c)
-#	endif
-#   if LIBAVFORMAT_VERSION_INT <= AV_VERSION_INT(52,101,0)
+#               define avformat_new_stream(s, c) av_new_stream(s, c)
+#       endif
+#   if LIBAVFORMAT_VERSION_INT <= AV_VERSION_INT(52, 101, 0)
 #       define av_dump_format dump_format
 #   endif
 #   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52, 45, 0)
 #       define av_guess_format guess_format
 #   endif
-#   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52,111,0)
+#   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52, 111, 0)
 #       define avformat_write_header av_write_header
 #   endif
 #   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52, 105, 0)
@@ -79,27 +79,27 @@
 #   if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52, 107, 0)
 #       define AVIO_FLAG_WRITE URL_WRONLY
 #   endif
-#   if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(54,2,0))
+#   if (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(54, 2, 0 ) )
 #        define AV_DISPOSITION_ATTACHED_PIC 0xBEEFFACE
 #   endif
 #endif
 
 #ifdef LIBAVCODEC_VERSION_INT
-#	if (LIBAVCODEC_VERSION_INT) >= (AV_VERSION_INT(52,94,3)) // there are ~3 revisions where this will break but fixing that is :effort:
-#		undef SampleFormat
-#	else
-#		define AVSampleFormat SampleFormat
-#		define av_get_bits_per_sample_fmt av_get_bits_per_sample_format
-#		define AV_SAMPLE_FMT_U8		SAMPLE_FMT_U8
-#		define AV_SAMPLE_FMT_S16	SAMPLE_FMT_S16
-#		define AV_SAMPLE_FMT_S32	SAMPLE_FMT_S32
-#		define AV_SAMPLE_FMT_FLT	SAMPLE_FMT_FLT
-#		define AV_SAMPLE_FMT_DBL	SAMPLE_FMT_DBL
-#	endif
-#	if (LIBAVCODEC_VERSION_INT) < (AV_VERSION_INT(53,6,0))
-#		define avcodec_open2(a,c,o) avcodec_open(a,c)
-#		define avcodec_alloc_context3(c) avcodec_alloc_context()
-#	endif
+#       if (LIBAVCODEC_VERSION_INT) >= (AV_VERSION_INT(52, 94, 3 ) ) // there are ~3 revisions where this will break but fixing that is :effort:
+#               undef SampleFormat
+#       else
+#               define AVSampleFormat SampleFormat
+#               define av_get_bits_per_sample_fmt av_get_bits_per_sample_format
+#               define AV_SAMPLE_FMT_U8         SAMPLE_FMT_U8
+#               define AV_SAMPLE_FMT_S16        SAMPLE_FMT_S16
+#               define AV_SAMPLE_FMT_S32        SAMPLE_FMT_S32
+#               define AV_SAMPLE_FMT_FLT        SAMPLE_FMT_FLT
+#               define AV_SAMPLE_FMT_DBL        SAMPLE_FMT_DBL
+#       endif
+#       if (LIBAVCODEC_VERSION_INT) < (AV_VERSION_INT(53, 6, 0 ) )
+#               define avcodec_open2(a, c, o) avcodec_open(a, c)
+#               define avcodec_alloc_context3(c) avcodec_alloc_context()
+#       endif
 #   if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(52, 30, 2)
 #       define AV_PKT_FLAG_KEY PKT_FLAG_KEY
 #   endif
@@ -121,57 +121,64 @@
 //      other codec types may have to be defined too
 #   endif
 #   if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(52, 112, 0)
-#       define avcodec_thread_init(c,n) (0)
+#       define avcodec_thread_init(c, n) (0)
 #   endif
 #   if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 54, 28, 0, 54, 59, 100)
 namespace {
-inline void avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
+inline void
+avcodec_free_frame(AVFrame **frame) { av_freep(frame); }
 };
 #   endif
 #   ifndef AVCODEC_MAX_AUDIO_FRAME_SIZE
 #       define AVCODEC_MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
 #   endif
 #   if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 54, 28, 0, 54, 59, 100)
-static void av_frame_free(AVFrame **frame) { av_freep(frame); }
-#		define av_frame_unref avcodec_get_frame_defaults
+static void
+av_frame_free(AVFrame **frame) { av_freep(frame); }
+
+#               define av_frame_unref avcodec_get_frame_defaults
 #   elif VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 55, 28, 1, 55, 45, 101)
-#		define av_frame_free avcodec_free_frame
-#		define av_frame_unref avcodec_get_frame_defaults
+#               define av_frame_free avcodec_free_frame
+#               define av_frame_unref avcodec_get_frame_defaults
 #   endif
-#	if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 57, 8, 0, 57, 12, 100)
-#		define av_packet_unref av_free_packet
-#	endif
+#       if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 57, 8, 0, 57, 12, 100)
+#               define av_packet_unref av_free_packet
+#       endif
 
 // should the following check be on (LIBAVFORMAT_VERSION_INT) < (AV_VERSION_INT(57,5,0)) ?
 // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2016-April/099192.html
 // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2016-April/099152.html
-#	if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 57, 14, 0, 57, 33, 100)
-#		define FFMSCODEC codec
+#       if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 57, 14, 0, 57, 33, 100)
+#               define FFMSCODEC codec
 namespace {
-inline ffms_used int make_context(AVCodecContext *dst, AVStream *src) { return avcodec_copy_context(dst, src->codec); }
+inline ffms_used int
+make_context(AVCodecContext *dst,
+             AVStream *src) { return avcodec_copy_context(dst, src->codec); }
 };
-#	else
-#		define FFMSCODEC codecpar
+#       else
+#               define FFMSCODEC codecpar
 namespace {
-inline ffms_used int make_context(AVCodecContext *dst, AVStream *src) { return avcodec_parameters_to_context(dst, src->codecpar); }
+inline ffms_used int
+make_context(AVCodecContext *dst,
+             AVStream *src) { return avcodec_parameters_to_context(dst, src->codecpar); }
 }
 # endif
-#endif
+#endif // ifdef LIBAVCODEC_VERSION_INT
 
 #ifdef LIBAVUTIL_VERSION_INT
-#	if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 1, 0))
-#		define av_get_picture_type_char av_get_pict_type_char
-#		define AV_PICTURE_TYPE_B FF_B_TYPE
-#	endif
-#	if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 2, 0))
-#		define av_get_pix_fmt_name avcodec_get_pix_fmt_name
-#	endif
-#	if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 4, 0))
-#		define av_get_bytes_per_sample(a) (av_get_bits_per_sample_fmt(a) / 8)
-#	endif
-#	if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 12, 0))
-#		define av_set_opt_int(o,n,v,s) av_set_int(o,n,v)
-#	endif
+#       if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 1, 0 ) )
+#               define av_get_picture_type_char av_get_pict_type_char
+#               define AV_PICTURE_TYPE_B FF_B_TYPE
+#       endif
+#       if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 2, 0 ) )
+#               define av_get_pix_fmt_name avcodec_get_pix_fmt_name
+#       endif
+#       if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 4, 0 ) )
+#               define av_get_bytes_per_sample(a) (av_get_bits_per_sample_fmt(a) / 8)
+#       endif
+#       if (LIBAVUTIL_VERSION_INT) < (AV_VERSION_INT(51, 12, 0 ) )
+#               define av_set_opt_int(o, n, v, s) av_set_int(o, n, v)
+#       endif
 #   if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(51, 5, 0)
 #       define AV_DICT_IGNORE_SUFFIX AV_METADATA_IGNORE_SUFFIX
 #       define AV_DICT_DONT_OVERWRITE AV_METADATA_DONT_OVERWRITE
@@ -183,7 +190,7 @@ inline ffms_used int make_context(AVCodecContext *dst, AVStream *src) { return a
 #       define av_metadata_conv(ctx, d_conv, s_conv)
 #   endif
 #   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 27, 0, 51, 46, 100)
-#       define av_get_packed_sample_fmt(fmt) (fmt < AV_SAMPLE_FMT_U8P ? fmt : fmt - (AV_SAMPLE_FMT_U8P - AV_SAMPLE_FMT_U8))
+#       define av_get_packed_sample_fmt(fmt) ( fmt < AV_SAMPLE_FMT_U8P ? fmt : fmt - (AV_SAMPLE_FMT_U8P - AV_SAMPLE_FMT_U8) )
 #   endif
 #   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 51, 44, 0, 51, 76, 100)
 #       include <libavutil/pixdesc.h>
@@ -206,9 +213,12 @@ inline ffms_used int make_context(AVCodecContext *dst, AVStream *src) { return a
 #           define AV_PIX_FMT_RGB24    PIX_FMT_RGB24
 #       endif
 namespace {
-inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
-    if (pix_fmt < 0 || pix_fmt >= AV_PIX_FMT_NB)
+inline const AVPixFmtDescriptor *
+av_pix_fmt_desc_get(AVPixelFormat pix_fmt)
+{
+    if ( (pix_fmt < 0) || (pix_fmt >= AV_PIX_FMT_NB) ) {
         return NULL;
+    }
 
     return &av_pix_fmt_descriptors[pix_fmt];
 }
@@ -220,19 +230,19 @@ inline const AVPixFmtDescriptor *av_pix_fmt_desc_get(AVPixelFormat pix_fmt) {
 #   if VERSION_CHECK(LIBAVUTIL_VERSION_INT, <, 52, 9, 0, 52, 20, 100)
 #       define av_frame_alloc avcodec_alloc_frame
 #   endif
-#	if VERSION_CHECK(LIBAVUTIL_VERSION_INT, >, 55, 0, 0, 55, 0, 100) || defined(FF_API_PLUS1_MINUS1)
-#		define FFMS_DEPTH(x) ((x).depth)
-#	else
-#		define FFMS_DEPTH(x) ((x).depth_minus1 + 1)
+#       if VERSION_CHECK(LIBAVUTIL_VERSION_INT, >, 55, 0, 0, 55, 0, 100) || defined(FF_API_PLUS1_MINUS1)
+#               define FFMS_DEPTH(x) ( (x).depth )
+#       else
+#               define FFMS_DEPTH(x) ( (x).depth_minus1 + 1 )
 # endif
-#endif
-#ifdef AVERROR 
-#define AVERROR_IO AVERROR(EIO) 
-#define AVERROR_NUMEXPECTED AVERROR(EDOM) 
-#define AVERROR_NOMEM AVERROR(ENOMEM) 
-#define AVERROR_NOFMT AVERROR(EILSEQ) 
-#define AVERROR_NOTSUPP AVERROR(ENOSYS) 
-#define AVERROR_NOENT AVERROR(ENOENT) 
+#endif // ifdef LIBAVUTIL_VERSION_INT
+#ifdef AVERROR
+#define AVERROR_IO AVERROR(EIO)
+#define AVERROR_NUMEXPECTED AVERROR(EDOM)
+#define AVERROR_NOMEM AVERROR(ENOMEM)
+#define AVERROR_NOFMT AVERROR(EILSEQ)
+#define AVERROR_NOTSUPP AVERROR(ENOSYS)
+#define AVERROR_NOENT AVERROR(ENOENT)
 #endif
 
-#endif
+#endif // ifndef FFMPEGCOMPAT_H

@@ -24,7 +24,7 @@
 #ifndef __Io__FFmpegHandler__
 #define __Io__FFmpegHandler__
 
-#if (defined(_STDINT_H) || defined(_STDINT_H_) || defined(_MSC_STDINT_H_)) && !defined(UINT64_C)
+#if (defined(_STDINT_H) || defined(_STDINT_H_) || defined(_MSC_STDINT_H_ ) ) && !defined(UINT64_C)
 #warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
 #endif
 #ifndef __STDC_CONSTANT_MACROS
@@ -58,15 +58,15 @@ extern "C" {
 #include "fast_mutex.h"
 #endif
 
-#define CHECKMSG(x,msg) \
-{\
-  int error = (x);\
-  if (error < 0) {\
-    setError((msg),"");\
-    close();\
-    return;\
-  }\
-}
+#define CHECKMSG(x, msg) \
+    { \
+        int error = (x); \
+        if (error < 0) { \
+            setError( (msg), "" ); \
+            close(); \
+            return; \
+        } \
+    }
 
 //Used in ffmpeg metadata dicts to stash values written to and from nclc atom.
 #define kNCLCPrimariesKey "fn_primaries"
@@ -99,7 +99,8 @@ namespace OFX {
 class ImageEffect;
 }
 
-class FFmpegFile {
+class FFmpegFile
+{
 public:
 #ifdef OFX_USE_MULTITHREAD_MUTEX
     typedef OFX::MultiThread::Mutex Mutex;
@@ -119,67 +120,60 @@ private:
         AVFrame* _avFrame;             // decoding frame
         SwsContext* _convertCtx;
         bool _resetConvertCtx;
-
         int _fpsNum;
         int _fpsDen;
-
         int64_t _startPTS;     // PTS of the first frame in the stream
         int64_t _frames;       // video duration in frames
-
         bool _ptsSeen;                      // True if a read AVPacket has ever contained a valid PTS during this stream's decode,
         // indicating that this stream does contain PTSs.
         int64_t AVPacket::*_timestampField; // Pointer to member of AVPacket from which timestamps are to be retrieved. Enables
         // fallback to using DTSs for a stream if PTSs turn out not to be available.
-
-        int                 _width;
-        int                 _height;
-        double              _aspect;
-        int                 _bitDepth;
-        int                 _numberOfComponents;
-        enum AVPixelFormat  _outputPixelFormat;
-        uint8_t             _componentPosition[4];
-        int                 _colorMatrixTypeOverride;       // Option to override the default YCbCr color matrix. 0 means no override (default).
-        bool                _doNotAttachPrefix;
-        bool                _matchMetaFormat;
-
+        int _width;
+        int _height;
+        double _aspect;
+        int _bitDepth;
+        int _numberOfComponents;
+        enum AVPixelFormat _outputPixelFormat;
+        uint8_t _componentPosition[4];
+        int _colorMatrixTypeOverride;                       // Option to override the default YCbCr color matrix. 0 means no override (default).
+        bool _doNotAttachPrefix;
+        bool _matchMetaFormat;
         int _decodeNextFrameIn; // The 0-based index of the next frame to be fed into decode. Negative before any
         // frames have been decoded or when we've just seeked but not yet found a relevant frame. Equal to
         // frames_ when all available frames have been fed into decode.
-
         int _decodeNextFrameOut; // The 0-based index of the next frame expected out of decode. Negative before
         // any frames have been decoded or when we've just seeked but not yet found a relevant frame. Equal to
         // frames_ when all available frames have been output from decode.
-
         int _accumDecodeLatency; // The number of frames that have been input without any frame being output so far in this stream
         // since the last seek. This is part of a guard mechanism to detect when decode appears to have
         // stalled and ensure that FFmpegFile::decode() does not loop indefinitely.
 
         Stream()
-        : _idx(0)
-        , _avstream(NULL)
-        , _codecContext(NULL)
-        , _videoCodec(NULL)
-        , _avFrame(NULL)
-        , _convertCtx(NULL)
-        , _resetConvertCtx(true)
-        , _fpsNum(1)
-        , _fpsDen(1)
-        , _startPTS(0)
-        , _frames(0)
-        , _ptsSeen(false)
-        , _timestampField(&AVPacket::pts)
-        , _width(0)
-        , _height(0)
-        , _aspect(1.0)
-        , _bitDepth(8)
-        , _numberOfComponents(3)
-        , _outputPixelFormat(AV_PIX_FMT_RGB24)
-        , _colorMatrixTypeOverride(0)
-        , _doNotAttachPrefix(true)
-        , _matchMetaFormat(true)
-        , _decodeNextFrameIn(-1)
-        , _decodeNextFrameOut(-1)
-        , _accumDecodeLatency(0)
+            : _idx(0)
+            , _avstream(NULL)
+            , _codecContext(NULL)
+            , _videoCodec(NULL)
+            , _avFrame(NULL)
+            , _convertCtx(NULL)
+            , _resetConvertCtx(true)
+            , _fpsNum(1)
+            , _fpsDen(1)
+            , _startPTS(0)
+            , _frames(0)
+            , _ptsSeen(false)
+            , _timestampField(&AVPacket::pts)
+            , _width(0)
+            , _height(0)
+            , _aspect(1.0)
+            , _bitDepth(8)
+            , _numberOfComponents(3)
+            , _outputPixelFormat(AV_PIX_FMT_RGB24)
+            , _colorMatrixTypeOverride(0)
+            , _doNotAttachPrefix(true)
+            , _matchMetaFormat(true)
+            , _decodeNextFrameIn(-1)
+            , _decodeNextFrameOut(-1)
+            , _accumDecodeLatency(0)
         {
             // The purpose of this is to avoid an RGB->RGB conversion.
             // This saves memory and improves performance. For example
@@ -196,17 +190,18 @@ private:
 
         ~Stream()
         {
-
-            if (_avFrame)
+            if (_avFrame) {
                 av_free(_avFrame);
+            }
 
             if (_codecContext) {
                 avcodec_flush_buffers(_codecContext);
                 avcodec_free_context(&_codecContext);
             }
 
-            if (_convertCtx)
+            if (_convertCtx) {
                 sws_freeContext(_convertCtx);
+            }
         }
 
         static void destroy(Stream* s)
@@ -218,8 +213,10 @@ private:
         {
             int64_t numerator = int64_t(frame) * _fpsDen *  _avstream->time_base.den;
             int64_t denominator = int64_t(_fpsNum) * _avstream->time_base.num;
+
             // guard against division by zero
             assert(denominator);
+
             return _startPTS + denominator ? (numerator / denominator) : numerator;
         }
 
@@ -227,8 +224,10 @@ private:
         {
             int64_t numerator = int64_t(pts - _startPTS) * _avstream->time_base.num * _fpsNum;
             int64_t denominator = int64_t(_avstream->time_base.den) * _fpsDen;
+
             // guard against division by zero
             assert(denominator);
+
             return static_cast<int>(denominator ? (numerator / denominator) : numerator);
         }
 
@@ -238,7 +237,7 @@ private:
             //  * JPEG codecs always use Rec 601.
             AVCodecID codecID = _codecContext->codec_id;
 
-            if (codecID == AV_CODEC_ID_MJPEG )  {
+            if (codecID == AV_CODEC_ID_MJPEG) {
                 return false;
             }
 
@@ -250,6 +249,7 @@ private:
         {
             // from swscale_internal.h
             const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(_codecContext->pix_fmt);
+
             return !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
         }
 
@@ -265,9 +265,9 @@ private:
         // I needed to add the thread_count onto the codec delay - pickles
         int getCodecDelay() const
         {
-            return (((_videoCodec->capabilities & CODEC_CAP_DELAY) ? _codecContext->delay : 0)
-                    + _codecContext->has_b_frames
-                    + _codecContext->thread_count);
+            return ( ( (_videoCodec->capabilities & CODEC_CAP_DELAY) ? _codecContext->delay : 0 )
+                     + _codecContext->has_b_frames
+                     + _codecContext->thread_count );
         }
     };
 
@@ -283,9 +283,8 @@ private:
     // reader error state
     std::string _errorMsg;  // internal decoding error string
     bool _invalidState;     // true if the reader is in an invalid state
-    
     AVPacket _avPacket;
-    
+
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
     mutable Mutex _lock;
@@ -296,10 +295,12 @@ private:
     void setError(const char* msg, const char* prefix = 0);
 
     // set FFmpeg library error
-    void setInternalError(const int error, const char* prefix = 0)
+    void setInternalError(const int error,
+                          const char* prefix = 0)
     {
         char errorBuf[1024];
-        av_strerror(error, errorBuf, sizeof(errorBuf));
+
+        av_strerror( error, errorBuf, sizeof(errorBuf) );
         setError(errorBuf, prefix);
     }
 
@@ -309,7 +310,7 @@ private:
     // Get the video stream duration in frames...
     int64_t getStreamFrames(Stream& stream);
 
-    bool seekFrame(int frame,Stream* stream);
+    bool seekFrame(int frame, Stream* stream);
 
 public:
 
@@ -321,10 +322,10 @@ public:
     // destructor
     ~FFmpegFile();
 
-    const std::string& getFilename() const {
+    const std::string& getFilename() const
+    {
         return _filename;
     }
-
 
     // get the internal error string
     const std::string& getError() const;
@@ -333,13 +334,14 @@ public:
     bool isInvalid() const;
 
     // return the numbers of streams supported by the reader
-    unsigned int getNbStreams() const {
+    unsigned int getNbStreams() const
+    {
         return _streams.size();
     }
 
     void setColorMatrixTypeOverride(int colorMatrixType) const
     {
-        if (_streams.empty()) {
+        if ( _streams.empty() ) {
             return;
         }
 
@@ -351,7 +353,7 @@ public:
 
     void setDoNotAttachPrefix(bool doNotAttachPrefix) const
     {
-        if (_streams.empty()) {
+        if ( _streams.empty() ) {
             return;
         }
 
@@ -362,7 +364,7 @@ public:
 
     void setMatchMetaFormat(bool matchMetaFormat) const
     {
-        if (_streams.empty()) {
+        if ( _streams.empty() ) {
             return;
         }
 
@@ -373,47 +375,54 @@ public:
 
     bool isRec709Format() const
     {
-        if (_streams.empty()) {
+        if ( _streams.empty() ) {
             return false;
         }
 
         // mov64Reader::decode always uses stream 0
         Stream* stream = _streams[0];
+
         return stream->isRec709Format();
     }
 
     bool isYUV() const
     {
-        if (_streams.empty()) {
+        if ( _streams.empty() ) {
             return false;
         }
 
         // mov64Reader::decode always uses stream 0
         Stream* stream = _streams[0];
+
         return stream->isYUV();
     }
 
-    int getBitDepth() const {
-        if (_streams.empty()) {
+    int getBitDepth() const
+    {
+        if ( _streams.empty() ) {
             return 0;
         }
 
         // mov64Reader::decode always uses stream 0
         // Sometimes AVCodec reports a bitdepth of 0 (eg PNG codec).
+
         // In this case, assume 8 bit.
         return std::max(8, _streams[0]->_bitDepth);
     }
 
-    int getNumberOfComponents() const {
-        if (_streams.empty()) {
+    int getNumberOfComponents() const
+    {
+        if ( _streams.empty() ) {
             return 0;
         }
+
         // mov64Reader::decode always uses stream 0
         return _streams[0]->_numberOfComponents;
     }
 
-    int getComponentPosition(int componentIndex) const {
-        if (_streams.empty()) {
+    int getComponentPosition(int componentIndex) const
+    {
+        if ( _streams.empty() ) {
             return 0;
         }
 
@@ -421,8 +430,9 @@ public:
         return _streams[0]->_componentPosition[componentIndex];
     }
 
-    int getWidth() const {
-        if (_streams.empty()) {
+    int getWidth() const
+    {
+        if ( _streams.empty() ) {
             return 0;
         }
 
@@ -430,19 +440,22 @@ public:
         return _streams[0]->_width;
     }
 
-    int getHeight() const {
-        if (_streams.empty()) {
+    int getHeight() const
+    {
+        if ( _streams.empty() ) {
             return 0;
         }
 
         // mov64Reader::decode always uses stream 0
         return _streams[0]->_height;
     }
-    
-    std::size_t getSizeOfData() const {
-        if (_streams.empty()) {
+
+    std::size_t getSizeOfData() const
+    {
+        if ( _streams.empty() ) {
             return 0;
         }
+
         return _streams[0]->_bitDepth > 8 ? sizeof(unsigned short) : sizeof(unsigned char);
     }
 
@@ -463,7 +476,7 @@ public:
     const char* getColorspace() const;
 
     std::size_t getBufferBytesCount() const;
-    
+
     static bool isImageFile(const std::string& filename);
 
     //! Check whether a named container format is Whitelisted
@@ -479,25 +492,23 @@ public:
 class FFmpegFileManager
 {
     ///For each plug-in instance, a list of opened files
-    typedef std::map<void const *,std::list<FFmpegFile*> > FilesMap;
+    typedef std::map<void const *, std::list<FFmpegFile*> > FilesMap;
     mutable FilesMap _files;
     mutable FFmpegFile::Mutex* _lock;
-    
+
 public:
-    
+
     FFmpegFileManager();
-    
+
     ~FFmpegFileManager();
-    
+
     void init();
-    
+
     void clear(void const * plugin);
-    
+
     FFmpegFile* get(void const * plugin, const std::string &filename) const;
     FFmpegFile* getOrCreate(void const * plugin, const std::string &filename) const;
-
 };
-
 
 
 #endif /* defined(__Io__FFmpegHandler__) */

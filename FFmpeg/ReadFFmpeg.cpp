@@ -21,7 +21,7 @@
  * Reads a video input file using the libav library.
  */
 
-#if (defined(_STDINT_H) || defined(_STDINT_H_) || defined(_MSC_STDINT_H_)) && !defined(UINT64_C)
+#if (defined(_STDINT_H) || defined(_STDINT_H_) || defined(_MSC_STDINT_H_ ) ) && !defined(UINT64_C)
 #warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
 #endif
 #ifndef __STDC_CONSTANT_MACROS
@@ -48,6 +48,10 @@
 using namespace OFX;
 using namespace OFX::IO;
 
+using std::string;
+using std::stringstream;
+using std::vector;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ReadFFmpeg"
@@ -61,7 +65,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamMaxRetries "maxRetries"
 #define kParamMaxRetriesLabel "Max retries per frame"
 #define kParamMaxRetriesHint "Some video files are sometimes tricky to read and needs several retries before successfully decoding a frame. This" \
-" parameter controls how many times we should attempt to decode the same frame before failing. "
+    " parameter controls how many times we should attempt to decode the same frame before failing. "
 
 #define kSupportsRGBA true
 #define kSupportsRGB true
@@ -70,19 +74,19 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSupportsTiles false
 
 
-class ReadFFmpegPlugin : public GenericReaderPlugin
+class ReadFFmpegPlugin
+    : public GenericReaderPlugin
 {
-    
     FFmpegFileManager& _manager;
-    OFX::IntParam *_maxRetries;
-    
+    IntParam *_maxRetries;
+
 public:
 
-    ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHandle handle, const vector<string>& extensions);
 
     virtual ~ReadFFmpegPlugin();
 
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
 
     bool loadNearestFrame() const;
 
@@ -97,7 +101,7 @@ public:
 
 private:
 
-    virtual bool isVideoStream(const std::string& filename) OVERRIDE FINAL;
+    virtual bool isVideoStream(const string& filename) OVERRIDE FINAL;
 
     /**
      * @brief Called when the input image/video file changed.
@@ -107,7 +111,7 @@ private:
      * This function is only called once: when the filename is first set.
      *
      * Besides returning colorspace, premult, components, and componentcount, if it returns true
-     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * this function may also set extra format-specific parameters using Param::setValue.
      * The parameters must not be animated, since their value must remain the same for a whole sequence.
      *
      * You shouldn't do any strong processing as this is called on the main thread and
@@ -118,21 +122,19 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
-
-    virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
-
-    virtual bool getSequenceTimeDomain(const std::string& filename, OfxRangeI &range) OVERRIDE FINAL;
-
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
-    
-    virtual bool getFrameRate(const std::string& filename, double* fps) const OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const string& filename, string *colorspace, PreMultiplicationEnum *filePremult, PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual void decode(const string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual bool getSequenceTimeDomain(const string& filename, OfxRangeI &range) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
+    virtual bool getFrameRate(const string& filename, double* fps) const OVERRIDE FINAL;
 };
 
-ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
-, _manager(manager)
-, _maxRetries(0)
+ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager,
+                                   OfxImageEffectHandle handle,
+                                   const vector<string>& extensions)
+    : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
+    , _manager(manager)
+    , _maxRetries(0)
 {
     _maxRetries = fetchIntParam(kParamMaxRetries);
     assert(_maxRetries);
@@ -140,7 +142,7 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHan
     _originalFrameRange->getValue(originalFrameRangeMin, originalFrameRangeMax);
     if (originalFrameRangeMin == 0) {
         // probably a buggy instance from before Jan 19 2015, where 0 is the first frame
-        _originalFrameRange->setValue(originalFrameRangeMin+1, originalFrameRangeMax+1);
+        _originalFrameRange->setValue(originalFrameRangeMin + 1, originalFrameRangeMax + 1);
         int timeOffset;
         _timeOffset->getValue(timeOffset);
         _timeOffset->setValue(timeOffset - 1);
@@ -149,7 +151,6 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHan
 
 ReadFFmpegPlugin::~ReadFFmpegPlugin()
 {
-    
 }
 
 /**
@@ -170,13 +171,15 @@ bool
 ReadFFmpegPlugin::loadNearestFrame() const
 {
     int v;
+
     _missingFrameParam->getValue(v);
+
     return v == 0;
 }
 
 void
-ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
-                               const std::string &paramName)
+ReadFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
+                               const string &paramName)
 {
     GenericReaderPlugin::changedParam(args, paramName);
 }
@@ -189,7 +192,7 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
  * This function is only called once: when the filename is first set.
  *
  * Besides returning colorspace, premult, components, and componentcount, if it returns true
- * this function may also set extra format-specific parameters using OFX::Param::setValue.
+ * this function may also set extra format-specific parameters using Param::setValue.
  * The parameters must not be animated, since their value must remain the same for a whole sequence.
  *
  * You shouldn't do any strong processing as this is called on the main thread and
@@ -201,10 +204,10 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
  * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
  **/
 bool
-ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
-                                          std::string *colorspace,
-                                          OFX::PreMultiplicationEnum *filePremult,
-                                          OFX::PixelComponentEnum *components,
+ReadFFmpegPlugin::guessParamsFromFilename(const string& filename,
+                                          string *colorspace,
+                                          PreMultiplicationEnum *filePremult,
+                                          PixelComponentEnum *components,
                                           int *componentCount)
 {
     assert(colorspace && filePremult && components && componentCount);
@@ -214,12 +217,12 @@ ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
         _manager.clear(this);
         file = _manager.getOrCreate(this, filename);
     }
-    
-    if (!file || file->isInvalid()) {
+
+    if ( !file || file->isInvalid() ) {
         if (file) {
-            //setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
+            //setPersistentMessage(Message::eMessageError, "", file->getError());
         } else {
-            //setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file.");
+            //setPersistentMessage(Message::eMessageError, "", "Cannot open file.");
         }
 
         return false;
@@ -227,82 +230,83 @@ ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
 
 #   ifdef OFX_IO_USING_OCIO
     // Unless otherwise specified, video files are assumed to be rec709.
-    if (_ocio->hasColorspace("Rec709")) {
+    if ( _ocio->hasColorspace("Rec709") ) {
         // nuke-default
         *colorspace = "Rec709";
-    } else if (_ocio->hasColorspace("nuke_rec709")) {
+    } else if ( _ocio->hasColorspace("nuke_rec709") ) {
         // blender
         *colorspace = "nuke_rec709";
-    } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+    } else if ( _ocio->hasColorspace("Rec.709 - Full") ) {
         // out_rec709full or "Rec.709 - Full" in aces 1.0.0
         *colorspace = "Rec.709 - Full";
-    } else if (_ocio->hasColorspace("out_rec709full")) {
+    } else if ( _ocio->hasColorspace("out_rec709full") ) {
         // out_rec709full or "Rec.709 - Full" in aces 1.0.0
         *colorspace = "out_rec709full";
-    } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+    } else if ( _ocio->hasColorspace("rrt_rec709_full_100nits") ) {
         // rrt_rec709_full_100nits in aces 0.7.1
         *colorspace = "rrt_rec709_full_100nits";
-    } else if (_ocio->hasColorspace("rrt_rec709")) {
+    } else if ( _ocio->hasColorspace("rrt_rec709") ) {
         // rrt_rec709 in aces 0.1.1
         *colorspace = "rrt_rec709";
-    } else if (_ocio->hasColorspace("hd10")) {
+    } else if ( _ocio->hasColorspace("hd10") ) {
         // hd10 in spi-anim and spi-vfx
         *colorspace = "hd10";
     }
 #   endif
 
     *componentCount = file->getNumberOfComponents();
-    *components = (*componentCount > 3) ? OFX::ePixelComponentRGBA : OFX::ePixelComponentRGB;
+    *components = (*componentCount > 3) ? ePixelComponentRGBA : ePixelComponentRGB;
     ///Ffmpeg is RGB opaque.
-    *filePremult = (*componentCount > 3) ? OFX::eImageUnPreMultiplied : OFX::eImageOpaque;
+    *filePremult = (*componentCount > 3) ? eImageUnPreMultiplied : eImageOpaque;
 
     return true;
-}
-
+} // ReadFFmpegPlugin::guessParamsFromFilename
 
 bool
-ReadFFmpegPlugin::isVideoStream(const std::string& filename)
+ReadFFmpegPlugin::isVideoStream(const string& filename)
 {
     return !FFmpegFile::isImageFile(filename);
 }
 
-
-
 void
-ReadFFmpegPlugin::decode(const std::string& filename,
+ReadFFmpegPlugin::decode(const string& filename,
                          OfxTime time,
                          int /*view*/,
                          bool /*isPlayback*/,
                          const OfxRectI& renderWindow,
                          float *pixelData,
                          const OfxRectI& imgBounds,
-                         OFX::PixelComponentEnum pixelComponents,
+                         PixelComponentEnum pixelComponents,
                          int pixelComponentCount,
                          int rowBytes)
 {
     FFmpegFile* file = _manager.getOrCreate(this, filename);
-    if (file && file->isInvalid()) {
-        setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
+
+    if ( file && file->isInvalid() ) {
+        setPersistentMessage( Message::eMessageError, "", file->getError() );
+
         return;
     }
 
     /// we only support RGB or RGBA output clip
-    if ((pixelComponents != OFX::ePixelComponentRGB) &&
-        (pixelComponents != OFX::ePixelComponentRGBA) &&
-        (pixelComponents != OFX::ePixelComponentAlpha)) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    if ( (pixelComponents != ePixelComponentRGB) &&
+         (pixelComponents != ePixelComponentRGBA) &&
+         (pixelComponents != ePixelComponentAlpha) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
-    assert((pixelComponents == OFX::ePixelComponentRGB && pixelComponentCount == 3) || (pixelComponents == OFX::ePixelComponentRGBA && pixelComponentCount == 4) || (pixelComponents == OFX::ePixelComponentAlpha && pixelComponentCount == 1));
+    assert( (pixelComponents == ePixelComponentRGB && pixelComponentCount == 3) || (pixelComponents == ePixelComponentRGBA && pixelComponentCount == 4) || (pixelComponents == ePixelComponentAlpha && pixelComponentCount == 1) );
 
     ///blindly ignore the filename, we suppose that the file is the same than the file loaded in the changedParam
     if (!file) {
-        setPersistentMessage(OFX::Message::eMessageError, "", filename +  ": Missing frame");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", filename +  ": Missing frame");
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    
-    int width,height,frames;
+
+    int width, height, frames;
     double ap;
     file->getInfo(width, height, ap, frames);
 
@@ -312,122 +316,130 @@ ReadFFmpegPlugin::decode(const std::string& filename,
     //  The renderWindow itself may or may not be the full image...
     //assert(kSupportsTiles || (renderWindow.x1 == 0 && renderWindow.x2 == width && renderWindow.y1 == 0 && renderWindow.y2 == height));
 
-    if((imgBounds.x2 - imgBounds.x1) < width ||
-       (imgBounds.y2 - imgBounds.y1) < height) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    if ( ( (imgBounds.x2 - imgBounds.x1) < width ) ||
+         ( (imgBounds.y2 - imgBounds.y1) < height ) ) {
+        setPersistentMessage(Message::eMessageError, "", "The host provided an image of wrong size, can't decode.");
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    
+
     int maxRetries;
     _maxRetries->getValue(maxRetries);
-    
+
     // not in FFmpeg Reader: initialize the output buffer
     // TODO: use avpicture_get_size? see WriteFFmpeg
     unsigned int numComponents = file->getNumberOfComponents();
     assert(numComponents == 3 || numComponents == 4);
-    
+
     std::size_t sizeOfData = file->getSizeOfData();
-    assert(sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short));
-    
+    assert( sizeOfData == sizeof(unsigned char) || sizeOfData == sizeof(unsigned short) );
+
     int srcRowBytes = width * numComponents * sizeOfData;
     std::size_t bufferSize =  height * srcRowBytes;
-    
+
     RamBuffer bufferRaii(bufferSize);
     unsigned char* buffer = bufferRaii.getData();
     if (!buffer) {
-        OFX::throwSuiteStatusException(kOfxStatErrMemory);
+        throwSuiteStatusException(kOfxStatErrMemory);
+
         return;
     }
     // this is the first stream (in fact the only one we consider for now), allocate the output buffer according to the bitdepth
-    
+
     try {
         if ( !file->decode(this, (int)time, loadNearestFrame(), maxRetries, buffer) ) {
-            if (abort()) {
+            if ( abort() ) {
                 // decode() probably existed because plugin was aborted
                 return;
             }
-            setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+            setPersistentMessage( Message::eMessageError, "", file->getError() );
+            throwSuiteStatusException(kOfxStatFailed);
+
             return;
-            
         }
     } catch (const std::exception& e) {
         int choice;
         _missingFrameParam->getValue(choice);
-        if(choice == 1){ //error
-            setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+        if (choice == 1) { //error
+            setPersistentMessage( Message::eMessageError, "", e.what() );
+            throwSuiteStatusException(kOfxStatFailed);
+
             return;
         }
+
         return;
     }
 
 
     convertDepthAndComponents(buffer, renderWindow, imgBounds, numComponents == 3 ? ePixelComponentRGB : ePixelComponentRGBA, sizeOfData == sizeof(unsigned char) ? eBitDepthUByte : eBitDepthUShort, srcRowBytes, pixelData, imgBounds, pixelComponents, rowBytes);
-
-}
+} // ReadFFmpegPlugin::decode
 
 bool
-ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename, OfxRangeI &range)
+ReadFFmpegPlugin::getSequenceTimeDomain(const string& filename,
+                                        OfxRangeI &range)
 {
-    if (FFmpegFile::isImageFile(filename)) {
+    if ( FFmpegFile::isImageFile(filename) ) {
         range.min = range.max = 0.;
+
         return false;
     }
 
-    int width,height,frames;
+    int width, height, frames;
     double ap;
     FFmpegFile* file = _manager.getOrCreate(this, filename);
-    if (!file || file->isInvalid()) {
+    if ( !file || file->isInvalid() ) {
         range.min = range.max = 0.;
+
         return false;
     }
     file->getInfo(width, height, ap, frames);
 
     range.min = 1;
     range.max = frames;
+
     return true;
 }
 
 bool
-ReadFFmpegPlugin::getFrameRate(const std::string& filename,
+ReadFFmpegPlugin::getFrameRate(const string& filename,
                                double* fps) const
 {
     assert(fps);
-    
+
     FFmpegFile* file = _manager.getOrCreate(this, filename);
-    if (!file || file->isInvalid()) {
+    if ( !file || file->isInvalid() ) {
         return false;
     }
 
     bool gotFps = file->getFPS(*fps);
+
     return gotFps;
 }
 
-
 bool
-ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
+ReadFFmpegPlugin::getFrameBounds(const string& filename,
                                  OfxTime /*time*/,
                                  OfxRectI *bounds,
                                  OfxRectI *format,
                                  double *par,
-                                 std::string *error,
-                                  int* tile_width,
+                                 string *error,
+                                 int* tile_width,
                                  int* tile_height)
 {
     assert(bounds && par);
     FFmpegFile* file = _manager.getOrCreate(this, filename);
-    if (!file || file->isInvalid()) {
+    if ( !file || file->isInvalid() ) {
         if (error && file) {
             *error = file->getError();
         }
+
         return false;
     }
 
-    int width,height,frames;
+    int width, height, frames;
     double ap;
-    if (!file->getInfo(width, height, ap, frames)) {
+    if ( !file->getInfo(width, height, ap, frames) ) {
         width = 0;
         height = 0;
         ap = 1.;
@@ -439,40 +451,42 @@ ReadFFmpegPlugin::getFrameBounds(const std::string& filename,
     *format = *bounds;
     *par = ap;
     *tile_width = *tile_height = 0;
+
     return true;
 }
 
-
-class ReadFFmpegPluginFactory : public OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>
+class ReadFFmpegPluginFactory
+    : public PluginFactoryHelper<ReadFFmpegPluginFactory>
 {
     std::auto_ptr<FFmpegFileManager> _manager;
 
 public:
-    ReadFFmpegPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin)
-    : OFX::PluginFactoryHelper<ReadFFmpegPluginFactory>(id, verMaj, verMin)
-    , _manager()
+    ReadFFmpegPluginFactory(const string& id,
+                            unsigned int verMaj,
+                            unsigned int verMin)
+        : PluginFactoryHelper<ReadFFmpegPluginFactory>(id, verMaj, verMin)
+        , _manager()
     {}
-    
+
     virtual void load() OVERRIDE FINAL;
     virtual void unload() OVERRIDE FINAL
     {
         _manager.reset(NULL);
         _extensions.clear();
     }
-    
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context) OVERRIDE FINAL;
-    
-    bool isVideoStreamPlugin() const { return true; }
-    
-    virtual void describe(OFX::ImageEffectDescriptor &desc) OVERRIDE FINAL;
-    
-    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context) OVERRIDE FINAL;
 
-    std::vector<std::string> _extensions;
+    virtual ImageEffect* createInstance(OfxImageEffectHandle handle, ContextEnum context) OVERRIDE FINAL;
+
+    bool isVideoStreamPlugin() const { return true; }
+
+    virtual void describe(ImageEffectDescriptor &desc) OVERRIDE FINAL;
+    virtual void describeInContext(ImageEffectDescriptor &desc, ContextEnum context) OVERRIDE FINAL;
+
+    vector<string> _extensions;
 };
 
-
-static std::string ffmpeg_versions()
+static string
+ffmpeg_versions()
 {
     std::ostringstream oss;
 #ifdef FFMS_USE_FFMPEG_COMPAT
@@ -496,77 +510,91 @@ static std::string ffmpeg_versions()
     oss << "libswscale ";
     oss << LIBSWSCALE_VERSION_MAJOR << '.' << LIBSWSCALE_VERSION_MINOR << '.' << LIBSWSCALE_VERSION_MICRO << " / ";
     oss << (swscale_version() >> 16) << '.' << (swscale_version() >> 8 & 0xff) << '.' << (swscale_version() & 0xff) << std::endl;
+
     return oss.str();
 }
 
 #if 0
 static
-std::vector<std::string> &
-split(const std::string &s, char delim, std::vector<std::string> &elems)
+vector<string> &
+split(const string &s,
+      char delim,
+      vector<string> &elems)
 {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
+    stringstream ss(s);
+    string item;
+
+    while ( std::getline(ss, item, delim) ) {
         elems.push_back(item);
     }
+
     return elems;
 }
+
 #endif
 
 static
-std::list<std::string> &
-split(const std::string &s, char delim, std::list<std::string> &elems)
+std::list<string> &
+split(const string &s,
+      char delim,
+      std::list<string> &elems)
 {
-    std::stringstream ss(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
+    stringstream ss(s);
+    string item;
+
+    while ( std::getline(ss, item, delim) ) {
         elems.push_back(item);
     }
+
     return elems;
 }
 
-
 #ifdef OFX_IO_MT_FFMPEG
 static int
-FFmpegLockManager(void** mutex, enum AVLockOp op)
+FFmpegLockManager(void** mutex,
+                  enum AVLockOp op)
 {
     switch (op) {
-        case AV_LOCK_CREATE: // Create a mutex.
-            try {
-                *mutex = static_cast< void* >(new FFmpegFile::Mutex);
-                return 0;
-            }
-            catch(...) {
-                // Return error if mutex creation failed.
-                return 1;
-            }
-            
-        case AV_LOCK_OBTAIN: // Lock the specified mutex.
-            try {
-                static_cast< FFmpegFile::Mutex* >(*mutex)->lock();
-                return 0;
-            }
-            catch(...) {
-                // Return error if mutex lock failed.
-                return 1;
-            }
-            
-        case AV_LOCK_RELEASE: // Unlock the specified mutex.
-            // Mutex unlock can't fail.
-            static_cast< FFmpegFile::Mutex* >(*mutex)->unlock();
+    case AV_LOCK_CREATE:     // Create a mutex.
+        try {
+            *mutex = static_cast< void* >(new FFmpegFile::Mutex);
+
             return 0;
-            
-        case AV_LOCK_DESTROY: // Destroy the specified mutex.
-            // Mutex destruction can't fail.
-            delete static_cast< FFmpegFile::Mutex* >(*mutex);
-            *mutex = 0;
-            return 0;
-            
-        default: // Unknown operation.
-            assert(false);
+        }catch (...) {
+            // Return error if mutex creation failed.
             return 1;
+        }
+
+    case AV_LOCK_OBTAIN:     // Lock the specified mutex.
+        try {
+            static_cast< FFmpegFile::Mutex* >(*mutex)->lock();
+
+            return 0;
+        }catch (...) {
+            // Return error if mutex lock failed.
+            return 1;
+        }
+
+    case AV_LOCK_RELEASE:     // Unlock the specified mutex.
+        // Mutex unlock can't fail.
+        static_cast< FFmpegFile::Mutex* >(*mutex)->unlock();
+
+        return 0;
+
+    case AV_LOCK_DESTROY:     // Destroy the specified mutex.
+        // Mutex destruction can't fail.
+        delete static_cast< FFmpegFile::Mutex* >(*mutex);
+        *mutex = 0;
+
+        return 0;
+
+    default:     // Unknown operation.
+        assert(false);
+
+        return 1;
     }
 }
+
 #endif
 
 void
@@ -580,23 +608,23 @@ ReadFFmpegPluginFactory::load()
         _extensions.push_back(*ext);
     }
 #else
-    std::list<std::string> extensionsl;
+    std::list<string> extensionsl;
     AVInputFormat* iFormat = av_iformat_next(NULL);
     while (iFormat != NULL) {
         //DBG(std::printf("ReadFFmpeg: \"%s\", // %s (%s)\n", iFormat->extensions ? iFormat->extensions : iFormat->name, iFormat->name, iFormat->long_name));
         if (iFormat->extensions != NULL) {
-            std::string extStr( iFormat->extensions );
+            string extStr( iFormat->extensions );
             split(extStr, ',', extensionsl);
         }
         {
             // name's format defines (in general) extensions
             // require to fix extension in LibAV/FFMpeg to don't use it.
-            std::string extStr( iFormat->name);
+            string extStr( iFormat->name);
             split(extStr, ',', extensionsl);
         }
         iFormat = av_iformat_next( iFormat );
     }
-    
+
     // Hack: Add basic video container extensions
     // as some versions of LibAV doesn't declare properly all extensions...
     // or there may be other well-known extensions (such as mts or m2ts)
@@ -880,81 +908,82 @@ ReadFFmpegPluginFactory::load()
         extensionsl.remove(*e);
     }
 
-    _extensions.assign(extensionsl.begin(), extensionsl.end());
+    _extensions.assign( extensionsl.begin(), extensionsl.end() );
     // sort / unique
-    std::sort(_extensions.begin(), _extensions.end());
-    _extensions.erase(std::unique(_extensions.begin(), _extensions.end()), _extensions.end());
-#endif
-}
+    std::sort( _extensions.begin(), _extensions.end() );
+    _extensions.erase( std::unique( _extensions.begin(), _extensions.end() ), _extensions.end() );
+#endif // if 0
+} // ReadFFmpegPluginFactory::load
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
-ReadFFmpegPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+ReadFFmpegPluginFactory::describe(ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
     // basic labels
     desc.setLabel(kPluginName);
-    desc.setPluginDescription("Read images or video using "
+    desc.setPluginDescription( "Read images or video using "
 #                             ifdef FFMS_USE_FFMPEG_COMPAT
-                              "FFmpeg"
+                               "FFmpeg"
 #                             else
-                              "libav"
+                               "libav"
 #                             endif
-                              ".\n\n" + ffmpeg_versions());
+                               ".\n\n" + ffmpeg_versions() );
 #ifdef OFX_IO_MT_FFMPEG
     // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
     // otherwise non-thread-safe calls.
     av_lockmgr_register(FFmpegLockManager);
-    desc.setRenderThreadSafety(OFX::eRenderFullySafe);
+    desc.setRenderThreadSafety(eRenderFullySafe);
 #else
-    desc.setRenderThreadSafety(OFX::eRenderInstanceSafe);
+    desc.setRenderThreadSafety(eRenderInstanceSafe);
 #endif
-    
+
     av_log_set_level(AV_LOG_WARNING);
     avcodec_register_all();
     av_register_all();
 
     _manager.reset(new FFmpegFileManager);
     _manager->init();
-    
+
     // Thus effect prefers sequential render, but will still give correct results otherwise
     desc.getPropertySet().propSetInt(kOfxImageEffectInstancePropSequentialRender, 2, false);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void
-ReadFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+ReadFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                            ContextEnum context)
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericReaderDescribeInContextBegin(desc, context, isVideoStreamPlugin(),
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false);
-    
+
     {
-        OFX::IntParamDescriptor *param = desc.defineIntParam(kParamMaxRetries);
+        IntParamDescriptor *param = desc.defineIntParam(kParamMaxRetries);
         param->setLabel(kParamMaxRetriesLabel);
         param->setHint(kParamMaxRetriesHint);
         param->setAnimates(false);
         param->setDefault(10);
         param->setRange(0, 100);
         param->setDisplayRange(0, 20);
-        param->setLayoutHint(OFX::eLayoutHintDivider);
+        param->setLayoutHint(eLayoutHintDivider);
         page->addChild(*param);
     }
 
     GenericReaderDescribeInContextEnd(desc, context, page, "rec709", "scene_linear");
 }
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
 ImageEffect*
 ReadFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle,
                                         ContextEnum /*context*/)
 {
     ReadFFmpegPlugin* ret =  new ReadFFmpegPlugin(*_manager, handle, _extensions);
+
     ret->restoreStateFromParams();
+
     return ret;
 }
-
 
 static ReadFFmpegPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
