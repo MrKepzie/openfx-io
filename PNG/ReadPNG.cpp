@@ -77,29 +77,32 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSupportsAlpha false
 #define kSupportsTiles false
 
-#define OFX_IO_LIBPNG_VERSION (PNG_LIBPNG_VER_MAJOR*10000 + PNG_LIBPNG_VER_MINOR*100 + PNG_LIBPNG_VER_RELEASE)
+#define OFX_IO_LIBPNG_VERSION (PNG_LIBPNG_VER_MAJOR * 10000 + PNG_LIBPNG_VER_MINOR * 100 + PNG_LIBPNG_VER_RELEASE)
 
 // Try to deduce endianness
-#if (defined(_WIN32) || defined(__i386__) || defined(__x86_64__))
+#if (defined(_WIN32) || defined(__i386__) || defined(__x86_64__ ) )
 #  ifndef __LITTLE_ENDIAN__
 #    define __LITTLE_ENDIAN__ 1
 #    undef __BIG_ENDIAN__
 #  endif
 #endif
 
-inline bool littleendian (void)
+inline bool
+littleendian (void)
 {
 #if defined(__BIG_ENDIAN__)
+
     return false;
 #elif defined(__LITTLE_ENDIAN__)
+
     return true;
 #else
     // Otherwise, do something quick to compute it
     int i = 1;
-    return *((char *) &i);
+
+    return *( (char *) &i );
 #endif
 }
-
 
 /// Helper function - reads background colour.
 ///
@@ -109,12 +112,16 @@ get_background (png_structp& sp,
                 BitDepthEnum bitdepth,
                 int real_bit_depth,
                 int nChannels,
-                float *red, float *green, float *blue)
+                float *red,
+                float *green,
+                float *blue)
 {
-    if (setjmp (png_jmpbuf (sp)))
+    if ( setjmp ( png_jmpbuf (sp) ) ) {
         return false;
-    if (! png_get_valid (sp, ip, PNG_INFO_bKGD))
+    }
+    if ( !png_get_valid (sp, ip, PNG_INFO_bKGD) ) {
         return false;
+    }
 
     png_color_16p bg;
     png_get_bKGD (sp, ip, &bg);
@@ -122,18 +129,20 @@ get_background (png_structp& sp,
         *red   = bg->red   / 65535.0;
         *green = bg->green / 65535.0;
         *blue  = bg->blue  / 65535.0;
-    } else if (nChannels < 3 && real_bit_depth < 8) {
-        if (real_bit_depth == 1)
+    } else if ( (nChannels < 3) && (real_bit_depth < 8) ) {
+        if (real_bit_depth == 1) {
             *red = *green = *blue = (bg->gray ? 1 : 0);
-        else if (real_bit_depth == 2)
+        } else if (real_bit_depth == 2) {
             *red = *green = *blue = bg->gray / 3.0;
-        else // 4 bits
+        } else { // 4 bits
             *red = *green = *blue = bg->gray / 15.0;
+        }
     } else {
         *red   = bg->red   / 255.0;
         *green = bg->green / 255.0;
         *blue  = bg->blue  / 255.0;
     }
+
     return true;
 }
 
@@ -171,7 +180,6 @@ getPNGInfo(png_structp& sp,
            std::string* date_p, // optional
            std::map<std::string, std::string>* additionalComments_p) // optional
 {
-
     png_read_info (sp, ip);
 
     // Auto-convert 1-, 2-, and 4- bit images to 8 bits, palette to RGB,
@@ -182,7 +190,7 @@ getPNGInfo(png_structp& sp,
     png_set_gray_to_rgb(sp);
 
     // PNG files are naturally big-endian
-    if (littleendian()) {
+    if ( littleendian() ) {
         png_set_swap (sp);
     }
     png_set_interlace_handling(sp);
@@ -199,10 +207,10 @@ getPNGInfo(png_structp& sp,
     png_byte channels = png_get_channels (sp, ip);
 #ifndef NDEBUG
     png_byte color_type = png_get_color_type(sp, ip);
-    assert((channels == 1 && (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE)) ||
-           (channels == 2 && (color_type == PNG_COLOR_TYPE_GRAY_ALPHA)) ||
-           (channels == 3 && (color_type == PNG_COLOR_TYPE_RGB)) ||
-           (channels == 4 && (color_type == PNG_COLOR_TYPE_RGB_ALPHA || color_type == PNG_COLOR_TYPE_RGB)));
+    assert( ( channels == 1 && (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) ) ||
+            ( channels == 2 && (color_type == PNG_COLOR_TYPE_GRAY_ALPHA) ) ||
+            ( channels == 3 && (color_type == PNG_COLOR_TYPE_RGB) ) ||
+            ( channels == 4 && (color_type == PNG_COLOR_TYPE_RGB_ALPHA || color_type == PNG_COLOR_TYPE_RGB) ) );
 #endif
     *nChannels_p = channels;
 
@@ -211,7 +219,7 @@ getPNGInfo(png_structp& sp,
 
     float aspect = (float)png_get_pixel_aspect_ratio (sp, ip);
     *par_p = 1.;
-    if (aspect != 0 && aspect != 1) {
+    if ( (aspect != 0) && (aspect != 1) ) {
         *par_p = aspect;
     }
 
@@ -228,7 +236,7 @@ getPNGInfo(png_structp& sp,
         assert(gamma_p);
         bool gotGamma = false;
         if (*colorspace_p == ePNGColorSpaceLinear) {
-            if (!png_get_gAMA (sp, ip, gamma_p)) {
+            if ( !png_get_gAMA (sp, ip, gamma_p) ) {
                 *gamma_p = 1.0;
             } else {
                 // guard against division by zero
@@ -241,12 +249,12 @@ getPNGInfo(png_structp& sp,
         }
 
         // if not, deduce from the bitdepth
-        if (!gotGamma && *colorspace_p == ePNGColorSpaceLinear) {
+        if ( !gotGamma && (*colorspace_p == ePNGColorSpaceLinear) ) {
             *colorspace_p = *bit_depth_p == eBitDepthUByte ? ePNGColorSpacesRGB : ePNGColorSpaceRec709;
         }
     }
 
-    if (iccprofile_data_p && png_get_valid(sp, ip, PNG_INFO_iCCP)) {
+    if ( iccprofile_data_p && png_get_valid(sp, ip, PNG_INFO_iCCP) ) {
         png_charp profile_name = NULL;
 #if OFX_IO_LIBPNG_VERSION > 10500   /* PNG function signatures changed */
         png_bytep profile_data = NULL;
@@ -260,7 +268,7 @@ getPNGInfo(png_structp& sp,
         if (profile_length && profile_data) {
 #if OFX_IO_LIBPNG_VERSION > 10500
             *iccprofile_data_p = profile_data;
-#else   
+#else
             *iccprofile_data_p = reinterpret_cast<unsigned char*>(profile_data);
 #endif
             *iccprofile_length_p = profile_length;
@@ -268,7 +276,7 @@ getPNGInfo(png_structp& sp,
     }
 
     png_timep mod_time;
-    if (date_p && png_get_tIME (sp, ip, &mod_time)) {
+    if ( date_p && png_get_tIME (sp, ip, &mod_time) ) {
         std::stringstream ss;
         ss << std::setfill('0') << std::setw(4) << mod_time->year << ':' << std::setw(2) << mod_time->month << ':' << mod_time->day << ' ';
         ss << mod_time->hour << ':' << mod_time->minute << ':' << mod_time->second;
@@ -280,7 +288,7 @@ getPNGInfo(png_structp& sp,
         int num_comments = png_get_text (sp, ip, &text_ptr, NULL);
         if (num_comments) {
             std::string comments;
-            for (int i = 0;  i < num_comments;  ++i) {
+            for (int i = 0; i < num_comments; ++i) {
                 (*additionalComments_p)[std::string(text_ptr[i].key)] = std::string(text_ptr[i].text);
             }
         }
@@ -289,7 +297,7 @@ getPNGInfo(png_structp& sp,
     if (xResolution_p && yResolution_p) {
         int unit;
         png_uint_32 resx, resy;
-        if (png_get_pHYs (sp, ip, &resx, &resy, &unit)) {
+        if ( png_get_pHYs (sp, ip, &resx, &resy, &unit) ) {
             float scale = 1;
             if (unit == PNG_RESOLUTION_METER) {
                 // Convert to inches, to match most other formats
@@ -298,8 +306,8 @@ getPNGInfo(png_structp& sp,
             } else {
                 *isResolutionInches_p = false;
             }
-            *xResolution_p = (double)resx*scale;
-            *yResolution_p = (double)resy*scale;
+            *xResolution_p = (double)resx * scale;
+            *yResolution_p = (double)resy * scale;
         }
     }
 
@@ -309,10 +317,10 @@ getPNGInfo(png_structp& sp,
     if (interlace_type_p) {
         *interlace_type_p = png_get_interlace_type (sp, ip);
     }
-}
+} // getPNGInfo
 
-
-class ReadPNGPlugin : public GenericReaderPlugin
+class ReadPNGPlugin
+    : public GenericReaderPlugin
 {
 public:
 
@@ -323,11 +331,9 @@ public:
 private:
 
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
-
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
 
     virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
-
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     /**
@@ -350,7 +356,6 @@ private:
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
     virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
-
     static void openFile(const std::string& filename,
                          png_structp* png,
                          png_infop* info,
@@ -360,9 +365,9 @@ private:
 };
 
 
-
-ReadPNGPlugin::ReadPNGPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
+ReadPNGPlugin::ReadPNGPlugin(OfxImageEffectHandle handle,
+                             const std::vector<std::string>& extensions)
+    : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
 {
 }
 
@@ -392,8 +397,8 @@ ReadPNGPlugin::metadata(const std::string& filename)
         unsigned char sig[8];
         // Check that it really is a PNG file
         /* Read in some of the signature bytes */
-        if (std::fread(sig, 1, PNG_BYTES_TO_CHECK, image) != PNG_BYTES_TO_CHECK ||
-            png_sig_cmp(sig, 0, PNG_BYTES_TO_CHECK) ) {
+        if ( (std::fread(sig, 1, PNG_BYTES_TO_CHECK, image) != PNG_BYTES_TO_CHECK) ||
+             png_sig_cmp(sig, 0, PNG_BYTES_TO_CHECK) ) {
             ss << "  This file is not a valid PNG file\n";
             std::fclose (image);
 
@@ -403,7 +408,7 @@ ReadPNGPlugin::metadata(const std::string& filename)
 
     // Start decompressing
     png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL,
-                                  NULL, NULL);
+                                             NULL, NULL);
     if (png == NULL) {
         ss << "Could not create a PNG read structure (out of memory?)\n";
         std::fclose(image);
@@ -444,101 +449,98 @@ ReadPNGPlugin::metadata(const std::string& filename)
     int pixel_depth = bit_depth * png_get_channels(png, info);
     ss << "  Bitdepth (Bits/Sample): " << bit_depth << std::endl;
     ss << "  Channels (Samples/Pixel): " << (int)png_get_channels(png, info) << std::endl;
-    ss << "  Pixel depth (Pixel Depth): " << pixel_depth << std::endl;	// Does this add value?
+    ss << "  Pixel depth (Pixel Depth): " << pixel_depth << std::endl;  // Does this add value?
 
     // Photometric interp packs a lot of information
     ss << "  Colour Type (Photometric Interpretation): ";
 
     switch (color_type) {
-        case PNG_COLOR_TYPE_GRAY: {
-            ss << "GRAYSCALE ";
-            png_bytep trans = NULL;
-            int num_trans = 0;
-            if (png_get_tRNS(png, info, &trans, &num_trans, NULL) == PNG_INFO_tRNS) {
-                ss << "(" << num_trans << " transparent) ";
-            }
-            break;
+    case PNG_COLOR_TYPE_GRAY: {
+        ss << "GRAYSCALE ";
+        png_bytep trans = NULL;
+        int num_trans = 0;
+        if (png_get_tRNS(png, info, &trans, &num_trans, NULL) == PNG_INFO_tRNS) {
+            ss << "(" << num_trans << " transparent) ";
         }
-        case PNG_COLOR_TYPE_PALETTE: {
-            ss << "PALETTED COLOUR ";
-            int num_palette = 0;
-            png_color *palette = NULL;
-            png_get_PLTE(png, info, &palette, &num_palette);
-            int num_trans = 0;
-            png_bytep trans = NULL;
-            ;
-            ss << "(" << num_palette << " colours";
-            if (png_get_tRNS(png, info, &trans, &num_trans, NULL) == PNG_INFO_tRNS) {
-                ss << ", " << num_trans << " transparent";
-            }
-            ss << ")";
-            break;
+        break;
+    }
+    case PNG_COLOR_TYPE_PALETTE: {
+        ss << "PALETTED COLOUR ";
+        int num_palette = 0;
+        png_color *palette = NULL;
+        png_get_PLTE(png, info, &palette, &num_palette);
+        int num_trans = 0;
+        png_bytep trans = NULL;
+        ;
+        ss << "(" << num_palette << " colours";
+        if (png_get_tRNS(png, info, &trans, &num_trans, NULL) == PNG_INFO_tRNS) {
+            ss << ", " << num_trans << " transparent";
         }
-        case PNG_COLOR_TYPE_RGB: {
-            ss << "RGB ";
-            break;
-        }
-        case PNG_COLOR_TYPE_RGB_ALPHA: {
-            ss << "RGB with alpha channel ";
-            break;
-        }
-        case PNG_COLOR_TYPE_GRAY_ALPHA: {
-            ss << "GRAYSCALE with alpha channel ";
-            break;
-        }
-        default: {
-            ss << "Unknown photometric interpretation!";
-            break;
-        }
+        ss << ")";
+        break;
+    }
+    case PNG_COLOR_TYPE_RGB: {
+        ss << "RGB ";
+        break;
+    }
+    case PNG_COLOR_TYPE_RGB_ALPHA: {
+        ss << "RGB with alpha channel ";
+        break;
+    }
+    case PNG_COLOR_TYPE_GRAY_ALPHA: {
+        ss << "GRAYSCALE with alpha channel ";
+        break;
+    }
+    default: {
+        ss << "Unknown photometric interpretation!";
+        break;
+    }
     }
     ss << std::endl;
 
     ss << "  Image filter: ";
-    switch (png_get_filter_type(png, info))
-    {
-        case PNG_FILTER_TYPE_BASE:
-            ss << "Single row per byte filter ";
-            break;
+    switch ( png_get_filter_type(png, info) ) {
+    case PNG_FILTER_TYPE_BASE:
+        ss << "Single row per byte filter ";
+        break;
 
-        case PNG_INTRAPIXEL_DIFFERENCING:
-            ss << "Intrapixel differencing (MNG only) ";
-            break;
+    case PNG_INTRAPIXEL_DIFFERENCING:
+        ss << "Intrapixel differencing (MNG only) ";
+        break;
 
-        default:
-            ss << "Unknown filter! ";
-            break;
+    default:
+        ss << "Unknown filter! ";
+        break;
     }
     ss << std::endl;
 
 #if defined(PNG_READ_INTERLACING_SUPPORTED)
     ss << "  Interlacing: ";
-    switch (png_get_interlace_type(png, info))
-    {
-        case PNG_INTERLACE_NONE:
-            ss << "No interlacing ";
-            break;
+    switch ( png_get_interlace_type(png, info) ) {
+    case PNG_INTERLACE_NONE:
+        ss << "No interlacing ";
+        break;
 
-        case PNG_INTERLACE_ADAM7:
-            ss << "Adam7 interlacing ";
-            break;
+    case PNG_INTERLACE_ADAM7:
+        ss << "Adam7 interlacing ";
+        break;
 
-        default:
-            ss << "Unknown interlacing ";
-            break;
+    default:
+        ss << "Unknown interlacing ";
+        break;
     }
     ss << std::endl;
 #endif
 
     ss << "  Compression Scheme: ";
-    switch (png_get_compression_type(png, info))
-    {
-        case PNG_COMPRESSION_TYPE_BASE:
-            ss << "Deflate method 8, 32k window";
-            break;
+    switch ( png_get_compression_type(png, info) ) {
+    case PNG_COMPRESSION_TYPE_BASE:
+        ss << "Deflate method 8, 32k window";
+        break;
 
-        default:
-            ss << "Unknown compression scheme!";
-            break;
+    default:
+        ss << "Unknown compression scheme!";
+        break;
     }
     ss << std::endl;
 
@@ -551,17 +553,17 @@ ReadPNGPlugin::metadata(const std::string& filename)
                          &unit_type) == PNG_INFO_pHYs) {
             ss << "  Resolution: " << res_x << ", " << res_y << " ";
             switch (unit_type) {
-                case PNG_RESOLUTION_UNKNOWN:
-                    ss << "(unit unknown)";
-                    break;
+            case PNG_RESOLUTION_UNKNOWN:
+                ss << "(unit unknown)";
+                break;
 
-                case PNG_RESOLUTION_METER:
-                    ss << "(pixels per meter)";
-                    break;
+            case PNG_RESOLUTION_METER:
+                ss << "(pixels per meter)";
+                break;
 
-                default:
-                    ss << "(Unknown value for unit stored)";
-                    break;
+            default:
+                ss << "(Unknown value for unit stored)";
+                break;
             }
             ss << std::endl;
         }
@@ -574,7 +576,7 @@ ReadPNGPlugin::metadata(const std::string& filename)
 #ifdef PNG_cHRM_SUPPORTED
     {
         double white_x, white_y, red_x, red_y, green_x, green_y, blue_x,
-        blue_y;
+               blue_y;
 
         if (png_get_cHRM(png, info, &white_x, &white_y, &red_x,
                          &red_y, &green_x, &green_y, &blue_x, &blue_y) == PNG_INFO_cHRM) {
@@ -590,14 +592,15 @@ ReadPNGPlugin::metadata(const std::string& filename)
     {
         double gamma;
 
-        if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA)
+        if (png_get_gAMA(png, info, &gamma) == PNG_INFO_gAMA) {
             ss << "  Gamma: " << gamma  << std::endl;
+        }
     }
 #endif
 #ifdef PNG_iCCP_SUPPORTED
     {
         png_charp name;
-#if PNG_LIBPNG_VER_SONUM >=15
+#if PNG_LIBPNG_VER_SONUM >= 15
         png_bytep profile;
 #else
         png_charp profile;
@@ -618,18 +621,18 @@ ReadPNGPlugin::metadata(const std::string& filename)
         if (png_get_sRGB(png, info, &intent) == PNG_INFO_sRGB) {
             ss << "  sRGB intent: ";
             switch (intent) {
-                case PNG_sRGB_INTENT_PERCEPTUAL:
-                    ss << "perceptual";
-                    break;
-                case PNG_sRGB_INTENT_RELATIVE:
-                    ss << "relative";
-                    break;
-                case PNG_sRGB_INTENT_SATURATION:
-                    ss << "saturation";
-                    break;
-                case PNG_sRGB_INTENT_ABSOLUTE:
-                    ss << "absolute";
-                    break;
+            case PNG_sRGB_INTENT_PERCEPTUAL:
+                ss << "perceptual";
+                break;
+            case PNG_sRGB_INTENT_RELATIVE:
+                ss << "relative";
+                break;
+            case PNG_sRGB_INTENT_SATURATION:
+                ss << "saturation";
+                break;
+            case PNG_sRGB_INTENT_ABSOLUTE:
+                ss << "absolute";
+                break;
             }
             ss << std::endl;
         }
@@ -714,27 +717,26 @@ ReadPNGPlugin::metadata(const std::string& filename)
             for (int i = 0; i < num_text; ++i) {
                 ss << "   " << text[i].key << " ";
 
-                switch (text[1].compression)
-                {
-                    case -1:
-                        ss << "(tEXt uncompressed)";
-                        break;
+                switch (text[1].compression) {
+                case -1:
+                    ss << "(tEXt uncompressed)";
+                    break;
 
-                    case 0:
-                        ss << "(xTXt deflate compressed)";
-                        break;
+                case 0:
+                    ss << "(xTXt deflate compressed)";
+                    break;
 
-                    case 1:
-                        ss << "(iTXt uncompressed)";
-                        break;
+                case 1:
+                    ss << "(iTXt uncompressed)";
+                    break;
 
-                    case 2:
-                        ss << "(iTXt deflate compressed)";
-                        break;
+                case 2:
+                    ss << "(iTXt deflate compressed)";
+                    break;
 
-                    default:
-                        ss << "(unknown compression)";
-                        break;
+                default:
+                    ss << "(unknown compression)";
+                    break;
                 }
 
                 ss << ": ";
@@ -747,19 +749,19 @@ ReadPNGPlugin::metadata(const std::string& filename)
                     }
                     j++;
                 }
-                
+
                 ss << std::endl;
             }
         }
     }
-#endif
+#endif // if defined(PNG_TEXT_SUPPORTED)
 
     // This cleans things up for us in the PNG library
     std::fclose(image);
     png_destroy_read_struct (&png, &info, NULL);
 
     return ss.str();
-}
+} // ReadPNGPlugin::metadata
 
 void
 ReadPNGPlugin::changedParam(const OFX::InstanceChangedArgs &args,
@@ -774,7 +776,7 @@ ReadPNGPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         } else {
             ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
         }
-        sendMessage(OFX::Message::eMessageMessage, "", ss.str());
+        sendMessage( OFX::Message::eMessageMessage, "", ss.str() );
     } else {
         GenericReaderPlugin::changedParam(args, paramName);
     }
@@ -794,11 +796,11 @@ ReadPNGPlugin::openFile(const std::string& filename,
     }
 
     unsigned char sig[8];
-    if (std::fread (sig, 1, sizeof(sig), *file) != sizeof(sig)) {
+    if ( std::fread (sig, 1, sizeof(sig), *file) != sizeof(sig) ) {
         throw std::runtime_error("Not a PNG file");
     }
 
-    if (png_sig_cmp (sig, 0, 7)) {
+    if ( png_sig_cmp (sig, 0, 7) ) {
         throw std::runtime_error("Not a PNG file");
     }
 
@@ -819,7 +821,7 @@ ReadPNGPlugin::openFile(const std::string& filename,
         throw std::runtime_error("Could not create PNG info structure");
     }
     // Must call this setjmp in every function that does PNG reads
-    if (setjmp (png_jmpbuf(*png))) {
+    if ( setjmp ( png_jmpbuf(*png) ) ) {
         png_destroy_read_struct (png, info, NULL);
         std::fclose(*file);
         *file = NULL;
@@ -830,9 +832,6 @@ ReadPNGPlugin::openFile(const std::string& filename,
     png_init_io (*png, *file);
     png_set_sig_bytes (*png, 8);  // already read 8 bytes
 }
-
-
-
 
 void
 ReadPNGPlugin::decode(const std::string& filename,
@@ -846,9 +845,10 @@ ReadPNGPlugin::decode(const std::string& filename,
                       int /*pixelComponentCount*/,
                       int rowBytes)
 {
-    if (pixelComponents != OFX::ePixelComponentRGBA && pixelComponents != OFX::ePixelComponentRGB && pixelComponents != OFX::ePixelComponentXY && pixelComponents != OFX::ePixelComponentAlpha) {
+    if ( (pixelComponents != OFX::ePixelComponentRGBA) && (pixelComponents != OFX::ePixelComponentRGB) && (pixelComponents != OFX::ePixelComponentXY) && (pixelComponents != OFX::ePixelComponentAlpha) ) {
         setPersistentMessage(OFX::Message::eMessageError, "", "PNG: can only read RGBA, RGB or Alpha components images");
         OFX::throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
@@ -859,11 +859,11 @@ ReadPNGPlugin::decode(const std::string& filename,
     try {
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        setPersistentMessage( OFX::Message::eMessageError, "", e.what() );
         throwSuiteStatusException(kOfxStatFailed);
     }
 
-    int x1,y1,width,height;
+    int x1, y1, width, height;
     int nChannels;
     BitDepthEnum bitdepth;
     int realbitdepth;
@@ -884,12 +884,12 @@ ReadPNGPlugin::decode(const std::string& filename,
 
     //if (interlace_type != 0) {
     std::vector<unsigned char *> row_pointers(height);
-    for (int i = 0;  i < height;  ++i) {
+    for (int i = 0; i < height; ++i) {
         row_pointers[i] = tmpData + i * pngRowBytes;
     }
 
     // Must call this setjmp in every function that does PNG reads
-    if (setjmp (png_jmpbuf (png))) {
+    if ( setjmp ( png_jmpbuf (png) ) ) {
         png_destroy_read_struct(&png, &info, NULL);
         std::fclose(file);
         setPersistentMessage(OFX::Message::eMessageError, "", "PNG library error");
@@ -900,7 +900,7 @@ ReadPNGPlugin::decode(const std::string& filename,
     png_read_image(png, &row_pointers[0]);
     png_read_end(png, NULL);
     /*
-    } else {
+       } else {
         for (int y = 0; y < height; ++y) {
             // Must call this setjmp in every function that does PNG reads
             if (setjmp (png_jmpbuf (png))) {
@@ -913,7 +913,7 @@ ReadPNGPlugin::decode(const std::string& filename,
             }
             png_read_row (png, (png_bytep)tmpData + y * pngRowBytes, NULL);
         }
-    }
+       }
      */
 
     png_destroy_read_struct(&png, &info, NULL);
@@ -928,26 +928,27 @@ ReadPNGPlugin::decode(const std::string& filename,
 
     PixelComponentEnum srcComponents;
     switch (nChannels) {
-        case 1:
-            srcComponents = ePixelComponentAlpha;
-            break;
-        case 2:
-            srcComponents = ePixelComponentXY;
-            break;
-        case 3:
-            srcComponents = ePixelComponentRGB;
-            break;
-        case 4:
-            srcComponents = ePixelComponentRGBA;
-            break;
-        default:
-            setPersistentMessage(OFX::Message::eMessageError, "", "This plug-in only supports images with 1 to 4 channels");
-            OFX::throwSuiteStatusException(kOfxStatErrFormat);
-            return;
+    case 1:
+        srcComponents = ePixelComponentAlpha;
+        break;
+    case 2:
+        srcComponents = ePixelComponentXY;
+        break;
+    case 3:
+        srcComponents = ePixelComponentRGB;
+        break;
+    case 4:
+        srcComponents = ePixelComponentRGBA;
+        break;
+    default:
+        setPersistentMessage(OFX::Message::eMessageError, "", "This plug-in only supports images with 1 to 4 channels");
+        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+
+        return;
     }
 
     convertDepthAndComponents(tmpData, renderWindow, srcBounds, srcComponents, bitdepth, pngRowBytes, pixelData, bounds, pixelComponents, rowBytes);
-}
+} // ReadPNGPlugin::decode
 
 bool
 ReadPNGPlugin::getFrameBounds(const std::string& filename,
@@ -968,10 +969,11 @@ ReadPNGPlugin::getFrameBounds(const std::string& filename,
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
         *error = e.what();
+
         return false;
     }
 
-    int x1,y1,width,height;
+    int x1, y1, width, height;
     int nChannels;
     BitDepthEnum bitdepth;
     int realbitdepth;
@@ -1030,7 +1032,7 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
         return false;
     }
 
-    int x1,y1,width,height;
+    int x1, y1, width, height;
     double par;
     int nChannels;
     BitDepthEnum bitdepth;
@@ -1045,146 +1047,143 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
 
 #     ifdef OFX_IO_USING_OCIO
     switch (pngColorspace) {
-        case ePNGColorSpaceGammaCorrected:
-            if (std::fabs(gamma - 1.8) < 0.05) {
-                if (_ocio->hasColorspace("Gamma1.8")) {
-                    // nuke-default
-                    *colorspace = "Gamma1.8";
-                }
-            } else if (std::fabs(gamma - 2.2) < 0.05) {
-                if (_ocio->hasColorspace("Gamma2.2")) {
-                    // nuke-default
-                    *colorspace = "Gamma2.2";
-                } else if (_ocio->hasColorspace("VD16")) {
-                    // VD16 in blender
-                    *colorspace = "VD16";
-                } else if (_ocio->hasColorspace("vd16")) {
-                    // vd16 in spi-anim and spi-vfx
-                    *colorspace = "vd16";
-                } else if (_ocio->hasColorspace("sRGB")) {
-                    // nuke-default and blender
-                    *colorspace = "sRGB";
-                } else if (_ocio->hasColorspace("sRGB D65")) {
-                    // blender-cycles
-                    *colorspace = "sRGB D65";
-                } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
-                    // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                    *colorspace = "sRGB (D60 sim.)";
-                } else if (_ocio->hasColorspace("out_srgbd60sim")) {
-                    // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                    *colorspace = "out_srgbd60sim";
-                } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
-                    // rrt_Gamma2.2 in aces 0.7.1
-                    *colorspace = "rrt_Gamma2.2";
-                } else if (_ocio->hasColorspace("rrt_srgb")) {
-                    // rrt_srgb in aces 0.1.1
-                    *colorspace = "rrt_srgb";
-                } else if (_ocio->hasColorspace("srgb8")) {
-                    // srgb8 in spi-vfx
-                    *colorspace = "srgb8";
-                } else if (_ocio->hasColorspace("vd16")) {
-                    // vd16 in spi-anim
-                    *colorspace = "vd16";
-                }
-
+    case ePNGColorSpaceGammaCorrected:
+        if (std::fabs(gamma - 1.8) < 0.05) {
+            if ( _ocio->hasColorspace("Gamma1.8") ) {
+                // nuke-default
+                *colorspace = "Gamma1.8";
             }
-            break;
-        case ePNGColorSpacesRGB:
-            if (_ocio->hasColorspace("sRGB")) {
-                // nuke-default and blender
-                *colorspace = "sRGB";
-            } else if (_ocio->hasColorspace("sRGB D65")) {
-                // blender-cycles
-                *colorspace = "sRGB D65";
-            } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
-                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                *colorspace = "sRGB (D60 sim.)";
-            } else if (_ocio->hasColorspace("out_srgbd60sim")) {
-                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                *colorspace = "out_srgbd60sim";
-            } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
-                // rrt_Gamma2.2 in aces 0.7.1
-                *colorspace = "rrt_Gamma2.2";
-            } else if (_ocio->hasColorspace("rrt_srgb")) {
-                // rrt_srgb in aces 0.1.1
-                *colorspace = "rrt_srgb";
-            } else if (_ocio->hasColorspace("srgb8")) {
-                // srgb8 in spi-vfx
-                *colorspace = "srgb8";
-            } else if (_ocio->hasColorspace("Gamma2.2")) {
+        } else if (std::fabs(gamma - 2.2) < 0.05) {
+            if ( _ocio->hasColorspace("Gamma2.2") ) {
                 // nuke-default
                 *colorspace = "Gamma2.2";
-            } else if (_ocio->hasColorspace("srgb8")) {
+            } else if ( _ocio->hasColorspace("VD16") ) {
+                // VD16 in blender
+                *colorspace = "VD16";
+            } else if ( _ocio->hasColorspace("vd16") ) {
+                // vd16 in spi-anim and spi-vfx
+                *colorspace = "vd16";
+            } else if ( _ocio->hasColorspace("sRGB") ) {
+                // nuke-default and blender
+                *colorspace = "sRGB";
+            } else if ( _ocio->hasColorspace("sRGB D65") ) {
+                // blender-cycles
+                *colorspace = "sRGB D65";
+            } else if ( _ocio->hasColorspace("sRGB (D60 sim.)") ) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                *colorspace = "sRGB (D60 sim.)";
+            } else if ( _ocio->hasColorspace("out_srgbd60sim") ) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                *colorspace = "out_srgbd60sim";
+            } else if ( _ocio->hasColorspace("rrt_Gamma2.2") ) {
+                // rrt_Gamma2.2 in aces 0.7.1
+                *colorspace = "rrt_Gamma2.2";
+            } else if ( _ocio->hasColorspace("rrt_srgb") ) {
+                // rrt_srgb in aces 0.1.1
+                *colorspace = "rrt_srgb";
+            } else if ( _ocio->hasColorspace("srgb8") ) {
                 // srgb8 in spi-vfx
                 *colorspace = "srgb8";
-            } else if (_ocio->hasColorspace("vd16")) {
+            } else if ( _ocio->hasColorspace("vd16") ) {
                 // vd16 in spi-anim
                 *colorspace = "vd16";
             }
+        }
+        break;
+    case ePNGColorSpacesRGB:
+        if ( _ocio->hasColorspace("sRGB") ) {
+            // nuke-default and blender
+            *colorspace = "sRGB";
+        } else if ( _ocio->hasColorspace("sRGB D65") ) {
+            // blender-cycles
+            *colorspace = "sRGB D65";
+        } else if ( _ocio->hasColorspace("sRGB (D60 sim.)") ) {
+            // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+            *colorspace = "sRGB (D60 sim.)";
+        } else if ( _ocio->hasColorspace("out_srgbd60sim") ) {
+            // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+            *colorspace = "out_srgbd60sim";
+        } else if ( _ocio->hasColorspace("rrt_Gamma2.2") ) {
+            // rrt_Gamma2.2 in aces 0.7.1
+            *colorspace = "rrt_Gamma2.2";
+        } else if ( _ocio->hasColorspace("rrt_srgb") ) {
+            // rrt_srgb in aces 0.1.1
+            *colorspace = "rrt_srgb";
+        } else if ( _ocio->hasColorspace("srgb8") ) {
+            // srgb8 in spi-vfx
+            *colorspace = "srgb8";
+        } else if ( _ocio->hasColorspace("Gamma2.2") ) {
+            // nuke-default
+            *colorspace = "Gamma2.2";
+        } else if ( _ocio->hasColorspace("srgb8") ) {
+            // srgb8 in spi-vfx
+            *colorspace = "srgb8";
+        } else if ( _ocio->hasColorspace("vd16") ) {
+            // vd16 in spi-anim
+            *colorspace = "vd16";
+        }
 
-            break;
-        case ePNGColorSpaceRec709:
-            if (_ocio->hasColorspace("Rec709")) {
-                // nuke-default
-                *colorspace = "Rec709";
-            } else if (_ocio->hasColorspace("nuke_rec709")) {
-                // blender
-                *colorspace = "nuke_rec709";
-            } else if (_ocio->hasColorspace("Rec.709 - Full")) {
-                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                *colorspace = "Rec.709 - Full";
-            } else if (_ocio->hasColorspace("out_rec709full")) {
-                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                *colorspace = "out_rec709full";
-            } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
-                // rrt_rec709_full_100nits in aces 0.7.1
-                *colorspace = "rrt_rec709_full_100nits";
-            } else if (_ocio->hasColorspace("rrt_rec709")) {
-                // rrt_rec709 in aces 0.1.1
-                *colorspace = "rrt_rec709";
-            } else if (_ocio->hasColorspace("hd10")) {
-                // hd10 in spi-anim and spi-vfx
-                *colorspace = "hd10";
-            }
-            break;
-        case ePNGColorSpaceLinear:
-            *colorspace = OCIO::ROLE_SCENE_LINEAR;
-            break;
-    }
-#     endif
+        break;
+    case ePNGColorSpaceRec709:
+        if ( _ocio->hasColorspace("Rec709") ) {
+            // nuke-default
+            *colorspace = "Rec709";
+        } else if ( _ocio->hasColorspace("nuke_rec709") ) {
+            // blender
+            *colorspace = "nuke_rec709";
+        } else if ( _ocio->hasColorspace("Rec.709 - Full") ) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            *colorspace = "Rec.709 - Full";
+        } else if ( _ocio->hasColorspace("out_rec709full") ) {
+            // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+            *colorspace = "out_rec709full";
+        } else if ( _ocio->hasColorspace("rrt_rec709_full_100nits") ) {
+            // rrt_rec709_full_100nits in aces 0.7.1
+            *colorspace = "rrt_rec709_full_100nits";
+        } else if ( _ocio->hasColorspace("rrt_rec709") ) {
+            // rrt_rec709 in aces 0.1.1
+            *colorspace = "rrt_rec709";
+        } else if ( _ocio->hasColorspace("hd10") ) {
+            // hd10 in spi-anim and spi-vfx
+            *colorspace = "hd10";
+        }
+        break;
+    case ePNGColorSpaceLinear:
+        *colorspace = OCIO::ROLE_SCENE_LINEAR;
+        break;
+    } // switch
+#     endif // ifdef OFX_IO_USING_OCIO
 
     switch (nChannels) {
-        case 1:
-            assert(false);
-            *components = OFX::ePixelComponentAlpha;
-            break;
-        case 2:
-            assert(false);
-            *components = OFX::ePixelComponentRGBA;
-            break;
-        case 3:
-            *components = OFX::ePixelComponentRGB;
-            break;
-        case 4:
-            *components = OFX::ePixelComponentRGBA;
-            break;
-        default:
-            break;
+    case 1:
+        assert(false);
+        *components = OFX::ePixelComponentAlpha;
+        break;
+    case 2:
+        assert(false);
+        *components = OFX::ePixelComponentRGBA;
+        break;
+    case 3:
+        *components = OFX::ePixelComponentRGB;
+        break;
+    case 4:
+        *components = OFX::ePixelComponentRGBA;
+        break;
+    default:
+        break;
     }
 
     *componentCount = nChannels;
 
-    if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
+    if ( (*components != OFX::ePixelComponentRGBA) && (*components != OFX::ePixelComponentAlpha) ) {
         *filePremult = OFX::eImageOpaque;
     } else {
         // output is always unpremultiplied
         *filePremult = OFX::eImageUnPreMultiplied;
     }
-}
-
+} // ReadPNGPlugin::guessParamsFromFilename
 
 mDeclareReaderPluginFactory(ReadPNGPluginFactory, {}, false);
-
 void
 ReadPNGPluginFactory::load()
 {
@@ -1197,7 +1196,7 @@ void
 ReadPNGPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
-    
+
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
@@ -1230,10 +1229,11 @@ ReadPNGPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
     ReadPNGPlugin* ret =  new ReadPNGPlugin(handle, _extensions);
+
     ret->restoreStateFromParams();
+
     return ret;
 }
-
 
 static ReadPNGPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
