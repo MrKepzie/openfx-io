@@ -238,7 +238,7 @@ WritePFMPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                                                     kSupportsRGB,
                                                                     kSupportsXY,
                                                                     kSupportsAlpha,
-                                                                    "scene_linear", "reference", false);
+                                                                    "scene_linear", "scene_linear", false);
 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }

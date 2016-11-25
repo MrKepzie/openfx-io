@@ -892,7 +892,7 @@ WritePNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                                                     kSupportsRGB,
                                                                     kSupportsXY,
                                                                     kSupportsAlpha,
-                                                                    "scene_linear", "reference", false);
+                                                                    "scene_linear", "sRGB", false);
 
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamCompression);

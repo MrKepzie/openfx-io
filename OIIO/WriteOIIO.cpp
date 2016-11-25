@@ -1469,7 +1469,7 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                                                     kSupportsRGB,
                                                                     kSupportsXY,
                                                                     kSupportsAlpha,
-                                                                    "scene_linear", "reference", true);
+                                                                    "scene_linear", "scene_linear", true);
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamTileSize);
         param->setLabel(kParamTileSizeLabel);

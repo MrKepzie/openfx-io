@@ -319,7 +319,7 @@ WriteEXRPluginFactory::describeInContext(ImageEffectDescriptor &desc,
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
                                                                     kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha,
-                                                                    "scene_linear", "reference", false);
+                                                                    "scene_linear", "scene_linear", false);
 
     /////////Compression
     {

@@ -2710,7 +2710,7 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
+    GenericReaderDescribeInContextEnd(desc, context, page, "scene_linear", "scene_linear");
 } // ReadOIIOPluginFactory::describeInContext
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
