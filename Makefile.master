@@ -48,4 +48,4 @@ endif
 
 #libPNG
 PNG_CXXFLAGS = `libpng-config --cflags`
-PNG_LINKFLAGS = `libpng-config --ldflags`
+PNG_LINKFLAGS = `libpng-config --ldflags` -lz

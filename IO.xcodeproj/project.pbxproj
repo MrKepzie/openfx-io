@@ -1790,6 +1790,7 @@
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
 					"-lpng16",
+					"-lz",
 					"$(inherited)",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1838,6 +1839,7 @@
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
 					"-lpng16",
+					"-lz",
 					"$(inherited)",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1935,6 +1937,7 @@
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
 					"-lpng16",
+					"-lz",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1949,6 +1952,7 @@
 					"-lOpenColorIO",
 					"-L$(LIBPNG_PATH)/lib",
 					"-lpng16",
+					"-lz",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

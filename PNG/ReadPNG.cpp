@@ -109,6 +109,191 @@ littleendian (void)
 #endif
 }
 
+// the following ICC check function is from libpng-1.6.26/png.c
+
+/* Information about the known ICC sRGB profiles */
+static const struct
+{
+   png_uint_32 adler, crc, length;
+   png_uint_32 md5[4];
+   png_byte    have_md5;
+   png_byte    is_broken;
+   png_uint_16 intent;
+
+#  define PNG_MD5(a,b,c,d) { a, b, c, d }, (a!=0)||(b!=0)||(c!=0)||(d!=0)
+#  define PNG_ICC_CHECKSUM(adler, crc, md5, intent, broke, date, length, fname)\
+      { adler, crc, length, md5, broke, intent },
+
+} png_sRGB_checks[] =
+{
+   /* This data comes from contrib/tools/checksum-icc run on downloads of
+    * all four ICC sRGB profiles from www.color.org.
+    */
+   /* adler32, crc32, MD5[4], intent, date, length, file-name */
+   PNG_ICC_CHECKSUM(0x0a3fd9f6, 0x3b8772b9,
+       PNG_MD5(0x29f83dde, 0xaff255ae, 0x7842fae4, 0xca83390d), 0, 0,
+       "2009/03/27 21:36:31", 3048, "sRGB_IEC61966-2-1_black_scaled.icc")
+
+   /* ICC sRGB v2 perceptual no black-compensation: */
+   PNG_ICC_CHECKSUM(0x4909e5e1, 0x427ebb21,
+       PNG_MD5(0xc95bd637, 0xe95d8a3b, 0x0df38f99, 0xc1320389), 1, 0,
+       "2009/03/27 21:37:45", 3052, "sRGB_IEC61966-2-1_no_black_scaling.icc")
+
+   PNG_ICC_CHECKSUM(0xfd2144a1, 0x306fd8ae,
+       PNG_MD5(0xfc663378, 0x37e2886b, 0xfd72e983, 0x8228f1b8), 0, 0,
+       "2009/08/10 17:28:01", 60988, "sRGB_v4_ICC_preference_displayclass.icc")
+
+   /* ICC sRGB v4 perceptual */
+   PNG_ICC_CHECKSUM(0x209c35d2, 0xbbef7812,
+       PNG_MD5(0x34562abf, 0x994ccd06, 0x6d2c5721, 0xd0d68c5d), 0, 0,
+       "2007/07/25 00:05:37", 60960, "sRGB_v4_ICC_preference.icc")
+
+   /* The following profiles have no known MD5 checksum. If there is a match
+    * on the (empty) MD5 the other fields are used to attempt a match and
+    * a warning is produced.  The first two of these profiles have a 'cprt' tag
+    * which suggests that they were also made by Hewlett Packard.
+    */
+   PNG_ICC_CHECKSUM(0xa054d762, 0x5d5129ce,
+       PNG_MD5(0x00000000, 0x00000000, 0x00000000, 0x00000000), 1, 0,
+       "2004/07/21 18:57:42", 3024, "sRGB_IEC61966-2-1_noBPC.icc")
+
+   /* This is a 'mntr' (display) profile with a mediaWhitePointTag that does not
+    * match the D50 PCS illuminant in the header (it is in fact the D65 values,
+    * so the white point is recorded as the un-adapted value.)  The profiles
+    * below only differ in one byte - the intent - and are basically the same as
+    * the previous profile except for the mediaWhitePointTag error and a missing
+    * chromaticAdaptationTag.
+    */
+   PNG_ICC_CHECKSUM(0xf784f3fb, 0x182ea552,
+       PNG_MD5(0x00000000, 0x00000000, 0x00000000, 0x00000000), 0, 1/*broken*/,
+       "1998/02/09 06:49:00", 3144, "HP-Microsoft sRGB v2 perceptual")
+
+   PNG_ICC_CHECKSUM(0x0398f3fc, 0xf29e526d,
+       PNG_MD5(0x00000000, 0x00000000, 0x00000000, 0x00000000), 1, 1/*broken*/,
+       "1998/02/09 06:49:00", 3144, "HP-Microsoft sRGB v2 media-relative")
+};
+
+static int
+png_compare_ICC_profile_with_sRGB(png_const_structrp /*png_ptr*/,
+    png_const_bytep profile, uLong adler)
+{
+   /* The quick check is to verify just the MD5 signature and trust the
+    * rest of the data.  Because the profile has already been verified for
+    * correctness this is safe.  png_colorspace_set_sRGB will check the 'intent'
+    * field too, so if the profile has been edited with an intent not defined
+    * by sRGB (but maybe defined by a later ICC specification) the read of
+    * the profile will fail at that point.
+    */
+
+   png_uint_32 length = 0;
+   png_uint_32 intent = 0x10000; /* invalid */
+#if PNG_sRGB_PROFILE_CHECKS > 1
+   uLong crc = 0; /* the value for 0 length data */
+#endif
+   unsigned int i;
+
+#ifdef PNG_SET_OPTION_SUPPORTED
+   /* First see if PNG_SKIP_sRGB_CHECK_PROFILE has been set to "on" */
+   //if (((png_ptr->options >> PNG_SKIP_sRGB_CHECK_PROFILE) & 3) ==
+   //            PNG_OPTION_ON)
+   //   return 0;
+#endif
+
+   for (i=0; i < (sizeof png_sRGB_checks) / (sizeof png_sRGB_checks[0]); ++i)
+   {
+      if (png_get_uint_32(profile+84) == png_sRGB_checks[i].md5[0] &&
+         png_get_uint_32(profile+88) == png_sRGB_checks[i].md5[1] &&
+         png_get_uint_32(profile+92) == png_sRGB_checks[i].md5[2] &&
+         png_get_uint_32(profile+96) == png_sRGB_checks[i].md5[3])
+      {
+         /* This may be one of the old HP profiles without an MD5, in that
+          * case we can only use the length and Adler32 (note that these
+          * are not used by default if there is an MD5!)
+          */
+#        if PNG_sRGB_PROFILE_CHECKS == 0
+            if (png_sRGB_checks[i].have_md5 != 0)
+               return 1+png_sRGB_checks[i].is_broken;
+#        endif
+
+         /* Profile is unsigned or more checks have been configured in. */
+         if (length == 0)
+         {
+            length = png_get_uint_32(profile);
+            intent = png_get_uint_32(profile+64);
+         }
+
+         /* Length *and* intent must match */
+         if (length == (png_uint_32) png_sRGB_checks[i].length &&
+            intent == (png_uint_32) png_sRGB_checks[i].intent)
+         {
+            /* Now calculate the adler32 if not done already. */
+            if (adler == 0)
+            {
+               adler = adler32(0, NULL, 0);
+               adler = adler32(adler, profile, length);
+            }
+
+            if (adler == png_sRGB_checks[i].adler)
+            {
+               /* These basic checks suggest that the data has not been
+                * modified, but if the check level is more than 1 perform
+                * our own crc32 checksum on the data.
+                */
+#              if PNG_sRGB_PROFILE_CHECKS > 1
+                  if (crc == 0)
+                  {
+                     crc = crc32(0, NULL, 0);
+                     crc = crc32(crc, profile, length);
+                  }
+
+                  /* So this check must pass for the 'return' below to happen.
+                   */
+                  if (crc == png_sRGB_checks[i].crc)
+#              endif
+               {
+                  if (png_sRGB_checks[i].is_broken != 0)
+                  {
+                     /* These profiles are known to have bad data that may cause
+                      * problems if they are used, therefore attempt to
+                      * discourage their use, skip the 'have_md5' warning below,
+                      * which is made irrelevant by this error.
+                      */
+                     //png_chunk_report(png_ptr, "known incorrect sRGB profile",
+                     //    PNG_CHUNK_ERROR);
+                  }
+
+                  /* Warn that this being done; this isn't even an error since
+                   * the profile is perfectly valid, but it would be nice if
+                   * people used the up-to-date ones.
+                   */
+                  else if (png_sRGB_checks[i].have_md5 == 0)
+                  {
+                     //png_chunk_report(png_ptr,
+                     //    "out-of-date sRGB profile with no signature",
+                     //    PNG_CHUNK_WARNING);
+                  }
+
+                  return 1+png_sRGB_checks[i].is_broken;
+               }
+            }
+
+# if PNG_sRGB_PROFILE_CHECKS > 0
+         /* The signature matched, but the profile had been changed in some
+          * way.  This probably indicates a data error or uninformed hacking.
+          * Fall through to "no match".
+          */
+         //png_chunk_report(png_ptr,
+         //    "Not recognizing known sRGB profile that has been edited",
+         //    PNG_CHUNK_WARNING);
+         break;
+# endif
+         }
+      }
+   }
+
+   return 0; /* no match */
+}
+
 /// Helper function - reads background colour.
 ///
 inline bool
@@ -229,56 +414,122 @@ getPNGInfo(png_structp& sp,
     }
 
     if (colorspace_p) {
+        bool ping_found_sRGB = false;
+        bool ping_found_gAMA = false;
+        bool ping_found_cHRM = false;
+        bool ping_found_sRGB_cHRM = false;
+        bool ping_found_iCCP = false;
+
         *colorspace_p = ePNGColorSpaceLinear;
 
-        // is there a srgb intent ?
-        int srgb_intent;
-        if (png_get_sRGB (sp, ip, &srgb_intent) == PNG_INFO_sRGB) {
-            *colorspace_p = ePNGColorSpacesRGB;
+        // Always check the ICC profile, because it may indicate sRGB
+        if ( png_get_valid(sp, ip, PNG_INFO_iCCP) ) {
+            png_charp profile_name = NULL;
+#if OFX_IO_LIBPNG_VERSION > 10500   /* PNG function signatures changed */
+            png_bytep profile_data = NULL;
+#else
+            png_charp profile_data = NULL;
+#endif
+            png_uint_32 profile_length = 0;
+            int compression_type;
+            png_get_iCCP (sp, ip, &profile_name, &compression_type,
+                          &profile_data, &profile_length);
+            if (profile_length && profile_data) {
+                ping_found_iCCP = true;
+                if (iccprofile_data_p) {
+#if OFX_IO_LIBPNG_VERSION > 10500
+                    *iccprofile_data_p = profile_data;
+#else
+                    *iccprofile_data_p = reinterpret_cast<unsigned char*>(profile_data);
+#endif
+                }
+                if (iccprofile_length_p) {
+                    *iccprofile_length_p = profile_length;
+                }
+            }
+
+            /* Is this profile one of the known ICC sRGB profiles?  If it is, just set
+             * the sRGB information.
+             */
+            if (png_compare_ICC_profile_with_sRGB(sp, profile_data, 0) != 0) {
+                *colorspace_p = ePNGColorSpacesRGB;
+                *gamma_p = 2.2;
+            }
         }
 
+        // is there a srgb intent ?
+        if (*colorspace_p == ePNGColorSpaceLinear) {
+            int srgb_intent;
+            if (png_get_sRGB (sp, ip, &srgb_intent) == PNG_INFO_sRGB) {
+                *colorspace_p = ePNGColorSpacesRGB;
+                *gamma_p = 2.2;
+                ping_found_sRGB = true;
+            }
+            // srgb_intent possible values:
+            // 0: PerceptualIntent
+            // 1: RelativeIntent
+            // 2: SaturationIntent
+            // 3: AbsoluteIntent
+        }
+        
         // if not is there a gamma ?
         assert(gamma_p);
-        bool gotGamma = false;
         if (*colorspace_p == ePNGColorSpaceLinear) {
             if ( !png_get_gAMA (sp, ip, gamma_p) ) {
                 *gamma_p = 1.0;
             } else {
                 // guard against division by zero
                 *gamma_p = *gamma_p ? (1. / *gamma_p) : 1.;
-                gotGamma = true;
+                ping_found_gAMA = true;
                 if (*gamma_p > 1.) {
                     *colorspace_p = ePNGColorSpaceGammaCorrected;
                 }
             }
+
+            double white_x, white_y, red_x, red_y, green_x, green_y, blue_x,
+            blue_y;
+
+            if (png_get_cHRM(sp, ip, &white_x, &white_y, &red_x,
+                             &red_y, &green_x, &green_y, &blue_x, &blue_y) == PNG_INFO_cHRM) {
+                ping_found_cHRM = true;
+
+                if (red_x>0.6399f &&
+                    red_x<0.6401f &&
+                    red_y>0.3299f &&
+                    red_y<0.3301f &&
+                    green_x>0.2999f &&
+                    green_x<0.3001f &&
+                    green_y>0.5999f &&
+                    green_y<0.6001f &&
+                    blue_x>0.1499f &&
+                    blue_x<0.1501f &&
+                    blue_y>0.0599f &&
+                    blue_y<0.0601f &&
+                    white_x>0.3126f &&
+                    white_x<0.3128f &&
+                    white_y>0.3289f &&
+                    white_y<0.3291f)
+                    ping_found_sRGB_cHRM = true;
+            }
+
+            if (!ping_found_sRGB &&
+                (!ping_found_gAMA ||
+                 (*gamma_p > 1/.46 && *gamma_p < 1/.45)) &&
+                (!ping_found_cHRM ||
+                 ping_found_sRGB_cHRM) &&
+                !ping_found_iCCP) {
+                *gamma_p = 2.2;
+                *colorspace_p = ePNGColorSpacesRGB;
+                ping_found_sRGB = true;
+            }
         }
 
         // if not, deduce from the bitdepth
-        if ( !gotGamma && (*colorspace_p == ePNGColorSpaceLinear) ) {
+        if ( !ping_found_gAMA && (*colorspace_p == ePNGColorSpaceLinear) ) {
             *colorspace_p = *bit_depth_p == eBitDepthUByte ? ePNGColorSpacesRGB : ePNGColorSpaceRec709;
         }
     }
 
-    if ( iccprofile_data_p && png_get_valid(sp, ip, PNG_INFO_iCCP) ) {
-        png_charp profile_name = NULL;
-#if OFX_IO_LIBPNG_VERSION > 10500   /* PNG function signatures changed */
-        png_bytep profile_data = NULL;
-#else
-        png_charp profile_data = NULL;
-#endif
-        png_uint_32 profile_length = 0;
-        int compression_type;
-        png_get_iCCP (sp, ip, &profile_name, &compression_type,
-                      &profile_data, &profile_length);
-        if (profile_length && profile_data) {
-#if OFX_IO_LIBPNG_VERSION > 10500
-            *iccprofile_data_p = profile_data;
-#else
-            *iccprofile_data_p = reinterpret_cast<unsigned char*>(profile_data);
-#endif
-            *iccprofile_length_p = profile_length;
-        }
-    }
 
     png_timep mod_time;
     if ( date_p && png_get_tIME (sp, ip, &mod_time) ) {
@@ -1227,7 +1478,7 @@ ReadPNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
 
-    GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
+    GenericReaderDescribeInContextEnd(desc, context, page, "sRGB", "scene_linear");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
