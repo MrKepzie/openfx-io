@@ -266,8 +266,14 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
                                          bool isMultiPlanar)
 : OFX::ImageEffect(handle)
 , _missingFrameParam(0)
+#ifdef OFX_IO_USING_OCIO
+, _ocio(new GenericOCIO(this))
+#endif
 , _outputClip(0)
 , _fileParam(0)
+, _timeOffset(0)
+, _startingTime(0)
+, _originalFrameRange(0)
 , _proxyFileParam(0)
 , _proxyThreshold(0)
 , _originalProxyScale(0)
@@ -277,9 +283,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _lastFrame(0)
 , _afterLast(0)
 , _frameMode(0)
-, _timeOffset(0)
-, _startingTime(0)
-, _originalFrameRange(0)
 , _outputComponents(0)
 , _filePremult(0)
 , _outputPremult(0)
@@ -288,9 +291,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
 , _fps(0)
 , _sublabel(0)
 , _guessedParams(0)
-#ifdef OFX_IO_USING_OCIO
-, _ocio(new GenericOCIO(this))
-#endif
 , _extensions(extensions)
 , _sequenceRangeSet(false)
 , _supportsRGBA(supportsRGBA)
@@ -1963,10 +1963,10 @@ GenericReaderPlugin::changedFilename(const OFX::InstanceChangedArgs &args)
 #endif
         OFX::PixelComponentEnum components = ePixelComponentNone;
         int componentCount = 0;
-        OFX::PreMultiplicationEnum premult = OFX::eImageOpaque;
+        OFX::PreMultiplicationEnum filePremult = OFX::eImageOpaque;
 
         assert(!_guessedParams->getValue());
-        bool success = guessParamsFromFilename(filename, &colorspace, &premult, &components, &componentCount);
+        bool success = guessParamsFromFilename(filename, &colorspace, &filePremult, &components, &componentCount);
         if (!success) {
             return;
         }
@@ -1991,14 +1991,14 @@ GenericReaderPlugin::changedFilename(const OFX::InstanceChangedArgs &args)
 #endif
         // RGB is always Opaque, Alpha is always PreMultiplied
         if (components == OFX::ePixelComponentRGB) {
-            premult = OFX::eImageOpaque;
+            filePremult = OFX::eImageOpaque;
         } else if (components == OFX::ePixelComponentAlpha) {
-            premult = OFX::eImagePreMultiplied;
+            filePremult = OFX::eImagePreMultiplied;
         }
         if (components != OFX::ePixelComponentNone) {
             setOutputComponents(components);
         }
-        _filePremult->setValue((int)premult);
+        _filePremult->setValue((int)filePremult);
 
         if (components == OFX::ePixelComponentRGB) {
             // RGB is always opaque

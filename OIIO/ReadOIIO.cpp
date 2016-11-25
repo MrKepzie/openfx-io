@@ -246,6 +246,12 @@ private:
      *
      * returns true if file exists and parameters successfully guessed, false in case of error.
      *
+     * This function is only called once: when the filename is first set.
+     *
+     * Besides returning colorspace, premult, components, and componentcount, if it returns true
+     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * The parameters must not be animated, since their value must remain the same for a whole sequence.
+     *
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
      *
@@ -254,7 +260,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
@@ -1335,6 +1341,12 @@ ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& im
  *
  * returns true if file exists and parameters successfully guessed, false in case of error.
  *
+ * This function is only called once: when the filename is first set.
+ *
+ * Besides returning colorspace, premult, components, and componentcount, if it returns true
+ * this function may also set extra format-specific parameters using OFX::Param::setValue.
+ * The parameters must not be animated, since their value must remain the same for a whole sequence.
+ *
  * You shouldn't do any strong processing as this is called on the main thread and
  * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
  *
@@ -1346,9 +1358,9 @@ ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& im
 bool
 ReadOIIOPlugin::guessParamsFromFilename(const std::string &filename,
                                         std::string *colorspace,
-                                        OFX::PreMultiplicationEnum *premult,
+                                        OFX::PreMultiplicationEnum *filePremult,
                                         OFX::PixelComponentEnum *components,
-                                        int *componentCount) const
+                                        int *componentCount)
 {
     std::string error;
     std::vector<ImageSpec> subimages;
@@ -1417,13 +1429,13 @@ ReadOIIOPlugin::guessParamsFromFilename(const std::string &filename,
     }
 
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
-        *premult = OFX::eImageOpaque;
+        *filePremult = OFX::eImageOpaque;
     } else {
         bool unassociatedAlpha = subimages[0].get_int_attribute("oiio:UnassociatedAlpha", 0);
         if (unassociatedAlpha) {
-            *premult = OFX::eImageUnPreMultiplied;
+            *filePremult = OFX::eImageUnPreMultiplied;
         } else {
-            *premult = OFX::eImagePreMultiplied;
+            *filePremult = OFX::eImagePreMultiplied;
         }
     }
 

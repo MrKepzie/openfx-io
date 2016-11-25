@@ -184,12 +184,16 @@ protected:
                                    int dstRowBytes);
 
 private:
-    
-    
     /**
      * @brief Called when the input image/video file changed.
      *
      * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
+     * This function is only called once: when the filename is first set.
+     *
+     * Besides returning colorspace, premult, components, and componentcount, if it returns true
+     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * The parameters must not be animated, since their value must remain the same for a whole sequence.
      *
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
@@ -201,9 +205,9 @@ private:
      **/
     virtual bool guessParamsFromFilename(const std::string& newFile,
                                          std::string *colorspace,
-                                         OFX::PreMultiplicationEnum *premult,
+                                         OFX::PreMultiplicationEnum *filePremult,
                                          OFX::PixelComponentEnum *components,
-                                         int *componentCount) const = 0;
+                                         int *componentCount) = 0;
     
     /**
      * @brief Override to clear any cache you may have.
@@ -382,8 +386,21 @@ private:
     bool checkExtension(const std::string& ext);
 
 protected:
+#ifdef OFX_IO_USING_OCIO
+    std::auto_ptr<GenericOCIO> _ocio;
+#endif
+
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The input file
+
+    OFX::IntParam* _timeOffset; //< the time offset applied to the sequence
+    OFX::IntParam* _startingTime; //< the starting frame of the sequence
+
+    OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
+
+private:
+    // the following params should not be needed in derived classes.
+
     OFX::StringParam  *_proxyFileParam; //< the proxy input files
     OFX::Double2DParam *_proxyThreshold; //< the proxy  images scale threshold
     OFX::Double2DParam *_originalProxyScale; //< the original proxy image scale
@@ -395,11 +412,7 @@ protected:
     OFX::ChoiceParam* _afterLast; //< what to do after the last frame
     
     OFX::ChoiceParam* _frameMode;//< do we use a time offset or an absolute starting frame
-    OFX::IntParam* _timeOffset; //< the time offset applied to the sequence
-    OFX::IntParam* _startingTime; //< the starting frame of the sequence
-    
-    OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
-    
+
     OFX::ChoiceParam* _outputComponents;
     OFX::ChoiceParam* _filePremult;
     OFX::ChoiceParam* _outputPremult;
@@ -412,14 +425,9 @@ protected:
     OFX::StringParam* _sublabel;
     OFX::BooleanParam* _guessedParams;//!< was guessParamsFromFilename already successfully called once on this instance
     
-#ifdef OFX_IO_USING_OCIO
-    std::auto_ptr<GenericOCIO> _ocio;
-#endif
-    
     const std::vector<std::string>& _extensions;
 
 private:
-    
     OfxRangeI _sequenceRange; // updated in restorestate
     bool _sequenceRangeSet;
     

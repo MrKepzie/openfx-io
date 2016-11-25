@@ -73,6 +73,12 @@ private:
      *
      * returns true if file exists and parameters successfully guessed, false in case of error.
      *
+     * This function is only called once: when the filename is first set.
+     *
+     * Besides returning colorspace, premult, components, and componentcount, if it returns true
+     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * The parameters must not be animated, since their value must remain the same for a whole sequence.
+     *
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
      *
@@ -81,7 +87,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
 };
 
@@ -375,6 +381,12 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
  *
  * returns true if file exists and parameters successfully guessed, false in case of error.
  *
+ * This function is only called once: when the filename is first set.
+ *
+ * Besides returning colorspace, premult, components, and componentcount, if it returns true
+ * this function may also set extra format-specific parameters using OFX::Param::setValue.
+ * The parameters must not be animated, since their value must remain the same for a whole sequence.
+ *
  * You shouldn't do any strong processing as this is called on the main thread and
  * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
  *
@@ -386,15 +398,15 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
 bool
 ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
                                        std::string *colorspace,
-                                       OFX::PreMultiplicationEnum *premult,
+                                       OFX::PreMultiplicationEnum *filePremult,
                                        OFX::PixelComponentEnum *components,
-                                       int *componentCount) const
+                                       int *componentCount)
 {
+    assert(colorspace && filePremult && components && componentCount);
 # ifdef OFX_IO_USING_OCIO
     // Unless otherwise specified, pfm files are assumed to be linear.
     *colorspace = OCIO::ROLE_SCENE_LINEAR;
 # endif
-    assert(colorspace && premult && components && componentCount);
     int startingTime = getStartingTime();
     std::string filename;
     OfxStatus st = getFilenameAtTime(startingTime, &filename);
@@ -430,15 +442,15 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
         *components = OFX::ePixelComponentAlpha;
         *componentCount = 1;
     } else {
-        *premult = OFX::eImageOpaque;
+        *filePremult = OFX::eImageOpaque;
 
         return false;
     }
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
-        *premult = OFX::eImageOpaque;
+        *filePremult = OFX::eImageOpaque;
     } else {
         // output is always premultiplied
-        *premult = OFX::eImagePreMultiplied;
+        *filePremult = OFX::eImagePreMultiplied;
     }
 
     return true;

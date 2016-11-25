@@ -104,6 +104,12 @@ private:
      *
      * returns true if file exists and parameters successfully guessed, false in case of error.
      *
+     * This function is only called once: when the filename is first set.
+     *
+     * Besides returning colorspace, premult, components, and componentcount, if it returns true
+     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * The parameters must not be animated, since their value must remain the same for a whole sequence.
+     *
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
      *
@@ -112,7 +118,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
@@ -180,6 +186,12 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
  *
  * returns true if file exists and parameters successfully guessed, false in case of error.
  *
+ * This function is only called once: when the filename is first set.
+ *
+ * Besides returning colorspace, premult, components, and componentcount, if it returns true
+ * this function may also set extra format-specific parameters using OFX::Param::setValue.
+ * The parameters must not be animated, since their value must remain the same for a whole sequence.
+ *
  * You shouldn't do any strong processing as this is called on the main thread and
  * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
  *
@@ -191,11 +203,11 @@ ReadFFmpegPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 bool
 ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
                                           std::string *colorspace,
-                                          OFX::PreMultiplicationEnum *premult,
+                                          OFX::PreMultiplicationEnum *filePremult,
                                           OFX::PixelComponentEnum *components,
-                                          int *componentCount) const
+                                          int *componentCount)
 {
-    assert(premult && components && componentCount);
+    assert(colorspace && filePremult && components && componentCount);
     FFmpegFile* file = _manager.get(this, filename);
     if (!file) {
         //Clear all opened files by this plug-in since the user changed the selected file/sequence
@@ -242,7 +254,7 @@ ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
     *componentCount = file->getNumberOfComponents();
     *components = (*componentCount > 3) ? OFX::ePixelComponentRGBA : OFX::ePixelComponentRGB;
     ///Ffmpeg is RGB opaque.
-    *premult = (*componentCount > 3) ? OFX::eImageUnPreMultiplied : OFX::eImageOpaque;
+    *filePremult = (*componentCount > 3) ? OFX::eImageUnPreMultiplied : OFX::eImageOpaque;
 
     return true;
 }
