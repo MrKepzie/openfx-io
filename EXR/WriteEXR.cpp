@@ -43,6 +43,9 @@ using namespace OFX::IO;
 namespace OCIO = OCIO_NAMESPACE;
 #endif
 
+using std::string;
+using std::vector;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "WriteEXR"
@@ -69,63 +72,63 @@ namespace Imf_ = OPENEXR_IMF_NAMESPACE;
 
 
 namespace Exr {
-    
-    static const char* compressionNames[6] = {
-        "No compression",
-        "Zip (1 scanline)",
-        "Zip (16 scanlines)",
-        "PIZ Wavelet (32 scanlines)",
-        "RLE",
-        "B44"
-    };
-    
-    static Imf_::Compression stringToCompression(const std::string& str){
-        if(str == compressionNames[0]){
-            return Imf_::NO_COMPRESSION;
-        }else if(str == compressionNames[1]){
-            return Imf_::ZIPS_COMPRESSION;
-        }else if(str == compressionNames[2]){
-            return Imf_::ZIP_COMPRESSION;
-        }else if(str == compressionNames[3]){
-            return Imf_::PIZ_COMPRESSION;
-        }else if(str == compressionNames[4]){
-            return Imf_::RLE_COMPRESSION;
-        }else{
-            return Imf_::B44_COMPRESSION;
-        }
+static const char* compressionNames[6] = {
+    "No compression",
+    "Zip (1 scanline)",
+    "Zip (16 scanlines)",
+    "PIZ Wavelet (32 scanlines)",
+    "RLE",
+    "B44"
+};
+static Imf_::Compression
+stringToCompression(const string& str)
+{
+    if (str == compressionNames[0]) {
+        return Imf_::NO_COMPRESSION;
+    } else if (str == compressionNames[1]) {
+        return Imf_::ZIPS_COMPRESSION;
+    } else if (str == compressionNames[2]) {
+        return Imf_::ZIP_COMPRESSION;
+    } else if (str == compressionNames[3]) {
+        return Imf_::PIZ_COMPRESSION;
+    } else if (str == compressionNames[4]) {
+        return Imf_::RLE_COMPRESSION;
+    } else {
+        return Imf_::B44_COMPRESSION;
     }
-    
-    static const char* depthNames[2] = {
-        "16 bit half", "32 bit float"
-    };
-    
-    static int depthNameToInt(const std::string& name){
-        if(name == depthNames[0]){
-            return 16;
-        }else{
-            return 32;
-        }
-    }
-    
-    
 }
 
-class WriteEXRPlugin : public GenericWriterPlugin
+static const char* depthNames[2] = {
+    "16 bit half", "32 bit float"
+};
+static int
+depthNameToInt(const string& name)
+{
+    if (name == depthNames[0]) {
+        return 16;
+    } else {
+        return 32;
+    }
+}
+}
+
+class WriteEXRPlugin
+    : public GenericWriterPlugin
 {
 public:
 
-    WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    WriteEXRPlugin(OfxImageEffectHandle handle, const vector<string>& extensions);
 
 
     virtual ~WriteEXRPlugin();
 
-    //virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
+    //virtual void changedParam(const InstanceChangedArgs &args, const string &paramName);
 
 private:
 
-    virtual void encode(const std::string& filename,
+    virtual void encode(const string& filename,
                         const OfxTime time,
-                        const std::string& viewName,
+                        const string& viewName,
                         const float *pixelData,
                         const OfxRectI& bounds,
                         const float pixelAspectRatio,
@@ -133,40 +136,37 @@ private:
                         const int dstNCompsStartIndex,
                         const int dstNComps,
                         const int rowBytes) OVERRIDE FINAL;
+    virtual bool isImageFile(const string& fileExtension) const OVERRIDE FINAL;
+    virtual PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return eImagePreMultiplied; }
 
-    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
-
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImagePreMultiplied; }
-
-    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
-
-    OFX::ChoiceParam* _compression;
-    OFX::ChoiceParam* _bitDepth;
-    
+    virtual void onOutputFileChanged(const string& newFile, bool setColorSpace) OVERRIDE FINAL;
+    ChoiceParam* _compression;
+    ChoiceParam* _bitDepth;
 };
 
-WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
-: GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
-, _compression(0)
-, _bitDepth(0)
+WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle,
+                               const vector<string>& extensions)
+    : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
+    , _compression(0)
+    , _bitDepth(0)
 {
     _compression = fetchChoiceParam(kParamWriteEXRCompression);
     _bitDepth = fetchChoiceParam(kParamWriteEXRDataType);
 }
 
-WriteEXRPlugin::~WriteEXRPlugin(){
-    
+WriteEXRPlugin::~WriteEXRPlugin()
+{
 }
 
-//void WriteEXRPlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/, const std::string &paramName)
+//void WriteEXRPlugin::changedParam(const InstanceChangedArgs &/*args*/, const string &paramName)
 //{
 //}
 
 
 void
-WriteEXRPlugin::encode(const std::string& filename,
+WriteEXRPlugin::encode(const string& filename,
                        const OfxTime /*time*/,
-                       const std::string& /*viewName*/,
+                       const string& /*viewName*/,
                        const float *pixelData,
                        const OfxRectI& bounds,
                        const float pixelAspectRatio,
@@ -176,10 +176,11 @@ WriteEXRPlugin::encode(const std::string& filename,
                        const int rowBytes)
 {
     ///FIXME: WriteEXR should not disregard dstNComps
-    
-    if (pixelDataNComps != 4 && pixelDataNComps != 3 && pixelDataNComps != 1) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+
+    if ( (pixelDataNComps != 4) && (pixelDataNComps != 3) && (pixelDataNComps != 1) ) {
+        setPersistentMessage(Message::eMessageError, "", "EXR: can only write RGBA, RGB, or Alpha components images");
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
@@ -187,12 +188,12 @@ WriteEXRPlugin::encode(const std::string& filename,
     try {
         int compressionIndex;
         _compression->getValue(compressionIndex);
-        
-        Imf_::Compression compression(Exr::stringToCompression(Exr::compressionNames[compressionIndex]));
-        
+
+        Imf_::Compression compression( Exr::stringToCompression(Exr::compressionNames[compressionIndex]) );
+
         int depthIndex;
         _bitDepth->getValue(depthIndex);
-        
+
         int depth = Exr::depthNameToInt(Exr::depthNames[depthIndex]);
         Imath::Box2i exrDataW;
 
@@ -200,7 +201,7 @@ WriteEXRPlugin::encode(const std::string& filename,
         exrDataW.min.y = bounds.y1;
         exrDataW.max.x = bounds.x2 - 1;
         exrDataW.max.y = bounds.y2 - 1;
-        
+
         Imath::Box2i exrDispW;
         exrDispW.min.x = 0;
         exrDispW.min.y = 0;
@@ -209,7 +210,7 @@ WriteEXRPlugin::encode(const std::string& filename,
 
         Imf_::Header exrheader(exrDispW, exrDataW, pixelAspectRatio,
                                Imath::V2f(0, 0), 1, Imf_::INCREASING_Y, compression);
-        
+
         Imf_::PixelType pixelType;
         if (depth == 32) {
             pixelType = Imf_::FLOAT;
@@ -218,39 +219,38 @@ WriteEXRPlugin::encode(const std::string& filename,
             pixelType = Imf_::HALF;
         }
 
-        const char* chanNames[4] = { "R" , "G" , "B" , "A" };
+        const char* chanNames[4] = { "R", "G", "B", "A" };
         if (pixelDataNComps == 1) {
             chanNames[0] = chanNames[3];
         }
         for (int chan = 0; chan < pixelDataNComps; ++chan) {
-            exrheader.channels().insert(chanNames[chan],Imf_::Channel(pixelType));
+            exrheader.channels().insert( chanNames[chan], Imf_::Channel(pixelType) );
         }
 
-        Imf_::OutputFile outputFile(filename.c_str(),exrheader);
-        
+        Imf_::OutputFile outputFile(filename.c_str(), exrheader);
+
         for (int y = bounds.y1; y < bounds.y2; ++y) {
             /*First we create a row that will serve as the output buffer.
-             We copy the scan-line (with y inverted) in the inputImage to the row.*/
+               We copy the scan-line (with y inverted) in the inputImage to the row.*/
             int exrY = bounds.y2 - y - 1;
-            
-            float* src_pixels = (float*)((char*)pixelData + (exrY - bounds.y1)*rowBytes);
-            
+            float* src_pixels = (float*)( (char*)pixelData + (exrY - bounds.y1) * rowBytes );
+
             /*we create the frame buffer*/
             Imf_::FrameBuffer fbuf;
             if (depth == 32) {
                 for (int chan = 0; chan < pixelDataNComps; ++chan) {
-                    fbuf.insert(chanNames[chan],Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * pixelDataNComps, 0));
+                    fbuf.insert( chanNames[chan], Imf_::Slice(Imf_::FLOAT, (char*)src_pixels + chan, sizeof(float) * pixelDataNComps, 0) );
                 }
             } else {
-                Imf_::Array2D<half> halfwriterow(pixelDataNComps ,bounds.x2 - bounds.x1);
-                
+                Imf_::Array2D<half> halfwriterow(pixelDataNComps, bounds.x2 - bounds.x1);
+
                 for (int chan = 0; chan < pixelDataNComps; ++chan) {
-                    fbuf.insert(chanNames[chan],
-                                Imf_::Slice(Imf_::HALF,
-                                            (char*)(&halfwriterow[chan][0] - exrDataW.min.x),
-                                            sizeof(halfwriterow[chan][0]), 0));
+                    fbuf.insert( chanNames[chan],
+                                 Imf_::Slice(Imf_::HALF,
+                                             (char*)(&halfwriterow[chan][0] - exrDataW.min.x),
+                                             sizeof(halfwriterow[chan][0]), 0) );
                     const float* from = src_pixels + chan;
-                    for (int i = exrDataW.min.x,f = exrDataW.min.x; i < exrDataW.max.x ; ++i, f += pixelDataNComps) {
+                    for (int i = exrDataW.min.x, f = exrDataW.min.x; i < exrDataW.max.x; ++i, f += pixelDataNComps) {
                         halfwriterow[chan][i - exrDataW.min.x] = from[f];
                     }
                 }
@@ -258,22 +258,22 @@ WriteEXRPlugin::encode(const std::string& filename,
             outputFile.setFrameBuffer(fbuf);
             outputFile.writePixels(1);
         }
-
-        
-        
     } catch (const std::exception& e) {
-        setPersistentMessage(OFX::Message::eMessageError, "",std::string("OpenEXR error") + ": " + e.what());
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage( Message::eMessageError, "", string("OpenEXR error") + ": " + e.what() );
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-}
+} // WriteEXRPlugin::encode
 
-bool WriteEXRPlugin::isImageFile(const std::string& /*fileExtension*/) const{
+bool
+WriteEXRPlugin::isImageFile(const string& /*fileExtension*/) const
+{
     return true;
 }
 
 void
-WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
+WriteEXRPlugin::onOutputFileChanged(const string & /*filename*/,
                                     bool setColorSpace)
 {
     if (setColorSpace) {
@@ -284,11 +284,9 @@ WriteEXRPlugin::onOutputFileChanged(const std::string &/*filename*/,
     }
 }
 
-
-mDeclareWriterPluginFactory(WriteEXRPluginFactory, ;, false);
-
-
-void WriteEXRPluginFactory::load()
+mDeclareWriterPluginFactory(WriteEXRPluginFactory,; , false);
+void
+WriteEXRPluginFactory::load()
 {
     _extensions.clear();
     _extensions.push_back("exr");
@@ -302,9 +300,10 @@ WriteEXRPluginFactory::unload()
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+WriteEXRPluginFactory::describe(ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc,OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
+    GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
@@ -313,7 +312,9 @@ void WriteEXRPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void
+WriteEXRPluginFactory::describeInContext(ImageEffectDescriptor &desc,
+                                         ContextEnum context)
 {
     // make some pages and to things in
     PageParamDescriptor *page = GenericWriterDescribeInContextBegin(desc, context,
@@ -322,9 +323,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     /////////Compression
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRCompression);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRCompression);
         param->setAnimates(true);
-        for (int i =0; i < 6; ++i) {
+        for (int i = 0; i < 6; ++i) {
             param->appendOption(Exr::compressionNames[i]);
         }
         param->setDefault(3);
@@ -335,9 +336,9 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
 
     ////////Data type
     {
-        OFX::ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRDataType);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRDataType);
         param->setAnimates(true);
-        for(int i = 0 ; i < 2 ; ++i) {
+        for (int i = 0; i < 2; ++i) {
             param->appendOption(Exr::depthNames[i]);
         }
         param->setDefault(1);
@@ -349,14 +350,17 @@ void WriteEXRPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, 
     GenericWriterDescribeInContextEnd(desc, context, page);
 }
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
+ImageEffect*
+WriteEXRPluginFactory::createInstance(OfxImageEffectHandle handle,
+                                      ContextEnum /*context*/)
 {
     WriteEXRPlugin* ret =  new WriteEXRPlugin(handle, _extensions);
+
     ret->restoreStateFromParams();
+
     return ret;
 }
-
 
 static WriteEXRPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
