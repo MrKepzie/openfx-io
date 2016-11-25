@@ -231,7 +231,7 @@ public:
 
     /**
      * @brief Restore any state from the parameters set
-     * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+     * Called from createInstance() and changedParam() (via changedFilename()), must restore the
      * state of the Reader, such as Choice param options, data members and non-persistent param values.
      * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
      * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
@@ -1042,7 +1042,7 @@ ReadOIIOPlugin::getSpecs(const std::string &filename, std::vector<ImageSpec>* su
 
 /**
  * @brief Restore any state from the parameters set
- * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+ * Called from createInstance() and changedParam() (via changedFilename()), must restore the
  * state of the Reader, such as Choice param options, data members and non-persistent param values.
  * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
  * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first

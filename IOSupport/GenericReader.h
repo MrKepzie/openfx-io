@@ -119,7 +119,7 @@ public:
     
     /**
      * @brief Restore any state from the parameters set
-     * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+     * Called from createInstance() and changedParam() (via changedFilename()), must restore the
      * state of the Reader, such as Choice param options, data members and non-persistent param values.
      * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
      * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
@@ -146,9 +146,9 @@ protected:
      * @brief Called from changedParam() when kParamFilename is changed for any reason other than eChangeTime.
      * Calls restoreStateFromParams() to update any non-persistent params that may depend on the filename.
      * If reason is eChangeUserEdit and the params where never guessed (see _guessedParams) also sets these from the file contents.
-     * Any derived implementation must call GenericReaderPlugin::inputFileChanged() first
+     * Any derived implementation must call GenericReaderPlugin::changedFilename() first
      **/
-    virtual void inputFileChanged(const OFX::InstanceChangedArgs &args);
+    virtual void changedFilename(const OFX::InstanceChangedArgs &args);
 
 
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame

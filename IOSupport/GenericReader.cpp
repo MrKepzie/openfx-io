@@ -382,7 +382,7 @@ GenericReaderPlugin::refreshSubLabel(OfxTime time)
 
 /**
  * @brief Restore any state from the parameters set
- * Called from createInstance() and changedParam() (via inputFileChanged()), must restore the
+ * Called from createInstance() and changedParam() (via changedFilename()), must restore the
  * state of the Reader, such as Choice param options, data members and non-persistent param values.
  * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
  * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
@@ -1884,10 +1884,10 @@ GenericReaderPlugin::checkExtension(const std::string& ext)
  * @brief Called from changedParam() when kParamFilename is changed for any reason other than eChangeTime.
  * Calls restoreStateFromParams() to update any non-persistent params that may depend on the filename.
  * If reason is eChangeUserEdit and the params where never guessed (see _guessedParams) also sets these from the file contents.
- * Any derived implementation must call GenericReaderPlugin::inputFileChanged() first
+ * Any derived implementation must call GenericReaderPlugin::changedFilename() first
  **/
 void
-GenericReaderPlugin::inputFileChanged(const OFX::InstanceChangedArgs &args)
+GenericReaderPlugin::changedFilename(const OFX::InstanceChangedArgs &args)
 {
     assert(args.reason != eChangeTime);
     if (args.reason == eChangeTime) {
@@ -1901,7 +1901,7 @@ GenericReaderPlugin::inputFileChanged(const OFX::InstanceChangedArgs &args)
 
     if (filename.empty()) {
         // if the file name is set to an empty string,
-        // reset so that values are automatically set on next call to inputFileChanged()
+        // reset so that values are automatically set on next call to changedFilename()
         _guessedParams->resetToDefault();
 
         return;
@@ -2028,7 +2028,7 @@ GenericReaderPlugin::changedParam(const OFX::InstanceChangedArgs &args,
 
     if (paramName == kParamFilename) {
         if (args.reason != OFX::eChangeTime) {
-            inputFileChanged(args);
+            changedFilename(args);
         }
         if (_sublabel && args.reason != OFX::eChangePluginEdit) {
             refreshSubLabel(args.time);
