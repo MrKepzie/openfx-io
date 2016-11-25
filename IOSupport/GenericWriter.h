@@ -33,11 +33,9 @@
 #include "ofxsCopier.h" // for copyPixels
 
 namespace OFX {
-
 class PixelProcessorFilterBase;
 
 namespace IO {
-
 #ifdef OFX_IO_USING_OCIO
 class GenericOCIO;
 #endif
@@ -58,16 +56,17 @@ enum LayerViewsPartsEnum
  * - common params
  * - a way to inform the host about the colour-space of the data.
  **/
-class GenericWriterPlugin : public OFX::MultiPlane::MultiPlaneEffect {
-    
+class GenericWriterPlugin
+    : public OFX::MultiPlane::MultiPlaneEffect
+{
 public:
-    
+
     GenericWriterPlugin(OfxImageEffectHandle handle,
                         const std::vector<std::string>& extensions,
                         bool supportsRGBA, bool supportsRGB, bool supportsXY, bool supportsAlpha);
-    
+
     virtual ~GenericWriterPlugin();
-    
+
     /**
      * @brief Don't override this function, the GenericWriterPlugin class already does the rendering. The "encoding" of the frame
      * must be done by the pure virtual function encode(...) instead.
@@ -75,16 +74,16 @@ public:
      * in order to be able to branch this effect in the middle of an effect tree.
      **/
     virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
-    
+
     /* override is identity */
     virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE;
 
     /** @brief client begin sequence render function */
     virtual void beginSequenceRender(const OFX::BeginSequenceRenderArguments &args) OVERRIDE;
-    
+
     /** @brief client end sequence render function */
     virtual void endSequenceRender(const OFX::EndSequenceRenderArguments &args) OVERRIDE;
-    
+
     /**
      * @brief Don't override this. It returns the projects region of definition.
      **/
@@ -115,25 +114,25 @@ public:
      * }
      **/
     virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE;
-    
+
     /**
      * @brief Overriden to handle premultiplication parameter given the input clip.
      * Make sure you call the base class implementation if you override it.
      **/
     virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE;
-    
+
     /**
      * @brief Overriden to set the clips premultiplication according to the user and plug-ins wishes.
      * It also set the output components from the output components parameter
      **/
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
 
-    
+
     /**
      * @brief Overriden to request the views needed to render.
      **/
     virtual void getFrameViewsNeeded(const OFX::FrameViewsNeededArguments& args, OFX::FrameViewsNeededSetter& frameViews) OVERRIDE FINAL;
-    
+
     /**
      * @brief Overriden to clear any OCIO cache.
      * This function calls clearAnyCache() if you have any cache to clear.
@@ -149,9 +148,8 @@ public:
      **/
     virtual void restoreStateFromParams();
 
-
 protected:
-    
+
     void setOutputComponentsParam(OFX::PixelComponentEnum components);
 
 
@@ -174,7 +172,7 @@ protected:
      * @param pixelDataNComps The number of components per pixel in pixelData
      * @param dstNCompsStartIndex The start index where the first component of dstNComps is to be read (in the range of pixelDataNComps)
      * @param dstNComps The desired number of components in the written file
-     * @param rowBytes The number of bytes in a row of pixelData. 
+     * @param rowBytes The number of bytes in a row of pixelData.
      * The following assert should hold true:
      * assert(((bounds.x2 - bounds.x1) * pixelDataNComps * sizeof(float)) == rowBytes);
      *
@@ -184,7 +182,7 @@ protected:
      **/
     virtual void encode(const std::string& filename,
                         const OfxTime time,
-                        const std::string& viewName, 
+                        const std::string& viewName,
                         const float *pixelData,
                         const OfxRectI& bounds,
                         const float pixelAspectRatio,
@@ -192,20 +190,19 @@ protected:
                         const int dstNCompsStartIndex,
                         const int dstNComps,
                         const int rowBytes);
-    
-    
     virtual void beginEncode(const std::string& /*filename*/,
                              const OfxRectI& /*rodPixel*/,
                              float /*pixelAspectRatio*/,
-                             const OFX::BeginSequenceRenderArguments &/*args*/) {}
-    
-    virtual void endEncode(const OFX::EndSequenceRenderArguments &/*args*/) {}
+                             const OFX::BeginSequenceRenderArguments & /*args*/) {}
+
+    virtual void endEncode(const OFX::EndSequenceRenderArguments & /*args*/) {}
 
     friend class EncodePlanesLocalData_RAII;
     ///Used to allocate/free userdata passed to beginEncodePlanes,endEncodePlanes and encodePlane
     virtual void* allocateEncodePlanesUserData() { return (void*)0; }
+
     virtual void destroyEncodePlanesUserData(void* /*data*/) {}
-    
+
     /**
      * @brief When writing multiple planes, should allocate data that are shared amongst all planes
      **/
@@ -214,48 +211,46 @@ protected:
                                   OfxTime time,
                                   float pixelAspectRatio,
                                   LayerViewsPartsEnum partsSplitting,
-                                  const std::map<int,std::string>& viewsToRender,
+                                  const std::map<int, std::string>& viewsToRender,
                                   const std::list<std::string>& planes,
                                   const bool packingRequired,
                                   const std::vector<int>& packingMapping,
                                   const OfxRectI& bounds);
-    
     virtual void endEncodeParts(void* /*user_data*/) {}
-    
+
     virtual void encodePart(void* user_data, const std::string& filename, const float *pixelData, int pixelDataNComps, int planeIndex, int rowBytes);
-    
+
     /**
-     * @brief Should return the view index needed to render. 
+     * @brief Should return the view index needed to render.
      * Possible return values:
      * -2 or kGenericWriterViewDefault: Indicates that we want to render what the host request via the render action (the default)
      * -1 or kGenericWriterViewAll: Indicates that we want to render all views in a single file. In this case, rendering view 0 requires all views.
      * >= 0: Indicates the view index to render
      **/
     virtual int getViewToRender() const { return -2; }
-    
+
     virtual LayerViewsPartsEnum getPartsSplittingPreference() const { return eLayerViewsSinglePart; }
-    
+
     /**
      * @brief Overload to return false if the given file extension is a video file extension or
      * true if this is an image file extension.
      **/
     virtual bool isImageFile(const std::string& fileExtension) const = 0;
-    
     virtual void setOutputFrameRate(double /*fps*/) {}
-    
+
     /**
      * @brief Must return whether your plug-in expects an input stream to be premultiplied or unpremultiplied to encode
      * properly into the file.
      **/
     virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const = 0;
-    
+
     /**
-     * @brief To implement if you added supportsDisplayWindow = true to GenericWriterDescribe(). 
+     * @brief To implement if you added supportsDisplayWindow = true to GenericWriterDescribe().
      * Basically only EXR file format can handle this.
      **/
-    virtual bool displayWindowSupportedByFormat(const std::string& /*filename*/) const  { return false; }
+    virtual bool displayWindowSupportedByFormat(const std::string& /*filename*/) const { return false; }
 
-    
+
     OFX::Clip* _inputClip; //< Mantated input clip
     OFX::Clip *_outputClip; //< Mandated output clip
     OFX::StringParam  *_fileParam; //< The output file
@@ -280,7 +275,6 @@ protected:
 #endif
 
     const std::vector<std::string>& _extensions;
-    
     bool _supportsRGBA;
     bool _supportsRGB;
     bool _supportsXY;
@@ -289,23 +283,24 @@ protected:
     std::vector<OFX::PixelComponentEnum> _outputComponentsTable;
 
 private:
-    
-    
+
+
     class InputImagesHolder
     {
         std::list<const OFX::Image*> _imgs;
         std::list<OFX::ImageMemory*> _mems;
-    public:
-        
+
+public:
+
         InputImagesHolder();
         void addImage(const OFX::Image* img);
         void addMemory(OFX::ImageMemory* mem);
         ~InputImagesHolder();
     };
-    
+
     /*
      * @brief Fetch the given plane for the given view at the given time and convert into suited color-space
-     * using OCIO if needed. 
+     * using OCIO if needed.
      *
      * If view == renderRequestedView the output image will be fetched on the output clip
      * and written to aswell.
@@ -342,12 +337,12 @@ private:
                                   int* rowBytes,
                                   OFX::PixelComponentEnum* mappedComponents,
                                   int* mappedComponentsCount);
-    
+
     /**
      * @brief Checks if the extension is supported.
      **/
     bool checkExtension(const std::string& filename);
-    
+
     /**
      * @brief Override if you want to do something when the output image/video file changed.
      * You shouldn't do any strong processing as this is called on the main thread and
@@ -359,20 +354,22 @@ private:
      * @brief Override to clear any cache you may have.
      **/
     virtual void clearAnyCache() {}
-    
+
     void getOutputRoD(OfxTime time, int view, OfxRectD* rod, double* par);
 
 protected:
 
     void getSelectedOutputFormat(OfxRectI* format, double* par);
+
 private:
-    
+
     void copyPixelData(const OfxRectI &renderWindow,
                        const OFX::Image* srcImg,
                        OFX::Image* dstImg)
     {
         const void* srcPixelData;
         OfxRectI srcBounds;
+
         OFX::PixelComponentEnum srcPixelComponents;
         OFX::BitDepthEnum srcBitDepth;
         int srcRowBytes;
@@ -402,6 +399,7 @@ private:
     {
         void* dstPixelData;
         OfxRectI dstBounds;
+
         OFX::PixelComponentEnum dstPixelComponents;
         OFX::BitDepthEnum dstBitDepth;
         int dstRowBytes;
@@ -424,6 +422,7 @@ private:
     {
         const void* srcPixelData;
         OfxRectI srcBounds;
+
         OFX::PixelComponentEnum srcPixelComponents;
         OFX::BitDepthEnum srcBitDepth;
         int srcRowBytes;
@@ -434,7 +433,7 @@ private:
                    srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                    dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     }
-    
+
     void packPixelBuffer(const OfxRectI& renderWindow,
                          const void *srcPixelData,
                          const OfxRectI& bounds,
@@ -444,7 +443,7 @@ private:
                          const std::vector<int>& channelsMapping, //maps dst channels to input channels
                          int dstRowBytes,
                          void* dstPixelData);
-    
+
     void interleavePixelBuffers(const OfxRectI& renderWindow,
                                 const void *srcPixelData,
                                 const OfxRectI& bounds,
@@ -474,7 +473,7 @@ private:
                             int dstPixelComponentCount,
                             OFX::BitDepthEnum dstBitDepth,
                             int dstRowBytes);
-    
+
     void premultPixelData(const OfxRectI &renderWindow,
                           const void *srcPixelData,
                           const OfxRectI& srcBounds,
@@ -488,7 +487,7 @@ private:
                           int dstPixelComponentCount,
                           OFX::BitDepthEnum dstBitDepth,
                           int dstRowBytes);
-    
+
     void getPackingOptions(bool *allCheckboxHidden, std::vector<int>* packingMapping) const;
 
     void outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter, bool throwErrors);
@@ -498,64 +497,63 @@ class EncodePlanesLocalData_RAII
 {
     GenericWriterPlugin* _w;
     void* data;
+
 public:
-    
+
     EncodePlanesLocalData_RAII(GenericWriterPlugin* w)
-    : _w(w)
-    , data(0)
+        : _w(w)
+        , data(0)
     {
         data = w->allocateEncodePlanesUserData();
     }
-    
+
     ~EncodePlanesLocalData_RAII()
     {
         _w->destroyEncodePlanesUserData(data);
     }
-    
-    void* getData() const  { return data; }
+
+    void* getData() const { return data; }
 };
 
-void
-GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,
-                      OFX::RenderSafetyEnum safety,
-                      const std::vector<std::string>& extensions,
-                      int evaluation,
-                      bool isMultiPlanar,
-                      bool isMultiView);
+void GenericWriterDescribe(OFX::ImageEffectDescriptor &desc,
+                           OFX::RenderSafetyEnum safety,
+                           const std::vector<std::string>& extensions,
+                           int evaluation,
+                           bool isMultiPlanar,
+                           bool isMultiView);
 
-OFX::PageParamDescriptor*
-GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
-                                    OFX::ContextEnum context,
-                                    bool supportsRGBA,
-                                    bool supportsRGB,
-                                    bool supportsXY,
-                                    bool supportsAlpha,
-                                    const char* inputSpaceNameDefault,
-                                    const char* outputSpaceNameDefault,
-                                    bool supportsDisplayWindow);
+OFX::PageParamDescriptor* GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc,
+                                                              OFX::ContextEnum context,
+                                                              bool supportsRGBA,
+                                                              bool supportsRGB,
+                                                              bool supportsXY,
+                                                              bool supportsAlpha,
+                                                              const char* inputSpaceNameDefault,
+                                                              const char* outputSpaceNameDefault,
+                                                              bool supportsDisplayWindow);
 
-void
-GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
-                                  OFX::ContextEnum context,
-                                  OFX::PageParamDescriptor* defaultPage);
+void GenericWriterDescribeInContextEnd(OFX::ImageEffectDescriptor &desc,
+                                       OFX::ContextEnum context,
+                                       OFX::PageParamDescriptor* defaultPage);
 
 // the load() member has to be provided, and it should fill the _extensions list of valid file extensions
-#define mDeclareWriterPluginFactory(CLASS, UNLOADFUNCDEF,ISVIDEOSTREAM) \
-  class CLASS : public OFX::PluginFactoryHelper<CLASS>                       \
-  {                                                                     \
-  public:                                                                \
-    CLASS(const std::string& id, unsigned int verMaj, unsigned int verMin):OFX::PluginFactoryHelper<CLASS>(id, verMaj, verMin){} \
-    virtual void load();                                   \
-    virtual void unload() UNLOADFUNCDEF ;                               \
-    virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
-    bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
-    virtual void describe(OFX::ImageEffectDescriptor &desc);      \
-    virtual void describeInContext(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context); \
-  private: \
-    std::vector<std::string> _extensions; \
-  };
-
+#define mDeclareWriterPluginFactory(CLASS, UNLOADFUNCDEF, ISVIDEOSTREAM) \
+    class CLASS \
+        : public OFX::PluginFactoryHelper<CLASS>                       \
+    {                                                                     \
+public:                                                                \
+        CLASS(const std::string & id, unsigned int verMaj, unsigned int verMin) \
+            : OFX::PluginFactoryHelper<CLASS>(id, verMaj, verMin) {} \
+        virtual void load();                                   \
+        virtual void unload() UNLOADFUNCDEF;                               \
+        virtual OFX::ImageEffect* createInstance(OfxImageEffectHandle handle, OFX::ContextEnum context); \
+        bool isVideoStreamPlugin() const { return ISVIDEOSTREAM; }  \
+        virtual void describe(OFX::ImageEffectDescriptor & desc);      \
+        virtual void describeInContext(OFX::ImageEffectDescriptor & desc, OFX::ContextEnum context); \
+private: \
+        std::vector<std::string> _extensions; \
+    };
 } // namespace IO
 } // namespace OFX
 
-#endif
+#endif // ifndef Io_GenericWriter_h

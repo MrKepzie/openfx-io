@@ -39,46 +39,46 @@
 #include <ofxNatron.h>
 #include <ofxsOGLUtilities.h>
 
-// Use OpenGL function directly, no need to use ofxsOGLFunctions.h directly because we don't use OSMesa 
+// Use OpenGL function directly, no need to use ofxsOGLFunctions.h directly because we don't use OSMesa
 #include <glad.h>
 
 #ifdef OFX_IO_USING_OCIO
 namespace OCIO = OCIO_NAMESPACE;
 #endif
 
+using std::string;
+
 NAMESPACE_OFX_ENTER
-NAMESPACE_OFX_IO_ENTER
+    NAMESPACE_OFX_IO_ENTER
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 
 static const int LUT3D_EDGE_SIZE = 32;
-
 static const char * g_fragShaderText = ""
-"\n"
-"uniform sampler2D tex1;\n"
-"uniform sampler3D tex2;\n"
-"\n"
-"void main()\n"
-"{\n"
-"    vec4 col = texture2D(tex1, gl_TexCoord[0].st);\n"
-"    gl_FragColor = OCIODisplay(col, tex2);\n"
-"}\n";
+                                       "\n"
+                                       "uniform sampler2D tex1;\n"
+                                       "uniform sampler3D tex2;\n"
+                                       "\n"
+                                       "void main()\n"
+                                       "{\n"
+                                       "    vec4 col = texture2D(tex1, gl_TexCoord[0].st);\n"
+                                       "    gl_FragColor = OCIODisplay(col, tex2);\n"
+                                       "}\n";
 
 
 OCIOOpenGLContextData::OCIOOpenGLContextData()
-: procLut3D()
-, procShaderCacheID()
-, procLut3DCacheID()
-, procLut3DID(0)
-, procShaderProgramID(0)
-, procFragmentShaderID(0)
+    : procLut3D()
+    , procShaderCacheID()
+    , procLut3DCacheID()
+    , procLut3DID(0)
+    , procShaderProgramID(0)
+    , procFragmentShaderID(0)
 {
-    if (!OFX::ofxsLoadOpenGLOnce()) {
+    if ( !ofxsLoadOpenGLOnce() ) {
         // We could use an error message here
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
     }
 }
-
 
 OCIOOpenGLContextData::~OCIOOpenGLContextData()
 {
@@ -91,12 +91,11 @@ OCIOOpenGLContextData::~OCIOOpenGLContextData()
     if (procShaderProgramID != 0) {
         glDeleteProgram(procShaderProgramID);
     }
-
 }
 
-
 static GLuint
-compileShaderText(GLenum shaderType, const char *text)
+compileShaderText(GLenum shaderType,
+                  const char *text)
 {
     GLuint shader;
     GLint stat;
@@ -106,12 +105,12 @@ compileShaderText(GLenum shaderType, const char *text)
     glCompileShader(shader);
     glGetShaderiv(shader, GL_COMPILE_STATUS, &stat);
 
-    if (!stat)
-    {
+    if (!stat) {
         GLchar log[1000];
         GLsizei len;
         glGetShaderInfoLog(shader, 1000, &len, log);
         DBG( std::fprintf(stderr, "Error: problem compiling shader: %s\n", log) );
+
         return 0;
     }
 
@@ -121,12 +120,15 @@ compileShaderText(GLenum shaderType, const char *text)
 static GLuint
 linkShaders(GLuint fragShader)
 {
-    if (!fragShader) return 0;
+    if (!fragShader) {
+        return 0;
+    }
 
     GLuint program = glCreateProgram();
 
-    if (fragShader)
+    if (fragShader) {
         glAttachShader(program, fragShader);
+    }
 
     glLinkProgram(program);
 
@@ -139,6 +141,7 @@ linkShaders(GLuint fragShader)
             GLsizei len;
             glGetProgramInfoLog(program, 1000, &len, log);
             DBG( std::fprintf(stderr, "Shader link error:\n%s\n", log) );
+
             return 0;
         }
     }
@@ -147,13 +150,14 @@ linkShaders(GLuint fragShader)
 }
 
 static void
-allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
+allocateLut3D(GLuint* lut3dTexID,
+              std::vector<float>* lut3D)
 {
     glGenTextures(1, lut3dTexID);
 
     int num3Dentries = 3 * LUT3D_EDGE_SIZE * LUT3D_EDGE_SIZE * LUT3D_EDGE_SIZE;
     lut3D->resize(num3Dentries);
-    memset(&(*lut3D)[0], 0, sizeof(float)*num3Dentries);
+    memset(&(*lut3D)[0], 0, sizeof(float) * num3Dentries);
 
     glEnable(GL_TEXTURE_3D);
     glActiveTexture(GL_TEXTURE1);
@@ -165,23 +169,21 @@ allocateLut3D(GLuint* lut3dTexID, std::vector<float>* lut3D)
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB32F_ARB,
                  LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
-                 0, GL_RGB,GL_FLOAT, &(*lut3D)[0]);
+                 0, GL_RGB, GL_FLOAT, &(*lut3D)[0]);
 }
-
 
 #if defined(OFX_IO_USING_OCIO)
 
 void
-GenericOCIO::applyGL(const OFX::Texture* srcImg,
+GenericOCIO::applyGL(const Texture* srcImg,
                      const OCIO::ConstProcessorRcPtr& processor,
                      std::vector<float>* lut3DParam,
                      unsigned int *lut3DTexIDParam,
                      unsigned int *shaderProgramIDParam,
                      unsigned int *fragShaderIDParam,
-                     std::string* lut3DCacheIDParam,
-                     std::string* shaderTextCacheIDParam)
+                     string* lut3DCacheIDParam,
+                     string* shaderTextCacheIDParam)
 {
-
     // Step 1: Create a GPU Shader Description
     OCIO::GpuShaderDesc shaderDesc;
     shaderDesc.setLanguage(OCIO::GPU_LANGUAGE_GLSL_1_0);
@@ -189,10 +191,10 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     shaderDesc.setLut3DEdgeLen(LUT3D_EDGE_SIZE);
 
     // Either we cache it all, or we don't
-    assert((!lut3DParam && !lut3DTexIDParam && !shaderProgramIDParam && !lut3DCacheIDParam && !shaderTextCacheIDParam) ||
-           (lut3DParam && lut3DTexIDParam && shaderProgramIDParam && lut3DCacheIDParam && shaderTextCacheIDParam));
-    if ((lut3DParam || lut3DTexIDParam || shaderProgramIDParam || lut3DCacheIDParam || shaderTextCacheIDParam) &&
-        (!lut3DParam || !lut3DTexIDParam || !shaderProgramIDParam || !lut3DCacheIDParam || !shaderTextCacheIDParam)) {
+    assert( (!lut3DParam && !lut3DTexIDParam && !shaderProgramIDParam && !lut3DCacheIDParam && !shaderTextCacheIDParam) ||
+            (lut3DParam && lut3DTexIDParam && shaderProgramIDParam && lut3DCacheIDParam && shaderTextCacheIDParam) );
+    if ( (lut3DParam || lut3DTexIDParam || shaderProgramIDParam || lut3DCacheIDParam || shaderTextCacheIDParam) &&
+         (!lut3DParam || !lut3DTexIDParam || !shaderProgramIDParam || !lut3DCacheIDParam || !shaderTextCacheIDParam) ) {
         throw std::invalid_argument("GenericOCIO::applyGL: Invalid caching arguments");
     }
 
@@ -218,25 +220,25 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
 
     glEnable(GL_TEXTURE_3D);
     // The lut3D texture should be cached to avoid calling glTexSubImage3D again
-    std::string lut3dCacheID;
+    string lut3dCacheID;
     if (lut3DCacheIDParam) {
         lut3dCacheID = processor->getGpuLut3DCacheID(shaderDesc);
     }
 
-    if (!lut3DCacheIDParam || *lut3DCacheIDParam != lut3dCacheID) {
+    if ( !lut3DCacheIDParam || (*lut3DCacheIDParam != lut3dCacheID) ) {
         // Unfortunately the LUT3D is not cached yet, or caller does not want caching
         processor->getGpuLut3D(&(*lut3D)[0], shaderDesc);
 
         /*for (std::size_t i = 0; i < lut3D->size(); ++i) {
             assert((*lut3D)[i] == (*lut3D)[i] && (*lut3D)[i] != std::numeric_limits<float>::infinity());
-        }*/
+           }*/
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_3D, lut3dTexID);
         glTexSubImage3D(GL_TEXTURE_3D, 0,
                         0, 0, 0,
                         LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE, LUT3D_EDGE_SIZE,
-                        GL_RGB,GL_FLOAT, &(*lut3D)[0]);
+                        GL_RGB, GL_FLOAT, &(*lut3D)[0]);
 
         // update the cache ID
         if (lut3DCacheIDParam) {
@@ -251,21 +253,21 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     lut3D = 0;
 
     // The shader should be cached, to avoid generating it again
-    std::string shaderCacheID;
+    string shaderCacheID;
     if (shaderTextCacheIDParam) {
         shaderCacheID = processor->getGpuShaderTextCacheID(shaderDesc);
     }
 
     GLuint programID;
     GLuint fragShaderID;
-    if (!shaderTextCacheIDParam || *shaderTextCacheIDParam != shaderCacheID) {
+    if ( !shaderTextCacheIDParam || (*shaderTextCacheIDParam != shaderCacheID) ) {
         // Unfortunately the shader is not cached yet, or caller does not want caching
-        std::string shaderString;
+        string shaderString;
         shaderString += processor->getGpuShaderText(shaderDesc);
         shaderString += "\n";
         shaderString += g_fragShaderText;
 
-        fragShaderID = compileShaderText(GL_FRAGMENT_SHADER, shaderString.c_str());
+        fragShaderID = compileShaderText( GL_FRAGMENT_SHADER, shaderString.c_str() );
         programID = linkShaders(fragShaderID);
         if (shaderProgramIDParam) {
             *shaderProgramIDParam = programID;
@@ -283,12 +285,11 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     }
 
 
-
     // Bind textures and apply texture mapping
     glEnable(GL_TEXTURE_2D);
     glActiveTexture(GL_TEXTURE0);
     int srcTarget = srcImg->getTarget();
-    glBindTexture(srcTarget, srcImg->getIndex());
+    glBindTexture( srcTarget, srcImg->getIndex() );
     glTexParameteri(srcTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(srcTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(srcTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -312,7 +313,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
     glEnd();
 
     glUseProgram(0);
-    
+
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_3D, 0);
@@ -326,8 +327,7 @@ GenericOCIO::applyGL(const OFX::Texture* srcImg,
         glDeleteProgram(programID);
         glDeleteShader(fragShaderID);
     }
-
-}
+} // GenericOCIO::applyGL
 
 #endif // defined(OFX_IO_USING_OCIO)
 
