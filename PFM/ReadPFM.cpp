@@ -36,6 +36,10 @@ using namespace OFX::IO;
 namespace OCIO = OCIO_NAMESPACE;
 #endif
 
+using std::string;
+using std::stringstream;
+using std::vector;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ReadPFM"
@@ -57,16 +61,16 @@ class ReadPFMPlugin
 {
 public:
 
-    ReadPFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    ReadPFMPlugin(OfxImageEffectHandle handle, const vector<string>& extensions);
 
     virtual ~ReadPFMPlugin();
 
 private:
 
-    virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
+    virtual bool isVideoStream(const string& /*filename*/) OVERRIDE FINAL { return false; }
 
-    virtual void decode(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
-    virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
+    virtual void decode(const string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
+    virtual bool getFrameBounds(const string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
     /**
      * @brief Called when the input image/video file changed.
@@ -76,7 +80,7 @@ private:
      * This function is only called once: when the filename is first set.
      *
      * Besides returning colorspace, premult, components, and componentcount, if it returns true
-     * this function may also set extra format-specific parameters using OFX::Param::setValue.
+     * this function may also set extra format-specific parameters using Param::setValue.
      * The parameters must not be animated, since their value must remain the same for a whole sequence.
      *
      * You shouldn't do any strong processing as this is called on the main thread and
@@ -87,7 +91,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *filePremult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const string& filename, string *colorspace, PreMultiplicationEnum *filePremult, PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
 };
 
 
@@ -136,7 +140,7 @@ invert_endianness(T *const buffer,
 }
 
 ReadPFMPlugin::ReadPFMPlugin(OfxImageEffectHandle handle,
-                             const std::vector<std::string>& extensions)
+                             const vector<string>& extensions)
     : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
 {
 }
@@ -176,7 +180,7 @@ copyLine(PIX *image,
             // That way, the Roto node can be conveniently used to draw a mask. This shouldn't
             // disturb anything else in the process, since Opaque premult means that alpha should
             // be considered as being 1 everywhere, whatever the actual alpha value is.
-            // see GenericWriterPlugin::render, if (userPremult == OFX::eImageOpaque...
+            // see GenericWriterPlugin::render, if (userPremult == eImageOpaque...
             dstPix[3] = 0.f; // alpha
         }
 
@@ -186,26 +190,26 @@ copyLine(PIX *image,
 }
 
 void
-ReadPFMPlugin::decode(const std::string& filename,
+ReadPFMPlugin::decode(const string& filename,
                       OfxTime /*time*/,
                       int /*view*/,
                       bool /*isPlayback*/,
                       const OfxRectI& renderWindow,
                       float *pixelData,
                       const OfxRectI& bounds,
-                      OFX::PixelComponentEnum pixelComponents,
+                      PixelComponentEnum pixelComponents,
                       int pixelComponentCount,
                       int rowBytes)
 {
-    if ( (pixelComponents != OFX::ePixelComponentRGBA) && (pixelComponents != OFX::ePixelComponentRGB) && (pixelComponents != OFX::ePixelComponentAlpha) ) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only read RGBA, RGB or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    if ( (pixelComponents != ePixelComponentRGBA) && (pixelComponents != ePixelComponentRGB) && (pixelComponents != ePixelComponentAlpha) ) {
+        setPersistentMessage(Message::eMessageError, "", "PFM: can only read RGBA, RGB or Alpha components images");
+        throwSuiteStatusException(kOfxStatErrFormat);
 
         return;
     }
 
     // read PFM header
-    std::FILE *const nfile = OFX::fopen_utf8(filename.c_str(), "rb");
+    std::FILE *const nfile = fopen_utf8(filename.c_str(), "rb");
 
     char pfm_type, item[1024] = { 0 };
     int W = 0;
@@ -219,8 +223,8 @@ ReadPFMPlugin::decode(const std::string& filename,
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("PFM header not found in file \"") + filename + "\".");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", string("PFM header not found in file \"") + filename + "\".");
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -230,15 +234,15 @@ ReadPFMPlugin::decode(const std::string& filename,
     }
     if (std::sscanf(item, " %d %d", &W, &H) != 2) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".");
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
     if ( (W <= 0) || (H <= 0) || (0xffff < W) || (0xffff < H) ) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageError, "", std::string("invalid WIDTH or HEIGHT fields in file \"") + filename + "\".");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", string("invalid WIDTH or HEIGHT fields in file \"") + filename + "\".");
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -249,7 +253,7 @@ ReadPFMPlugin::decode(const std::string& filename,
         (void)c;
     }
     if (std::sscanf(item, "%lf", &scale) != 1) {
-        setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("SCALE field is undefined in file \"") + filename + "\".");
+        setPersistentMessage(Message::eMessageWarning, "", string("SCALE field is undefined in file \"") + filename + "\".");
     }
 
     {
@@ -265,7 +269,7 @@ ReadPFMPlugin::decode(const std::string& filename,
     }
 
     std::size_t numpixels = W * C;
-    std::vector<float> image(numpixels);
+    vector<float> image(numpixels);
 
     assert(0 <= renderWindow.x1 && renderWindow.x2 <= W &&
            0 <= renderWindow.y1 && renderWindow.y2 <= H);
@@ -276,8 +280,8 @@ ReadPFMPlugin::decode(const std::string& filename,
         std::size_t numread = std::fread(&image.front(), 4, numpixels, nfile);
         if (numread < numpixels) {
             std::fclose(nfile);
-            setPersistentMessage(OFX::Message::eMessageError, "", "could not read all the image samples needed");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+            setPersistentMessage(Message::eMessageError, "", "could not read all the image samples needed");
+            throwSuiteStatusException(kOfxStatFailed);
 
             return;
         }
@@ -328,12 +332,12 @@ ReadPFMPlugin::decode(const std::string& filename,
 } // ReadPFMPlugin::decode
 
 bool
-ReadPFMPlugin::getFrameBounds(const std::string& filename,
+ReadPFMPlugin::getFrameBounds(const string& filename,
                               OfxTime /*time*/,
                               OfxRectI *bounds,
                               OfxRectI *format,
                               double *par,
-                              std::string *error,
+                              string *error,
                               int* tile_width,
                               int* tile_height)
 {
@@ -353,7 +357,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
         if (error) {
-            *error = std::string("PFM header not found in file \"") + filename + "\".";
+            *error = string("PFM header not found in file \"") + filename + "\".";
         }
 
         return false;
@@ -365,7 +369,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     if ( ( err = std::sscanf(item, " %d %d", &W, &H) ) < 2 ) {
         std::fclose(nfile);
         if (error) {
-            *error =  std::string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".";
+            *error =  string("WIDTH and HEIGHT fields are undefined in file \"") + filename + "\".";
         }
 
         return false;
@@ -377,7 +381,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
             (void)c;
         }
         if (std::sscanf(item, "%lf", &scale) != 1) {
-            setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("SCALE field is undefined in file \"") + filename + "\".");
+            setPersistentMessage(Message::eMessageWarning, "", string("SCALE field is undefined in file \"") + filename + "\".");
         }
     }
     std::fclose(nfile);
@@ -401,7 +405,7 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
  * This function is only called once: when the filename is first set.
  *
  * Besides returning colorspace, premult, components, and componentcount, if it returns true
- * this function may also set extra format-specific parameters using OFX::Param::setValue.
+ * this function may also set extra format-specific parameters using Param::setValue.
  * The parameters must not be animated, since their value must remain the same for a whole sequence.
  *
  * You shouldn't do any strong processing as this is called on the main thread and
@@ -413,10 +417,10 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
  * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
  **/
 bool
-ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
-                                       std::string *colorspace,
-                                       OFX::PreMultiplicationEnum *filePremult,
-                                       OFX::PixelComponentEnum *components,
+ReadPFMPlugin::guessParamsFromFilename(const string& /*newFile*/,
+                                       string *colorspace,
+                                       PreMultiplicationEnum *filePremult,
+                                       PixelComponentEnum *components,
                                        int *componentCount)
 {
     assert(colorspace && filePremult && components && componentCount);
@@ -425,12 +429,12 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
     *colorspace = OCIO::ROLE_SCENE_LINEAR;
 # endif
     int startingTime = getStartingTime();
-    std::string filename;
+    string filename;
     OfxStatus st = getFilenameAtTime(startingTime, &filename);
     if ( (st != kOfxStatOK) || filename.empty() ) {
         return false;
     }
-    std::stringstream ss;
+    stringstream ss;
 
     // read PFM header
     std::FILE *const nfile = std::fopen(filename.c_str(), "rb");
@@ -445,30 +449,30 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
 
-        //setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
+        //setPersistentMessage(Message::eMessageWarning, "", string("PFM header not found in file \"") + filename + "\".");
         return false;
     }
     std::fclose(nfile);
 
     // set the components of _outputClip
-    *components = OFX::ePixelComponentNone;
+    *components = ePixelComponentNone;
     *componentCount = 0;
     if (pfm_type == 'F') {
-        *components = OFX::ePixelComponentRGB;
+        *components = ePixelComponentRGB;
         *componentCount = 3;
     } else if (pfm_type == 'f') {
-        *components = OFX::ePixelComponentAlpha;
+        *components = ePixelComponentAlpha;
         *componentCount = 1;
     } else {
-        *filePremult = OFX::eImageOpaque;
+        *filePremult = eImageOpaque;
 
         return false;
     }
-    if ( (*components != OFX::ePixelComponentRGBA) && (*components != OFX::ePixelComponentAlpha) ) {
-        *filePremult = OFX::eImageOpaque;
+    if ( (*components != ePixelComponentRGBA) && (*components != ePixelComponentAlpha) ) {
+        *filePremult = eImageOpaque;
     } else {
         // output is always premultiplied
-        *filePremult = OFX::eImagePreMultiplied;
+        *filePremult = eImagePreMultiplied;
     }
 
     return true;
@@ -484,7 +488,7 @@ ReadPFMPluginFactory::load()
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
-ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+ReadPFMPluginFactory::describe(ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
 
@@ -495,7 +499,7 @@ ReadPFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void
-ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+ReadPFMPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                         ContextEnum context)
 {
     // make some pages and to things in
@@ -505,7 +509,7 @@ ReadPFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
 }
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
 ImageEffect*
 ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)

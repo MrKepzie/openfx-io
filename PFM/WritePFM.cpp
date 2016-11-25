@@ -32,10 +32,13 @@
 #include "ofxsFileOpen.h"
 
 using namespace OFX;
-using namespace OFX::IO;
+using namespace IO;
 #ifdef OFX_IO_USING_OCIO
 namespace OCIO = OCIO_NAMESPACE;
 #endif
+
+using std::string;
+using std::vector;
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -68,15 +71,15 @@ class WritePFMPlugin
 {
 public:
 
-    WritePFMPlugin(OfxImageEffectHandle handle, const std::vector<std::string>& extensions);
+    WritePFMPlugin(OfxImageEffectHandle handle, const vector<string>& extensions);
 
     virtual ~WritePFMPlugin();
 
 private:
 
-    virtual void encode(const std::string& filename,
+    virtual void encode(const string& filename,
                         const OfxTime time,
-                        const std::string& viewName,
+                        const string& viewName,
                         const float *pixelData,
                         const OfxRectI& bounds,
                         const float pixelAspectRatio,
@@ -84,14 +87,14 @@ private:
                         const int dstNCompsStartIndex,
                         const int dstNComps,
                         const int rowBytes) OVERRIDE FINAL;
-    virtual bool isImageFile(const std::string& fileExtension) const OVERRIDE FINAL;
-    virtual OFX::PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return OFX::eImageUnPreMultiplied; }
+    virtual bool isImageFile(const string& fileExtension) const OVERRIDE FINAL;
+    virtual PreMultiplicationEnum getExpectedInputPremultiplication() const OVERRIDE FINAL { return eImageUnPreMultiplied; }
 
-    virtual void onOutputFileChanged(const std::string& newFile, bool setColorSpace) OVERRIDE FINAL;
+    virtual void onOutputFileChanged(const string& newFile, bool setColorSpace) OVERRIDE FINAL;
 };
 
 WritePFMPlugin::WritePFMPlugin(OfxImageEffectHandle handle,
-                               const std::vector<std::string>& extensions)
+                               const vector<string>& extensions)
     : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
 {
 }
@@ -135,9 +138,9 @@ copyLine(const PIX* pixelData,
 }
 
 void
-WritePFMPlugin::encode(const std::string& filename,
+WritePFMPlugin::encode(const string& filename,
                        const OfxTime /*time*/,
-                       const std::string& /*viewName*/,
+                       const string& /*viewName*/,
                        const float *pixelData,
                        const OfxRectI& bounds,
                        const float /*pixelAspectRatio*/,
@@ -147,16 +150,16 @@ WritePFMPlugin::encode(const std::string& filename,
                        const int rowBytes)
 {
     if ( (dstNComps != 4) && (dstNComps != 3) && (dstNComps != 1) ) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+        setPersistentMessage(Message::eMessageError, "", "PFM: can only write RGBA, RGB or Alpha components images");
+        throwSuiteStatusException(kOfxStatErrFormat);
 
         return;
     }
 
-    std::FILE *const nfile = OFX::fopen_utf8(filename.c_str(), "wb");
+    std::FILE *const nfile = fopen_utf8(filename.c_str(), "wb");
     if (!nfile) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file \"" + filename + "\"");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", "Cannot open file \"" + filename + "\"");
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -164,7 +167,7 @@ WritePFMPlugin::encode(const std::string& filename,
     int height = (bounds.y2 - bounds.y1);
     const int depth = (dstNComps == 1 ? 1 : 3);
     const unsigned int buf_size = width * depth;
-    std::vector<float> buffer(buf_size);
+    vector<float> buffer(buf_size);
     std::fill(buffer.begin(), buffer.end(), 0.);
 
     std::fprintf(nfile, "P%c\n%u %u\n%d.0\n", (dstNComps == 1 ? 'f' : 'F'), width, height, endianness() ? 1 : -1);
@@ -189,13 +192,13 @@ WritePFMPlugin::encode(const std::string& filename,
 }
 
 bool
-WritePFMPlugin::isImageFile(const std::string& /*fileExtension*/) const
+WritePFMPlugin::isImageFile(const string& /*fileExtension*/) const
 {
     return true;
 }
 
 void
-WritePFMPlugin::onOutputFileChanged(const std::string & /*filename*/,
+WritePFMPlugin::onOutputFileChanged(const string & /*filename*/,
                                     bool setColorSpace)
 {
     if (setColorSpace) {
@@ -216,9 +219,9 @@ WritePFMPluginFactory::load()
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void
-WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+WritePFMPluginFactory::describe(ImageEffectDescriptor &desc)
 {
-    GenericWriterDescribe(desc, OFX::eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
+    GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription(kPluginDescription);
@@ -226,7 +229,7 @@ WritePFMPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
 void
-WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
+WritePFMPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                                          ContextEnum context)
 {
     // make some pages and to things in
@@ -240,7 +243,7 @@ WritePFMPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     GenericWriterDescribeInContextEnd(desc, context, page);
 }
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
 ImageEffect*
 WritePFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                       ContextEnum /*context*/)
