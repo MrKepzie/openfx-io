@@ -30,12 +30,12 @@
 #include "OIIOGlobal.h"
 GCC_DIAG_OFF(unused-parameter)
 /*
- unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
- which includes boost/thread.hpp,
- which includes boost/system/error_code.hpp,
- which requires the library boost_system to get the symbol boost::system::system_category().
+   unfortunately, OpenImageIO/imagebuf.h includes OpenImageIO/thread.h,
+   which includes boost/thread.hpp,
+   which includes boost/system/error_code.hpp,
+   which requires the library boost_system to get the symbol boost::system::system_category().
 
- the following define prevents including error_code.hpp, which is not used anyway.
+   the following define prevents including error_code.hpp, which is not used anyway.
  */
 #define OPENIMAGEIO_THREAD_H
 #include <OpenImageIO/imagebuf.h>
@@ -52,14 +52,16 @@ GCC_DIAG_ON(unused-parameter)
 
 using namespace OFX;
 
+using std::string;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ResizeOIIO"
 #define kPluginGrouping "Transform"
 #define kPluginDescription  "Resize input stream, using OpenImageIO.\n" \
-"Note that only full images can be rendered, so it may be slower for interactive editing than the Reformat plugin.\n" \
-"However, the rendering algorithms are different between Reformat and Resize: Resize applies 1-dimensional filters in the horizontal and vertical directins, whereas Reformat resamples the image, so in some cases this plugin may give more visually pleasant results than Reformat.\n" \
-"This plugin does not concatenate transforms (as opposed to Reformat)."
+    "Note that only full images can be rendered, so it may be slower for interactive editing than the Reformat plugin.\n" \
+    "However, the rendering algorithms are different between Reformat and Resize: Resize applies 1-dimensional filters in the horizontal and vertical directins, whereas Reformat resamples the image, so in some cases this plugin may give more visually pleasant results than Reformat.\n" \
+    "This plugin does not concatenate transforms (as opposed to Reformat)."
 
 #define kPluginIdentifier "fr.inria.openfx.OIIOResize"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -73,8 +75,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamType "type"
 #define kParamTypeLabel "Type"
 #define kParamTypeHint "Format: Converts between formats, the image is resized to fit in the target format. " \
-"Size: Scales to fit into a box of a given width and height. " \
-"Scale: Scales the image."
+    "Size: Scales to fit into a box of a given width and height. " \
+    "Scale: Scales the image."
 #define kParamTypeOptionFormat "Format"
 #define kParamTypeOptionSize "Size"
 #define kParamTypeOptionScale "Scale"
@@ -111,7 +113,8 @@ enum ResizeTypeEnum
 
 using namespace OpenImageIO;
 
-class OIIOResizePlugin : public OFX::ImageEffect
+class OIIOResizePlugin
+    : public ImageEffect
 {
 public:
 
@@ -120,74 +123,72 @@ public:
     virtual ~OIIOResizePlugin();
 
     /* Override the render */
-    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
+    virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
 
     /* override changedParam */
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
-    
-    virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE;
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
+    virtual void changedClip(const InstanceChangedArgs &args, const string &clipName) OVERRIDE;
 
     /* override changed clip */
-    //virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
+    //virtual void changedClip(const InstanceChangedArgs &args, const string &clipName) OVERRIDE FINAL;
 
     // override the rod call
-    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
+    virtual bool getRegionOfDefinition(const RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
 
     // override the roi call
-    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
+    virtual void getRegionsOfInterest(const RegionsOfInterestArguments &args, RegionOfInterestSetter &rois) OVERRIDE FINAL;
+    virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 
-    virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 private:
-    
-    template <typename PIX,int nComps>
-    void renderInternal(const OFX::RenderArguments &args, TypeDesc srcType, const OFX::Image* srcImg, TypeDesc dstType, OFX::Image* dstImg);
-    
-    void fillWithBlack(OFX::PixelProcessorFilterBase & processor,
+
+    template <typename PIX, int nComps>
+    void renderInternal(const RenderArguments &args, TypeDesc srcType, const Image* srcImg, TypeDesc dstType, Image* dstImg);
+
+    void fillWithBlack(PixelProcessorFilterBase & processor,
                        const OfxRectI &renderWindow,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
-                       OFX::PixelComponentEnum dstPixelComponents,
+                       PixelComponentEnum dstPixelComponents,
                        int dstPixelComponentCount,
-                       OFX::BitDepthEnum dstPixelDepth,
+                       BitDepthEnum dstPixelDepth,
                        int dstRowBytes);
-    
-    // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *_dstClip;
-    OFX::Clip *_srcClip;
 
-    OFX::ChoiceParam *_type;
-    OFX::ChoiceParam *_format;
-    OFX::ChoiceParam *_filter;
-    OFX::Int2DParam *_size;
-    OFX::Double2DParam *_scale;
-    OFX::BooleanParam *_preservePAR;
-    OFX::BooleanParam* _srcClipChanged; // set to true the first time the user connects src
+    // do not need to delete these, the ImageEffect is managing them for us
+    Clip *_dstClip;
+    Clip *_srcClip;
+    ChoiceParam *_type;
+    ChoiceParam *_format;
+    ChoiceParam *_filter;
+    Int2DParam *_size;
+    Double2DParam *_scale;
+    BooleanParam *_preservePAR;
+    BooleanParam* _srcClipChanged; // set to true the first time the user connects src
 };
 
 OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
-: OFX::ImageEffect(handle)
-, _dstClip(0)
-, _srcClip(0)
-, _type(0)
-, _format(0)
-, _filter(0)
-, _size(0)
-, _scale(0)
-, _preservePAR(0)
-, _srcClipChanged(0)
+    : ImageEffect(handle)
+    , _dstClip(0)
+    , _srcClip(0)
+    , _type(0)
+    , _format(0)
+    , _filter(0)
+    , _size(0)
+    , _scale(0)
+    , _preservePAR(0)
+    , _srcClipChanged(0)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
-                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB ||
-                        _dstClip->getPixelComponents() == OFX::ePixelComponentAlpha));
-    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
-           (_srcClip && (!_srcClip->isConnected() || _srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
-                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB ||
-                         _srcClip->getPixelComponents() == OFX::ePixelComponentAlpha)));
+    assert( _dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == ePixelComponentRGBA ||
+                         _dstClip->getPixelComponents() == ePixelComponentRGB ||
+                         _dstClip->getPixelComponents() == ePixelComponentAlpha) );
+    _srcClip = getContext() == eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert( (!_srcClip && getContext() == eContextGenerator) ||
+            ( _srcClip && (!_srcClip->isConnected() || _srcClip->getPixelComponents() == ePixelComponentRGBA ||
+                           _srcClip->getPixelComponents() == ePixelComponentRGB ||
+                           _srcClip->getPixelComponents() == ePixelComponentAlpha) ) );
 
     _type = fetchChoiceParam(kParamType);
     _format = fetchChoiceParam(kParamFormat);
@@ -196,13 +197,388 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     _scale = fetchDouble2DParam(kParamScale);
     _preservePAR = fetchBooleanParam(kParamPreservePAR);
     _srcClipChanged = fetchBooleanParam(kSrcClipChanged);
-    
+
     assert(_type && _format &&  _filter && _size && _scale && _preservePAR);
 
     int type_i;
     _type->getValue(type_i);
     ResizeTypeEnum type = (ResizeTypeEnum)type_i;
     switch (type) {
+    case eResizeTypeFormat:
+        //specific output format
+        _size->setIsSecretAndDisabled(true);
+        _preservePAR->setIsSecretAndDisabled(true);
+        _scale->setIsSecretAndDisabled(true);
+        _format->setIsSecretAndDisabled(false);
+        break;
+
+    case eResizeTypeSize:
+        //size
+        _size->setIsSecretAndDisabled(false);
+        _preservePAR->setIsSecretAndDisabled(false);
+        _scale->setIsSecretAndDisabled(true);
+        _format->setIsSecretAndDisabled(true);
+        break;
+
+    case eResizeTypeScale:
+        //scaled
+        _size->setIsSecretAndDisabled(true);
+        _preservePAR->setIsSecretAndDisabled(true);
+        _scale->setIsSecretAndDisabled(false);
+        _format->setIsSecretAndDisabled(true);
+        break;
+    }
+
+    initOIIOThreads();
+}
+
+OIIOResizePlugin::~OIIOResizePlugin()
+{
+}
+
+/* Override the render */
+void
+OIIOResizePlugin::render(const RenderArguments &args)
+{
+    std::auto_ptr<Image> dst( _dstClip->fetchImage(args.time) );
+    if ( !dst.get() ) {
+        throwSuiteStatusException(kOfxStatFailed);
+
+        return;
+    }
+    if ( (dst->getRenderScale().x != args.renderScale.x) ||
+         ( dst->getRenderScale().y != args.renderScale.y) ||
+         ( dst->getField() != args.fieldToRender) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
+
+        return;
+    }
+
+    std::auto_ptr<const Image> src( _srcClip->fetchImage(args.time) );
+    if ( src.get() ) {
+        BitDepthEnum dstBitDepth       = dst->getPixelDepth();
+        PixelComponentEnum dstComponents  = dst->getPixelComponents();
+        assert(dstComponents == ePixelComponentRGB || dstComponents == ePixelComponentRGBA ||
+               dstComponents == ePixelComponentAlpha);
+
+        BitDepthEnum srcBitDepth      = src->getPixelDepth();
+        PixelComponentEnum srcComponents = src->getPixelComponents();
+        if ( (srcBitDepth != dstBitDepth) || (srcComponents != dstComponents) ) {
+            throwSuiteStatusException(kOfxStatErrImageFormat);
+
+            return;
+        }
+
+        if (dstComponents == ePixelComponentRGBA) {
+            switch (dstBitDepth) {
+            case eBitDepthUByte: {
+                renderInternal<unsigned char, 4>( args, TypeDesc::UCHAR, src.get(), TypeDesc::UCHAR, dst.get() );
+                break;
+            }
+            case eBitDepthUShort: {
+                renderInternal<unsigned short, 4>( args, TypeDesc::USHORT, src.get(), TypeDesc::USHORT, dst.get() );
+                break;
+            }
+            case eBitDepthFloat: {
+                renderInternal<float, 4>( args, TypeDesc::FLOAT, src.get(), TypeDesc::FLOAT, dst.get() );
+                break;
+            }
+            default:
+                throwSuiteStatusException(kOfxStatErrUnsupported);
+
+                return;
+            }
+        } else if (dstComponents == ePixelComponentRGB) {
+            switch (dstBitDepth) {
+            case eBitDepthUByte: {
+                renderInternal<unsigned char, 3>( args, TypeDesc::UCHAR, src.get(), TypeDesc::UCHAR, dst.get() );
+                break;
+            }
+            case eBitDepthUShort: {
+                renderInternal<unsigned short, 3>( args, TypeDesc::USHORT, src.get(), TypeDesc::USHORT, dst.get() );
+                break;
+            }
+            case eBitDepthFloat: {
+                renderInternal<float, 3>( args, TypeDesc::FLOAT, src.get(), TypeDesc::FLOAT, dst.get() );
+                break;
+            }
+            default:
+                throwSuiteStatusException(kOfxStatErrUnsupported);
+
+                return;
+            }
+        } else {
+            assert(dstComponents == ePixelComponentAlpha);
+            switch (dstBitDepth) {
+            case eBitDepthUByte: {
+                renderInternal<unsigned char, 1>( args, TypeDesc::UCHAR, src.get(), TypeDesc::UCHAR, dst.get() );
+                break;
+            }
+            case eBitDepthUShort: {
+                renderInternal<unsigned short, 1>( args, TypeDesc::USHORT, src.get(), TypeDesc::USHORT, dst.get() );
+                break;
+            }
+            case eBitDepthFloat: {
+                renderInternal<float, 1>( args, TypeDesc::FLOAT, src.get(), TypeDesc::FLOAT, dst.get() );
+                break;
+            }
+            default:
+                throwSuiteStatusException(kOfxStatErrUnsupported);
+
+                return;
+            }
+        }
+    } else { //!src.get()
+        void* dstPixelData;
+        OfxRectI dstBounds;
+        PixelComponentEnum dstComponents;
+        BitDepthEnum dstBitDepth;
+        int dstRowBytes;
+        getImageData(dst.get(), &dstPixelData, &dstBounds, &dstComponents, &dstBitDepth, &dstRowBytes);
+        int dstPixelComponentCount = dst->getPixelComponentCount();
+
+        assert(dstComponents == ePixelComponentRGB || dstComponents == ePixelComponentRGBA ||
+               dstComponents == ePixelComponentAlpha);
+
+        if (dstComponents == ePixelComponentRGBA) {
+            switch (dstBitDepth) {
+            case eBitDepthUByte: {
+                BlackFiller<unsigned char> proc(*this, 4);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            case eBitDepthUShort: {
+                BlackFiller<unsigned short> proc(*this, 4);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            case eBitDepthFloat: {
+                BlackFiller<float> proc(*this, 4);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            default:
+                throwSuiteStatusException(kOfxStatErrUnsupported);
+
+                return;
+            }
+        } else if (dstComponents == ePixelComponentRGB) {
+            switch (dstBitDepth) {
+            case eBitDepthUByte: {
+                BlackFiller<unsigned char> proc(*this, 3);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            case eBitDepthUShort: {
+                BlackFiller<unsigned short> proc(*this, 3);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            case eBitDepthFloat: {
+                BlackFiller<float> proc(*this, 3);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            default:
+                throwSuiteStatusException(kOfxStatErrUnsupported);
+
+                return;
+            }
+        } else {
+            assert(dstComponents == ePixelComponentAlpha);
+            switch (dstBitDepth) {
+            case eBitDepthUByte: {
+                BlackFiller<unsigned char> proc(*this, 1);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            case eBitDepthUShort: {
+                BlackFiller<unsigned short> proc(*this, 1);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            case eBitDepthFloat: {
+                BlackFiller<float> proc(*this, 1);
+                fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
+                break;
+            }
+            default:
+                throwSuiteStatusException(kOfxStatErrUnsupported);
+
+                return;
+            }
+        }
+    }
+} // OIIOResizePlugin::render
+
+template <typename PIX, int nComps>
+void
+OIIOResizePlugin::renderInternal(const RenderArguments & /*args*/,
+                                 TypeDesc srcType,
+                                 const Image* srcImg,
+                                 TypeDesc dstType,
+                                 Image* dstImg)
+{
+    ImageSpec srcSpec(srcType);
+    const OfxRectI srcBounds = srcImg->getBounds();
+
+    srcSpec.x = srcBounds.x1;
+    srcSpec.y = srcBounds.y1;
+    srcSpec.width = srcBounds.x2 - srcBounds.x1;
+    srcSpec.height = srcBounds.y2 - srcBounds.y1;
+    srcSpec.nchannels = nComps;
+    srcSpec.full_x = srcSpec.x;
+    srcSpec.full_y = srcSpec.y;
+    srcSpec.full_width = srcSpec.width;
+    srcSpec.full_height = srcSpec.height;
+    srcSpec.default_channel_names();
+
+    const ImageBuf srcBuf( "src", srcSpec, const_cast<void*>( srcImg->getPixelAddress(srcBounds.x1, srcBounds.y1) ) );
+
+
+    ///This code assumes that the dstImg has the target size hence that we don't support tiles
+    const OfxRectI dstBounds = dstImg->getBounds();
+    ImageSpec dstSpec(dstType);
+    dstSpec.x = dstBounds.x1;
+    dstSpec.y = dstBounds.y1;
+    dstSpec.width = dstBounds.x2 - dstBounds.x1;
+    dstSpec.height = dstBounds.y2 - dstBounds.y1;
+    dstSpec.nchannels = nComps;
+    dstSpec.full_x = dstSpec.x;
+    dstSpec.full_y = dstSpec.y;
+    dstSpec.full_width = dstSpec.width;
+    dstSpec.full_height = dstSpec.height;
+    dstSpec.default_channel_names();
+
+    ImageBuf dstBuf( "dst", dstSpec, dstImg->getPixelAddress(dstBounds.x1, dstBounds.y1) );
+    int filter;
+    _filter->getValue(filter);
+
+    if (filter == 0) {
+        ///Use nearest neighboor
+        if ( !ImageBufAlgo::resample( dstBuf, srcBuf, /*interpolate*/ false, ROI::All(), MultiThread::getNumCPUs() ) ) {
+            setPersistentMessage( Message::eMessageError, "", dstBuf.geterror() );
+        }
+    } else {
+        ///interpolate using the selected filter
+        FilterDesc fd;
+        Filter2D::get_filterdesc(filter - 1, &fd);
+        // older versions of OIIO 1.2 don't have ImageBufAlgo::resize(dstBuf, srcBuf, fd.name, fd.width)
+        assert(srcSpec.full_width && srcSpec.full_height);
+        float wratio = float(dstSpec.full_width) / float(srcSpec.full_width);
+        float hratio = float(dstSpec.full_height) / float(srcSpec.full_height);
+        float w = fd.width * std::max(1.0f, wratio);
+        float h = fd.width * std::max(1.0f, hratio);
+        std::auto_ptr<Filter2D> filter( Filter2D::create(fd.name, w, h) );
+
+        if ( !ImageBufAlgo::resize( dstBuf, srcBuf, filter.get(), ROI::All(), MultiThread::getNumCPUs() ) ) {
+            setPersistentMessage( Message::eMessageError, "", dstBuf.geterror() );
+        }
+    }
+} // OIIOResizePlugin::renderInternal
+
+void
+OIIOResizePlugin::fillWithBlack(PixelProcessorFilterBase & processor,
+                                const OfxRectI &renderWindow,
+                                void *dstPixelData,
+                                const OfxRectI& dstBounds,
+                                PixelComponentEnum dstPixelComponents,
+                                int dstPixelComponentCount,
+                                BitDepthEnum dstPixelDepth,
+                                int dstRowBytes)
+{
+    // set the images
+    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
+
+    // set the render window
+    processor.setRenderWindow(renderWindow);
+
+    // Call the base class process member, this will call the derived templated process code
+    processor.process();
+}
+
+bool
+OIIOResizePlugin::isIdentity(const IsIdentityArguments &args,
+                             Clip * &identityClip,
+                             double & /*identityTime*/)
+{
+    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
+    int type_i;
+    _type->getValue(type_i);
+    ResizeTypeEnum type = (ResizeTypeEnum)type_i;
+    switch (type) {
+    case eResizeTypeFormat: {
+        OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
+        double srcPAR = _srcClip->getPixelAspectRatio();
+        int index;
+        _format->getValue(index);
+        double par = 1.;
+        int w = 0, h = 0;
+        getFormatResolution( (EParamFormat)index, &w, &h, &par );
+        if (srcPAR != par) {
+            return false;
+        }
+        OfxPointD rsOne;
+        rsOne.x = rsOne.y = 1.;
+        OfxRectI srcRoDPixel;
+        Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+        if ( ( srcRoDPixel.x1 == 0) && ( srcRoDPixel.y1 == 0) && ( srcRoDPixel.x2 == (int)w) && ( srcRoD.y2 == (int)h) ) {
+            identityClip = _srcClip;
+
+            return true;
+        }
+
+        return false;
+        break;
+    }
+    case eResizeTypeSize: {
+        OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
+        double srcPAR = _srcClip->getPixelAspectRatio();
+        OfxPointD rsOne;
+        rsOne.x = rsOne.y = 1.;
+        OfxRectI srcRoDPixel;
+        Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
+
+        int w, h;
+        _size->getValue(w, h);
+        if ( ( srcRoDPixel.x1 == 0) && ( srcRoDPixel.y1 == 0) && ( srcRoDPixel.x2 == w) && ( srcRoDPixel.y2 == h) ) {
+            identityClip = _srcClip;
+
+            return true;
+        }
+
+        return false;
+        break;
+    }
+    case eResizeTypeScale: {
+        double sx, sy;
+        _scale->getValue(sx, sy);
+        if ( ( sx == 1.) && ( sy == 1.) ) {
+            identityClip = _srcClip;
+
+            return true;
+        }
+
+        return false;
+        break;
+    }
+    } // switch
+
+    return false;
+} // OIIOResizePlugin::isIdentity
+
+void
+OIIOResizePlugin::changedParam(const InstanceChangedArgs & /*args*/,
+                               const string &paramName)
+{
+    if (paramName == kParamType) {
+        int type_i;
+        _type->getValue(type_i);
+        ResizeTypeEnum type = (ResizeTypeEnum)type_i;
+        switch (type) {
         case eResizeTypeFormat:
             //specific output format
             _size->setIsSecretAndDisabled(true);
@@ -226,358 +602,15 @@ OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
             _scale->setIsSecretAndDisabled(false);
             _format->setIsSecretAndDisabled(true);
             break;
-    }
-    
-    initOIIOThreads();
-}
-
-OIIOResizePlugin::~OIIOResizePlugin()
-{
-}
-
-/* Override the render */
-void
-OIIOResizePlugin::render(const OFX::RenderArguments &args)
-{
-    std::auto_ptr<OFX::Image> dst(_dstClip->fetchImage(args.time));
-    if (!dst.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    if (dst->getRenderScale().x != args.renderScale.x ||
-        dst->getRenderScale().y != args.renderScale.y ||
-        dst->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
-    
-    std::auto_ptr<const OFX::Image> src(_srcClip->fetchImage(args.time));
-    if (src.get()) {
-        OFX::BitDepthEnum dstBitDepth       = dst->getPixelDepth();
-        OFX::PixelComponentEnum dstComponents  = dst->getPixelComponents();
-        assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA ||
-               dstComponents == OFX::ePixelComponentAlpha);
-        
-        OFX::BitDepthEnum    srcBitDepth      = src->getPixelDepth();
-        OFX::PixelComponentEnum srcComponents = src->getPixelComponents();
-        if (srcBitDepth != dstBitDepth || srcComponents != dstComponents) {
-            OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
-            return;
-        }
-
-        if (dstComponents == OFX::ePixelComponentRGBA) {
-            switch (dstBitDepth) {
-                case OFX::eBitDepthUByte: {
-                    renderInternal<unsigned char, 4>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
-                }   break;
-                case OFX::eBitDepthUShort: {
-                    renderInternal<unsigned short, 4>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
-                }   break;
-                case OFX::eBitDepthFloat: {
-                    renderInternal<float, 4>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
-                }   break;
-                default:
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-                    return;
-            }
-        } else if (dstComponents == OFX::ePixelComponentRGB) {
-            switch (dstBitDepth) {
-                case OFX::eBitDepthUByte: {
-                    renderInternal<unsigned char, 3>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
-                }   break;
-                case OFX::eBitDepthUShort: {
-                    renderInternal<unsigned short, 3>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
-                }   break;
-                case OFX::eBitDepthFloat: {
-                    renderInternal<float, 3>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
-                }   break;
-                default:
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-                    return;
-            }
-        } else {
-            assert(dstComponents == OFX::ePixelComponentAlpha);
-            switch (dstBitDepth) {
-                case OFX::eBitDepthUByte: {
-                    renderInternal<unsigned char, 1>(args,TypeDesc::UCHAR,src.get(),TypeDesc::UCHAR, dst.get());
-                }   break;
-                case OFX::eBitDepthUShort: {
-                    renderInternal<unsigned short, 1>(args,TypeDesc::USHORT,src.get(),TypeDesc::USHORT, dst.get());
-                }   break;
-                case OFX::eBitDepthFloat: {
-                    renderInternal<float, 1>(args,TypeDesc::FLOAT,src.get(),TypeDesc::FLOAT, dst.get());
-                }   break;
-                default:
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-                    return;
-            }
-        }
-    } else { //!src.get()
-        void* dstPixelData;
-        OfxRectI dstBounds;
-        PixelComponentEnum dstComponents;
-        BitDepthEnum dstBitDepth;
-        int dstRowBytes;
-        getImageData(dst.get(), &dstPixelData, &dstBounds, &dstComponents, &dstBitDepth, &dstRowBytes);
-        int dstPixelComponentCount = dst->getPixelComponentCount();
-        
-        assert(dstComponents == OFX::ePixelComponentRGB || dstComponents == OFX::ePixelComponentRGBA ||
-               dstComponents == OFX::ePixelComponentAlpha);
-        
-        if (dstComponents == OFX::ePixelComponentRGBA) {
-            switch (dstBitDepth) {
-                case OFX::eBitDepthUByte: {
-                    BlackFiller<unsigned char> proc(*this, 4);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                case OFX::eBitDepthUShort: {
-                    BlackFiller<unsigned short> proc(*this, 4);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                case OFX::eBitDepthFloat: {
-                    BlackFiller<float> proc(*this, 4);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                default:
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-                    return;
-            }
-        } else if (dstComponents == OFX::ePixelComponentRGB) {
-            switch (dstBitDepth) {
-                case OFX::eBitDepthUByte: {
-                    BlackFiller<unsigned char> proc(*this, 3);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                case OFX::eBitDepthUShort: {
-                    BlackFiller<unsigned short> proc(*this, 3);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                case OFX::eBitDepthFloat: {
-                    BlackFiller<float> proc(*this, 3);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                default:
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-                    return;
-            }
-        } else {
-            assert(dstComponents == OFX::ePixelComponentAlpha);
-            switch (dstBitDepth) {
-                case OFX::eBitDepthUByte: {
-                    BlackFiller<unsigned char> proc(*this, 1);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                case OFX::eBitDepthUShort: {
-                    BlackFiller<unsigned short> proc(*this, 1);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                case OFX::eBitDepthFloat: {
-                    BlackFiller<float> proc(*this, 1);
-                    fillWithBlack(proc, args.renderWindow, dstPixelData, dstBounds, dstComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-                }   break;
-                default:
-                    OFX::throwSuiteStatusException(kOfxStatErrUnsupported);
-                    return;
-            }
-        }
-    }
-}
-
-template <typename PIX,int nComps>
-void
-OIIOResizePlugin::renderInternal(const OFX::RenderArguments &/*args*/,
-                                 TypeDesc srcType,
-                                 const OFX::Image* srcImg,
-                                 TypeDesc dstType,
-                                 OFX::Image* dstImg)
-{
-    ImageSpec srcSpec(srcType);
-    const OfxRectI srcBounds = srcImg->getBounds();
-    srcSpec.x = srcBounds.x1;
-    srcSpec.y = srcBounds.y1;
-    srcSpec.width = srcBounds.x2 - srcBounds.x1;
-    srcSpec.height = srcBounds.y2 - srcBounds.y1;
-    srcSpec.nchannels = nComps;
-    srcSpec.full_x = srcSpec.x;
-    srcSpec.full_y = srcSpec.y;
-    srcSpec.full_width = srcSpec.width;
-    srcSpec.full_height = srcSpec.height;
-    srcSpec.default_channel_names();
-    
-    const ImageBuf srcBuf("src", srcSpec, const_cast<void*>(srcImg->getPixelAddress(srcBounds.x1, srcBounds.y1)));
-    
-    
-    ///This code assumes that the dstImg has the target size hence that we don't support tiles
-    const OfxRectI dstBounds = dstImg->getBounds();
-    ImageSpec dstSpec(dstType);
-    dstSpec.x = dstBounds.x1;
-    dstSpec.y = dstBounds.y1;
-    dstSpec.width = dstBounds.x2 - dstBounds.x1;
-    dstSpec.height = dstBounds.y2 - dstBounds.y1;
-    dstSpec.nchannels = nComps;
-    dstSpec.full_x = dstSpec.x;
-    dstSpec.full_y = dstSpec.y;
-    dstSpec.full_width = dstSpec.width;
-    dstSpec.full_height = dstSpec.height;
-    dstSpec.default_channel_names();
-    
-    ImageBuf dstBuf("dst", dstSpec, dstImg->getPixelAddress(dstBounds.x1, dstBounds.y1));
-    
-    int filter;
-    _filter->getValue(filter);
-
-    if (filter == 0) {
-        ///Use nearest neighboor
-        if (!ImageBufAlgo::resample(dstBuf, srcBuf, /*interpolate*/false, ROI::All(), OFX::MultiThread::getNumCPUs())) {
-            setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
-        }
-    } else {
-        ///interpolate using the selected filter
-        FilterDesc fd;
-        Filter2D::get_filterdesc(filter - 1, &fd);
-        // older versions of OIIO 1.2 don't have ImageBufAlgo::resize(dstBuf, srcBuf, fd.name, fd.width)
-        assert(srcSpec.full_width && srcSpec.full_height);
-        float wratio = float(dstSpec.full_width) / float(srcSpec.full_width);
-        float hratio = float(dstSpec.full_height) / float(srcSpec.full_height);
-        float w = fd.width * std::max(1.0f, wratio);
-        float h = fd.width * std::max(1.0f, hratio);
-        std::auto_ptr<Filter2D> filter(Filter2D::create(fd.name, w, h));
-        
-        if (!ImageBufAlgo::resize(dstBuf, srcBuf, filter.get(), ROI::All(), OFX::MultiThread::getNumCPUs())) {
-            setPersistentMessage(OFX::Message::eMessageError, "", dstBuf.geterror());
         }
     }
 }
 
 void
-OIIOResizePlugin::fillWithBlack(OFX::PixelProcessorFilterBase & processor,
-                                const OfxRectI &renderWindow,
-                                void *dstPixelData,
-                                const OfxRectI& dstBounds,
-                                OFX::PixelComponentEnum dstPixelComponents,
-                                int dstPixelComponentCount,
-                                OFX::BitDepthEnum dstPixelDepth,
-                                int dstRowBytes)
+OIIOResizePlugin::changedClip(const InstanceChangedArgs &args,
+                              const string &clipName)
 {
-    // set the images
-    processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
-    
-    // set the render window
-    processor.setRenderWindow(renderWindow);
-    
-    // Call the base class process member, this will call the derived templated process code
-    processor.process();
-    
-}
-
-
-bool
-OIIOResizePlugin::isIdentity(const OFX::IsIdentityArguments &args,
-                             OFX::Clip * &identityClip,
-                             double &/*identityTime*/)
-{
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
-    int type_i;
-    _type->getValue(type_i);
-    ResizeTypeEnum type = (ResizeTypeEnum)type_i;
-    switch (type) {
-        case eResizeTypeFormat: {
-            OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
-            double srcPAR = _srcClip->getPixelAspectRatio();
-            int index;
-            _format->getValue(index);
-            double par = 1.;
-            int w = 0, h = 0;
-            getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
-            if (srcPAR != par) {
-                return false;
-            }
-            OfxPointD rsOne;
-            rsOne.x = rsOne.y = 1.;
-            OfxRectI srcRoDPixel;
-            OFX::Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
-            if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == (int)w && srcRoD.y2 == (int)h) {
-                identityClip = _srcClip;
-                return true;
-            }
-            return false;
-            break;
-        }
-        case eResizeTypeSize: {
-            OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
-            double srcPAR = _srcClip->getPixelAspectRatio();
-            OfxPointD rsOne;
-            rsOne.x = rsOne.y = 1.;
-            OfxRectI srcRoDPixel;
-            OFX::Coords::toPixelEnclosing(srcRoD, rsOne, srcPAR, &srcRoDPixel);
-
-            int w,h;
-            _size->getValue(w, h);
-            if (srcRoDPixel.x1 == 0 && srcRoDPixel.y1 == 0 && srcRoDPixel.x2 == w && srcRoDPixel.y2 == h) {
-                identityClip = _srcClip;
-                return true;
-            }
-            return false;
-            break;
-        }
-        case eResizeTypeScale: {
-            double sx,sy;
-            _scale->getValue(sx, sy);
-            if (sx == 1. && sy == 1.) {
-                identityClip = _srcClip;
-                return true;
-            }
-            return false;
-            break;
-        }
-    }
-    return false;
-}
-
-
-void
-OIIOResizePlugin::changedParam(const OFX::InstanceChangedArgs &/*args*/,
-                               const std::string &paramName)
-{
-    if (paramName == kParamType) {
-        int type_i;
-        _type->getValue(type_i);
-        ResizeTypeEnum type = (ResizeTypeEnum)type_i;
-        switch (type) {
-            case eResizeTypeFormat:
-                //specific output format
-                _size->setIsSecretAndDisabled(true);
-                _preservePAR->setIsSecretAndDisabled(true);
-                _scale->setIsSecretAndDisabled(true);
-                _format->setIsSecretAndDisabled(false);
-                break;
-
-            case eResizeTypeSize:
-                //size
-                _size->setIsSecretAndDisabled(false);
-                _preservePAR->setIsSecretAndDisabled(false);
-                _scale->setIsSecretAndDisabled(true);
-                _format->setIsSecretAndDisabled(true);
-                break;
-                
-            case eResizeTypeScale:
-                //scaled
-                _size->setIsSecretAndDisabled(true);
-                _preservePAR->setIsSecretAndDisabled(true);
-                _scale->setIsSecretAndDisabled(false);
-                _format->setIsSecretAndDisabled(true);
-                break;
-        }
-    }
-}
-
-void
-OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
-{
-    if (clipName == kOfxImageEffectSimpleSourceClipName && args.reason == OFX::eChangeUserEdit && !_srcClipChanged->getValue()) {
+    if ( (clipName == kOfxImageEffectSimpleSourceClipName) && (args.reason == eChangeUserEdit) && !_srcClipChanged->getValue() ) {
         _srcClipChanged->setValue(true);
         OfxRectD srcRod = _srcClip->getRegionOfDefinition(args.time);
         double srcpar = _srcClip->getPixelAspectRatio();
@@ -585,105 +618,108 @@ OIIOResizePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::s
         ///Try to find a format matching the project format in which case we switch to format mode otherwise
         ///switch to size mode and set the size accordingly
         bool foundFormat = false;
-        for (int i = (int)eParamFormatPCVideo; i < (int)eParamFormatSquare2k ; ++i) {
+        for (int i = (int)eParamFormatPCVideo; i < (int)eParamFormatSquare2k; ++i) {
             int w, h;
             double par;
-            getFormatResolution((OFX::EParamFormat)i, &w, &h, &par);
-            if (w == (srcRod.x2 - srcRod.x1) && h == (srcRod.y2 - srcRod.y1) && par == srcpar) {
-                _format->setValue((OFX::EParamFormat)i);
-                _type->setValue((int)eResizeTypeFormat);
+            getFormatResolution( (EParamFormat)i, &w, &h, &par );
+            if ( ( w == (srcRod.x2 - srcRod.x1) ) && ( h == (srcRod.y2 - srcRod.y1) ) && (par == srcpar) ) {
+                _format->setValue( (EParamFormat)i );
+                _type->setValue( (int)eResizeTypeFormat );
                 foundFormat = true;
             }
         }
-        _size->setValue((int)srcRod.x2 - srcRod.x1, (int)srcRod.y2 - srcRod.y1);
+        _size->setValue( (int)srcRod.x2 - srcRod.x1, (int)srcRod.y2 - srcRod.y1 );
         if (!foundFormat) {
-            _type->setValue((int)eResizeTypeSize);
+            _type->setValue( (int)eResizeTypeSize );
         }
-        
     }
 }
 
 bool
-OIIOResizePlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
+OIIOResizePlugin::getRegionOfDefinition(const RegionOfDefinitionArguments &args,
                                         OfxRectD &rod)
 {
     int type_i;
+
     _type->getValue(type_i);
     ResizeTypeEnum type = (ResizeTypeEnum)type_i;
     switch (type) {
-        case eResizeTypeFormat: {
-            //specific output format
-            int index;
-            _format->getValue(index);
-            double par = 1.;
-            int w = 0, h = 0;
-            getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
-            OfxRectI rodPixel;
-            rodPixel.x1 = rodPixel.y1 = 0;
-            rodPixel.x2 = w;
-            rodPixel.y2 = h;
-            OfxPointD rsOne;
-            rsOne.x = rsOne.y = 1.;
-            OFX::Coords::toCanonical(rodPixel, rsOne, par, &rod);
-        }   break;
-
-        case eResizeTypeSize: {
-            //size
-            int w,h;
-            _size->getValue(w, h);
-            bool preservePar;
-            _preservePAR->getValue(preservePar);
-            if (preservePar) {
-                OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
-                double srcW = srcRoD.x2 - srcRoD.x1;
-                double srcH = srcRoD.y2 - srcRoD.y1 ;
-                
-                ///Don't crash if we were provided weird RoDs
-                if (srcH < 1 || srcW < 1) {
-                    return false;
-                }
-                if ((double)w / srcW < (double)h / srcH) {
-                    ///Keep the given width, recompute the height
-                    h = (int)(srcH * w / srcW);
-                } else {
-                    ///Keep the given height,recompute the width
-                    w = (int)(srcW * h / srcH);
-                }
-                
-            }
-            rod.x1 = 0;
-            rod.y1 = 0;
-            rod.x2 = w;
-            rod.y2 = h;
-        }   break;
-            
-        case eResizeTypeScale: {
-            //scaled
-            OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
-            double sx,sy;
-            _scale->getValue(sx, sy);
-            srcRoD.x1 *= sx;
-            srcRoD.y1 *= sy;
-            srcRoD.x2 *= sx;
-            srcRoD.y2 *= sy;
-            rod.x1 = std::min(srcRoD.x1, srcRoD.x2 - 1);
-            rod.x2 = std::max(srcRoD.x1 + 1, srcRoD.x2);
-            rod.y1 = std::min(srcRoD.y1, srcRoD.y2 - 1);
-            rod.y2 = std::max(srcRoD.y1 + 1, srcRoD.y2);
-        }   break;
+    case eResizeTypeFormat: {
+        //specific output format
+        int index;
+        _format->getValue(index);
+        double par = 1.;
+        int w = 0, h = 0;
+        getFormatResolution( (EParamFormat)index, &w, &h, &par );
+        OfxRectI rodPixel;
+        rodPixel.x1 = rodPixel.y1 = 0;
+        rodPixel.x2 = w;
+        rodPixel.y2 = h;
+        OfxPointD rsOne;
+        rsOne.x = rsOne.y = 1.;
+        Coords::toCanonical(rodPixel, rsOne, par, &rod);
+        break;
     }
+
+    case eResizeTypeSize: {
+        //size
+        int w, h;
+        _size->getValue(w, h);
+        bool preservePar;
+        _preservePAR->getValue(preservePar);
+        if (preservePar) {
+            OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
+            double srcW = srcRoD.x2 - srcRoD.x1;
+            double srcH = srcRoD.y2 - srcRoD.y1;
+
+            ///Don't crash if we were provided weird RoDs
+            if ( ( srcH < 1) || ( srcW < 1) ) {
+                return false;
+            }
+            if ( (double)w / srcW < (double)h / srcH ) {
+                ///Keep the given width, recompute the height
+                h = (int)(srcH * w / srcW);
+            } else {
+                ///Keep the given height,recompute the width
+                w = (int)(srcW * h / srcH);
+            }
+        }
+        rod.x1 = 0;
+        rod.y1 = 0;
+        rod.x2 = w;
+        rod.y2 = h;
+        break;
+    }
+
+    case eResizeTypeScale: {
+        //scaled
+        OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
+        double sx, sy;
+        _scale->getValue(sx, sy);
+        srcRoD.x1 *= sx;
+        srcRoD.y1 *= sy;
+        srcRoD.x2 *= sx;
+        srcRoD.y2 *= sy;
+        rod.x1 = std::min(srcRoD.x1, srcRoD.x2 - 1);
+        rod.x2 = std::max(srcRoD.x1 + 1, srcRoD.x2);
+        rod.y1 = std::min(srcRoD.y1, srcRoD.y2 - 1);
+        rod.y2 = std::max(srcRoD.y1 + 1, srcRoD.y2);
+        break;
+    }
+    } // switch
+
     return true;
-}
+} // OIIOResizePlugin::getRegionOfDefinition
 
 // override the roi call
 void
-OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
-                                       OFX::RegionOfInterestSetter &rois)
+OIIOResizePlugin::getRegionsOfInterest(const RegionsOfInterestArguments &args,
+                                       RegionOfInterestSetter &rois)
 {
     if (!kSupportsTiles) {
         // The effect requires full images to render any region
 
-        if (_srcClip && _srcClip->isConnected()) {
+        if ( _srcClip && _srcClip->isConnected() ) {
             OfxRectD srcRoD = _srcClip->getRegionOfDefinition(args.time);
             rois.setRegionOfInterest(*_srcClip, srcRoD);
         }
@@ -691,29 +727,30 @@ OIIOResizePlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &ar
 }
 
 void
-OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences)
+OIIOResizePlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
     double par = 1.;
     int w = 0, h = 0;
     bool setFormat = false;
     ResizeTypeEnum type = (ResizeTypeEnum)_type->getValue();
+
     switch (type) {
-        case eResizeTypeFormat: {
-            //specific output format
-            int index;
-            _format->getValue(index);
-            getFormatResolution((OFX::EParamFormat)index, &w, &h, &par);
-            clipPreferences.setPixelAspectRatio(*_dstClip, par);
-            setFormat = true;
-            break;
-        }
-        case eResizeTypeSize:
-            _size->getValue(w, h);
-            setFormat = true;
-            break;
-        case eResizeTypeScale:
-            // don't change the pixel aspect ratio
-            break;
+    case eResizeTypeFormat: {
+        //specific output format
+        int index;
+        _format->getValue(index);
+        getFormatResolution( (EParamFormat)index, &w, &h, &par );
+        clipPreferences.setPixelAspectRatio(*_dstClip, par);
+        setFormat = true;
+        break;
+    }
+    case eResizeTypeSize:
+        _size->getValue(w, h);
+        setFormat = true;
+        break;
+    case eResizeTypeScale:
+        // don't change the pixel aspect ratio
+        break;
     }
     if (setFormat) {
 #ifdef OFX_EXTENSIONS_NATRON
@@ -723,15 +760,13 @@ OIIOResizePlugin::getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences
     }
 }
 
-
 mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+OIIOResizePluginFactory::describe(ImageEffectDescriptor &desc)
 {
-    
-   
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
@@ -742,10 +777,10 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedContext(eContextFilter);
 
     // add supported pixel depths
-    desc.addSupportedBitDepth(OFX::eBitDepthUByte);
-    desc.addSupportedBitDepth(OFX::eBitDepthUShort);
-    desc.addSupportedBitDepth(OFX::eBitDepthFloat);
-    
+    desc.addSupportedBitDepth(eBitDepthUByte);
+    desc.addSupportedBitDepth(eBitDepthUShort);
+    desc.addSupportedBitDepth(eBitDepthFloat);
+
     ///We don't support tiles: we can only resize the whole RoD at once
     desc.setSupportsTiles(kSupportsTiles);
 
@@ -753,27 +788,30 @@ void OIIOResizePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 
     ///We do support multiresolution
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
-    
+
     desc.setRenderThreadSafety(kRenderThreadSafety);
-    
+
     ///Don't let the host multi-thread
     desc.setHostFrameThreading(true);
-    
+
 #ifdef OFX_EXTENSIONS_NUKE
     // ask the host to render all planes
-    desc.setPassThroughForNotProcessedPlanes(OFX::ePassThroughLevelRenderAllRequestedPlanes);
+    desc.setPassThroughForNotProcessedPlanes(ePassThroughLevelRenderAllRequestedPlanes);
 #endif
-    
+
     //Openfx-misc got the Reformat node which is much faster, but Resize still gives better quality
     //desc.setIsDeprecated(true);
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum /*context*/)
+void
+OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
+                                           ContextEnum /*context*/)
 {
     // Source clip only in the filter context
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
+
     srcClip->addSupportedComponent(ePixelComponentRGBA);
     srcClip->addSupportedComponent(ePixelComponentRGB);
     srcClip->addSupportedComponent(ePixelComponentAlpha);
@@ -859,7 +897,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
         param->setDisplayRange(0, 0, 10000, 10000);
         param->setAnimates(false);
         //param->setIsSecretAndDisabled(true); // done in the plugin constructor
-        param->setRange(1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+        param->setRange( 1, 1, std::numeric_limits<int>::max(), std::numeric_limits<int>::max() );
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
@@ -903,7 +941,7 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
             FilterDesc f;
             Filter2D::get_filterdesc(i, &f);
             param->appendOption(f.name);
-            if (!strcmp(f.name , "lanczos3")) {
+            if ( !strcmp(f.name, "lanczos3") ) {
                 defIndex = i + 1; // +1 because we added the "impulse" option
             }
         }
@@ -912,10 +950,10 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
             page->addChild(*param);
         }
     }
-    
+
     // srcClipChanged
     {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kSrcClipChanged);
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kSrcClipChanged);
         param->setDefault(false);
         param->setIsSecretAndDisabled(true); // always secret
         param->setAnimates(false);
@@ -924,14 +962,15 @@ void OIIOResizePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc
             page->addChild(*param);
         }
     }
-}
+} // OIIOResizePluginFactory::describeInContext
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OIIOResizePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
+ImageEffect*
+OIIOResizePluginFactory::createInstance(OfxImageEffectHandle handle,
+                                        ContextEnum /*context*/)
 {
     return new OIIOResizePlugin(handle);
 }
-
 
 static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
