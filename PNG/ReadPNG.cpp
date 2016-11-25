@@ -175,11 +175,7 @@ static const struct
 
 static int
 png_compare_ICC_profile_with_sRGB(png_structp /*png_ptr*/,
-#if OFX_IO_LIBPNG_VERSION > 10500   /* PNG function signatures changed */
                                   png_bytep profile,
-#else
-                                  png_charp profile,
-#endif
                                   uLong adler)
 {
    /* The quick check is to verify just the MD5 signature and trust the
@@ -456,7 +452,7 @@ getPNGInfo(png_structp sp,
             /* Is this profile one of the known ICC sRGB profiles?  If it is, just set
              * the sRGB information.
              */
-            if (png_compare_ICC_profile_with_sRGB(sp, profile_data, 0) != 0) {
+            if (png_compare_ICC_profile_with_sRGB(sp, (png_bytep)profile_data, 0) != 0) {
                 *colorspace_p = ePNGColorSpacesRGB;
                 *gamma_p = 2.2;
             }
