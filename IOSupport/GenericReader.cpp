@@ -747,9 +747,9 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
             filename0 = *filename; // for error reporting
         }
         if (filename->empty()) {
-            filenameGood = false;
-        }
-        else {
+            //filenameGood = false;
+            return eGetFileNameBlack; // if filename is empty, just return a black frame. this happens eg when the plugin is created
+        } else {
             if (checkForExistingFile) {
                 filenameGood = checkIfFileExists(*filename);
             }
