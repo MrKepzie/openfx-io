@@ -153,9 +153,9 @@ protected:
 
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
-    OfxStatus getFilenameAtTime(double t, std::string *filename);
+    OfxStatus getFilenameAtTime(double t, std::string *filename) const;
 
-    int getStartingTime();
+    int getStartingTime() const;
     
     // get the value of kParamOutputComponents as a OFX::PixelComponentEnum
     OFX::PixelComponentEnum getOutputComponents() const;
@@ -203,7 +203,7 @@ private:
                                          std::string *colorspace,
                                          OFX::PreMultiplicationEnum *premult,
                                          OFX::PixelComponentEnum *components,
-                                         int *componentCount) = 0;
+                                         int *componentCount) const = 0;
     
     /**
      * @brief Override to clear any cache you may have.
@@ -232,7 +232,7 @@ private:
      */
     virtual bool isTileOrientationTopDown() const { return true; }
     
-    virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) { return false; }
+    virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) const { return false; }
 
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
@@ -254,7 +254,7 @@ private:
      * @brief Override to indicate the time domain. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeI &/*range*/){ return false; }
+    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeI &/*range*/) { return false; }
     
     /**
      * @brief Called internally by getTimeDomain(...)
@@ -285,10 +285,10 @@ private:
     /**
      * @brief compute the sequence/file time from time
      */
-    GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) WARN_UNUSED_RETURN;
-    GetSequenceTimeRetEnum getSequenceTimeHold(double t, double *sequenceTime) WARN_UNUSED_RETURN;
-    GetSequenceTimeRetEnum getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime);
-    GetSequenceTimeRetEnum getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) const WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTimeHold(double t, double *sequenceTime) const WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime) const;
+    GetSequenceTimeRetEnum getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime) const;
     
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
@@ -303,7 +303,7 @@ private:
     GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t,
                                                      bool proxyFiles,
                                                      bool checkForExistingFile,
-                                                     std::string *filename) WARN_UNUSED_RETURN;
+                                                     std::string *filename) const WARN_UNUSED_RETURN;
     
 
     void copyPixelData(const OfxRectI &renderWindow,

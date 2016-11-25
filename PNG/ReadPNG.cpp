@@ -343,12 +343,12 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
-    void openFile(const std::string& filename,
-                  png_structp* png,
-                  png_infop* info,
-                  std::FILE** file);
+    static void openFile(const std::string& filename,
+                         png_structp* png,
+                         png_infop* info,
+                         std::FILE** file);
 
     std::string metadata(const std::string& filename);
 };
@@ -1004,7 +1004,7 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
                                        std::string *colorspace,
                                        OFX::PreMultiplicationEnum *premult,
                                        OFX::PixelComponentEnum *components,
-                                       int *componentCount)
+                                       int *componentCount) const
 {
 
     assert(premult && components);
@@ -1014,7 +1014,7 @@ ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
     try {
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+        //setPersistentMessage(OFX::Message::eMessageError, "", e.what());
 
         return false;
     }

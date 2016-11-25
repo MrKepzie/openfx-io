@@ -81,7 +81,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
 };
 
@@ -388,7 +388,7 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
                                        std::string *colorspace,
                                        OFX::PreMultiplicationEnum *premult,
                                        OFX::PixelComponentEnum *components,
-                                       int *componentCount)
+                                       int *componentCount) const
 {
 # ifdef OFX_IO_USING_OCIO
     // Unless otherwise specified, pfm files are assumed to be linear.
@@ -415,7 +415,7 @@ ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
+        //setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
         return false;
     }
     std::fclose(nfile);

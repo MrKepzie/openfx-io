@@ -112,7 +112,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
     virtual void decode(const std::string& filename, OfxTime time, int /*view*/, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes) OVERRIDE FINAL;
 
@@ -120,7 +120,7 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
     
-    virtual bool getFrameRate(const std::string& filename, double* fps) OVERRIDE FINAL;
+    virtual bool getFrameRate(const std::string& filename, double* fps) const OVERRIDE FINAL;
 };
 
 ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager, OfxImageEffectHandle handle, const std::vector<std::string>& extensions)
@@ -193,7 +193,7 @@ ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
                                           std::string *colorspace,
                                           OFX::PreMultiplicationEnum *premult,
                                           OFX::PixelComponentEnum *components,
-                                          int *componentCount)
+                                          int *componentCount) const
 {
     assert(premult && components && componentCount);
     FFmpegFile* file = _manager.get(this, filename);
@@ -205,9 +205,9 @@ ReadFFmpegPlugin::guessParamsFromFilename(const std::string& filename,
     
     if (!file || file->isInvalid()) {
         if (file) {
-            setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
+            //setPersistentMessage(OFX::Message::eMessageError, "", file->getError());
         } else {
-            setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file.");
+            //setPersistentMessage(OFX::Message::eMessageError, "", "Cannot open file.");
         }
 
         return false;
@@ -380,7 +380,7 @@ ReadFFmpegPlugin::getSequenceTimeDomain(const std::string& filename, OfxRangeI &
 
 bool
 ReadFFmpegPlugin::getFrameRate(const std::string& filename,
-                               double* fps)
+                               double* fps) const
 {
     assert(fps);
     

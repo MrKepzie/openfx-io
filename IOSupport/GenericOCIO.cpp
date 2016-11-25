@@ -482,7 +482,7 @@ GenericOCIO::loadConfig()
 }
 
 bool
-GenericOCIO::configIsDefault()
+GenericOCIO::configIsDefault() const
 {
 #ifdef OFX_IO_USING_OCIO
     std::string filename;
@@ -497,7 +497,7 @@ GenericOCIO::configIsDefault()
 
 #ifdef OFX_IO_USING_OCIO
 OCIO::ConstContextRcPtr
-GenericOCIO::getLocalContext(double time)
+GenericOCIO::getLocalContext(double time) const
 {
     OCIO::ConstContextRcPtr context = _config->getCurrentContext();
     OCIO::ContextRcPtr mutableContext;
@@ -563,7 +563,7 @@ GenericOCIO::getLocalContext(double time)
 #endif
 
 bool
-GenericOCIO::isIdentity(double time)
+GenericOCIO::isIdentity(double time) const
 {
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
@@ -714,7 +714,7 @@ GenericOCIO::apply(double time, const OfxRectI& renderWindow, OFX::Image* img)
 
 #ifdef OFX_IO_USING_OCIO
 OCIO::ConstProcessorRcPtr
-GenericOCIO::getProcessor()
+GenericOCIO::getProcessor() const
 {
     AutoMutex guard(_procMutex);
     return _proc;
@@ -1168,42 +1168,42 @@ GenericOCIO::changedParam(const OFX::InstanceChangedArgs &args, const std::strin
 
 #ifdef OFX_IO_USING_OCIO
 void
-GenericOCIO::getInputColorspaceDefault(std::string &v)
+GenericOCIO::getInputColorspaceDefault(std::string &v) const
 {
     assert(_inputSpace);
     _inputSpace->getDefault(v);
 }
 
 void
-GenericOCIO::getInputColorspace(std::string &v)
+GenericOCIO::getInputColorspace(std::string &v) const
 {
     assert(_inputSpace);
     _inputSpace->getValue(v);
 }
 
 void
-GenericOCIO::getInputColorspaceAtTime(double time, std::string &v)
+GenericOCIO::getInputColorspaceAtTime(double time, std::string &v) const
 {
     assert(_inputSpace);
     _inputSpace->getValueAtTime(time, v);
 }
 
 void
-GenericOCIO::getOutputColorspaceDefault(std::string &v)
+GenericOCIO::getOutputColorspaceDefault(std::string &v) const
 {
     assert(_outputSpace);
     _outputSpace->getDefault(v);
 }
 
 void
-GenericOCIO::getOutputColorspace(std::string &v)
+GenericOCIO::getOutputColorspace(std::string &v) const
 {
     assert(_outputSpace);
     _outputSpace->getValue(v);
 }
 
 void
-GenericOCIO::getOutputColorspaceAtTime(double time, std::string &v)
+GenericOCIO::getOutputColorspaceAtTime(double time, std::string &v) const
 {
     assert(_outputSpace);
     _outputSpace->getValueAtTime(time, v);

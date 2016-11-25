@@ -532,7 +532,7 @@ GenericReaderPlugin::timeDomainFromSequenceTimeDomain(const OfxRangeI& sequenceT
 
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
-GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime)
+GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime) const
 {
     ///get the offset from the starting time of the sequence in case we bounce or loop
     int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
@@ -569,14 +569,14 @@ GenericReaderPlugin::getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, 
             return eGetSequenceTimeBlack;
             
         case eBeforeAfterError: //error
-            setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+            //setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
             return eGetSequenceTimeError;
     }
     return eGetSequenceTimeError;
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
-GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime)
+GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime) const
 {
     ///get the offset from the starting time of the sequence in case we bounce or loop
     int timeOffsetFromStart = (int)t -  sequenceTimeDomain.min;
@@ -619,7 +619,7 @@ GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, d
             return eGetSequenceTimeBlack;
         }
         case eBeforeAfterError: { //error
-            setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
+            //setPersistentMessage(OFX::Message::eMessageError, "", "Out of frame range");
 
             return eGetSequenceTimeError;
         }
@@ -628,7 +628,7 @@ GenericReaderPlugin::getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, d
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
-GenericReaderPlugin::getSequenceTimeHold(double t, double *sequenceTime)
+GenericReaderPlugin::getSequenceTimeHold(double t, double *sequenceTime) const
 {
     int timeOffset;
     _timeOffset->getValue(timeOffset);
@@ -656,7 +656,7 @@ GenericReaderPlugin::getSequenceTimeHold(double t, double *sequenceTime)
 }
 
 GenericReaderPlugin::GetSequenceTimeRetEnum
-GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime)
+GenericReaderPlugin::getSequenceTime(double t, double *sequenceTime) const
 {
     int timeOffset;
     _timeOffset->getValue(timeOffset);
@@ -725,7 +725,7 @@ GenericReaderPlugin::GetFilenameRetCodeEnum
 GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
                                                bool proxyFiles,
                                                bool checkForExistingFile,
-                                               std::string *filename)
+                                               std::string *filename) const
 {
     GetFilenameRetCodeEnum ret;
     const MissingEnum missingFrame = (MissingEnum)_missingFrameParam->getValue();
@@ -818,7 +818,7 @@ GenericReaderPlugin::getFilenameAtSequenceTime(double sequenceTime,
 }
 
 OfxStatus
-GenericReaderPlugin::getFilenameAtTime(double t, std::string *filename)
+GenericReaderPlugin::getFilenameAtTime(double t, std::string *filename) const
 {
     double sequenceTime;
     GetSequenceTimeRetEnum getSequenceTimeRet = getSequenceTime(t, &sequenceTime);
@@ -851,7 +851,7 @@ GenericReaderPlugin::getFilenameAtTime(double t, std::string *filename)
 }
 
 int
-GenericReaderPlugin::getStartingTime()
+GenericReaderPlugin::getStartingTime() const
 {
     int startingTime;
     _startingTime->getValue(startingTime);

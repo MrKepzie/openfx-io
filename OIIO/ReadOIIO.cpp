@@ -254,7 +254,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
@@ -294,9 +294,9 @@ private:
 
     void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>* subimages) const;
 
-    void getSpecs(const std::string &filename, std::vector<ImageSpec>* subimages, std::string* error = 0);
+    void getSpecs(const std::string &filename, std::vector<ImageSpec>* subimages, std::string* error = 0) const;
     
-    void guessColorspace(const std::string& filename, const ImageSpec& imagespec, std::string* colorspace);
+    void guessColorspace(const std::string& filename, const ImageSpec& imagespec, std::string* colorspace) const;
 
     ///This may warn the user if some views do not exist in the project
     
@@ -1001,7 +1001,7 @@ ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<Image
 }
 
 void
-ReadOIIOPlugin::getSpecs(const std::string &filename, std::vector<ImageSpec>* subimages, std::string* error)
+ReadOIIOPlugin::getSpecs(const std::string &filename, std::vector<ImageSpec>* subimages, std::string* error) const
 {
     subimages->clear();
     bool gotSpec = false;
@@ -1090,12 +1090,17 @@ ReadOIIOPlugin::restoreStateFromParams()
 }
 
 void
-ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& imagespec, std::string* colorspace)
+ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& imagespec, std::string* colorspace) const
 {
     ///find-out the image color-space
     const ParamValue* colorSpaceValue = imagespec.find_attribute("oiio:ColorSpace", TypeDesc::STRING);
     const ParamValue* photoshopICCProfileValue = imagespec.find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
     //photoshop:ICCProfile: "HDTV (Rec. 709)"
+
+#ifdef OFX_IO_USING_OCIO
+    // make sure the OCIO config is const
+    GenericOCIO const *ocio = _ocio.get();
+#endif
     
     //we found a color-space hint, use it to do the color-space conversion
     const char* colorSpaceStr = NULL;
@@ -1158,7 +1163,7 @@ ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& im
                 colorSpaceStr = "KodakLog";
             } else if (std::fabs(gamma-1.8) < 0.01) {
 #ifdef OFX_IO_USING_OCIO
-                if (_ocio->hasColorspace("Gamma1.8")) {
+                if (ocio->hasColorspace("Gamma1.8")) {
                     // nuke-default
                     *colorspace = "Gamma1.8";
                     colorSpaceStr = NULL;
@@ -1166,15 +1171,15 @@ ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& im
 #endif
             } else if (std::fabs(gamma-2.2) < 0.01) {
 #ifdef OFX_IO_USING_OCIO
-                if (_ocio->hasColorspace("Gamma2.2")) {
+                if (ocio->hasColorspace("Gamma2.2")) {
                     // nuke-default
                     *colorspace = "Gamma2.2";
                     colorSpaceStr = NULL;
-                } else if (_ocio->hasColorspace("VD16")) {
+                } else if (ocio->hasColorspace("VD16")) {
                     // VD16 in blender
                     *colorspace = "VD16";
                     colorSpaceStr = NULL;
-                } else if (_ocio->hasColorspace("vd16")) {
+                } else if (ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim and spi-vfx
                     *colorspace = "vd16";
                     colorSpaceStr = NULL;
@@ -1187,116 +1192,116 @@ ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& im
         }
 #ifdef OFX_IO_USING_OCIO
         if (colorSpaceStr && !strcmp(colorSpaceStr, "sRGB")) {
-            if (_ocio->hasColorspace("sRGB")) {
+            if (ocio->hasColorspace("sRGB")) {
                 // nuke-default, blender, natron
                 *colorspace = "sRGB";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("sRGB D65")) {
+            } else if (ocio->hasColorspace("sRGB D65")) {
                 // blender-cycles
                 *colorspace = "sRGB D65";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
+            } else if (ocio->hasColorspace("sRGB (D60 sim.)")) {
                 // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
                 *colorspace = "sRGB (D60 sim.)";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("out_srgbd60sim")) {
+            } else if (ocio->hasColorspace("out_srgbd60sim")) {
                 // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
                 *colorspace = "out_srgbd60sim";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
+            } else if (ocio->hasColorspace("rrt_Gamma2.2")) {
                 // rrt_Gamma2.2 in aces 0.7.1
                 *colorspace = "rrt_Gamma2.2";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_srgb")) {
+            } else if (ocio->hasColorspace("rrt_srgb")) {
                 // rrt_srgb in aces 0.1.1
                 *colorspace = "rrt_srgb";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("srgb8")) {
+            } else if (ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
                 *colorspace = "srgb8";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Gamma2.2")) {
+            } else if (ocio->hasColorspace("Gamma2.2")) {
                 // nuke-default
                 *colorspace = "Gamma2.2";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("srgb8")) {
+            } else if (ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
                 *colorspace = "srgb8";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("vd16")) {
+            } else if (ocio->hasColorspace("vd16")) {
                 // vd16 in spi-anim
                 *colorspace = "vd16";
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "AdobeRGB")) {
-            if (_ocio->hasColorspace("AdobeRGB")) {
+            if (ocio->hasColorspace("AdobeRGB")) {
                 // natron
                 *colorspace = "AdobeRGB";
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "Rec709")) {
-            if (_ocio->hasColorspace("Rec709")) {
+            if (ocio->hasColorspace("Rec709")) {
                 // nuke-default
                 *colorspace = "Rec709";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("nuke_rec709")) {
+            } else if (ocio->hasColorspace("nuke_rec709")) {
                 // blender
                 *colorspace = "nuke_rec709";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Rec 709 Curve")) {
+            } else if (ocio->hasColorspace("Rec 709 Curve")) {
                 // natron
                 *colorspace = "Rec 709 Curve";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+            } else if (ocio->hasColorspace("Rec.709 - Full")) {
                 // out_rec709full or "Rec.709 - Full" in aces 1.0.0
                 *colorspace = "Rec.709 - Full";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("out_rec709full")) {
+            } else if (ocio->hasColorspace("out_rec709full")) {
                 // out_rec709full or "Rec.709 - Full" in aces 1.0.0
                 *colorspace = "out_rec709full";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+            } else if (ocio->hasColorspace("rrt_rec709_full_100nits")) {
                 // rrt_rec709_full_100nits in aces 0.7.1
                 *colorspace = "rrt_rec709_full_100nits";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_rec709")) {
+            } else if (ocio->hasColorspace("rrt_rec709")) {
                 // rrt_rec709 in aces 0.1.1
                 *colorspace = "rrt_rec709";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("hd10")) {
+            } else if (ocio->hasColorspace("hd10")) {
                 // hd10 in spi-anim and spi-vfx
                 *colorspace = "hd10";
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "KodakLog")) {
-            if (_ocio->hasColorspace("Cineon")) {
+            if (ocio->hasColorspace("Cineon")) {
                 // Cineon in nuke-default
                 *colorspace = "Cineon";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Cineon Log Curve")) {
+            } else if (ocio->hasColorspace("Cineon Log Curve")) {
                 // Curves/Cineon Log Curve in natron
                 *colorspace = "Cineon Log Curve";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("REDlogFilm")) {
+            } else if (ocio->hasColorspace("REDlogFilm")) {
                 // REDlogFilm in aces 1.0.0
                 *colorspace = "REDlogFilm";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("cineon")) {
+            } else if (ocio->hasColorspace("cineon")) {
                 // cineon in aces 0.7.1
                 *colorspace = "cineon";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("adx10")) {
+            } else if (ocio->hasColorspace("adx10")) {
                 // adx10 in aces 0.1.1
                 *colorspace = "adx10";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("lg10")) {
+            } else if (ocio->hasColorspace("lg10")) {
                 // lg10 in spi-vfx
                 *colorspace = "lg10";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("lm10")) {
+            } else if (ocio->hasColorspace("lm10")) {
                 // lm10 in spi-anim
                 *colorspace = "lm10";
                 colorSpaceStr = NULL;
@@ -1310,7 +1315,7 @@ ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& im
             colorSpaceStr = NULL;
             // lnf in spi-vfx
         }
-        if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+        if (colorSpaceStr && ocio->hasColorspace(colorSpaceStr)) {
             // maybe we're lucky
             *colorspace = colorSpaceStr;
             colorSpaceStr = NULL;
@@ -1343,14 +1348,14 @@ ReadOIIOPlugin::guessParamsFromFilename(const std::string &filename,
                                         std::string *colorspace,
                                         OFX::PreMultiplicationEnum *premult,
                                         OFX::PixelComponentEnum *components,
-                                        int *componentCount)
+                                        int *componentCount) const
 {
     std::string error;
     std::vector<ImageSpec> subimages;
     getSpecs(filename, &subimages, &error);
 
     if ( subimages.empty() ) {
-        setPersistentMessage(OFX::Message::eMessageError, "", error);
+        //setPersistentMessage(OFX::Message::eMessageError, "", error);
 
         return false;
     }

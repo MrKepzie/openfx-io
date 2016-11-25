@@ -356,7 +356,7 @@ private:
                   png_structp* png,
                   png_infop* info,
                   FILE** file,
-                  int *color_type);
+                  int *color_type) const;
 
     void write_info (png_structp& sp,
                 png_infop& ip,
@@ -424,7 +424,7 @@ WritePNGPlugin::openFile(const std::string& filename,
                          png_structp* png,
                          png_infop* info,
                          std::FILE** file,
-                         int *color_type)
+                         int *color_type) const
 {
     *file = OFX::fopen_utf8(filename.c_str(), "wb");
     if (!*file) {

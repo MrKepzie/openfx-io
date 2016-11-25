@@ -106,7 +106,7 @@ private:
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual bool guessParamsFromFilename(const std::string& newFile, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    virtual bool guessParamsFromFilename(const std::string& newFile, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 };
 
 namespace Exr {
@@ -642,7 +642,7 @@ ReadEXRPlugin::guessParamsFromFilename(const std::string& newFile,
                                        std::string *colorspace,
                                        OFX::PreMultiplicationEnum *premult,
                                        OFX::PixelComponentEnum *components,
-                                       int *componentCount)
+                                       int *componentCount) const
 {
     assert(colorspace && premult && components && componentCount);
 
