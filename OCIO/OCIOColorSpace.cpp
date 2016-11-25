@@ -42,6 +42,8 @@ using namespace OFX;
 using namespace OFX::IO;
 namespace OCIO = OCIO_NAMESPACE;
 
+using std::string;
+
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "OCIOColorSpaceOFX"
@@ -60,13 +62,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamEnableGPU "enableGPU"
 #define kParamEnableGPULabel "Enable GPU Render"
 #define kParamEnableGPUHint \
-"Enable GPU-based OpenGL render.\n" \
-"If the checkbox is checked but is not enabled (i.e. it cannot be unchecked), GPU render can not be enabled or disabled from the plugin and is probably part of the host options.\n" \
-"If the checkbox is not checked and is not enabled (i.e. it cannot be checked), GPU render is not available on this host.\n"
+    "Enable GPU-based OpenGL render.\n" \
+    "If the checkbox is checked but is not enabled (i.e. it cannot be unchecked), GPU render can not be enabled or disabled from the plugin and is probably part of the host options.\n" \
+    "If the checkbox is not checked and is not enabled (i.e. it cannot be checked), GPU render is not available on this host.\n"
 #endif
 
 
-class OCIOColorSpacePlugin : public OFX::ImageEffect
+class OCIOColorSpacePlugin
+    : public ImageEffect
 {
 public:
 
@@ -76,33 +79,33 @@ public:
 
 private:
     /* Override the render */
-    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
+    virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
 
     /* override changedParam */
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
 
     /* override changed clip */
-    virtual void changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
+    virtual void changedClip(const InstanceChangedArgs &args, const string &clipName) OVERRIDE FINAL;
 
     // override the rod call
-    //virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
+    //virtual bool getRegionOfDefinition(const RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
 
     // override the roi call
-    //virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
+    //virtual void getRegionsOfInterest(const RegionsOfInterestArguments &args, RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     /* The purpose of this action is to allow a plugin to set up any data it may need
-     to do OpenGL rendering in an instance. */
+       to do OpenGL rendering in an instance. */
     virtual void* contextAttached(bool createContextData) OVERRIDE FINAL;
     /* The purpose of this action is to allow a plugin to deallocate any resource
-     allocated in \ref ::kOfxActionOpenGLContextAttached just before the host
-     decouples a plugin from an OpenGL context. */
+       allocated in \ref ::kOfxActionOpenGLContextAttached just before the host
+       decouples a plugin from an OpenGL context. */
     virtual void contextDetached(void* contextData) OVERRIDE FINAL;
 
-    void renderGPU(const OFX::RenderArguments &args);
+    void renderGPU(const RenderArguments &args);
 #endif
 
     void copyPixelData(bool unpremult,
@@ -112,20 +115,21 @@ private:
                        double mix,
                        double time,
                        const OfxRectI &renderWindow,
-                       const OFX::Image* srcImg,
-                       OFX::Image* dstImg)
+                       const Image* srcImg,
+                       Image* dstImg)
     {
         const void* srcPixelData;
         OfxRectI srcBounds;
-        OFX::PixelComponentEnum srcPixelComponents;
-        OFX::BitDepthEnum srcBitDepth;
+        PixelComponentEnum srcPixelComponents;
+        BitDepthEnum srcBitDepth;
         int srcRowBytes;
+
         getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
         int srcPixelComponentCount = srcImg->getPixelComponentCount();
         void* dstPixelData;
         OfxRectI dstBounds;
-        OFX::PixelComponentEnum dstPixelComponents;
-        OFX::BitDepthEnum dstBitDepth;
+        PixelComponentEnum dstPixelComponents;
+        BitDepthEnum dstBitDepth;
         int dstRowBytes;
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
         int dstPixelComponentCount = dstImg->getPixelComponentCount();
@@ -149,17 +153,18 @@ private:
                        const OfxRectI &renderWindow,
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
-                       OFX::PixelComponentEnum srcPixelComponents,
+                       PixelComponentEnum srcPixelComponents,
                        int srcPixelComponentCount,
-                       OFX::BitDepthEnum srcBitDepth,
+                       BitDepthEnum srcBitDepth,
                        int srcRowBytes,
-                       OFX::Image* dstImg)
+                       Image* dstImg)
     {
         void* dstPixelData;
         OfxRectI dstBounds;
-        OFX::PixelComponentEnum dstPixelComponents;
-        OFX::BitDepthEnum dstBitDepth;
+        PixelComponentEnum dstPixelComponents;
+        BitDepthEnum dstBitDepth;
         int dstRowBytes;
+
         getImageData(dstImg, &dstPixelData, &dstBounds, &dstPixelComponents, &dstBitDepth, &dstRowBytes);
         int dstPixelComponentCount = dstImg->getPixelComponentCount();
         copyPixelData(unpremult,
@@ -180,19 +185,20 @@ private:
                        double mix,
                        double time,
                        const OfxRectI &renderWindow,
-                       const OFX::Image* srcImg,
+                       const Image* srcImg,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
-                       OFX::PixelComponentEnum dstPixelComponents,
+                       PixelComponentEnum dstPixelComponents,
                        int dstPixelComponentCount,
-                       OFX::BitDepthEnum dstBitDepth,
+                       BitDepthEnum dstBitDepth,
                        int dstRowBytes)
     {
         const void* srcPixelData;
         OfxRectI srcBounds;
-        OFX::PixelComponentEnum srcPixelComponents;
-        OFX::BitDepthEnum srcBitDepth;
+        PixelComponentEnum srcPixelComponents;
+        BitDepthEnum srcBitDepth;
         int srcRowBytes;
+
         getImageData(srcImg, &srcPixelData, &srcBounds, &srcPixelComponents, &srcBitDepth, &srcRowBytes);
         int srcPixelComponentCount = srcImg->getPixelComponentCount();
         copyPixelData(unpremult,
@@ -215,76 +221,75 @@ private:
                        const OfxRectI &renderWindow,
                        const void *srcPixelData,
                        const OfxRectI& srcBounds,
-                       OFX::PixelComponentEnum srcPixelComponents,
+                       PixelComponentEnum srcPixelComponents,
                        int srcPixelComponentCount,
-                       OFX::BitDepthEnum srcPixelDepth,
+                       BitDepthEnum srcPixelDepth,
                        int srcRowBytes,
                        void *dstPixelData,
                        const OfxRectI& dstBounds,
-                       OFX::PixelComponentEnum dstPixelComponents,
+                       PixelComponentEnum dstPixelComponents,
                        int dstPixelComponentCount,
-                       OFX::BitDepthEnum dstBitDepth,
+                       BitDepthEnum dstBitDepth,
                        int dstRowBytes);
 
-    void setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+    void setupAndCopy(PixelProcessorFilterBase & processor,
                       double time,
                       const OfxRectI &renderWindow,
                       const void *srcPixelData,
                       const OfxRectI& srcBounds,
-                      OFX::PixelComponentEnum srcPixelComponents,
+                      PixelComponentEnum srcPixelComponents,
                       int srcPixelComponentCount,
-                      OFX::BitDepthEnum srcPixelDepth,
+                      BitDepthEnum srcPixelDepth,
                       int srcRowBytes,
                       void *dstPixelData,
                       const OfxRectI& dstBounds,
-                      OFX::PixelComponentEnum dstPixelComponents,
+                      PixelComponentEnum dstPixelComponents,
                       int dstPixelComponentCount,
-                      OFX::BitDepthEnum dstPixelDepth,
+                      BitDepthEnum dstPixelDepth,
                       int dstRowBytes);
 
     // do not need to delete these, the ImageEffect is managing them for us
-    OFX::Clip *_dstClip;
-    OFX::Clip *_srcClip;
-    OFX::Clip *_maskClip;
-
-    OFX::BooleanParam* _premult;
-    OFX::ChoiceParam* _premultChannel;
-    OFX::DoubleParam* _mix;
-    OFX::BooleanParam* _maskApply;
-    OFX::BooleanParam* _maskInvert;
+    Clip *_dstClip;
+    Clip *_srcClip;
+    Clip *_maskClip;
+    BooleanParam* _premult;
+    ChoiceParam* _premultChannel;
+    DoubleParam* _mix;
+    BooleanParam* _maskApply;
+    BooleanParam* _maskInvert;
 
     std::auto_ptr<GenericOCIO> _ocio;
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
-    OFX::BooleanParam* _enableGPU;
+    BooleanParam* _enableGPU;
     OCIOOpenGLContextData* _openGLContextData; // (OpenGL-only) - the single openGL context, in case the host does not support kNatronOfxImageEffectPropOpenGLContextData
 #endif
 };
 
 OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
-: OFX::ImageEffect(handle)
-, _dstClip(0)
-, _srcClip(0)
-, _maskClip(0)
-, _premult(0)
-, _premultChannel(0)
-, _mix(0)
-, _maskInvert(0)
-, _ocio(new GenericOCIO(this))
+    : ImageEffect(handle)
+    , _dstClip(0)
+    , _srcClip(0)
+    , _maskClip(0)
+    , _premult(0)
+    , _premultChannel(0)
+    , _mix(0)
+    , _maskInvert(0)
+    , _ocio( new GenericOCIO(this) )
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
-, _enableGPU(0)
-, _openGLContextData(NULL)
+    , _enableGPU(0)
+    , _openGLContextData(NULL)
 #endif
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
-    assert(_dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
-                        _dstClip->getPixelComponents() == OFX::ePixelComponentRGB));
-    _srcClip = getContext() == OFX::eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
-    assert((!_srcClip && getContext() == OFX::eContextGenerator) ||
-           (_srcClip && (!_srcClip->isConnected() || _srcClip->getPixelComponents() == OFX::ePixelComponentRGBA ||
-                         _srcClip->getPixelComponents() == OFX::ePixelComponentRGB)));
-    _maskClip = fetchClip(getContext() == OFX::eContextPaint ? "Brush" : "Mask");
-    assert(!_maskClip || !_maskClip->isConnected() || _maskClip->getPixelComponents() == OFX::ePixelComponentAlpha);
+    assert( _dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == ePixelComponentRGBA ||
+                         _dstClip->getPixelComponents() == ePixelComponentRGB) );
+    _srcClip = getContext() == eContextGenerator ? NULL : fetchClip(kOfxImageEffectSimpleSourceClipName);
+    assert( (!_srcClip && getContext() == eContextGenerator) ||
+            ( _srcClip && (!_srcClip->isConnected() || _srcClip->getPixelComponents() == ePixelComponentRGBA ||
+                           _srcClip->getPixelComponents() == ePixelComponentRGB) ) );
+    _maskClip = fetchClip(getContext() == eContextPaint ? "Brush" : "Mask");
+    assert(!_maskClip || !_maskClip->isConnected() || _maskClip->getPixelComponents() == ePixelComponentAlpha);
     _premult = fetchBooleanParam(kParamPremult);
     _premultChannel = fetchChoiceParam(kParamPremultChannel);
     assert(_premult && _premultChannel);
@@ -296,7 +301,7 @@ OCIOColorSpacePlugin::OCIOColorSpacePlugin(OfxImageEffectHandle handle)
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     _enableGPU = fetchBooleanParam(kParamEnableGPU);
     assert(_enableGPU);
-    const OFX::ImageEffectHostDescription &gHostDescription = *OFX::getImageEffectHostDescription();
+    const ImageEffectHostDescription &gHostDescription = *getImageEffectHostDescription();
     if (!gHostDescription.supportsOpenGLRender) {
         _enableGPU->setEnabled(false);
     }
@@ -310,34 +315,35 @@ OCIOColorSpacePlugin::~OCIOColorSpacePlugin()
 
 /* set up and run a copy processor */
 void
-OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
+OCIOColorSpacePlugin::setupAndCopy(PixelProcessorFilterBase & processor,
                                    double time,
                                    const OfxRectI &renderWindow,
                                    const void *srcPixelData,
                                    const OfxRectI& srcBounds,
-                                   OFX::PixelComponentEnum srcPixelComponents,
+                                   PixelComponentEnum srcPixelComponents,
                                    int srcPixelComponentCount,
-                                   OFX::BitDepthEnum srcPixelDepth,
+                                   BitDepthEnum srcPixelDepth,
                                    int srcRowBytes,
                                    void *dstPixelData,
                                    const OfxRectI& dstBounds,
-                                   OFX::PixelComponentEnum dstPixelComponents,
+                                   PixelComponentEnum dstPixelComponents,
                                    int dstPixelComponentCount,
-                                   OFX::BitDepthEnum dstPixelDepth,
+                                   BitDepthEnum dstPixelDepth,
                                    int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
 
     // make sure bit depths are sane
-    if(srcPixelDepth != dstPixelDepth || srcPixelComponents != dstPixelComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    if ( (srcPixelDepth != dstPixelDepth) || (srcPixelComponents != dstPixelComponents) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
-    std::auto_ptr<const OFX::Image> orig(_srcClip->fetchImage(time));
+    std::auto_ptr<const Image> orig( _srcClip->fetchImage(time) );
 
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(time)) && _maskClip && _maskClip->isConnected());
-    std::auto_ptr<const OFX::Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(time) ) && _maskClip && _maskClip->isConnected() );
+    std::auto_ptr<const Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
@@ -347,7 +353,7 @@ OCIOColorSpacePlugin::setupAndCopy(OFX::PixelProcessorFilterBase & processor,
 
     // set the images
     assert(orig.get() && dstPixelData && srcPixelData);
-    processor.setOrigImg(orig.get());
+    processor.setOrigImg( orig.get() );
     processor.setDstImg(dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstPixelDepth, dstRowBytes);
     processor.setSrcImg(srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcPixelDepth, srcRowBytes, 0);
 
@@ -376,90 +382,88 @@ OCIOColorSpacePlugin::copyPixelData(bool unpremult,
                                     const OfxRectI& renderWindow,
                                     const void *srcPixelData,
                                     const OfxRectI& srcBounds,
-                                    OFX::PixelComponentEnum srcPixelComponents,
+                                    PixelComponentEnum srcPixelComponents,
                                     int srcPixelComponentCount,
-                                    OFX::BitDepthEnum srcBitDepth,
+                                    BitDepthEnum srcBitDepth,
                                     int srcRowBytes,
                                     void *dstPixelData,
                                     const OfxRectI& dstBounds,
-                                    OFX::PixelComponentEnum dstPixelComponents,
+                                    PixelComponentEnum dstPixelComponents,
                                     int dstPixelComponentCount,
-                                    OFX::BitDepthEnum dstBitDepth,
+                                    BitDepthEnum dstBitDepth,
                                     int dstRowBytes)
 {
     assert(srcPixelData && dstPixelData);
     // do the rendering
-    if (dstBitDepth != OFX::eBitDepthFloat || (dstPixelComponents != OFX::ePixelComponentRGBA && dstPixelComponents != OFX::ePixelComponentRGB && dstPixelComponents != OFX::ePixelComponentAlpha)) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    if ( (dstBitDepth != eBitDepthFloat) || ( (dstPixelComponents != ePixelComponentRGBA) && (dstPixelComponents != ePixelComponentRGB) && (dstPixelComponents != ePixelComponentAlpha) ) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
-    if (((!unpremult && !premult) || (unpremult && premult)) && !maskmix) {
+    if ( ( (!unpremult && !premult) || (unpremult && premult) ) && !maskmix ) {
         copyPixels(*this, renderWindow,
                    srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                    dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
     } else if (unpremult && !premult && !maskmix) {
-        if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-            OFX::PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
+        if (dstPixelComponents == ePixelComponentRGBA) {
+            PixelCopierUnPremult<float, 4, 1, float, 4, 1> fred(*this);
             fred.setPremultMaskMix(true, premultChannel, 1.);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-        } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-            OFX::PixelCopierUnPremult<float, 3, 1, float, 3, 1> fred(*this);
+        } else if (dstPixelComponents == ePixelComponentRGB) {
+            PixelCopierUnPremult<float, 3, 1, float, 3, 1> fred(*this);
             fred.setPremultMaskMix(true, premultChannel, 1.);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-        }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-            OFX::PixelCopierUnPremult<float, 1, 1, float, 1, 1> fred(*this);
+        }  else if (dstPixelComponents == ePixelComponentAlpha) {
+            PixelCopierUnPremult<float, 1, 1, float, 1, 1> fred(*this);
             fred.setPremultMaskMix(true, premultChannel, 1.);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
-
     } else if (!unpremult && !premult && maskmix) {
-        if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-            OFX::PixelCopierMaskMix<float, 4, 1, true> fred(*this);
+        if (dstPixelComponents == ePixelComponentRGBA) {
+            PixelCopierMaskMix<float, 4, 1, true> fred(*this);
             fred.setPremultMaskMix(false, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-        } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-            OFX::PixelCopierMaskMix<float, 3, 1, true> fred(*this);
+        } else if (dstPixelComponents == ePixelComponentRGB) {
+            PixelCopierMaskMix<float, 3, 1, true> fred(*this);
             fred.setPremultMaskMix(false, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-        }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-            OFX::PixelCopierMaskMix<float, 1, 1, true> fred(*this);
+        }  else if (dstPixelComponents == ePixelComponentAlpha) {
+            PixelCopierMaskMix<float, 1, 1, true> fred(*this);
             fred.setPremultMaskMix(false, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
-
     } else if (!unpremult && premult && maskmix) {
-        if (dstPixelComponents == OFX::ePixelComponentRGBA) {
-            OFX::PixelCopierPremultMaskMix<float, 4, 1, float, 4, 1> fred(*this);
+        if (dstPixelComponents == ePixelComponentRGBA) {
+            PixelCopierPremultMaskMix<float, 4, 1, float, 4, 1> fred(*this);
             fred.setPremultMaskMix(true, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-        } else if (dstPixelComponents == OFX::ePixelComponentRGB) {
-            OFX::PixelCopierPremultMaskMix<float, 3, 1, float, 3, 1> fred(*this);
+        } else if (dstPixelComponents == ePixelComponentRGB) {
+            PixelCopierPremultMaskMix<float, 3, 1, float, 3, 1> fred(*this);
             fred.setPremultMaskMix(true, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
-        }  else if (dstPixelComponents == OFX::ePixelComponentAlpha) {
-            OFX::PixelCopierPremultMaskMix<float, 1, 1, float, 1, 1> fred(*this);
+        }  else if (dstPixelComponents == ePixelComponentAlpha) {
+            PixelCopierPremultMaskMix<float, 1, 1, float, 1, 1> fred(*this);
             fred.setPremultMaskMix(true, premultChannel, mix);
             setupAndCopy(fred, time, renderWindow,
                          srcPixelData, srcBounds, srcPixelComponents, srcPixelComponentCount, srcBitDepth, srcRowBytes,
                          dstPixelData, dstBounds, dstPixelComponents, dstPixelComponentCount, dstBitDepth, dstRowBytes);
         } // switch
-
     } else {
         // not handled: (should never happen in OCIOColorSpace)
         // !unpremult && premult && !maskmix
@@ -467,8 +471,7 @@ OCIOColorSpacePlugin::copyPixelData(bool unpremult,
         // unpremult && premult && maskmix
         assert(false); // should never happen
     }
-}
-
+} // OCIOColorSpacePlugin::copyPixelData
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 
@@ -486,7 +489,7 @@ void*
 OCIOColorSpacePlugin::contextAttached(bool createContextData)
 {
 #ifdef DEBUG
-    if (OFX::getImageEffectHostDescription()->isNatron && !createContextData) {
+    if (getImageEffectHostDescription()->isNatron && !createContextData) {
         std::printf("ERROR: Natron did not ask to create context data\n");
     }
 #endif
@@ -502,9 +505,9 @@ OCIOColorSpacePlugin::contextAttached(bool createContextData)
         }
         _openGLContextData = new OCIOOpenGLContextData;
     }
+
     return NULL;
 }
-
 
 /*
  * Action called when an effect is about to be detached from an
@@ -531,68 +534,71 @@ OCIOColorSpacePlugin::contextDetached(void* contextData)
         delete _openGLContextData;
         _openGLContextData = NULL;
     }
-
-
 }
 
-
 void
-OCIOColorSpacePlugin::renderGPU(const OFX::RenderArguments &args)
+OCIOColorSpacePlugin::renderGPU(const RenderArguments &args)
 {
-    std::auto_ptr<OFX::Texture> srcImg( _srcClip->loadTexture(args.time) );
-    if (!srcImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    std::auto_ptr<Texture> srcImg( _srcClip->loadTexture(args.time) );
+    if ( !srcImg.get() ) {
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
 
-    if (srcImg->getRenderScale().x != args.renderScale.x ||
-        srcImg->getRenderScale().y != args.renderScale.y ||
-        srcImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    if ( (srcImg->getRenderScale().x != args.renderScale.x) ||
+         ( srcImg->getRenderScale().y != args.renderScale.y) ||
+         ( srcImg->getField() != args.fieldToRender) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
 
-    std::auto_ptr<OFX::Texture> dstImg(_dstClip->loadTexture(args.time));
-    if (!dstImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    std::auto_ptr<Texture> dstImg( _dstClip->loadTexture(args.time) );
+    if ( !dstImg.get() ) {
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    if (dstImg->getRenderScale().x != args.renderScale.x ||
-        dstImg->getRenderScale().y != args.renderScale.y ||
-        dstImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
-        return;
-    }
+    if ( (dstImg->getRenderScale().x != args.renderScale.x) ||
+         ( dstImg->getRenderScale().y != args.renderScale.y) ||
+         ( dstImg->getField() != args.fieldToRender) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
 
-    OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
-    OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
-
-    OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
-    if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
         return;
     }
 
-    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
-    if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
-        dstComponents != srcComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
+    PixelComponentEnum srcComponents = srcImg->getPixelComponents();
+    BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
+    if ( (dstBitDepth != eBitDepthFloat) || (dstBitDepth != srcBitDepth) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
+        return;
+    }
+
+    PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
+    if ( ( (dstComponents != ePixelComponentRGBA) && (dstComponents != ePixelComponentRGB) && (dstComponents != ePixelComponentAlpha) ) ||
+         ( dstComponents != srcComponents) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
     // are we in the image bounds
     OfxRectI dstBounds = dstImg->getBounds();
-    if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
-       args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
-        OFX::throwSuiteStatusException(kOfxStatErrValue);
+    if ( (args.renderWindow.x1 < dstBounds.x1) || (args.renderWindow.x1 >= dstBounds.x2) || (args.renderWindow.y1 < dstBounds.y1) || (args.renderWindow.y1 >= dstBounds.y2) ||
+         ( args.renderWindow.x2 <= dstBounds.x1) || ( args.renderWindow.x2 > dstBounds.x2) || ( args.renderWindow.y2 <= dstBounds.y1) || ( args.renderWindow.y2 > dstBounds.y2) ) {
+        throwSuiteStatusException(kOfxStatErrValue);
+
         return;
         //throw std::runtime_error("render window outside of image bounds");
     }
 
     OCIOOpenGLContextData* contextData = NULL;
-    if (OFX::getImageEffectHostDescription()->isNatron && !args.openGLContextData) {
+    if (getImageEffectHostDescription()->isNatron && !args.openGLContextData) {
 #     ifdef DEBUG
         std::printf("ERROR: Natron did not provide the contextData pointer to the OpenGL render func.\n");
 #     endif
@@ -616,7 +622,7 @@ OCIOColorSpacePlugin::renderGPU(const OFX::RenderArguments &args)
         throwSuiteStatusException(kOfxStatFailed);
     }
 
-    if (_ocio->isIdentity(args.time)) {
+    if ( _ocio->isIdentity(args.time) ) {
         return;
     }
 
@@ -626,7 +632,6 @@ OCIOColorSpacePlugin::renderGPU(const OFX::RenderArguments &args)
     }
 
     GenericOCIO::applyGL(srcImg.get(), proc, &contextData->procLut3D, &contextData->procLut3DID, &contextData->procShaderProgramID, &contextData->procFragmentShaderID, &contextData->procLut3DCacheID, &contextData->procShaderCacheID);
-    
 } // renderGPU
 
 #endif // defined(OFX_SUPPORTS_OPENGLRENDER)
@@ -634,14 +639,16 @@ OCIOColorSpacePlugin::renderGPU(const OFX::RenderArguments &args)
 
 /* Override the render */
 void
-OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
+OCIOColorSpacePlugin::render(const RenderArguments &args)
 {
     if (!_srcClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
     if (!_dstClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
     assert(_srcClip && _dstClip);
@@ -649,81 +656,89 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     if (args.openGLEnabled) {
         renderGPU(args);
+
         return;
     }
 #endif
 
-    std::auto_ptr<const OFX::Image> srcImg(_srcClip->fetchImage(args.time));
-    if (!srcImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    std::auto_ptr<const Image> srcImg( _srcClip->fetchImage(args.time) );
+    if ( !srcImg.get() ) {
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    if (srcImg->getRenderScale().x != args.renderScale.x ||
-        srcImg->getRenderScale().y != args.renderScale.y ||
-        srcImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    if ( (srcImg->getRenderScale().x != args.renderScale.x) ||
+         ( srcImg->getRenderScale().y != args.renderScale.y) ||
+         ( srcImg->getField() != args.fieldToRender) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
 
-    OFX::BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
-    OFX::PixelComponentEnum srcComponents = srcImg->getPixelComponents();
+    BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
+    PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
     if (!_dstClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
     assert(_dstClip);
-    std::auto_ptr<OFX::Image> dstImg(_dstClip->fetchImage(args.time));
-    if (!dstImg.get()) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
+    if ( !dstImg.get() ) {
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
-    if (dstImg->getRenderScale().x != args.renderScale.x ||
-        dstImg->getRenderScale().y != args.renderScale.y ||
-        dstImg->getField() != args.fieldToRender) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+    if ( (dstImg->getRenderScale().x != args.renderScale.x) ||
+         ( dstImg->getRenderScale().y != args.renderScale.y) ||
+         ( dstImg->getField() != args.fieldToRender) ) {
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
 
-    OFX::BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
-    if (dstBitDepth != OFX::eBitDepthFloat || dstBitDepth != srcBitDepth) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    BitDepthEnum dstBitDepth = dstImg->getPixelDepth();
+    if ( (dstBitDepth != eBitDepthFloat) || (dstBitDepth != srcBitDepth) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
-    OFX::PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
-    if ((dstComponents != OFX::ePixelComponentRGBA && dstComponents != OFX::ePixelComponentRGB && dstComponents != OFX::ePixelComponentAlpha) ||
-        dstComponents != srcComponents) {
-        OFX::throwSuiteStatusException(kOfxStatErrFormat);
+    PixelComponentEnum dstComponents  = dstImg->getPixelComponents();
+    if ( ( (dstComponents != ePixelComponentRGBA) && (dstComponents != ePixelComponentRGB) && (dstComponents != ePixelComponentAlpha) ) ||
+         ( dstComponents != srcComponents) ) {
+        throwSuiteStatusException(kOfxStatErrFormat);
+
         return;
     }
 
     // are we in the image bounds
     OfxRectI dstBounds = dstImg->getBounds();
-    if(args.renderWindow.x1 < dstBounds.x1 || args.renderWindow.x1 >= dstBounds.x2 || args.renderWindow.y1 < dstBounds.y1 || args.renderWindow.y1 >= dstBounds.y2 ||
-       args.renderWindow.x2 <= dstBounds.x1 || args.renderWindow.x2 > dstBounds.x2 || args.renderWindow.y2 <= dstBounds.y1 || args.renderWindow.y2 > dstBounds.y2) {
-        OFX::throwSuiteStatusException(kOfxStatErrValue);
+    if ( (args.renderWindow.x1 < dstBounds.x1) || (args.renderWindow.x1 >= dstBounds.x2) || (args.renderWindow.y1 < dstBounds.y1) || (args.renderWindow.y1 >= dstBounds.y2) ||
+         ( args.renderWindow.x2 <= dstBounds.x1) || ( args.renderWindow.x2 > dstBounds.x2) || ( args.renderWindow.y2 <= dstBounds.y1) || ( args.renderWindow.y2 > dstBounds.y2) ) {
+        throwSuiteStatusException(kOfxStatErrValue);
+
         return;
         //throw std::runtime_error("render window outside of image bounds");
     }
 
     const void* srcPixelData = NULL;
     OfxRectI bounds;
-    OFX::PixelComponentEnum pixelComponents;
-    OFX::BitDepthEnum bitDepth;
+    PixelComponentEnum pixelComponents;
+    BitDepthEnum bitDepth;
     int srcRowBytes;
     getImageData(srcImg.get(), &srcPixelData, &bounds, &pixelComponents, &bitDepth, &srcRowBytes);
     int pixelComponentCount = srcImg->getPixelComponentCount();
 
     // allocate temporary image
     int pixelBytes = pixelComponentCount * getComponentBytes(srcBitDepth);
-    int tmpRowBytes = (args.renderWindow.x2-args.renderWindow.x1) * pixelBytes;
-    size_t memSize = (args.renderWindow.y2-args.renderWindow.y1) * tmpRowBytes;
-    OFX::ImageMemory mem(memSize,this);
+    int tmpRowBytes = (args.renderWindow.x2 - args.renderWindow.x1) * pixelBytes;
+    size_t memSize = (args.renderWindow.y2 - args.renderWindow.y1) * tmpRowBytes;
+    ImageMemory mem(memSize, this);
     float *tmpPixelData = (float*)mem.lock();
-
     bool premult;
     _premult->getValueAtTime(args.time, premult);
     int premultChannel;
@@ -738,17 +753,20 @@ OCIOColorSpacePlugin::render(const OFX::RenderArguments &args)
     _ocio->apply(args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, tmpRowBytes);
 
     // copy the color-converted window and apply masking
-    copyPixelData(false, premult, premultChannel, true, mix, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get());
-}
+    copyPixelData( false, premult, premultChannel, true, mix, args.time, args.renderWindow, tmpPixelData, args.renderWindow, pixelComponents, pixelComponentCount, bitDepth, tmpRowBytes, dstImg.get() );
+} // OCIOColorSpacePlugin::render
 
 bool
-OCIOColorSpacePlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &/*identityTime*/)
+OCIOColorSpacePlugin::isIdentity(const IsIdentityArguments &args,
+                                 Clip * &identityClip,
+                                 double & /*identityTime*/)
 {
     // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
     clearPersistentMessage();
 
-    if (_ocio->isIdentity(args.time)) {
+    if ( _ocio->isIdentity(args.time) ) {
         identityClip = _srcClip;
+
         return true;
     }
 
@@ -757,19 +775,21 @@ OCIOColorSpacePlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip
 
     if (mix == 0.) {
         identityClip = _srcClip;
+
         return true;
     }
 
-    bool doMasking = ((!_maskApply || _maskApply->getValueAtTime(args.time)) && _maskClip && _maskClip->isConnected());
+    bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(args.time) ) && _maskClip && _maskClip->isConnected() );
     if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(args.time, maskInvert);
         if (!maskInvert) {
             OfxRectI maskRoD;
-            OFX::Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
+            Coords::toPixelEnclosing(_maskClip->getRegionOfDefinition(args.time), args.renderScale, _maskClip->getPixelAspectRatio(), &maskRoD);
             // effect is identity if the renderWindow doesn't intersect the mask RoD
-            if (!OFX::Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0)) {
+            if ( !Coords::rectIntersection<OfxRectI>(args.renderWindow, maskRoD, 0) ) {
                 identityClip = _srcClip;
+
                 return true;
             }
         }
@@ -779,44 +799,50 @@ OCIOColorSpacePlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip
 }
 
 void
-OCIOColorSpacePlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
+OCIOColorSpacePlugin::changedParam(const InstanceChangedArgs &args,
+                                   const string &paramName)
 {
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     if (paramName == kParamEnableGPU) {
         bool supportsGL = _enableGPU->getValueAtTime(args.time);
         setSupportsOpenGLRender(supportsGL);
         setSupportsTiles(!supportsGL);
+
         return;
     }
 #endif
+
     return _ocio->changedParam(args, paramName);
 }
 
 void
-OCIOColorSpacePlugin::changedClip(const OFX::InstanceChangedArgs &args, const std::string &clipName)
+OCIOColorSpacePlugin::changedClip(const InstanceChangedArgs &args,
+                                  const string &clipName)
 {
-    if (clipName == kOfxImageEffectSimpleSourceClipName && _srcClip && args.reason == OFX::eChangeUserEdit) {
-        if (_srcClip->getPixelComponents() != OFX::ePixelComponentRGBA) {
+    if ( (clipName == kOfxImageEffectSimpleSourceClipName) && _srcClip && (args.reason == eChangeUserEdit) ) {
+        if (_srcClip->getPixelComponents() != ePixelComponentRGBA) {
             _premult->setValue(false);
-        } else switch (_srcClip->getPreMultiplication()) {
-            case OFX::eImageOpaque:
+        } else {
+            switch ( _srcClip->getPreMultiplication() ) {
+            case eImageOpaque:
                 _premult->setValue(false);
                 break;
-            case OFX::eImagePreMultiplied:
+            case eImagePreMultiplied:
                 _premult->setValue(true);
                 break;
-            case OFX::eImageUnPreMultiplied:
+            case eImageUnPreMultiplied:
                 _premult->setValue(false);
                 break;
+            }
         }
     }
 }
 
-
 mDeclarePluginFactory(OCIOColorSpacePluginFactory, {}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
-void OCIOColorSpacePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+void
+OCIOColorSpacePluginFactory::describe(ImageEffectDescriptor &desc)
 {
     // basic labels
     desc.setLabel(kPluginName);
@@ -829,7 +855,7 @@ void OCIOColorSpacePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
     desc.addSupportedContext(eContextPaint);
 
     // add supported pixel depths
-    desc.addSupportedBitDepth(OFX::eBitDepthFloat);
+    desc.addSupportedBitDepth(eBitDepthFloat);
 
     desc.setSupportsTiles(kSupportsTiles);
     desc.setSupportsMultiResolution(kSupportsMultiResolution);
@@ -841,11 +867,14 @@ void OCIOColorSpacePluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void
+OCIOColorSpacePluginFactory::describeInContext(ImageEffectDescriptor &desc,
+                                               ContextEnum context)
 {
     // Source clip only in the filter context
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);
+
     srcClip->addSupportedComponent(ePixelComponentRGBA);
     srcClip->addSupportedComponent(ePixelComponentRGB);
     srcClip->setTemporalClipAccess(false);
@@ -874,7 +903,7 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
     GenericOCIO::describeInContextOutput(desc, context, page, OCIO::ROLE_REFERENCE);
     GenericOCIO::describeInContextContext(desc, context, page);
     {
-        OFX::PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kOCIOHelpButton);
         param->setLabel(kOCIOHelpButtonLabel);
         param->setHint(kOCIOHelpButtonHint);
         if (page) {
@@ -885,10 +914,10 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     {
-        OFX::BooleanParamDescriptor* param = desc.defineBooleanParam(kParamEnableGPU);
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kParamEnableGPU);
         param->setLabel(kParamEnableGPULabel);
         param->setHint(kParamEnableGPUHint);
-        const OFX::ImageEffectHostDescription &gHostDescription = *OFX::getImageEffectHostDescription();
+        const ImageEffectHostDescription &gHostDescription = *getImageEffectHostDescription();
         // Resolve advertises OpenGL support in its host description, but never calls render with OpenGL enabled
         if ( gHostDescription.supportsOpenGLRender && (gHostDescription.hostName != "DaVinciResolveLite") ) {
             param->setDefault(true);
@@ -909,14 +938,15 @@ void OCIOColorSpacePluginFactory::describeInContext(OFX::ImageEffectDescriptor &
 
     ofxsPremultDescribeParams(desc, page);
     ofxsMaskMixDescribeParams(desc, page);
-}
+} // OCIOColorSpacePluginFactory::describeInContext
 
-/** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-ImageEffect* OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+/** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
+ImageEffect*
+OCIOColorSpacePluginFactory::createInstance(OfxImageEffectHandle handle,
+                                            ContextEnum /*context*/)
 {
     return new OCIOColorSpacePlugin(handle);
 }
-
 
 static OCIOColorSpacePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
 mRegisterPluginFactoryInstance(p)
