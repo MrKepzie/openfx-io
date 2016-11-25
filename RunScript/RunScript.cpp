@@ -116,7 +116,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamScript                  "script"
 #define kParamScriptLabel             "Script"
 #define kParamScriptHint \
-"Contents of the script. Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
+    "Contents of the script. Under Unix, the script should begin with a traditional shebang line, e.g. '#!/bin/sh' or '#!/usr/bin/env python'\n" \
     "The arguments can be accessed as usual from the script (in a Unix shell-script, argument 1 would be accessed as \"$1\" - use double quotes to avoid problems with spaces)."
 
 #define kParamValidate                  "validate"
