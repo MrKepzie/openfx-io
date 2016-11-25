@@ -1627,7 +1627,7 @@ FFmpegFileManager::init()
 }
 
 void
-FFmpegFileManager::clear(void* plugin)
+FFmpegFileManager::clear(void const * plugin)
 {
     assert(_lock);
     FFmpegFile::AutoMutex guard(*_lock);
@@ -1641,7 +1641,7 @@ FFmpegFileManager::clear(void* plugin)
 }
 
 FFmpegFile*
-FFmpegFileManager::get(void* plugin, const std::string &filename)
+FFmpegFileManager::get(void const * plugin, const std::string &filename) const
 {
     if (filename.empty() || !plugin) {
         return 0;
@@ -1667,7 +1667,7 @@ FFmpegFileManager::get(void* plugin, const std::string &filename)
 }
 
 FFmpegFile*
-FFmpegFileManager::getOrCreate(void* plugin,const std::string &filename)
+FFmpegFileManager::getOrCreate(void const * plugin,const std::string &filename) const
 {
     if (filename.empty() || !plugin) {
         return 0;

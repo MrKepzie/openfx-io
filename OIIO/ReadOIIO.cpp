@@ -117,28 +117,6 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kDefaultChannelCount 16
 
 
-#define kParamRChannel "rChannel"
-#define kParamRChannelLabel "R Channel"
-#define kParamRChannelHint "Channel from the input file corresponding to the red component.\nSee \"Image Info...\" for a list of image channels."
-
-#define kParamGChannel "gChannel"
-#define kParamGChannelLabel "G Channel"
-#define kParamGChannelHint "Channel from the input file corresponding to the green component.\nSee \"Image Info...\" for a list of image channels."
-
-#define kParamBChannel "bChannel"
-#define kParamBChannelLabel "B Channel"
-#define kParamBChannelHint "Channel from the input file corresponding to the blue component.\nSee \"Image Info...\" for a list of image channels."
-
-#define kParamAChannel "aChannel"
-#define kParamAChannelLabel "A Channel"
-#define kParamAChannelHint "Channel from the input file corresponding to the alpha component.\nSee \"Image Info...\" for a list of image channels."
-
-#define kParamRChannelName "rChannelIndex"
-#define kParamGChannelName "gChannelIndex"
-#define kParamBChannelName "bChannelIndex"
-#define kParamAChannelName "aChannelIndex"
-
-
 // Channels 0 and 1 are reserved for 0 and 1 constants
 #define kXChannelFirst 2
 
@@ -237,8 +215,7 @@ class ReadOIIOPlugin : public GenericReaderPlugin {
 
 public:
 
-    ReadOIIOPlugin(bool useRGBAChoices,
-                   OfxImageEffectHandle handle,
+    ReadOIIOPlugin(OfxImageEffectHandle handle,
                    const std::vector<std::string>& extensions,
                    bool useOIIOCache); // does the host prefer images to be cached by OIIO (e.g. Natron < 2.2)?
 
@@ -251,10 +228,33 @@ public:
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
 
     virtual void clearAnyCache() OVERRIDE FINAL;
+
+    /**
+     * @brief Restore any state from the parameters set
+     * Called from createInstance() and changedParam() (via changedFilename()), must restore the
+     * state of the Reader, such as Choice param options, data members and non-persistent param values.
+     * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+     * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
+     **/
+    virtual void restoreStateFromParams() OVERRIDE FINAL;
+
 private:
 
     
-    virtual void onInputFileChanged(const std::string& filename, bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    /**
+     * @brief Called when the input image/video file changed.
+     *
+     * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     *
+     * The colorspace may be set if available, else a default colorspace is used.
+     *
+     * You must also return the premultiplication state and pixel components of the image.
+     * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+     **/
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
     virtual bool isVideoStream(const std::string& /*filename*/) OVERRIDE FINAL { return false; }
     
@@ -288,51 +288,26 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error,  int* tile_width, int* tile_height) OVERRIDE FINAL;
 
-    virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum components) OVERRIDE FINAL;
-    
-    virtual void restoreState(const std::string& filename) OVERRIDE FINAL;
-    
     std::string metadata(const std::string& filename);
 
-    void getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& subimages) const;
+    void getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>* subimages) const;
 
-    void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const;
+    void getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>* subimages) const;
 
-    bool updateSpec(const std::string &filename, std::string* error = 0);
+    void getSpecs(const std::string &filename, std::vector<ImageSpec>* subimages, std::string* error = 0) const;
     
-    void setOCIOColorspacesFromSpec(const std::string& filename);
+    void guessColorspace(const std::string& filename, const ImageSpec& imagespec, std::string* colorspace) const;
 
-    void updateChannelMenusVisibility(OFX::PixelComponentEnum outputComponents);
-
-    void buildChannelMenus();
-    
     ///This may warn the user if some views do not exist in the project
     
-    static void layersMapFromSubImages(const std::vector<ImageSpec>& subimages, ViewsLayersMap* layersMap, LayersUnionVect* layersUnion);
-    
-    void buildLayersMenu();
+    static void getLayers(const std::vector<ImageSpec>& subimages, ViewsLayersMap* layersMap, LayersUnionVect* layersUnion);
 
-    void setDefaultChannels(OFX::PixelComponentEnum *components);
-    
-    void restoreChannelMenusFromStringParams();
-
-    void setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames, OFX::PixelComponentEnum *components);
-    
-    bool _useRGBAChoices;
+    // builds the layers menu and updates _outputLayerMenu, to be called from restoreState
+    void buildOutputLayerMenu(const std::vector<ImageSpec>& subimages);
 
     //// OIIO image cache
     ImageCache* _cache;
 
-    ///V1 params
-    OFX::ChoiceParam *_rChannel;
-    OFX::ChoiceParam *_gChannel;
-    OFX::ChoiceParam *_bChannel;
-    OFX::ChoiceParam *_aChannel;
-    OFX::StringParam *_rChannelName;
-    OFX::StringParam *_gChannelName;
-    OFX::StringParam *_bChannelName;
-    OFX::StringParam *_aChannelName;
-    
     ///V2 params
     OFX::ChoiceParam* _outputLayer;
     OFX::StringParam* _outputLayerString;
@@ -340,31 +315,19 @@ private:
 
     OFX::BooleanParam* _offsetNegativeDispWindow;
     OFX::ChoiceParam* _edgePixels;
-    
-    //Only accessed on the main-thread
-    std::vector<ImageSpec> _subImagesSpec;
-    bool _specValid; //!< does _spec contain anything valid?
-    
+
     //We keep the name of the last file read when not in playback so that
     //if it changes we can invalidate the last file read from the OIIO cache since it is no longer useful.
     //The host cache will back it up on most case. The only useful case for the OIIO cache is when there are
     //multiple threads trying to read the same image.
     Mutex _lastFileReadNoPlaybackMutex;
     std::string _lastFileReadNoPlayback;
-    
-    
-    Mutex _layersMapMutex;
 
-    
-    ///Union all layers across views to build the layers choice.
-    ///This is because we cannot provide a choice with different entries across views, so if there are some disparities,
-    ///let the render action just return a black image if the layer requested cannot be found for the given view.
-    LayersUnionVect _layersUnion;
-
+    Mutex _outputLayerMenuMutex;
+    LayersUnionVect _outputLayerMenu;
 };
 
-ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
-                               OfxImageEffectHandle handle,
+ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle,
                                const std::vector<std::string>& extensions,
                                bool useOIIOCache) // does the host prefer images to be cached by OIIO (e.g. Natron < 2.2)?
 : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles,
@@ -374,27 +337,16 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
                       false
 #endif
                       )
-, _useRGBAChoices(useRGBAChoices)
 , _cache(0)
-, _rChannel(0)
-, _gChannel(0)
-, _bChannel(0)
-, _aChannel(0)
-, _rChannelName(0)
-, _gChannelName(0)
-, _bChannelName(0)
-, _aChannelName(0)
 , _outputLayer(0)
 , _outputLayerString(0)
 , _availableViews(0)
 , _offsetNegativeDispWindow(0)
 , _edgePixels(0)
-, _subImagesSpec()
-, _specValid(false)
 , _lastFileReadNoPlaybackMutex()
 , _lastFileReadNoPlayback()
-, _layersMapMutex()
-, _layersUnion()
+, _outputLayerMenuMutex()
+, _outputLayerMenu()
 {
 #ifdef OFX_READ_OIIO_USES_CACHE
     if (useOIIOCache) {
@@ -412,25 +364,11 @@ ReadOIIOPlugin::ReadOIIOPlugin(bool useRGBAChoices,
     }
 #endif
     
-    if (_useRGBAChoices) {
-        _rChannel = fetchChoiceParam(kParamRChannel);
-        _gChannel = fetchChoiceParam(kParamGChannel);
-        _bChannel = fetchChoiceParam(kParamBChannel);
-        _aChannel = fetchChoiceParam(kParamAChannel);
-        _rChannelName = fetchStringParam(kParamRChannelName);
-        _gChannelName = fetchStringParam(kParamGChannelName);
-        _bChannelName = fetchStringParam(kParamBChannelName);
-        _aChannelName = fetchStringParam(kParamAChannelName);
-        assert(_outputComponents && _rChannel && _gChannel && _bChannel && _aChannel &&
-               _rChannelName && _bChannelName && _gChannelName && _aChannelName);
-        updateChannelMenusVisibility(getOutputComponents());
-    } else {
-        if (gHostSupportsDynamicChoices && gHostSupportsMultiPlane) {
-            _outputLayer = fetchChoiceParam(kParamChannelOutputLayer);
-            _outputLayerString = fetchStringParam(kParamChannelOutputLayerChoice);
-            _availableViews = fetchStringParam(kParamAvailableViews);
-            assert(_outputLayer && _outputLayerString);
-        }
+    if (gHostSupportsDynamicChoices && gHostSupportsMultiPlane) {
+        _outputLayer = fetchChoiceParam(kParamChannelOutputLayer);
+        _outputLayerString = fetchStringParam(kParamChannelOutputLayerChoice);
+        _availableViews = fetchStringParam(kParamAvailableViews);
+        assert(_outputLayer && _outputLayerString);
     }
 
     _offsetNegativeDispWindow = fetchBooleanParam(kParamOffsetNegativeDisplayWindow);
@@ -462,35 +400,6 @@ void ReadOIIOPlugin::clearAnyCache()
     }
 }
 
-void ReadOIIOPlugin::updateChannelMenusVisibility(OFX::PixelComponentEnum outputComponents)
-{
-    assert(_useRGBAChoices);
-    switch (outputComponents) {
-        case OFX::ePixelComponentRGBA: {
-            _rChannel->setIsSecretAndDisabled(false);
-            _bChannel->setIsSecretAndDisabled(false);
-            _gChannel->setIsSecretAndDisabled(false);
-            _aChannel->setIsSecretAndDisabled(false);
-        }   break;
-        case OFX::ePixelComponentRGB: {
-            _rChannel->setIsSecretAndDisabled(false);
-            _bChannel->setIsSecretAndDisabled(false);
-            _gChannel->setIsSecretAndDisabled(false);
-            _aChannel->setIsSecretAndDisabled(true);
-        }   break;
-        case OFX::ePixelComponentAlpha: {
-            _rChannel->setIsSecretAndDisabled(true);
-            _bChannel->setIsSecretAndDisabled(true);
-            _gChannel->setIsSecretAndDisabled(true);
-            _aChannel->setIsSecretAndDisabled(false);
-        }   break;
-        default:
-            // unsupported components
-            assert(false);
-            break;
-    }
-}
-
 void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName)
 {
     if (paramName == kParamShowMetadata) {
@@ -503,35 +412,6 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             ss << "Impossible to read image info:\nCould not get filename at time " << args.time << '.';
         }
         sendMessage(OFX::Message::eMessageMessage, "", ss.str());
-    } else if (paramName == kParamRChannel && args.reason == OFX::eChangeUserEdit) {
-        int rChannelIdx;
-        _rChannel->getValue(rChannelIdx);
-        if (rChannelIdx >= kXChannelFirst) {
-            setDefaultChannelsFromRed(rChannelIdx - kXChannelFirst, true, NULL);
-        }
-            if (_rChannelName) {
-            std::string optionName;
-            _rChannel->getOption(rChannelIdx, optionName);
-            _rChannelName->setValue(optionName);
-        }
-    } else if (_gChannelName && paramName == kParamGChannel && args.reason == OFX::eChangeUserEdit) {
-        int gChannelIdx;
-        _gChannel->getValue(gChannelIdx);
-        std::string optionName;
-        _gChannel->getOption(gChannelIdx, optionName);
-        _gChannelName->setValue(optionName);
-    } else if (_bChannelName && paramName == kParamBChannel && args.reason == OFX::eChangeUserEdit) {
-        int bChannelIdx;
-        _bChannel->getValue(bChannelIdx);
-        std::string optionName;
-        _bChannel->getOption(bChannelIdx, optionName);
-        _bChannelName->setValue(optionName);
-    } else if (_aChannelName && paramName == kParamAChannel && args.reason == OFX::eChangeUserEdit) {
-        int aChannelIdx;
-        _aChannel->getValue(aChannelIdx);
-        std::string optionName;
-        _aChannel->getOption(aChannelIdx, optionName);
-        _aChannelName->setValue(optionName);
     } else if (_outputLayerString && paramName == kParamChannelOutputLayer) {
         int index;
         _outputLayer->getValue(index);
@@ -539,37 +419,30 @@ void ReadOIIOPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
         _outputLayer->getOption(index, optionName);
         if (args.reason == OFX::eChangeUserEdit) {
             _outputLayerString->setValue(optionName);
-        }
-        
-        for (LayersUnionVect::iterator it = _layersUnion.begin(); it!=_layersUnion.end(); ++it) {
-            if (it->second.choiceOption == optionName) {
-                OFX::PixelComponentEnum comps;
-                switch (it->second.layer.channelNames.size()) {
-                    case 1:
-                        comps = OFX::ePixelComponentAlpha;
-                        break;
-                    case 3:
-                        comps = OFX::ePixelComponentRGB;
-                        break;
-                    case 4:
-                    default:
-                        comps = OFX::ePixelComponentRGBA;
-                        break;
+
+            // only set the output components if this change comes from user interaction
+            for (LayersUnionVect::iterator it = _outputLayerMenu.begin(); it != _outputLayerMenu.end(); ++it) {
+                if (it->second.choiceOption == optionName) {
+                    OFX::PixelComponentEnum comps;
+                    switch (it->second.layer.channelNames.size()) {
+                        case 1:
+                            comps = OFX::ePixelComponentAlpha;
+                            break;
+                        case 3:
+                            comps = OFX::ePixelComponentRGB;
+                            break;
+                        case 4:
+                        default:
+                            comps = OFX::ePixelComponentRGBA;
+                            break;
+                    }
+                    setOutputComponents(comps);
+                    break;
                 }
-                setOutputComponents(comps);
-                break;
             }
         }
     } else {
         GenericReaderPlugin::changedParam(args,paramName);
-    }
-}
-
-void
-ReadOIIOPlugin::onOutputComponentsParamChanged(OFX::PixelComponentEnum components)
-{
-    if (_useRGBAChoices) {
-        updateChannelMenusVisibility(components);
     }
 }
 
@@ -588,76 +461,29 @@ ReadOIIOPlugin::getClipComponents(const OFX::ClipComponentsArguments& args, OFX:
     
     clipComponents.addClipComponents(*_outputClip, getOutputComponents());
     clipComponents.setPassThroughClip(NULL, args.time, args.view);
-    
-    if (_specValid) {
-        if (_useRGBAChoices) {
-            std::map<std::string,std::vector<std::string> > layers;
-            for (std::size_t s = 0; s < _subImagesSpec.size(); ++s) {
-                for (int i = 0; i < _subImagesSpec[s].nchannels; ++i) {
-                    if (i < (int)_subImagesSpec[s].channelnames.size()) {
-                        const std::string& chan = _subImagesSpec[s].channelnames[i];
-                        std::size_t foundLastDot = chan.find_last_of('.');
-                        
-                        //Consider everything before the last dot as being a layer
-                        if (foundLastDot != std::string::npos) {
-                            std::string layer = chan.substr(0,foundLastDot);
-                            std::string channel = chan.substr(foundLastDot + 1,std::string::npos);
-                            
-                            std::map<std::string,std::vector<std::string> >::iterator foundLayer = layers.find(layer);
-                            if (foundLayer == layers.end()) {
-                                ///Add a new vector of channels for the layer
-                                std::vector<std::string> chanVec;
-                                chanVec.push_back(channel);
-                                layers.insert(std::make_pair(layer, chanVec));
-                                
-                            } else {
-                                ///Complete the vector
-                                foundLayer->second.push_back(channel);
-                            }
-                            
-                        } else {
-                            //The channel does not have a layer prefix, it is either R,G,B,A or a custom single channel component
-                            //If RGBA, don't consider it as it is already considered with the output components.
-                            if (chan != "R" && chan != "r" && chan != "red" &&
-                                chan != "G" && chan != "g" && chan != "green" &&
-                                chan != "B" && chan != "b" && chan != "blue" &&
-                                chan != "A" && chan != "a" && chan != "alpha") {
-                                
-                                std::vector<std::string> chanVec;
-                                chanVec.push_back(chan);
-                                layers.insert(std::make_pair(chan, chanVec));
-                            }
-                        }
-                    }
-                }
+
+    {
+        AutoMutex lock(_outputLayerMenuMutex);
+        for (LayersUnionVect::iterator it = _outputLayerMenu.begin(); it != _outputLayerMenu.end(); ++it) {
+            std::string component;
+            if (it->first == kReadOIIOColorLayer) {
+                continue;
+                /*switch (it->second.layer.channelNames.size()) {
+                 case 1:
+                 component = kOfxImageComponentAlpha;
+                 break;
+                 case 3:
+                 component = kOfxImageComponentRGB;
+                 break;
+                 case 4:
+                 default:
+                 component = kOfxImageComponentRGBA;
+                 break;
+                 };*/
+            } else {
+                component = OFX::MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
             }
-            for (std::map<std::string,std::vector<std::string> >::iterator it = layers.begin(); it!=layers.end(); ++it) {
-                std::string component = OFX::MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second);
-                clipComponents.addClipComponents(*_outputClip, component);
-            }
-        } else { // !_useRGBAChoices
-            AutoMutex lock(_layersMapMutex);
-            for (LayersUnionVect::iterator it = _layersUnion.begin(); it != _layersUnion.end(); ++it) {
-                std::string component;
-                if (it->first == kReadOIIOColorLayer) {
-                    continue;
-                    /*switch (it->second.layer.channelNames.size()) {
-                        case 1:
-                            component = kOfxImageComponentAlpha;
-                            break;
-                        case 3:
-                            component = kOfxImageComponentRGB;
-                            break;
-                        case 4:
-                        default:
-                            component = kOfxImageComponentRGBA;
-                            break;
-                    };*/
-                } else {
-                    component = OFX::MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
-                }
-                clipComponents.addClipComponents(*_outputClip, component);
-            }
+            clipComponents.addClipComponents(*_outputClip, component);
         }
     }
 }
@@ -789,8 +615,12 @@ static bool caseInsensitiveCompare(const std::string& lhs, const std::string& rh
 
 } // anon namespace
 
+/// layersUnion:
+/// Union all layers across views to build the layers choice.
+/// This is because we cannot provide a choice with different entries across views, so if there are some disparities,
+/// let the render action just return a black image if the layer requested cannot be found for the given view.
 void
-ReadOIIOPlugin::layersMapFromSubImages(const std::vector<ImageSpec>& subimages, ViewsLayersMap* layersMap, LayersUnionVect* layersUnion)
+ReadOIIOPlugin::getLayers(const std::vector<ImageSpec>& subimages, ViewsLayersMap* layersMap, LayersUnionVect* layersUnion)
 {
     assert(!subimages.empty());
     
@@ -986,8 +816,8 @@ ReadOIIOPlugin::layersMapFromSubImages(const std::vector<ImageSpec>& subimages, 
             foundView->second[layerIndex].second.subImageIdx = i;
             foundView->second[layerIndex].second.channelIndexes.push_back(j);
             foundView->second[layerIndex].second.channelNames.push_back(channel);
-        } // for (int j = 0; j < _subImagesSpec[i].nchannels; ++j) {
-    } // for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
+        } // for (int j = 0; j < subimages[i].nchannels; ++j) {
+    } // for (std::size_t i = 0; i < subimages.size(); ++i) {
     
     
     ///Union all layers across views
@@ -1024,98 +854,86 @@ ReadOIIOPlugin::layersMapFromSubImages(const std::vector<ImageSpec>& subimages, 
 }
 
 void
-ReadOIIOPlugin::buildLayersMenu()
+ReadOIIOPlugin::buildOutputLayerMenu(const std::vector<ImageSpec>& subimages)
 {
     assert(gHostSupportsMultiPlane && gHostSupportsDynamicChoices);
-    assert(!_useRGBAChoices);
-    assert(_specValid);
-    if (!_specValid) {
-        return;
+
+    std::vector<std::string> options, optionsLabel;
+
+    // Protect the map until we finished building the menu
+    AutoMutex lock(_outputLayerMenuMutex);
+    _outputLayerMenu.clear();
+
+    ViewsLayersMap layersMap;
+
+    getLayers(subimages, &layersMap, &_outputLayerMenu);
+
+    std::string viewsEncoded;
+    for (std::size_t i = 0; i < layersMap.size(); ++i) {
+
+        viewsEncoded.append(layersMap[i].first);
+        if (i < layersMap.size() - 1) {
+            viewsEncoded.push_back(',');
+        }
     }
-    assert(!_subImagesSpec.empty());
-    
-    std::vector<std::string> options,optionsLabel;
 
-    //Protect the map
-    {
-        AutoMutex lock(_layersMapMutex);
-        _layersUnion.clear();
-        
-        ViewsLayersMap layersMap;
-        layersMapFromSubImages(_subImagesSpec, &layersMap, &_layersUnion);
-        
-        std::string viewsEncoded;
-        for (std::size_t i = 0; i < layersMap.size(); ++i) {
-        
-            viewsEncoded.append(layersMap[i].first);
-            if (i < layersMap.size() - 1) {
-                viewsEncoded.push_back(',');
-            }
-        }
-        
-        _availableViews->setValue(viewsEncoded);
+    _availableViews->setValue(viewsEncoded);
 
-        
-
-        ///Now build the choice options
-        for (std::size_t i = 0; i < _layersUnion.size(); ++i) {
-            const std::string& layerName = _layersUnion[i].first;
-            std::string choice;
-            if (layerName == kReadOIIOColorLayer) {
-                switch (_layersUnion[i].second.layer.channelNames.size()) {
-                    case 1:
-                        choice = kReadOIIOColorLayer ".Alpha";
-                        break;
-                    default: {
-                        choice.append(kReadOIIOColorLayer ".");
-                        for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
-                            choice.append(_layersUnion[i].second.layer.channelNames[j]);
-                        }
-                    }   break;
-                }
-            } else if (_layersUnion[i].second.layer.channelNames.size() == 1 && layerName == _layersUnion[i].second.layer.channelNames[0]) {
-                //Depth.Depth for instance
-                for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
-                    choice.append(_layersUnion[i].second.layer.channelNames[j]);
-                }
-
-            }   else {
-                choice.append(layerName);
-                choice.push_back('.');
-                for (std::size_t j = 0; j < _layersUnion[i].second.layer.channelNames.size(); ++j) {
-                    choice.append(_layersUnion[i].second.layer.channelNames[j]);
-                }
-            }
-            
-            
-            std::string optionLabel;
-            if (layersMap.size() > 1) {
-                std::stringstream ss;
-                ss << "Present in views: ";
-                for (std::size_t j = 0; j < _layersUnion[i].second.views.size(); ++j) {
-                    ss << _layersUnion[i].second.views[j];
-                    if (j < _layersUnion[i].second.views.size() - 1) {
-                        ss << ", ";
+    ///Now build the choice options
+    for (std::size_t i = 0; i < _outputLayerMenu.size(); ++i) {
+        const std::string& layerName = _outputLayerMenu[i].first;
+        std::string choice;
+        if (layerName == kReadOIIOColorLayer) {
+            switch (_outputLayerMenu[i].second.layer.channelNames.size()) {
+                case 1:
+                    choice = kReadOIIOColorLayer ".Alpha";
+                    break;
+                default: {
+                    choice.append(kReadOIIOColorLayer ".");
+                    for (std::size_t j = 0; j < _outputLayerMenu[i].second.layer.channelNames.size(); ++j) {
+                        choice.append(_outputLayerMenu[i].second.layer.channelNames[j]);
                     }
-                }
-                optionLabel = ss.str();
+                }   break;
             }
-            options.push_back(choice);
-            optionsLabel.push_back(optionLabel);
-            _layersUnion[i].second.choiceOption = choice;
+        } else if (_outputLayerMenu[i].second.layer.channelNames.size() == 1 && layerName == _outputLayerMenu[i].second.layer.channelNames[0]) {
+            //Depth.Depth for instance
+            for (std::size_t j = 0; j < _outputLayerMenu[i].second.layer.channelNames.size(); ++j) {
+                choice.append(_outputLayerMenu[i].second.layer.channelNames[j]);
+            }
+
+        }   else {
+            choice.append(layerName);
+            choice.push_back('.');
+            for (std::size_t j = 0; j < _outputLayerMenu[i].second.layer.channelNames.size(); ++j) {
+                choice.append(_outputLayerMenu[i].second.layer.channelNames[j]);
+            }
         }
-        
-        assert(options.size() == _layersUnion.size());
-        
-    } // OFX::MultiThread::AutoMutex lock(_layersMapMutex);
-    
-    
-    
+
+
+        std::string optionLabel;
+        if (layersMap.size() > 1) {
+            std::stringstream ss;
+            ss << "Present in views: ";
+            for (std::size_t j = 0; j < _outputLayerMenu[i].second.views.size(); ++j) {
+                ss << _outputLayerMenu[i].second.views[j];
+                if (j < _outputLayerMenu[i].second.views.size() - 1) {
+                    ss << ", ";
+                }
+            }
+            optionLabel = ss.str();
+        }
+        options.push_back(choice);
+        optionsLabel.push_back(optionLabel);
+        _outputLayerMenu[i].second.choiceOption = choice;
+    }
+
+    assert(options.size() == _outputLayerMenu.size());
+
     ///Actually build the menu
     _outputLayer->resetOptions(options, optionsLabel);
 
-    
-   ///synchronize with the value stored in the string param
+
+    ///synchronize with the value stored in the string param
     std::string valueStr;
     _outputLayerString->getValue(valueStr);
     if (valueStr.empty()) {
@@ -1124,7 +942,7 @@ ReadOIIOPlugin::buildLayersMenu()
         if (cur_i >= 0 && cur_i < (int)options.size()) {
             valueStr = options[cur_i];
         } else if (!options.empty()) {
-            //No choice but to change the chocie value
+            //No choice but to change the choice value
             valueStr = options[0];
             _outputLayer->setValue(0);
         }
@@ -1145,445 +963,17 @@ ReadOIIOPlugin::buildLayersMenu()
         }
     }
 
-} // buildLayersMenu
+} // buildOutputLayerMenu
+
 
 void
-ReadOIIOPlugin::buildChannelMenus()
+ReadOIIOPlugin::getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>* subimages) const
 {
-    
-    assert(_useRGBAChoices);
-    
-    if (gHostSupportsDynamicChoices) {
-        // the choice menu can only be modified in Natron
-        // Natron supports changing the entries in a choiceparam
-        // Nuke (at least up to 9.0v1) does not
-        _rChannel->resetOptions();
-        _gChannel->resetOptions();
-        _bChannel->resetOptions();
-        _aChannel->resetOptions();
-        _rChannel->appendOption("0");
-        _rChannel->appendOption("1");
-        _gChannel->appendOption("0");
-        _gChannel->appendOption("1");
-        _bChannel->appendOption("0");
-        _bChannel->appendOption("1");
-        _aChannel->appendOption("0");
-        _aChannel->appendOption("1");
-        assert(_rChannel->getNOptions() == kXChannelFirst);
-        assert(_gChannel->getNOptions() == kXChannelFirst);
-        assert(_bChannel->getNOptions() == kXChannelFirst);
-        assert(_aChannel->getNOptions() == kXChannelFirst);
-        if (_specValid) {
-            for (int i = 0; i < _subImagesSpec[0].nchannels; ++i) {
-                if (i < (int)_subImagesSpec[0].channelnames.size()) {
-                    _rChannel->appendOption(_subImagesSpec[0].channelnames[i]);
-                    _bChannel->appendOption(_subImagesSpec[0].channelnames[i]);
-                    _gChannel->appendOption(_subImagesSpec[0].channelnames[i]);
-                    _aChannel->appendOption(_subImagesSpec[0].channelnames[i]);
-                } else {
-                    std::ostringstream oss;
-                    oss << "channel " << i;
-                    _rChannel->appendOption(oss.str());
-                    _gChannel->appendOption(oss.str());
-                    _bChannel->appendOption(oss.str());
-                    _aChannel->appendOption(oss.str());
-                }
-            }
-        }
-        
-    }
-}
-
-// called when the red channel is set
-// from the red channel name, infer the corresponding G,B,A channel values
-void
-ReadOIIOPlugin::setDefaultChannelsFromRed(int rChannelIdx, bool mustSetChannelNames, OFX::PixelComponentEnum *components)
-{
-    assert(_useRGBAChoices);
-    
-    assert(rChannelIdx >= 0);
-    if (!_specValid) {
-        return;
-    }
-    int channelsVisitedSoFar = 0;
-    std::string rFullName;
-    int specIndex = -1;
-    for (std::size_t s = 0; s < _subImagesSpec.size(); ++s) {
-        if (rChannelIdx < channelsVisitedSoFar + _subImagesSpec[s].nchannels && rChannelIdx >= channelsVisitedSoFar) {
-            rFullName = _subImagesSpec[s].channelnames[rChannelIdx - channelsVisitedSoFar];
-            specIndex = (int)s;
-            break;
-        }
-        channelsVisitedSoFar += _subImagesSpec[s].nchannels;
-    }
-    if (rFullName.empty()) {
-        // no name, can't do anything
-        return;
-    }
-    assert(specIndex != -1);
-    std::string rChannelName;
-    std::string layerDotViewDot;
-    // the EXR channel naming convention is layer.view.channel
-    // ref: http://www.openexr.com/MultiViewOpenEXR.pdf
-
-    // separate layer.view. from channel
-    size_t lastdot = rFullName.find_last_of(".");
-    if (lastdot == std::string::npos) {
-        // no dot, channel name is the full name
-        rChannelName = rFullName;
-    } else {
-        layerDotViewDot = rFullName.substr(0, lastdot + 1);
-        rChannelName = rFullName.substr(lastdot + 1);
-    }
-    // now check if the channel name looks like red (normally, it should be "R")
-    if (rChannelName != "R" &&
-        rChannelName != "r" &&
-        rChannelName != "red") {
-        // not red, can't do anything
-        return;
-    }
-    std::string gFullName;
-    std::string bFullName;
-    std::string aFullName;
-
-    if (rChannelName == "R") {
-        gFullName = layerDotViewDot + "G";
-        bFullName = layerDotViewDot + "B";
-        aFullName = layerDotViewDot + "A";
-    } else if (rChannelName == "r") {
-        gFullName = layerDotViewDot + "g";
-        bFullName = layerDotViewDot + "b";
-        aFullName = layerDotViewDot + "a";
-    } else if (rChannelName == "red") {
-        gFullName = layerDotViewDot + "green";
-        bFullName = layerDotViewDot + "blue";
-        aFullName = layerDotViewDot + "alpha";
-    }
-    bool gSet = false;
-    bool bSet = false;
-    bool aSet = false;
-    int layerViewChannels = 0;
-    for (size_t i = 0; i < _subImagesSpec[specIndex].channelnames.size(); ++i) {
-        // check if the channel is within the layer/view, and count number of channels
-        size_t channelDot = _subImagesSpec[specIndex].channelnames[i].find_last_of(".");
-        if (lastdot == std::string::npos ||
-            _subImagesSpec[specIndex].channelnames[i].compare(0, layerDotViewDot.length(), layerDotViewDot) == 0) {
-            if ((lastdot == std::string::npos && channelDot == std::string::npos) ||
-                (lastdot != std::string::npos && channelDot != std::string::npos)) {
-                ++layerViewChannels;
-            }
-            if (_subImagesSpec[specIndex].channelnames[i] == gFullName) {
-                _gChannel->setValue(kXChannelFirst + i);
-                if (mustSetChannelNames) {
-                    std::string optionName;
-                    _gChannel->getOption(kXChannelFirst + i, optionName);
-                    _gChannelName->setValue(optionName);
-                }
-                gSet = true;
-            }
-            if (_subImagesSpec[specIndex].channelnames[i] == bFullName) {
-                _bChannel->setValue(kXChannelFirst + i);
-                if (mustSetChannelNames) {
-                    std::string optionName;
-                    _bChannel->getOption(kXChannelFirst + i, optionName);
-                    _bChannelName->setValue(optionName);
-                }
-                bSet = true;
-            }
-            if (_subImagesSpec[specIndex].channelnames[i] == aFullName) {
-                _aChannel->setValue(kXChannelFirst + i);
-                if (mustSetChannelNames) {
-                    std::string optionName;
-                    _aChannel->getOption(kXChannelFirst + i, optionName);
-                    _aChannelName->setValue(optionName);
-                }
-                aSet = true;
-            }
-        }
-    }
-    if (!gSet) {
-        _gChannel->setValue(0);
-        if (mustSetChannelNames) {
-            std::string optionName;
-            _gChannel->getOption(0, optionName);
-            _gChannelName->setValue(optionName);
-        }
-    }
-    if (!bSet) {
-        _bChannel->setValue(0);
-        if (mustSetChannelNames) {
-            std::string optionName;
-            _bChannel->getOption(0, optionName);
-            _bChannelName->setValue(optionName);
-        }
-    }
-    if (!aSet) {
-        if (_subImagesSpec[specIndex].alpha_channel >= 0) {
-            _aChannel->setValue(kXChannelFirst + _subImagesSpec[specIndex].alpha_channel);
-            if (mustSetChannelNames) {
-                std::string optionName;
-                _aChannel->getOption(kXChannelFirst + _subImagesSpec[specIndex].alpha_channel, optionName);
-                _aChannelName->setValue(optionName);
-            }
-        } else if (layerViewChannels != 4) {
-            // Output is Opaque with alpha=0 by default,
-            // but premultiplication is set to opaque.
-            // That way, chaining with a Roto node works correctly.
-            // Alpha is set to 0 and premult is set to Opaque.
-            // That way, the Roto node can be conveniently used to draw a mask. This shouldn't
-            // disturb anything else in the process, since Opaque premult means that alpha should
-            // be considered as being 1 everywhere, whatever the actual alpha value is.
-            // see GenericWriterPlugin::render, if (userPremult == OFX::eImageOpaque...
-            if (components && *components == OFX::ePixelComponentRGBA) {
-                *components = OFX::ePixelComponentRGB;
-            }
-            _aChannel->setValue(0);
-            if (mustSetChannelNames) {
-                std::string optionName;
-                _aChannel->getOption(0, optionName);
-                _aChannelName->setValue(optionName);
-            }
-        } else {
-            // if there are exactly 4 channels in this layer/view, then the
-            // remaining one should be Alpha
-            for (size_t i = 0; i < _subImagesSpec[specIndex].channelnames.size(); ++i) {
-                // check if the channel is within the layer/view
-                if (lastdot == std::string::npos ||
-                    _subImagesSpec[specIndex].channelnames[i].compare(0, layerDotViewDot.length(), layerDotViewDot) == 0) {
-                    if (_subImagesSpec[specIndex].channelnames[i] != rFullName &&
-                        _subImagesSpec[specIndex].channelnames[i] != gFullName &&
-                        _subImagesSpec[specIndex].channelnames[i] != bFullName) {
-                        _aChannel->setValue(kXChannelFirst + i);
-                        if (mustSetChannelNames) {
-                            std::string optionName;
-                            _aChannel->getOption(kXChannelFirst + i, optionName);
-                            _aChannelName->setValue(optionName);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-
-// called after changing the filename, set all channels
-void
-ReadOIIOPlugin::setDefaultChannels(OFX::PixelComponentEnum *components)
-{
-    assert(_useRGBAChoices);
-    if (!_specValid) {
-        return;
-    }
-    {
-        int rChannelIdx = -1;
-
-        // first, look for the main red channel
-        for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-            if (_subImagesSpec[0].channelnames[i] == "R" ||
-                _subImagesSpec[0].channelnames[i] == "r" ||
-                _subImagesSpec[0].channelnames[i] == "red") {
-                rChannelIdx = i;
-                break; // found!
-            }
-        }
-
-        if (rChannelIdx < 0) {
-            // find a name which ends with ".R", ".r" or ".red"
-            for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-                if (endsWith(_subImagesSpec[0].channelnames[i], ".R") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".r") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".red")) {
-                    rChannelIdx = i;
-                    break; // found!
-                }
-            }
-        }
-
-        if (rChannelIdx >= 0) {
-            // red was found
-            _rChannel->setValue(kXChannelFirst + rChannelIdx);
-            setDefaultChannelsFromRed(rChannelIdx, false, components);
-            return;
-        } else if (_subImagesSpec[0].nchannels >= 3) {
-            _rChannel->setValue(kXChannelFirst + 0);
-        } else if (_subImagesSpec[0].nchannels == 1) {
-            _rChannel->setValue(kXChannelFirst);
-        } else {
-            _rChannel->setValue(0);
-        }
-    }
-    // could not find red. look for green, blue, alpha.
-    {
-        int gChannelIdx = -1;
-
-        // first, look for the main green channel
-        for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-            if (_subImagesSpec[0].channelnames[i] == "G" ||
-                _subImagesSpec[0].channelnames[i] == "g" ||
-                _subImagesSpec[0].channelnames[i] == "green") {
-                gChannelIdx = i;
-                break; // found!
-            }
-        }
-
-        if (gChannelIdx < 0) {
-            // find a name which ends with ".G", ".g" or ".green"
-            for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-                if (endsWith(_subImagesSpec[0].channelnames[i], ".G") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".g") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".green")) {
-                    gChannelIdx = i;
-                    break; // found!
-                }
-            }
-        }
-
-        if (gChannelIdx >= 0) {
-            // green was found
-            _gChannel->setValue(kXChannelFirst + gChannelIdx);
-        } else if (_subImagesSpec[0].nchannels >= 3) {
-            _gChannel->setValue(kXChannelFirst + 1);
-        } else if (_subImagesSpec[0].nchannels == 1) {
-            _gChannel->setValue(kXChannelFirst);
-        } else {
-            _gChannel->setValue(0);
-        }
-    }
-    {
-        int bChannelIdx = -1;
-
-        // first, look for the main blue channel
-        for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-            if (_subImagesSpec[0].channelnames[i] == "B" ||
-                _subImagesSpec[0].channelnames[i] == "b" ||
-                _subImagesSpec[0].channelnames[i] == "blue") {
-                bChannelIdx = i;
-                break; // found!
-            }
-        }
-
-        if (bChannelIdx < 0) {
-            // find a name which ends with ".B", ".b" or ".blue"
-            for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-                if (endsWith(_subImagesSpec[0].channelnames[i], ".B") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".b") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".blue")) {
-                    bChannelIdx = i;
-                    break; // found!
-                }
-            }
-        }
-
-        if (bChannelIdx >= 0) {
-            // blue was found
-            _bChannel->setValue(kXChannelFirst + bChannelIdx);
-        } else if (_subImagesSpec[0].nchannels >= 3) {
-            _bChannel->setValue(kXChannelFirst + 2);
-        } else if (_subImagesSpec[0].nchannels == 1) {
-            _bChannel->setValue(kXChannelFirst);
-        } else {
-            _bChannel->setValue(0);
-        }
-    }
-    {
-        int aChannelIdx = -1;
-
-        // first, look for the main alpha channel
-        for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-            if (_subImagesSpec[0].channelnames[i] == "A" ||
-                _subImagesSpec[0].channelnames[i] == "a" ||
-                _subImagesSpec[0].channelnames[i] == "alpha") {
-                aChannelIdx = i;
-                break; // found!
-            }
-        }
-
-        if (aChannelIdx < 0) {
-            // find a name which ends with ".A", ".a" or ".alpha"
-            for (std::size_t i = 0; i < _subImagesSpec[0].channelnames.size(); ++i) {
-                if (endsWith(_subImagesSpec[0].channelnames[i], ".A") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".a") ||
-                    endsWith(_subImagesSpec[0].channelnames[i], ".alpha")) {
-                    aChannelIdx = i;
-                    break; // found!
-                }
-            }
-        }
-
-        if (aChannelIdx >= 0) {
-            // alpha was found
-            _aChannel->setValue(kXChannelFirst + aChannelIdx);
-        } else if (_subImagesSpec[0].nchannels >= 4) {
-            _aChannel->setValue(kXChannelFirst + 3);
-        } else if (_subImagesSpec[0].nchannels == 1) {
-            _aChannel->setValue(kXChannelFirst);
-        } else {
-            if (components && *components == OFX::ePixelComponentRGBA) {
-                *components = OFX::ePixelComponentRGB; // so that premult is set to opaque
-            }
-            _aChannel->setValue(0);
-        }
-    }
-}
-
-void
-ReadOIIOPlugin::restoreChannelMenusFromStringParams()
-{
-    assert(_useRGBAChoices);
-    
-    OFX::ChoiceParam* channelParams[4] = { _rChannel, _gChannel, _bChannel, _aChannel };
-    OFX::StringParam* stringParams[4] = { _rChannelName, _gChannelName, _bChannelName, _aChannelName };
-
-    for (int c = 0; c < 4; ++c) {
-        
-        std::string channelString;
-        stringParams[c]->getValue(channelString);
-
-        bool channelSet = false;
-
-        if ( !channelString.empty() ) {
-            // Restore the index from the serialized string
-            for (int i = 0; i < channelParams[c]->getNOptions(); ++i) {
-                std::string option;
-                channelParams[c]->getOption(i, option);
-                if (option == channelString) {
-                    channelParams[c]->setValue(i);
-                    channelSet = true;
-                    break;
-                }
-            }
-        }
-        if (!channelSet) {
-            // We are in the case where the strings were not serialized (or didn't exist in that project),
-            // or the named channel doesnt exist,
-            // so we blindly trust the values in the channels
-            
-            //Edit: don't do this if the channel menus are empty (i.e: containing only 2 entries (0 and 1)) otherwise
-            //we will always set the strings to "0" when building new instances of the plug-in and when
-            //inputFileChanged() will be called further on, it will set the channel index to 0 since the string won't be empty!
-            int nChoices = channelParams[c]->getNOptions();
-            if (nChoices > 2) {
-                int idx;
-                channelParams[c]->getValue(idx);
-                std::string option;
-                channelParams[c]->getOption(idx, option);
-                assert(option != channelString); // if they were equal, it should have triggered channelSet = true above
-                stringParams[c]->setValue(option);
-            }
-        }
-    }
-
-}
-
-void
-ReadOIIOPlugin::getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& subimages) const
-{
+    subimages->clear();
     int subImageIndex = 0;
     ImageSpec spec;
     while (img->seek_subimage(subImageIndex, 0, spec)) {
-        subimages.push_back(spec);
+        subimages->push_back(spec);
         ++subImageIndex;
 #ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
         break;
@@ -1592,8 +982,9 @@ ReadOIIOPlugin::getSpecsFromImageInput(ImageInput* img, std::vector<ImageSpec>& 
 }
 
 void
-ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>& subimages) const
+ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<ImageSpec>* subimages) const
 {
+    subimages->clear();
     assert(_cache);
     if (!_cache) {
         return;
@@ -1601,7 +992,7 @@ ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<Image
     ImageSpec spec;
     int subImageIndex = 0;
     while (_cache->get_imagespec(ustring(filename), spec, subImageIndex)) {
-        subimages.push_back(spec);
+        subimages->push_back(spec);
         ++subImageIndex;
 #ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
         break;
@@ -1609,15 +1000,14 @@ ReadOIIOPlugin::getSpecsFromCache(const std::string& filename, std::vector<Image
     }
 }
 
-bool
-ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
+void
+ReadOIIOPlugin::getSpecs(const std::string &filename, std::vector<ImageSpec>* subimages, std::string* error) const
 {
-    _specValid = false;
-    _subImagesSpec.clear();
+    subimages->clear();
     bool gotSpec = false;
     if (_cache) {
         //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-        getSpecsFromCache(filename, _subImagesSpec);
+        getSpecsFromCache(filename, subimages);
         gotSpec = true;
     }
     if (!gotSpec) {
@@ -1626,35 +1016,58 @@ ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
             if (error) {
                 *error = "Could node open file " + filename;
             }
-            return false;
+            return;
         }
-        getSpecsFromImageInput(img.get(), _subImagesSpec);
+        getSpecsFromImageInput(img.get(), subimages);
     }
-    if (_subImagesSpec.empty()) {
+    if (subimages->empty()) {
         if (error) {
             *error = "Could node open file " + filename;
         }
-        return false;
+        return;
     }
 
-    for (std::size_t i = 0; i < _subImagesSpec.size(); ++i) {
-        if (_subImagesSpec[i].deep) {
-            if (_subImagesSpec[0].deep) {
-                if (error) {
-                    *error = "Cannot read deep image file " + filename;
-                }
-                _subImagesSpec.clear();
-                _layersUnion.clear();
-                return false;
+    // check that no subimage is deep
+    for (std::size_t i = 0; i < subimages->size(); ++i) {
+        if ( (*subimages)[i].deep ) {
+            if (error) {
+                *error = "Cannot read deep image file " + filename;
             }
+            subimages->clear();
+
+            return;
         }
     }
+}
 
-    _specValid = true;
+/**
+ * @brief Restore any state from the parameters set
+ * Called from createInstance() and changedParam() (via changedFilename()), must restore the
+ * state of the Reader, such as Choice param options, data members and non-persistent param values.
+ * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+ * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
+ **/
+void
+ReadOIIOPlugin::restoreStateFromParams()
+{
+    GenericReaderPlugin::restoreStateFromParams();
 
+    ///http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
+    ///The Create instance action is in the list of actions where you can set param values
+
+    std::string filename;
+    _fileParam->getValueAtTime(_startingTime->getValue(), filename);
+    std::vector<ImageSpec> subimages;
+    getSpecs(filename, &subimages);
+
+    if ( subimages.empty() ) {
+        return;
+    }
+
+    buildOutputLayerMenu(subimages);
 
     //Only support tiles if tile size is set
-    const ImageSpec& spec = _subImagesSpec[0];
+    const ImageSpec& spec = subimages[0];
     int width = /*spec.width == 0 ? spec.full_width :*/ spec.width;
     int height = /*spec.height == 0 ? spec.full_height :*/ spec.height;
     setSupportsTiles(spec.tile_width != 0 && spec.tile_width != width && spec.tile_height != 0 && spec.tile_height != height);
@@ -1674,49 +1087,20 @@ ReadOIIOPlugin::updateSpec(const std::string &filename, std::string* error)
     bool supportsDisplayWindow = ext == "exr";
     _edgePixels->setIsSecretAndDisabled(!supportsDisplayWindow);
     _offsetNegativeDispWindow->setIsSecretAndDisabled(!supportsDisplayWindow);
-
-    return true;
 }
 
 void
-ReadOIIOPlugin::restoreState(const std::string& filename)
+ReadOIIOPlugin::guessColorspace(const std::string& filename, const ImageSpec& imagespec, std::string* colorspace) const
 {
-    if (_useRGBAChoices) {
-        //Update OIIO spec
-        updateSpec(filename);
-
-        //Update RGBA parameters visibility according to the output components
-        updateChannelMenusVisibility(getOutputComponents());
-        
-        //Build available channels from OIIO spec
-        buildChannelMenus();
-        // set the default values for R, G, B, A channels
-        setDefaultChannels(NULL);
-        //Restore channels from the channel strings serialized
-        restoreChannelMenusFromStringParams();
-    } else {
-        OFX::PreMultiplicationEnum premult;
-        OFX::PixelComponentEnum comps;
-        int compsNum;
-        try {
-            onInputFileChanged(filename, false, true, &premult, &comps, &compsNum);
-        } catch (...) {
-            
-        }
-    }
-    
-    ///http://openfx.sourceforge.net/Documentation/1.3/ofxProgrammingReference.html#SettingParams
-    ///The Create instance action is in the list of actions where you can set param values
-}
-
-void
-ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
-{
-#ifdef OFX_IO_USING_OCIO
     ///find-out the image color-space
-    const ParamValue* colorSpaceValue = _subImagesSpec[0].find_attribute("oiio:ColorSpace", TypeDesc::STRING);
-    const ParamValue* photoshopICCProfileValue = _subImagesSpec[0].find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
+    const ParamValue* colorSpaceValue = imagespec.find_attribute("oiio:ColorSpace", TypeDesc::STRING);
+    const ParamValue* photoshopICCProfileValue = imagespec.find_attribute("photoshop:ICCProfile", TypeDesc::STRING);
     //photoshop:ICCProfile: "HDTV (Rec. 709)"
+
+#ifdef OFX_IO_USING_OCIO
+    // make sure the OCIO config is const
+    GenericOCIO const *ocio = _ocio.get();
+#endif
     
     //we found a color-space hint, use it to do the color-space conversion
     const char* colorSpaceStr = NULL;
@@ -1744,7 +1128,7 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
         // sRGB for 8-bit images
         // Rec709 for 10-bits, 12-bits or 16-bits integer images
         // Linear for anything else
-        switch (_subImagesSpec[0].format.basetype) {
+        switch (imagespec.format.basetype) {
             case TypeDesc::UCHAR:
             case TypeDesc::CHAR:
                 colorSpaceStr = "sRGB";
@@ -1766,7 +1150,7 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
     }
     if (colorSpaceStr) {
         if (colorSpaceStr && !strcmp(colorSpaceStr, "GammaCorrected")) {
-            float gamma = _subImagesSpec[0].get_float_attribute("oiio:Gamma");
+            float gamma = imagespec.get_float_attribute("oiio:Gamma");
             if ( endsWith(filename, ".cin") || endsWith(filename, ".CIN") ) {
                 // Cineon files (e.g. Kodak Digital LAD, see link below) get wrongly attributed
                 // a GammaCorrected colorspace <https://github.com/OpenImageIO/oiio/issues/1463>
@@ -1778,193 +1162,216 @@ ReadOIIOPlugin::setOCIOColorspacesFromSpec(const std::string& filename)
                 // all these files are in reality log-encoded.
                 colorSpaceStr = "KodakLog";
             } else if (std::fabs(gamma-1.8) < 0.01) {
-                if (_ocio->hasColorspace("Gamma1.8")) {
+#ifdef OFX_IO_USING_OCIO
+                if (ocio->hasColorspace("Gamma1.8")) {
                     // nuke-default
-                    _ocio->setInputColorspace("Gamma1.8");
+                    *colorspace = "Gamma1.8";
                     colorSpaceStr = NULL;
                 }
+#endif
             } else if (std::fabs(gamma-2.2) < 0.01) {
-                if (_ocio->hasColorspace("Gamma2.2")) {
+#ifdef OFX_IO_USING_OCIO
+                if (ocio->hasColorspace("Gamma2.2")) {
                     // nuke-default
-                    _ocio->setInputColorspace("Gamma2.2");
+                    *colorspace = "Gamma2.2";
                     colorSpaceStr = NULL;
-                } else if (_ocio->hasColorspace("VD16")) {
+                } else if (ocio->hasColorspace("VD16")) {
                     // VD16 in blender
-                    _ocio->setInputColorspace("VD16");
+                    *colorspace = "VD16";
                     colorSpaceStr = NULL;
-                } else if (_ocio->hasColorspace("vd16")) {
+                } else if (ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim and spi-vfx
-                    _ocio->setInputColorspace("vd16");
+                    *colorspace = "vd16";
                     colorSpaceStr = NULL;
-                } else {
+                } else
+#endif
+                {
                     colorSpaceStr = "sRGB";
                 }
             }
         }
+#ifdef OFX_IO_USING_OCIO
         if (colorSpaceStr && !strcmp(colorSpaceStr, "sRGB")) {
-            if (_ocio->hasColorspace("sRGB")) {
+            if (ocio->hasColorspace("sRGB")) {
                 // nuke-default, blender, natron
-                _ocio->setInputColorspace("sRGB");
+                *colorspace = "sRGB";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("sRGB D65")) {
+            } else if (ocio->hasColorspace("sRGB D65")) {
                 // blender-cycles
-                _ocio->setInputColorspace("sRGB D65");
+                *colorspace = "sRGB D65";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
+            } else if (ocio->hasColorspace("sRGB (D60 sim.)")) {
                 // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                _ocio->setInputColorspace("sRGB (D60 sim.)");
+                *colorspace = "sRGB (D60 sim.)";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("out_srgbd60sim")) {
+            } else if (ocio->hasColorspace("out_srgbd60sim")) {
                 // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                _ocio->setInputColorspace("out_srgbd60sim");
+                *colorspace = "out_srgbd60sim";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
+            } else if (ocio->hasColorspace("rrt_Gamma2.2")) {
                 // rrt_Gamma2.2 in aces 0.7.1
-                _ocio->setInputColorspace("rrt_Gamma2.2");
+                *colorspace = "rrt_Gamma2.2";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_srgb")) {
+            } else if (ocio->hasColorspace("rrt_srgb")) {
                 // rrt_srgb in aces 0.1.1
-                _ocio->setInputColorspace("rrt_srgb");
+                *colorspace = "rrt_srgb";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("srgb8")) {
+            } else if (ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
-                _ocio->setInputColorspace("srgb8");
+                *colorspace = "srgb8";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Gamma2.2")) {
+            } else if (ocio->hasColorspace("Gamma2.2")) {
                 // nuke-default
-                _ocio->setInputColorspace("Gamma2.2");
+                *colorspace = "Gamma2.2";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("srgb8")) {
+            } else if (ocio->hasColorspace("srgb8")) {
                 // srgb8 in spi-vfx
-                _ocio->setInputColorspace("srgb8");
+                *colorspace = "srgb8";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("vd16")) {
+            } else if (ocio->hasColorspace("vd16")) {
                 // vd16 in spi-anim
-                _ocio->setInputColorspace("vd16");
+                *colorspace = "vd16";
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "AdobeRGB")) {
-            if (_ocio->hasColorspace("AdobeRGB")) {
+            if (ocio->hasColorspace("AdobeRGB")) {
                 // natron
-                _ocio->setInputColorspace("AdobeRGB");
+                *colorspace = "AdobeRGB";
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "Rec709")) {
-            if (_ocio->hasColorspace("Rec709")) {
+            if (ocio->hasColorspace("Rec709")) {
                 // nuke-default
-                _ocio->setInputColorspace("Rec709");
+                *colorspace = "Rec709";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("nuke_rec709")) {
+            } else if (ocio->hasColorspace("nuke_rec709")) {
                 // blender
-                _ocio->setInputColorspace("nuke_rec709");
+                *colorspace = "nuke_rec709";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Rec 709 Curve")) {
+            } else if (ocio->hasColorspace("Rec 709 Curve")) {
                 // natron
-                _ocio->setInputColorspace("Rec 709 Curve");
+                *colorspace = "Rec 709 Curve";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+            } else if (ocio->hasColorspace("Rec.709 - Full")) {
                 // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                _ocio->setInputColorspace("Rec.709 - Full");
+                *colorspace = "Rec.709 - Full";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("out_rec709full")) {
+            } else if (ocio->hasColorspace("out_rec709full")) {
                 // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                _ocio->setInputColorspace("out_rec709full");
+                *colorspace = "out_rec709full";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+            } else if (ocio->hasColorspace("rrt_rec709_full_100nits")) {
                 // rrt_rec709_full_100nits in aces 0.7.1
-                _ocio->setInputColorspace("rrt_rec709_full_100nits");
+                *colorspace = "rrt_rec709_full_100nits";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("rrt_rec709")) {
+            } else if (ocio->hasColorspace("rrt_rec709")) {
                 // rrt_rec709 in aces 0.1.1
-                _ocio->setInputColorspace("rrt_rec709");
+                *colorspace = "rrt_rec709";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("hd10")) {
+            } else if (ocio->hasColorspace("hd10")) {
                 // hd10 in spi-anim and spi-vfx
-                _ocio->setInputColorspace("hd10");
+                *colorspace = "hd10";
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "KodakLog")) {
-            if (_ocio->hasColorspace("Cineon")) {
+            if (ocio->hasColorspace("Cineon")) {
                 // Cineon in nuke-default
-                _ocio->setInputColorspace("Cineon");
+                *colorspace = "Cineon";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("Cineon Log Curve")) {
+            } else if (ocio->hasColorspace("Cineon Log Curve")) {
                 // Curves/Cineon Log Curve in natron
-                _ocio->setInputColorspace("Cineon Log Curve");
+                *colorspace = "Cineon Log Curve";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("REDlogFilm")) {
+            } else if (ocio->hasColorspace("REDlogFilm")) {
                 // REDlogFilm in aces 1.0.0
-                _ocio->setInputColorspace("REDlogFilm");
+                *colorspace = "REDlogFilm";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("cineon")) {
+            } else if (ocio->hasColorspace("cineon")) {
                 // cineon in aces 0.7.1
-                _ocio->setInputColorspace("cineon");
+                *colorspace = "cineon";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("adx10")) {
+            } else if (ocio->hasColorspace("adx10")) {
                 // adx10 in aces 0.1.1
-                _ocio->setInputColorspace("adx10");
+                *colorspace = "adx10";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("lg10")) {
+            } else if (ocio->hasColorspace("lg10")) {
                 // lg10 in spi-vfx
-                _ocio->setInputColorspace("lg10");
+                *colorspace = "lg10";
                 colorSpaceStr = NULL;
-            } else if (_ocio->hasColorspace("lm10")) {
+            } else if (ocio->hasColorspace("lm10")) {
                 // lm10 in spi-anim
-                _ocio->setInputColorspace("lm10");
+                *colorspace = "lm10";
                 colorSpaceStr = NULL;
             } else {
-                _ocio->setInputColorspace(OCIO::ROLE_COMPOSITING_LOG);
+                *colorspace = OCIO::ROLE_COMPOSITING_LOG;
                 colorSpaceStr = NULL;
             }
         }
         if (colorSpaceStr && !strcmp(colorSpaceStr, "Linear")) {
-            _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
+            *colorspace = OCIO::ROLE_SCENE_LINEAR;
             colorSpaceStr = NULL;
             // lnf in spi-vfx
         }
-        if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+        if (colorSpaceStr && ocio->hasColorspace(colorSpaceStr)) {
             // maybe we're lucky
-            _ocio->setInputColorspace(colorSpaceStr);
+            *colorspace = colorSpaceStr;
             colorSpaceStr = NULL;
         }
         if (colorSpaceStr) {
             // unknown color-space or Linear, don't do anything
         }
-    }
 #endif // OFX_IO_USING_OCIO
+    }
+    if (colorSpaceStr) {
+        *colorspace = colorSpaceStr;
+    }
 }
 
-void
-ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
-                                   bool throwErrors,
-                                   bool setColorSpace,
-                                   OFX::PreMultiplicationEnum *premult,
-                                   OFX::PixelComponentEnum *components,
-                                   int *componentCount)
+/**
+ * @brief Called when the input image/video file changed.
+ *
+ * returns true if file exists and parameters successfully guessed, false in case of error.
+ *
+ * You shouldn't do any strong processing as this is called on the main thread and
+ * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+ *
+ * The colorspace may be set if available, else a default colorspace is used.
+ *
+ * You must also return the premultiplication state and pixel components of the image.
+ * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+ **/
+bool
+ReadOIIOPlugin::guessParamsFromFilename(const std::string &filename,
+                                        std::string *colorspace,
+                                        OFX::PreMultiplicationEnum *premult,
+                                        OFX::PixelComponentEnum *components,
+                                        int *componentCount) const
 {
     std::string error;
-    bool updateSpecOk = updateSpec(filename, &error);
-    if (!_specValid || !updateSpecOk) {
-        setPersistentMessage(OFX::Message::eMessageError, "", error);
-        *componentCount = 0;
+    std::vector<ImageSpec> subimages;
+    getSpecs(filename, &subimages, &error);
+
+    if ( subimages.empty() ) {
+        //setPersistentMessage(OFX::Message::eMessageError, "", error);
+
+        return false;
+    }
+    
+    guessColorspace(filename, subimages[0], colorspace);
+
+    ViewsLayersMap layersMap;
+    LayersUnionVect layersUnion;
+    getLayers(subimages, &layersMap, &layersUnion);
+
+
+    if (layersUnion.empty()) {
         *components = OFX::ePixelComponentNone;
-        *premult = OFX::eImageOpaque;
-        if (throwErrors) {
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-        }
-        return;
-    }
-    
-    if (setColorSpace) {
-        setOCIOColorspacesFromSpec(filename);
-    }
-    
-    if (_useRGBAChoices) {
-        
-        switch (_subImagesSpec[0].nchannels) {
+    } else {
+        const std::vector<std::string>& channels = layersUnion[0].second.layer.channelNames;
+        switch (channels.size()) {
             case 0:
                 *components = OFX::ePixelComponentNone;
                 *componentCount = 0;
@@ -1981,89 +1388,53 @@ ReadOIIOPlugin::onInputFileChanged(const std::string &filename,
                 *components = OFX::ePixelComponentRGBA;
                 *componentCount = 4;
                 break;
+            case 2: {
+                //in OIIO, PNG with alpha are stored with as a 2-channel image
+                bool hasI = false;
+                bool hasA = false;
+                for (std::size_t i = 0; i < channels.size(); ++i) {
+                    if (channels[i] == "I" || channels[i] == "i") {
+                        hasI = true;
+                    }
+                    if (channels[i] == "A" || channels[i] == "a") {
+                        hasA = true;
+                    }
+                }
+                if (hasI && hasA) {
+                    *components = OFX::ePixelComponentRGBA;
+                    *componentCount = 4;
+                } else {
+                    *components = OFX::ePixelComponentXY;
+                    *componentCount = 2;
+                }
+            }   break;
             default:
                 *components = OFX::ePixelComponentRGBA;
                 *componentCount = 4;
                 break;
         }
-        *componentCount = _subImagesSpec[0].nchannels;
-        
-        // rebuild the channel choices
-        buildChannelMenus();
-        // set the default values for R, G, B, A channels
-        setDefaultChannels(components);
-        
-        restoreChannelMenusFromStringParams();
-    } else {
-        buildLayersMenu();
-        if (_layersUnion.empty()) {
-            *components = OFX::ePixelComponentNone;
-        } else {
-            const std::vector<std::string>& channels = _layersUnion[0].second.layer.channelNames;
-            switch (channels.size()) {
-                case 0:
-                    *components = OFX::ePixelComponentNone;
-                    *componentCount = 0;
-                    break;
-                case 1:
-                    *components = OFX::ePixelComponentAlpha;
-                    *componentCount = 1;
-                    break;
-                case 3:
-                    *components = OFX::ePixelComponentRGB;
-                    *componentCount = 3;
-                    break;
-                case 4:
-                    *components = OFX::ePixelComponentRGBA;
-                    *componentCount = 4;
-                    break;
-                case 2: {
-                    //in OIIO, PNG with alpha are stored with as a 2-channel image
-                    bool hasI = false;
-                    bool hasA = false;
-                    for (std::size_t i = 0; i < channels.size(); ++i) {
-                        if (channels[i] == "I" || channels[i] == "i") {
-                            hasI = true;
-                        }
-                        if (channels[i] == "A" || channels[i] == "a") {
-                            hasA = true;
-                        }
-                    }
-                    if (hasI && hasA) {
-                        *components = OFX::ePixelComponentRGBA;
-                        *componentCount = 4;
-                    } else {
-                        *components = OFX::ePixelComponentXY;
-                        *componentCount = 2;
-                    }
-                }   break;
-                default:
-                    *components = OFX::ePixelComponentRGBA;
-                    *componentCount = 4;
-                    break;
-            }
-            *componentCount = _subImagesSpec[0].nchannels;
-        }
+        //*componentCount = subimages[0].nchannels;
     }
 
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
         *premult = OFX::eImageOpaque;
     } else {
-        bool unassociatedAlpha = _subImagesSpec[0].get_int_attribute("oiio:UnassociatedAlpha", 0);
+        bool unassociatedAlpha = subimages[0].get_int_attribute("oiio:UnassociatedAlpha", 0);
         if (unassociatedAlpha) {
             *premult = OFX::eImageUnPreMultiplied;
         } else {
             *premult = OFX::eImagePreMultiplied;
         }
     }
-    
+
+    return true;
 }
 
 void
 ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput** img, std::vector<ImageSpec>* subimages)
 {
     if (_cache && useCache) {
-        getSpecsFromCache(filename, *subimages);
+        getSpecsFromCache(filename, subimages);
 
         return;
     }
@@ -2081,7 +1452,7 @@ ReadOIIOPlugin::openFile(const std::string& filename, bool useCache, ImageInput*
         OFX::throwSuiteStatusException(kOfxStatFailed);
         return;
     }
-    getSpecsFromImageInput(*img, *subimages);
+    getSpecsFromImageInput(*img, subimages);
 }
 
 
@@ -2094,7 +1465,7 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
                                                    std::vector<int>& channels, int& numChannels, int& subImageIndex)
 {
     ViewsLayersMap layersMap;
-    layersMapFromSubImages(subimages, &layersMap, 0);
+    getLayers(subimages, &layersMap, 0);
     
     ///Find the view
     std::string viewName = getViewName(view);
@@ -2241,7 +1612,7 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const std::string& filename,
 
 
 
-void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
+void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime /*time*/, int view, bool isPlayback, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, const std::string& rawComponents, int rowBytes)
 {
     unused(pixelComponentCount);
 #if OIIO_VERSION >= 10605
@@ -2292,110 +1663,55 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
                rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
 
 
-        if (_useRGBAChoices) {
-            
-            
-            int rChannel, gChannel, bChannel, aChannel;
-            _rChannel->getValueAtTime(time, rChannel);
-            _gChannel->getValueAtTime(time, gChannel);
-            _bChannel->getValueAtTime(time, bChannel);
-            _aChannel->getValueAtTime(time, aChannel);
-            // test if channels are valid
-            if (rChannel > subimages[0].nchannels + kXChannelFirst) {
-                rChannel = 0;
-            }
-            if (gChannel > subimages[0].nchannels + kXChannelFirst) {
-                gChannel = 0;
-            }
-            if (bChannel > subimages[0].nchannels + kXChannelFirst) {
-                bChannel = 0;
-            }
-            if (aChannel > subimages[0].nchannels + kXChannelFirst) {
-                aChannel = 1; // opaque by default
-            }
-            
+
+        if (!_outputLayer) { // host is not multilayer nor anything, just use basic indexes
 
             switch (pixelComponents) {
                 case OFX::ePixelComponentRGBA:
                     numChannels = 4;
                     channels.resize(numChannels);
-                    channels[0] = rChannel;
-                    channels[1] = gChannel;
-                    channels[2] = bChannel;
-                    channels[3] = aChannel;
+                    channels[0] = 0;
+                    channels[1] = 1;
+                    channels[2] = 2;
+                    channels[3] = 3;
                     break;
                 case OFX::ePixelComponentRGB:
                     numChannels = 3;
                     channels.resize(numChannels);
-                    channels[0] = rChannel;
-                    channels[1] = gChannel;
-                    channels[2] = bChannel;
+                    channels[0] = 0;
+                    channels[1] = 1;
+                    channels[2] = 2;
                     break;
                 case OFX::ePixelComponentXY:
                     numChannels = 2;
                     channels.resize(numChannels);
-                    channels[0] = rChannel;
-                    channels[1] = gChannel;
+                    channels[0] = 0;
+                    channels[1] = 1;
                     break;
+
                 case OFX::ePixelComponentAlpha:
                     numChannels = 1;
                     channels.resize(numChannels);
-                    channels[0] = aChannel;
+                    channels[0] = 0;
                     break;
                 default:
                     assert(false);
                     break;
             }
-        } else { // !_useRGBAChoices
-            
-            if (!_outputLayer) { // host is not multilayer nor anything, just use basic indexes
+        } else {
+            // buildOutputLayerMenu should keep these in sync
+            assert( _outputLayer->getNOptions() == (int)_outputLayerMenu.size() );
+            int layer_i = _outputLayer->getValue();
 
-                switch (pixelComponents) {
-                    case OFX::ePixelComponentRGBA:
-                        numChannels = 4;
-                        channels.resize(numChannels);
-                        channels[0] = 0;
-                        channels[1] = 1;
-                        channels[2] = 2;
-                        channels[3] = 3;
-                        break;
-                    case OFX::ePixelComponentRGB:
-                        numChannels = 3;
-                        channels.resize(numChannels);
-                        channels[0] = 0;
-                        channels[1] = 1;
-                        channels[2] = 2;
-                        break;
-                    case OFX::ePixelComponentXY:
-                        numChannels = 2;
-                        channels.resize(numChannels);
-                        channels[0] = 0;
-                        channels[1] = 1;
-                        break;
+            AutoMutex lock(_outputLayerMenuMutex);
+            if (layer_i < (int)_outputLayerMenu.size() && layer_i >= 0) {
+                const std::string& layerName = _outputLayerMenu[layer_i].first;
+                getOIIOChannelIndexesFromLayerName(filename, view, layerName, pixelComponents, subimages, channels, numChannels, subImageIndex);
 
-                    case OFX::ePixelComponentAlpha:
-                        numChannels = 1;
-                        channels.resize(numChannels);
-                        channels[0] = 0;
-                        break;
-                    default:
-                        assert(false);
-                        break;
-                }
             } else {
-                int layer_i;
-                _outputLayer->getValue(layer_i);
-                
-                AutoMutex lock(_layersMapMutex);
-                if (layer_i < (int)_layersUnion.size() && layer_i >= 0) {
-                    const std::string& layerName = _layersUnion[layer_i].first;
-                    getOIIOChannelIndexesFromLayerName(filename, view, layerName, pixelComponents, subimages, channels, numChannels, subImageIndex);
-
-                } else {
-                    setPersistentMessage(OFX::Message::eMessageError, "", "Failure to find requested layer in file");
-                    OFX::throwSuiteStatusException(kOfxStatFailed);
-                    return;
-                }
+                setPersistentMessage(OFX::Message::eMessageError, "", "Failure to find requested layer in file");
+                OFX::throwSuiteStatusException(kOfxStatFailed);
+                return;
             }
         }
     } // if (pixelComponents != OFX::ePixelComponentCustom) {
@@ -2407,7 +1723,7 @@ void ReadOIIOPlugin::decodePlane(const std::string& filename, OfxTime time, int 
             channels.resize(numChannels);
             std::string layer = layerChannels[0];
 
-            if (!_useRGBAChoices && _outputLayer) {
+            if (_outputLayer) {
                 getOIIOChannelIndexesFromLayerName(filename, view, layer, pixelComponents, subimages, channels, numChannels, subImageIndex);
             } else {
                 
@@ -3100,8 +2416,7 @@ ReadOIIOPlugin::metadata(const std::string& filename)
 }
 
 
-template<bool useRGBAChoices>
-class ReadOIIOPluginFactory : public OFX::PluginFactoryHelper<ReadOIIOPluginFactory<useRGBAChoices> >
+class ReadOIIOPluginFactory : public OFX::PluginFactoryHelper<ReadOIIOPluginFactory>
 {
 public:
     ReadOIIOPluginFactory(const std::string& id, unsigned int verMaj, unsigned int verMin):OFX::PluginFactoryHelper<ReadOIIOPluginFactory>(id, verMaj, verMin) {}
@@ -3114,9 +2429,8 @@ public:
     std::vector<std::string> _extensions;
 };
 
-template <bool useRGBAChoices>
 void
-ReadOIIOPluginFactory<useRGBAChoices>::load()
+ReadOIIOPluginFactory::load()
 {
     _extensions.clear();
 #if 0
@@ -3160,9 +2474,8 @@ ReadOIIOPluginFactory<useRGBAChoices>::load()
 #endif
 }
 
-template <bool useRGBAChoices>
 void
-ReadOIIOPluginFactory<useRGBAChoices>::unload()
+ReadOIIOPluginFactory::unload()
 {
     _extensions.clear();
 
@@ -3191,16 +2504,11 @@ static std::string oiio_versions()
 }
 
 /** @brief The basic describe function, passed a plugin descriptor */
-template <bool useRGBAChoices>
 void
-ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor &desc)
+ReadOIIOPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 {
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, kIsMultiPlanar);
 
-    if (useRGBAChoices) {
-        //Keep the old plug-in with choice menus but set it deprecated so the user cannot create it anymore
-        desc.setIsDeprecated(true);
-    }
     std::string extensions_list;
     getattribute("extension_list", extensions_list);
 
@@ -3262,21 +2570,9 @@ ReadOIIOPluginFactory<useRGBAChoices>::describe(OFX::ImageEffectDescriptor &desc
                               + oiio_versions());
 }
 
-static void
-appendDefaultChannelList(ChoiceParamDescriptor *channel)
-{
-    channel->appendOption("0");
-    channel->appendOption("1");
-    for (int i = 0; i < kDefaultChannelCount; ++i) {
-        std::ostringstream oss;
-        oss << "channel " << i;
-        channel->appendOption(oss.str());
-    }
-}
-
 /** @brief The describe in context function, passed a plugin descriptor and a context */
-template <bool useRGBAChoices>
-void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
+void
+ReadOIIOPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc, ContextEnum context)
 {
     gHostSupportsDynamicChoices = (OFX::getImageEffectHostDescription()->supportsDynamicChoices);
     gHostSupportsMultiPlane = (OFX::fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true)) != 0;
@@ -3293,131 +2589,38 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
         }
     }
 
-
-    if (useRGBAChoices) {
+    if (gHostSupportsMultiPlane && gHostSupportsDynamicChoices) {
         {
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamRChannel);
-            param->setLabel(kParamRChannelLabel);
-            param->setHint(kParamRChannelHint);
-            appendDefaultChannelList(param);
-            param->setAnimates(true);
-            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
-            if (page) {
-                page->addChild(*param);
-            }
-        }
-        {
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamGChannel);
-            param->setLabel(kParamGChannelLabel);
-            param->setHint(kParamGChannelHint);
-            appendDefaultChannelList(param);
-            param->setAnimates(true);
-            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
-            if (page) {
-                page->addChild(*param);
-            }
-        }
-        {
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamBChannel);
-            param->setLabel(kParamBChannelLabel);
-            param->setHint(kParamBChannelHint);
-            appendDefaultChannelList(param);
-            param->setAnimates(true);
-            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
-            if (page) {
-                page->addChild(*param);
-            }
-        }
-        {
-            ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamAChannel);
-            param->setLabel(kParamAChannelLabel);
-            param->setHint(kParamAChannelHint);
-            appendDefaultChannelList(param);
-            param->setAnimates(true);
-            param->setDefault(1); // opaque by default
-            param->setIsPersistent(false); //don't save, we will restore it using the StringParams holding the index
-            if (page) {
-                page->addChild(*param);
-            }
-        }
-        
-        {
-            StringParamDescriptor* param = desc.defineStringParam(kParamRChannelName);
-            param->setLabel(kParamRChannelLabel);
-            param->setHint(kParamRChannelHint);
+            ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamChannelOutputLayer);
+            param->setLabel(kParamChannelOutputLayerLabel);
+            param->setHint(kParamChannelOutputLayerHint);
+            param->setEvaluateOnChange(false);
+            param->setIsPersistent(false);
             param->setAnimates(false);
-            param->setIsSecretAndDisabled(true); // never meant to be visible
             if (page) {
                 page->addChild(*param);
             }
         }
         {
-            StringParamDescriptor* param = desc.defineStringParam(kParamGChannelName);
-            param->setLabel(kParamGChannelLabel);
-            param->setHint(kParamGChannelHint);
+            StringParamDescriptor* param = desc.defineStringParam(kParamChannelOutputLayerChoice);
+            param->setLabel(kParamChannelOutputLayerChoice);
+            param->setIsSecretAndDisabled(true);
             param->setAnimates(false);
-            param->setIsSecretAndDisabled(true); // never meant to be visible
+            desc.addClipPreferencesSlaveParam(*param);
             if (page) {
                 page->addChild(*param);
             }
         }
-        
         {
-            StringParamDescriptor* param = desc.defineStringParam(kParamBChannelName);
-            param->setLabel(kParamBChannelLabel);
-            param->setHint(kParamBChannelHint);
+            StringParamDescriptor* param = desc.defineStringParam(kParamAvailableViews);
+            param->setLabel(kParamAvailableViewsLabel);
+            param->setHint(kParamAvailableViewsHint);
             param->setAnimates(false);
-            param->setIsSecretAndDisabled(true); // never meant to be visible
+            param->setIsSecretAndDisabled(true);
+            param->setEvaluateOnChange(false);
+            param->setIsPersistent(false);
             if (page) {
                 page->addChild(*param);
-            }
-        }
-        
-        {
-            StringParamDescriptor* param = desc.defineStringParam(kParamAChannelName);
-            param->setLabel(kParamAChannelLabel);
-            param->setHint(kParamAChannelHint);
-            param->setAnimates(false);
-            param->setIsSecretAndDisabled(true); // never meant to be visible
-            if (page) {
-                page->addChild(*param);
-            }
-        }
-    } else { // if (useRGBAChoices) {
-        
-        if (gHostSupportsMultiPlane && gHostSupportsDynamicChoices) {
-            {
-                ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamChannelOutputLayer);
-                param->setLabel(kParamChannelOutputLayerLabel);
-                param->setHint(kParamChannelOutputLayerHint);
-                param->setEvaluateOnChange(false);
-                param->setIsPersistent(false);
-                param->setAnimates(false);
-                if (page) {
-                    page->addChild(*param);
-                }
-            }
-            {
-                StringParamDescriptor* param = desc.defineStringParam(kParamChannelOutputLayerChoice);
-                param->setLabel(kParamChannelOutputLayerChoice);
-                param->setIsSecretAndDisabled(true);
-                param->setAnimates(false);
-                desc.addClipPreferencesSlaveParam(*param);
-                if (page) {
-                    page->addChild(*param);
-                }
-            }
-            {
-                StringParamDescriptor* param = desc.defineStringParam(kParamAvailableViews);
-                param->setLabel(kParamAvailableViewsLabel);
-                param->setHint(kParamAvailableViewsHint);
-                param->setAnimates(false);
-                param->setIsSecretAndDisabled(true);
-                param->setEvaluateOnChange(false);
-                param->setIsPersistent(false);
-                if (page) {
-                    page->addChild(*param);
-                }
             }
         }
     }
@@ -3454,27 +2657,23 @@ void ReadOIIOPluginFactory<useRGBAChoices>::describeInContext(OFX::ImageEffectDe
         }
     }
 
-
-
     GenericReaderDescribeInContextEnd(desc, context, page, "reference", "scene_linear");
 }
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref OFX::ImageEffect class */
-template <bool useRGBAChoices>
-ImageEffect* ReadOIIOPluginFactory<useRGBAChoices>::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
+ImageEffect*
+ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     const ImageEffectHostDescription* h = getImageEffectHostDescription();
     // use OIIO Cache exclusively on Natron < 2.2
     bool useOIIOCache = h->isNatron && ( h->versionMajor < 2 || (h->versionMajor == 2 && h->versionMinor < 2) );
-    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(useRGBAChoices, handle, _extensions, useOIIOCache);
-    ret->restoreStateFromParameters();
+    ReadOIIOPlugin* ret =  new ReadOIIOPlugin(handle, _extensions, useOIIOCache);
+    ret->restoreStateFromParams();
     return ret;
 }
 
 
-static ReadOIIOPluginFactory<false> p1(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-static ReadOIIOPluginFactory<true> p2(kPluginIdentifier, 1, 0);
-mRegisterPluginFactoryInstance(p1)
-mRegisterPluginFactoryInstance(p2)
+static ReadOIIOPluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p)
 
 OFXS_NAMESPACE_ANONYMOUS_EXIT

@@ -68,7 +68,20 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile,bool throwErrors, bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    /**
+     * @brief Called when the input image/video file changed.
+     *
+     * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     *
+     * The colorspace may be set if available, else a default colorspace is used.
+     *
+     * You must also return the premultiplication state and pixel components of the image.
+     * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+     **/
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
 };
 
@@ -357,26 +370,36 @@ ReadPFMPlugin::getFrameBounds(const std::string& filename,
     return true;
 }
 
-void
-ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
-                                  bool throwErrors,
-                                  bool setColorSpace,
-                                  OFX::PreMultiplicationEnum *premult,
-                                  OFX::PixelComponentEnum *components,
-                                  int *componentCount)
+/**
+ * @brief Called when the input image/video file changed.
+ *
+ * returns true if file exists and parameters successfully guessed, false in case of error.
+ *
+ * You shouldn't do any strong processing as this is called on the main thread and
+ * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+ *
+ * The colorspace may be set if available, else a default colorspace is used.
+ *
+ * You must also return the premultiplication state and pixel components of the image.
+ * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+ **/
+bool
+ReadPFMPlugin::guessParamsFromFilename(const std::string& /*newFile*/,
+                                       std::string *colorspace,
+                                       OFX::PreMultiplicationEnum *premult,
+                                       OFX::PixelComponentEnum *components,
+                                       int *componentCount) const
 {
-    if (setColorSpace) {
-#     ifdef OFX_IO_USING_OCIO
-        // Unless otherwise specified, pfm files are assumed to be linear.
-        _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
-#     endif
-    }
-    assert(premult && components);
+# ifdef OFX_IO_USING_OCIO
+    // Unless otherwise specified, pfm files are assumed to be linear.
+    *colorspace = OCIO::ROLE_SCENE_LINEAR;
+# endif
+    assert(colorspace && premult && components && componentCount);
     int startingTime = getStartingTime();
     std::string filename;
     OfxStatus st = getFilenameAtTime(startingTime, &filename);
-    if (st != kOfxStatOK) {
-        return;
+    if ( st != kOfxStatOK || filename.empty() ) {
+        return false;
     }
     std::stringstream ss;
     
@@ -392,11 +415,8 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
     }
     if (std::sscanf(item, " P%c", &pfm_type) != 1) {
         std::fclose(nfile);
-        setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
-        if (throwErrors) {
-            OFX::throwSuiteStatusException(kOfxStatFailed);
-        }
-        return;
+        //setPersistentMessage(OFX::Message::eMessageWarning, "", std::string("PFM header not found in file \"") + filename + "\".");
+        return false;
     }
     std::fclose(nfile);
 
@@ -411,7 +431,8 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
         *componentCount = 1;
     } else {
         *premult = OFX::eImageOpaque;
-        return;
+
+        return false;
     }
     if (*components != OFX::ePixelComponentRGBA && *components != OFX::ePixelComponentAlpha) {
         *premult = OFX::eImageOpaque;
@@ -419,6 +440,8 @@ ReadPFMPlugin::onInputFileChanged(const std::string& /*newFile*/,
         // output is always premultiplied
         *premult = OFX::eImagePreMultiplied;
     }
+
+    return true;
 }
 
 
@@ -460,7 +483,7 @@ ReadPFMPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
     ReadPFMPlugin* ret =  new ReadPFMPlugin(handle, _extensions);
-    ret->restoreStateFromParameters();
+    ret->restoreStateFromParams();
     return ret;
 }
 

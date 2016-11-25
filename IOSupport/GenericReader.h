@@ -107,7 +107,7 @@ public:
     
     /**
      * @brief Set the output components and premultiplication state for the input image automatically.
-     * This is filled from directly the info returned by onInputFileChanged
+     * This is filled from directly the info returned by guessParamsFromFilename
      **/
     virtual void getClipPreferences(OFX::ClipPreferencesSetter &clipPreferences) OVERRIDE;
 
@@ -118,16 +118,20 @@ public:
     virtual void purgeCaches(void) OVERRIDE;
     
     /**
-     * @brief Called right away after the constructor, must restore the state of the Reader. We don't do this in the ctor. of the plug-in
-     * since we can't call virtuals yet
+     * @brief Restore any state from the parameters set
+     * Called from createInstance() and changedParam() (via changedFilename()), must restore the
+     * state of the Reader, such as Choice param options, data members and non-persistent param values.
+     * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+     * Any derived implementation must call GenericReaderPlugin::restoreStateFromParams() first
      **/
-    void restoreStateFromParameters();
+    virtual void restoreStateFromParams();
+
 
     bool isMultiPlanar() const {
         return _isMultiPlanar;
     }
     
-    
+
     enum BeforeAfterEnum
     {
         eBeforeAfterHold,
@@ -138,17 +142,26 @@ public:
     };
     
 protected:
+    /**
+     * @brief Called from changedParam() when kParamFilename is changed for any reason other than eChangeTime.
+     * Calls restoreStateFromParams() to update any non-persistent params that may depend on the filename.
+     * If reason is eChangeUserEdit and the params where never guessed (see _guessedParams) also sets these from the file contents.
+     * Any derived implementation must call GenericReaderPlugin::changedFilename() first
+     **/
+    virtual void changedFilename(const OFX::InstanceChangedArgs &args);
+
+
     OFX::ChoiceParam* _missingFrameParam; //< what to do on missing frame
 
-    OfxStatus getFilenameAtTime(double t, std::string *filename);
+    OfxStatus getFilenameAtTime(double t, std::string *filename) const;
 
-    int getStartingTime();
+    int getStartingTime() const;
     
+    // get the value of kParamOutputComponents as a OFX::PixelComponentEnum
     OFX::PixelComponentEnum getOutputComponents() const;
-    
-    void setOutputComponents(OFX::PixelComponentEnum comps);
 
-    
+    // sets the value of kParamOutputComponents
+    void setOutputComponents(OFX::PixelComponentEnum comps);
 
     struct PlaneToRender
     {
@@ -175,34 +188,29 @@ private:
     
     /**
      * @brief Called when the input image/video file changed.
+     *
+     * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
      * You shouldn't do any strong processing as this is called on the main thread and
      * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
      * 
+     * The colorspace may be set if available, else a default colorspace is used.
+     *
      * You must also return the premultiplication state and pixel components of the image.
      * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
      **/
-    virtual void onInputFileChanged(const std::string& newFile,
-                                    bool throwErrors,
-                                    bool setColorSpace, //!< true is colorspace was not set from the filename
-                                    OFX::PreMultiplicationEnum *premult,
-                                    OFX::PixelComponentEnum *components,
-                                    int *componentCount) = 0;
-    
-    /**
-     * @brief Called when the Output Components param changes
-     **/
-    virtual void onOutputComponentsParamChanged(OFX::PixelComponentEnum /*components*/) {}
+    virtual bool guessParamsFromFilename(const std::string& newFile,
+                                         std::string *colorspace,
+                                         OFX::PreMultiplicationEnum *premult,
+                                         OFX::PixelComponentEnum *components,
+                                         int *componentCount) const = 0;
     
     /**
      * @brief Override to clear any cache you may have.
      **/
     virtual void clearAnyCache() {}
     
-    /**
-     * @brief Restore any state from the parameters set
-     **/
-    virtual void restoreState(const std::string& /*filename*/) {}
-    
+
     
     /**
      * @brief Overload this function to extract the bound of the pixel data
@@ -224,7 +232,7 @@ private:
      */
     virtual bool isTileOrientationTopDown() const { return true; }
     
-    virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) { return false; }
+    virtual bool getFrameRate(const std::string& /*filename*/, double* /*fps*/) const { return false; }
 
     /**
      * @brief Override this function to actually decode the image contained in the file pointed to by filename.
@@ -246,7 +254,7 @@ private:
      * @brief Override to indicate the time domain. Return false if you know that the
      * file isn't a video-stream, true when you can find-out the frame range.
      **/
-    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeI &/*range*/){ return false; }
+    virtual bool getSequenceTimeDomain(const std::string& /*filename*/, OfxRangeI &/*range*/) { return false; }
     
     /**
      * @brief Called internally by getTimeDomain(...)
@@ -256,7 +264,7 @@ private:
     /**
      * @brief Used internally by the GenericReader.
      **/
-    void timeDomainFromSequenceTimeDomain(OfxRangeI& range, bool mustSetFrameRange, bool setFirstLastFrame = true);
+    void timeDomainFromSequenceTimeDomain(const OfxRangeI& sequenceTimeDomain, int startingTime, OfxRangeI* timeDomain);
     
     /**
      * @brief Should return true if the file indicated by filename is a video-stream and not 
@@ -277,10 +285,10 @@ private:
     /**
      * @brief compute the sequence/file time from time
      */
-    GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) WARN_UNUSED_RETURN;
-    GetSequenceTimeRetEnum getSequenceTimeHold(double t, double *sequenceTime) WARN_UNUSED_RETURN;
-    GetSequenceTimeRetEnum getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime);
-    GetSequenceTimeRetEnum getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime);
+    GetSequenceTimeRetEnum getSequenceTime(double t, double *sequenceTime) const WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTimeHold(double t, double *sequenceTime) const WARN_UNUSED_RETURN;
+    GetSequenceTimeRetEnum getSequenceTimeBefore(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum beforeChoice, double *sequenceTime) const;
+    GetSequenceTimeRetEnum getSequenceTimeAfter(const OfxRangeI& sequenceTimeDomain, double t, BeforeAfterEnum afterChoice, double *sequenceTime) const;
     
     enum GetFilenameRetCodeEnum {
         eGetFileNameFailed = 0,
@@ -295,12 +303,8 @@ private:
     GetFilenameRetCodeEnum getFilenameAtSequenceTime(double t,
                                                      bool proxyFiles,
                                                      bool checkForExistingFile,
-                                                     std::string *filename) WARN_UNUSED_RETURN;
+                                                     std::string *filename) const WARN_UNUSED_RETURN;
     
-    /**
-     * @brief Initializes the params depending on the input file.
-     **/
-    void inputFileChanged(bool isLoadingExistingReader, bool throwErrors);
 
     void copyPixelData(const OfxRectI &renderWindow,
                        const void *srcPixelData,
@@ -397,7 +401,7 @@ protected:
     OFX::Int2DParam* _originalFrameRange; //< the original frame range computed the first time by getSequenceTimeDomainInternal
     
     OFX::ChoiceParam* _outputComponents;
-    OFX::ChoiceParam* _premult;
+    OFX::ChoiceParam* _filePremult;
     OFX::ChoiceParam* _outputPremult;
 
     OFX::BooleanParam* _timeDomainUserSet; //< true when the time domain has bee nuser edited
@@ -406,10 +410,9 @@ protected:
     OFX::DoubleParam* _fps;
 
     OFX::StringParam* _sublabel;
-    OFX::BooleanParam* _isExistingReader;
+    OFX::BooleanParam* _guessedParams;//!< was guessParamsFromFilename already successfully called once on this instance
     
 #ifdef OFX_IO_USING_OCIO
-    OFX::BooleanParam* _inputSpaceSet;
     std::auto_ptr<GenericOCIO> _ocio;
 #endif
     
@@ -417,16 +420,15 @@ protected:
 
 private:
     
+    OfxRangeI _sequenceRange; // updated in restorestate
+    bool _sequenceRangeSet;
     
-    
-    std::map<int,std::map<int,std::string> > _sequenceFromFiles;
     const bool _supportsRGBA;
     const bool _supportsRGB;
     const bool _supportsXY;
     const bool _supportsAlpha;
     const bool _supportsTiles;
     const bool _isMultiPlanar;
-    std::string _filename; // filename used for the last onInputFileChanged() call, to avoid calling it again and again (potentially costly)
 
     OFX::PixelComponentEnum _outputComponentsTable[5];
 };

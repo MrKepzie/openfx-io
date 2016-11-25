@@ -479,8 +479,8 @@ public:
 class FFmpegFileManager
 {
     ///For each plug-in instance, a list of opened files
-    typedef std::map<void*,std::list<FFmpegFile*> > FilesMap;
-    FilesMap _files;
+    typedef std::map<void const *,std::list<FFmpegFile*> > FilesMap;
+    mutable FilesMap _files;
     mutable FFmpegFile::Mutex* _lock;
     
 public:
@@ -491,10 +491,10 @@ public:
     
     void init();
     
-    void clear(void* plugin);
+    void clear(void const * plugin);
     
-    FFmpegFile* get(void* plugin, const std::string &filename);
-    FFmpegFile* getOrCreate(void* plugin, const std::string &filename);
+    FFmpegFile* get(void const * plugin, const std::string &filename) const;
+    FFmpegFile* getOrCreate(void const * plugin, const std::string &filename) const;
 
 };
 

@@ -112,7 +112,7 @@ class GenericOCIO
     friend class OCIOProcessor;
 public:
     GenericOCIO(OFX::ImageEffect* parent);
-    bool isIdentity(double time);
+    bool isIdentity(double time) const;
 
     /**
      * @brief Applies the given OCIO processor using GLSL with the given source texture onto 
@@ -154,21 +154,23 @@ public:
     void apply(double time, const OfxRectI& renderWindow, float *pixelData, const OfxRectI& bounds, OFX::PixelComponentEnum pixelComponents, int pixelComponentCount, int rowBytes);
     void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName);
     void purgeCaches();
-    void getInputColorspace(std::string &v);
-    void getInputColorspaceAtTime(double time, std::string &v);
-    void getOutputColorspace(std::string &v);
-    void getOutputColorspaceAtTime(double time, std::string &v);
+    void getInputColorspaceDefault(std::string &v) const;
+    void getInputColorspace(std::string &v) const;
+    void getInputColorspaceAtTime(double time, std::string &v) const;
+    void getOutputColorspaceDefault(std::string &v) const;
+    void getOutputColorspace(std::string &v) const;
+    void getOutputColorspaceAtTime(double time, std::string &v) const;
     bool hasColorspace(const char* name) const;
     void setInputColorspace(const char* name);
     void setOutputColorspace(const char* name);
 #ifdef OFX_IO_USING_OCIO
-    OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time);
-    OCIO_NAMESPACE::ConstConfigRcPtr getConfig() { return _config; };
-    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor();
+    OCIO_NAMESPACE::ConstContextRcPtr getLocalContext(double time) const;
+    OCIO_NAMESPACE::ConstConfigRcPtr getConfig() const { return _config; };
+    OCIO_NAMESPACE::ConstProcessorRcPtr getProcessor() const;
     OCIO_NAMESPACE::ConstProcessorRcPtr getOrCreateProcessor(double time);
 
 #endif
-    bool configIsDefault();
+    bool configIsDefault() const;
 
     // Each of the following functions re-reads the OCIO config: Not optimal but more clear.
     static void describeInContextInput(OFX::ImageEffectDescriptor &desc, OFX::ContextEnum context, OFX::PageParamDescriptor *page, const char* inputSpaceNameDefault, const char* inputSpaceLabel = kOCIOParamInputSpaceLabel);
@@ -225,7 +227,7 @@ private:
 
     OCIO_NAMESPACE::ConstConfigRcPtr _config;
 
-    Mutex _procMutex;
+    mutable Mutex _procMutex;
     OCIO_NAMESPACE::ConstProcessorRcPtr _proc;
     OCIO_NAMESPACE::ConstContextRcPtr _procContext;
     std::string _procInputSpace;

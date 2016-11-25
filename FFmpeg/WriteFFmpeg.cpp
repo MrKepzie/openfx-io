@@ -4424,7 +4424,7 @@ void WriteFFmpegPluginFactory::describeInContext(OFX::ImageEffectDescriptor &des
 ImageEffect* WriteFFmpegPluginFactory::createInstance(OfxImageEffectHandle handle, ContextEnum /*context*/)
 {
     WriteFFmpegPlugin* ret = new WriteFFmpegPlugin(handle, _extensions);
-    ret->restoreState();
+    ret->restoreStateFromParams();
     return ret;
 }
 

@@ -136,7 +136,7 @@ enum FormatTypeEnum {
 #define kParamOutputComponentsLabel "Output Components"
 #define kParamOutputComponentsHint "Map the input layer to this type of components before writing it to the output file."
 
-#define kParamExistingInstance "ParamExistingInstance"
+#define kParamGuessedParams "ParamExistingInstance" // was guessParamsFromFilename already successfully called once on this instance
 
 #ifdef OFX_IO_USING_OCIO
 #define kParamOutputSpaceSet "ocioOutputSpaceSet" // was the output colorspace set by user?
@@ -166,7 +166,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
 , _sublabel(0)
 , _processChannels()
 , _outputComponents(0)
-, _isExistingWriter(0)
+, _guessedParams(0)
 #ifdef OFX_IO_USING_OCIO
 , _outputSpaceSet(NULL)
 , _ocio(new GenericOCIO(this))
@@ -211,7 +211,7 @@ GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
     _outputComponents = fetchChoiceParam(kParamOutputComponents);
     assert(_processChannels[0] && _processChannels[1] && _processChannels[2] && _processChannels[3] && _outputComponents);
 
-    _isExistingWriter = fetchBooleanParam(kParamExistingInstance);
+    _guessedParams = fetchBooleanParam(kParamGuessedParams);
 
 #ifdef OFX_IO_USING_OCIO
     _outputSpaceSet = fetchBooleanParam(kParamOutputSpaceSet);
@@ -257,16 +257,23 @@ GenericWriterPlugin::~GenericWriterPlugin()
 {
 }
 
+/**
+ * @brief Restore any state from the parameters set
+ * Called from createInstance() and changedParam() (via outputFileChanged()), must restore the
+ * state of the Reader, such as Choice param options, data members and non-persistent param values.
+ * We don't do this in the ctor of the plug-in since we can't call virtuals yet.
+ * Any derived implementation must call GenericWriterPlugin::restoreStateFromParams() first
+ **/
 void
-GenericWriterPlugin::restoreState()
+GenericWriterPlugin::restoreStateFromParams()
 {
     // Natron explicitly set the value of filename before instanciating a Writer.
     // We need to know if all parameters were setup already and we are just loading a project
     // or if we are creating a new Writer from scratch and need toa djust parameters.
-    bool writerExisted = _isExistingWriter->getValue();
+    bool writerExisted = _guessedParams->getValue();
     outputFileChanged(OFX::eChangePluginEdit, writerExisted, false);
     if (!writerExisted) {
-        _isExistingWriter->setValue(true);
+        _guessedParams->setValue(true);
     }
 }
 
@@ -1888,75 +1895,77 @@ GenericWriterPlugin::setOutputComponentsParam(OFX::PixelComponentEnum components
 }
 
 void
-GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason, bool restoreExistingWriter, bool throwErrors)
+GenericWriterPlugin::outputFileChanged(OFX::InstanceChangeReason reason,
+                                       bool restoreExistingWriter,
+                                       bool throwErrors)
 {
-    if (restoreExistingWriter) {
-        return;
-    }
     std::string filename;
     _fileParam->getValue(filename);
 
     if ( filename.empty() ) {
         // if the file name is set to an empty string,
-        // reset everything so that values are automatically set on next call to inputFileChanged()
-        _isExistingWriter->setValue(false);
+        // reset so that values are automatically set on next call to outputFileChanged()
+        _guessedParams->resetToDefault();
 
         return;
     }
 
-    if (!filename.empty()) {
-        {
-            std::string ext = extension(filename);
-            if (!checkExtension(ext)) {
-                if (throwErrors) {
+    // only set perstistent params if not restoring
+    bool setPersistentValues = !restoreExistingWriter && (reason == OFX::eChangeUserEdit);
 
-                    if (reason == OFX::eChangeUserEdit) {
-                        sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
-                    } else {
-                        setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
-                    }
-                    OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+    {
+        std::string ext = extension(filename);
+        if (!checkExtension(ext)) {
+            if (throwErrors) {
+
+                if (reason == OFX::eChangeUserEdit) {
+                    sendMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
                 } else {
-                    return;
+                    setPersistentMessage(OFX::Message::eMessageError, "", std::string("Unsupported file extension: ") + ext);
                 }
+                OFX::throwSuiteStatusException(kOfxStatErrImageFormat);
+            } else {
+                return;
             }
         }
+    }
 
-        bool setColorSpace = true;
+    bool setColorSpace = true;
 #     ifdef OFX_IO_USING_OCIO
-        // if outputSpaceSet == true (output space was manually set by user) then setColorSpace = false
-        if ( _outputSpaceSet->getValue() ) {
+    // if outputSpaceSet == true (output space was manually set by user) then setColorSpace = false
+    if ( _outputSpaceSet->getValue() ) {
+        setColorSpace = false;
+    }
+    // Always try to parse from string first,
+    // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+    if (setColorSpace &&_ocio->getConfig()) {
+        const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
+        if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
+            colorSpaceStr = NULL;
+        }
+        if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
+            // we're lucky
+            _ocio->setOutputColorspace(colorSpaceStr);
             setColorSpace = false;
         }
-        // Always try to parse from string first,
-        // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-        if (setColorSpace &&_ocio->getConfig()) {
-            const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString(filename.c_str());
-            if (colorSpaceStr && std::strlen(colorSpaceStr) == 0) {
-                colorSpaceStr = NULL;
-            }
-            if (colorSpaceStr && _ocio->hasColorspace(colorSpaceStr)) {
-                // we're lucky
-                _ocio->setOutputColorspace(colorSpaceStr);
-                setColorSpace = false;
-            }
-        }
+    }
 #     endif
 
-        // give the derived class a chance to initialize any data structure it may need
-        onOutputFileChanged(filename, setColorSpace);
+    // give the derived class a chance to initialize any data structure it may need
+    onOutputFileChanged(filename, setColorSpace);
 #     ifdef OFX_IO_USING_OCIO
-        _ocio->refreshInputAndOutputState(0);
+    _ocio->refreshInputAndOutputState(0);
 #     endif
 
-        if (_clipToRoD) {
-            _clipToRoD->setIsSecretAndDisabled(!displayWindowSupportedByFormat(filename));
-        }
+    if (_clipToRoD) {
+        _clipToRoD->setIsSecretAndDisabled(!displayWindowSupportedByFormat(filename));
+    }
 
 
+    if (reason == eChangeUserEdit) {
         // mark that most parameters should not be set automagically if the filename is changed
         // (the user must keep control over what happens)
-        _isExistingWriter->setValue(true);
+        _guessedParams->setValue(true);
     }
 }
 
@@ -1989,7 +1998,7 @@ GenericWriterPlugin::changedParam(const OFX::InstanceChangedArgs &args, const st
             _lastFrame->setIsSecretAndDisabled(true);
         }
     } else if (paramName == kParamFilename) {
-        outputFileChanged(args.reason, _isExistingWriter->getValue(), true);
+        outputFileChanged(args.reason, _guessedParams->getValue(), true);
     } else if (paramName == kParamFormatType) {
         FormatTypeEnum type = (FormatTypeEnum)_outputFormatType->getValue();
         if (_clipToRoD) {
@@ -2598,7 +2607,7 @@ GenericWriterDescribeInContextBegin(OFX::ImageEffectDescriptor &desc, OFX::Conte
     }
 
     {
-        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamExistingInstance);
+        BooleanParamDescriptor* param  = desc.defineBooleanParam(kParamGuessedParams);
         param->setEvaluateOnChange(false);
         param->setAnimates(false);
         param->setIsSecretAndDisabled(true);

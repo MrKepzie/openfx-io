@@ -330,12 +330,25 @@ private:
 
     virtual bool getFrameBounds(const std::string& filename, OfxTime time, OfxRectI *bounds, OfxRectI *format, double *par, std::string *error, int* tile_width, int* tile_height) OVERRIDE FINAL;
 
-    virtual void onInputFileChanged(const std::string& newFile, bool throwErrors,bool setColorSpace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) OVERRIDE FINAL;
+    /**
+     * @brief Called when the input image/video file changed.
+     *
+     * returns true if file exists and parameters successfully guessed, false in case of error.
+     *
+     * You shouldn't do any strong processing as this is called on the main thread and
+     * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+     *
+     * The colorspace may be set if available, else a default colorspace is used.
+     *
+     * You must also return the premultiplication state and pixel components of the image.
+     * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+     **/
+    virtual bool guessParamsFromFilename(const std::string& filename, std::string *colorspace, OFX::PreMultiplicationEnum *premult, OFX::PixelComponentEnum *components, int *componentCount) const OVERRIDE FINAL;
 
-    void openFile(const std::string& filename,
-                  png_structp* png,
-                  png_infop* info,
-                  std::FILE** file);
+    static void openFile(const std::string& filename,
+                         png_structp* png,
+                         png_infop* info,
+                         std::FILE** file);
 
     std::string metadata(const std::string& filename);
 };
@@ -973,13 +986,25 @@ ReadPNGPlugin::getFrameBounds(const std::string& filename,
     return true;
 }
 
-void
-ReadPNGPlugin::onInputFileChanged(const std::string& filename,
-                                  bool throwErrors,
-                                  bool setColorSpace,
-                                  OFX::PreMultiplicationEnum *premult,
-                                  OFX::PixelComponentEnum *components,
-                                  int *componentCount)
+/**
+ * @brief Called when the input image/video file changed.
+ *
+ * returns true if file exists and parameters successfully guessed, false in case of error.
+ *
+ * You shouldn't do any strong processing as this is called on the main thread and
+ * the getRegionOfDefinition() and  decode() should open the file in a separate thread.
+ *
+ * The colorspace may be set if available, else a default colorspace is used.
+ *
+ * You must also return the premultiplication state and pixel components of the image.
+ * When reading an image sequence, this is called only for the first image when the user actually selects the new sequence.
+ **/
+bool
+ReadPNGPlugin::guessParamsFromFilename(const std::string& filename,
+                                       std::string *colorspace,
+                                       OFX::PreMultiplicationEnum *premult,
+                                       OFX::PixelComponentEnum *components,
+                                       int *componentCount) const
 {
 
     assert(premult && components);
@@ -989,10 +1014,9 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
     try {
         openFile(filename, &png, &info, &file);
     } catch (const std::exception& e) {
-        setPersistentMessage(OFX::Message::eMessageError, "", e.what());
-        if (throwErrors) {
-            throwSuiteStatusException(kOfxStatFailed);
-        }
+        //setPersistentMessage(OFX::Message::eMessageError, "", e.what());
+
+        return false;
     }
 
     int x1,y1,width,height;
@@ -1008,117 +1032,115 @@ ReadPNGPlugin::onInputFileChanged(const std::string& filename,
     std::fclose(file);
     file = NULL;
 
-    if (setColorSpace) {
 #     ifdef OFX_IO_USING_OCIO
-        switch (pngColorspace) {
-            case ePNGColorSpaceGammaCorrected:
-                if (std::fabs(gamma - 1.8) < 0.05) {
-                    if (_ocio->hasColorspace("Gamma1.8")) {
-                        // nuke-default
-                        _ocio->setInputColorspace("Gamma1.8");
-                    }
-                } else if (std::fabs(gamma - 2.2) < 0.05) {
-                    if (_ocio->hasColorspace("Gamma2.2")) {
-                        // nuke-default
-                        _ocio->setInputColorspace("Gamma2.2");
-                    } else if (_ocio->hasColorspace("VD16")) {
-                        // VD16 in blender
-                        _ocio->setInputColorspace("VD16");
-                    } else if (_ocio->hasColorspace("vd16")) {
-                        // vd16 in spi-anim and spi-vfx
-                        _ocio->setInputColorspace("vd16");
-                    } else if (_ocio->hasColorspace("sRGB")) {
-                        // nuke-default and blender
-                        _ocio->setInputColorspace("sRGB");
-                    } else if (_ocio->hasColorspace("sRGB D65")) {
-                        // blender-cycles
-                        _ocio->setInputColorspace("sRGB D65");
-                    } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
-                        // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                        _ocio->setInputColorspace("sRGB (D60 sim.)");
-                    } else if (_ocio->hasColorspace("out_srgbd60sim")) {
-                        // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                        _ocio->setInputColorspace("out_srgbd60sim");
-                    } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
-                        // rrt_Gamma2.2 in aces 0.7.1
-                        _ocio->setInputColorspace("rrt_Gamma2.2");
-                    } else if (_ocio->hasColorspace("rrt_srgb")) {
-                        // rrt_srgb in aces 0.1.1
-                        _ocio->setInputColorspace("rrt_srgb");
-                    } else if (_ocio->hasColorspace("srgb8")) {
-                        // srgb8 in spi-vfx
-                        _ocio->setInputColorspace("srgb8");
-                    } else if (_ocio->hasColorspace("vd16")) {
-                        // vd16 in spi-anim
-                        _ocio->setInputColorspace("vd16");
-                    }
-
+    switch (pngColorspace) {
+        case ePNGColorSpaceGammaCorrected:
+            if (std::fabs(gamma - 1.8) < 0.05) {
+                if (_ocio->hasColorspace("Gamma1.8")) {
+                    // nuke-default
+                    *colorspace = "Gamma1.8";
                 }
-                break;
-            case ePNGColorSpacesRGB:
-                if (_ocio->hasColorspace("sRGB")) {
+            } else if (std::fabs(gamma - 2.2) < 0.05) {
+                if (_ocio->hasColorspace("Gamma2.2")) {
+                    // nuke-default
+                    *colorspace = "Gamma2.2";
+                } else if (_ocio->hasColorspace("VD16")) {
+                    // VD16 in blender
+                    *colorspace = "VD16";
+                } else if (_ocio->hasColorspace("vd16")) {
+                    // vd16 in spi-anim and spi-vfx
+                    *colorspace = "vd16";
+                } else if (_ocio->hasColorspace("sRGB")) {
                     // nuke-default and blender
-                    _ocio->setInputColorspace("sRGB");
+                    *colorspace = "sRGB";
                 } else if (_ocio->hasColorspace("sRGB D65")) {
                     // blender-cycles
-                    _ocio->setInputColorspace("sRGB D65");
+                    *colorspace = "sRGB D65";
                 } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
                     // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                    _ocio->setInputColorspace("sRGB (D60 sim.)");
+                    *colorspace = "sRGB (D60 sim.)";
                 } else if (_ocio->hasColorspace("out_srgbd60sim")) {
                     // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
-                    _ocio->setInputColorspace("out_srgbd60sim");
+                    *colorspace = "out_srgbd60sim";
                 } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
                     // rrt_Gamma2.2 in aces 0.7.1
-                    _ocio->setInputColorspace("rrt_Gamma2.2");
+                    *colorspace = "rrt_Gamma2.2";
                 } else if (_ocio->hasColorspace("rrt_srgb")) {
                     // rrt_srgb in aces 0.1.1
-                    _ocio->setInputColorspace("rrt_srgb");
+                    *colorspace = "rrt_srgb";
                 } else if (_ocio->hasColorspace("srgb8")) {
                     // srgb8 in spi-vfx
-                    _ocio->setInputColorspace("srgb8");
-                } else if (_ocio->hasColorspace("Gamma2.2")) {
-                    // nuke-default
-                    _ocio->setInputColorspace("Gamma2.2");
-                } else if (_ocio->hasColorspace("srgb8")) {
-                    // srgb8 in spi-vfx
-                    _ocio->setInputColorspace("srgb8");
+                    *colorspace = "srgb8";
                 } else if (_ocio->hasColorspace("vd16")) {
                     // vd16 in spi-anim
-                    _ocio->setInputColorspace("vd16");
+                    *colorspace = "vd16";
                 }
 
-                break;
-            case ePNGColorSpaceRec709:
-                if (_ocio->hasColorspace("Rec709")) {
-                    // nuke-default
-                    _ocio->setInputColorspace("Rec709");
-                } else if (_ocio->hasColorspace("nuke_rec709")) {
-                    // blender
-                    _ocio->setInputColorspace("nuke_rec709");
-                } else if (_ocio->hasColorspace("Rec.709 - Full")) {
-                    // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                    _ocio->setInputColorspace("Rec.709 - Full");
-                } else if (_ocio->hasColorspace("out_rec709full")) {
-                    // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                    _ocio->setInputColorspace("out_rec709full");
-                } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
-                    // rrt_rec709_full_100nits in aces 0.7.1
-                    _ocio->setInputColorspace("rrt_rec709_full_100nits");
-                } else if (_ocio->hasColorspace("rrt_rec709")) {
-                    // rrt_rec709 in aces 0.1.1
-                    _ocio->setInputColorspace("rrt_rec709");
-                } else if (_ocio->hasColorspace("hd10")) {
-                    // hd10 in spi-anim and spi-vfx
-                    _ocio->setInputColorspace("hd10");
-                }
-                break;
-            case ePNGColorSpaceLinear:
-                _ocio->setInputColorspace(OCIO::ROLE_SCENE_LINEAR);
-                break;
-        }
-#     endif
+            }
+            break;
+        case ePNGColorSpacesRGB:
+            if (_ocio->hasColorspace("sRGB")) {
+                // nuke-default and blender
+                *colorspace = "sRGB";
+            } else if (_ocio->hasColorspace("sRGB D65")) {
+                // blender-cycles
+                *colorspace = "sRGB D65";
+            } else if (_ocio->hasColorspace("sRGB (D60 sim.)")) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                *colorspace = "sRGB (D60 sim.)";
+            } else if (_ocio->hasColorspace("out_srgbd60sim")) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                *colorspace = "out_srgbd60sim";
+            } else if (_ocio->hasColorspace("rrt_Gamma2.2")) {
+                // rrt_Gamma2.2 in aces 0.7.1
+                *colorspace = "rrt_Gamma2.2";
+            } else if (_ocio->hasColorspace("rrt_srgb")) {
+                // rrt_srgb in aces 0.1.1
+                *colorspace = "rrt_srgb";
+            } else if (_ocio->hasColorspace("srgb8")) {
+                // srgb8 in spi-vfx
+                *colorspace = "srgb8";
+            } else if (_ocio->hasColorspace("Gamma2.2")) {
+                // nuke-default
+                *colorspace = "Gamma2.2";
+            } else if (_ocio->hasColorspace("srgb8")) {
+                // srgb8 in spi-vfx
+                *colorspace = "srgb8";
+            } else if (_ocio->hasColorspace("vd16")) {
+                // vd16 in spi-anim
+                *colorspace = "vd16";
+            }
+
+            break;
+        case ePNGColorSpaceRec709:
+            if (_ocio->hasColorspace("Rec709")) {
+                // nuke-default
+                *colorspace = "Rec709";
+            } else if (_ocio->hasColorspace("nuke_rec709")) {
+                // blender
+                *colorspace = "nuke_rec709";
+            } else if (_ocio->hasColorspace("Rec.709 - Full")) {
+                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                *colorspace = "Rec.709 - Full";
+            } else if (_ocio->hasColorspace("out_rec709full")) {
+                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
+                *colorspace = "out_rec709full";
+            } else if (_ocio->hasColorspace("rrt_rec709_full_100nits")) {
+                // rrt_rec709_full_100nits in aces 0.7.1
+                *colorspace = "rrt_rec709_full_100nits";
+            } else if (_ocio->hasColorspace("rrt_rec709")) {
+                // rrt_rec709 in aces 0.1.1
+                *colorspace = "rrt_rec709";
+            } else if (_ocio->hasColorspace("hd10")) {
+                // hd10 in spi-anim and spi-vfx
+                *colorspace = "hd10";
+            }
+            break;
+        case ePNGColorSpaceLinear:
+            *colorspace = OCIO::ROLE_SCENE_LINEAR;
+            break;
     }
+#     endif
 
     switch (nChannels) {
         case 1:
@@ -1197,7 +1219,7 @@ ReadPNGPluginFactory::createInstance(OfxImageEffectHandle handle,
                                      ContextEnum /*context*/)
 {
     ReadPNGPlugin* ret =  new ReadPNGPlugin(handle, _extensions);
-    ret->restoreStateFromParameters();
+    ret->restoreStateFromParams();
     return ret;
 }
 
