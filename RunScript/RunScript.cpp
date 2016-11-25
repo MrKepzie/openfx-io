@@ -149,18 +149,18 @@ unsignedToString(unsigned i)
 ////////////////////////////////////////////////////////////////////////////////
 /** @brief The plugin that does our work */
 class RunScriptPlugin
-    : public OFX::ImageEffect
+    : public ImageEffect
 {
 public:
     /** @brief ctor */
     RunScriptPlugin(OfxImageEffectHandle handle);
 
     /* Override the render */
-    virtual void render(const OFX::RenderArguments &args) OVERRIDE FINAL;
+    virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const OFX::IsIdentityArguments & /*args*/,
-                            OFX::Clip * & /*identityClip*/,
+    virtual bool isIdentity(const IsIdentityArguments & /*args*/,
+                            Clip * & /*identityClip*/,
                             double & /*identityTime*/) OVERRIDE FINAL
     {
         // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
@@ -170,37 +170,36 @@ public:
     }
 
     /* override changedParam */
-    virtual void changedParam(const OFX::InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
+    virtual void changedParam(const InstanceChangedArgs &args, const std::string &paramName) OVERRIDE FINAL;
 
     // override the rod call
-    virtual bool getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
+    virtual bool getRegionOfDefinition(const RegionOfDefinitionArguments &args, OfxRectD &rod) OVERRIDE FINAL;
 
     // override the roi call
-    virtual void getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args, OFX::RegionOfInterestSetter &rois) OVERRIDE FINAL;
+    virtual void getRegionsOfInterest(const RegionsOfInterestArguments &args, RegionOfInterestSetter &rois) OVERRIDE FINAL;
 
 private:
     void updateVisibility(void);
 
 private:
-    OFX::Clip *_srcClip[kRunScriptPluginSourceClipCount];
-    OFX::Clip *_dstClip;
-
-    OFX::IntParam *_param_count;
-    OFX::ChoiceParam *_type[kRunScriptPluginArgumentsCount];
-    OFX::StringParam *_filename[kRunScriptPluginArgumentsCount];
-    OFX::StringParam *_string[kRunScriptPluginArgumentsCount];
-    OFX::DoubleParam *_double[kRunScriptPluginArgumentsCount];
-    OFX::IntParam *_int[kRunScriptPluginArgumentsCount];
-    OFX::StringParam *_script;
-    OFX::BooleanParam *_validate;
+    Clip *_srcClip[kRunScriptPluginSourceClipCount];
+    Clip *_dstClip;
+    IntParam *_param_count;
+    ChoiceParam *_type[kRunScriptPluginArgumentsCount];
+    StringParam *_filename[kRunScriptPluginArgumentsCount];
+    StringParam *_string[kRunScriptPluginArgumentsCount];
+    DoubleParam *_double[kRunScriptPluginArgumentsCount];
+    IntParam *_int[kRunScriptPluginArgumentsCount];
+    StringParam *_script;
+    BooleanParam *_validate;
 };
 
 RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
     : ImageEffect(handle)
 {
-    if (getContext() != OFX::eContextGenerator) {
+    if (getContext() != eContextGenerator) {
         for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
-            if ( (i == 0) && (getContext() == OFX::eContextFilter) ) {
+            if ( (i == 0) && (getContext() == eContextFilter) ) {
                 _srcClip[i] = fetchClip(kOfxImageEffectSimpleSourceClipName);
             } else {
                 const std::string istr = unsignedToString(i + 1);
@@ -231,12 +230,12 @@ RunScriptPlugin::RunScriptPlugin(OfxImageEffectHandle handle)
 }
 
 void
-RunScriptPlugin::render(const OFX::RenderArguments &args)
+RunScriptPlugin::render(const RenderArguments &args)
 {
     DBG(std::cout << "rendering time " << args.time << " scale " << args.renderScale.x << ',' << args.renderScale.y << " window " << args.renderWindow.x1 << ',' << args.renderWindow.y1 << " - " << args.renderWindow.x2 << ',' << args.renderWindow.y2 << " field " << (int)args.fieldToRender << " view " << args.renderView << std::endl);
 
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -244,8 +243,8 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     bool validated;
     _validate->getValue(validated);
     if (!validated) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "Validate the script before rendering/running.");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", "Validate the script before rendering/running.");
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -254,17 +253,17 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // since it may trigger render actions upstream
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
         if ( _srcClip[i]->isConnected() ) {
-            std::auto_ptr<const OFX::Image> srcImg( _srcClip[i]->fetchImage(args.time) );
+            std::auto_ptr<const Image> srcImg( _srcClip[i]->fetchImage(args.time) );
             if ( !srcImg.get() ) {
-                OFX::throwSuiteStatusException(kOfxStatFailed);
+                throwSuiteStatusException(kOfxStatFailed);
 
                 return;
             }
             if ( (srcImg->getRenderScale().x != args.renderScale.x) ||
                  ( srcImg->getRenderScale().y != args.renderScale.y) ||
                  ( srcImg->getField() != args.fieldToRender) ) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
+                setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                throwSuiteStatusException(kOfxStatFailed);
 
                 return;
             }
@@ -275,22 +274,22 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // or the host may think we couldn't render.
     // Nuke executes hundreds of render() if we don't.
     if (!_dstClip) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
     assert(_dstClip);
-    std::auto_ptr<OFX::Image> dstImg( _dstClip->fetchImage(args.time) );
+    std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
     if ( !dstImg.get() ) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
     if ( (dstImg->getRenderScale().x != args.renderScale.x) ||
          ( dstImg->getRenderScale().y != args.renderScale.y) ||
          ( dstImg->getField() != args.fieldToRender) ) {
-        setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -302,7 +301,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // coverity[secure_temp]
     int fd = mkstemp(scriptname); // modifies template
     if (fd < 0) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -311,7 +310,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     ssize_t s = write( fd, script.c_str(), script.size() );
     close(fd);
     if (s < 0) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -319,7 +318,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // make the script executable
     int stat = chmod(scriptname, S_IRWXU);
     if (stat != 0) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -336,7 +335,7 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
         int t_int;
         _type[i]->getValue(t_int);
         ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
-        OFX::ValueParam *p = NULL;
+        ValueParam *p = NULL;
         switch (t) {
         case eRunScriptPluginParamTypeFilename: {
             std::string s;
@@ -396,22 +395,22 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
     // now copy the first input to output
 
     if ( _dstClip->isConnected() ) {
-        std::auto_ptr<OFX::Image> dstImg( _dstClip->fetchImage(args.time) );
+        std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
         if ( !dstImg.get() ) {
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+            throwSuiteStatusException(kOfxStatFailed);
 
             return;
         }
         if ( (dstImg->getRenderScale().x != args.renderScale.x) ||
              ( dstImg->getRenderScale().y != args.renderScale.y) ||
              ( dstImg->getField() != args.fieldToRender) ) {
-            setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-            OFX::throwSuiteStatusException(kOfxStatFailed);
+            setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+            throwSuiteStatusException(kOfxStatFailed);
 
             return;
         }
 
-        std::auto_ptr<const OFX::Image> srcImg( _srcClip[0]->fetchImage(args.time) );
+        std::auto_ptr<const Image> srcImg( _srcClip[0]->fetchImage(args.time) );
 
         if ( !srcImg.get() ) {
             // fill output with black
@@ -420,8 +419,8 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
             if ( (srcImg->getRenderScale().x != args.renderScale.x) ||
                  ( srcImg->getRenderScale().y != args.renderScale.y) ||
                  ( srcImg->getField() != args.fieldToRender) ) {
-                setPersistentMessage(OFX::Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
-                OFX::throwSuiteStatusException(kOfxStatFailed);
+                setPersistentMessage(Message::eMessageError, "", "OFX Host gave image with wrong scale or field properties");
+                throwSuiteStatusException(kOfxStatFailed);
 
                 return;
             }
@@ -433,13 +432,13 @@ RunScriptPlugin::render(const OFX::RenderArguments &args)
 } // RunScriptPlugin::render
 
 void
-RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args,
+RunScriptPlugin::changedParam(const InstanceChangedArgs &args,
                               const std::string &paramName)
 {
     DBG(std::cout << "changed param " << paramName << " at time " << args.time << " reason = " << (int)args.reason <<  std::endl);
 
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -472,7 +471,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         clearPersistentMessage();
     } else {
         for (int i = 0; i < param_count; ++i) {
-            if ( ( paramName == _type[i]->getName() ) && (args.reason == OFX::eChangeUserEdit) ) {
+            if ( ( paramName == _type[i]->getName() ) && (args.reason == eChangeUserEdit) ) {
                 int t_int;
                 _type[i]->getValue(t_int);
                 ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
@@ -488,7 +487,7 @@ RunScriptPlugin::changedParam(const OFX::InstanceChangedArgs &args,
         int t_int;
         _type[i]->getValue(t_int);
         ERunScriptPluginParamType t = (ERunScriptPluginParamType)t_int;
-        OFX::ValueParam *p = NULL;
+        ValueParam *p = NULL;
         switch (t) {
         case eRunScriptPluginParamTypeFilename: {
             std::string s;
@@ -577,11 +576,11 @@ RunScriptPlugin::updateVisibility(void)
 
 // override the roi call
 void
-RunScriptPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &args,
-                                      OFX::RegionOfInterestSetter &rois)
+RunScriptPlugin::getRegionsOfInterest(const RegionsOfInterestArguments &args,
+                                      RegionOfInterestSetter &rois)
 {
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
 
         return;
     }
@@ -600,11 +599,11 @@ RunScriptPlugin::getRegionsOfInterest(const OFX::RegionsOfInterestArguments &arg
 }
 
 bool
-RunScriptPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &args,
+RunScriptPlugin::getRegionOfDefinition(const RegionOfDefinitionArguments &args,
                                        OfxRectD & /*rod*/)
 {
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
-        OFX::throwSuiteStatusException(kOfxStatFailed);
+        throwSuiteStatusException(kOfxStatFailed);
     }
 
     // use the default RoD
@@ -613,7 +612,7 @@ RunScriptPlugin::getRegionOfDefinition(const OFX::RegionOfDefinitionArguments &a
 
 mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
 void
-RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
+RunScriptPluginFactory::describe(ImageEffectDescriptor &desc)
 {
     DBG(std::cout << "describing!\n");
     // basic labels
@@ -645,12 +644,12 @@ RunScriptPluginFactory::describe(OFX::ImageEffectDescriptor &desc)
 }
 
 void
-RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
-                                          OFX::ContextEnum context)
+RunScriptPluginFactory::describeInContext(ImageEffectDescriptor &desc,
+                                          ContextEnum context)
 {
     DBG(std::cout << "describing in context " << (int)context << std::endl);
 
-    const ImageEffectHostDescription &gHostDescription = *OFX::getImageEffectHostDescription();
+    const ImageEffectHostDescription &gHostDescription = *getImageEffectHostDescription();
     bool hostIsNuke = (gHostDescription.hostName.find("nuke") != std::string::npos ||
                        gHostDescription.hostName.find("Nuke") != std::string::npos);
 
@@ -818,9 +817,9 @@ RunScriptPluginFactory::describeInContext(OFX::ImageEffectDescriptor &desc,
     }
 } // RunScriptPluginFactory::describeInContext
 
-OFX::ImageEffect*
+ImageEffect*
 RunScriptPluginFactory::createInstance(OfxImageEffectHandle handle,
-                                       OFX::ContextEnum /*context*/)
+                                       ContextEnum /*context*/)
 {
     return new RunScriptPlugin(handle);
 }
