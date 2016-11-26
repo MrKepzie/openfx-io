@@ -428,8 +428,6 @@ private:
     const std::vector<std::string>& _extensions;
 
 private:
-    OfxRangeI _sequenceRange; // updated in restorestate
-    bool _sequenceRangeSet;
     const bool _supportsRGBA;
     const bool _supportsRGB;
     const bool _supportsXY;

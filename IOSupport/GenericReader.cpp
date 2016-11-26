@@ -296,7 +296,6 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     , _sublabel(0)
     , _guessedParams(0)
     , _extensions(extensions)
-    , _sequenceRangeSet(false)
     , _supportsRGBA(supportsRGBA)
     , _supportsRGB(supportsRGB)
     , _supportsXY(supportsXY)
