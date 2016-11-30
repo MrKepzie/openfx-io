@@ -443,7 +443,7 @@ private:
         if (!staticSeed) {
             clipPreferences.setOutputFrameVarying(true);
         }
-        clipPreferences.setOutputHasContinousSamples(true);
+        clipPreferences.setOutputHasContinuousSamples(true);
     }
 
 private:

@@ -673,7 +673,7 @@ private:
         _noiseZSlope->getValue(noiseZSlope);
         if (noiseZSlope != 0.) {
             clipPreferences.setOutputFrameVarying(true);
-            clipPreferences.setOutputHasContinousSamples(true);
+            clipPreferences.setOutputHasContinuousSamples(true);
         }
     }
 
