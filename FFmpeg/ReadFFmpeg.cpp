@@ -603,7 +603,7 @@ ReadFFmpegPluginFactory::load()
     _extensions.clear();
 #if 0
     // hard-coded extensions list
-    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    const char* extensionsl[] = { "avi", "flv", "mkv", "mov", "mp4", "mpg", "m2ts", "mts", "ts", "mxf", "ogv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     for (const char** ext = extensionsl; *ext != NULL; ++ext) {
         _extensions.push_back(*ext);
     }
@@ -651,6 +651,7 @@ ReadFFmpegPluginFactory::load()
     extensionsl.push_back("mts"); // mpegts (MPEG-TS (MPEG-2 Transport Stream))
     extensionsl.push_back("ts"); // mpegts (MPEG-TS (MPEG-2 Transport Stream))
     extensionsl.push_back("mxf"); // mxf (MXF (Material eXchange Format))
+    extensionsl.push_back("ogv"); // ogv (Ogg Video)
 
     // remove audio and subtitle-only formats
     const char* extensions_blacklist[] = {
