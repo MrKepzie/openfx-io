@@ -1397,7 +1397,7 @@ SeNoisePluginFactory::describeInContext(ImageEffectDescriptor &desc,
             group->setHint(kPageTransformHint);
             group->setOpen(false);
         }
-        ofxsTransformDescribeParams(desc, subpage, group, /*isOpen=*/ false, /*oldParams=*/ false);
+        ofxsTransformDescribeParams(desc, subpage, group, /*isOpen=*/ false, /*oldParams=*/ false, /*hasAmount=*/true, /*noTranslate=*/false);
         {
             DoubleParamDescriptor* param = desc.defineDoubleParam(kParamXRotate);
             param->setLabel(kParamXRotateLabel);
