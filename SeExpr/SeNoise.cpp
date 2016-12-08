@@ -615,6 +615,7 @@ public:
         _skewY = fetchDoubleParam(kParamTransformSkewY);
         _skewOrder = fetchChoiceParam(kParamTransformSkewOrder);
         _center = fetchDouble2DParam(kParamTransformCenter);
+        _centerChanged = fetchBooleanParam(kParamTransformCenterChanged);
         _transformInteractOpen = fetchBooleanParam(kParamTransformInteractOpen);
         _transformInteractive = fetchBooleanParam(kParamTransformInteractive);
         assert(_translate && _rotate && _scale && _scaleUniform && _skewX && _skewY && _skewOrder && _center && _transformInteractive);
@@ -676,6 +677,9 @@ private:
             clipPreferences.setOutputHasContinuousSamples(true);
         }
     }
+    virtual void changedClip(const InstanceChangedArgs &args, const std::string &clipName) OVERRIDE FINAL;
+
+    void resetCenter(double time);
 
 private:
     // do not need to delete these, the ImageEffect is managing them for us
@@ -712,6 +716,7 @@ private:
     DoubleParam* _skewY;
     ChoiceParam* _skewOrder;
     Double2DParam* _center;
+    BooleanParam* _centerChanged;
     BooleanParam* _transformInteractOpen;
     BooleanParam* _transformInteractive;
     DoubleParam* _xRotate;
@@ -1047,6 +1052,97 @@ SeNoisePlugin::isIdentity(const IsIdentityArguments &args,
 } // SeNoisePlugin::isIdentity
 
 void
+SeNoisePlugin::resetCenter(double time)
+{
+    if (!_srcClip) {
+        return;
+    }
+    OfxRectD rod = _srcClip->getRegionOfDefinition(time);
+    if ( (rod.x1 <= kOfxFlagInfiniteMin) || (kOfxFlagInfiniteMax <= rod.x2) ||
+        ( rod.y1 <= kOfxFlagInfiniteMin) || ( kOfxFlagInfiniteMax <= rod.y2) ) {
+        return;
+    }
+    if ( Coords::rectIsEmpty(rod) ) {
+        // default to project window
+        OfxPointD offset = getProjectOffset();
+        OfxPointD size = getProjectSize();
+        rod.x1 = offset.x;
+        rod.x2 = offset.x + size.x;
+        rod.y1 = offset.y;
+        rod.y2 = offset.y + size.y;
+    }
+    double currentRotation = 0.;
+    if (_rotate) {
+        _rotate->getValueAtTime(time, currentRotation);
+    }
+    double rot = ofxsToRadians(currentRotation);
+    double skewX = 0.;
+    double skewY = 0.;
+    int skewOrder = 0;
+    if (_skewX) {
+        _skewX->getValueAtTime(time, skewX);
+    }
+    if (_skewY) {
+        _skewY->getValueAtTime(time, skewY);
+    }
+    if (_skewOrder) {
+        _skewOrder->getValueAtTime(time, skewOrder);
+    }
+
+    OfxPointD scaleParam = { 1., 1. };
+    if (_scale) {
+        _scale->getValueAtTime(time, scaleParam.x, scaleParam.y);
+    }
+    bool scaleUniform = true;
+    if (_scaleUniform) {
+        _scaleUniform->getValueAtTime(time, scaleUniform);
+    }
+
+    OfxPointD scale = { 1., 1. };
+    ofxsTransformGetScale(scaleParam, scaleUniform, &scale);
+
+    OfxPointD translate = {0., 0. };
+    if (_translate) {
+        _translate->getValueAtTime(time, translate.x, translate.y);
+    }
+    OfxPointD center = {0., 0. };
+    if (_center) {
+        _center->getValueAtTime(time, center.x, center.y);
+    }
+
+    Matrix3x3 Rinv = ( ofxsMatRotation(-rot) *
+                      ofxsMatSkewXY(skewX, skewY, skewOrder) *
+                      ofxsMatScale(scale.x, scale.y) );
+    OfxPointD newCenter;
+    newCenter.x = (rod.x1 + rod.x2) / 2;
+    newCenter.y = (rod.y1 + rod.y2) / 2;
+    beginEditBlock("resetCenter");
+    if (_center) {
+        _center->setValue(newCenter.x, newCenter.y);
+    }
+    if (_translate) {
+        double dxrot = newCenter.x - center.x;
+        double dyrot = newCenter.y - center.y;
+        Point3D dRot;
+        dRot.x = dxrot;
+        dRot.y = dyrot;
+        dRot.z = 1;
+        dRot = Rinv * dRot;
+        if (dRot.z != 0) {
+            dRot.x /= dRot.z;
+            dRot.y /= dRot.z;
+        }
+        double dx = dRot.x;
+        double dy = dRot.y;
+        OfxPointD newTranslate;
+        newTranslate.x = translate.x + dx - dxrot;
+        newTranslate.y = translate.y + dy - dyrot;
+        _translate->setValue(newTranslate.x, newTranslate.y);
+    }
+    endEditBlock();
+} // SeNoisePlugin::resetCenter
+
+void
 SeNoisePlugin::changedParam(const InstanceChangedArgs &args,
                             const string &paramName)
 {
@@ -1094,6 +1190,24 @@ SeNoisePlugin::changedParam(const InstanceChangedArgs &args,
         _point1->setIsSecretAndDisabled(noramp);
         _rampInteractOpen->setIsSecretAndDisabled(noramp);
         _rampInteractive->setIsSecretAndDisabled(noramp);
+    } else if (paramName == kParamTransformResetCenter) {
+        resetCenter(args.time);
+        _centerChanged->setValue(false);
+    } else if ( (paramName == kParamTransformCenter) &&
+                ( (args.reason == eChangeUserEdit) || (args.reason == eChangePluginEdit) ) ) {
+        _centerChanged->setValue(true);
+    }
+}
+
+void
+SeNoisePlugin::changedClip(const InstanceChangedArgs &args,
+                           const std::string &clipName)
+{
+    if ( (clipName == kOfxImageEffectSimpleSourceClipName) &&
+         _srcClip && _srcClip->isConnected() &&
+         !_centerChanged->getValueAtTime(args.time) &&
+         ( args.reason == eChangeUserEdit) ) {
+        resetCenter(args.time);
     }
 }
 
