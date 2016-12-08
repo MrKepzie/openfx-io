@@ -861,8 +861,12 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor,
     _processA->getValueAtTime(time, processA);
     _replace->getValueAtTime(time, replace);
 
-    Matrix3x3 sizeMat(1. / args.renderScale.x / noiseSize.x, 0., 0.,
-                      0., 1. / args.renderScale.x / noiseSize.y, 0.,
+    double par = _dstClip->getPixelAspectRatio();
+    Matrix3x3 toCanonicalMat(par / args.renderScale.x, 0., 0.5 * par / args.renderScale.x,
+                             0., 1. / args.renderScale.x, 0.5 / args.renderScale.y,
+                             0., 0., 1);
+    Matrix3x3 sizeMat(1. / noiseSize.x, 0., 0.,
+                      0., 1. / noiseSize.y, 0.,
                       0., 0., noiseZ + time * noiseZSlope);
     Matrix3x3 invtransform;
     getInverseTransformCanonical(time, &invtransform);
@@ -890,7 +894,7 @@ SeNoisePlugin::setupAndProcess(SeNoiseProcessorBase &processor,
                         voronoiType, jitter, fbmScale,
 #endif
                         octaves, lacunarity, gain,
-                        rotY * rotX * sizeMat * invtransform,
+                        rotY * rotX * sizeMat * invtransform * toCanonicalMat,
                         type, point0, color0, point1, color1);
     processor.process();
 } // SeNoisePlugin::setupAndProcess
