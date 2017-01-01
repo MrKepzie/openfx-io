@@ -445,7 +445,7 @@ CreateCodecKnobLabelsMap()
     m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // disabled in whitelist (does not work will all sizes)
 
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
-    m["mjpeg"]         = "jpeg\tMotion JPEG";
+    m["mjpeg"]         = "jpeg\tPhoto JPEG";
     m["mpeg1video"]    = "m1v \tMPEG-1 Video"; // disabled in whitelist (random blocks)
     m["mpeg2video"]    = "m2v1\tMPEG-2 Video";
     m["mpeg4"]         = "mp4v\tMPEG-4 Video";
@@ -3299,6 +3299,10 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
             av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
         }
 #endif
+        if (codecId == AV_CODEC_ID_MJPEG) {
+            // vendor should be ap10 (Apple) according to https://trac.ffmpeg.org/wiki/Encode/VFX#PhotoJPEG
+            av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
+        }
 
         // Activate multithreaded decoding. This must be done before opening the codec; see
         // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
