@@ -582,7 +582,12 @@ GenericOCIO::isIdentity(double time) const
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if (!_config) {
-        return true;
+        string filename;
+        _ocioConfigFile->getValue(filename);
+        _parent->setPersistentMessage( Message::eMessageError, "", "Invalid OCIO config. file \"" + filename + "\"" );
+        throwSuiteStatusException(kOfxStatFailed);
+
+        return false;
     }
     string inputSpace;
     getInputColorspaceAtTime(time, inputSpace);
@@ -861,6 +866,9 @@ GenericOCIO::apply(double time,
 
     OCIO::ConstProcessorRcPtr proc = getOrCreateProcessor(time);
     if (!proc) {
+        _parent->setPersistentMessage( Message::eMessageError, "", "Cannot create OCIO processor" );
+        throwSuiteStatusException(kOfxStatFailed);
+
         return;
     }
 
