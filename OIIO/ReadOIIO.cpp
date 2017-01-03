@@ -2067,16 +2067,18 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                     if (!validRange) {
                         // If the tile range is invalid, expand to the closest enclosing valid tile range.
 
-                        tiledXBegin = std::max(spec.x, (int)std::floor( ( (double)xbeginClamped )  / spec.tile_width ) * spec.tile_width);
-                        tiledYBegin = std::max(spec.y, (int)std::floor( ( (double)ybeginClamped )  / spec.tile_height ) * spec.tile_height);
-                        tiledXEnd = std::min(spec.x + spec.width, (int)std::ceil( ( (double)xendClamped )  / spec.tile_width ) * spec.tile_width);
-                        tiledYEnd = std::min(spec.y + spec.height, (int)std::ceil( ( (double)yendClamped )  / spec.tile_height ) * spec.tile_height);
+                        // xBegin must be at a valid multiple of tile_width from spec.x
+                        tiledXBegin = spec.x +  (int)std::floor((double)(xbeginClamped - spec.x) / spec.tile_width ) * spec.tile_width;
 
-                        // Check that the original range is contained in the tile range
-                        assert(tiledXBegin <= xbeginClamped &&
-                               tiledYBegin <= ybeginClamped &&
-                               tiledXEnd >= xendClamped &&
-                               tiledYEnd >= yendClamped);
+                        // yBegin must be at a valid multiple of tile_height from spec.y
+                        tiledYBegin = spec.y + (int)std::floor((double)(ybeginClamped - spec.y) / spec.tile_height ) * spec.tile_height;
+
+                        // xEnd must be at a valid multiple of tile_width from xBegin
+                        tiledXEnd = tiledXBegin + (int)std::ceil((double)(xendClamped - xbeginClamped)  / spec.tile_width ) * spec.tile_width;
+
+                        // yEnd must be at a valid multiple of tile_height from yBegin
+                        tiledYEnd = tiledYBegin + (int)std::ceil((double)(yendClamped - ybeginClamped) / spec.tile_height ) * spec.tile_height;
+
 
                         // Check that we made up a correct tile range
                         assert( spec.valid_tile_range(tiledXBegin, tiledXEnd, tiledYBegin, tiledYEnd, zbegin, zend) );
@@ -2124,7 +2126,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         // This points to the start of the first pixel of the last scan-line of the render window
                         char* dst_pix = (char*)lastScanLineStarPtr;
 
-                        // This is the number
+                        // This is the number of bytes in the final buffer that we want per scan-line
                         std::size_t outputBufferSizeToCopy = (xendClamped - xbeginClamped) * pixelBytes;
 
                         // Copy each scan-line from our temporary buffer to the final buffer. Since each buffer is pointing to the last
@@ -2143,6 +2145,14 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                              src_pix -= tiledBufferRowSize,
                              dst_pix -= rowBytes) {
                             memcpy(dst_pix, src_pix, outputBufferSizeToCopy);
+                            {
+                                const char* tmp = src_pix;
+                                const char* endTmp = tmp + outputBufferSizeToCopy;
+                                while (tmp < endTmp) {
+                                    assert(*tmp == *tmp);
+                                    ++tmp;
+                                }
+                            }
                         }
                         free(tiledBufferToFree);
                     }
