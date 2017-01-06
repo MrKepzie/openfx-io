@@ -2,7 +2,7 @@
    OFX I/O utility functions.
    Adds OpenColorIO functionality to any plugin.
 
-   Copyright (C) 2014 INRIA
+   Copyright (C) 2013-2017 INRIA
    Author: Frederic Devernay <frederic.devernay@inria.fr>
 
    Redistribution and use in source and binary forms, with or without modification,
