@@ -157,7 +157,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kParamFPS "fps"
 #define kParamFPSLabel "FPS"
-#define kParamFPSHint "File frame rate"
+#define kParamFPSHint "File frame rate"
 
 #define kParamResetFPS "resetFps"
 #define kParamResetFPSLabel "Reset FPS"
@@ -189,7 +189,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
     "The target bitrate the codec will attempt to reach (in Megabits/s), within the confines of the bitrate tolerance and " \
-    "quality min/max settings. Only supported by certain codecs (e.g. hev1, m2v1, MP42, 3IVD, but not mp4v, avc1 or H264).\n" \
+    "quality min/max settings. Only supported by certain codecs (e.g. hev1, m2v1, MP42, 3IVD, but not mp4v, avc1 or H264).\n" \
     "Option -b in ffmpeg (multiplied by 1000000)."
 #define kParamBitrateDefault 185
 #define kParamBitrateMax 4000

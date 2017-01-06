@@ -85,11 +85,11 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamChannelSelectorOptionB "B"
 #define kParamChannelSelectorOptionBHint "Blue."
 #define kParamChannelSelectorOptionA "A"
-#define kParamChannelSelectorOptionAHint "Alpha."
+#define kParamChannelSelectorOptionAHint "Alpha."
 #define kParamChannelSelectorOptionLuminance "Luminance"
 #define kParamChannelSelectorOptionLuminanceHint "Luma"
 #define kParamChannelSelectorOptionMatteOverlay "Matte overlay"
-#define kParamChannelSelectorOptionMatteOverlayHint "Channel overlay mode. Do RGB, and then swizzle later."
+#define kParamChannelSelectorOptionMatteOverlayHint "Channel overlay mode. Do RGB, and then swizzle later."
 enum ChannelSelectorEnum
 {
     eChannelSelectorRGB,
