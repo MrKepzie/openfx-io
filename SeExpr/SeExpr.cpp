@@ -153,14 +153,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "- 0: impulse - (nearest neighbor / box) Use original values\n" \
     "- 1: bilinear - (tent / triangle) Bilinear interpolation between original values\n" \
     "- 2: cubic - (cubic spline) Some smoothing\n" \
-    "- 3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (*)\n" \
-    "- 4: Simon - Some smoothing, plus medium sharpening (\*)\n" \
-    "- 5: Rifman - Some smoothing, plus significant sharpening (\*)\n" \
-    "- 6: Mitchell - Some smoothing, plus blurring to hide pixelation (\*\+)\n" \
-    "- 7: Parzen - (cubic B-spline) Greatest smoothing of all filters (\+)\n" \
-    "- 8: notch - Flat smoothing (which tends to hide moire' patterns) (\+)\n" \
+    "- 3: Keys - (Catmull-Rom / Hermite spline) Some smoothing, plus minor sharpening (\\*)\n" \
+    "- 4: Simon - Some smoothing, plus medium sharpening (\\*)\n" \
+    "- 5: Rifman - Some smoothing, plus significant sharpening (\\*)\n" \
+    "- 6: Mitchell - Some smoothing, plus blurring to hide pixelation (\\*\\+)\n" \
+    "- 7: Parzen - (cubic B-spline) Greatest smoothing of all filters (\\+)\n" \
+    "- 8: notch - Flat smoothing (which tends to hide moire' patterns) (\\+)\n" \
     "\n" \
-    "Some filters may produce values outside of the initial range (\*) or modify the values even at integer positions (\+).\n" \
+    "Some filters may produce values outside of the initial range (\\*) or modify the values even at integer positions (\\+).\n" \
     "\n" \
     "### Sample scripts\n" \
     "\n" \
