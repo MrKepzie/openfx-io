@@ -191,7 +191,7 @@ enum MissingEnum
     "- UnPremultiplied, means that red, green and blue channels are not modified " \
     "before applying the colorspace conversion, and are multiplied by alpha after colorspace conversion.\n" \
     "This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file metadata.\n" \
-    "RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter).\n"
+    "RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter)."
 #define kParamFilePremultOptionOpaqueHint \
     "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
 #define kParamFilePremultOptionPreMultipliedHint \

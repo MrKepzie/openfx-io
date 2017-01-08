@@ -244,7 +244,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "        src = [0,0,0];\n" \
     "    }\n" \
     "\n" \
-    "If one of these conditions does not hold, all frames from the specified input frame range are asked for.\n"
+    "If one of these conditions does not hold, all frames from the specified input frame range are asked for."
 #define kPluginDescription kPluginDescriptionHead kPluginDescriptionMid kPluginDescriptionFoot
 #define kPluginDescriptionSimple kPluginDescriptionHead kPluginDescriptionMidSimple kPluginDescriptionFoot
 

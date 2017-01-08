@@ -105,7 +105,7 @@ using std::string;
 #define kParamEnableGPUHint \
     "Enable GPU-based OpenGL render.\n" \
     "If the checkbox is checked but is not enabled (i.e. it cannot be unchecked), GPU render can not be enabled or disabled from the plugin and is probably part of the host options.\n" \
-    "If the checkbox is not checked and is not enabled (i.e. it cannot be checked), GPU render is not available on this host.\n"
+    "If the checkbox is not checked and is not enabled (i.e. it cannot be checked), GPU render is not available on this host."
 #endif
 
 namespace OCIO = OCIO_NAMESPACE;
