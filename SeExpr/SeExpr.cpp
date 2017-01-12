@@ -181,7 +181,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "*SeExprSimple:*\n" \
     "\n" \
     "    r*r2\n" \
-    "    g*g2" \
+    "    g*g2\n" \
     "    b*b2\n" \
     "    a+a2-a*a2\n" \
     "\n" \
