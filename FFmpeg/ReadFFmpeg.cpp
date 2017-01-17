@@ -287,6 +287,7 @@ ReadFFmpegPlugin::decode(const string& filename,
 
         return;
     }
+    clearPersistentMessage();
 
     /// we only support RGB or RGBA output clip
     if ( (pixelComponents != ePixelComponentRGB) &&
