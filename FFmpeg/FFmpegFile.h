@@ -271,37 +271,6 @@ private:
         }
     };
 
-    struct MyAVPacket : public AVPacket
-    {
-    public:
-        MyAVPacket()
-        : wasPacketDecoded(false)
-        {
-            InitPacket();
-        }
-        ~MyAVPacket()
-        {
-            FreePacket();
-        }
-
-    public:
-        void InitPacket()
-        {
-            data = NULL;
-            size = 0;
-
-            av_init_packet(this);
-        }
-        void FreePacket()
-        {
-            wasPacketDecoded = false;
-            
-            av_packet_unref(this); //av_free_packet(this);
-        }
-        
-        bool wasPacketDecoded;
-    };
-
     std::string _filename;
 
     // AV structure
@@ -314,7 +283,7 @@ private:
     // reader error state
     std::string _errorMsg;  // internal decoding error string
     bool _invalidState;     // true if the reader is in an invalid state
-    MyAVPacket _avPacket;
+    AVPacket _avPacket;
 
 #ifdef OFX_IO_MT_FFMPEG
     // internal lock for multithread access
