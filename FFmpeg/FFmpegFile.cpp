@@ -476,24 +476,31 @@ FFmpegFile::getStreamStartTime(Stream & stream)
         // Seek 1st key-frame in video stream.
         avcodec_flush_buffers(stream._codecContext);
 
+        // Here, avPacket needs to be local as we don't need to keep any information outside this function context.
+        // Do not replace this with _avPacket, which is global, because _avPacket is associated with the playback process
+        // and that may produces inconsistencies. _avPacket is now used only in the |decode| method and we need to ensure
+        // that it remains valid even after we get out of the |decode| method context, because the information stored by
+        // _avPacket may be displayed on the screen for multiple frames. Please have a look at TP 162892 for more information
+        // https://foundry.tpondemand.com/entity/162892
+        AVPacket avPacket;
         if (av_seek_frame(_context, stream._idx, 0, 0) >= 0) {
-            av_init_packet(&_avPacket);
+            av_init_packet(&avPacket);
 
             // Read frames until we get one for the video stream that contains a valid PTS.
             do {
-                if (av_read_frame(_context, &_avPacket) < 0) {
+                if (av_read_frame(_context, &avPacket) < 0) {
                     // Read error or EOF. Abort search for PTS.
 #if TRACE_FILE_OPEN
                     std::cout << "          Read error, aborted search" << std::endl;
 #endif
                     break;
                 }
-                if (_avPacket.stream_index == stream._idx) {
+                if (avPacket.stream_index == stream._idx) {
                     // Packet read for video stream. Get its PTS. Loop will continue if the PTS is AV_NOPTS_VALUE.
-                    startPTS = _avPacket.pts;
+                    startPTS = avPacket.pts;
                 }
 
-                av_packet_unref(&_avPacket);
+                av_packet_unref(&avPacket); // av_free_packet(&avPacket)
             } while ( startPTS ==  int64_t(AV_NOPTS_VALUE) );
         }
 #if TRACE_FILE_OPEN
@@ -510,8 +517,11 @@ FFmpegFile::getStreamStartTime(Stream & stream)
     }
 
     // If we still don't have a valid initial PTS, assume 0. (This really shouldn't happen for any real media file, as
-    // it would make meaningful playback presentation timing and seeking impossible.)
-    if ( startPTS ==  int64_t(AV_NOPTS_VALUE) ) {
+    // it would make meaningful playback presentation timing and seeking impossible.);
+    // TP 162519 - We discard the samples with a negative timestamp to make mov64 match the Quick Time Player;
+    // For more information please have a look at TP 162519
+    const bool isStartPTSValid = (startPTS != int64_t(AV_NOPTS_VALUE)) && (startPTS >= 0);
+    if (!isStartPTSValid) {
 #if TRACE_FILE_OPEN
         std::cout << "        Not found by searching frames, assuming ";
 #endif
@@ -619,13 +629,20 @@ FFmpegFile::getStreamFrames(Stream & stream)
         av_seek_frame(_context, stream._idx, stream.frameToPts(1 << 29), AVSEEK_FLAG_BACKWARD);
 
         // Read up to last frame, extending max PTS for every valid PTS value found for the video stream.
-        av_init_packet(&_avPacket);
+        AVPacket avPacket;
+        // Here, avPacket needs to be local as we don't need to keep any information outside this function context.
+        // Do not replace this with _avPacket, which is global, because _avPacket is associated with the playback process
+        // and that may produces inconsistencies. _avPacket is now used only in the |decode| method and we need to ensure
+        // that it remains valid even after we get out of the |decode| method context, because the information stored by
+        // _avPacket may be displayed on the screen for multiple frames. Please have a look at TP 162892 for more information
+        // https://foundry.tpondemand.com/entity/162892
+        av_init_packet(&avPacket);
 
-        while (av_read_frame(_context, &_avPacket) >= 0) {
-            if ( (_avPacket.stream_index == stream._idx) && ( _avPacket.pts != int64_t(AV_NOPTS_VALUE) ) && (_avPacket.pts > maxPts) ) {
-                maxPts = _avPacket.pts;
+        while (av_read_frame(_context, &avPacket) >= 0) {
+            if ( (avPacket.stream_index == stream._idx) && ( avPacket.pts != int64_t(AV_NOPTS_VALUE) ) && (avPacket.pts > maxPts) ) {
+                maxPts = avPacket.pts;
             }
-            av_packet_unref(&_avPacket);
+            av_packet_unref(&avPacket); // av_free_packet(&avPacket)
         }
 #if TRACE_FILE_OPEN
         std::cout << "          Start PTS=" << stream._startPTS << ", Max PTS found=" << maxPts << std::endl;
@@ -1130,14 +1147,14 @@ FFmpegFile::decode(const ImageEffect* plugin,
         if ( !seekFrame(desiredFrame, stream) ) {
             return false;
         }
+        // We can't be re-using the existing _avPacket data because we've just had to seek
+        _avPacket.FreePacket();
     }
 #if TRACE_DECODE_PROCESS
     else {
         std::cout << "  Next frame expected out=" << stream->_decodeNextFrameOut << ", No seek required" << std::endl;
     }
 #endif
-
-    av_init_packet(&_avPacket);
 
     // Loop until the desired frame has been decoded. May also break from within loop on failure conditions where the
     // desired frame will never be decoded.
@@ -1159,7 +1176,21 @@ FFmpegFile::decode(const ImageEffect* plugin,
             }
 #endif
 
-            int error = av_read_frame(_context, &_avPacket);
+            int error = 0;
+            // Check if the packet is within the decompression range (dts - decompression timestamp)
+            const int64_t currentFramePts = stream->frameToPts(frame);
+            const bool isPacketValid = (_avPacket.data != NULL) && (_avPacket.stream_index == stream->_idx);
+            const bool isCurrentPacketInRange = isPacketValid && (_avPacket.dts + _avPacket.duration > currentFramePts) && (currentFramePts >= _avPacket.dts);
+            // If the actual packet is invalid (data == NULL) or it's not within the current decompression range it means that we need to read the next packet;
+            // This happens when decoding for the first time or after the _avPacket was invalidated by calling av_free_packet;
+            if (_avPacket.data == NULL || !isCurrentPacketInRange) {
+                // release the previous packet if this wasn't already released at this point
+                if (_avPacket.data != NULL) {
+                    _avPacket.FreePacket();
+                }
+                _avPacket.InitPacket();
+                error = av_read_frame(_context, &_avPacket);
+            }
             // [FD] 2015/01/20
             // the following if() was not in Nuke's FFmpeg Reader.cpp
             if (error == (int)AVERROR_EOF) {
@@ -1276,6 +1307,8 @@ FFmpegFile::decode(const ImageEffect* plugin,
                         if ( !seekFrame(lastSeekedFrame, stream) ) {
                             break;
                         }
+                        // We can't be re-using the existing _avPacket data because we've just had to seek
+                        _avPacket.FreePacket();
                     }
                     // Otherwise, we have a valid landing frame, so set that as the next frame into and out of decode and set
                     // no seek in progress.
@@ -1283,7 +1316,31 @@ FFmpegFile::decode(const ImageEffect* plugin,
 #if TRACE_DECODE_PROCESS
                         std::cout << ", landed at " << landingFrame << std::endl;
 #endif
-                        stream->_decodeNextFrameOut = stream->_decodeNextFrameIn = landingFrame;
+                        // If the packet is within the decompression range but the landingFrame is different than the current frame it means that
+                        // we are on a packet that needs to be displayed for more than one frame. In that case landingFrame will be pointing at the
+                        // first frame of that packet which means that we need to update the _decodeNextFrameOut and _decodeNextFrameIn for the other frames
+                        // which are in the current packet.
+                        // If not then it means that we have jumped on a different frame so update that accordingly;
+                        //
+                        // In the below ASCII figure - landingFrame will end up being 2 whenever frame is in the range 2 - 7
+                        //
+                        // Nuke frame     0   1   2   3   4   5   6   7   8   9   10   ...
+                        //              +---+---+-----------------------+---+---+---+-
+                        // data stream  |   |   |                       |   |   |   |  ...
+                        //              +---+---+-----------------------+---+---+---+-
+                        // QT/ffmpeg      0   1   2                       3   4   5    ...
+                        // frame
+                        //
+                        // So in this example, whenever frame is 3-7 we actually need to set stream->_decodeNextFrameIn/Out to frame rather than landingFrame, which is still 2;
+                        // stream->_decodeNextFrameIn/Out is used by our logic to determined what Nuke frame is being decoded;
+                        const int64_t currentFramePts = stream->frameToPts(frame);
+                        const bool isNewPacketInRange = (_avPacket.dts + _avPacket.duration > currentFramePts) && (currentFramePts >= _avPacket.dts);
+                        if (isNewPacketInRange && (landingFrame != frame)) {
+                            stream->_decodeNextFrameOut = stream->_decodeNextFrameIn = frame;
+                        }
+                        else {
+                            stream->_decodeNextFrameOut = stream->_decodeNextFrameIn = landingFrame;
+                        }
                         lastSeekedFrame = -1;
                     }
                 }
@@ -1331,22 +1388,33 @@ FFmpegFile::decode(const ImageEffect* plugin,
                     // Decode the frame just read. frameDecoded indicates whether a decoded frame was output.
                     decodeAttempted = true;
 
-#if USE_NEW_FFMPEG_API
-                    error = avcodec_send_packet(stream->_codecContext, &_avPacket);
-                    if (error == 0) {
-                        error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
-                        if ( error == AVERROR(EAGAIN) ) {
-                            frameDecoded = 0;
+                    {
+                        // if the packet wasn't decode yet then it doesn't really metter
+                        // if it's in the playback range or not; we still keep trying to
+                        // decode the information iside the packet
+                        if (_avPacket.wasPacketDecoded && isCurrentPacketInRange) {
                             error = 0;
-                        } else if (error < 0) {
-                            frameDecoded = 0;
+                            frameDecoded = 1; // the image is already pre-cached in the _avFrame - don't do anything here
                         } else {
-                            frameDecoded = 1;
+#if USE_NEW_FFMPEG_API
+                            error = avcodec_send_packet(stream->_codecContext, &_avPacket);
+                            if (error == 0) {
+                                error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
+                                if ( error == AVERROR(EAGAIN) ) {
+                                    frameDecoded = 0;
+                                    error = 0;
+                                } else if (error < 0) {
+                                    frameDecoded = 0;
+                                } else {
+                                    frameDecoded = 1;
+                                }
+                            }
+#else
+                            error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
+#endif
+                            _avPacket.wasPacketDecoded = frameDecoded;
                         }
                     }
-#else
-                    error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
-#endif
                     if (error < 0) {
                         // Decode error. Abort attempt to read and decode frames.
                         setInternalError(error, "FFmpeg Reader failed to decode frame: ");
@@ -1378,8 +1446,16 @@ FFmpegFile::decode(const ImageEffect* plugin,
                 // The ProRes codec is I-frame only so will not have any
                 // remaining frames.
             } else {
+                // Obtain remaining frames from the decoder. emptyAVPacket contains NULL packet data pointer and size at this point,
+                // required to pump out remaining frames with no more input
+                // That's based on the following FFmpeg's remark:
+                // Codecs which have the CODEC_CAP_DELAY capability set have a delay between input and output, these need to be fed
+                // with avpkt->data=NULL, avpkt->size=0 at the end to return the remaining frames.
+                // Please have a look at the following TP item from more info: TP 24765 https://foundry.tpondemand.com/entity/246765
+                
+                MyAVPacket emptyAVPacket;
 #if USE_NEW_FFMPEG_API
-                error = avcodec_send_packet(stream->_codecContext, &_avPacket);
+                error = avcodec_send_packet(stream->_codecContext, &emptyAVPacket);
                 if (error == 0) {
                     error = avcodec_receive_frame(stream->_codecContext, stream->_avFrame);
                     if ( error == AVERROR(EAGAIN) ) {
@@ -1393,7 +1469,7 @@ FFmpegFile::decode(const ImageEffect* plugin,
                     }
                 }
 #else
-                error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &_avPacket);
+                error = avcodec_decode_video2(stream->_codecContext, stream->_avFrame, &frameDecoded, &emptyAVPacket);
 #endif
             }
             if (error < 0) {
@@ -1542,9 +1618,11 @@ FFmpegFile::decode(const ImageEffect* plugin,
                 if ( !seekFrame(seekTargetFrame, stream) ) {
                     break;
                 }
+                // We can't be re-using the existing _avPacket data because we've just had to seek
+                _avPacket.FreePacket();
             } // if (decodeAttempted)
         } // if (stream->_decodeNextFrameIn < stream->_frames)
-        av_packet_unref(&_avPacket);
+        av_packet_unref(&_avPacket); // av_free_packet(&avPacket)
         if ( plugin->abort() ) {
             return false;
         }
@@ -1558,8 +1636,10 @@ FFmpegFile::decode(const ImageEffect* plugin,
     // the AVPacket, since it won't have been freed at the end of the above loop (we reach here by a break from the main
     // loop when hasPicture is false).
     if (!hasPicture) {
+        // If the process failed to get a picture, but the packet contains information about the decompressed image, then
+        // we need to dispose it;
         if (_avPacket.size > 0) {
-            av_packet_unref(&_avPacket);
+            _avPacket.FreePacket(); //av_packet_unref(&_avPacket);
         }
         stream->_decodeNextFrameOut = -1;
     }
