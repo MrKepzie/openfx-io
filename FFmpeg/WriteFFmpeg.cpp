@@ -2121,6 +2121,9 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     if (!avCodec || !avStream || !_formatContext) {
         return;
     }
+#if (LIBAVFORMAT_VERSION_MAJOR > 57) && !defined(FF_API_LAVF_AVCTX)
+#error "Using AVStream.codec to pass codec parameters to muxers is deprecated, use AVStream.codecpar instead."
+#endif
     AVCodecContext* avCodecContext = avStream->codec;
     assert(avCodecContext);
     if (!avCodecContext) {
@@ -2293,6 +2296,9 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         // integers are represented exactly as float, so most of the time the denominator will be 1
         frame_rate = av_d2q(fps, INT_MAX);
     }
+#if (LIBAVFORMAT_VERSION_MAJOR > 57) && !defined(FF_API_LAVF_CODEC_TB)
+#error "Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead."
+#endif
     avCodecContext->time_base = av_inv_q(frame_rate);;
     // [mov @ 0x1042d7600] Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead.
     // copy timebase while removing common factors
@@ -2310,6 +2316,7 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
 #if FF_API_PRIVATE_OPT
         avCodecContext->b_frame_strategy = 0;
 #endif
+        av_opt_set_int(avCodecContext->priv_data, "b-strategy", 0, 0);
         avCodecContext->b_quant_factor = 2.0f;
     }
 
