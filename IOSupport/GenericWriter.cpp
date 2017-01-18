@@ -152,6 +152,10 @@ static bool gHostIsNatron   = false;
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsMultiView = false;
 
+template<typename T>
+static inline void
+unused(const T&) {}
+
 
 GenericWriterPlugin::GenericWriterPlugin(OfxImageEffectHandle handle,
                                          const vector<string>& extensions,
@@ -1929,6 +1933,7 @@ GenericWriterPlugin::outputFileChanged(InstanceChangeReason reason,
 
     // only set perstistent params if not restoring
     //bool setPersistentValues = !restoreExistingWriter && (reason == eChangeUserEdit);
+    unused(restoreExistingWriter);
 
     {
         string ext = extension(filename);

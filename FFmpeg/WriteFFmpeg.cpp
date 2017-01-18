@@ -402,6 +402,11 @@ enum DNxHDCodecProfileEnum
 #define STR_HELPER(x) # x
 #define STR(x) STR_HELPER(x)
 
+template<typename T>
+static inline void
+unused(const T&) {}
+
+
 // The fourccs for MJPEGA, MJPEGB, and Photo JPEG
 static const char*  kJpegCodecs[] = { "jpeg", "mjpa", "mjpb" };
 static const int kNumJpegCodecs = sizeof(kJpegCodecs) / sizeof(kJpegCodecs[0]);
@@ -1486,6 +1491,11 @@ bool
 WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName,
                                       int codecProfile)
 {
+#if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
+#else
+    unused(codecProfile);
+#endif
+    
     return ( !strcmp(shortName, kProresCodec kProresProfileHQFourCC) ||
              !strcmp(shortName, kProresCodec kProresProfileSQFourCC) ||
              !strcmp(shortName, kProresCodec kProresProfileLTFourCC) ||
@@ -1507,7 +1517,10 @@ bool
 WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName,
                                       int codecProfile)
 {
-    (void)codecProfile;
+#if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
+#else
+    unused(codecProfile);
+#endif
 
     return ( !strcmp(shortName, kProresCodec kProresProfile4444FourCC) ||
              !strcmp(shortName, kProresCodec kProresProfile4444XQFourCC) ||
