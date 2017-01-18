@@ -1928,7 +1928,7 @@ GenericWriterPlugin::outputFileChanged(InstanceChangeReason reason,
     }
 
     // only set perstistent params if not restoring
-    bool setPersistentValues = !restoreExistingWriter && (reason == eChangeUserEdit);
+    //bool setPersistentValues = !restoreExistingWriter && (reason == eChangeUserEdit);
 
     {
         string ext = extension(filename);
