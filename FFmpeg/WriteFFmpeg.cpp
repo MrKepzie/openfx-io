@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <cstring> // strncpy
 #include <cfloat> // DBL_MAX
+#include <climits> // INT_MAX
 #include <sstream>
 #include <algorithm>
 #include <string>
@@ -205,9 +206,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "the target average bitrate value. This is not related to min/max " \
     "bitrate. Lowering tolerance too much has an adverse effect on " \
     "quality. " \
-    "As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders." \
+    "As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders.\n" \
     "Only supported by certain codecs (e.g. MP42, 3IVD, but not avc1, hev1, m2v1, mp4v or H264).\n" \
-    "Option -bt in ffmpeg (multiplied by 1000000)."
+    "A reasonable value is 5 * bitrateMbps / fps. This corresponds to option -bt in ffmpeg (multiplied by 1000000)."
+#define kParamBitrateToleranceMax (INT_MAX/1000000) // tol*1000000 is stored in an int
 
 #define kParamQuality "quality"
 #define kParamQualityLabel "Quality"
@@ -2129,10 +2131,13 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     if (bitrateParam) {
         double bitrate = _bitrate->getValue();
         avCodecContext->bit_rate = (int)(bitrate * 1000000);
-    }
-    if (bitrateTolParam) {
-        double bitrateTolerance = _bitrateTolerance->getValue();
-        avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance * 1000000);
+        if (bitrateTolParam) {
+            double fps = _fps->getValue();
+            double bitrateToleranceMin = std::ceil( (bitrate / std::min(fps, 4.)) * 1000000) / 1000000.;
+            double bitrateTolerance = std::max( bitrateToleranceMin, _bitrateTolerance->getValue() );
+
+            avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance * 1000000);
+        }
     }
     if (qualityParams) {
         int qMin, qMax;
@@ -3735,11 +3740,11 @@ WriteFFmpegPlugin::updateBitrateToleranceRange()
     //We're not force limiting the range since the upper range is not bounded.
     double bitrate = _bitrate->getValue();
     double fps = _fps->getValue();
-    // guard agains division by zero
-    double minRange = (fps > 0.) ? bitrate / fps : bitrate;
+    // guard agains division by zero - the 4 comes from the ffserver.c code
+    double minRange = std::ceil( (bitrate / std::min(fps, 4.)) * 1000000) / 1000000.;
 
-    _bitrateTolerance->setRange(minRange, DBL_MAX);
-    _bitrateTolerance->setDisplayRange(minRange, kParamBitrateMax);
+    _bitrateTolerance->setRange(minRange, kParamBitrateToleranceMax);
+    _bitrateTolerance->setDisplayRange(minRange, kParamBitrateToleranceMax);
 }
 
 // Check that the secret codecShortName corresponds to the selected codec.
@@ -4568,8 +4573,8 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             DoubleParamDescriptor* param = desc.defineDoubleParam(kParamBitrateTolerance);
             param->setLabel(kParamBitrateToleranceLabel);
             param->setHint(kParamBitrateToleranceHint);
-            param->setRange(0, kParamBitrateMax);
-            param->setDefault(kParamBitrateMax);
+            param->setRange(0, kParamBitrateToleranceMax);
+            param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
