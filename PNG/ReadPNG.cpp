@@ -109,6 +109,10 @@ littleendian (void)
 #endif
 }
 
+template<typename T>
+static inline void
+unused(const T&) {}
+
 // the following ICC check function is from libpng-1.6.26/png.c
 
 /* Information about the known ICC sRGB profiles */
@@ -524,6 +528,7 @@ getPNGInfo(png_structp sp,
                 ping_found_sRGB = true;
             }
         }
+        unused(ping_found_sRGB);
 
         // if not, deduce from the bitdepth
         if ( !ping_found_gAMA && (*colorspace_p == ePNGColorSpaceLinear) ) {

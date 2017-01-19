@@ -209,7 +209,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders.\n" \
     "Only supported by certain codecs (e.g. MP42, 3IVD, but not avc1, hev1, m2v1, mp4v or H264).\n" \
     "A reasonable value is 5 * bitrateMbps / fps. This corresponds to option -bt in ffmpeg (multiplied by 1000000)."
-#define kParamBitrateToleranceMax (INT_MAX/1000000) // tol*1000000 is stored in an int
+#define kParamBitrateToleranceMax ((int)(INT_MAX/1000000)) // tol*1000000 is stored in an int
 
 #define kParamQuality "quality"
 #define kParamQualityLabel "Quality"
