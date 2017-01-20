@@ -699,7 +699,7 @@ WritePNGPlugin::encode(const string& filename,
     std::size_t pngRowSize =  (bounds.x2 - bounds.x1) * dstNComps;
     int dstRowElements = (int)pngRowSize;
     pngRowSize *= bitDepthSize;
-    std::size_t scratchBufSize = (bounds.y2 - bounds.y1) * pngRowSize * (pngDetph == eBitDepthUShort ? 2 : 1);
+    std::size_t scratchBufSize = (bounds.y2 - bounds.y1) * pngRowSize * ( pngDetph == eBitDepthUShort ? sizeof(unsigned short) : sizeof(unsigned char) );
 
     RamBuffer scratchBuffer(scratchBufSize);
     int nComps = std::min(dstNComps, pixelDataNComps);
