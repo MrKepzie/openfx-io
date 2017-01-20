@@ -205,14 +205,15 @@ create_write_struct (png_structp& sp,
 /// Helper function - finalizes writing the image.
 ///
 inline void
-finish_image (png_structp& sp)
+finish_image (png_structp& sp,
+              png_infop& ip)
 {
     // Must call this setjmp in every function that does PNG writes
     if ( setjmp ( png_jmpbuf(sp) ) ) {
         //error ("PNG library error");
         return;
     }
-    png_write_end (sp, NULL);
+    png_write_end (sp, ip);
 }
 
 /// Destroys a PNG write struct.
@@ -222,7 +223,7 @@ destroy_write_struct (png_structp& sp,
                       png_infop& ip)
 {
     if (sp && ip) {
-        finish_image (sp);
+        //finish_image (sp, ip); // already done! finish_image was called before destroiy_write_struct, see also https://github.com/OpenImageIO/oiio/issues/1607
         png_destroy_write_struct (&sp, &ip);
         sp = NULL;
         ip = NULL;
@@ -449,11 +450,16 @@ WritePNGPlugin::openFile(const string& filename,
         throw std::runtime_error("Could not open file: " + filename);
     }
 
+    *png = NULL;
+    *info = NULL;
+
     try {
         create_write_struct (*png, *info, nChannels, color_type);
     } catch (const std::exception& e) {
-        destroy_write_struct(*png, *info);
         std::fclose(*file);
+        if (*png != NULL) {
+            destroy_write_struct(*png, *info);
+        }
         throw e;
     }
 }
@@ -646,10 +652,10 @@ WritePNGPlugin::encode(const string& filename,
         return;
     }
 
-    png_structp png;
-    png_infop info;
-    FILE* file;
-    int color_type;
+    png_structp png = NULL;
+    png_infop info = NULL;
+    FILE* file = NULL;
+    int color_type = PNG_COLOR_TYPE_GRAY;
     try {
         openFile(filename, dstNComps, &png, &info, &file, &color_type);
     } catch (const std::exception& e) {
@@ -693,35 +699,40 @@ WritePNGPlugin::encode(const string& filename,
     BitDepthEnum pngDetph = bitdepth_i == 0 ? eBitDepthUByte : eBitDepthUShort;
     write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, string() /*colorSpace*/, pngDetph);
 
-    int bitDepthSize = pngDetph == eBitDepthUShort ? sizeof(unsigned short) : sizeof(unsigned char);
+    int bitDepthSize = ( (pngDetph == eBitDepthUShort) ? sizeof(unsigned short) : sizeof(unsigned char) );
 
     // Convert the float buffer to the buffer used by PNG
-    std::size_t pngRowSize =  (bounds.x2 - bounds.x1) * dstNComps;
-    int dstRowElements = (int)pngRowSize;
-    pngRowSize *= bitDepthSize;
-    std::size_t scratchBufSize = (bounds.y2 - bounds.y1) * pngRowSize * ( pngDetph == eBitDepthUShort ? sizeof(unsigned short) : sizeof(unsigned char) );
+    int dstRowElements = (bounds.x2 - bounds.x1) * dstNComps;
+    std::size_t pngRowBytes =  dstRowElements * bitDepthSize;
+    std::size_t scratchBufBytes = (bounds.y2 - bounds.y1) * pngRowBytes;
 
-    RamBuffer scratchBuffer(scratchBufSize);
+    RamBuffer scratchBuffer(scratchBufBytes);
     int nComps = std::min(dstNComps, pixelDataNComps);
     const int srcRowElements = rowBytes / sizeof(float);
+    const size_t numPixels = (size_t)(bounds.x2 - bounds.x1) * (size_t)(bounds.y2 - bounds.y1);
+
+    assert(srcRowElements == (bounds.x2 - bounds.x1) * pixelDataNComps);
+    assert(scratchBufBytes == numPixels * dstNComps * bitDepthSize);
+
+    const float* src_pixels = pixelData;
+
     if (pngDetph == eBitDepthUByte) {
-        bool enableDither;
-        _ditherEnabled->getValue(enableDither);
+        bool ditherEnabled = _ditherEnabled->getValue();
 
-        const float* src_pixels = pixelData;
-        unsigned char* dst_pixels = scratchBuffer.getData();
+        unsigned char* dstPixelData = scratchBuffer.getData();
+        unsigned char* dst_pixels = dstPixelData;
 
-        if ( !enableDither || (nComps < 3) ) {
-            for ( int y = bounds.y1; y < bounds.y2; ++y,
-                  src_pixels += ( srcRowElements - ( (bounds.x2 - bounds.x1) * pixelDataNComps ) ),
-                  dst_pixels += ( dstRowElements - ( (bounds.x2 - bounds.x1) * dstNComps ) ) ) {
-                for (int x = bounds.x1; x < bounds.x2; ++x,
-                     dst_pixels += dstNComps,
-                     src_pixels += pixelDataNComps) {
-                    for (int c = 0; c < nComps; ++c) {
-                        dst_pixels[c] = floatToInt<256>(src_pixels[dstNCompsStartIndex + c]);
-                    }
+        // no dither
+        if ( !ditherEnabled || (nComps < 3) ) {
+            for ( size_t i = 0; i < numPixels; ++i,
+                 dst_pixels += dstNComps,
+                 src_pixels += pixelDataNComps) {
+                assert(src_pixels == pixelData + i * pixelDataNComps);
+                assert(dst_pixels == dstPixelData + i * dstNComps);
+                for (int c = 0; c < nComps; ++c) {
+                    dst_pixels[c] = floatToInt<256>(src_pixels[dstNCompsStartIndex + c]);
                 }
+
             }
         } else {
             assert(nComps >= 3);
@@ -731,27 +742,21 @@ WritePNGPlugin::encode(const string& filename,
     } else {
         assert(pngDetph == eBitDepthUShort);
 
-        unsigned short* dst_pixels = reinterpret_cast<unsigned short*>( scratchBuffer.getData() );
-        const float* src_pixels = pixelData;
-        for (int y = bounds.y1; y < bounds.y2; ++y,
-             src_pixels += srcRowElements, // move to next row
-             dst_pixels += dstRowElements) {
-            for (int x = bounds.x1; x < bounds.x2; ++x,
-                 dst_pixels += dstNComps,
-                 src_pixels += pixelDataNComps) {
-                for (int c = 0; c < nComps; ++c) {
-                    dst_pixels[c] = floatToInt<65536>(src_pixels[dstNCompsStartIndex + c]);
-                }
-            }
+        unsigned short* dstPixelData = reinterpret_cast<unsigned short*>( scratchBuffer.getData() );
+        unsigned short* dst_pixels = dstPixelData;
 
-            // Remove what was done at the previous iteration
-            src_pixels -= ( (bounds.x2 - bounds.x1) * pixelDataNComps );
-            dst_pixels -= ( (bounds.x2 - bounds.x1) * dstNComps );
-
-            // PNG is always big endian
-            if ( littleendian() ) {
-                swap_endian ( (unsigned short *)dst_pixels, dstRowElements );
+        for ( size_t i = 0; i < numPixels; ++i,
+             dst_pixels += dstNComps,
+             src_pixels += pixelDataNComps) {
+            assert(src_pixels == pixelData + i * pixelDataNComps);
+            assert(dst_pixels == dstPixelData + i * dstNComps);
+            for (int c = 0; c < nComps; ++c) {
+                dst_pixels[c] = floatToInt<65536>(src_pixels[dstNCompsStartIndex + c]);
             }
+        }
+        // PNG is always big endian
+        if ( littleendian() ) {
+            swap_endian ( dstPixelData, numPixels * dstNComps );
         }
     }
 
@@ -764,10 +769,10 @@ WritePNGPlugin::encode(const string& filename,
             setPersistentMessage(Message::eMessageError, "", "PNG library error");
             throwSuiteStatusException(kOfxStatFailed);
         }
-        png_write_row (png, (png_byte*)scratchBuffer.getData() + y * pngRowSize);
+        png_write_row (png, (png_byte*)scratchBuffer.getData() + y * pngRowBytes);
     }
 
-    finish_image(png);
+    finish_image(png, info);
     destroy_write_struct(png, info);
     std::fclose(file);
 } // WritePNGPlugin::encode
