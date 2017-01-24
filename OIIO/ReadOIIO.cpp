@@ -1085,6 +1085,9 @@ ReadOIIOPlugin::restoreStateFromParams()
 
     string filename;
     _fileParam->getValueAtTime(_startingTime->getValue(), filename);
+    if ( filename.empty() ) {
+        return;
+    }
     vector<ImageSpec> subimages;
     getSpecs(filename, &subimages);
 
