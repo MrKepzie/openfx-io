@@ -2071,12 +2071,15 @@ GenericWriterPlugin::changedParam(const InstanceChangedArgs &args,
 #ifdef OFX_IO_USING_OCIO
     _ocio->changedParam(args, paramName);
 #endif
+
+    MultiPlaneEffect::changedParam(args, paramName);
 } // GenericWriterPlugin::changedParam
 
 void
 GenericWriterPlugin::changedClip(const InstanceChangedArgs &args,
                                  const string &clipName)
 {
+    MultiPlaneEffect::changedClip(args, clipName);
     if ( (clipName == kOfxImageEffectSimpleSourceClipName) && _inputClip && (args.reason == eChangeUserEdit) ) {
         PreMultiplicationEnum premult = _inputClip->getPreMultiplication();
 #     ifdef DEBUG
@@ -2113,6 +2116,7 @@ GenericWriterPlugin::changedClip(const InstanceChangedArgs &args,
 void
 GenericWriterPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
+    MultiPlaneEffect::getClipPreferences(clipPreferences);
     if ( !_outputComponents->getIsSecret() ) {
         int index;
         _outputComponents->getValue(index);

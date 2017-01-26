@@ -420,7 +420,8 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle,
     _tileSize = fetchChoiceParam(kParamTileSize);
     if (enableMultiPlaneFeature) {
         _outputLayers = fetchChoiceParam(kParamOutputChannels);
-        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, false /*splitPlanesIntoChannels*/, false /*addNoneOpt*/, true/*isOutput*/, _outputClip);
+        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, false /*splitPlanesIntoChannels*/, false /*addNoneOpt*/, true/*isOutput*/, false /*hideIfDisconnected*/, _outputClip);
+        onAllParametersFetched();
         _parts = fetchChoiceParam(kParamPartsSplitting);
         _views = fetchChoiceParam(kParamViewsSelector);
     }
@@ -465,15 +466,15 @@ WriteOIIOPlugin::changedParam(const InstanceChangedArgs &args,
         refreshParamsVisibility(filename);
     } else if (paramName == kParamOutputChannels) {
     }
-    if ( handleChangedParamForAllDynamicChoices(paramName, args.reason) ) {
-        return;
-    }
+
     GenericWriterPlugin::changedParam(args, paramName);
 }
 
 void
 WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
+    GenericWriterPlugin::getClipPreferences(clipPreferences);
+
     if ( _outputLayers && !_outputLayers->getIsSecret() ) {
         string filename;
         _fileParam->getValue(filename);
@@ -483,7 +484,6 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
             supportsNChannels = output->supports("nchannels");
         }
 
-        buildChannelMenus();
 
         MultiPlane::ImagePlaneDesc plane;
         OFX::Clip* clip = 0;
@@ -519,7 +519,6 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
             }
         }
     }
-    GenericWriterPlugin::getClipPreferences(clipPreferences);
 }
 
 void

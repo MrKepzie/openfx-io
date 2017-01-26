@@ -1871,9 +1871,10 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
     for (int i = 0; i < kParamsCount; ++i) {
         const string istr = unsignedToString(i + 1);
         if (gHostIsMultiPlanar) {
-            fetchDynamicMultiplaneChoiceParameter(kParamLayerInput + istr, false /*splitPlanesInChannels*/, true /*addNoneOption*/, false/*isOutput*/, _srcClip[i]);
+            fetchDynamicMultiplaneChoiceParameter(kParamLayerInput + istr, false /*splitPlanesInChannels*/, true /*addNoneOption*/, false/*isOutput*/, true /*hideIfDisconnected*/ , _srcClip[i]);
             _clipLayerToFetch[i] = fetchChoiceParam(kParamLayerInput + istr);
         }
+        onAllParametersFetched();
 
         _doubleParams[i] = fetchDoubleParam(kParamDouble + istr);
         _double2DParams[i] = fetchDouble2DParam(kParamDouble2D + istr);
@@ -2297,14 +2298,7 @@ SeExprPlugin::changedParam(const InstanceChangedArgs &args,
         }
         sendMessage(Message::eMessageMessage, "", "Alpha Script:\n" + script);
     } else {
-
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            const string istr = unsignedToString(i + 1);
-            MultiPlaneEffect::ChangedParamRetCode stat = checkIfChangedParamCalledOnDynamicChoice(paramName, kParamLayerInput + istr, args.reason);
-            if (stat != MultiPlaneEffect::eChangedParamRetCodeNoChange) {
-                break;
-            }
-        }
+        MultiPlaneEffect::changedParam(args, paramName);
     }
 } // SeExprPlugin::changedParam
 
@@ -2396,38 +2390,16 @@ SeExprPlugin::changedClip(const InstanceChangedArgs &args,
             }
         }
     }
-    if (gHostIsNatron3OrGreater) {
-        buildChannelMenus();
-    }
+    MultiPlaneEffect::changedClip(args, clipName);
 }
 
-namespace {
-static bool
-hasListChanged(const vector<string>& oldList,
-               const vector<string>& newList)
-{
-    if ( oldList.size() != newList.size() ) {
-        return true;
-    }
-
-    vector<string>::const_iterator itNew = newList.begin();
-    for (vector<string>::const_iterator it = oldList.begin(); it != oldList.end(); ++it, ++itNew) {
-        if (*it != *itNew) {
-            return true;
-        }
-    }
-
-    return false;
-}
-}
 
 void
 SeExprPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
-    if (gHostIsMultiPlanar && !gHostIsNatron3OrGreater) {
-        buildChannelMenus();
-    }
 
+    MultiPlaneEffect::getClipPreferences(clipPreferences);
+    
     double par = 0.;
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
@@ -2486,7 +2458,7 @@ SeExprPlugin::getClipComponents(const ClipComponentsArguments& args,
             continue;
         }
 
-        const std::string clipIdxStr = unsignedToString(i);
+        const std::string clipIdxStr = unsignedToString(i + 1);
 
         MultiPlane::ImagePlaneDesc plane;
         OFX::Clip* clip = 0;
