@@ -25,6 +25,9 @@
 // to test writing a codec with ffmpeg (e.g. DNxHD with dnxhr_lb profile):
 // ffmpeg -f lavfi  -i testsrc=size=2048x1152 -vframes 2 -vcodec dnxhd -profile:v dnxhr_lb out.mov
 
+// to see private options of a codec:
+// ffmpeg -h encoder=mjpeg
+
 #if (defined(_STDINT_H) || defined(_STDINT_H_) || defined(_MSC_STDINT_H_ ) ) && !defined(UINT64_C)
 #warning "__STDC_CONSTANT_MACROS has to be defined before including <stdint.h>, this file will probably not compile."
 #endif
@@ -141,7 +144,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kSupportsXY false
 
 #define kParamFormat "format"
-#define kParamFormatLabel "Format"
+#define kParamFormatLabel "Container"
 #define kParamFormatHint "Output format/container."
 
 #define kParamCodec "codec"
@@ -189,6 +192,57 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamEnableAlphaHint \
     "Write alpha channel to the video file (if supported by the codec)."
 
+#define kParamCRF "crf"
+#define kParamCRFLabel "Output Quality"
+#define kParamCRFHint "Constant Rate Factor (CRF); tradeoff between video quality and file size. Used by avc1, hev1, VP80, VP9, and CAVS codecs.\n" \
+    "Option -crf in ffmpeg."
+#define kParamCRFOptionNone "None", "Use constant bit-rate rather than constant output quality"
+#define kParamCRFOptionLossless "Lossless", "Corresponds to CRF = 0."
+#define kParamCRFOptionPercLossless "Perceptually Lossless", "Corresponds to CRF = 17."
+#define kParamCRFOptionHigh "High Quality", "Corresponds to CRF = 20."
+#define kParamCRFOptionMedium "Medium Quality", "Corresponds to CRF = 23."
+#define kParamCRFOptionLow "Low Quality", "Corresponds to CRF = 26."
+#define kParamCRFOptionVeryLow "Very Low Quality", "Corresponds to CRF = 29."
+#define kParamCRFOptionLowest "Lowest Quality", "Corresponds to CRF = 32."
+enum CRFEnum {
+    eCRFNone = 0,
+    eCRFLossless,
+    eCRFPercLossless,
+    eCRFHigh,
+    eCRFMedium,
+    eCRFLow,
+    eCRFVeryLow,
+    eCRFLowest,
+};
+
+#define kParamX26xSpeed "x26xSpeed"
+#define kParamX26xSpeedLabel "Encoding Speed"
+#define kParamX26xSpeedHint "Trade off performance for compression efficiency. Available for avc1 and hev1.\n" \
+    "Option -preset in ffmpeg."
+#define kParamX26xSpeedOptionUltrafast "Ultra Fast", "Fast encoding, but larger file size."
+#define kParamX26xSpeedOptionVeryfast "Very Fast"
+#define kParamX26xSpeedOptionFaster "Faster"
+#define kParamX26xSpeedOptionFast "Fast"
+#define kParamX26xSpeedOptionMedium "Medium"
+#define kParamX26xSpeedOptionSlow "Slow"
+#define kParamX26xSpeedOptionSlower "Slower"
+#define kParamX26xSpeedOptionVerySlow "Very Slow", "Slow encoding, but smaller file size."
+enum X26xSpeedEnum {
+    eX26xSpeedUltrafast = 0,
+    eX26xSpeedVeryfast,
+    eX26xSpeedFaster,
+    eX26xSpeedFast,
+    eX26xSpeedMedium,
+    eX26xSpeedSlow,
+    eX26xSpeedSlower,
+    eX26xSpeedVeryslow,
+};
+
+#define kParamQScale "qscale"
+#define kParamQScaleLabel "Global Quality"
+#define kParamQScaleHint "For lossy encoding, this controls image quality, from 0 to 100. For lossless encoding, this controls the effort and time spent at compressing more. -1 means to use the codec default or CBR (constant bit rate). Used by theo and mp4v codecs.\n" \
+    "Option -qscale in ffmpeg."
+
 #define kParamBitrate "bitrateMbps"
 #define kParamBitrateLabel "Bitrate"
 #define kParamBitrateHint \
@@ -208,7 +262,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "quality. " \
     "As a guideline, the minimum slider range of target bitrate/target fps is the lowest advisable setting. Anything below this value may result in failed renders.\n" \
     "Only supported by certain codecs (e.g. MP42, 3IVD, but not avc1, hev1, m2v1, mp4v or H264).\n" \
-    "A reasonable value is 5 * bitrateMbps / fps. This corresponds to option -bt in ffmpeg (multiplied by 1000000)."
+    "A reasonable value is 5 * bitrateMbps / fps.\n" \
+    "Option -bt in ffmpeg (multiplied by 1000000)."
 #define kParamBitrateToleranceMax ((int)(INT_MAX/1000000)) // tol*1000000 is stored in an int
 
 #define kParamQuality "quality"
@@ -218,21 +273,23 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "between to attempt to hit the desired bitrate. Higher values mean increased " \
     "image degradation is possible, but with the upside of lower bit rates. " \
     "Only supported by certain codecs (e.g. VP80, VP90, avc1, but not hev1 or mp4v).\n" \
+    "-1 means to use the codec default.\n" \
     "Options -qmin and -qmax in ffmpeg."
 
 #define kParamGopSize "gopSize"
-#define kParamGopSizeLabel "GOP Size"
+#define kParamGopSizeLabel "Keyframe Interval"
 #define kParamGopSizeHint \
-    "Specifies how many frames may be grouped together by the codec to form a compression GOP. Exercise caution " \
+    "The keyframe intervale, also called GOP size, specifies how many frames may be grouped together by the codec to form a compression GOP. Exercise caution " \
     "with this control as it may impact whether the resultant file can be opened in other packages. Only supported by " \
     "certain codecs.\n" \
+    "-1 means to use the codec default.\n" \
     "Option -g in ffmpeg."
 
 #define kParamBFrames "bFrames"
-#define kParamBFramesLabel "B Frames"
+#define kParamBFramesLabel "Max B-Frames"
 #define kParamBFramesHint \
-    "Controls the maximum number of B frames found consecutively in the resultant stream, where zero means no limit " \
-    "imposed. Must be an integer between -1 and 16. 0 means that B-frames are disabled. If a value of -1 is used, it will choose an automatic value depending on the encoder. Only supported by certain codecs.\n" \
+    "Set max number of B frames between non-B-frames. Must be an integer between -1 and 16. 0 means that B-frames are disabled. If a value of -1 is used, it will choose an automatic value depending on the encoder. Influences file size and seekability. Only supported by certain codecs.\n" \
+    "-1 means to use the codec default.\n" \
     "Option -bf in ffmpeg."
 
 #define kParamWriteNCLC "writeNCLC"
@@ -483,6 +540,7 @@ CreateCodecKnobLabelsMap()
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
     m["libx264rgb"]    = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB";
     m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // disabled in whitelist (does not work will all sizes)
+    m["libxavs"]       = "CAVS\tChinese AVS (Audio Video Standard)"; //disabled in whitelist
 
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
     m["mjpeg"]         = "jpeg\tPhoto JPEG";
@@ -1077,6 +1135,22 @@ class WriteFFmpegPlugin
 private:
     enum WriterError { SUCCESS = 0, IGNORE_FINISH, CLEANUP };
 
+    struct CodecParams
+    {
+        CodecParams() : crf(false), x26xSpeed(false), bitrate(false), bitrateTol(false), qscale(false), qrange(false), interGOP(false), interB(false) {}
+
+        // crf, bitrate, and qscale are exclusive: only one of the three may be used, even if the codec supports several
+        bool crf; // "crf" option
+        bool x26xSpeed; // "preset" option, specific to x264 and x265
+        bool bitrate; // bit_rate
+        bool bitrateTol; // bit_rate_tolerance
+        bool qscale; // "global_quality" option
+        bool qrange; // qmin, qmax
+        bool interGOP; // gop_size
+        bool interB; // "bf" option or max_b_frames
+    };
+    
+
 public:
 
     WriteFFmpegPlugin(OfxImageEffectHandle handle, const vector<string>& extensions);
@@ -1127,7 +1201,7 @@ private:
     static bool IsRGBFromShortName(const char* shortName, int codecProfile);
     static int            GetPixelFormatBitDepth(const AVPixelFormat pixelFormat);
     static AVPixelFormat  GetPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha);
-    static void           GetCodecSupportedParams(AVCodec* codec, bool& outBitrateParam, bool& outBitrateTolParam, bool& outQualityParams, bool& outInterGOPParams, bool& outInterBParams);
+    static void           GetCodecSupportedParams(const AVCodec* codec, CodecParams* p);
 
     void configureAudioStream(AVCodec* avCodec, AVStream* avStream);
     void configureVideoStream(AVCodec* avCodec, AVStream* avStream);
@@ -1177,6 +1251,9 @@ private:
     ChoiceParam* _codec;
     StringParam* _codecShortName;
     BooleanParam* _enableAlpha;
+    ChoiceParam* _crf;
+    ChoiceParam* _x26xSpeed;
+    IntParam* _qscale;
     DoubleParam* _bitrate;
     DoubleParam* _bitrateTolerance;
     Int2DParam* _quality;
@@ -1394,6 +1471,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     , _codec(0)
     , _codecShortName(0)
     , _enableAlpha(0)
+    , _crf(0)
+    , _x26xSpeed(0)
+    , _qscale(0)
     , _bitrate(0)
     , _bitrateTolerance(0)
     , _quality(0)
@@ -1420,6 +1500,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     _codec = fetchChoiceParam(kParamCodec);
     _codecShortName = fetchStringParam(kParamCodecShortName);
     _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
+    _crf = fetchChoiceParam(kParamCRF);
+    _x26xSpeed = fetchChoiceParam(kParamX26xSpeed);
+    _qscale = fetchIntParam(kParamQScale);
     _bitrate = fetchDoubleParam(kParamBitrate);
     _bitrateTolerance = fetchDoubleParam(kParamBitrateTolerance);
     _quality = fetchInt2DParam(kParamQuality);
@@ -1956,120 +2039,274 @@ WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth,
 
 /*static*/
 void
-WriteFFmpegPlugin::GetCodecSupportedParams(AVCodec* codec,
-                                           bool& outBitrateParam,
-                                           bool& outBitrateTolParam,
-                                           bool& outQualityParams,
-                                           bool& outInterGOPParams,
-                                           bool& outInterBParams)
+WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
+                                           CodecParams* p)
 {
-    bool outLossyParams = false;
+    bool lossy = false;
 
     assert(codec);
     if (!codec) {
-        outBitrateParam = false;
-        outBitrateTolParam = false;
-        outQualityParams = false;
-        outInterGOPParams = false;
-        outInterBParams = false;
+        p->crf = false;
+        p->x26xSpeed = false;
+        p->bitrate = false;
+        p->bitrateTol = false;
+        p->qscale = false;
+        p->qrange = false;
+        p->interGOP = false;
+        p->interB = false;
 
         return;
     }
     //The flags on the codec can't be trusted to indicate capabilities, so use the props bitmask on the descriptor instead.
     const AVCodecDescriptor* codecDesc = avcodec_descriptor_get(codec->id);
 
-    outLossyParams    = codecDesc ? !!(codecDesc->props & AV_CODEC_PROP_LOSSY) : false;
-    outInterGOPParams = codecDesc ? !(codecDesc->props & AV_CODEC_PROP_INTRA_ONLY) : false;
-    outInterBParams   = codecDesc ? !(codecDesc->props & AV_CODEC_PROP_INTRA_ONLY) : false;
+    lossy    = codecDesc ? !!(codecDesc->props & AV_CODEC_PROP_LOSSY) : false;
+    p->interGOP = codecDesc ? !(codecDesc->props & AV_CODEC_PROP_INTRA_ONLY) : false;
+    p->interB   = codecDesc ? !(codecDesc->props & AV_CODEC_PROP_INTRA_ONLY) : false;
 
     //Overrides for specific cases where the codecs don't follow the rules.
     //PNG doesn't observe the params, despite claiming to be lossy.
     if ( codecDesc && (codecDesc->id == AV_CODEC_ID_PNG) ) {
-        outLossyParams = outInterGOPParams = outInterBParams = false;
+        lossy = p->interGOP = p->interB = false;
     }
     //Mpeg4 ms var 3 / AV_CODEC_ID_MSMPEG4V3 doesn't have a descriptor, but needs the params.
     if ( codecDesc && (codec->id == AV_CODEC_ID_MSMPEG4V3) ) {
-        outLossyParams = outInterGOPParams = outInterBParams = true;
+        lossy = p->interGOP = p->interB = true;
     }
     //QTRLE supports differing GOPs, but any b frame settings causes unreadable files.
     if ( codecDesc && (codecDesc->id == AV_CODEC_ID_QTRLE) ) {
-        outLossyParams = outInterBParams = false;
-        outInterGOPParams = true;
+        lossy = p->interB = false;
+        p->interGOP = true;
     }
 #if OFX_FFMPEG_PRORES
     // Prores is profile-based, we don't need the bitrate parameters
     if ( codecDesc && (codecDesc->id == AV_CODEC_ID_PRORES) ) {
-        outLossyParams = outInterBParams = outInterGOPParams = false;
+        // https://trac.ffmpeg.org/wiki/Encode/VFX
+        lossy = p->interB = p->interGOP = false;
     }
 #endif
 #if OFX_FFMPEG_DNXHD
     // DNxHD is profile-based, we don't need the bitrate parameters
     if ( codecDesc && (codecDesc->id == AV_CODEC_ID_DNXHD) ) {
-        outLossyParams = outInterBParams = outInterGOPParams = false;
+        lossy = p->interB = p->interGOP = false;
     }
 #endif
     /* && codec->id != AV_CODEC_ID_PRORES*/
 
-    if (!outLossyParams) {
-        outBitrateParam = outBitrateTolParam = outQualityParams = false;
-    } else {
+    p->crf = p->x26xSpeed = p->bitrate = p->bitrateTol = p->qscale = p->qrange = false;
+    if (lossy) {
         string codecShortName = codec->name;
-        outBitrateParam = outBitrateTolParam = outQualityParams = true;
 
         // handle codec-specific cases.
         // Note that x264 is used in qpmin/qpmax mode
         if (codecShortName == "mpeg4") {
-            outBitrateParam = outBitrateTolParam = false;
-            outQualityParams = false;
-        } else if (codecShortName == "libx264") {
-            outBitrateParam = outBitrateTolParam = false;
-        } else if (codecShortName == "libx264rgb") {
-            outBitrateParam = outBitrateTolParam = false;
+            // mpeg4videoenc.c
+            // supports qscale and bit_rate according to https://trac.ffmpeg.org/wiki/Encode/MPEG-4
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = false;
+            //p->interGOP = false;
+            //p->interB = false;
+        } else if (codecShortName == "libxvid") {
+            // libxvid.c
+            // https://trac.ffmpeg.org/wiki/Encode/MPEG-4
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-libxvid
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = true;
+            p->interGOP = true;
+            p->interB = true;
+        } else if (codecShortName == "libx264" ||
+                   codecShortName == "libx264rgb") {
+            // libx264.c
+            // https://trac.ffmpeg.org/wiki/Encode/H.264
+            p->crf = true; // -qscale is ignored, -crf is recommended
+            p->x26xSpeed = true;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false; // true; // the code uses it, but it's disturbing to have qmin/qmax with CRF
+            p->interGOP = true;
+            p->interB = true;
         } else if (codecShortName == "libx265") {
-            outBitrateTolParam = false;
-            outQualityParams = false;
+            // libx265.c
+            // https://trac.ffmpeg.org/wiki/Encode/H.265
+            p->crf = true;
+            p->x26xSpeed = true;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
         } else if (codecShortName == "libopenh264") {
-            outBitrateTolParam = false;
-            outQualityParams = false;
+            // libopenh264enc.c
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-libopenh264
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = true;
+            p->interB = false;
         } else if (codecShortName == "cinepak") {
-            outBitrateParam = outBitrateTolParam = false;
-            outInterGOPParams = outInterBParams = false;
-            outQualityParams = false;
+            // cinepakenc.c
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = false;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
         } else if (codecShortName == "mpeg2video") {
-            outQualityParams = false;
+            // mpeg12enc.c and mpegvideo_enc.c
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-mpeg2
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = true;
+            p->qscale = true;
+            p->qrange = true;
+            p->interGOP = true;
+            p->interB = true;
+        } else if (codecShortName == "ffv1") {
+            // https://trac.ffmpeg.org/wiki/Encode/FFV1
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = true;
+            p->interB = false;
         } else if (codecShortName == "mpeg1video") {
-            outQualityParams = false;
+            // mpeg12enc.c and mpegvideo_enc.c
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = true;
+            p->qscale = true;
+            p->qrange = true;
+            p->interGOP = true;
+            p->interB = true;
         } else if (codecShortName == "flv") {
-            outQualityParams = false;
+            // https://trac.ffmpeg.org/wiki/EncodingForStreamingSites
+            // flvenc.c
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = true;
+            p->qscale = true;
+            p->qrange = true;
+            //p->interGOP = false;
+            //p->interB = false;
         } else if (codecShortName == "svq1") {
             // svq1 is h263-based
-            outQualityParams = false;
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = true;
+            p->qscale = true;
+            p->qrange = true;
+            //p->interGOP = p->interGOP;
+            //p->interB = p->interB;
         } else if (codecShortName == "mjpeg") {
-            outQualityParams = false;
-            outInterGOPParams = outInterBParams = false;
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = false;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
         } else if (codecShortName == "jpeg2000") {
-            outBitrateParam = outBitrateTolParam = false;
-            outQualityParams = false;
-            outInterGOPParams = outInterBParams = false;
+            // j2kenc.c
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = false;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
         } else if (codecShortName == "jpegls") {
-            outBitrateParam = outBitrateTolParam = false;
-            outQualityParams = false;
-            outInterGOPParams = outInterBParams = false;
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = false;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
         } else if (codecShortName == "libvpx") {
-            outBitrateTolParam = false;
-            outInterBParams = false;
+            // https://trac.ffmpeg.org/wiki/Encode/VP8
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-libvpx
+            p->crf = true;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false; // true; // the code uses it, but it's disturbing to have qmin/qmax with CRF
+            p->interGOP = true;
+            p->interB = false;
         } else if (codecShortName == "libvpx-vp9") {
-            // libvpx/VP9 could be lossless??
-            outBitrateTolParam = false;
-            outInterBParams = false;
+            // https://trac.ffmpeg.org/wiki/Encode/VP9
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-libvpx
+            p->crf = true;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false; // true; // the code uses it, but it's disturbing to have qmin/qmax with CRF
+            p->interGOP = true;
+            p->interB = false;
         } else if (codecShortName == "libschroedinger") {
-            outBitrateTolParam = false;
-            outQualityParams = false;
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = false;
+            //p->interGOP = p->interGOP;
+            //p->interB = p->interB;
         } else if (codecShortName == "vc2") {
-            // libvpx/VP9 could be lossless??
-            outBitrateTolParam = false;
-            outQualityParams  = false;
-            outInterGOPParams = outInterBParams = false;
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-vc2
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
+        } else if (codecShortName == "libtheora") {
+            // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-libtheora
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = false;
+            p->interGOP = true;
+            p->interB = false;
+        } else if (codecShortName == "libxavs") {
+            // libxavs.c
+            p->crf = true;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = true;
+            p->qscale = false; // could use the "qp" option
+            p->qrange = false; // could be enabled if qrange is enabled too
+            p->interGOP = true;
+            p->interB = true;
         }
     }
 } // WriteFFmpegPlugin::GetCodecSupportedParams
@@ -2134,33 +2371,137 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
 
     //Only update the relevant context variables where the user is able to set them.
     //This deals with cases where values are left on an old value when knob disabled.
-    bool bitrateParam    = false;
-    bool bitrateTolParam = false;
-    bool qualityParams   = false;
-    bool interGOPParams  = false;
-    bool interBParams    = false;
+    CodecParams p;
     if (avCodec) {
-        GetCodecSupportedParams(avCodec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
+        GetCodecSupportedParams(avCodec, &p);
     }
 
-    assert(_bitrate && _bitrateTolerance && _quality);
-    if (bitrateParam) {
-        double bitrate = _bitrate->getValue();
-        avCodecContext->bit_rate = (int)(bitrate * 1000000);
-        if (bitrateTolParam) {
-            double fps = _fps->getValue();
-            double bitrateToleranceMin = std::ceil( (bitrate / std::min(fps, 4.)) * 1000000) / 1000000.;
-            double bitrateTolerance = std::max( bitrateToleranceMin, _bitrateTolerance->getValue() );
+    assert(_crf && _x26xSpeed && _qscale && _bitrate && _bitrateTolerance && _quality);
+    bool setqscale = p.qscale;
+    bool setbitrate = p.bitrate;
+    if (p.crf) {
+        /* Mapping from easily-understandable descriptions to CRF values.
+         * Assumes we output 8-bit video. Needs to be remapped if 10-bit
+         * is output.
+         * We use a slightly wider than "subjectively sane range" according
+         * to https://trac.ffmpeg.org/wiki/Encode/H.264#a1.ChooseaCRFvalue
+         */
+        // default is CRF=23 (see http://git.videolan.org/?p=x264.git;a=blob;f=common/common.c;h=14d4670e0e095f161e7a690b40b035eca8c01fc5;hb=HEAD#l105)
 
-            avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance * 1000000);
+        int crf = -1;
+        CRFEnum e = (CRFEnum)_crf->getValue();
+        switch (e) {
+            case eCRFNone:
+                crf = -1;
+                break;
+
+            case eCRFLossless:
+                crf = 0;
+                break;
+
+            case eCRFPercLossless:
+                crf = 17;
+                break;
+
+            case eCRFHigh:
+                crf = 20;
+                break;
+
+            case eCRFMedium:
+                crf = 23;
+                break;
+
+            case eCRFLow:
+                crf = 26;
+                break;
+
+            case eCRFVeryLow:
+                crf = 29;
+                break;
+
+            case eCRFLowest:
+                crf = 32;
+                break;
+        }
+        if (crf >= 0) {
+            setqscale = setbitrate = false;
+            av_opt_set_int(avCodecContext->priv_data, "crf", crf, 0);
+            if (p.x26xSpeed) {
+                X26xSpeedEnum e = (X26xSpeedEnum)_x26xSpeed->getValue();
+                const char* preset = NULL;
+                switch (e) {
+                    case eX26xSpeedUltrafast:
+                        preset = "ultrafast";
+                        break;
+
+                    case eX26xSpeedVeryfast:
+                        preset = "veryfast";
+                        break;
+
+                    case eX26xSpeedFaster:
+                        preset = "faster";
+                        break;
+
+                    case eX26xSpeedFast:
+                        preset = "fast";
+                        break;
+
+                    case eX26xSpeedMedium:
+                        preset = "medium";
+                        break;
+
+                    case eX26xSpeedSlow:
+                        preset = "slow";
+                        break;
+
+                    case eX26xSpeedSlower:
+                        preset = "slower";
+                        break;
+
+                    case eX26xSpeedVeryslow:
+                        preset = "veryslow";
+                        break;
+                }
+                if (preset != NULL) {
+                    av_opt_set(avCodecContext->priv_data, "preset", preset, 0);
+                }
+            }
         }
     }
-    if (qualityParams) {
+    if (setqscale) {
+        int qscale = _qscale->getValue();
+        if (qscale != -1) {
+            setbitrate = false;
+            avCodecContext->flags |= AV_CODEC_FLAG_QSCALE;
+            avCodecContext->global_quality = qscale * FF_QP2LAMBDA;
+        }
+    }
+    if (setbitrate) {
+        double bitrate = _bitrate->getValue();
+        if (bitrate >= 0) {
+            avCodecContext->bit_rate = (int)(bitrate * 1000000);
+        }
+        if (p.bitrateTol) {
+            double bitrateTolerance = _bitrateTolerance->getValue();
+            if (bitrateTolerance >= 0) {
+                double fps = _fps->getValue();
+                double bitrateToleranceMin = std::ceil( (bitrate / std::min(fps, 4.)) * 1000000) / 1000000.;
+                bitrateTolerance = std::max( bitrateToleranceMin, bitrateTolerance );
+
+                avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance * 1000000);
+            }
+        }
+    }
+    if (p.qrange) {
         int qMin, qMax;
         _quality->getValue(qMin, qMax);
 
-        avCodecContext->qmin = qMin;
-        avCodecContext->qmax = qMax;
+        if (qMin >= 0) {
+            avCodecContext->qmin = qMin;
+        }
+        if (qMax >= 0) {
+            avCodecContext->qmax = qMax;
+        }
     }
 
     avCodecContext->width = (_rodPixel.x2 - _rodPixel.x1);
@@ -2304,19 +2645,23 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     // copy timebase while removing common factors
     avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational) {0, 1});
 
-    int gopSize = _gopSize->getValue();
-    if (interGOPParams) {
-        avCodecContext->gop_size = gopSize;
+    if (p.interGOP) {
+        int gopSize = _gopSize->getValue();
+        if (gopSize >= 0) {
+            avCodecContext->gop_size = gopSize;
+        }
     }
 
     int bFrames = _bFrames->getValue();
     // NOTE: in new ffmpeg, bframes don't seem to work correctly - ffmpeg crashes...
-    if (interBParams && bFrames) {
-        avCodecContext->max_b_frames = bFrames;
+    if (p.interB && bFrames != -1) {
+        //avCodecContext->max_b_frames = bFrames;
+        av_opt_set_int(avCodecContext->priv_data, "bf", bFrames, 0);
 #if FF_API_PRIVATE_OPT
-        avCodecContext->b_frame_strategy = 0;
+        // Strategy to choose between I/P/B-frames
+        //avCodecContext->b_frame_strategy = 0; // deprecated: use encoder private option "b_strategy", see below
+        av_opt_set_int(avCodecContext->priv_data, "b_strategy", 0, 0);
 #endif
-        av_opt_set_int(avCodecContext->priv_data, "b-strategy", 0, 0);
         avCodecContext->b_quant_factor = 2.0f;
     }
 
@@ -3337,6 +3682,8 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
         return;
     }
 
+    clearPersistentMessage();
+
     AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV420P;
     AVPixelFormat nukeBufferPixelFormat = AV_PIX_FMT_RGB24;
     int outBitDepth                     = 8;
@@ -3710,21 +4057,41 @@ WriteFFmpegPlugin::updateVisibility()
     }
 
     AVCodec* codec = avcodec_find_encoder_by_name( codecShortName.c_str() );
-    bool bitrateParam    = false;
-    bool bitrateTolParam = false;
-    bool qualityParams   = false;
-    bool interGOPParams  = false;
-    bool interBParams    = false;
+    CodecParams p;
     if (codec) {
-        GetCodecSupportedParams(codec, bitrateParam, bitrateTolParam, qualityParams, interGOPParams, interBParams);
+        GetCodecSupportedParams(codec, &p);
     }
 
-    _bitrate->setIsSecretAndDisabled(!bitrateParam);
-    _bitrateTolerance->setIsSecretAndDisabled(!bitrateTolParam);
-    _quality->setIsSecretAndDisabled(!qualityParams);
+    _crf->setIsSecretAndDisabled(!p.crf);
+    _x26xSpeed->setIsSecretAndDisabled(!p.x26xSpeed);
+    _qscale->setIsSecretAndDisabled(!p.qscale);
+    _bitrate->setIsSecretAndDisabled(!p.bitrate);
+    _bitrateTolerance->setIsSecretAndDisabled(!p.bitrateTol);
+    _quality->setIsSecretAndDisabled(!p.qrange);
 
-    _gopSize->setIsSecretAndDisabled(!interGOPParams);
-    _bFrames->setIsSecretAndDisabled(!interBParams);
+    bool setqscale = p.qscale;
+    bool setbitrate = p.bitrate;
+
+    if (p.crf && (CRFEnum)_crf->getValue() != eCRFNone) {
+        setqscale = setbitrate = false;
+    }
+
+    if (setqscale && _qscale->getValue() != -1) {
+        setbitrate = false;
+    }
+
+    if (p.qscale && !setqscale) {
+        _qscale->setEnabled(false);
+    }
+
+    if (p.bitrate && !setbitrate) {
+        _bitrate->setEnabled(false);
+        if (p.bitrateTol) {
+            _bitrateTolerance->setEnabled(false);
+        }
+    }
+    _gopSize->setIsSecretAndDisabled(!p.interGOP);
+    _bFrames->setIsSecretAndDisabled(!p.interB);
 
     //We use the bitrate to set the min range for bitrate tolerance.
     updateBitrateToleranceRange();
@@ -3962,6 +4329,10 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
         GenericWriterPlugin::changedParam(args, paramName);
     }
 
+    if (args.reason == eChangeUserEdit) {
+        // for example, bitrate must be enabled when CRF goes to None or QScale goes to -1
+        updateVisibility();
+    }
     // also check that the codec setting is OK
     checkCodec();
 }
@@ -4573,6 +4944,91 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
 #endif
 
+        {
+            ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamCRF);
+            param->setLabel(kParamCRFLabel);
+            param->setHint(kParamCRFHint);
+            assert(param->getNOptions() == eCRFNone);
+            param->appendOption(kParamCRFOptionNone);
+            assert(param->getNOptions() == eCRFLossless);
+            param->appendOption(kParamCRFOptionLossless);
+            assert(param->getNOptions() == eCRFPercLossless);
+            param->appendOption(kParamCRFOptionPercLossless);
+            assert(param->getNOptions() == eCRFHigh);
+            param->appendOption(kParamCRFOptionHigh);
+            assert(param->getNOptions() == eCRFMedium);
+            param->appendOption(kParamCRFOptionMedium);
+            assert(param->getNOptions() == eCRFLow);
+            param->appendOption(kParamCRFOptionLow);
+            assert(param->getNOptions() == eCRFVeryLow);
+            param->appendOption(kParamCRFOptionVeryLow);
+
+            param->setAnimates(false);
+            param->setDefault((int)eCRFMedium);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+
+        {
+            ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamX26xSpeed);
+            param->setLabel(kParamX26xSpeedLabel);
+            param->setHint(kParamX26xSpeedHint);
+            assert(param->getNOptions() == eX26xSpeedUltrafast);
+            param->appendOption(kParamX26xSpeedOptionUltrafast);
+            assert(param->getNOptions() == eX26xSpeedVeryfast);
+            param->appendOption(kParamX26xSpeedOptionVeryfast);
+            assert(param->getNOptions() == eX26xSpeedFaster);
+            param->appendOption(kParamX26xSpeedOptionFaster);
+            assert(param->getNOptions() == eX26xSpeedFast);
+            param->appendOption(kParamX26xSpeedOptionFast);
+            assert(param->getNOptions() == eX26xSpeedMedium);
+            param->appendOption(kParamX26xSpeedOptionMedium);
+            assert(param->getNOptions() == eX26xSpeedSlow);
+            param->appendOption(kParamX26xSpeedOptionSlow);
+            assert(param->getNOptions() == eX26xSpeedSlower);
+            param->appendOption(kParamX26xSpeedOptionSlower);
+            assert(param->getNOptions() == eX26xSpeedVeryslow);
+            param->appendOption(kParamX26xSpeedOptionVerySlow);
+
+            param->setAnimates(false);
+            param->setDefault((int)eX26xSpeedMedium);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+
+        // QScale
+        {
+            IntParamDescriptor* param = desc.defineIntParam(kParamQScale);
+            param->setLabel(kParamQScaleLabel);
+            param->setHint(kParamQScaleHint);
+            param->setAnimates(false);
+            param->setRange(-1,100);
+            param->setDefault(-1);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+
+        ////////////Quality
+        {
+            Int2DParamDescriptor* param = desc.defineInt2DParam(kParamQuality);
+            param->setLabel(kParamQualityLabel);
+            param->setHint(kParamQualityHint);
+            param->setRange(-1, -1, 100, 100);
+            param->setDefault(-1, -1); // was (2,32), but (0,69) is the x264 default
+            param->setDimensionLabels("min", "max");
+            param->setAnimates(false);
+            param->setParent(*group);
+            if (page) {
+                page->addChild(*param);
+            }
+        }
+
         ///////////bit-rate
         {
             DoubleParamDescriptor* param = desc.defineDoubleParam(kParamBitrate);
@@ -4602,28 +5058,14 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             }
         }
 
-        ////////////Quality
-        {
-            Int2DParamDescriptor* param = desc.defineInt2DParam(kParamQuality);
-            param->setLabel(kParamQualityLabel);
-            param->setHint(kParamQualityHint);
-            param->setRange(0, 0, 100, 100);
-            param->setDefault(2, 31);
-            param->setDimensionLabels("min", "max");
-            param->setAnimates(false);
-            param->setParent(*group);
-            if (page) {
-                page->addChild(*param);
-            }
-        }
 
         ///////////Gop size
         {
             IntParamDescriptor* param = desc.defineIntParam(kParamGopSize);
             param->setLabel(kParamGopSizeLabel);
             param->setHint(kParamGopSizeHint);
-            param->setRange(0, 30);
-            param->setDefault(12);
+            param->setRange(-1, 30);
+            param->setDefault(-1);
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
@@ -4637,7 +5079,7 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             param->setLabel(kParamBFramesLabel);
             param->setHint(kParamBFramesHint);
             param->setRange(-1, FF_MAX_B_FRAMES);
-            param->setDefault(0);
+            param->setDefault(-1); // default is -1, see x264_defaults in libavcodec/libx264.c
             param->setAnimates(false);
             param->setParent(*group);
             if (page) {
