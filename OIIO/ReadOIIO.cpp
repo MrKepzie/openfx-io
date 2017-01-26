@@ -485,7 +485,7 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
                 continue;
             } else {
                 MultiPlane::ImagePlaneDesc plane(it->first, "", "", it->second.layer.channelNames);
-                clipComponents.addClipComponents(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXComponentsTypeString(plane));
+                clipComponents.addClipComponents(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
             }
         }
     }

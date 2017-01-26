@@ -545,7 +545,7 @@ WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
             }
         } else {
             assert(stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedPlane);
-            std::string ofxComponentsStr = MultiPlane::ImagePlaneDesc::mapPlaneToOFXComponentsTypeString(dstPlane);
+            std::string ofxComponentsStr = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(dstPlane);
             clipComponents.addClipComponents(*_inputClip, ofxComponentsStr);
             clipComponents.addClipComponents(*_outputClip, ofxComponentsStr);
         }

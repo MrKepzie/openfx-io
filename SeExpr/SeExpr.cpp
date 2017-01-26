@@ -2495,7 +2495,7 @@ SeExprPlugin::getClipComponents(const ClipComponentsArguments& args,
         if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
             return;
         }
-        clipComponents.addClipComponents(*_dstClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXComponentsTypeString(plane));
+        clipComponents.addClipComponents(*_dstClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane)); 
 
     }
 
