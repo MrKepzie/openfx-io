@@ -286,6 +286,8 @@ enum EParamTileSize
 #define kParamViewsSelectorHint "Select the views to render. When choosing All, make sure the output filename does not have a %v or %V view " \
     "pattern in which case each view would be written to a separate file."
 
+static bool gIsMultiplanarV2=false;
+
 class WriteOIIOPlugin
     : public GenericWriterPlugin
 {
@@ -405,22 +407,16 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle,
     , _currentInputComponents()
     , _availableViews()
 {
-# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
-    const bool enableMultiPlaneFeature = ( getImageEffectHostDescription()->supportsDynamicChoices &&
-                                           getImageEffectHostDescription()->isMultiPlanar &&
-                                           fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
-# else
-    const bool enableMultiPlaneFeature = false;
-# endif
+
     _bitDepth = fetchChoiceParam(kParamBitDepth);
     _quality     = fetchIntParam(kParamOutputQuality);
     _dwaCompressionLevel = fetchDoubleParam(kParamOutputDWACompressionLevel);
     _orientation = fetchChoiceParam(kParamOutputOrientation);
     _compression = fetchChoiceParam(kParamOutputCompression);
     _tileSize = fetchChoiceParam(kParamTileSize);
-    if (enableMultiPlaneFeature) {
+    if (gIsMultiplanarV2) {
         _outputLayers = fetchChoiceParam(kParamOutputChannels);
-        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, false /*splitPlanesIntoChannels*/, false /*addNoneOpt*/, true/*isOutput*/, false /*hideIfDisconnected*/, _outputClip);
+        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, false /*splitPlanesIntoChannels*/, false /*addNoneOpt*/, true/*isOutput*/, false /*hideIfDisconnected*/, _inputClip);
         onAllParametersFetched();
         _parts = fetchChoiceParam(kParamPartsSplitting);
         _views = fetchChoiceParam(kParamViewsSelector);
@@ -475,7 +471,7 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
     GenericWriterPlugin::getClipPreferences(clipPreferences);
 
-    if ( _outputLayers && !_outputLayers->getIsSecret() ) {
+    if ( gIsMultiplanarV2 ) {
         string filename;
         _fileParam->getValue(filename);
         std::auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
@@ -525,7 +521,7 @@ void
 WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
                                    ClipComponentsSetter& clipComponents)
 {
-    if ( _outputLayers && !_outputLayers->getIsSecret() ) {
+    if ( gIsMultiplanarV2) {
         MultiPlane::ImagePlaneDesc dstPlane;
 
         OFX::Clip* clip = 0;
@@ -537,7 +533,7 @@ WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
 
         if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedAllPlanes) {
             vector<string> components;
-            _outputClip->getComponentsPresent(&components);
+            _inputClip->getComponentsPresent(&components);
             for (vector<string>::const_iterator it = components.begin(); it != components.end(); ++it) {
                 clipComponents.addClipComponents(*_inputClip, *it);
                 clipComponents.addClipComponents(*_outputClip, *it);
@@ -1474,6 +1470,16 @@ WriteOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
                                "Zfile (*.zfile)\n\n"
                                "All supported formats and extensions: " + extensions_pretty + "\n\n"
                                + oiio_versions() );
+
+# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
+    gIsMultiplanarV2 = ( getImageEffectHostDescription()->supportsDynamicChoices &&
+                                          getImageEffectHostDescription()->isMultiPlanar &&
+                                          fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
+# else
+    gIsMultiplanarV2 = false;
+# endif
+
+
 } // WriteOIIOPluginFactory::describe
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -1623,15 +1629,9 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
 
-# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
-    const bool enableMultiPlaneFeature = ( getImageEffectHostDescription()->supportsDynamicChoices &&
-                                           getImageEffectHostDescription()->isMultiPlanar &&
-                                           fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
-# else
-    const bool enableMultiPlaneFeature = false;
-# endif
 
-    if (enableMultiPlaneFeature) {
+    if (gIsMultiplanarV2) {
+
 
         MultiPlane::Factory::describeInContextAddPlaneChoice(desc, page, kParamOutputChannels, kParamOutputChannelsLabel, kParamOutputChannelsHint);
         MultiPlane::Factory::describeInContextAddAllPlanesOutputCheckbox(desc, page);
