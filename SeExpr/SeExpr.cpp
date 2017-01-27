@@ -50,6 +50,7 @@
 #include "ofxsFormatResolution.h"
 #include "ofxsRectangleInteract.h"
 #include "ofxsFilter.h"
+#include "ofxsMultiPlane.h"
 
 GCC_DIAG_OFF(deprecated)
 #include <SeExpression.h>
@@ -409,13 +410,10 @@ enum RegionOfDefinitionEnum
 #define kParamValidateLabel             "Validate"
 #define kParamValidateHint              "Validate the script contents and execute it on next render. This locks the script and all its parameters."
 
-#define kSeExprColorPlaneName "Color"
-#define kSeExprBackwardMotionPlaneName "Backward"
-#define kSeExprForwardMotionPlaneName "Forward"
-#define kSeExprDisparityLeftPlaneName "DisparityLeft"
-#define kSeExprDisparityRightPlaneName "DisparityRight"
+
 
 static bool gHostIsMultiPlanar = false;
+static bool gHostIsNatron3OrGreater = false;
 static bool gHostIsNatron = false;
 static bool gHostSupportsRGBA   = false;
 static bool gHostSupportsRGB    = false;
@@ -454,7 +452,7 @@ class SeExprProcessorBase;
 ////////////////////////////////////////////////////////////////////////////////
 /** @brief The plugin that does our work */
 class SeExprPlugin
-    : public ImageEffect
+: public MultiPlane::MultiPlaneEffect
 {
 public:
     /** @brief ctor */
@@ -493,15 +491,9 @@ public:
 
 private:
 
-    void buildChannelMenus();
-
     void setupAndProcess(SeExprProcessorBase & processor, const RenderArguments &args);
 
     PixelComponentEnum getOutputComponents() const;
-
-    string getOfxComponentsForClip(int inputNumber) const;
-
-    string getOfxPlaneForClip(int inputNumber) const;
 
 private:
     const bool _simple;
@@ -511,7 +503,6 @@ private:
 
     vector<vector<string> > _clipLayerOptions;
     ChoiceParam *_clipLayerToFetch[kSourceClipCount];
-    StringParam *_clipLayerToFetchString[kSourceClipCount];
     IntParam *_doubleParamCount;
     DoubleParam* _doubleParams[kParamsCount];
     IntParam *_double2DParamCount;
@@ -1851,7 +1842,7 @@ private:
 
 SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
                            bool simple)
-    : ImageEffect(handle)
+    : MultiPlane::MultiPlaneEffect(handle)
     , _simple(simple)
 {
     if (getContext() != eContextGenerator) {
@@ -1880,12 +1871,10 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
     for (int i = 0; i < kParamsCount; ++i) {
         const string istr = unsignedToString(i + 1);
         if (gHostIsMultiPlanar) {
+            fetchDynamicMultiplaneChoiceParameter(kParamLayerInput + istr, false /*splitPlanesInChannels*/, true /*addNoneOption*/, false/*isOutput*/, true /*hideIfDisconnected*/ , _srcClip[i]);
             _clipLayerToFetch[i] = fetchChoiceParam(kParamLayerInput + istr);
-            _clipLayerToFetchString[i] = fetchStringParam(kParamLayerInputChoice + istr);
-        } else {
-            _clipLayerToFetch[i] = 0;
-            _clipLayerToFetchString[i] = 0;
         }
+        onAllParametersFetched();
 
         _doubleParams[i] = fetchDoubleParam(kParamDouble + istr);
         _double2DParams[i] = fetchDouble2DParam(kParamDouble2D + istr);
@@ -1942,75 +1931,6 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
     changedParam(args, kParamOutputComponents);
 }
 
-string
-SeExprPlugin::getOfxComponentsForClip(int inputNumber) const
-{
-    assert(inputNumber >= 0 && inputNumber < kSourceClipCount);
-    int opt_i;
-    _clipLayerToFetch[inputNumber]->getValue(opt_i);
-    string opt;
-    _clipLayerToFetch[inputNumber]->getOption(opt_i, opt);
-
-    if (opt == kSeExprColorPlaneName) {
-        return _srcClip[inputNumber]->getPixelComponentsProperty();
-    } else if ( (opt == kSeExprForwardMotionPlaneName) || (opt == kSeExprBackwardMotionPlaneName) ) {
-        return kFnOfxImageComponentMotionVectors;
-    } else if ( (opt == kSeExprDisparityLeftPlaneName) || (opt == kSeExprDisparityRightPlaneName) ) {
-        return kFnOfxImageComponentStereoDisparity;
-    } else {
-        vector<string> components;
-        _srcClip[inputNumber]->getComponentsPresent(&components);
-        for (vector<string>::iterator it = components.begin(); it != components.end(); ++it) {
-            vector<string> layerChannels = mapPixelComponentCustomToLayerChannels(*it);
-            if ( layerChannels.empty() ) {
-                continue;
-            }
-            // first element is layer name
-            if (layerChannels[0] == opt) {
-                return *it;
-            }
-        }
-    }
-
-    return string();
-}
-
-string
-SeExprPlugin::getOfxPlaneForClip(int inputNumber) const
-{
-    assert(inputNumber >= 0 && inputNumber < kSourceClipCount);
-    int opt_i;
-    _clipLayerToFetch[inputNumber]->getValue(opt_i);
-    string opt;
-    _clipLayerToFetch[inputNumber]->getOption(opt_i, opt);
-
-    if (opt == kSeExprColorPlaneName) {
-        return kFnOfxImagePlaneColour;
-    } else if (opt == kSeExprForwardMotionPlaneName) {
-        return kFnOfxImagePlaneForwardMotionVector;
-    } else if (opt == kSeExprBackwardMotionPlaneName) {
-        return kFnOfxImagePlaneBackwardMotionVector;
-    } else if (opt == kSeExprDisparityLeftPlaneName) {
-        return kFnOfxImagePlaneStereoDisparityLeft;
-    } else if (opt == kSeExprDisparityRightPlaneName) {
-        return kFnOfxImagePlaneStereoDisparityRight;
-    } else {
-        vector<string> components;
-        _srcClip[inputNumber]->getComponentsPresent(&components);
-        for (vector<string>::iterator it = components.begin(); it != components.end(); ++it) {
-            vector<string> layerChannels = mapPixelComponentCustomToLayerChannels(*it);
-            if ( layerChannels.empty() ) {
-                continue;
-            }
-            // first element is layer name
-            if (layerChannels[0] == opt) {
-                return *it;
-            }
-        }
-    }
-
-    return string();
-}
 
 void
 SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor,
@@ -2071,7 +1991,21 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor,
     string inputLayers[kSourceClipCount];
     if (gHostIsMultiPlanar) {
         for (int i = 0; i < kSourceClipCount; ++i) {
-            inputLayers[i] = getOfxPlaneForClip(i);
+            MultiPlane::ImagePlaneDesc plane;
+            OFX::Clip* clip = 0;
+            int channelIndex = -1;
+
+            const string istr = unsignedToString(i + 1);
+
+
+            MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(kParamLayerInput + istr, &clip, &plane, &channelIndex);
+            if (stat != MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedPlane) {
+                throwSuiteStatusException(kOfxStatFailed);
+                return;
+            }
+
+
+            inputLayers[i] = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane);
         }
     }
 
@@ -2364,17 +2298,7 @@ SeExprPlugin::changedParam(const InstanceChangedArgs &args,
         }
         sendMessage(Message::eMessageMessage, "", "Alpha Script:\n" + script);
     } else {
-        for (int i = 0; i < kSourceClipCount; ++i) {
-            const string istr = unsignedToString(i + 1);
-            if ( ( paramName == (kParamLayerInput + istr) ) && (args.reason == eChangeUserEdit) ) {
-                int cur_i;
-                _clipLayerToFetch[i]->getValue(cur_i);
-                string opt;
-                _clipLayerToFetch[i]->getOption(cur_i, opt);
-                _clipLayerToFetchString[i]->setValue(opt);
-                break;
-            }
-        }
+        MultiPlaneEffect::changedParam(args, paramName);
     }
 } // SeExprPlugin::changedParam
 
@@ -2466,104 +2390,16 @@ SeExprPlugin::changedClip(const InstanceChangedArgs &args,
             }
         }
     }
+    MultiPlaneEffect::changedClip(args, clipName);
 }
 
-namespace {
-static bool
-hasListChanged(const vector<string>& oldList,
-               const vector<string>& newList)
-{
-    if ( oldList.size() != newList.size() ) {
-        return true;
-    }
-
-    vector<string>::const_iterator itNew = newList.begin();
-    for (vector<string>::const_iterator it = oldList.begin(); it != oldList.end(); ++it, ++itNew) {
-        if (*it != *itNew) {
-            return true;
-        }
-    }
-
-    return false;
-}
-}
-
-void
-SeExprPlugin::buildChannelMenus()
-{
-    for (int i = 0; i < kSourceClipCount; ++i) {
-        vector<string> components;
-        _srcClip[i]->getComponentsPresent(&components);
-        if ( !hasListChanged(_clipLayerOptions[i], components) ) {
-            continue;
-        }
-        _clipLayerToFetch[i]->resetOptions();
-
-        _clipLayerOptions[i] = components;
-
-        vector<string> options;
-        options.push_back(kSeExprColorPlaneName);
-
-        for (vector<string> ::iterator it = components.begin(); it != components.end(); ++it) {
-            const string& comp = *it;
-            if (comp == kOfxImageComponentAlpha) {
-                continue;
-            } else if (comp == kOfxImageComponentRGB) {
-                continue;
-            } else if (comp == kOfxImageComponentRGBA) {
-                continue;
-            } else if (comp == kFnOfxImageComponentMotionVectors) {
-                options.push_back(kSeExprBackwardMotionPlaneName);
-                options.push_back(kSeExprForwardMotionPlaneName);
-            } else if (comp == kFnOfxImageComponentStereoDisparity) {
-                options.push_back(kSeExprDisparityLeftPlaneName);
-                options.push_back(kSeExprDisparityRightPlaneName);
-#ifdef OFX_EXTENSIONS_NATRON
-            } else {
-                vector<string> layerChannels = mapPixelComponentCustomToLayerChannels(*it);
-                if ( layerChannels.empty() ) {
-                    continue;
-                }
-                // first element is layer name
-                options.push_back(layerChannels[0]);
-#endif
-            }
-        }
-        for (std::size_t j = 0; j < options.size(); ++j) {
-            _clipLayerToFetch[i]->appendOption(options[j]);
-        }
-        string valueStr;
-        _clipLayerToFetchString[i]->getValue(valueStr);
-        if ( valueStr.empty() ) {
-            int cur_i;
-            _clipLayerToFetch[i]->getValue(cur_i);
-            _clipLayerToFetch[i]->getOption(cur_i, valueStr);
-            _clipLayerToFetchString[i]->setValue(valueStr);
-        } else {
-            int foundOption = -1;
-            for (std::size_t j = 0; j < options.size(); ++j) {
-                if (options[j] == valueStr) {
-                    foundOption = j;
-                    break;
-                }
-            }
-            if (foundOption != -1) {
-                _clipLayerToFetch[i]->setValue(foundOption);
-            } else {
-                _clipLayerToFetch[i]->setValue(0);
-                _clipLayerToFetchString[i]->setValue(options[0]);
-            }
-        }
-    }
-} // SeExprPlugin::buildChannelMenus
 
 void
 SeExprPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
-    if (gHostIsMultiPlanar) {
-        buildChannelMenus();
-    }
 
+    MultiPlaneEffect::getClipPreferences(clipPreferences);
+    
     double par = 0.;
     int boundingBox_i;
     _boundingBox->getValue(boundingBox_i);
@@ -2622,10 +2458,17 @@ SeExprPlugin::getClipComponents(const ClipComponentsArguments& args,
             continue;
         }
 
-        string ofxComp = getOfxComponentsForClip(i);
-        if ( !ofxComp.empty() ) {
-            clipComponents.addClipComponents(*_srcClip[i], ofxComp);
+        const std::string clipIdxStr = unsignedToString(i + 1);
+
+        MultiPlane::ImagePlaneDesc plane;
+        OFX::Clip* clip = 0;
+        int channelIndex = -1;
+        MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(kParamLayerInput + clipIdxStr, &clip, &plane, &channelIndex);
+        if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
+            return;
         }
+        clipComponents.addClipComponents(*_dstClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane)); 
+
     }
 
     PixelComponentEnum outputComps = _dstClip->getPixelComponents();
@@ -3270,11 +3113,15 @@ SeExprPluginFactory<simple>::describe(ImageEffectDescriptor &desc)
     desc.setRenderTwiceAlways(false);
     desc.setSupportsMultipleClipPARs(false);
 
+    gHostIsNatron3OrGreater = false;
 #ifdef OFX_EXTENSIONS_NATRON
     if (getImageEffectHostDescription()->isNatron) {
         gHostIsNatron = true;
     } else {
         gHostIsNatron = false;
+    }
+    if (getImageEffectHostDescription()->versionMajor >= 3) {
+        gHostIsNatron3OrGreater = true;
     }
 #else
     gHostIsNatron = false;
@@ -3552,29 +3399,8 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         }
         for (int i = 0; i < kSourceClipCount; ++i) {
             const string istr = unsignedToString(i + 1);
-            {
-                ChoiceParamDescriptor *param = desc.defineChoiceParam(kParamLayerInput + istr);
-                param->setLabel(kParamLayerInputLabel + istr);
-                param->setHint(kParamLayerInputHint + istr);
-                param->setAnimates(false);
-                param->appendOption(kSeExprColorPlaneName);
-                //param->setIsSecretAndDisabled(true); // done in the plugin constructor
-                param->setParent(*group);
-                param->setEvaluateOnChange(false);
-                param->setIsPersistent(false);
-                if (page) {
-                    page->addChild(*param);
-                }
-            }
-            {
-                StringParamDescriptor *param = desc.defineStringParam(kParamLayerInputChoice + istr);
-                param->setLabel(kParamLayerInputChoiceLabel + istr);
-                param->setIsSecretAndDisabled(true); // always secret
-                param->setParent(*group);
-                if (page) {
-                    page->addChild(*param);
-                }
-            }
+            MultiPlane::Factory::describeInContextAddPlaneChoice(desc, page, kParamLayerInput + istr, kParamLayerInputLabel + istr, kParamLayerInputHint + istr);
+
         }
     }
 
