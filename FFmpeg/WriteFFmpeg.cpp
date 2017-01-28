@@ -240,7 +240,7 @@ enum X26xSpeedEnum {
 
 #define kParamQScale "qscale"
 #define kParamQScaleLabel "Global Quality"
-#define kParamQScaleHint "For lossy encoding, this controls image quality, from 0 to 100. For lossless encoding, this controls the effort and time spent at compressing more. -1 means to use the codec default or CBR (constant bit rate). Used by theo and mp4v codecs.\n" \
+#define kParamQScaleHint "For lossy encoding, this controls image quality, from 0 to 100. For lossless encoding, this controls the effort and time spent at compressing more. -1 or negative value means to use the codec default or CBR (constant bit rate). Used for example by FLV1, mjp2, theo, jpeg, m2v1, mp4v MP42, 3IVD, codecs.\n" \
     "Option -qscale in ffmpeg."
 
 #define kParamBitrate "bitrateMbps"
@@ -533,6 +533,7 @@ CreateCodecKnobLabelsMap()
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
     m["libopenh264"]   = "H264\tCisco libopenh264 H.264/MPEG-4 AVC encoder";
+    m["libopenjpeg"]   = "mjp2\tOpenJPEG JPEG 2000";
     m["libschroedinger"] = "drac\tlibschroedinger Dirac";
     m["libtheora"]     = "theo\tlibtheora Theora";
     m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
@@ -1253,7 +1254,7 @@ private:
     BooleanParam* _enableAlpha;
     ChoiceParam* _crf;
     ChoiceParam* _x26xSpeed;
-    IntParam* _qscale;
+    DoubleParam* _qscale;
     DoubleParam* _bitrate;
     DoubleParam* _bitrateTolerance;
     Int2DParam* _quality;
@@ -1502,7 +1503,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
     _crf = fetchChoiceParam(kParamCRF);
     _x26xSpeed = fetchChoiceParam(kParamX26xSpeed);
-    _qscale = fetchIntParam(kParamQScale);
+    _qscale = fetchDoubleParam(kParamQScale);
     _bitrate = fetchDoubleParam(kParamBitrate);
     _bitrateTolerance = fetchDoubleParam(kParamBitrateTolerance);
     _quality = fetchInt2DParam(kParamQuality);
@@ -1770,7 +1771,11 @@ WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt,
         return true;
     }
 #endif
-    outVideoCodec = avcodec_find_encoder(outCodecId);
+    if (userCodec) {
+        outVideoCodec = userCodec;
+    } else {
+        outVideoCodec = avcodec_find_encoder(outCodecId);
+    }
     if (!outVideoCodec) {
         return false;
     }
@@ -2218,6 +2223,17 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             p->qrange = true;
             //p->interGOP = p->interGOP;
             //p->interB = p->interB;
+        } else if (codecShortName == "msmpeg4" ||
+                   codecShortName == "msmpeg4v2") {
+            // msmpeg4 is h263-based
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = true;
+            p->bitrateTol = true;
+            p->qscale = true;
+            p->qrange = true;
+            //p->interGOP = p->interGOP;
+            //p->interB = p->interB;
         } else if (codecShortName == "mjpeg") {
             p->crf = false;
             p->x26xSpeed = false;
@@ -2229,6 +2245,19 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             p->interB = false;
         } else if (codecShortName == "jpeg2000") {
             // j2kenc.c
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = false;
+            p->bitrateTol = false;
+            p->qscale = true;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
+        } else if (codecShortName == "libopenjpeg") {
+            // liboenjpeg can output DCI-compliant jpeg2000, see
+            // http://www.michaelcinquin.com/ressources/ffmpeg
+            // openjpeg also has options profile and cinema_mode,
+            // as well as numresolution (to set the number of image resolutions)
             p->crf = false;
             p->x26xSpeed = false;
             p->bitrate = false;
@@ -2469,8 +2498,8 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         }
     }
     if (setqscale) {
-        int qscale = _qscale->getValue();
-        if (qscale != -1) {
+        double qscale = _qscale->getValue();
+        if (qscale >= 0.) {
             setbitrate = false;
             avCodecContext->flags |= AV_CODEC_FLAG_QSCALE;
             avCodecContext->global_quality = qscale * FF_QP2LAMBDA;
@@ -2674,6 +2703,13 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     }
     // Set this field so that an 'fiel' atom is inserted
     // into the QuickTime 'moov' atom.
+    // [note: interlaced flags, see ffmpeg.c:1191 in ffmpeg 3.2.2
+    //if (in_picture->interlaced_frame) {
+    //    if (enc->codec->id == AV_CODEC_ID_MJPEG)
+    //        mux_par->field_order = in_picture->top_field_first ? AV_FIELD_TT:AV_FIELD_BB;
+    //    else
+    //        mux_par->field_order = in_picture->top_field_first ? AV_FIELD_TB:AV_FIELD_BT;
+    //} else
     avCodecContext->field_order = AV_FIELD_PROGRESSIVE;
 
 #if OFX_FFMPEG_DNXHD
@@ -3018,6 +3054,14 @@ WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext,
         // Timecode codecs.
     }
 
+    // see ffmpeg.c:3042 from ffmpeg 3.2.2
+    int ret = avcodec_parameters_from_context(avStream->codecpar, avCodecContext);
+    if (ret < 0) {
+        setPersistentMessage( Message::eMessageError, "", string("Error initializing the output stream codec context.") );
+
+        return -5;
+    }
+
     return 0;
 }
 
@@ -3343,7 +3387,13 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
                     avFrame->width = avCodecContext->width;
                     avFrame->height = avCodecContext->height;
                     avFrame->format = pixelFormatCodec;
+
                     colourSpaceConvert(&avPicture, avFrame, pixelFormatNuke, pixelFormatCodec, avCodecContext);
+
+                    // see ffmpeg.c:1199 from ffmpeg 3.2.2
+                    // MJPEG ignores global_quality, and only uses the quality setting in the pictures.
+                    avFrame->quality = avCodecContext->global_quality;
+                    avFrame->pict_type = AV_PICTURE_TYPE_NONE;
                 } else {
                     // av_image_alloc failed.
                     ret = -1;
@@ -3359,7 +3409,12 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
             avFrame->pts = ( (int)time - _firstFrameToEncode );
             av_frame_set_pkt_duration(avFrame, 1);
         }
-        if ( (avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0 ) {
+        if ( (avFormatContext->oformat->flags & AVFMT_RAWPICTURE) != 0 &&
+              avCodecContext->codec->id == AV_CODEC_ID_RAWVIDEO ) {
+            // see ffmpeg.c:1168 in ffmpeg 3.2.2
+            /* raw pictures are written as AVPicture structure to
+             avoid any copies. We support temporarily the older
+             method. */
             AVPacket pkt;
             av_init_packet(&pkt);
             pkt.flags |= AV_PKT_FLAG_KEY;
@@ -3619,6 +3674,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
                 }
                 // Some formats want stream headers to be separate.
                 if (formatContext_->oformat->flags & AVFMT_GLOBALHEADER) {
+                    // see ffmpeg_opt.c:1403 in ffmpeg 3.2.2
                     avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
                 }
                 // Activate multithreaded decoding. This must be done before opening the codec; see
@@ -3738,6 +3794,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
         }
         // Some formats want stream headers to be separate.
         if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER) {
+            // see ffmpeg_opt.c:1403 in ffmpeg 3.2.2
             avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
         }
 #if OFX_FFMPEG_PRORES
@@ -4076,7 +4133,7 @@ WriteFFmpegPlugin::updateVisibility()
         setqscale = setbitrate = false;
     }
 
-    if (setqscale && _qscale->getValue() != -1) {
+    if (setqscale && _qscale->getValue() >= 0.) {
         setbitrate = false;
     }
 
@@ -5002,7 +5059,7 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
 
         // QScale
         {
-            IntParamDescriptor* param = desc.defineIntParam(kParamQScale);
+            DoubleParamDescriptor* param = desc.defineDoubleParam(kParamQScale);
             param->setLabel(kParamQScaleLabel);
             param->setHint(kParamQScaleHint);
             param->setAnimates(false);

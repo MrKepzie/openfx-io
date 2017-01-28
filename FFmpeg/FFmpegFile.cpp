@@ -191,6 +191,7 @@ const FilterEntry kCodecWhitelist[] =
     { "jpeg2000",       true,  UNSAFEQT0 },     // JPEG 2000 - write not supported as not official qt readable.
     { "jpegls",         true,  UNSAFEQT0 },     // JPEG-LS - write not supported as can't be read in in official qt.
     { "libopenh264",    true,  true },     // Cisco libopenh264 H.264/MPEG-4 AVC encoder
+    { "libopenjpeg",    true,  true },     // OpenJPEG JPEG 2000
     { "libschroedinger", true,  UNSAFEQT0 && UNSAFEVLC },     // libschroedinger Dirac - write untested. VLC plays with a wrong format
     { "libtheora",      true,  UNSAFEQT },     // libtheora Theora - write untested.
     { "libvpx",         true,  UNSAFEQT0 },     // On2 VP8
