@@ -1,0 +1,11 @@
+# ReadFFmpeg
+
+rewrite from ffplay.c, see http://github.com/devernay/ffplay
+
+# WriteFFmpeg
+
+## libopenjpeg DCI-compatible output
+
+see http://www.michaelcinquin.com/ressources/ffmpeg
+and ffmpeg -h encoder=libopenjpeg
+

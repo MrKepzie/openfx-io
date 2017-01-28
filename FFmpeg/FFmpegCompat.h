@@ -245,4 +245,11 @@ av_pix_fmt_desc_get(AVPixelFormat pix_fmt)
 #define AVERROR_NOENT AVERROR(ENOENT)
 #endif
 
+#ifndef FF_API_MAX_BFRAMES
+/**
+ * @deprecated there is no libavcodec-wide limit on the number of B-frames
+ */
+#define FF_MAX_B_FRAMES 16
+#endif
+
 #endif // ifndef FFMPEGCOMPAT_H
