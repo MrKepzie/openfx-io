@@ -348,9 +348,9 @@ getPixelsComponentsCount(const string& rawComponents,
 {
     string layer, pairedLayer;
 
-    MultiPlane::ImagePlaneDesc plane, pairedPlane;
-    MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(rawComponents, &plane, &pairedPlane);
-    switch ( plane.getNumComponents() ) {
+    vector<string> channels;
+    MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &channels);
+    switch ( channels.size() ) {
     case 0:
         *mappedComponents = ePixelComponentNone;
         break;
@@ -371,7 +371,7 @@ getPixelsComponentsCount(const string& rawComponents,
         break;
     }
 
-    return (int)plane.getNumComponents();
+    return (int)channels.size();
 }
 
 void
@@ -413,8 +413,10 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const string& plane,
         if (failIfNoSrcImg) {
             stringstream ss;
             ss << "Input layer ";
-            MultiPlane::ImagePlaneDesc planeToFetch = MultiPlane::ImagePlaneDesc::mapOFXPlaneStringToPlane(plane);
-            ss << planeToFetch.getPlaneLabel();
+            string layerName, pairedLayer;
+            vector<string> channels;
+            MultiPlane::Utils::extractChannelsFromComponentString(plane, &layerName, &pairedLayer, &channels);
+            ss << layerName;
             ss << " could not be fetched";
 
             setPersistentMessage( Message::eMessageError, "", ss.str() );
@@ -2071,15 +2073,12 @@ GenericWriterPlugin::changedParam(const InstanceChangedArgs &args,
 #ifdef OFX_IO_USING_OCIO
     _ocio->changedParam(args, paramName);
 #endif
-
-    MultiPlaneEffect::changedParam(args, paramName);
 } // GenericWriterPlugin::changedParam
 
 void
 GenericWriterPlugin::changedClip(const InstanceChangedArgs &args,
                                  const string &clipName)
 {
-    MultiPlaneEffect::changedClip(args, clipName);
     if ( (clipName == kOfxImageEffectSimpleSourceClipName) && _inputClip && (args.reason == eChangeUserEdit) ) {
         PreMultiplicationEnum premult = _inputClip->getPreMultiplication();
 #     ifdef DEBUG
@@ -2116,7 +2115,6 @@ GenericWriterPlugin::changedClip(const InstanceChangedArgs &args,
 void
 GenericWriterPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
-    MultiPlaneEffect::getClipPreferences(clipPreferences);
     if ( !_outputComponents->getIsSecret() ) {
         int index;
         _outputComponents->getValue(index);

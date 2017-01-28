@@ -483,10 +483,22 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
             string component;
             if (it->first == kReadOIIOColorLayer) {
                 continue;
+                /*switch (it->second.layer.channelNames.size()) {
+                   case 1:
+                   component = kOfxImageComponentAlpha;
+                   break;
+                   case 3:
+                   component = kOfxImageComponentRGB;
+                   break;
+                   case 4:
+                   default:
+                   component = kOfxImageComponentRGBA;
+                   break;
+                   };*/
             } else {
-                MultiPlane::ImagePlaneDesc plane(it->first, "", "", it->second.layer.channelNames);
-                clipComponents.addClipComponents(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
+                component = MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
             }
+            clipComponents.addClipComponents(*_outputClip, component);
         }
     }
 }
@@ -1757,20 +1769,19 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     } // if (pixelComponents != ePixelComponentCustom) {
 #ifdef OFX_EXTENSIONS_NATRON
     else {
-        MultiPlane::ImagePlaneDesc plane, pairedPlane;
-        MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(rawComponents, &plane, &pairedPlane);
-        numChannels = (int)plane.getNumComponents();
-        if ( plane.getNumComponents() > 0) {
+        vector<string> layerChannels = mapPixelComponentCustomToLayerChannels(rawComponents);
+        if ( !layerChannels.empty() ) {
+            numChannels = (int)layerChannels.size() - 1;
             channels.resize(numChannels);
-            string layer = plane.getPlaneID();
+            string layer = layerChannels[0];
 
             if (_outputLayer) {
                 getOIIOChannelIndexesFromLayerName(filename, view, layer, pixelComponents, subimages, channels, numChannels, subImageIndex);
             } else {
-                const std::vector<std::string>& layerChannels = plane.getChannels();
-                if ( (numChannels == 1) && (layerChannels[0] == layer) ) {
+                if ( (numChannels == 1) && (layerChannels[1] == layer) ) {
                     layer.clear();
                 }
+
 
                 for (int i = 0; i < numChannels; ++i) {
                     bool found = false;
@@ -1780,7 +1791,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                             realChan.append(layer);
                             realChan.push_back('.');
                         }
-                        realChan.append(layerChannels[i]);
+                        realChan.append(layerChannels[i + 1]);
                         if (subimages[0].channelnames[j] == realChan) {
                             channels[i] = j + kXChannelFirst;
                             found = true;

@@ -49,7 +49,6 @@
 #include <tuttle/ofxReadWrite.h>
 #endif
 #include <ofxNatron.h>
-#include <ofxsMultiPlane.h>
 
 #include "SequenceParsing/SequenceParsing.h"
 #ifdef OFX_IO_USING_OCIO
@@ -1703,10 +1702,8 @@ GenericReaderPlugin::render(const RenderArguments &args)
         bool isColor;
         bool isCustom;
         if (it->comps == ePixelComponentCustom) {
-
-            MultiPlane::ImagePlaneDesc plane, pairedPlane;
-            MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(it->rawComps, &plane, &pairedPlane);
-            isColor = plane.isColorPlane();
+            std::vector<string> channelNames = mapPixelComponentCustomToLayerChannels(it->rawComps);
+            isColor = channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B";
             isCustom = true;
             if (isColor) {
 #ifdef OFX_IO_USING_OCIO
