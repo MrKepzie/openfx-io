@@ -2894,8 +2894,62 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         if (mbs > 0) {
             avCodecContext->bit_rate = mbs * 1000000;
         }
+        // macroblock decision algorithm (high quality mode) = use best rate distortion
+        //if (rd->ffcodecdata.flags & FFMPEG_LOSSLESS_OUTPUT)
+        //  av_opt_set(avCodecContext->priv_data, "mbd", "rd", 0);
     }
 #endif // DNxHD
+
+#if 0
+    // the following was inspired by blender/source/blender/blenkernel/intern/writeffmpeg.c
+    // but it is disabled by default (we suppose ffmpeg correctly sets the x264 defaults)
+    if (AV_CODEC_ID_H264 == avCodecContext->codec_id) {
+        /*
+         * All options here are for x264, but must be set via ffmpeg.
+         * The names are therefore different - Search for "x264 to FFmpeg option mapping"
+         * to get a list.
+         */
+
+        /*
+         * Use CABAC coder. Using "coder:1", which should be equivalent,
+         * crashes Blender for some reason. Either way - this is no big deal.
+         */
+        av_opt_set(avCodecContext->priv_data, "coder", "cabac", 0);
+
+        /*
+         * The other options were taken from the libx264-default.ffpreset
+         * included in the ffmpeg distribution.
+         */
+        //av_opt_set(avCodecContext->priv_data, "flags:loop"); // this breaks compatibility for QT
+        av_opt_set(avCodecContext->priv_data, "cmp", "chroma", 0);
+        av_opt_set(avCodecContext->priv_data, "partitions", "i4x4,p8x8,b8x8", 0);
+        av_opt_set(avCodecContext->priv_data, "me_method", "hex", 0);
+        av_opt_set_int(avCodecContext->priv_data, "subq", 6, 0);
+        av_opt_set_int(avCodecContext->priv_data, "me_range", 16, 0);
+        // missing: g=250
+        av_opt_set_int(avCodecContext->priv_data, "qdiff", 4, 0);
+        av_opt_set_int(avCodecContext->priv_data, "keyint_min", 25, 0);
+        av_opt_set_int(avCodecContext->priv_data, "sc_threshold", 40, 0);
+        av_opt_set_double(avCodecContext->priv_data, "i_qfactor", 0.71, 0);
+        av_opt_set_int(avCodecContext->priv_data, "b_strategy", 1, 0);
+        av_opt_set_int(avCodecContext->priv_data, "bf", 3, 0);
+        av_opt_set_int(avCodecContext->priv_data, "refs", 2, 0);
+        av_opt_set_double(avCodecContext->priv_data, "qcomp", 0.6, 0);
+        // missing: qmin=10, qmax=51
+        av_opt_set_int(avCodecContext->priv_data, "trellis", 0, 0);
+        av_opt_set_int(avCodecContext->priv_data, "weightb", 1, 0);
+#ifdef FFMPEG_HAVE_DEPRECATED_FLAGS2
+        av_opt_set(avCodecContext->priv_data, "flags2", "dct8x8");
+        av_opt_set(avCodecContext->priv_data, "directpred", "3");
+        av_opt_set(avCodecContext->priv_data, "flags2", "fastpskip");
+        av_opt_set(avCodecContext->priv_data, "flags2", "wpred");
+#else
+        av_opt_set_int(avCodecContext->priv_data, "8x8dct", 1, 0);
+        av_opt_set_int(avCodecContext->priv_data, "fast-pskip", 1, 0);
+        av_opt_set(avCodecContext->priv_data, "wpredp", "2", 0);
+#endif
+    }
+#endif
 
     //Currently not set - the main problem being that the mov32 reader will use it to set its defaults.
     //TODO: investigate using the writer key in mov32 to ignore this value when set to mov64.
