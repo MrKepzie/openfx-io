@@ -1586,7 +1586,7 @@ WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName,
              !strcmp(shortName, kProresCodec kProresProfileProxyFourCC) ||
              (
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-              (codecProfile != (int)eDNxHDCodecProfileHR444) &&
+                 (codecProfile != (int)eDNxHDCodecProfileHR444) && // DNxHR 444 is RGB
 #endif
               !strcmp(shortName, "dnxhd")) ||
              !strcmp(shortName, "mjpeg") ||
@@ -1610,9 +1610,8 @@ WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName,
              !strcmp(shortName, kProresCodec kProresProfile4444XQFourCC) ||
              (
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-              (codecProfile == (int)eDNxHDCodecProfileHR444) &&
+                 (!strcmp(shortName, "dnxhd") && codecProfile == (int)eDNxHDCodecProfileHR444)) || // only DNxHR 444 is RGB
 #endif
-              !strcmp(shortName, "dnxhd")) ||
              !strcmp(shortName, "png")  ||
              !strcmp(shortName, "qtrle") );
 }
