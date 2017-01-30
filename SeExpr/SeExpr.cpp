@@ -415,6 +415,10 @@ enum RegionOfDefinitionEnum
 #define kSeExprDisparityLeftPlaneName "DisparityLeft"
 #define kSeExprDisparityRightPlaneName "DisparityRight"
 
+#define kParamHelp "helpButton"
+#define kParamHelpLabel "Help..."
+#define kParamHelpHint "Display help about using SeExpr."
+
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsNatron = false;
 static bool gHostSupportsRGBA   = false;
@@ -2363,6 +2367,8 @@ SeExprPlugin::changedParam(const InstanceChangedArgs &args,
             _alphaScript->getValueAtTime(time, script);
         }
         sendMessage(Message::eMessageMessage, "", "Alpha Script:\n" + script);
+    } else if (paramName == kParamHelp) {
+        sendMessage(Message::eMessageMessage, "", _simple ? kPluginDescriptionSimple : kPluginDescription);
     } else {
         for (int i = 0; i < kSourceClipCount; ++i) {
             const string istr = unsignedToString(i + 1);
@@ -3847,6 +3853,15 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         if (gHostIsNatron) {
             param->setIsSecretAndDisabled(true);
         }
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    {
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamHelp);
+        param->setLabel(kParamHelpLabel);
+        param->setHint(kParamHelpHint);
         if (page) {
             page->addChild(*param);
         }
