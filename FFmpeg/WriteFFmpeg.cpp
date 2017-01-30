@@ -533,7 +533,7 @@ CreateCodecKnobLabelsMap()
     m["ayuv"]          = "AYUV\tUncompressed packed MS 4:4:4:4";
     m["cinepak"]       = "cvid\tCinepak"; // disabled in whitelist (bad quality)
 #if OFX_FFMPEG_DNXHD
-    m["dnxhd"]         = "AVdn\tVC3/DNxHD";
+    m["dnxhd"]         = "AVdn\tAvid DNxHD / DNxHR / SMPTE VC-3";
 #endif
     m["ffv1"]          = "FFV1\tFFmpeg video codec #1";
     m["ffvhuff"]       = "FFVH\tHuffyuv FFmpeg variant";
@@ -544,8 +544,8 @@ CreateCodecKnobLabelsMap()
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
     m["libopenh264"]   = "H264\tCisco libopenh264 H.264/MPEG-4 AVC encoder";
     m["libopenjpeg"]   = "mjp2\tOpenJPEG JPEG 2000";
-    m["libschroedinger"] = "drac\tlibschroedinger Dirac";
-    m["libtheora"]     = "theo\tlibtheora Theora";
+    m["libschroedinger"] = "drac\tSMPTE VC-2 (previously BBC Dirac Pro)";
+    m["libtheora"]     = "theo\tTheora";
     m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
     m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // disabled in whitelist (bad quality)
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
@@ -4369,25 +4369,26 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
                 setFormat = true;;
             } else if (formatsShortNames[i] == "matroska") {
                 if ( (suffix.compare("mkv") == 0) ||
-                     ( suffix.compare("mk3d") == 0) ) {
-                    setFormat = true;;
+                     (suffix.compare("mk3d") == 0) ||
+                     (suffix.compare("webm") == 0) ) {
+                    setFormat = true;
                 }
             } else if (formatsShortNames[i] == "mpeg") {
                 if (suffix.compare("mpg") == 0) {
-                    setFormat = true;;
+                    setFormat = true;
                 }
             } else if (formatsShortNames[i] == "mpegts") {
                 if ( (suffix.compare("m2ts") == 0) ||
                      ( suffix.compare("mts") == 0) ||
                      ( suffix.compare("ts") == 0) ) {
-                    setFormat = true;;
+                    setFormat = true;
                 }
             } else if (formatsShortNames[i] == "mp4") {
                 if ( (suffix.compare("mov") == 0) ||
                      ( suffix.compare("3gp") == 0) ||
                      ( suffix.compare("3g2") == 0) ||
                      ( suffix.compare("mj2") == 0) ) {
-                    setFormat = true;;
+                    setFormat = true;
                 }
             }
             if (setFormat) {
@@ -4563,7 +4564,7 @@ WriteFFmpegPluginFactory::load()
     _extensions.clear();
 #if 0
     // hard-coded extensions list
-    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "webm", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     for (const char** ext = extensionsl; *ext != NULL; ++ext) {
         _extensions.push_back(*ext);
     }
@@ -4591,6 +4592,7 @@ WriteFFmpegPluginFactory::load()
         extensionsl.push_back("avi"); // AVI (Audio Video Interleaved)
         extensionsl.push_back("flv"); // flv (FLV (Flash Video))
         extensionsl.push_back("mkv"); // matroska,webm (Matroska / WebM)
+        extensionsl.push_back("webm"); // matroska,webm (Matroska / WebM)
         extensionsl.push_back("mov"); // QuickTime / MOV
         extensionsl.push_back("mp4"); // MP4 (MPEG-4 Part 14)
         extensionsl.push_back("mpg"); // MPEG-1 Systems / MPEG program stream
@@ -4870,13 +4872,7 @@ WriteFFmpegPluginFactory::describe(ImageEffectDescriptor &desc)
     GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
-    desc.setPluginDescription( "Write images or video file using "
-#                             ifdef FFMS_USE_FFMPEG_COMPAT
-                               "FFmpeg"
-#                             else
-                               "libav"
-#                             endif
-                               ".\n\n" + ffmpeg_versions() );
+    desc.setPluginDescription( kPluginDescription "\n\n" + ffmpeg_versions() );
 
 
     ///This plug-in only supports sequential render
