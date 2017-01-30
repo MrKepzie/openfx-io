@@ -126,12 +126,22 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kPluginName "WriteFFmpeg"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription \
-    "Write images using FFmpeg.\n" \
-    "The general recommendation is to write either separate frames (using WriteOIIO), " \
-    "or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
-    "and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
-    "command-line tools).\n" \
-    "Further information can be found at https://trac.ffmpeg.org/wiki/Encode/VFX"
+    "Write a video sequence using FFmpeg.\n" \
+    "\n" \
+    "This plugin can be used to produce entheir digital intermediates, i.e. videos with very high resolution and quality which can be read frame by frame for further processing, or highly compressed videos to distribute on the web. Note that this plug-in does not support audio, but audi can easily be added to the video using the ffmpeg command-line tool (see note below).  In a VFX context, it is often preferable to save processed images as a sequence of individual frames (using WriteOIIO), if disk space and real-time playing are not an issue.\n" \
+    "\n" \
+    "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
+    "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
+    "- MXF or QuickTime with VC3/DNxHD/DNxHR: the codec is intra-frame. DNxHR profiles are resolution-independent, but are still only available with 8-bit depth. The alpha channel cannot be encoded.\n" \
+    "- QuickTime with Photo JPEG and Global Quality set to 1: intra-frame and 8-bit. qscale=1 ensure almost lossless encoding.\n" \
+    "- QuickTime with avc1 (libx264 or libx264rgb) and Output Quality set to Lossless or Perceptually Lossless: 8-bit, and can be made intra-frame by setting Keyframe Interval to 1 and Max B-Frames to 0. Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n" \
+    "\n" \
+    "To produce videos for distribution, the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
+    "\n" \
+    "Adding audio\n" \
+    "If audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like:\n"\
+    "    ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4\n" \
+    "This command does not re-encode the video or audio, but simply copies the data from each source file and places it in separate streams in the output."
 
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -282,14 +292,14 @@ enum X26xSpeedEnum {
     "The keyframe intervale, also called GOP size, specifies how many frames may be grouped together by the codec to form a compression GOP. Exercise caution " \
     "with this control as it may impact whether the resultant file can be opened in other packages. Only supported by " \
     "certain codecs.\n" \
-    "-1 means to use the codec default.\n" \
+    "-1 means to use the codec default if bFrames is not 0, or 1 if bFrames is 0 to ensure only intra (I) frames are produced, producing a video which is easier to scrub frame-by-frame.\n" \
     "Option -g in ffmpeg."
 
 #define kParamBFrames "bFrames"
 #define kParamBFramesLabel "Max B-Frames"
 #define kParamBFramesHint \
     "Set max number of B frames between non-B-frames. Must be an integer between -1 and 16. 0 means that B-frames are disabled. If a value of -1 is used, it will choose an automatic value depending on the encoder. Influences file size and seekability. Only supported by certain codecs.\n" \
-    "-1 means to use the codec default.\n" \
+    "-1 means to use the codec default if Keyframe Interval is not 1, or 0 if Keyframe Interval is 1 to ensure only intra (I) frames are produced, producing a video which is easier to scrub frame-by-frame.\n" \
     "Option -bf in ffmpeg."
 
 #define kParamWriteNCLC "writeNCLC"
@@ -543,11 +553,12 @@ CreateCodecKnobLabelsMap()
     m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // disabled in whitelist (does not work will all sizes)
     m["libxavs"]       = "CAVS\tChinese AVS (Audio Video Standard)"; //disabled in whitelist
 
+    m["libxvid"]       = "mp4v\tMPEG-4 part 2";
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
     m["mjpeg"]         = "jpeg\tPhoto JPEG";
     m["mpeg1video"]    = "m1v \tMPEG-1 Video"; // disabled in whitelist (random blocks)
     m["mpeg2video"]    = "m2v1\tMPEG-2 Video";
-    m["mpeg4"]         = "mp4v\tMPEG-4 Video";
+    m["mpeg4"]         = "mp4v\tMPEG-4 part 2";
     m["msmpeg4v2"]     = "MP42\tMPEG-4 part 2 Microsoft variant version 2";
     m["msmpeg4"]       = "3IVD\tMPEG-4 part 2 Microsoft variant version 3";
     m["png"]           = "png \tPNG (Portable Network Graphics) image";
@@ -1610,10 +1621,10 @@ WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName,
              !strcmp(shortName, kProresCodec kProresProfile4444XQFourCC) ||
              (
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-                 (!strcmp(shortName, "dnxhd") && codecProfile == (int)eDNxHDCodecProfileHR444)) || // only DNxHR 444 is RGB
+              (!strcmp(shortName, "dnxhd") && codecProfile == (int)eDNxHDCodecProfileHR444) || // only DNxHR 444 is RGB
 #endif
-             !strcmp(shortName, "png")  ||
-             !strcmp(shortName, "qtrle") );
+              !strcmp(shortName, "png")  ||
+              !strcmp(shortName, "qtrle") ) );
 }
 
 void
@@ -2454,6 +2465,10 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         if (crf >= 0) {
             setqscale = setbitrate = false;
             av_opt_set_int(avCodecContext->priv_data, "crf", crf, 0);
+            if (crf == 0 && AV_CODEC_ID_VP9 == avCodecContext->codec_id) {
+                // set the lossless flag for VP90, see https://trac.ffmpeg.org/wiki/Encode/VP9
+                av_opt_set_int(avCodecContext->priv_data, "lossless", 1, 0);
+            }
             if (p.x26xSpeed) {
                 X26xSpeedEnum e = (X26xSpeedEnum)_x26xSpeed->getValue();
                 const char* preset = NULL;
@@ -2673,24 +2688,38 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     // copy timebase while removing common factors
     avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational) {0, 1});
 
+    int gopSize = -1;
     if (p.interGOP) {
-        int gopSize = _gopSize->getValue();
+        gopSize = _gopSize->getValue();
         if (gopSize >= 0) {
-            avCodecContext->gop_size = gopSize;
+            //avCodecContext->gop_size = gopSize;
+            av_opt_set_int(avCodecContext->priv_data, "g", 1, 0); // set the group of picture (GOP) size
         }
     }
 
     int bFrames = _bFrames->getValue();
     // NOTE: in new ffmpeg, bframes don't seem to work correctly - ffmpeg crashes...
-    if (p.interB && bFrames != -1) {
-        //avCodecContext->max_b_frames = bFrames;
-        av_opt_set_int(avCodecContext->priv_data, "bf", bFrames, 0);
+    if (p.interB) {
+        if (bFrames == -1 && p.interGOP && gopSize == 1) {
+            bFrames = 0;
+        }
+        if (bFrames != -1) {
+            //avCodecContext->max_b_frames = bFrames;
+            av_opt_set_int(avCodecContext->priv_data, "bf", bFrames, 0); // set maximum number of B-frames between non-B-frames
 #if FF_API_PRIVATE_OPT
-        // Strategy to choose between I/P/B-frames
-        //avCodecContext->b_frame_strategy = 0; // deprecated: use encoder private option "b_strategy", see below
-        av_opt_set_int(avCodecContext->priv_data, "b_strategy", 0, 0);
+            // Strategy to choose between I/P/B-frames
+            //avCodecContext->b_frame_strategy = 0; // deprecated: use encoder private option "b_strategy", see below
+            av_opt_set_int(avCodecContext->priv_data, "b_strategy", 0, 0); // strategy to choose between I/P/B-frames
 #endif
-        avCodecContext->b_quant_factor = 2.0f;
+            //avCodecContext->b_quant_factor = 2.0f;
+            av_opt_set_double(avCodecContext->priv_data, "b_qfactor", 2., 0); // QP factor between P- and B-frames
+
+            if (bFrames == 0 && p.interGOP && gopSize < 0) {
+                // also set keyframe interval to 1, see https://trac.ffmpeg.org/wiki/Encode/VFX#Frame-by-Framescrubbing
+                //avCodecContext->gop_size = 1;
+                av_opt_set_int(avCodecContext->priv_data, "g", 1, 0); // set the group of picture (GOP) size
+            }
+        }
     }
 
     FieldEnum fieldOrder = _inputClip->getFieldOrder();
