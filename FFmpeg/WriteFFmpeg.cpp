@@ -2398,6 +2398,7 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         return;
     }
 #if (LIBAVFORMAT_VERSION_MAJOR > 57) && !defined(FF_API_LAVF_AVCTX)
+//#if (LIBAVFORMAT_VERSION_INT) >= (AV_VERSION_INT(57, 41, 100 ) ) // appeared with ffmpeg 3.1.1
 #error "Using AVStream.codec to pass codec parameters to muxers is deprecated, use AVStream.codecpar instead."
 #endif
     AVCodecContext* avCodecContext = avStream->codec;
@@ -3137,12 +3138,14 @@ WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext,
     }
 
     // see ffmpeg.c:3042 from ffmpeg 3.2.2
+#if (LIBAVFORMAT_VERSION_INT) >= (AV_VERSION_INT(57, 41, 100 ) ) // appeared with ffmpeg 3.1.1
     int ret = avcodec_parameters_from_context(avStream->codecpar, avCodecContext);
     if (ret < 0) {
         setPersistentMessage( Message::eMessageError, "", string("Error initializing the output stream codec context.") );
 
         return -5;
     }
+#endif
 
     return 0;
 }
