@@ -1421,7 +1421,6 @@ FFmpegSingleton::FFmpegSingleton()
                     _codecsShortNames.push_back(c->name);
                     _codecsKnobLabels.push_back(knobLabel);
                     _codecsIds.push_back(c->id);
-                    _codecsFormats.push_back( vector<size_t>() );
                     assert( _codecsLongNames.size() == _codecsShortNames.size() );
                     assert( _codecsLongNames.size() == _codecsKnobLabels.size() );
                     assert( _codecsLongNames.size() == _codecsIds.size() );
@@ -1435,6 +1434,57 @@ FFmpegSingleton::FFmpegSingleton()
         }
         c = av_codec_next(c);
     }
+
+    // find out compatible formats/codecs
+    vector<vector<string> > codecsFormatStrings( _codecsIds.size() );
+    vector<vector<AVCodecID> > formatsCodecIDs( _formatsShortNames.size() );
+    for (size_t f = 1; f < _formatsShortNames.size(); ++f) { // format 0 is "default"
+        fmt = av_guess_format(_formatsShortNames[f].c_str(), NULL, NULL);
+        if (fmt) {
+            for (size_t c = 0; c < _codecsIds.size(); ++c) {
+                if ( codecCompatible(fmt, _codecsIds[c]) ) {
+                    codecsFormatStrings[c].push_back(_formatsShortNames[f]);
+                    formatsCodecIDs[f].push_back(_codecsIds[c]);
+                }
+            }
+        }
+    }
+
+    // remove formats that have no codecs
+    const vector<string> formatsLongNamesOrig = _formatsLongNames;
+    const vector<string> formatsShortNamesOrig = _formatsShortNames;
+    const vector<vector<AVCodecID> > formatsCodecIDsOrig = formatsCodecIDs;
+    _formatsLongNames.resize(1);
+    _formatsShortNames.resize(1);
+    formatsCodecIDs.resize(1);
+    for (size_t f = 1; f < formatsShortNamesOrig.size(); ++f) { // format 0 is "default"
+        if ( !formatsCodecIDsOrig[f].empty() ) {
+            _formatsLongNames.push_back(formatsLongNamesOrig[f]);
+            _formatsShortNames.push_back(formatsShortNamesOrig[f]);
+            formatsCodecIDs.push_back(formatsCodecIDsOrig[f]);
+        }
+    }
+    // remove codecs that have no format
+    const vector<string> codecsLongNamesOrig = _codecsLongNames;
+    const vector<string> codecsShortNamesOrig = _codecsShortNames;
+    const vector<string> codecsKnobLabelsOrig = _codecsKnobLabels;
+    const vector<AVCodecID> codecsIdsOrig = _codecsIds;
+    const vector<vector<string> > codecsFormatStringsOrig = codecsFormatStrings;
+    _codecsLongNames.clear();
+    _codecsShortNames.clear();
+    _codecsKnobLabels.clear();
+    _codecsIds.clear();
+    codecsFormatStrings.clear();
+    for (size_t c = 0; c < codecsIdsOrig.size(); ++c) {
+        if ( !codecsFormatStringsOrig[c].empty() ) {
+            _codecsLongNames.push_back(codecsLongNamesOrig[c]);
+            _codecsShortNames.push_back(codecsShortNamesOrig[c]);
+            _codecsKnobLabels.push_back(codecsKnobLabelsOrig[c]);
+            _codecsIds.push_back(codecsIdsOrig[c]);
+            codecsFormatStrings.push_back(codecsFormatStringsOrig[c]);
+        }
+    }
+
     // fill the entries in _codecsFormats and _formatsCodecs
     _codecsFormats.resize( _codecsIds.size() );
     _formatsCodecs.resize( _formatsShortNames.size() );
@@ -1442,7 +1492,7 @@ FFmpegSingleton::FFmpegSingleton()
         fmt = av_guess_format(_formatsShortNames[f].c_str(), NULL, NULL);
         if (fmt) {
             for (size_t c = 0; c < _codecsIds.size(); ++c) {
-                if ( codecCompatible(fmt, _codecsIds[c]) ) {
+                if ( std::find(formatsCodecIDs[f].begin(), formatsCodecIDs[f].end(), _codecsIds[c]) != formatsCodecIDs[f].end() ) {
                     _codecsFormats[c].push_back(f);
                     _formatsCodecs[f].push_back(c);
                 }
