@@ -157,7 +157,7 @@ const FilterEntry kFormatWhitelist[] =
     { "mp4",            true,  true },
     { "mpeg",           true,  true },
     { "mpegts",         true,  true },
-    { "mxf",            true,  true },     // not readable in Qt but may be used with other software
+    { "mxf",            true,  false },     // not readable in Qt but may be used with other software, however MXF has too many constraints to be easyly writable (for H264 it requires avctx.profile = FF_PROFILE_H264_BASELINE, FF_PROFILE_H264_HIGH_10 or FF_PROFILE_H264_HIGH_422). it is better to transcode with an external tool
     { "ogg",            true,  false },    // Ogg, for theora codec (use ogv for writing)
     { "ogv",            true,  true },    // Ogg Video, for theora codec
     { NULL, false, false}
