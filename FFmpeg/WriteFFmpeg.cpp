@@ -2738,6 +2738,7 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     // [mov @ 0x1042d7600] Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead.
     // copy timebase while removing common factors
     avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational) {0, 1});
+    avStream->avg_frame_rate = frame_rate; // see ffmpeg.c:2894 from ffmpeg 3.2.2 - may be set before avformat_write_header
 
     int gopSize = -1;
     if (p.interGOP) {
