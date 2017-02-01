@@ -139,8 +139,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "To produce videos for distribution, the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
     "\n" \
     "Adding audio\n" \
-    "If audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like:\n"\
-    "    ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4\n" \
+    "If audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like: ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4\n" \
     "This command does not re-encode the video or audio, but simply copies the data from each source file and places it in separate streams in the output."
 
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
