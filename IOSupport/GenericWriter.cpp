@@ -1956,8 +1956,14 @@ GenericWriterPlugin::outputFileChanged(InstanceChangeReason reason,
     if ( _outputSpaceSet->getValue() ) {
         setColorSpace = false;
     }
-    // Always try to parse from string first,
+    // We should always try to parse from string first,
     // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+    // However, as discussed in https://groups.google.com/forum/#!topic/ocio-dev/dfOxq8Nanl8
+    // the OpenColorIO 1.0.9 implementation fails too often.
+    // We should wait for the next version, where pull request
+    // https://github.com/imageworks/OpenColorIO/pull/381 or
+    // https://github.com/imageworks/OpenColorIO/pull/413 may be merged.
+#if OCIO_VERSION_HEX > 0x01000900 // more recent than 1.0.9?
     if ( setColorSpace && _ocio->getConfig() ) {
         const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString( filename.c_str() );
         if ( colorSpaceStr && (std::strlen(colorSpaceStr) == 0) ) {
@@ -1969,6 +1975,7 @@ GenericWriterPlugin::outputFileChanged(InstanceChangeReason reason,
             setColorSpace = false;
         }
     }
+#endif
 #     endif
 
     // give the derived class a chance to initialize any data structure it may need

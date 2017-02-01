@@ -2033,9 +2033,15 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
             return;
         }
 
-# ifdef OFX_IO_USING_OCIO
+#ifdef OFX_IO_USING_OCIO
         // Colorspace parsed from filename overrides the file colorspace,
         // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
+        // However, as discussed in https://groups.google.com/forum/#!topic/ocio-dev/dfOxq8Nanl8
+        // the OpenColorIO 1.0.9 implementation fails too often.
+        // We should wait for the next version, where pull request
+        // https://github.com/imageworks/OpenColorIO/pull/381 or
+        // https://github.com/imageworks/OpenColorIO/pull/413 may be merged.
+#if OCIO_VERSION_HEX > 0x01000900 // more recent than 1.0.9?
         OCIO::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
         if (ocioConfig) {
             const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString( filename.c_str() );
@@ -2044,6 +2050,7 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
                 colorspace = colorSpaceStr;
             }
         }
+#endif
 
         _ocio->setInputColorspace( colorspace.c_str() );
 
