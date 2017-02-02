@@ -1799,6 +1799,7 @@ WriteFFmpegPlugin::initFormat(bool reportErrors) const
             return NULL;
         }
     }
+    printf("avOutputFormat(%d): %s\n", format, fmt->name);
 
     return fmt;
 }
@@ -2273,22 +2274,22 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             //p->interGOP = false;
             //p->interB = false;
         } else if (codecShortName == "svq1") {
-            // svq1 is h263-based
+            // svq1enc.c
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false;
+            p->bitrateTol = false;
             p->qscale = true;
-            p->qrange = true;
-            //p->interGOP = p->interGOP;
-            //p->interB = p->interB;
+            p->qrange = false;
+            p->interGOP = true;
+            p->interB = false;
         } else if (codecShortName == "msmpeg4" ||
                    codecShortName == "msmpeg4v2") {
             // msmpeg4 is h263-based
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false; // bitrate is supported in msmpeg4v4 aka wmv1
+            p->bitrateTol = false;
             p->qscale = true;
             p->qrange = true;
             //p->interGOP = p->interGOP;
@@ -3866,7 +3867,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
     // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
     //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
     if (!isCodecSupportedInContainer) {
-        setPersistentMessage(Message::eMessageError, "", "the selected codec is not supported in this container.");
+        setPersistentMessage(Message::eMessageError, "", string("The codec ") + videoCodec->name + " is not supported in container " + avOutputFormat->name);
         freeFormat();
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -4489,18 +4490,19 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
         if (format > 0) {
             AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
             if ( fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec]) ) {
-                setPersistentMessage(Message::eMessageError, "", "the selected codec is not supported in this container.");
+                setPersistentMessage(Message::eMessageError, "", string("The codec ") + codecsShortNames[codec] + " is not supported in container " + FFmpegSingleton::Instance().getFormatsShortNames()[format]);
             } else {
                 clearPersistentMessage();
             }
         }
     } else if (paramName == kParamFormat) {
         int codec = _codec->getValue();
+        const vector<string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
         int format = _format->getValue();
         if (format > 0) {
             AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
             if ( fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec]) ) {
-                setPersistentMessage(Message::eMessageError, "", "the selected codec is not supported in this container.");
+                setPersistentMessage(Message::eMessageError, "", string("The codec ") + codecsShortNames[codec] + " is not supported in container " + FFmpegSingleton::Instance().getFormatsShortNames()[format]);
             } else {
                 clearPersistentMessage();
             }
