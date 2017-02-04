@@ -2158,9 +2158,12 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
 #endif
     /* && codec->id != AV_CODEC_ID_PRORES*/
 
-    p->crf = p->x26xSpeed = p->bitrate = p->bitrateTol = p->qscale = p->qrange = false;
-    if (lossy) {
+    if (!lossy) {
+        p->crf = p->x26xSpeed = p->bitrate = p->bitrateTol = p->qscale = p->qrange = false;
+    } else {
         string codecShortName = codec->name;
+        p->crf = p->x26xSpeed = p->qscale = false;
+        p->bitrate = p->bitrateTol = p->qrange = true;
 
         // handle codec-specific cases.
         // Note that x264 is used in qpmin/qpmax mode
@@ -5247,7 +5250,6 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 page->addChild(*param);
             }
         }
-
 
         ///////////Gop size
         {
