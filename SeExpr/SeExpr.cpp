@@ -419,6 +419,11 @@ enum RegionOfDefinitionEnum
 #define kParamHelpLabel "Help..."
 #define kParamHelpHint "Display help about using SeExpr."
 
+// Some hosts (e.g. Resolve) may not support normalized defaults (setDefaultCoordinateSystem(eCoordinatesNormalised))
+#define kParamDefaultsNormalised "defaultsNormalised"
+
+static bool gHostSupportsDefaultCoordinateSystem = true; // for kParamDefaultsNormalised
+
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsNatron = false;
 static bool gHostSupportsRGBA   = false;
@@ -1944,6 +1949,26 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
     changedParam(args, kParamValidate);
     changedParam(args, kParamRegionOfDefinition);
     changedParam(args, kParamOutputComponents);
+
+    // honor kParamDefaultsNormalised
+    if ( paramExists(kParamDefaultsNormalised) ) {
+        // Some hosts (e.g. Resolve) may not support normalized defaults (setDefaultCoordinateSystem(eCoordinatesNormalised))
+        // handle these ourselves!
+        BooleanParam* param = fetchBooleanParam(kParamDefaultsNormalised);
+        assert(param);
+        bool normalised = param->getValue();
+        if (normalised) {
+            OfxPointD size = getProjectExtent();
+            OfxPointD origin = getProjectOffset();
+            OfxPointD p;
+            // we must denormalise all parameters for which setDefaultCoordinateSystem(eCoordinatesNormalised) couldn't be done
+            p = _btmLeft->getValue();
+            _btmLeft->setValue(p.x * size.x + origin.x, p.y * size.y + origin.y);
+            p = _size->getValue();
+            _size->setValue(p.x * size.x, p.y * size.y);
+            param->setValue(false);
+        }
+    }
 }
 
 string
@@ -3507,7 +3532,11 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamRectangleInteractBtmLeft);
         param->setLabel(kParamRectangleInteractBtmLeftLabel);
         param->setDoubleType(eDoubleTypeXYAbsolute);
-        param->setDefaultCoordinateSystem(eCoordinatesNormalised);
+        if ( param->supportsDefaultCoordinateSystem() ) {
+            param->setDefaultCoordinateSystem(eCoordinatesNormalised); // no need of kParamDefaultsNormalised
+        } else {
+            gHostSupportsDefaultCoordinateSystem = false; // no multithread here, see kParamDefaultsNormalised
+        }
         param->setDefault(0., 0.);
         param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
         param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
@@ -3524,7 +3553,11 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         Double2DParamDescriptor* param = desc.defineDouble2DParam(kParamRectangleInteractSize);
         param->setLabel(kParamRectangleInteractSizeLabel);
         param->setDoubleType(eDoubleTypeXY);
-        param->setDefaultCoordinateSystem(eCoordinatesNormalised);
+        if ( param->supportsDefaultCoordinateSystem() ) {
+            param->setDefaultCoordinateSystem(eCoordinatesNormalised); // no need of kParamDefaultsNormalised
+        } else {
+            gHostSupportsDefaultCoordinateSystem = false; // no multithread here, see kParamDefaultsNormalised
+        }
         param->setDefault(1., 1.);
         param->setRange(0, 0, DBL_MAX, DBL_MAX);
         param->setDisplayRange(0, 0, 10000., 10000.);
