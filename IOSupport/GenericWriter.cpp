@@ -38,10 +38,19 @@
 #ifdef OFX_EXTENSIONS_TUTTLE
 #include <tuttle/ofxReadWrite.h>
 #endif
-#include "../SupportExt/ofxsFormatResolution.h"
+#include "ofxsFormatResolution.h"
+
+#include "SequenceParsing/SequenceParsing.h"
+#ifdef OFX_IO_USING_OCIO
 #include "GenericOCIO.h"
+#endif
+
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 using std::string;
+using std::size_t;
 using std::stringstream;
 using std::vector;
 using std::map;
@@ -1954,14 +1963,47 @@ GenericWriterPlugin::outputFileChanged(InstanceChangeReason reason,
     if ( _outputSpaceSet->getValue() ) {
         setColorSpace = false;
     }
-    // Always try to parse from string first,
+    // We should always try to parse from string first,
     // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
-    if ( setColorSpace && _ocio->getConfig() ) {
-        const char* colorSpaceStr = _ocio->getConfig()->parseColorSpaceFromString( filename.c_str() );
-        if ( colorSpaceStr && (std::strlen(colorSpaceStr) == 0) ) {
+    // However, as discussed in https://groups.google.com/forum/#!topic/ocio-dev/dfOxq8Nanl8
+    // the OpenColorIO 1.0.9 implementation fails too often.
+    // We should wait for the next version, where pull request
+    // https://github.com/imageworks/OpenColorIO/pull/381 or
+    // https://github.com/imageworks/OpenColorIO/pull/413 may be merged.
+    OCIO::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
+    if (setColorSpace && ocioConfig) {
+        string name = filename;
+        (void)SequenceParsing::removePath(name); // only use the file NAME
+        const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString( name.c_str() );
+        size_t colorSpaceStrLen = colorSpaceStr ? std::strlen(colorSpaceStr) : 0;
+        if (colorSpaceStrLen == 0) {
             colorSpaceStr = NULL;
         }
-        if ( colorSpaceStr && _ocio->hasColorspace(colorSpaceStr) ) {
+#if OCIO_VERSION_HEX > 0x01000900 // more recent than 1.0.9?
+#pragma message WARN("OpenColorIO was updated, check that the following code is still necessary")
+#endif
+        if (colorSpaceStr) {
+            // Only use this colorspace name if it is the last thing before the extension name,
+            // and it is preceded by '_' or '-' or ' ' or '.' (we exclude '/' and '\\'),
+            // as in http://opencolorio.org/configurations/spi_pipeline.html
+            // https://github.com/imageworks/OpenColorIO/pull/413
+            size_t pos = name.find_last_of('.');
+            if ( pos == string::npos || pos < (colorSpaceStrLen + 1) ) { // +1 for the delimiter
+                // no dot, or the colorspace name and the delimiter cannot hold before the dot
+                colorSpaceStr = NULL;
+                colorSpaceStrLen = 0;
+            } else if ( (name.compare(pos - colorSpaceStrLen, colorSpaceStrLen, colorSpaceStr) != 0) ||
+                       ( (name[pos - colorSpaceStrLen - 1] != '_') &&
+                        (name[pos - colorSpaceStrLen - 1] != '-') &&
+                        (name[pos - colorSpaceStrLen - 1] != ' ') &&
+                        (name[pos - colorSpaceStrLen - 1] != '.') ) ) {
+                           // the colorspace name is not before the last dot or is not preceded by a valid delimiter
+                           colorSpaceStr = NULL;
+                           colorSpaceStrLen = 0;
+                       }
+        }
+        if (colorSpaceStr) {
+            assert( _ocio->hasColorspace(colorSpaceStr) ); // parseColorSpaceFromString always returns an existing colorspace
             // we're lucky
             _ocio->setOutputColorspace(colorSpaceStr);
             setColorSpace = false;

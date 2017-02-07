@@ -105,6 +105,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamTextColorHint \
     "The color of the text to render"
 
+// Some hosts (e.g. Resolve) may not support normalized defaults (setDefaultCoordinateSystem(eCoordinatesNormalised))
+#define kParamDefaultsNormalised "defaultsNormalised"
+
+static bool gHostSupportsDefaultCoordinateSystem = true; // for kParamDefaultsNormalised
 
 class OIIOTextPlugin
     : public ImageEffect
@@ -167,6 +171,26 @@ OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     assert(_position && _text && _fontSize && _fontName && _textColor);
 
     initOIIOThreads();
+
+    // honor kParamDefaultsNormalised
+    if ( paramExists(kParamDefaultsNormalised) ) {
+        // Some hosts (e.g. Resolve) may not support normalized defaults (setDefaultCoordinateSystem(eCoordinatesNormalised))
+        // handle these ourselves!
+        BooleanParam* param = fetchBooleanParam(kParamDefaultsNormalised);
+        assert(param);
+        bool normalised = param->getValue();
+        if (normalised) {
+            OfxPointD size = getProjectExtent();
+            OfxPointD origin = getProjectOffset();
+            OfxPointD p;
+            // we must denormalise all parameters for which setDefaultCoordinateSystem(eCoordinatesNormalised) couldn't be done
+            //beginEditBlock(kParamDefaultsNormalised);
+            p = _position->getValue();
+            _position->setValue(p.x * size.x + origin.x, p.y * size.y + origin.y);
+            param->setValue(false);
+            //endEditBlock();
+        }
+    }
 }
 
 OIIOTextPlugin::~OIIOTextPlugin()
@@ -582,7 +606,11 @@ OIIOTextPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamPositionLabel);
         param->setHint(kParamPositionHint);
         param->setDoubleType(eDoubleTypeXYAbsolute);
-        param->setDefaultCoordinateSystem(eCoordinatesNormalised);
+        if ( param->supportsDefaultCoordinateSystem() ) {
+            param->setDefaultCoordinateSystem(eCoordinatesNormalised); // no need of kParamDefaultsNormalised
+        } else {
+            gHostSupportsDefaultCoordinateSystem = false; // no multithread here, see kParamDefaultsNormalised
+        }
         param->setDefault(0.5, 0.5);
         param->setRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);
         param->setDisplayRange(-DBL_MAX, -DBL_MAX, DBL_MAX, DBL_MAX);

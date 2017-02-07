@@ -147,16 +147,19 @@ const FilterEntry kFormatWhitelist[] =
     { "3gp",            true,  true },
     { "3g2",            true,  true },
     { "avi",            true,  true },
-    { "flv",            true,  false },     // only used with flv codec, which doesn't play in Qt anyway
-    { "h264",           true,  true },
-    { "hevc",           true,  false },     // hevc codec cannot be read in official qt
-    { "m4v",            true,  true },
+    { "dv",             true,  false },    // DV (Digital Video), no HD support
+    { "flv",            true,  true },     // FLV (Flash Video), only used with flv codec. cannot be read in official Qt
+    { "h264",           true,  false },     // raw H.264 video. prefer a proper container (mp4, mov, avi)
+    { "hevc",           true,  false },     // raw HEVC video. hevc codec cannot be read in official qt
+    { "m4v",            true,  false },     // raw MPEG-4 video. prefer a proper container (mp4, mov, avi)
     { "matroska",       true,  true },     // not readable in Qt but may be used with other software
     { "mov",            true,  true },
     { "mp4",            true,  true },
     { "mpeg",           true,  true },
     { "mpegts",         true,  true },
-    { "mxf",            true,  true },     // not readable in Qt but may be used with other software
+    { "mxf",            true,  false },     // not readable in Qt but may be used with other software, however MXF has too many constraints to be easyly writable (for H264 it requires avctx.profile = FF_PROFILE_H264_BASELINE, FF_PROFILE_H264_HIGH_10 or FF_PROFILE_H264_HIGH_422). it is better to transcode with an external tool
+    { "ogg",            true,  false },    // Ogg, for theora codec (use ogv for writing)
+    { "ogv",            true,  true },    // Ogg Video, for theora codec
     { NULL, false, false}
 };
 
@@ -193,13 +196,14 @@ const FilterEntry kCodecWhitelist[] =
     { "libopenh264",    true,  true },     // Cisco libopenh264 H.264/MPEG-4 AVC encoder
     { "libopenjpeg",    true,  true },     // OpenJPEG JPEG 2000
     { "libschroedinger", true,  UNSAFEQT0 && UNSAFEVLC },     // libschroedinger Dirac - write untested. VLC plays with a wrong format
-    { "libtheora",      true,  UNSAFEQT },     // libtheora Theora - write untested.
+    { "libtheora",      true,  UNSAFEQT0 },     // libtheora Theora - write untested.
     { "libvpx",         true,  UNSAFEQT0 },     // On2 VP8
-    { "libvpx-vp9",     true,  UNSAFEQT0 && TERRIBLE },     // Google VP9 -write not supported as it looks terrible (as of libvpx 1.4.0)
+    { "libvpx-vp9",     true,  UNSAFEQT0 },     // Google VP9
     { "libx264",        true,  UNSAFEQT0 },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoder)
     { "libx264rgb",     true,  UNSAFEQT0 },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB (encoder)
     { "libx265",        true,  UNSAFEQT0 },     // H.265 / HEVC (High Efficiency Video Coding) (encoder) - resizes the image
     { "libxavs",        true,  false },         // Chinese AVS (Audio Video Standard) (encoder) - untested
+    { "libxvid",        true,  true },     // MPEG-4 part 2
     { "ljpeg",          true,  UNSAFEQT0 },     // Lossless JPEG - write not supported as can't be read in in official qt.
     { "mjpeg",          true,  true },     // MJPEG (Motion JPEG) - this looks to be MJPEG-A. MJPEG-B encoding is not supported by FFmpeg so is not included here. To avoid confusion over the MJPEG-A and MJPEG-B variants, this codec is displayed as 'Photo JPEG'. This is done to i) avoid the confusion of the naming, ii) be consistent with Apple QuickTime, iii) the term 'Photo JPEG' is recommend for progressive frames which is appropriate to Nuke/NukeStudio as it does not have interlaced support.
     { "mpeg1video",     true,  TERRIBLE },     // MPEG-1 video - write not supported as it gives random 8x8 blocky errors

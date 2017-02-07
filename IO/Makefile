@@ -1,33 +1,33 @@
 TOP_SRCDIR = ..
 
 PLUGINOBJECTS = \
-	ReadEXR.o WriteEXR.o \
-	ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
-	ReadOIIO.o WriteOIIO.o \
-	OIIOText.o \
-	OIIOResize.o \
-	ReadPFM.o WritePFM.o \
-    ReadPNG.o WritePNG.o \
-	OCIOColorSpace.o \
-	OCIODisplay.o \
-	OCIOCDLTransform.o \
-	OCIOFileTransform.o \
-	OCIOLogConvert.o \
-	OCIOLookTransform.o \
-    ofxsFileOpen.o \
-	ofxsOGLTextRenderer.o \
-	ofxsOGLFontData.o \
-	GenericReader.o GenericWriter.o SequenceParsing.o \
-	SeExpr.o \
-	SeGrain.o \
-	SeNoise.o \
-	ofxsRamp.o \
-	ofxsGenerator.o \
-	ofxsTransformInteract.o \
-    ofxsMultiPlane.o \
-	ofxsRectangleInteract.o \
-    ofxsLut.o \
-    GenericOCIO.o $(OCIO_OPENGL_OBJS)
+ofxsFileOpen.o \
+ofxsOGLTextRenderer.o \
+ofxsOGLFontData.o \
+ofxsRamp.o \
+ofxsGenerator.o \
+ofxsTransformInteract.o \
+ofxsMultiPlane.o \
+ofxsRectangleInteract.o \
+ofxsLut.o \
+GenericReader.o GenericWriter.o SequenceParsing.o \
+SeExpr.o \
+SeGrain.o \
+SeNoise.o \
+GenericOCIO.o $(OCIO_OPENGL_OBJS) \
+ReadEXR.o WriteEXR.o \
+ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
+ReadOIIO.o WriteOIIO.o \
+OIIOText.o \
+OIIOResize.o \
+ReadPFM.o WritePFM.o \
+ReadPNG.o WritePNG.o \
+OCIOColorSpace.o \
+OCIODisplay.o \
+OCIOCDLTransform.o \
+OCIOFileTransform.o \
+OCIOLogConvert.o \
+OCIOLookTransform.o \
 
 OCIO_OPENGL_OBJS = GenericOCIOOpenGL.o glad.o ofxsOGLUtilities.o
 

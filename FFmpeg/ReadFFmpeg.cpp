@@ -604,7 +604,7 @@ ReadFFmpegPluginFactory::load()
     _extensions.clear();
 #if 0
     // hard-coded extensions list
-    const char* extensionsl[] = { "avi", "flv", "mkv", "mov", "mp4", "mpg", "m2ts", "mts", "ts", "mxf", "ogv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    const char* extensionsl[] = { "avi", "flv", "mkv", "webm", "mov", "mp4", "mpg", "m2ts", "mts", "ts", "mxf", "ogv", "r3d", "bmp", "pix", "dpx", "exr", "jpeg", "jpg", "png", "pgm", "ppm", "ptx", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     for (const char** ext = extensionsl; *ext != NULL; ++ext) {
         _extensions.push_back(*ext);
     }
@@ -645,6 +645,8 @@ ReadFFmpegPluginFactory::load()
     //extensionsl.push_back("mve"); // ipmovie (Interplay MVE)
     //extensionsl.push_back("lml"); // lmlm4 (raw lmlm4)
     extensionsl.push_back("mkv"); // matroska,webm (Matroska / WebM)
+    extensionsl.push_back("mk3d"); // matroska,webm (Matroska / WebM)
+    extensionsl.push_back("webm"); // matroska,webm (Matroska / WebM)
     extensionsl.push_back("mov"); // QuickTime / MOV
     extensionsl.push_back("mp4"); // MP4 (MPEG-4 Part 14)
     extensionsl.push_back("mpg"); // MPEG-1 Systems / MPEG program stream
@@ -924,13 +926,7 @@ ReadFFmpegPluginFactory::describe(ImageEffectDescriptor &desc)
     GenericReaderDescribe(desc, _extensions, kPluginEvaluation, kSupportsTiles, false);
     // basic labels
     desc.setLabel(kPluginName);
-    desc.setPluginDescription( "Read images or video using "
-#                             ifdef FFMS_USE_FFMPEG_COMPAT
-                               "FFmpeg"
-#                             else
-                               "libav"
-#                             endif
-                               ".\n\n" + ffmpeg_versions() );
+    desc.setPluginDescription(kPluginDescription "\n\n" + ffmpeg_versions() );
 #ifdef OFX_IO_MT_FFMPEG
     // Register a lock manager callback with FFmpeg, providing it the ability to use mutex locking around
     // otherwise non-thread-safe calls.

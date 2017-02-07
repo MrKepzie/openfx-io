@@ -126,12 +126,21 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kPluginName "WriteFFmpeg"
 #define kPluginGrouping "Image/Writers"
 #define kPluginDescription \
-    "Write images using FFmpeg.\n" \
-    "The general recommendation is to write either separate frames (using WriteOIIO), " \
-    "or an uncompressed video format, or a \"digital intermediate\" format (ProRes, DNxHD), " \
-    "and to transcode the output and mux with audio with a separate tool (such as the ffmpeg or mencoder " \
-    "command-line tools).\n" \
-    "Further information can be found at https://trac.ffmpeg.org/wiki/Encode/VFX"
+    "Write a video sequence using FFmpeg.\n" \
+    "\n" \
+    "This plugin can be used to produce entheir digital intermediates, i.e. videos with very high resolution and quality which can be read frame by frame for further processing, or highly compressed videos to distribute on the web. Note that this plug-in does not support audio, but audi can easily be added to the video using the ffmpeg command-line tool (see note below).  In a VFX context, it is often preferable to save processed images as a sequence of individual frames (using WriteOIIO), if disk space and real-time playing are not an issue.\n" \
+    "\n" \
+    "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
+    "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
+    "- MXF or QuickTime with VC3/DNxHD/DNxHR: the codec is intra-frame. DNxHR profiles are resolution-independent, but are still only available with 8-bit depth. The alpha channel cannot be encoded.\n" \
+    "- QuickTime with Photo JPEG and Global Quality set to 1: intra-frame and 8-bit. qscale=1 ensure almost lossless encoding.\n" \
+    "- QuickTime with avc1 (libx264 or libx264rgb) and Output Quality set to Lossless or Perceptually Lossless: 8-bit, and can be made intra-frame by setting Keyframe Interval to 1 and Max B-Frames to 0. Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n" \
+    "\n" \
+    "To produce videos for distribution, the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
+    "\n" \
+    "Adding audio\n" \
+    "If audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like: ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4\n" \
+    "This command does not re-encode the video or audio, but simply copies the data from each source file and places it in separate streams in the output."
 
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
@@ -282,14 +291,14 @@ enum X26xSpeedEnum {
     "The keyframe intervale, also called GOP size, specifies how many frames may be grouped together by the codec to form a compression GOP. Exercise caution " \
     "with this control as it may impact whether the resultant file can be opened in other packages. Only supported by " \
     "certain codecs.\n" \
-    "-1 means to use the codec default.\n" \
+    "-1 means to use the codec default if bFrames is not 0, or 1 if bFrames is 0 to ensure only intra (I) frames are produced, producing a video which is easier to scrub frame-by-frame.\n" \
     "Option -g in ffmpeg."
 
 #define kParamBFrames "bFrames"
 #define kParamBFramesLabel "Max B-Frames"
 #define kParamBFramesHint \
     "Set max number of B frames between non-B-frames. Must be an integer between -1 and 16. 0 means that B-frames are disabled. If a value of -1 is used, it will choose an automatic value depending on the encoder. Influences file size and seekability. Only supported by certain codecs.\n" \
-    "-1 means to use the codec default.\n" \
+    "-1 means to use the codec default if Keyframe Interval is not 1, or 0 if Keyframe Interval is 1 to ensure only intra (I) frames are produced, producing a video which is easier to scrub frame-by-frame.\n" \
     "Option -bf in ffmpeg."
 
 #define kParamWriteNCLC "writeNCLC"
@@ -523,7 +532,7 @@ CreateCodecKnobLabelsMap()
     m["ayuv"]          = "AYUV\tUncompressed packed MS 4:4:4:4";
     m["cinepak"]       = "cvid\tCinepak"; // disabled in whitelist (bad quality)
 #if OFX_FFMPEG_DNXHD
-    m["dnxhd"]         = "AVdn\tVC3/DNxHD";
+    m["dnxhd"]         = "AVdn\tAvid DNxHD / DNxHR / SMPTE VC-3";
 #endif
     m["ffv1"]          = "FFV1\tFFmpeg video codec #1";
     m["ffvhuff"]       = "FFVH\tHuffyuv FFmpeg variant";
@@ -534,8 +543,8 @@ CreateCodecKnobLabelsMap()
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
     m["libopenh264"]   = "H264\tCisco libopenh264 H.264/MPEG-4 AVC encoder";
     m["libopenjpeg"]   = "mjp2\tOpenJPEG JPEG 2000";
-    m["libschroedinger"] = "drac\tlibschroedinger Dirac";
-    m["libtheora"]     = "theo\tlibtheora Theora";
+    m["libschroedinger"] = "drac\tSMPTE VC-2 (previously BBC Dirac Pro)";
+    m["libtheora"]     = "theo\tTheora";
     m["libvpx"]        = "VP80\tOn2 VP8"; // write doesn't work yet
     m["libvpx-vp9"]    = "VP90\tGoogle VP9"; // disabled in whitelist (bad quality)
     m["libx264"]       = "avc1\tH.264 / AVC / MPEG-4 AVC / MPEG-4 part 10";
@@ -543,11 +552,12 @@ CreateCodecKnobLabelsMap()
     m["libx265"]       = "hev1\tH.265 / HEVC (High Efficiency Video Coding)"; // disabled in whitelist (does not work will all sizes)
     m["libxavs"]       = "CAVS\tChinese AVS (Audio Video Standard)"; //disabled in whitelist
 
+    m["libxvid"]       = "mp4v\tMPEG-4 part 2";
     m["ljpeg"]         = "LJPG\tLossless JPEG"; // disabled in whitelist
     m["mjpeg"]         = "jpeg\tPhoto JPEG";
     m["mpeg1video"]    = "m1v \tMPEG-1 Video"; // disabled in whitelist (random blocks)
     m["mpeg2video"]    = "m2v1\tMPEG-2 Video";
-    m["mpeg4"]         = "mp4v\tMPEG-4 Video";
+    m["mpeg4"]         = "mp4v\tMPEG-4 part 2";
     m["msmpeg4v2"]     = "MP42\tMPEG-4 part 2 Microsoft variant version 2";
     m["msmpeg4"]       = "3IVD\tMPEG-4 part 2 Microsoft variant version 3";
     m["png"]           = "png \tPNG (Portable Network Graphics) image";
@@ -1410,7 +1420,6 @@ FFmpegSingleton::FFmpegSingleton()
                     _codecsShortNames.push_back(c->name);
                     _codecsKnobLabels.push_back(knobLabel);
                     _codecsIds.push_back(c->id);
-                    _codecsFormats.push_back( vector<size_t>() );
                     assert( _codecsLongNames.size() == _codecsShortNames.size() );
                     assert( _codecsLongNames.size() == _codecsKnobLabels.size() );
                     assert( _codecsLongNames.size() == _codecsIds.size() );
@@ -1424,6 +1433,57 @@ FFmpegSingleton::FFmpegSingleton()
         }
         c = av_codec_next(c);
     }
+
+    // find out compatible formats/codecs
+    vector<vector<string> > codecsFormatStrings( _codecsIds.size() );
+    vector<vector<AVCodecID> > formatsCodecIDs( _formatsShortNames.size() );
+    for (size_t f = 1; f < _formatsShortNames.size(); ++f) { // format 0 is "default"
+        fmt = av_guess_format(_formatsShortNames[f].c_str(), NULL, NULL);
+        if (fmt) {
+            for (size_t c = 0; c < _codecsIds.size(); ++c) {
+                if ( codecCompatible(fmt, _codecsIds[c]) ) {
+                    codecsFormatStrings[c].push_back(_formatsShortNames[f]);
+                    formatsCodecIDs[f].push_back(_codecsIds[c]);
+                }
+            }
+        }
+    }
+
+    // remove formats that have no codecs
+    const vector<string> formatsLongNamesOrig = _formatsLongNames;
+    const vector<string> formatsShortNamesOrig = _formatsShortNames;
+    const vector<vector<AVCodecID> > formatsCodecIDsOrig = formatsCodecIDs;
+    _formatsLongNames.resize(1);
+    _formatsShortNames.resize(1);
+    formatsCodecIDs.resize(1);
+    for (size_t f = 1; f < formatsShortNamesOrig.size(); ++f) { // format 0 is "default"
+        if ( !formatsCodecIDsOrig[f].empty() ) {
+            _formatsLongNames.push_back(formatsLongNamesOrig[f]);
+            _formatsShortNames.push_back(formatsShortNamesOrig[f]);
+            formatsCodecIDs.push_back(formatsCodecIDsOrig[f]);
+        }
+    }
+    // remove codecs that have no format
+    const vector<string> codecsLongNamesOrig = _codecsLongNames;
+    const vector<string> codecsShortNamesOrig = _codecsShortNames;
+    const vector<string> codecsKnobLabelsOrig = _codecsKnobLabels;
+    const vector<AVCodecID> codecsIdsOrig = _codecsIds;
+    const vector<vector<string> > codecsFormatStringsOrig = codecsFormatStrings;
+    _codecsLongNames.clear();
+    _codecsShortNames.clear();
+    _codecsKnobLabels.clear();
+    _codecsIds.clear();
+    codecsFormatStrings.clear();
+    for (size_t c = 0; c < codecsIdsOrig.size(); ++c) {
+        if ( !codecsFormatStringsOrig[c].empty() ) {
+            _codecsLongNames.push_back(codecsLongNamesOrig[c]);
+            _codecsShortNames.push_back(codecsShortNamesOrig[c]);
+            _codecsKnobLabels.push_back(codecsKnobLabelsOrig[c]);
+            _codecsIds.push_back(codecsIdsOrig[c]);
+            codecsFormatStrings.push_back(codecsFormatStringsOrig[c]);
+        }
+    }
+
     // fill the entries in _codecsFormats and _formatsCodecs
     _codecsFormats.resize( _codecsIds.size() );
     _formatsCodecs.resize( _formatsShortNames.size() );
@@ -1431,7 +1491,7 @@ FFmpegSingleton::FFmpegSingleton()
         fmt = av_guess_format(_formatsShortNames[f].c_str(), NULL, NULL);
         if (fmt) {
             for (size_t c = 0; c < _codecsIds.size(); ++c) {
-                if ( codecCompatible(fmt, _codecsIds[c]) ) {
+                if ( std::find(formatsCodecIDs[f].begin(), formatsCodecIDs[f].end(), _codecsIds[c]) != formatsCodecIDs[f].end() ) {
                     _codecsFormats[c].push_back(f);
                     _formatsCodecs[f].push_back(c);
                 }
@@ -1586,7 +1646,7 @@ WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName,
              !strcmp(shortName, kProresCodec kProresProfileProxyFourCC) ||
              (
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-              (codecProfile != (int)eDNxHDCodecProfileHR444) &&
+                 (codecProfile != (int)eDNxHDCodecProfileHR444) && // DNxHR 444 is RGB
 #endif
               !strcmp(shortName, "dnxhd")) ||
              !strcmp(shortName, "mjpeg") ||
@@ -1610,11 +1670,10 @@ WriteFFmpegPlugin::IsRGBFromShortName(const char* shortName,
              !strcmp(shortName, kProresCodec kProresProfile4444XQFourCC) ||
              (
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-              (codecProfile == (int)eDNxHDCodecProfileHR444) &&
+              (!strcmp(shortName, "dnxhd") && codecProfile == (int)eDNxHDCodecProfileHR444) || // only DNxHR 444 is RGB
 #endif
-              !strcmp(shortName, "dnxhd")) ||
-             !strcmp(shortName, "png")  ||
-             !strcmp(shortName, "qtrle") );
+              !strcmp(shortName, "png")  ||
+              !strcmp(shortName, "qtrle") ) );
 }
 
 void
@@ -1740,6 +1799,7 @@ WriteFFmpegPlugin::initFormat(bool reportErrors) const
             return NULL;
         }
     }
+    printf("avOutputFormat(%d): %s\n", format, fmt->name);
 
     return fmt;
 }
@@ -2098,9 +2158,12 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
 #endif
     /* && codec->id != AV_CODEC_ID_PRORES*/
 
-    p->crf = p->x26xSpeed = p->bitrate = p->bitrateTol = p->qscale = p->qrange = false;
-    if (lossy) {
+    if (!lossy) {
+        p->crf = p->x26xSpeed = p->bitrate = p->bitrateTol = p->qscale = p->qrange = false;
+    } else {
         string codecShortName = codec->name;
+        p->crf = p->x26xSpeed = p->qscale = false;
+        p->bitrate = p->bitrateTol = p->qrange = true;
 
         // handle codec-specific cases.
         // Note that x264 is used in qpmin/qpmax mode
@@ -2214,22 +2277,22 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             //p->interGOP = false;
             //p->interB = false;
         } else if (codecShortName == "svq1") {
-            // svq1 is h263-based
+            // svq1enc.c
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false;
+            p->bitrateTol = false;
             p->qscale = true;
-            p->qrange = true;
-            //p->interGOP = p->interGOP;
-            //p->interB = p->interB;
+            p->qrange = false;
+            p->interGOP = true;
+            p->interB = false;
         } else if (codecShortName == "msmpeg4" ||
                    codecShortName == "msmpeg4v2") {
             // msmpeg4 is h263-based
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false; // bitrate is supported in msmpeg4v4 aka wmv1
+            p->bitrateTol = false;
             p->qscale = true;
             p->qrange = true;
             //p->interGOP = p->interGOP;
@@ -2388,6 +2451,7 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         return;
     }
 #if (LIBAVFORMAT_VERSION_MAJOR > 57) && !defined(FF_API_LAVF_AVCTX)
+//#if (LIBAVFORMAT_VERSION_INT) >= (AV_VERSION_INT(57, 41, 100 ) ) // appeared with ffmpeg 3.1.1
 #error "Using AVStream.codec to pass codec parameters to muxers is deprecated, use AVStream.codecpar instead."
 #endif
     AVCodecContext* avCodecContext = avStream->codec;
@@ -2455,6 +2519,10 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         if (crf >= 0) {
             setqscale = setbitrate = false;
             av_opt_set_int(avCodecContext->priv_data, "crf", crf, 0);
+            if (crf == 0 && AV_CODEC_ID_VP9 == avCodecContext->codec_id) {
+                // set the lossless flag for VP90, see https://trac.ffmpeg.org/wiki/Encode/VP9
+                av_opt_set_int(avCodecContext->priv_data, "lossless", 1, 0);
+            }
             if (p.x26xSpeed) {
                 X26xSpeedEnum e = (X26xSpeedEnum)_x26xSpeed->getValue();
                 const char* preset = NULL;
@@ -2673,25 +2741,40 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     // [mov @ 0x1042d7600] Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead.
     // copy timebase while removing common factors
     avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational) {0, 1});
+    avStream->avg_frame_rate = frame_rate; // see ffmpeg.c:2894 from ffmpeg 3.2.2 - may be set before avformat_write_header
 
+    int gopSize = -1;
     if (p.interGOP) {
-        int gopSize = _gopSize->getValue();
+        gopSize = _gopSize->getValue();
         if (gopSize >= 0) {
-            avCodecContext->gop_size = gopSize;
+            //avCodecContext->gop_size = gopSize;
+            av_opt_set_int(avCodecContext->priv_data, "g", 1, 0); // set the group of picture (GOP) size
         }
     }
 
     int bFrames = _bFrames->getValue();
     // NOTE: in new ffmpeg, bframes don't seem to work correctly - ffmpeg crashes...
-    if (p.interB && bFrames != -1) {
-        //avCodecContext->max_b_frames = bFrames;
-        av_opt_set_int(avCodecContext->priv_data, "bf", bFrames, 0);
+    if (p.interB) {
+        if (bFrames == -1 && p.interGOP && gopSize == 1) {
+            bFrames = 0;
+        }
+        if (bFrames != -1) {
+            //avCodecContext->max_b_frames = bFrames;
+            av_opt_set_int(avCodecContext->priv_data, "bf", bFrames, 0); // set maximum number of B-frames between non-B-frames
 #if FF_API_PRIVATE_OPT
-        // Strategy to choose between I/P/B-frames
-        //avCodecContext->b_frame_strategy = 0; // deprecated: use encoder private option "b_strategy", see below
-        av_opt_set_int(avCodecContext->priv_data, "b_strategy", 0, 0);
+            // Strategy to choose between I/P/B-frames
+            //avCodecContext->b_frame_strategy = 0; // deprecated: use encoder private option "b_strategy", see below
+            av_opt_set_int(avCodecContext->priv_data, "b_strategy", 0, 0); // strategy to choose between I/P/B-frames
 #endif
-        avCodecContext->b_quant_factor = 2.0f;
+            //avCodecContext->b_quant_factor = 2.0f;
+            av_opt_set_double(avCodecContext->priv_data, "b_qfactor", 2., 0); // QP factor between P- and B-frames
+
+            if (bFrames == 0 && p.interGOP && gopSize < 0) {
+                // also set keyframe interval to 1, see https://trac.ffmpeg.org/wiki/Encode/VFX#Frame-by-Framescrubbing
+                //avCodecContext->gop_size = 1;
+                av_opt_set_int(avCodecContext->priv_data, "g", 1, 0); // set the group of picture (GOP) size
+            }
+        }
     }
 
     FieldEnum fieldOrder = _inputClip->getFieldOrder();
@@ -2894,8 +2977,62 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         if (mbs > 0) {
             avCodecContext->bit_rate = mbs * 1000000;
         }
+        // macroblock decision algorithm (high quality mode) = use best rate distortion
+        //if (rd->ffcodecdata.flags & FFMPEG_LOSSLESS_OUTPUT)
+        //  av_opt_set(avCodecContext->priv_data, "mbd", "rd", 0);
     }
 #endif // DNxHD
+
+#if 0
+    // the following was inspired by blender/source/blender/blenkernel/intern/writeffmpeg.c
+    // but it is disabled by default (we suppose ffmpeg correctly sets the x264 defaults)
+    if (AV_CODEC_ID_H264 == avCodecContext->codec_id) {
+        /*
+         * All options here are for x264, but must be set via ffmpeg.
+         * The names are therefore different - Search for "x264 to FFmpeg option mapping"
+         * to get a list.
+         */
+
+        /*
+         * Use CABAC coder. Using "coder:1", which should be equivalent,
+         * crashes Blender for some reason. Either way - this is no big deal.
+         */
+        av_opt_set(avCodecContext->priv_data, "coder", "cabac", 0);
+
+        /*
+         * The other options were taken from the libx264-default.ffpreset
+         * included in the ffmpeg distribution.
+         */
+        //av_opt_set(avCodecContext->priv_data, "flags:loop"); // this breaks compatibility for QT
+        av_opt_set(avCodecContext->priv_data, "cmp", "chroma", 0);
+        av_opt_set(avCodecContext->priv_data, "partitions", "i4x4,p8x8,b8x8", 0);
+        av_opt_set(avCodecContext->priv_data, "me_method", "hex", 0);
+        av_opt_set_int(avCodecContext->priv_data, "subq", 6, 0);
+        av_opt_set_int(avCodecContext->priv_data, "me_range", 16, 0);
+        // missing: g=250
+        av_opt_set_int(avCodecContext->priv_data, "qdiff", 4, 0);
+        av_opt_set_int(avCodecContext->priv_data, "keyint_min", 25, 0);
+        av_opt_set_int(avCodecContext->priv_data, "sc_threshold", 40, 0);
+        av_opt_set_double(avCodecContext->priv_data, "i_qfactor", 0.71, 0);
+        av_opt_set_int(avCodecContext->priv_data, "b_strategy", 1, 0);
+        av_opt_set_int(avCodecContext->priv_data, "bf", 3, 0);
+        av_opt_set_int(avCodecContext->priv_data, "refs", 2, 0);
+        av_opt_set_double(avCodecContext->priv_data, "qcomp", 0.6, 0);
+        // missing: qmin=10, qmax=51
+        av_opt_set_int(avCodecContext->priv_data, "trellis", 0, 0);
+        av_opt_set_int(avCodecContext->priv_data, "weightb", 1, 0);
+#ifdef FFMPEG_HAVE_DEPRECATED_FLAGS2
+        av_opt_set(avCodecContext->priv_data, "flags2", "dct8x8");
+        av_opt_set(avCodecContext->priv_data, "directpred", "3");
+        av_opt_set(avCodecContext->priv_data, "flags2", "fastpskip");
+        av_opt_set(avCodecContext->priv_data, "flags2", "wpred");
+#else
+        av_opt_set_int(avCodecContext->priv_data, "8x8dct", 1, 0);
+        av_opt_set_int(avCodecContext->priv_data, "fast-pskip", 1, 0);
+        av_opt_set(avCodecContext->priv_data, "wpredp", "2", 0);
+#endif
+    }
+#endif
 
     //Currently not set - the main problem being that the mov32 reader will use it to set its defaults.
     //TODO: investigate using the writer key in mov32 to ignore this value when set to mov64.
@@ -3055,12 +3192,14 @@ WriteFFmpegPlugin::openCodec(AVFormatContext* avFormatContext,
     }
 
     // see ffmpeg.c:3042 from ffmpeg 3.2.2
+#if (LIBAVFORMAT_VERSION_INT) >= (AV_VERSION_INT(57, 41, 100 ) ) // appeared with ffmpeg 3.1.1
     int ret = avcodec_parameters_from_context(avStream->codecpar, avCodecContext);
     if (ret < 0) {
         setPersistentMessage( Message::eMessageError, "", string("Error initializing the output stream codec context.") );
 
         return -5;
     }
+#endif
 
     return 0;
 }
@@ -3731,7 +3870,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
     // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
     //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
     if (!isCodecSupportedInContainer) {
-        setPersistentMessage(Message::eMessageError, "", "the selected codec is not supported in this container.");
+        setPersistentMessage(Message::eMessageError, "", string("The codec ") + videoCodec->name + " is not supported in container " + avOutputFormat->name);
         freeFormat();
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -4284,25 +4423,26 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
                 setFormat = true;;
             } else if (formatsShortNames[i] == "matroska") {
                 if ( (suffix.compare("mkv") == 0) ||
-                     ( suffix.compare("mk3d") == 0) ) {
-                    setFormat = true;;
+                     (suffix.compare("mk3d") == 0) ||
+                     (suffix.compare("webm") == 0) ) {
+                    setFormat = true;
                 }
             } else if (formatsShortNames[i] == "mpeg") {
                 if (suffix.compare("mpg") == 0) {
-                    setFormat = true;;
+                    setFormat = true;
                 }
             } else if (formatsShortNames[i] == "mpegts") {
                 if ( (suffix.compare("m2ts") == 0) ||
                      ( suffix.compare("mts") == 0) ||
                      ( suffix.compare("ts") == 0) ) {
-                    setFormat = true;;
+                    setFormat = true;
                 }
             } else if (formatsShortNames[i] == "mp4") {
                 if ( (suffix.compare("mov") == 0) ||
                      ( suffix.compare("3gp") == 0) ||
                      ( suffix.compare("3g2") == 0) ||
                      ( suffix.compare("mj2") == 0) ) {
-                    setFormat = true;;
+                    setFormat = true;
                 }
             }
             if (setFormat) {
@@ -4353,18 +4493,19 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
         if (format > 0) {
             AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
             if ( fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec]) ) {
-                setPersistentMessage(Message::eMessageError, "", "the selected codec is not supported in this container.");
+                setPersistentMessage(Message::eMessageError, "", string("The codec ") + codecsShortNames[codec] + " is not supported in container " + FFmpegSingleton::Instance().getFormatsShortNames()[format]);
             } else {
                 clearPersistentMessage();
             }
         }
     } else if (paramName == kParamFormat) {
         int codec = _codec->getValue();
+        const vector<string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
         int format = _format->getValue();
         if (format > 0) {
             AVOutputFormat* fmt = av_guess_format(FFmpegSingleton::Instance().getFormatsShortNames()[format].c_str(), NULL, NULL);
             if ( fmt && !codecCompatible(fmt, FFmpegSingleton::Instance().getCodecsIds()[codec]) ) {
-                setPersistentMessage(Message::eMessageError, "", "the selected codec is not supported in this container.");
+                setPersistentMessage(Message::eMessageError, "", string("The codec ") + codecsShortNames[codec] + " is not supported in container " + FFmpegSingleton::Instance().getFormatsShortNames()[format]);
             } else {
                 clearPersistentMessage();
             }
@@ -4478,7 +4619,7 @@ WriteFFmpegPluginFactory::load()
     _extensions.clear();
 #if 0
     // hard-coded extensions list
-    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
+    const char* extensionsl[] = { "avi", "flv", "mov", "mp4", "mkv", "webm", "bmp", "pix", "dpx", "jpeg", "jpg", "png", "pgm", "ppm", "rgba", "rgb", "tiff", "tga", "gif", NULL };
     for (const char** ext = extensionsl; *ext != NULL; ++ext) {
         _extensions.push_back(*ext);
     }
@@ -4506,6 +4647,7 @@ WriteFFmpegPluginFactory::load()
         extensionsl.push_back("avi"); // AVI (Audio Video Interleaved)
         extensionsl.push_back("flv"); // flv (FLV (Flash Video))
         extensionsl.push_back("mkv"); // matroska,webm (Matroska / WebM)
+        extensionsl.push_back("webm"); // matroska,webm (Matroska / WebM)
         extensionsl.push_back("mov"); // QuickTime / MOV
         extensionsl.push_back("mp4"); // MP4 (MPEG-4 Part 14)
         extensionsl.push_back("mpg"); // MPEG-1 Systems / MPEG program stream
@@ -4785,13 +4927,7 @@ WriteFFmpegPluginFactory::describe(ImageEffectDescriptor &desc)
     GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
-    desc.setPluginDescription( "Write images or video file using "
-#                             ifdef FFMS_USE_FFMPEG_COMPAT
-                               "FFmpeg"
-#                             else
-                               "libav"
-#                             endif
-                               ".\n\n" + ffmpeg_versions() );
+    desc.setPluginDescription( kPluginDescription "\n\n" + ffmpeg_versions() );
 
 
     ///This plug-in only supports sequential render
@@ -5114,7 +5250,6 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 page->addChild(*param);
             }
         }
-
 
         ///////////Gop size
         {
