@@ -44,6 +44,7 @@ GCC_DIAG_OFF(unused-parameter)
 GCC_DIAG_ON(unused-parameter)
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsCopier.h"
 #include "ofxsFormatResolution.h"
 #include "ofxsCoords.h"
@@ -760,7 +761,7 @@ OIIOResizePlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     }
 }
 
-mDeclarePluginFactory(OIIOResizePluginFactory, {}, {});
+mDeclarePluginFactory(OIIOResizePluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 
 /** @brief The basic describe function, passed a plugin descriptor */

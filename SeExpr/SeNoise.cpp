@@ -87,6 +87,7 @@ SeVec3d pvoronoiFn(VoronoiPointData& data, int n, const SeVec3d* args);
 #endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsMaskMix.h"
 #include "ofxsCoords.h"
 #include "ofxsRamp.h"
@@ -1220,7 +1221,7 @@ class SeNoiseOverlayDescriptor
 {
 };
 
-mDeclarePluginFactory(SeNoisePluginFactory, {}, {});
+mDeclarePluginFactory(SeNoisePluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 void
 SeNoisePluginFactory::describe(ImageEffectDescriptor &desc)

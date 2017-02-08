@@ -26,6 +26,7 @@
 #include <cstdio> // fopen...
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 #include "ofxNatron.h"
@@ -1270,7 +1271,7 @@ OCIOCDLTransformPlugin::changedClip(const InstanceChangedArgs &args,
     }
 }
 
-mDeclarePluginFactory(OCIOCDLTransformPluginFactory, {}, {});
+mDeclarePluginFactory(OCIOCDLTransformPluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void

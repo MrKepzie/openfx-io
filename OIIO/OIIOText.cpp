@@ -42,6 +42,7 @@ GCC_DIAG_ON(unused-parameter)
 #include "OIIOGlobal.h"
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsCopier.h"
 #include "ofxsPositionInteract.h"
 
@@ -535,7 +536,7 @@ OIIOTextPlugin::getRegionOfDefinition(const RegionOfDefinitionArguments &args,
     return true;
 }
 
-mDeclarePluginFactory(OIIOTextPluginFactory, {}, {});
+mDeclarePluginFactory(OIIOTextPluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 namespace {
 struct PositionInteractParam

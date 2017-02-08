@@ -1,4 +1,4 @@
-PLUGINOBJECTS = \
+PLUGINOBJECTS = ofxsThreadSuite.o tinythread.o \
 	ReadOIIO.o WriteOIIO.o \
 	OIIOText.o OIIOResize.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o \

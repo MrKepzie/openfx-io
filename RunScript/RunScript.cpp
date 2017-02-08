@@ -613,7 +613,7 @@ RunScriptPlugin::getRegionOfDefinition(const RegionOfDefinitionArguments &args,
     return false;
 }
 
-mDeclarePluginFactory(RunScriptPluginFactory, {}, {});
+mDeclarePluginFactory(RunScriptPluginFactory, {ofxsThreadSuiteCheck();}, {});
 void
 RunScriptPluginFactory::describe(ImageEffectDescriptor &desc)
 {

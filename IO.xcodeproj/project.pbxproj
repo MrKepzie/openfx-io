@@ -13,6 +13,8 @@
 			buildPhases = (
 			);
 			dependencies = (
+				1EF77C401E4B6D6C005C4845 /* PBXTargetDependency */,
+				1EF77C421E4B6D6C005C4845 /* PBXTargetDependency */,
 				1E9B5F3B198A50A10095C8AA /* PBXTargetDependency */,
 				1E9B5F3D198A50A30095C8AA /* PBXTargetDependency */,
 				1E9B5F41198A50A90095C8AA /* PBXTargetDependency */,
@@ -213,6 +215,19 @@
 		1EEAA6C01BBD183800D397F5 /* SeNoise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */; };
 		1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; };
 		1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */; };
+		1EF77C3A1E4B6CE9005C4845 /* ofxsThreadSuite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */; };
+		1EF77C3B1E4B6CF6005C4845 /* tinythread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C381E4B6CC7005C4845 /* tinythread.cpp */; };
+		1EF77C3C1E4B6D1C005C4845 /* tinythread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C381E4B6CC7005C4845 /* tinythread.cpp */; };
+		1EF77C3D1E4B6D29005C4845 /* tinythread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C381E4B6CC7005C4845 /* tinythread.cpp */; };
+		1EF77C3E1E4B6D31005C4845 /* tinythread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C381E4B6CC7005C4845 /* tinythread.cpp */; };
+		1EF77C431E4B6DA4005C4845 /* ofxsThreadSuite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */; };
+		1EF77C441E4B6DBC005C4845 /* ofxsThreadSuite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */; };
+		1EF77C451E4B6DBE005C4845 /* ofxsThreadSuite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */; };
+		1EF77C471E4B6E19005C4845 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E9B5EFA198A3D040095C8AA /* OpenGL.framework */; };
+		1EF77C481E4B6E22005C4845 /* ofxsThreadSuite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */; };
+		1EF77C491E4B6E26005C4845 /* tinythread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EF77C381E4B6CC7005C4845 /* tinythread.cpp */; };
+		1EF77C4A1E4B6E39005C4845 /* ofxsOGLTextRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F2A198A505E0095C8AA /* ofxsOGLTextRenderer.cpp */; };
+		1EF77C4B1E4B6E3D005C4845 /* ofxsOGLFontData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B5F28198A505E0095C8AA /* ofxsOGLFontData.cpp */; };
 		AC0626691ABDC1D800B3D105 /* fr.inria.openfx.SeExpr.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */; };
 		AC0626701ABDC4A400B3D105 /* fr.inria.openfx.OIIOResize.png in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */; };
 		AC0626711ABDC4A500B3D105 /* fr.inria.openfx.OIIOResize.svg in CopyFiles */ = {isa = PBXBuildFile; fileRef = AC06266F1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.svg */; };
@@ -347,6 +362,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = 1EDECBB018B9F8040093B6FC;
 			remoteInfo = RunScript.ofx;
+		};
+		1EF77C3F1E4B6D6C005C4845 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AC51C4611D0ED85B0004B213;
+			remoteInfo = PNG.ofx;
+		};
+		1EF77C411E4B6D6C005C4845 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D74E623C1875A79700D8FA13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACE0849E1AB4AB9B00BE558C;
+			remoteInfo = SeExpr.ofx;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -641,6 +670,10 @@
 		1EEAA6BD1BBD183800D397F5 /* SeNoise.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SeNoise.cpp; sourceTree = "<group>"; };
 		1EEAA6CB1BBD628A00D397F5 /* ofxsRamp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsRamp.cpp; sourceTree = "<group>"; };
 		1EEAA6CC1BBD628A00D397F5 /* ofxsRamp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsRamp.h; sourceTree = "<group>"; };
+		1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsThreadSuite.cpp; sourceTree = "<group>"; };
+		1EF77C371E4B6CC7005C4845 /* ofxsThreadSuite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxsThreadSuite.h; sourceTree = "<group>"; };
+		1EF77C381E4B6CC7005C4845 /* tinythread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tinythread.cpp; sourceTree = "<group>"; };
+		1EF77C391E4B6CC7005C4845 /* tinythread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tinythread.h; sourceTree = "<group>"; };
 		1EF940C21B9093370028AF8A /* gpl-header-c.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "gpl-header-c.txt"; sourceTree = "<group>"; };
 		AC0626681ABDC1C600B3D105 /* fr.inria.openfx.SeExpr.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.SeExpr.png; sourceTree = "<group>"; };
 		AC06266E1ABDC49400B3D105 /* fr.inria.openfx.OIIOResize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = fr.inria.openfx.OIIOResize.png; sourceTree = "<group>"; };
@@ -776,6 +809,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1EF77C471E4B6E19005C4845 /* OpenGL.framework in Frameworks */,
 				ACE084AB1AB4AB9B00BE558C /* CoreFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -936,6 +970,8 @@
 		1E9B5F21198A50250095C8AA /* SupportExt */ = {
 			isa = PBXGroup;
 			children = (
+				1EF77C381E4B6CC7005C4845 /* tinythread.cpp */,
+				1EF77C391E4B6CC7005C4845 /* tinythread.h */,
 				AC07199E1D476D8500107F5E /* fast_mutex.h */,
 				AC0719B51D479A2700107F5E /* glad.cpp */,
 				AC0719B21D47734D00107F5E /* glad.h */,
@@ -979,6 +1015,8 @@
 				1E9B5F2F198A505E0095C8AA /* ofxsRectangleInteract.h */,
 				AC0719A91D476D8500107F5E /* ofxsShutter.cpp */,
 				1E84DC5D1BC1663C006E7E64 /* ofxsShutter.h */,
+				1EF77C361E4B6CC7005C4845 /* ofxsThreadSuite.cpp */,
+				1EF77C371E4B6CC7005C4845 /* ofxsThreadSuite.h */,
 				1E9B5F30198A505E0095C8AA /* ofxsTracking.cpp */,
 				1E9B5F31198A505E0095C8AA /* ofxsTracking.h */,
 				1E9B5F32198A505E0095C8AA /* ofxsTransform3x3.cpp */,
@@ -1422,6 +1460,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EA19E3418BBA40E0057E62B /* RunScript.cpp in Sources */,
+				1EF77C3B1E4B6CF6005C4845 /* tinythread.cpp in Sources */,
 				1E864EBE19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */,
 				1E8B5DD418B7A39400C31FDC /* ReadPFM.cpp in Sources */,
 				1E8B5DD518B7A39400C31FDC /* WritePFM.cpp in Sources */,
@@ -1466,6 +1505,7 @@
 				1E2F4DA6189295F600F4CE25 /* ofxsLog.cpp in Sources */,
 				1EEAA6BF1BBD183800D397F5 /* SeNoise.cpp in Sources */,
 				1EEAA6CD1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
+				1EF77C3A1E4B6CE9005C4845 /* ofxsThreadSuite.cpp in Sources */,
 				1E2F4DA8189295F600F4CE25 /* ofxsInteract.cpp in Sources */,
 				AC9FFEB71C6B3916000D073B /* ofxsMultiPlane.cpp in Sources */,
 				1E2F4DA9189295F600F4CE25 /* ofxsMultiThread.cpp in Sources */,
@@ -1502,6 +1542,7 @@
 				1E326D841B8C52EA00C6AE8F /* OCIODisplay.cpp in Sources */,
 				1E9B5EA91986406A0095C8AA /* OCIOCDLTransform.cpp in Sources */,
 				1ED499D018A00BD6008A2D91 /* OCIOColorSpace.cpp in Sources */,
+				1EF77C441E4B6DBC005C4845 /* ofxsThreadSuite.cpp in Sources */,
 				1E864EBF19FC09D50016D4FF /* OCIOLookTransform.cpp in Sources */,
 				1E0524AE19813C5B00260F03 /* OCIOFileTransform.cpp in Sources */,
 				1E90F4181982C04B00BB8B6D /* OCIOLogConvert.cpp in Sources */,
@@ -1510,6 +1551,7 @@
 				AC0719AF1D476DF900107F5E /* ofxsOGLFunctions_gl.cpp in Sources */,
 				AC0719AE1D476DDF00107F5E /* ofxsOGLUtilities.cpp in Sources */,
 				1ED499A018A00B66008A2D91 /* ofxsProperty.cpp in Sources */,
+				1EF77C3D1E4B6D29005C4845 /* tinythread.cpp in Sources */,
 				1ED499A418A00B66008A2D91 /* ofxsCore.cpp in Sources */,
 				1ED499A518A00B66008A2D91 /* ofxsParams.cpp in Sources */,
 				1ED499A618A00B66008A2D91 /* ofxsImageEffect.cpp in Sources */,
@@ -1526,9 +1568,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				1ED1A80F18BB4FC200E095DD /* RunScript.cpp in Sources */,
+				1EF77C3C1E4B6D1C005C4845 /* tinythread.cpp in Sources */,
 				1EDECBB218B9F8040093B6FC /* ofxsProperty.cpp in Sources */,
 				1EDECBB618B9F8040093B6FC /* ofxsCore.cpp in Sources */,
 				1EDECBB718B9F8040093B6FC /* ofxsParams.cpp in Sources */,
+				1EF77C431E4B6DA4005C4845 /* ofxsThreadSuite.cpp in Sources */,
 				1EDECBB818B9F8040093B6FC /* ofxsImageEffect.cpp in Sources */,
 				1EDECBB918B9F8040093B6FC /* ofxsPropertyValidation.cpp in Sources */,
 				1EDECBBB18B9F8040093B6FC /* ofxsLog.cpp in Sources */,
@@ -1571,14 +1615,18 @@
 				ACE084A31AB4AB9B00BE558C /* ofxsCore.cpp in Sources */,
 				1EEAA6CE1BBD628A00D397F5 /* ofxsRamp.cpp in Sources */,
 				1E784D921BC562D000F7278C /* SeGrain.cpp in Sources */,
+				1EF77C481E4B6E22005C4845 /* ofxsThreadSuite.cpp in Sources */,
 				ACE084A41AB4AB9B00BE558C /* ofxsParams.cpp in Sources */,
 				ACE084A51AB4AB9B00BE558C /* ofxsImageEffect.cpp in Sources */,
+				1EF77C4B1E4B6E3D005C4845 /* ofxsOGLFontData.cpp in Sources */,
 				ACE084B51AB4ABB100BE558C /* SeExpr.cpp in Sources */,
 				ACE90FFE1AB7434C007A49F8 /* ofxsGenerator.cpp in Sources */,
 				ACE90FFD1AB74341007A49F8 /* ofxsRectangleInteract.cpp in Sources */,
+				1EF77C4A1E4B6E39005C4845 /* ofxsOGLTextRenderer.cpp in Sources */,
 				ACE084A61AB4AB9B00BE558C /* ofxsPropertyValidation.cpp in Sources */,
 				ACE084A71AB4AB9B00BE558C /* ofxsLog.cpp in Sources */,
 				ACE084A81AB4AB9B00BE558C /* ofxsInteract.cpp in Sources */,
+				1EF77C491E4B6E26005C4845 /* tinythread.cpp in Sources */,
 				ACE084A91AB4AB9B00BE558C /* ofxsMultiThread.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1612,6 +1660,7 @@
 				1E00B3ED188EEBC5003BC7F3 /* ReadOIIO.cpp in Sources */,
 				1E00B3EF188EEBC5003BC7F3 /* WriteOIIO.cpp in Sources */,
 				D780C41819898045002470C9 /* OIIOText.cpp in Sources */,
+				1EF77C451E4B6DBE005C4845 /* ofxsThreadSuite.cpp in Sources */,
 				1EB6CCF31993B98D000DDB1A /* OIIOResize.cpp in Sources */,
 				1E74D852189115BC00E9034B /* GenericOCIO.cpp in Sources */,
 				1EA5A4641C8D84900031138D /* ofxsMultiPlane.cpp in Sources */,
@@ -1620,6 +1669,7 @@
 				1E378A89194DE28300800F5F /* SequenceParsing.cpp in Sources */,
 				1E9B5F70198A5A490095C8AA /* ofxsOGLTextRenderer.cpp in Sources */,
 				1E9B5F72198A5A4F0095C8AA /* ofxsOGLFontData.cpp in Sources */,
+				1EF77C3E1E4B6D31005C4845 /* tinythread.cpp in Sources */,
 				1E74D8451891074000E9034B /* ofxsProperty.cpp in Sources */,
 				1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8421891074000E9034B /* ofxsParams.cpp in Sources */,
@@ -1691,6 +1741,16 @@
 			isa = PBXTargetDependency;
 			target = 1EDECBB018B9F8040093B6FC /* RunScript.ofx */;
 			targetProxy = 1E9B5F44198A50B40095C8AA /* PBXContainerItemProxy */;
+		};
+		1EF77C401E4B6D6C005C4845 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AC51C4611D0ED85B0004B213 /* PNG.ofx */;
+			targetProxy = 1EF77C3F1E4B6D6C005C4845 /* PBXContainerItemProxy */;
+		};
+		1EF77C421E4B6D6C005C4845 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ACE0849E1AB4AB9B00BE558C /* SeExpr.ofx */;
+			targetProxy = 1EF77C411E4B6D6C005C4845 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1965,10 +2025,10 @@
 					"$(inherited)",
 					"$(SEEXPR_PATH)/include",
 				);
-				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_FILE = SeExpr/Info.plist;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-L$(SEEXPR_PATH)",
+					"-L$(SEEXPR_PATH)/lib",
 					"-lSeExpr",
 				);
 				PRODUCT_NAME = SeExpr.ofx;
@@ -1982,10 +2042,10 @@
 					"$(inherited)",
 					"$(SEEXPR_PATH)/include",
 				);
-				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_FILE = SeExpr/Info.plist;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
-					"-L$(SEEXPR_PATH)",
+					"-L$(SEEXPR_PATH)/lib",
 					"-lSeExpr",
 				);
 				PRODUCT_NAME = SeExpr.ofx;
