@@ -30,6 +30,7 @@
 #endif
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsCopier.h"
 #include "ofxsCoords.h"
 #include "ofxsMacros.h"
@@ -1136,7 +1137,7 @@ OCIODisplayPlugin::changedClip(const InstanceChangedArgs &args,
     }
 }
 
-mDeclarePluginFactory(OCIODisplayPluginFactory, {}, {});
+mDeclarePluginFactory(OCIODisplayPluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void

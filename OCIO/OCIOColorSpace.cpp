@@ -32,6 +32,7 @@
 #include <GenericOCIO.h>
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsCopier.h"
 #include "ofxsCoords.h"
 #include "ofxsMacros.h"
@@ -838,7 +839,7 @@ OCIOColorSpacePlugin::changedClip(const InstanceChangedArgs &args,
     }
 }
 
-mDeclarePluginFactory(OCIOColorSpacePluginFactory, {}, {});
+mDeclarePluginFactory(OCIOColorSpacePluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void

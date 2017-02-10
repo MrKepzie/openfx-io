@@ -1055,7 +1055,7 @@ OCIOLookTransformPlugin::changedClip(const InstanceChangedArgs &args,
     }
 }
 
-mDeclarePluginFactory(OCIOLookTransformPluginFactory, {}, {});
+mDeclarePluginFactory(OCIOLookTransformPluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 /** @brief The basic describe function, passed a plugin descriptor */
 void

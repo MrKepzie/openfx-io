@@ -59,6 +59,7 @@ GCC_DIAG_ON(deprecated)
 #endif // defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsMaskMix.h"
 #include "ofxsCoords.h"
 #include "ofxsRamp.h"
@@ -703,7 +704,7 @@ class SeGrainOverlayDescriptor
 {
 };
 
-mDeclarePluginFactory(SeGrainPluginFactory, {}, {});
+mDeclarePluginFactory(SeGrainPluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 void
 SeGrainPluginFactory::describe(ImageEffectDescriptor &desc)

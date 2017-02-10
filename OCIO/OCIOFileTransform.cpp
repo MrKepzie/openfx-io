@@ -36,6 +36,7 @@
 #endif
 
 #include "ofxsProcessing.H"
+#include "ofxsThreadSuite.h"
 #include "ofxsCopier.h"
 #include "IOUtility.h"
 #include "ofxNatron.h"
@@ -994,7 +995,7 @@ OCIOFileTransformPlugin::changedClip(const InstanceChangedArgs &args,
     }
 }
 
-mDeclarePluginFactory(OCIOFileTransformPluginFactory, {}, {});
+mDeclarePluginFactory(OCIOFileTransformPluginFactory, {ofxsThreadSuiteCheck();}, {});
 static string
 supportedFormats()
 {
