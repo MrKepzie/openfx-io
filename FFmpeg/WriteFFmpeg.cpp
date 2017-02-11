@@ -132,14 +132,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "\n" \
     "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
     "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
-    "- MXF or QuickTime with VC3/DNxHD/DNxHR: the codec is intra-frame. DNxHR profiles are resolution-independent, but are still only available with 8-bit depth. The alpha channel cannot be encoded.\n" \
-    "- QuickTime with Photo JPEG and Global Quality set to 1: intra-frame and 8-bit. qscale=1 ensure almost lossless encoding.\n" \
-    "- QuickTime with avc1 (libx264 or libx264rgb) and Output Quality set to Lossless or Perceptually Lossless: 8-bit, and can be made intra-frame by setting Keyframe Interval to 1 and Max B-Frames to 0. Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n" \
+    "- QuickTime with VC3/DNxHD/DNxHR: the codec is intra-frame. DNxHR profiles are resolution-independent, but are still only available with 8-bit depth. The alpha channel cannot be encoded.\n" \
+    "- MP4 (or QuickTime) with Photo JPEG and Global Quality set to 1: intra-frame and 8-bit. qscale=1 ensure almost lossless encoding.\n" \
+    "- MP4 (or QuickTime) with avc1 (libx264 or libx264rgb) and Output Quality set to Lossless or Perceptually Lossless: 8-bit, and can be made intra-frame by setting Keyframe Interval to 1 and Max B-Frames to 0. Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n" \
     "\n" \
-    "To produce videos for distribution, the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
+    "To write videos intended for distribution (as media files or for streaming), the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
     "\n" \
     "Adding audio\n" \
-    "If audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like: ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4\n" \
+    "If synchronized audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like: ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4 (in this example, input.mp4 contains the video, input.mp3 contains the audio, and output.mp4 co,ntains both tracks).\n" \
     "This command does not re-encode the video or audio, but simply copies the data from each source file and places it in separate streams in the output."
 
 #define kPluginIdentifier "fr.inria.openfx.WriteFFmpeg"
