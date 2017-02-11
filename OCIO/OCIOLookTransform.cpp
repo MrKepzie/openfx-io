@@ -933,9 +933,6 @@ OCIOLookTransformPlugin::isIdentity(const IsIdentityArguments &args,
                                     Clip * &identityClip,
                                     double & /*identityTime*/)
 {
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
     if ( _ocio->isIdentity(args.time) ) {
         bool singleLook;
         _singleLook->getValueAtTime(args.time, singleLook);
@@ -982,6 +979,8 @@ void
 OCIOLookTransformPlugin::changedParam(const InstanceChangedArgs &args,
                                       const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     if (paramName == kParamLookAppend) {
         OCIO::ConstConfigRcPtr config = _ocio->getConfig();
         string lookCombination;

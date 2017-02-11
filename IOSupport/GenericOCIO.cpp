@@ -596,8 +596,6 @@ GenericOCIO::isIdentity(double time) const
     if (inputSpace == outputSpace) {
         return true;
     }
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    _parent->clearPersistentMessage();
     try {
         // maybe the names are not the same, but it's still a no-op (e.g. "scene_linear" and "linear")
         OCIO::ConstContextRcPtr context = getLocalContext(time);//_config->getCurrentContext();
@@ -893,6 +891,8 @@ GenericOCIO::changedParam(const InstanceChangedArgs &args,
     assert(_created);
 #ifdef OFX_IO_USING_OCIO
     if ( (paramName == kOCIOParamConfigFile) && (args.reason != eChangeTime) ) {
+        // must clear persistent message, or render() is not called by Nuke after an error
+        _parent->clearPersistentMessage();
         // compute canonical inputSpace and outputSpace before changing the config,
         // if different from inputSpace and outputSpace they must be set to the canonical value after changing ocio config
         string inputSpace;

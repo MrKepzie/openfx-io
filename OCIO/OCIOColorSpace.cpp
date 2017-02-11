@@ -762,9 +762,6 @@ OCIOColorSpacePlugin::isIdentity(const IsIdentityArguments &args,
                                  Clip * &identityClip,
                                  double & /*identityTime*/)
 {
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
     if ( _ocio->isIdentity(args.time) ) {
         identityClip = _srcClip;
 
@@ -803,6 +800,8 @@ void
 OCIOColorSpacePlugin::changedParam(const InstanceChangedArgs &args,
                                    const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
     if (paramName == kParamEnableGPU) {
         bool supportsGL = _enableGPU->getValueAtTime(args.time);

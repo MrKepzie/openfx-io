@@ -846,9 +846,6 @@ OCIOLogConvertPlugin::isIdentity(const IsIdentityArguments &args,
                                  Clip * &identityClip,
                                  double & /*identityTime*/)
 {
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
     double mix;
     _mix->getValueAtTime(args.time, mix);
 
@@ -882,6 +879,8 @@ void
 OCIOLogConvertPlugin::changedParam(const InstanceChangedArgs &args,
                                    const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     if (paramName == kOCIOParamConfigFile) {
         loadConfig(args.time); // re-load the new OCIO config
         if ( !_config && (args.reason == eChangeUserEdit) ) {

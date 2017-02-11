@@ -893,9 +893,6 @@ OCIOFileTransformPlugin::isIdentity(const IsIdentityArguments &args,
                                     Clip * &identityClip,
                                     double & /*identityTime*/)
 {
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
     string file;
     _file->getValue(file);
     if ( file.empty() ) {
@@ -954,6 +951,7 @@ void
 OCIOFileTransformPlugin::changedParam(const InstanceChangedArgs &args,
                                       const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
     clearPersistentMessage();
     // Only show the cccid knob when loading a .cc/.ccc file. Set
     // hidden state when the src is changed, or the node properties

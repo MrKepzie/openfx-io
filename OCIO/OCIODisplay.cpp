@@ -180,9 +180,6 @@ private:
                             Clip * & /*identityClip*/,
                             double & /*identityTime*/) OVERRIDE FINAL
     {
-        // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-        clearPersistentMessage();
-
         return false;
     }
 
@@ -1059,6 +1056,9 @@ void
 OCIODisplayPlugin::changedParam(const InstanceChangedArgs &args,
                                 const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     OCIO::ConstConfigRcPtr config = _ocio->getConfig();
 
     if (!config) {

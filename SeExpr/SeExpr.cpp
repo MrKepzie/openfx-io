@@ -2288,6 +2288,9 @@ SeExprPlugin::changedParam(const InstanceChangedArgs &args,
         return;
     }
 
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
+
     if ( (paramName == kParamDoubleParamNumber) && (args.reason == eChangeUserEdit) ) {
         int numVisible;
         _doubleParamCount->getValue(numVisible);
@@ -2417,10 +2420,6 @@ SeExprPlugin::isIdentity(const IsIdentityArguments &args,
                          double & /*identityTime*/)
 {
     const double time = args.time;
-
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
 
     bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(time) ) && _maskClip && _maskClip->isConnected() );
     if (doMasking) {

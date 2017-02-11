@@ -482,9 +482,6 @@ OIIOTextPlugin::isIdentity(const IsIdentityArguments &args,
         return false;
     }
 
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
-
     string text;
     _text->getValueAtTime(args.time, text);
     if ( text.empty() ) {
@@ -508,6 +505,8 @@ void
 OIIOTextPlugin::changedParam(const InstanceChangedArgs &args,
                              const string & /*paramName*/)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
         throwSuiteStatusException(kOfxStatFailed);
 
