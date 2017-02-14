@@ -1002,8 +1002,6 @@ OCIOCDLTransformPlugin::isIdentity(const IsIdentityArguments &args,
     string cccid;
     _cccid->getValueAtTime(time, cccid);
 
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
     try {
         OCIO::ConstConfigRcPtr config = OCIO::GetCurrentConfig();
         if (!config) {
@@ -1151,6 +1149,7 @@ void
 OCIOCDLTransformPlugin::changedParam(const InstanceChangedArgs &args,
                                      const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
     clearPersistentMessage();
 
     if ( _firstLoad || (paramName == kParamReadFromFile) || (paramName == kParamFile) || (paramName == kParamCCCID) ) {

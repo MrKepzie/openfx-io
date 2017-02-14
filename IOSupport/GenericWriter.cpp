@@ -319,8 +319,6 @@ GenericWriterPlugin::isIdentity(const IsIdentityArguments &args,
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
         throwSuiteStatusException(kOfxStatFailed);
     }
-    // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-    clearPersistentMessage();
 
     return false;
 }
@@ -2033,6 +2031,8 @@ void
 GenericWriterPlugin::changedParam(const InstanceChangedArgs &args,
                                   const string &paramName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     if (paramName == kParamFrameRange) {
         int choice;
         double first, last;
@@ -2121,6 +2121,8 @@ void
 GenericWriterPlugin::changedClip(const InstanceChangedArgs &args,
                                  const string &clipName)
 {
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
     MultiPlaneEffect::changedClip(args, clipName);
     if ( (clipName == kOfxImageEffectSimpleSourceClipName) && _inputClip && (args.reason == eChangeUserEdit) ) {
         PreMultiplicationEnum premult = _inputClip->getPreMultiplication();

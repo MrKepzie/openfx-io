@@ -166,9 +166,6 @@ public:
                             Clip * & /*identityClip*/,
                             double & /*identityTime*/) OVERRIDE FINAL
     {
-        // must clear persistent message in isIdentity, or render() is not called by Nuke after an error
-        clearPersistentMessage();
-
         return false;
     }
 
@@ -439,6 +436,9 @@ RunScriptPlugin::changedParam(const InstanceChangedArgs &args,
                               const string &paramName)
 {
     DBG(std::cout << "changed param " << paramName << " at time " << args.time << " reason = " << (int)args.reason <<  std::endl);
+
+    // must clear persistent message, or render() is not called by Nuke after an error
+    clearPersistentMessage();
 
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
         throwSuiteStatusException(kOfxStatFailed);

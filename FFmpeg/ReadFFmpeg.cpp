@@ -56,7 +56,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kPluginName "ReadFFmpeg"
 #define kPluginGrouping "Image/Readers"
-#define kPluginDescription "Read video using FFmpeg."
+#define kPluginDescription "Read video using FFmpeg.\n" \
+"All formats supported by FFmpeg should be supported, but there may be issues with some non-conform files. In this case, it is recommended to transcode the video to a digital intermediate format, which is more suitable for grading, compositing and video editing.\n" \
+"This can be done using the ffmpeg command-line tool, by following the instructions at https://trac.ffmpeg.org/wiki/Encode/VFX"
+
 #define kPluginIdentifier "fr.inria.openfx.ReadFFmpeg"
 #define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
