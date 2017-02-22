@@ -41,7 +41,7 @@ before_install:
   - export J='-j3'
   - git submodule update --init --recursive
 #  - sudo add-apt-repository -y ppa:boost-latest/ppa # precise only
-  - sudo add-apt-repository ppa:samuel-bachmann/boost
+  - sudo add-apt-repository -y ppa:samuel-bachmann/boost
 #  - sudo add-apt-repository -y ppa:archivematica/externals
 #  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg
 #  - sudo add-apt-repository -y ppa:spvkgn/ffmpeg-dev
