@@ -55,7 +55,7 @@ before_install:
 
 install:
 # OpenColorIO
-  - sudo apt-get install cmake libtinyxml-dev liblcms2-dev libyaml-cpp-dev libboost-dev
+  - sudo apt-get install cmake libtinyxml-dev liblcms2-dev libyaml-cpp-dev libboost1.60-dev
   - wget https://github.com/imageworks/OpenColorIO/archive/v1.0.9.tar.gz -O /tmp/ocio-1.0.9.tar.gz
   - tar zxf /tmp/ocio-1.0.9.tar.gz > /dev/null 2>&1
   - cd OpenColorIO-1.0.9
@@ -67,7 +67,7 @@ install:
 # OpenEXR
   - sudo apt-get install libopenexr-dev libilmbase-dev
 # OpenImageIO (for some reason, freetype is not recognized)
-  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem-dev libboost-regex-dev libboost-thread-dev libboost-system-dev libwebp-dev libfreetype6-dev libssl-dev
+  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem1.60-dev libboost-regex1.60-dev libboost-thread1.60-dev libboost-system1.60-dev libwebp-dev libfreetype6-dev libssl-dev
   - wget https://github.com/OpenImageIO/oiio/archive/Release-1.6.11.tar.gz -O /tmp/OpenImageIO-1.6.11.tar.gz
   - tar zxf /tmp/OpenImageIO-1.6.11.tar.gz > /dev/null 2>&1
   - cd oiio-Release-1.6.11
@@ -128,17 +128,17 @@ addons:
     - libtinyxml-dev
     - liblcms2-dev
     - libyaml-cpp-dev
-    - libboost-dev
+    #- libboost-dev
     - libopenexr-dev
     - libilmbase-dev
     - libopenjpeg-dev
     - libtiff4-dev
     - libjpeg-dev
     - libpng-dev
-    - libboost-filesystem-dev
-    - libboost-regex-dev
-    - libboost-thread-dev
-    - libboost-system-dev
+    #- libboost-filesystem-dev
+    #- libboost-regex-dev
+    #- libboost-thread-dev
+    #- libboost-system-dev
     - libwebp-dev
     - libfreetype6-dev
     - libssl-dev
