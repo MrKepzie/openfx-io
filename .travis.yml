@@ -40,7 +40,7 @@ before_install:
   - uname -a
   - export J='-j3'
   - git submodule update --init --recursive
-  - sudo add-apt-repository -y ppa:boost-latest/ppa
+#  - sudo add-apt-repository -y ppa:boost-latest/ppa # precise only
 #  - sudo add-apt-repository -y ppa:archivematica/externals
 #  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg
 #  - sudo add-apt-repository -y ppa:spvkgn/ffmpeg-dev
@@ -101,7 +101,7 @@ script:
 addons:
   apt:
     sources:
-    - boost-latest
+#    - boost-latest # precise only
     # kubuntu-ppa/backports contains OpenCV
     - kubuntu-backports
     # the PPA xorg-edgers contains cairo 1.12 (required for rotoscoping)
@@ -114,7 +114,7 @@ addons:
     # this one is for trusty ffmpeg
     #- sourceline: 'ppa:jonathonf/ffmpeg-3'
     - sourceline: 'ppa:mc3man/trusty-media'
-    - kalakris-cmake
+#    - kalakris-cmake
     packages:
     - gcc-4.9
     - g++-4.9
