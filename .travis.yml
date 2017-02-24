@@ -12,17 +12,18 @@ env:
    # Travis CI has 1.5 cores per VM, take advantage of it
    - MAKEFLAGS="-j 2"
 
-os:
-  - linux
-#  - osx
-
 language: cpp
 
-compiler:
-  - gcc
-  - clang
-
 matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: gcc
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: clang
   exclude:
     - os: osx
       compiler: gcc
@@ -39,11 +40,12 @@ before_install:
   - uname -a
   - export J='-j3'
   - git submodule update --init --recursive
-  - sudo add-apt-repository -y ppa:boost-latest/ppa
+#  - sudo add-apt-repository -y ppa:boost-latest/ppa # precise only
+  - sudo add-apt-repository -y ppa:samuel-bachmann/boost
 #  - sudo add-apt-repository -y ppa:archivematica/externals
 #  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg
 #  - sudo add-apt-repository -y ppa:spvkgn/ffmpeg-dev
-  - sudo add-apt-repository -y ppa:mc3man/trusty-media
+  - sudo add-apt-repository -y ppa:jonathonf/ffmpeg-3
 #  - sudo add-apt-repository -y ppa:irie/boost
   - sudo add-apt-repository -y ppa:kubuntu-ppa/backports
   - sudo apt-get update -qq
@@ -52,10 +54,14 @@ before_install:
 
 install:
 # OpenColorIO
-  - sudo apt-get install cmake libtinyxml-dev liblcms2-dev libyaml-cpp-dev libboost-dev
-  - wget https://github.com/imageworks/OpenColorIO/archive/v1.0.9.tar.gz -O /tmp/ocio-1.0.9.tar.gz
-  - tar zxf /tmp/ocio-1.0.9.tar.gz > /dev/null 2>&1
-  - cd OpenColorIO-1.0.9
+# As of 20160917, there is no 1.0.10 release, and OCIO 1.0.9 doesn't build against yaml 0.5.1,
+# and doesn't build universal with the included yaml-cpp 0.3,
+# so we have to fetch a version from the github.
+  - sudo apt-get install cmake libtinyxml-dev liblcms2-dev libyaml-cpp-dev libboost1.60-dev
+#  - wget https://github.com/imageworks/OpenColorIO/archive/v1.0.9.tar.gz -O /tmp/ocio-1.0.9.tar.gz
+#  - tar zxf /tmp/ocio-1.0.9.tar.gz > /dev/null 2>&1
+#  - cd OpenColorIO-1.0.9
+  - git clone https://github.com/imageworks/OpenColorIO.git && cd OpenColorIO
   - mkdir _build
   - cd _build
   - cmake .. -DCMAKE_INSTALL_PREFIX=/opt/ocio -DCMAKE_BUILD_TYPE=Release -DOCIO_BUILD_JNIGLUE=OFF -DOCIO_BUILD_NUKE=OFF -DOCIO_BUILD_SHARED=ON -DOCIO_BUILD_STATIC=OFF -DOCIO_STATIC_JNIGLUE=OFF -DOCIO_BUILD_TRUELIGHT=OFF -DUSE_EXTERNAL_LCMS=ON -DUSE_EXTERNAL_TINYXML=ON -DUSE_EXTERNAL_YAML=ON -DOCIO_BUILD_APPS=OFF -DOCIO_USE_BOOST_PTR=ON -DOCIO_BUILD_TESTS=OFF -DOCIO_BUILD_PYGLUE=OFF
@@ -64,10 +70,10 @@ install:
 # OpenEXR
   - sudo apt-get install libopenexr-dev libilmbase-dev
 # OpenImageIO (for some reason, freetype is not recognized)
-  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem-dev libboost-regex-dev libboost-thread-dev libboost-system-dev libwebp-dev libfreetype6-dev libssl-dev
-  - wget https://github.com/OpenImageIO/oiio/archive/Release-1.6.11.tar.gz -O /tmp/OpenImageIO-1.6.11.tar.gz
-  - tar zxf /tmp/OpenImageIO-1.6.11.tar.gz > /dev/null 2>&1
-  - cd oiio-Release-1.6.11
+  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem1.60-dev libboost-regex1.60-dev libboost-thread1.60-dev libboost-system1.60-dev libwebp-dev libfreetype6-dev libssl-dev
+  - wget https://github.com/OpenImageIO/oiio/archive/Release-1.7.11.tar.gz -O /tmp/OpenImageIO-1.7.11.tar.gz
+  - tar zxf /tmp/OpenImageIO-1.7.11.tar.gz > /dev/null 2>&1
+  - cd oiio-Release-1.7.11
   - make $MAKEFLAGSPARALLEL USE_QT=0 USE_TBB=0 USE_PYTHON=0 USE_PYTHON3=0 USE_FIELD3D=0 USE_FFMPEG=0 USE_OPENJPEG=1 USE_OCIO=1 USE_OPENCV=0 USE_OPENSSL=0 USE_FREETYPE=1 USE_GIF=0 USE_PTEX=0 USE_LIBRAW=0 OIIO_BUILD_TESTS=0 OIIO_BUILD_TOOLS=0 OCIO_HOME=/opt/ocio INSTALLDIR=/opt/oiio dist_dir=. cmake
   - sudo make $MAKEFLAGSPARALLEL dist_dir=.
   - cd ..
@@ -100,7 +106,7 @@ script:
 addons:
   apt:
     sources:
-    - boost-latest
+#    - boost-latest # precise only
     # kubuntu-ppa/backports contains OpenCV
     - kubuntu-backports
     # the PPA xorg-edgers contains cairo 1.12 (required for rotoscoping)
@@ -111,9 +117,8 @@ addons:
     # NOT WHITELISTED
     #- sourceline: 'ppa:spvkgn/ffmpeg-dev'
     # this one is for trusty ffmpeg
-    #- sourceline: 'ppa:jonathonf/ffmpeg-3'
-    - sourceline: 'ppa:mc3man/trusty-media'
-    - kalakris-cmake
+    - sourceline: 'ppa:jonathonf/ffmpeg-3'
+#    - kalakris-cmake
     packages:
     - gcc-4.9
     - g++-4.9
@@ -125,17 +130,17 @@ addons:
     - libtinyxml-dev
     - liblcms2-dev
     - libyaml-cpp-dev
-    - libboost-dev
+    #- libboost-dev
     - libopenexr-dev
     - libilmbase-dev
     - libopenjpeg-dev
     - libtiff4-dev
     - libjpeg-dev
     - libpng-dev
-    - libboost-filesystem-dev
-    - libboost-regex-dev
-    - libboost-thread-dev
-    - libboost-system-dev
+    #- libboost-filesystem-dev
+    #- libboost-regex-dev
+    #- libboost-thread-dev
+    #- libboost-system-dev
     - libwebp-dev
     - libfreetype6-dev
     - libssl-dev
