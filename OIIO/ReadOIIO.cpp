@@ -2671,7 +2671,6 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             StringParamDescriptor* param = desc.defineStringParam(kParamChannelOutputLayerChoice);
             param->setLabel(kParamChannelOutputLayerChoice);
             param->setIsSecretAndDisabled(true);
-            param->setAnimates(false);
             desc.addClipPreferencesSlaveParam(*param);
             if (page) {
                 page->addChild(*param);

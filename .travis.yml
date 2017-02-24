@@ -12,17 +12,18 @@ env:
    # Travis CI has 1.5 cores per VM, take advantage of it
    - MAKEFLAGS="-j 2"
 
-os:
-  - linux
-#  - osx
-
 language: cpp
 
-compiler:
-  - gcc
-  - clang
-
 matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: gcc
+    - os: linux
+      dist: trusty
+      sudo: required
+      compiler: clang
   exclude:
     - os: osx
       compiler: gcc
@@ -39,22 +40,25 @@ before_install:
   - uname -a
   - export J='-j3'
   - git submodule update --init --recursive
-  - sudo add-apt-repository -y ppa:boost-latest/ppa
+#  - sudo add-apt-repository -y ppa:boost-latest/ppa # precise only
+  - sudo add-apt-repository -y ppa:samuel-bachmann/boost
 #  - sudo add-apt-repository -y ppa:archivematica/externals
 #  - sudo add-apt-repository -y ppa:jon-severinsson/ffmpeg
-  - sudo add-apt-repository -y ppa:spvkgn/ffmpeg-dev
+#  - sudo add-apt-repository -y ppa:spvkgn/ffmpeg-dev
+  - sudo add-apt-repository -y ppa:mc3man/trusty-media
 #  - sudo add-apt-repository -y ppa:irie/boost
   - sudo add-apt-repository -y ppa:kubuntu-ppa/backports
   - sudo apt-get update -qq
 #  - sudo apt-get upgrade
-  - sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev
+#  - sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libavutil-dev libswresample-dev
+  - sudo apt-get install ffmpeg # mc3man
 
 install:
 # OpenColorIO
 # As of 20160917, there is no 1.0.10 release, and OCIO 1.0.9 doesn't build against yaml 0.5.1,
 # and doesn't build universal with the included yaml-cpp 0.3,
 # so we have to fetch a version from the github.
-  - sudo apt-get install cmake libtinyxml-dev liblcms2-dev libyaml-cpp-dev libboost-dev
+  - sudo apt-get install cmake libtinyxml-dev liblcms2-dev libyaml-cpp-dev libboost1.60-dev
 #  - wget https://github.com/imageworks/OpenColorIO/archive/v1.0.9.tar.gz -O /tmp/ocio-1.0.9.tar.gz
 #  - tar zxf /tmp/ocio-1.0.9.tar.gz > /dev/null 2>&1
 #  - cd OpenColorIO-1.0.9
@@ -67,7 +71,7 @@ install:
 # OpenEXR
   - sudo apt-get install libopenexr-dev libilmbase-dev
 # OpenImageIO (for some reason, freetype is not recognized)
-  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem-dev libboost-regex-dev libboost-thread-dev libboost-system-dev libwebp-dev libfreetype6-dev libssl-dev
+  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem1.60-dev libboost-regex1.60-dev libboost-thread1.60-dev libboost-system1.60-dev libwebp-dev libfreetype6-dev libssl-dev
   - wget https://github.com/OpenImageIO/oiio/archive/Release-1.7.11.tar.gz -O /tmp/OpenImageIO-1.7.11.tar.gz
   - tar zxf /tmp/OpenImageIO-1.7.11.tar.gz > /dev/null 2>&1
   - cd oiio-Release-1.7.11
@@ -103,7 +107,7 @@ script:
 addons:
   apt:
     sources:
-    - boost-latest
+#    - boost-latest # precise only
     # kubuntu-ppa/backports contains OpenCV
     - kubuntu-backports
     # the PPA xorg-edgers contains cairo 1.12 (required for rotoscoping)
@@ -111,8 +115,12 @@ addons:
     # ubuntu-toolchain-r/test contains recent versions of gcc
     - ubuntu-toolchain-r-test
     # get a recent ffmpeg (>=2.5) for precise from ppa:archivematica/externals(2.5.1) or ppa:pavlyshko/precise(2.6.1) or ppa:spvkgn/ffmpeg-dev(2.8.6)
-    - ppa:spvkgn/ffmpeg-dev
-    - kalakris-cmake
+    # NOT WHITELISTED
+    #- sourceline: 'ppa:spvkgn/ffmpeg-dev'
+    # this one is for trusty ffmpeg
+    #- sourceline: 'ppa:jonathonf/ffmpeg-3'
+    - sourceline: 'ppa:mc3man/trusty-media'
+#    - kalakris-cmake
     packages:
     - gcc-4.9
     - g++-4.9
@@ -124,17 +132,17 @@ addons:
     - libtinyxml-dev
     - liblcms2-dev
     - libyaml-cpp-dev
-    - libboost-dev
+    #- libboost-dev
     - libopenexr-dev
     - libilmbase-dev
     - libopenjpeg-dev
     - libtiff4-dev
     - libjpeg-dev
     - libpng-dev
-    - libboost-filesystem-dev
-    - libboost-regex-dev
-    - libboost-thread-dev
-    - libboost-system-dev
+    #- libboost-filesystem-dev
+    #- libboost-regex-dev
+    #- libboost-thread-dev
+    #- libboost-system-dev
     - libwebp-dev
     - libfreetype6-dev
     - libssl-dev
