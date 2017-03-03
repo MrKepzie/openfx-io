@@ -2841,13 +2841,14 @@ ReadOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
                                "DPX (*.dpx)\n"
                                "Field3D (*.f3d)\n"
                                "FITS (*.fits)\n"
+                               "GIF (*.gif)\n"
                                "HDR/RGBE (*.hdr)\n"
-                               "Icon (*.ico)\n"
+                               "ICO (*.ico)\n"
                                "IFF (*.iff)\n"
                                "JPEG (*.jpg *.jpe *.jpeg *.jif *.jfif *.jfi)\n"
                                "JPEG-2000 (*.jp2 *.j2k)\n"
                                "OpenEXR (*.exr)\n"
-                               "Portable Network Graphics (*.png)\n"
+                               "PNG / Portable Network Graphics (*.png)\n"
 #                           if OIIO_VERSION >= 10400
                                "PNM / Netpbm (*.pbm *.pgm *.ppm *.pfm)\n"
 #                           else
@@ -2855,11 +2856,13 @@ ReadOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
 #                           endif
                                "PSD (*.psd *.pdd *.psb)\n"
                                "Ptex (*.ptex)\n"
+                               "RAW digital camera files (*.crw *.cr2 *.nef *.raf *.dng and others)\n"
                                "RLA (*.rla)\n"
                                "SGI (*.sgi *.rgb *.rgba *.bw *.int *.inta)\n"
                                "Softimage PIC (*.pic)\n"
                                "Targa (*.tga *.tpic)\n"
                                "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
+                               "Webp (*.webp)\n"
                                "Zfile (*.zfile)\n\n"
                                "All supported formats and extensions: " + extensions_pretty + "\n\n"
                                + oiio_versions() );
