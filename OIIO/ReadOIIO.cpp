@@ -118,12 +118,110 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamShowMetadataLabel "Image Info..."
 #define kParamShowMetadataHint "Shows information and metadata from the image at current time."
 
+
+#define kGroupAdvanced "advanced"
+#define kGroupAdvancedLabel "Advanced Options", "Advanced format-specific option"
+
+#define kGroupRaw "advancedRaw"
+#define kGroupRawLabel "RAW", "Options for a variety of digital camera \"raw\" formats supported by the LibRaw library (http://www.libraw.org/)."
+
+// int no_auto_bright
+#define kParamRawAutoBright "rawAutoBright"
+#define kParamRawAutoBrightLabel "Auto Bright", "If checked, use libraw's automatic increase of brightness by histogram (exposure correction)." // default: unckecked
+
+// int use_camera_wb;
+#define kParamRawUseCameraWB "rawUseCameraWB"
+#define kParamRawUseCameraWBLabel "Use Camera WB", "If checked, and if possible, use the white balance from the camera." // default: checked
+
+// float adjust_maximum_thr
+#define kParamRawAdjustMaximumThr "rawAdjustMaximumThr"
+#define kParamRawAdjustMaximumThrLabel "Adjust Maximum Thr.", " This parameters controls auto-adjusting of maximum value based on channel_maximum[] data, calculated from real frame data. If calculated maximum is greater than adjust_maximum_thr*maximum, than maximum is set to calculated_maximum.\n" \
+"Default: 0.75. If you set this value above 0.99999, than default value will be used. If you set this value below 0.00001, than no maximum adjustment will be performed.\n" \
+"Adjusting maximum should not damage any picture (esp. if you use default value) and is very useful for correcting channel overflow problems (magenta clouds on landscape shots, green-blue highlights for indoor shots)." // default: 0.75
+
+// int output_color;
+#define kParamRawOutputColor "rawOutputColor"
+#define kParamRawOutputColorLabel "Output Colorspace", "Output colorspace." // default: sRGB
+#define kParamRawOutputColorRaw "Raw", "Raw data"
+#define kParamRawOutputColorSRGB "sRGB", "sRGB"
+#define kParamRawOutputColorAdobe "Adobe", "Adobe RGB (1998)"
+#define kParamRawOutputColorWide "Wide", "Wide-gamut RGB color space (or Adobe Wide Gamut RGB)"
+#define kParamRawOutputColorProPhoto "ProPhoto", "Kodak ProPhoto RGB (or ROMM RGB)"
+#define kParamRawOutputColorXYZ "XYZ", "CIE XYZ"
+enum RawOutputColorEnum
+{
+    eRawOutputColorRaw = 0,
+    eRawOutputColorSRGB,
+    eRawOutputColorAdobe,
+    eRawOutputColorWide,
+    eRawOutputColorProPhoto,
+    eRawOutputColorXYZ,
+};
+
+// int use_camera_matrix;
+//0: do not use embedded color profile
+//1 (default): use embedded color profile (if present) for DNG files (always); for other files only if use_camera_wb is set;
+//3: use embedded color data (if present) regardless of white balance setting.
+#define kParamRawUseCameraMatrix "rawUseCameraMatrix"
+#define kParamRawUseCameraMatrixLabel "Camera Matrix", "Use/don't use an embedded color matrix."
+#define kParamRawUseCameraMatrixNone "None", "Do not use the embedded color matrix."
+#define kParamRawUseCameraMatrixDefault "Default", "Use embedded color profile (if present) for DNG files (always); for other files only if rawUseCameraWb is set."
+#define kParamRawUseCameraMatrixForce "Force", "Use embedded color data (if present) regardless of white balance setting."
+enum RawUseCameraMatrixEnum
+{
+    eRawUseCameraMatrixNone = 0,
+    eRawUseCameraMatrixDefault,
+    eRawUseCameraMatrixForce,
+};
+
+// int exp_correc; float exp_shift
+#define kParamRawExposure "rawExposure"
+#define kParamRawExposureLabel "Exposure", "Amount of exposure correction before de-mosaicing, from 0.25 (2-stop darken) to 8 (3-stop brighten). (Default: 1., meaning no correction.)" // default: 1
+
+#define kParamRawDemosaic "rawDemosaic"
+#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available."
+#define kParamRawDemosaicNone "None", "No demosaicing."
+#define kParamRawDemosaicLinear "Linear", "Linear interpolation."
+#define kParamRawDemosaicVNG "VNG", "VNG interpolation."
+#define kParamRawDemosaicPPG "PPG", "PPG interpolation."
+#define kParamRawDemosaicAHD "AHD", "AHD interpolation."
+#define kParamRawDemosaicDCB "DCB", "DCB interpolation."
+#define kParamRawDemosaicModifiedAHD "Modified AHD", "Modified AHD interpolation by Paul Lee."
+#define kParamRawDemosaicAFD "AFD", "AFD interpolation (5-pass)."
+#define kParamRawDemosaicVCD "VCD", "VCD interpolation."
+#define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation."
+#define kParamRawDemosaicLMMSE "LMMSE", "LMMSE interpolation."
+#define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation."
+// not available in OIIO 1.7.11:
+#define kParamRawDemosaicDHT "DHT", "DHT interpolation."
+#define kParamRawDemosaicModifiedAHD2 "ModifiedAHD2", "Modified AHD interpolation (by Anton Petrusevich)."
+enum RawDemosaicEnum
+{
+    eRawDemosaicNone = 0,
+    eRawDemosaicLinear,
+    eRawDemosaicVNG,
+    eRawDemosaicPPG,
+    eRawDemosaicAHD,
+    eRawDemosaicDCB,
+    eRawDemosaicModifiedAHD,
+    eRawDemosaicAFD,
+    eRawDemosaicVCD,
+    eRawDemosaicMixed,
+    eRawDemosaicLMMSE,
+    eRawDemosaicAMaZE,
+    eRawDemosaicDHT,
+    eRawDemosaicModifiedAHD2,
+};
+
+
 // number of channels for hosts that don't support modifying choice menus (e.g. Nuke)
 #define kDefaultChannelCount 16
 
-
 // Channels 0 and 1 are reserved for 0 and 1 constants
 #define kXChannelFirst 2
+
+#define kParamChannelOutputLayerHint "This is the layer that will be set to the the color plane. This is relevant only for image formats that can have multiple layers: " \
+"exr, tiff, psd, etc... Note that in Natron you can access other layers with a Shuffle node downstream of this node."
 
 
 #define kParamChannelOutputLayer "outputLayer"
@@ -323,6 +421,14 @@ private:
     //// OIIO image cache
     ImageCache* _cache;
 
+    BooleanParam* _rawAutoBright;
+    BooleanParam* _rawUseCameraWB;
+    DoubleParam* _rawAdjustMaximumThr;
+    ChoiceParam* _rawOutputColor;
+    ChoiceParam* _rawUseCameraMatrix;
+    DoubleParam* _rawExposure;
+    ChoiceParam* _rawDemosaic;
+
     ///V2 params
     ChoiceParam* _outputLayer;
     StringParam* _outputLayerString;
@@ -383,6 +489,14 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle,
         _availableViews = fetchStringParam(kParamAvailableViews);
         assert(_outputLayer && _outputLayerString);
     }
+
+    _rawAutoBright = fetchBooleanParam(kParamRawAutoBright);
+    _rawUseCameraWB = fetchBooleanParam(kParamRawUseCameraWB);
+    _rawAdjustMaximumThr = fetchDoubleParam(kParamRawAdjustMaximumThr);
+    _rawOutputColor = fetchChoiceParam(kParamRawOutputColor);
+    _rawUseCameraMatrix = fetchChoiceParam(kParamRawUseCameraMatrix);
+    _rawExposure = fetchDoubleParam(kParamRawExposure);
+    _rawDemosaic = fetchChoiceParam(kParamRawDemosaic);
 
     _offsetNegativeDispWindow = fetchBooleanParam(kParamOffsetNegativeDisplayWindow);
     _edgePixels = fetchChoiceParam(kParamEdgePixels);
@@ -456,6 +570,15 @@ ReadOIIOPlugin::changedParam(const InstanceChangedArgs &args,
                 }
             }
         }
+    } else if ((paramName == kParamRawAutoBright) ||
+               (paramName == kParamRawUseCameraWB) ||
+               (paramName == kParamRawAdjustMaximumThr) ||
+               (paramName == kParamRawOutputColor) ||
+               (paramName == kParamRawUseCameraMatrix) ||
+               (paramName == kParamRawExposure) ||
+               (paramName == kParamRawDemosaic)) {
+        // advanced parameters changed, clear the cache
+        clearAnyCache();
     } else {
         GenericReaderPlugin::changedParam(args, paramName);
     }
@@ -1490,6 +1613,113 @@ ReadOIIOPlugin::openFile(const string& filename,
     // see also https://github.com/OpenImageIO/oiio/issues/960
     ImageSpec config;
     config.attribute("oiio:UnassociatedAlpha", 1);
+
+    if (_rawAutoBright->getValue()) {
+        config.attribute("raw:auto_bright", 1);
+    }
+
+    if (!_rawUseCameraWB->getValue()) {
+        config.attribute("raw:use_camera_wb", 0);
+    }
+
+    config.attribute("raw:adjust_maximum_thr", (float)_rawAdjustMaximumThr->getValue());
+
+    const char* cs = NULL;
+    RawOutputColorEnum rawOutputColor = (RawOutputColorEnum)_rawOutputColor->getValue();
+    switch(rawOutputColor) {
+        case eRawOutputColorRaw:
+            cs = "raw";
+            break;
+        case eRawOutputColorSRGB:
+        //default:
+            cs = "sRGB";
+            break;
+        case eRawOutputColorAdobe:
+            cs = "Adobe";
+            break;
+        case eRawOutputColorWide:
+            cs = "Wide";
+            break;
+        case eRawOutputColorProPhoto:
+            cs = "ProPhoto";
+            break;
+        case eRawOutputColorXYZ:
+            cs = "XYZ";
+            break;
+    }
+    if (cs != NULL) {
+        config.attribute("raw:Colorspace", cs);
+    }
+
+    RawUseCameraMatrixEnum rawUseCameraMatrix = (RawUseCameraMatrixEnum)_rawUseCameraMatrix->getValue();
+    switch (rawUseCameraMatrix) {
+        case eRawUseCameraMatrixNone:
+            config.attribute("raw:use_camera_matrix", 0);
+            break;
+        case eRawUseCameraMatrixDefault:
+            config.attribute("raw:use_camera_matrix", 1);
+            break;
+        case eRawUseCameraMatrixForce:
+            config.attribute("raw:use_camera_matrix", 3);
+            break;
+    }
+
+
+    double rawExposure = _rawExposure->getValue();
+    if (rawExposure != 1.) {
+        config.attribute("raw:Exposure", (float)rawExposure);
+    }
+
+    RawDemosaicEnum rawDemosaic = (RawDemosaicEnum)_rawDemosaic->getValue();
+    const char* d = NULL;
+    switch (rawDemosaic) {
+        case eRawDemosaicNone:
+            d = "none";
+            break;
+        case eRawDemosaicLinear:
+            d = "linear";
+            break;
+        case eRawDemosaicVNG:
+            d = "VNG";
+            break;
+        case eRawDemosaicPPG:
+            d = "PPG";
+            break;
+        case eRawDemosaicAHD:
+        //default:
+            d = "AHD";
+            break;
+        case eRawDemosaicDCB:
+            d = "DCB";
+            break;
+        case eRawDemosaicModifiedAHD:
+            d = "Modified AHD";
+            break;
+        case eRawDemosaicAFD:
+            d = "AFD";
+            break;
+        case eRawDemosaicVCD:
+            d = "VCD";
+            break;
+        case eRawDemosaicMixed:
+            d = "Mixed";
+            break;
+        case eRawDemosaicLMMSE:
+            d = "LMMSE";
+            break;
+        case eRawDemosaicAMaZE:
+            d = "AMaZE";
+            break;
+        case eRawDemosaicDHT:
+            d = "DHT";
+            break;
+        case eRawDemosaicModifiedAHD2:
+            d = "Modified AHD 2";
+            break;
+    }
+    if (d != NULL) {
+        config.attribute("raw:Demosaic", d);
+    }
 
     *img = ImageInput::open(filename, &config);
     if ( !(*img) ) {
@@ -2652,6 +2882,163 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setHint(kParamShowMetadataHint);
         if (page) {
             page->addChild(*param);
+        }
+    }
+
+    {
+        GroupParamDescriptor* group = desc.defineGroupParam(kGroupAdvanced);
+        group->setLabelAndHint(kGroupAdvancedLabel);
+        group->setOpen(false);
+        if (page) {
+            page->addChild(*group);
+        }
+
+        GroupParamDescriptor* topgroup = group;
+        {
+            GroupParamDescriptor* group = desc.defineGroupParam(kGroupRaw);
+            group->setLabelAndHint(kGroupRawLabel);
+            group->setOpen(false);
+            if (topgroup) {
+                group->setParent(*topgroup);
+            }
+            if (page) {
+                page->addChild(*group);
+            }
+
+            {
+                BooleanParamDescriptor* param = desc.defineBooleanParam(kParamRawAutoBright);
+                param->setLabelAndHint(kParamRawAutoBrightLabel);
+                param->setDefault(false);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                BooleanParamDescriptor* param = desc.defineBooleanParam(kParamRawUseCameraWB);
+                param->setLabelAndHint(kParamRawUseCameraWBLabel);
+                param->setDefault(true);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                DoubleParamDescriptor* param = desc.defineDoubleParam(kParamRawAdjustMaximumThr);
+                param->setLabelAndHint(kParamRawAdjustMaximumThrLabel);
+                param->setRange(0., 1.);
+                param->setDisplayRange(0., 1.);
+                param->setDefault(0.75);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRawOutputColor);
+                param->setLabelAndHint(kParamRawOutputColorLabel);
+                assert(param->getNOptions() == eRawOutputColorRaw);
+                param->appendOption(kParamRawOutputColorRaw);
+                assert(param->getNOptions() == eRawOutputColorSRGB);
+                param->appendOption(kParamRawOutputColorSRGB);
+                assert(param->getNOptions() == eRawOutputColorAdobe);
+                param->appendOption(kParamRawOutputColorAdobe);
+                assert(param->getNOptions() == eRawOutputColorWide);
+                param->appendOption(kParamRawOutputColorWide);
+                assert(param->getNOptions() == eRawOutputColorProPhoto);
+                param->appendOption(kParamRawOutputColorProPhoto);
+                assert(param->getNOptions() == eRawOutputColorXYZ);
+                param->appendOption(kParamRawOutputColorXYZ);
+                param->setDefault(eRawOutputColorSRGB);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRawUseCameraMatrix);
+                param->setLabelAndHint(kParamRawUseCameraMatrixLabel);
+                assert(param->getNOptions() == eRawUseCameraMatrixNone);
+                param->appendOption(kParamRawUseCameraMatrixNone);
+                assert(param->getNOptions() == eRawUseCameraMatrixDefault);
+                param->appendOption(kParamRawUseCameraMatrixDefault);
+                assert(param->getNOptions() == eRawUseCameraMatrixForce);
+                param->appendOption(kParamRawUseCameraMatrixForce);
+                param->setDefault(eRawUseCameraMatrixDefault);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                DoubleParamDescriptor* param = desc.defineDoubleParam(kParamRawExposure);
+                param->setLabelAndHint(kParamRawExposureLabel);
+                param->setRange(0.25, 8.);
+                param->setDisplayRange(0.25, 8.);
+                param->setDefault(1.);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
+            {
+                ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRawDemosaic);
+                param->setLabelAndHint(kParamRawDemosaicLabel);
+                assert(param->getNOptions() == eRawDemosaicNone);
+                param->appendOption(kParamRawDemosaicNone);
+                assert(param->getNOptions() == eRawDemosaicLinear);
+                param->appendOption(kParamRawDemosaicLinear);
+                assert(param->getNOptions() == eRawDemosaicVNG);
+                param->appendOption(kParamRawDemosaicVNG);
+                assert(param->getNOptions() == eRawDemosaicPPG);
+                param->appendOption(kParamRawDemosaicPPG);
+                assert(param->getNOptions() == eRawDemosaicAHD);
+                param->appendOption(kParamRawDemosaicAHD);
+                assert(param->getNOptions() == eRawDemosaicDCB);
+                param->appendOption(kParamRawDemosaicDCB);
+                assert(param->getNOptions() == eRawDemosaicModifiedAHD);
+                param->appendOption(kParamRawDemosaicModifiedAHD);
+                assert(param->getNOptions() == eRawDemosaicAFD);
+                param->appendOption(kParamRawDemosaicAFD);
+                assert(param->getNOptions() == eRawDemosaicVCD);
+                param->appendOption(kParamRawDemosaicVCD);
+                assert(param->getNOptions() == eRawDemosaicMixed);
+                param->appendOption(kParamRawDemosaicMixed);
+                assert(param->getNOptions() == eRawDemosaicLMMSE);
+                param->appendOption(kParamRawDemosaicLMMSE);
+                assert(param->getNOptions() == eRawDemosaicAMaZE);
+                param->appendOption(kParamRawDemosaicAMaZE);
+                assert(param->getNOptions() == eRawDemosaicDHT);
+                param->appendOption(kParamRawDemosaicDHT);
+                assert(param->getNOptions() == eRawDemosaicModifiedAHD2);
+                param->appendOption(kParamRawDemosaicModifiedAHD2);
+                param->setDefault(eRawDemosaicAHD);
+                param->setAnimates(false);
+                if (group) {
+                    param->setParent(*group);
+                }
+                if (page) {
+                    page->addChild(*param);
+                }
+            }
         }
     }
 
