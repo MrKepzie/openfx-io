@@ -179,14 +179,14 @@ enum RawUseCameraMatrixEnum
 #define kParamRawExposureLabel "Exposure", "Amount of exposure correction before de-mosaicing, from 0.25 (2-stop darken) to 8 (3-stop brighten). (Default: 1., meaning no correction.)" // default: 1
 
 #define kParamRawDemosaic "rawDemosaic"
-#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available."
+#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available due to licence restrictions (Modified AHD, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3)."
 #define kParamRawDemosaicNone "None", "No demosaicing."
 #define kParamRawDemosaicLinear "Linear", "Linear interpolation."
 #define kParamRawDemosaicVNG "VNG", "VNG interpolation."
 #define kParamRawDemosaicPPG "PPG", "PPG interpolation."
 #define kParamRawDemosaicAHD "AHD", "AHD interpolation."
 #define kParamRawDemosaicDCB "DCB", "DCB interpolation."
-#define kParamRawDemosaicModifiedAHD "Modified AHD", "Modified AHD interpolation by Paul Lee."
+#define kParamRawDemosaicModifiedAHD "AHD-Mod", "Modified AHD interpolation by Paul Lee."
 #define kParamRawDemosaicAFD "AFD", "AFD interpolation (5-pass)."
 #define kParamRawDemosaicVCD "VCD", "VCD interpolation."
 #define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation."
@@ -194,7 +194,7 @@ enum RawUseCameraMatrixEnum
 #define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation."
 // not available in OIIO 1.7.11:
 #define kParamRawDemosaicDHT "DHT", "DHT interpolation."
-#define kParamRawDemosaicModifiedAHD2 "ModifiedAHD2", "Modified AHD interpolation (by Anton Petrusevich)."
+#define kParamRawDemosaicModifiedAHD2 "AAHD", "Modified AHD interpolation by Anton Petrusevich."
 enum RawDemosaicEnum
 {
     eRawDemosaicNone = 0,
