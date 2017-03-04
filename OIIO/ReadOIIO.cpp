@@ -3121,8 +3121,8 @@ ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle,
                                       ContextEnum /*context*/)
 {
     const ImageEffectHostDescription* h = getImageEffectHostDescription();
-    // use OIIO Cache exclusively on Natron < 2.2
-    bool useOIIOCache = h->isNatron && ( h->versionMajor < 2 || (h->versionMajor == 2 && h->versionMinor < 2) );
+    // use OIIO Cache exclusively on Natron < 3.0
+    bool useOIIOCache = h->isNatron && (h->versionMajor <= 2);
     ReadOIIOPlugin* ret =  new ReadOIIOPlugin(handle, _extensions, useOIIOCache);
 
     ret->restoreStateFromParams();
