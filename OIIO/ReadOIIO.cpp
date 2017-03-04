@@ -179,14 +179,14 @@ enum RawUseCameraMatrixEnum
 #define kParamRawExposureLabel "Exposure", "Amount of exposure correction before de-mosaicing, from 0.25 (2-stop darken) to 8 (3-stop brighten). (Default: 1., meaning no correction.)" // default: 1
 
 #define kParamRawDemosaic "rawDemosaic"
-#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available due to licence restrictions (Modified AHD, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3)."
+#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available due to licence restrictions (AHD-Mod, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3)."
 #define kParamRawDemosaicNone "None", "No demosaicing."
 #define kParamRawDemosaicLinear "Linear", "Linear interpolation."
 #define kParamRawDemosaicVNG "VNG", "VNG interpolation."
 #define kParamRawDemosaicPPG "PPG", "PPG interpolation."
 #define kParamRawDemosaicAHD "AHD", "AHD interpolation."
 #define kParamRawDemosaicDCB "DCB", "DCB interpolation."
-#define kParamRawDemosaicModifiedAHD "AHD-Mod", "Modified AHD interpolation by Paul Lee."
+#define kParamRawDemosaicAHDMod "AHD-Mod", "Modified AHD interpolation by Paul Lee."
 #define kParamRawDemosaicAFD "AFD", "AFD interpolation (5-pass)."
 #define kParamRawDemosaicVCD "VCD", "VCD interpolation."
 #define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation."
@@ -194,7 +194,7 @@ enum RawUseCameraMatrixEnum
 #define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation."
 // not available in OIIO 1.7.11:
 #define kParamRawDemosaicDHT "DHT", "DHT interpolation."
-#define kParamRawDemosaicModifiedAHD2 "AAHD", "Modified AHD interpolation by Anton Petrusevich."
+#define kParamRawDemosaicAAHD "AAHD", "Modified AHD interpolation by Anton Petrusevich."
 enum RawDemosaicEnum
 {
     eRawDemosaicNone = 0,
@@ -203,14 +203,14 @@ enum RawDemosaicEnum
     eRawDemosaicPPG,
     eRawDemosaicAHD,
     eRawDemosaicDCB,
-    eRawDemosaicModifiedAHD,
+    eRawDemosaicAHDMod,
     eRawDemosaicAFD,
     eRawDemosaicVCD,
     eRawDemosaicMixed,
     eRawDemosaicLMMSE,
     eRawDemosaicAMaZE,
     eRawDemosaicDHT,
-    eRawDemosaicModifiedAHD2,
+    eRawDemosaicAAHD,
 };
 
 
@@ -1692,8 +1692,8 @@ ReadOIIOPlugin::openFile(const string& filename,
         case eRawDemosaicDCB:
             d = "DCB";
             break;
-        case eRawDemosaicModifiedAHD:
-            d = "Modified AHD";
+        case eRawDemosaicAHDMod:
+            d = "AHD-Mod"; // new name since oiio 1.7.13
             break;
         case eRawDemosaicAFD:
             d = "AFD";
@@ -1711,10 +1711,10 @@ ReadOIIOPlugin::openFile(const string& filename,
             d = "AMaZE";
             break;
         case eRawDemosaicDHT:
-            d = "DHT";
+            d = "DHT"; // available since oiio 1.7.13
             break;
-        case eRawDemosaicModifiedAHD2:
-            d = "Modified AHD 2";
+        case eRawDemosaicAAHD:
+            d = "AAHD"; // available since oiio 1.7.13
             break;
     }
     if (d != NULL) {
@@ -1899,9 +1899,9 @@ ReadOIIOPlugin::decodePlane(const string& filename,
 {
     unused(pixelComponentCount);
 #if OIIO_VERSION >= 10605
-    // Use cache only if not during playback and if the files are tiled. If scan-line based there is no point in using the OIIO cache.
+    // Use cache only if not during playback because the OIIO cache eats too much RAM when playing scaline-based EXRs.
     // Do not use cache in OIIO 1.5.x because it does not support channel ranges correctly.
-    const bool useCache = _cache && !isPlayback && getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0);
+    const bool useCache = _cache && !isPlayback;
 #else
     const bool useCache = false;
 #endif
@@ -3017,8 +3017,8 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 param->appendOption(kParamRawDemosaicAHD);
                 assert(param->getNOptions() == eRawDemosaicDCB);
                 param->appendOption(kParamRawDemosaicDCB);
-                assert(param->getNOptions() == eRawDemosaicModifiedAHD);
-                param->appendOption(kParamRawDemosaicModifiedAHD);
+                assert(param->getNOptions() == eRawDemosaicAHDMod);
+                param->appendOption(kParamRawDemosaicAHDMod);
                 assert(param->getNOptions() == eRawDemosaicAFD);
                 param->appendOption(kParamRawDemosaicAFD);
                 assert(param->getNOptions() == eRawDemosaicVCD);
@@ -3031,8 +3031,8 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 param->appendOption(kParamRawDemosaicAMaZE);
                 assert(param->getNOptions() == eRawDemosaicDHT);
                 param->appendOption(kParamRawDemosaicDHT);
-                assert(param->getNOptions() == eRawDemosaicModifiedAHD2);
-                param->appendOption(kParamRawDemosaicModifiedAHD2);
+                assert(param->getNOptions() == eRawDemosaicAAHD);
+                param->appendOption(kParamRawDemosaicAAHD);
                 param->setDefault(eRawDemosaicAHD);
                 param->setAnimates(false);
                 if (group) {
