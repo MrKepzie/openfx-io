@@ -418,6 +418,9 @@ private:
     // builds the layers menu and updates _outputLayerMenu, to be called from restoreState
     void buildOutputLayerMenu(const vector<ImageSpec>& subimages);
 
+    // retrieve the config used to open the file
+    void getConfig(ImageSpec* config) const;
+
     //// OIIO image cache
     ImageCache* _cache;
 
@@ -577,8 +580,19 @@ ReadOIIOPlugin::changedParam(const InstanceChangedArgs &args,
                (paramName == kParamRawUseCameraMatrix) ||
                (paramName == kParamRawExposure) ||
                (paramName == kParamRawDemosaic)) {
-        // advanced parameters changed, clear the cache
-        clearAnyCache();
+        // advanced parameters changed, invalidate the cache entries for the whole sequence
+        if (_cache) {
+            OfxRangeD range;
+            getTimeDomain(range);
+            string filename;
+            for (int t = (int)range.min; t <= (int)range.max; ++t) {
+                string filename;
+                OfxStatus st = getFilenameAtTime(args.time, &filename);
+                if (st == kOfxStatOK) {
+                    _cache->invalidate(ustring(filename));
+                }
+            }
+        }
     } else {
         GenericReaderPlugin::changedParam(args, paramName);
     }
@@ -1136,8 +1150,15 @@ ReadOIIOPlugin::getSpecsFromCache(const string& filename,
     if (!_cache) {
         return;
     }
+
+    // make sure we use the right config for this file
+    ImageSpec config;
+    getConfig(&config);
+    _cache->add_file(ustring(filename), NULL, &config);
+
     ImageSpec spec;
     int subImageIndex = 0;
+    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     while ( _cache->get_imagespec(ustring(filename), spec, subImageIndex) ) {
         subimages->push_back(spec);
         ++subImageIndex;
@@ -1155,12 +1176,15 @@ ReadOIIOPlugin::getSpecs(const string &filename,
     subimages->clear();
     bool gotSpec = false;
     if (_cache) {
-        //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
         getSpecsFromCache(filename, subimages);
         gotSpec = true;
     }
     if (!gotSpec) {
-        std::auto_ptr<ImageInput> img( ImageInput::open(filename) );
+        // use the right config
+        ImageSpec config;
+        getConfig(&config);
+        
+        std::auto_ptr<ImageInput> img( ImageInput::open(filename, &config) );
         if ( !img.get() ) {
             if (error) {
                 *error = "Could node open file " + filename;
@@ -1169,6 +1193,7 @@ ReadOIIOPlugin::getSpecs(const string &filename,
             return;
         }
         getSpecsFromImageInput(img.get(), subimages);
+        img->close();
     }
     if ( subimages->empty() ) {
         if (error) {
@@ -1596,33 +1621,24 @@ ReadOIIOPlugin::guessParamsFromFilename(const string &filename,
 } // ReadOIIOPlugin::guessParamsFromFilename
 
 void
-ReadOIIOPlugin::openFile(const string& filename,
-                         bool useCache,
-                         ImageInput** img,
-                         vector<ImageSpec>* subimages)
+ReadOIIOPlugin::getConfig(ImageSpec* config) const
 {
-    if (_cache && useCache) {
-        getSpecsFromCache(filename, subimages);
-
-        return;
-    }
     // Always keep unassociated alpha.
     // Don't let OIIO premultiply, because if the image is 8bits,
     // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
     // which causes a lot of precision loss.
     // see also https://github.com/OpenImageIO/oiio/issues/960
-    ImageSpec config;
-    config.attribute("oiio:UnassociatedAlpha", 1);
+    config->attribute("oiio:UnassociatedAlpha", 1);
 
     if (_rawAutoBright->getValue()) {
-        config.attribute("raw:auto_bright", 1);
+        config->attribute("raw:auto_bright", 1);
     }
 
     if (!_rawUseCameraWB->getValue()) {
-        config.attribute("raw:use_camera_wb", 0);
+        config->attribute("raw:use_camera_wb", 0);
     }
 
-    config.attribute("raw:adjust_maximum_thr", (float)_rawAdjustMaximumThr->getValue());
+    config->attribute("raw:adjust_maximum_thr", (float)_rawAdjustMaximumThr->getValue());
 
     const char* cs = NULL;
     RawOutputColorEnum rawOutputColor = (RawOutputColorEnum)_rawOutputColor->getValue();
@@ -1631,7 +1647,7 @@ ReadOIIOPlugin::openFile(const string& filename,
             cs = "raw";
             break;
         case eRawOutputColorSRGB:
-        //default:
+            //default:
             cs = "sRGB";
             break;
         case eRawOutputColorAdobe:
@@ -1648,26 +1664,26 @@ ReadOIIOPlugin::openFile(const string& filename,
             break;
     }
     if (cs != NULL) {
-        config.attribute("raw:Colorspace", cs);
+        config->attribute("raw:Colorspace", cs);
     }
 
     RawUseCameraMatrixEnum rawUseCameraMatrix = (RawUseCameraMatrixEnum)_rawUseCameraMatrix->getValue();
     switch (rawUseCameraMatrix) {
         case eRawUseCameraMatrixNone:
-            config.attribute("raw:use_camera_matrix", 0);
+            config->attribute("raw:use_camera_matrix", 0);
             break;
         case eRawUseCameraMatrixDefault:
-            config.attribute("raw:use_camera_matrix", 1);
+            config->attribute("raw:use_camera_matrix", 1);
             break;
         case eRawUseCameraMatrixForce:
-            config.attribute("raw:use_camera_matrix", 3);
+            config->attribute("raw:use_camera_matrix", 3);
             break;
     }
 
 
     double rawExposure = _rawExposure->getValue();
     if (rawExposure != 1.) {
-        config.attribute("raw:Exposure", (float)rawExposure);
+        config->attribute("raw:Exposure", (float)rawExposure);
     }
 
     RawDemosaicEnum rawDemosaic = (RawDemosaicEnum)_rawDemosaic->getValue();
@@ -1686,7 +1702,7 @@ ReadOIIOPlugin::openFile(const string& filename,
             d = "PPG";
             break;
         case eRawDemosaicAHD:
-        //default:
+            //default:
             d = "AHD";
             break;
         case eRawDemosaicDCB:
@@ -1718,8 +1734,25 @@ ReadOIIOPlugin::openFile(const string& filename,
             break;
     }
     if (d != NULL) {
-        config.attribute("raw:Demosaic", d);
+        config->attribute("raw:Demosaic", d);
     }
+}
+
+void
+ReadOIIOPlugin::openFile(const string& filename,
+                         bool useCache,
+                         ImageInput** img,
+                         vector<ImageSpec>* subimages)
+{
+    if (_cache && useCache) {
+        getSpecsFromCache(filename, subimages);
+
+        return;
+    }
+
+    // use the right config
+    ImageSpec config;
+    getConfig(&config);
 
     *img = ImageInput::open(filename, &config);
     if ( !(*img) ) {
@@ -2411,52 +2444,7 @@ ReadOIIOPlugin::getFrameBounds(const string& filename,
 {
     assert(bounds && par);
     vector<ImageSpec> specs;
-    bool gotSpecs = false;
-    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if (_cache) {
-        ImageSpec spec;
-        int subImageIndex = 0;
-        while ( _cache->get_imagespec(ustring(filename), spec, subImageIndex) ) {
-            specs.push_back(spec);
-            ++subImageIndex;
-#         ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-            break;
-#         endif
-        }
-        if ( specs.empty() ) {
-            if (error) {
-                *error = _cache->geterror();
-            }
-
-            return false;
-        }
-        gotSpecs = true;
-    }
-    if (!gotSpecs) {
-        std::auto_ptr<ImageInput> img( ImageInput::open(filename) );
-        if ( !img.get() ) {
-            if (error) {
-                *error = string("ReadOIIO: cannot open file ") + filename;
-            }
-
-            return false;
-        }
-        {
-            int subImageIndex = 0;
-            ImageSpec spec;
-            while ( img->seek_subimage(subImageIndex, 0, spec) ) {
-                specs.push_back(spec);
-                ++subImageIndex;
-#             ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-                break;
-#             endif
-            }
-        }
-        img->close();
-        if ( specs.empty() ) {
-            return false;
-        }
-    }
+    getSpecs(filename, &specs);
 
     bool offsetNegativeDisplayWindow;
     _offsetNegativeDispWindow->getValue(offsetNegativeDisplayWindow);
@@ -2582,7 +2570,11 @@ ReadOIIOPlugin::metadata(const string& filename)
     std::auto_ptr<ImageInput> img;
 
     if (!_cache) {
-        img.reset( ImageInput::open(filename) );
+        // use the right config
+        ImageSpec config;
+        getConfig(&config);
+        
+        img.reset( ImageInput::open(filename, &config) );
         if ( !img.get() ) {
             setPersistentMessage(Message::eMessageError, "", string("ReadOIIO: cannot open file ") + filename);
             throwSuiteStatusException(kOfxStatFailed);
@@ -2591,27 +2583,7 @@ ReadOIIOPlugin::metadata(const string& filename)
         }
     }
     vector<ImageSpec> subImages;
-    {
-        int subImageIndex = 0;
-        ImageSpec spec;
-        bool gotSpec;
-        if (_cache) {
-            gotSpec = _cache->get_imagespec(ustring(filename), spec, subImageIndex);
-        } else {
-            assert( img.get() );
-            gotSpec = img->seek_subimage(subImageIndex, 0, spec);
-        }
-        while (gotSpec) {
-            subImages.push_back(spec);
-            ++subImageIndex;
-            if (_cache) {
-                gotSpec = _cache->get_imagespec(ustring(filename), spec, subImageIndex);
-            } else {
-                assert( img.get() );
-                gotSpec = img->seek_subimage(subImageIndex, 0, spec);
-            }
-        }
-    }
+    getSpecs(filename, &subImages);
     if ( subImages.empty() ) {
         setPersistentMessage(Message::eMessageError, "", string("No information found in") + filename);
         throwSuiteStatusException(kOfxStatFailed);
