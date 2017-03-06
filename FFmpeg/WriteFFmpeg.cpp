@@ -180,7 +180,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamFPSHint "File frame rate"
 
 #define kParamOutPixelFormat "pixelFormat"
-#define kParamOutPixelFormatLabel "Pixel Format", "Pixel format of images passed to the encode. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
+#define kParamOutPixelFormatLabel "Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
 
 #define kParamOutBitDepth "bitDepth"
 #define kParamOutBitDepthLabel "Bit Depth", "Bit depth (number of bits per component) of the pixel format."
