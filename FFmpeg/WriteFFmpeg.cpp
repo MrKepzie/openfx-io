@@ -570,7 +570,7 @@ CreateCodecKnobLabelsMap()
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
     m["v210"]          = "v210\tUncompressed 10-bit 4:2:2";
     m["v308"]          = "v308\tUncompressed 8-bit 4:4:4";
-    m["v408"]          = "v308\tUncompressed 8-bit QT 4:4:4:4";
+    m["v408"]          = "v408\tUncompressed 8-bit QT 4:4:4:4";
     m["v410"]          = "v410\tUncompressed 4:4:4 10-bit"; // disabled in whitelist
     m["vc2"]           = "drac\tSMPTE VC-2 (previously BBC Dirac Pro)";
 
