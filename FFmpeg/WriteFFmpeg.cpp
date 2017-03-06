@@ -2536,13 +2536,15 @@ WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
         case AV_PIX_FMT_GBRAP10LE:  ///< planar GBR 4:4:4:4 40bpp, little-endian
             return 10;
             break;
-    } // switch
-    
+
+        default:
 #if OFX_FFMPEG_PRINT_CODECS
-    std::cout << "** Format " << av_get_pix_fmt_name(pixelFormat) << "not handled" << std::endl;
+            std::cout << "** Format " << av_get_pix_fmt_name(pixelFormat) << "not handled" << std::endl;
 #endif
 
-    return 8;
+            return 0;
+    } // switch
+    
 } // WriteFFmpegPlugin::GetPixelFormatBitDepth
 
 int
@@ -2739,10 +2741,10 @@ WriteFFmpegPlugin::GetPixelFormatBPP(const AVPixelFormat pixelFormat)
              * If you want to support multiple bit depths, then using AV_PIX_FMT_YUV420P16* with the bpp stored separately is better.
              */
         case AV_PIX_FMT_YUV420P9BE: ///< planar YUV 4:2:0, 13.5bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 14;
+            return (int)13.5;
             break;
         case AV_PIX_FMT_YUV420P9LE: ///< planar YUV 4:2:0, 13.5bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 14;
+            return (int)13.5;
             break;
         case AV_PIX_FMT_YUV420P10BE:///< planar YUV 4:2:0, 15bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
             return 15;
@@ -2802,10 +2804,10 @@ WriteFFmpegPlugin::GetPixelFormatBPP(const AVPixelFormat pixelFormat)
             return 32;
             break;
         case AV_PIX_FMT_YUVA420P9BE:  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), big-endian
-            return 22.5;
+            return (int)22.5;
             break;
         case AV_PIX_FMT_YUVA420P9LE:  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), little-endian
-            return 22.5;
+            return (int)22.5;
             break;
         case AV_PIX_FMT_YUVA422P9BE:  ///< planar YUV 4:2:2 27bpp, (1 Cr & Cb sample per 2x1 Y & A samples), big-endian
             return 27;
@@ -2857,10 +2859,10 @@ WriteFFmpegPlugin::GetPixelFormatBPP(const AVPixelFormat pixelFormat)
             break;
 
         case AV_PIX_FMT_XYZ12LE:      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as little-endian, the 4 lower bits are set to 0
-            return ;
+            return 36;
             break;
         case AV_PIX_FMT_XYZ12BE:      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as big-endian, the 4 lower bits are set to 0
-            return ;
+            return 36;
             break;
         case AV_PIX_FMT_NV16:         ///< interleaved chroma YUV 4:2:2, 16bpp, (1 Cr & Cb sample per 2x1 Y samples)
             return 16;
@@ -3047,7 +3049,8 @@ WriteFFmpegPlugin::GetPixelFormatBPP(const AVPixelFormat pixelFormat)
             return 40;
             break;
 
-            return 8;
+        default:
+            return 0;
             break;
     } // switch
 } // WriteFFmpegPlugin::GetPixelFormatBitDepth
