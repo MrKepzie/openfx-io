@@ -179,14 +179,14 @@ enum RawUseCameraMatrixEnum
 #define kParamRawExposureLabel "Exposure", "Amount of exposure correction before de-mosaicing, from 0.25 (2-stop darken) to 8 (3-stop brighten). (Default: 1., meaning no correction.)" // default: 1
 
 #define kParamRawDemosaic "rawDemosaic"
-#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available."
+#define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available due to licence restrictions (AHD-Mod, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3)."
 #define kParamRawDemosaicNone "None", "No demosaicing."
 #define kParamRawDemosaicLinear "Linear", "Linear interpolation."
 #define kParamRawDemosaicVNG "VNG", "VNG interpolation."
 #define kParamRawDemosaicPPG "PPG", "PPG interpolation."
 #define kParamRawDemosaicAHD "AHD", "AHD interpolation."
 #define kParamRawDemosaicDCB "DCB", "DCB interpolation."
-#define kParamRawDemosaicModifiedAHD "Modified AHD", "Modified AHD interpolation by Paul Lee."
+#define kParamRawDemosaicAHDMod "AHD-Mod", "Modified AHD interpolation by Paul Lee."
 #define kParamRawDemosaicAFD "AFD", "AFD interpolation (5-pass)."
 #define kParamRawDemosaicVCD "VCD", "VCD interpolation."
 #define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation."
@@ -194,7 +194,7 @@ enum RawUseCameraMatrixEnum
 #define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation."
 // not available in OIIO 1.7.11:
 #define kParamRawDemosaicDHT "DHT", "DHT interpolation."
-#define kParamRawDemosaicModifiedAHD2 "ModifiedAHD2", "Modified AHD interpolation (by Anton Petrusevich)."
+#define kParamRawDemosaicAAHD "AAHD", "Modified AHD interpolation by Anton Petrusevich."
 enum RawDemosaicEnum
 {
     eRawDemosaicNone = 0,
@@ -203,14 +203,14 @@ enum RawDemosaicEnum
     eRawDemosaicPPG,
     eRawDemosaicAHD,
     eRawDemosaicDCB,
-    eRawDemosaicModifiedAHD,
+    eRawDemosaicAHDMod,
     eRawDemosaicAFD,
     eRawDemosaicVCD,
     eRawDemosaicMixed,
     eRawDemosaicLMMSE,
     eRawDemosaicAMaZE,
     eRawDemosaicDHT,
-    eRawDemosaicModifiedAHD2,
+    eRawDemosaicAAHD,
 };
 
 
@@ -418,6 +418,9 @@ private:
     // builds the layers menu and updates _outputLayerMenu, to be called from restoreState
     void buildOutputLayerMenu(const vector<ImageSpec>& subimages);
 
+    // retrieve the config used to open the file
+    void getConfig(ImageSpec* config) const;
+
     //// OIIO image cache
     ImageCache* _cache;
 
@@ -577,8 +580,19 @@ ReadOIIOPlugin::changedParam(const InstanceChangedArgs &args,
                (paramName == kParamRawUseCameraMatrix) ||
                (paramName == kParamRawExposure) ||
                (paramName == kParamRawDemosaic)) {
-        // advanced parameters changed, clear the cache
-        clearAnyCache();
+        // advanced parameters changed, invalidate the cache entries for the whole sequence
+        if (_cache) {
+            OfxRangeD range;
+            getTimeDomain(range);
+            string filename;
+            for (int t = (int)range.min; t <= (int)range.max; ++t) {
+                string filename;
+                OfxStatus st = getFilenameAtTime(args.time, &filename);
+                if (st == kOfxStatOK) {
+                    _cache->invalidate(ustring(filename));
+                }
+            }
+        }
     } else {
         GenericReaderPlugin::changedParam(args, paramName);
     }
@@ -1124,8 +1138,15 @@ ReadOIIOPlugin::getSpecsFromCache(const string& filename,
     if (!_cache) {
         return;
     }
+
+    // make sure we use the right config for this file
+    ImageSpec config;
+    getConfig(&config);
+    _cache->add_file(ustring(filename), NULL, &config);
+
     ImageSpec spec;
     int subImageIndex = 0;
+    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
     while ( _cache->get_imagespec(ustring(filename), spec, subImageIndex) ) {
         subimages->push_back(spec);
         ++subImageIndex;
@@ -1143,12 +1164,15 @@ ReadOIIOPlugin::getSpecs(const string &filename,
     subimages->clear();
     bool gotSpec = false;
     if (_cache) {
-        //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
         getSpecsFromCache(filename, subimages);
         gotSpec = true;
     }
     if (!gotSpec) {
-        std::auto_ptr<ImageInput> img( ImageInput::open(filename) );
+        // use the right config
+        ImageSpec config;
+        getConfig(&config);
+        
+        std::auto_ptr<ImageInput> img( ImageInput::open(filename, &config) );
         if ( !img.get() ) {
             if (error) {
                 *error = "Could node open file " + filename;
@@ -1157,6 +1181,7 @@ ReadOIIOPlugin::getSpecs(const string &filename,
             return;
         }
         getSpecsFromImageInput(img.get(), subimages);
+        img->close();
     }
     if ( subimages->empty() ) {
         if (error) {
@@ -1584,33 +1609,24 @@ ReadOIIOPlugin::guessParamsFromFilename(const string &filename,
 } // ReadOIIOPlugin::guessParamsFromFilename
 
 void
-ReadOIIOPlugin::openFile(const string& filename,
-                         bool useCache,
-                         ImageInput** img,
-                         vector<ImageSpec>* subimages)
+ReadOIIOPlugin::getConfig(ImageSpec* config) const
 {
-    if (_cache && useCache) {
-        getSpecsFromCache(filename, subimages);
-
-        return;
-    }
     // Always keep unassociated alpha.
     // Don't let OIIO premultiply, because if the image is 8bits,
     // it multiplies in 8bits (see TIFFInput::unassalpha_to_assocalpha()),
     // which causes a lot of precision loss.
     // see also https://github.com/OpenImageIO/oiio/issues/960
-    ImageSpec config;
-    config.attribute("oiio:UnassociatedAlpha", 1);
+    config->attribute("oiio:UnassociatedAlpha", 1);
 
     if (_rawAutoBright->getValue()) {
-        config.attribute("raw:auto_bright", 1);
+        config->attribute("raw:auto_bright", 1);
     }
 
     if (!_rawUseCameraWB->getValue()) {
-        config.attribute("raw:use_camera_wb", 0);
+        config->attribute("raw:use_camera_wb", 0);
     }
 
-    config.attribute("raw:adjust_maximum_thr", (float)_rawAdjustMaximumThr->getValue());
+    config->attribute("raw:adjust_maximum_thr", (float)_rawAdjustMaximumThr->getValue());
 
     const char* cs = NULL;
     RawOutputColorEnum rawOutputColor = (RawOutputColorEnum)_rawOutputColor->getValue();
@@ -1619,7 +1635,7 @@ ReadOIIOPlugin::openFile(const string& filename,
             cs = "raw";
             break;
         case eRawOutputColorSRGB:
-        //default:
+            //default:
             cs = "sRGB";
             break;
         case eRawOutputColorAdobe:
@@ -1636,26 +1652,26 @@ ReadOIIOPlugin::openFile(const string& filename,
             break;
     }
     if (cs != NULL) {
-        config.attribute("raw:Colorspace", cs);
+        config->attribute("raw:Colorspace", cs);
     }
 
     RawUseCameraMatrixEnum rawUseCameraMatrix = (RawUseCameraMatrixEnum)_rawUseCameraMatrix->getValue();
     switch (rawUseCameraMatrix) {
         case eRawUseCameraMatrixNone:
-            config.attribute("raw:use_camera_matrix", 0);
+            config->attribute("raw:use_camera_matrix", 0);
             break;
         case eRawUseCameraMatrixDefault:
-            config.attribute("raw:use_camera_matrix", 1);
+            config->attribute("raw:use_camera_matrix", 1);
             break;
         case eRawUseCameraMatrixForce:
-            config.attribute("raw:use_camera_matrix", 3);
+            config->attribute("raw:use_camera_matrix", 3);
             break;
     }
 
 
     double rawExposure = _rawExposure->getValue();
     if (rawExposure != 1.) {
-        config.attribute("raw:Exposure", (float)rawExposure);
+        config->attribute("raw:Exposure", (float)rawExposure);
     }
 
     RawDemosaicEnum rawDemosaic = (RawDemosaicEnum)_rawDemosaic->getValue();
@@ -1674,14 +1690,14 @@ ReadOIIOPlugin::openFile(const string& filename,
             d = "PPG";
             break;
         case eRawDemosaicAHD:
-        //default:
+            //default:
             d = "AHD";
             break;
         case eRawDemosaicDCB:
             d = "DCB";
             break;
-        case eRawDemosaicModifiedAHD:
-            d = "Modified AHD";
+        case eRawDemosaicAHDMod:
+            d = "AHD-Mod"; // new name since oiio 1.7.13
             break;
         case eRawDemosaicAFD:
             d = "AFD";
@@ -1699,15 +1715,32 @@ ReadOIIOPlugin::openFile(const string& filename,
             d = "AMaZE";
             break;
         case eRawDemosaicDHT:
-            d = "DHT";
+            d = "DHT"; // available since oiio 1.7.13
             break;
-        case eRawDemosaicModifiedAHD2:
-            d = "Modified AHD 2";
+        case eRawDemosaicAAHD:
+            d = "AAHD"; // available since oiio 1.7.13
             break;
     }
     if (d != NULL) {
-        config.attribute("raw:Demosaic", d);
+        config->attribute("raw:Demosaic", d);
     }
+}
+
+void
+ReadOIIOPlugin::openFile(const string& filename,
+                         bool useCache,
+                         ImageInput** img,
+                         vector<ImageSpec>* subimages)
+{
+    if (_cache && useCache) {
+        getSpecsFromCache(filename, subimages);
+
+        return;
+    }
+
+    // use the right config
+    ImageSpec config;
+    getConfig(&config);
 
     *img = ImageInput::open(filename, &config);
     if ( !(*img) ) {
@@ -1887,9 +1920,9 @@ ReadOIIOPlugin::decodePlane(const string& filename,
 {
     unused(pixelComponentCount);
 #if OIIO_VERSION >= 10605
-    // Use cache only if not during playback and if the files are tiled. If scan-line based there is no point in using the OIIO cache.
+    // Use cache only if not during playback because the OIIO cache eats too much RAM when playing scaline-based EXRs.
     // Do not use cache in OIIO 1.5.x because it does not support channel ranges correctly.
-    const bool useCache = _cache && !isPlayback && getPropertySet().propGetInt(kOfxImageEffectPropSupportsTiles, 0);
+    const bool useCache = _cache && !isPlayback;
 #else
     const bool useCache = false;
 #endif
@@ -2400,52 +2433,7 @@ ReadOIIOPlugin::getFrameBounds(const string& filename,
 {
     assert(bounds && par);
     vector<ImageSpec> specs;
-    bool gotSpecs = false;
-    //use the thread-safe version of get_imagespec (i.e: make a copy of the imagespec)
-    if (_cache) {
-        ImageSpec spec;
-        int subImageIndex = 0;
-        while ( _cache->get_imagespec(ustring(filename), spec, subImageIndex) ) {
-            specs.push_back(spec);
-            ++subImageIndex;
-#         ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-            break;
-#         endif
-        }
-        if ( specs.empty() ) {
-            if (error) {
-                *error = _cache->geterror();
-            }
-
-            return false;
-        }
-        gotSpecs = true;
-    }
-    if (!gotSpecs) {
-        std::auto_ptr<ImageInput> img( ImageInput::open(filename) );
-        if ( !img.get() ) {
-            if (error) {
-                *error = string("ReadOIIO: cannot open file ") + filename;
-            }
-
-            return false;
-        }
-        {
-            int subImageIndex = 0;
-            ImageSpec spec;
-            while ( img->seek_subimage(subImageIndex, 0, spec) ) {
-                specs.push_back(spec);
-                ++subImageIndex;
-#             ifndef OFX_READ_OIIO_SUPPORTS_SUBIMAGES
-                break;
-#             endif
-            }
-        }
-        img->close();
-        if ( specs.empty() ) {
-            return false;
-        }
-    }
+    getSpecs(filename, &specs);
 
     bool offsetNegativeDisplayWindow;
     _offsetNegativeDispWindow->getValue(offsetNegativeDisplayWindow);
@@ -2571,7 +2559,11 @@ ReadOIIOPlugin::metadata(const string& filename)
     std::auto_ptr<ImageInput> img;
 
     if (!_cache) {
-        img.reset( ImageInput::open(filename) );
+        // use the right config
+        ImageSpec config;
+        getConfig(&config);
+        
+        img.reset( ImageInput::open(filename, &config) );
         if ( !img.get() ) {
             setPersistentMessage(Message::eMessageError, "", string("ReadOIIO: cannot open file ") + filename);
             throwSuiteStatusException(kOfxStatFailed);
@@ -2580,27 +2572,7 @@ ReadOIIOPlugin::metadata(const string& filename)
         }
     }
     vector<ImageSpec> subImages;
-    {
-        int subImageIndex = 0;
-        ImageSpec spec;
-        bool gotSpec;
-        if (_cache) {
-            gotSpec = _cache->get_imagespec(ustring(filename), spec, subImageIndex);
-        } else {
-            assert( img.get() );
-            gotSpec = img->seek_subimage(subImageIndex, 0, spec);
-        }
-        while (gotSpec) {
-            subImages.push_back(spec);
-            ++subImageIndex;
-            if (_cache) {
-                gotSpec = _cache->get_imagespec(ustring(filename), spec, subImageIndex);
-            } else {
-                assert( img.get() );
-                gotSpec = img->seek_subimage(subImageIndex, 0, spec);
-            }
-        }
-    }
+    getSpecs(filename, &subImages);
     if ( subImages.empty() ) {
         setPersistentMessage(Message::eMessageError, "", string("No information found in") + filename);
         throwSuiteStatusException(kOfxStatFailed);
@@ -2830,13 +2802,14 @@ ReadOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
                                "DPX (*.dpx)\n"
                                "Field3D (*.f3d)\n"
                                "FITS (*.fits)\n"
+                               "GIF (*.gif)\n"
                                "HDR/RGBE (*.hdr)\n"
-                               "Icon (*.ico)\n"
+                               "ICO (*.ico)\n"
                                "IFF (*.iff)\n"
                                "JPEG (*.jpg *.jpe *.jpeg *.jif *.jfif *.jfi)\n"
                                "JPEG-2000 (*.jp2 *.j2k)\n"
                                "OpenEXR (*.exr)\n"
-                               "Portable Network Graphics (*.png)\n"
+                               "PNG / Portable Network Graphics (*.png)\n"
 #                           if OIIO_VERSION >= 10400
                                "PNM / Netpbm (*.pbm *.pgm *.ppm *.pfm)\n"
 #                           else
@@ -2844,11 +2817,13 @@ ReadOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
 #                           endif
                                "PSD (*.psd *.pdd *.psb)\n"
                                "Ptex (*.ptex)\n"
+                               "RAW digital camera files (*.crw *.cr2 *.nef *.raf *.dng and others)\n"
                                "RLA (*.rla)\n"
                                "SGI (*.sgi *.rgb *.rgba *.bw *.int *.inta)\n"
                                "Softimage PIC (*.pic)\n"
                                "Targa (*.tga *.tpic)\n"
                                "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
+                               "Webp (*.webp)\n"
                                "Zfile (*.zfile)\n\n"
                                "All supported formats and extensions: " + extensions_pretty + "\n\n"
                                + oiio_versions() );
@@ -3003,8 +2978,8 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 param->appendOption(kParamRawDemosaicAHD);
                 assert(param->getNOptions() == eRawDemosaicDCB);
                 param->appendOption(kParamRawDemosaicDCB);
-                assert(param->getNOptions() == eRawDemosaicModifiedAHD);
-                param->appendOption(kParamRawDemosaicModifiedAHD);
+                assert(param->getNOptions() == eRawDemosaicAHDMod);
+                param->appendOption(kParamRawDemosaicAHDMod);
                 assert(param->getNOptions() == eRawDemosaicAFD);
                 param->appendOption(kParamRawDemosaicAFD);
                 assert(param->getNOptions() == eRawDemosaicVCD);
@@ -3017,8 +2992,8 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 param->appendOption(kParamRawDemosaicAMaZE);
                 assert(param->getNOptions() == eRawDemosaicDHT);
                 param->appendOption(kParamRawDemosaicDHT);
-                assert(param->getNOptions() == eRawDemosaicModifiedAHD2);
-                param->appendOption(kParamRawDemosaicModifiedAHD2);
+                assert(param->getNOptions() == eRawDemosaicAAHD);
+                param->appendOption(kParamRawDemosaicAAHD);
                 param->setDefault(eRawDemosaicAHD);
                 param->setAnimates(false);
                 if (group) {
@@ -3107,8 +3082,8 @@ ReadOIIOPluginFactory::createInstance(OfxImageEffectHandle handle,
                                       ContextEnum /*context*/)
 {
     const ImageEffectHostDescription* h = getImageEffectHostDescription();
-    // use OIIO Cache exclusively on Natron < 2.2
-    bool useOIIOCache = h->isNatron && ( h->versionMajor < 2 || (h->versionMajor == 2 && h->versionMinor < 2) );
+    // use OIIO Cache exclusively on Natron < 3.0
+    bool useOIIOCache = h->isNatron && (h->versionMajor <= 2);
     ReadOIIOPlugin* ret =  new ReadOIIOPlugin(handle, _extensions, useOIIOCache);
 
     ret->restoreStateFromParams();
