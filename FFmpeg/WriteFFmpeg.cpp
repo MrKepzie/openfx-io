@@ -179,14 +179,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamFPSLabel "FPS"
 #define kParamFPSHint "File frame rate"
 
-#define kParamOutPixelFormat "pixelFormat"
-#define kParamOutPixelFormatLabel "Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
+#define kParamInfoPixelFormat "infoPixelFormat"
+#define kParamInfoPixelFormatLabel "Select. Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
 
-#define kParamOutBitDepth "bitDepth"
-#define kParamOutBitDepthLabel "Bit Depth", "Bit depth (number of bits per component) of the pixel format."
+#define kParamInfoBitDepth "infoBitDepth"
+#define kParamInfoBitDepthLabel "Select. Bit Depth", "Bit depth (number of bits per component) of the pixel format."
 
-#define kParamOutBPP "bpp"
-#define kParamOutBPPLabel "BPP", "Bits per pixel of the pixel format."
+#define kParamInfoBPP "infoBpp"
+#define kParamInfoBPPLabel "Select. BPP", "Bits per pixel of the pixel format."
 
 #define kParamResetFPS "resetFps"
 #define kParamResetFPSLabel "Reset FPS"
@@ -1213,7 +1213,7 @@ private:
     bool                          initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AVCodec*& outCodec) const;
 
     void getPixelFormats(AVCodec*          videoCodec,
-                         AVPixelFormat&    outNukeBufferPixelFormat,
+                         AVPixelFormat&    outRgbBufferPixelFormat,
                          AVPixelFormat&    outTargetPixelFormat) const;
 
     void updateBitrateToleranceRange();
@@ -1223,7 +1223,7 @@ private:
     static bool IsRGBFromShortName(const char* shortName, int codecProfile);
     static int            GetPixelFormatBitDepth(const AVPixelFormat pixelFormat);
     static int            GetPixelFormatBPP(const AVPixelFormat pixelFormat);
-    static AVPixelFormat  GetPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha);
+    static AVPixelFormat  GetRGBPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha);
     static void           GetCodecSupportedParams(const AVCodec* codec, CodecParams* p);
 
     void configureAudioStream(AVCodec* avCodec, AVStream* avStream);
@@ -1265,9 +1265,9 @@ private:
     int _frameStep;
     ChoiceParam* _format;
     DoubleParam* _fps;
-    StringParam* _outPixelFormat;
-    IntParam* _outBitDepth;
-    IntParam* _outBPP;
+    StringParam* _infoPixelFormat;
+    IntParam* _infoBitDepth;
+    IntParam* _infoBPP;
 #ifdef OFX_FFMPEG_DNXHD
     ChoiceParam* _dnxhdCodecProfile;
     ChoiceParam* _encodeVideoRange;
@@ -1539,9 +1539,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     , _frameStep(1)
     , _format(0)
     , _fps(0)
-    , _outPixelFormat(0)
-    , _outBitDepth(0)
-    , _outBPP(0)
+    , _infoPixelFormat(0)
+    , _infoBitDepth(0)
+    , _infoBPP(0)
 #if OFX_FFMPEG_DNXHD
     , _dnxhdCodecProfile(0)
     , _encodeVideoRange(0)
@@ -1571,9 +1571,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     _rodPixel.x2 = _rodPixel.y2 = -1;
     _format = fetchChoiceParam(kParamFormat);
     _fps = fetchDoubleParam(kParamFPS);
-    _outPixelFormat = fetchStringParam(kParamOutPixelFormat);
-    _outBitDepth = fetchIntParam(kParamOutBitDepth);
-    _outBPP = fetchIntParam(kParamOutBPP);
+    _infoPixelFormat = fetchStringParam(kParamInfoPixelFormat);
+    _infoBitDepth = fetchIntParam(kParamInfoBitDepth);
+    _infoBPP = fetchIntParam(kParamInfoBPP);
 #if OFX_FFMPEG_DNXHD
     _dnxhdCodecProfile = fetchChoiceParam(kParamDNxHDCodecProfile);
     _encodeVideoRange = fetchChoiceParam(kParamDNxHDEncodeVideoRange);
@@ -1869,12 +1869,12 @@ WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt,
 
 void
 WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
-                                   AVPixelFormat& outNukeBufferPixelFormat,
+                                   AVPixelFormat& outRgbBufferPixelFormat,
                                    AVPixelFormat& outTargetPixelFormat) const
 {
     assert(videoCodec);
     if (!videoCodec) {
-        outNukeBufferPixelFormat = AV_PIX_FMT_NONE;
+        outRgbBufferPixelFormat = AV_PIX_FMT_NONE;
         outTargetPixelFormat = AV_PIX_FMT_NONE;
 
         return;
@@ -1924,19 +1924,19 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         const AVPixelFormat* currPixFormat  = videoCodec->pix_fmts;
 
         // get the pixel depth for the format that has the highest BPP, which means that if we have gray16 (16bpp) and RGB8 (24bpp), RGB8 wins
-        int outBitDepth = 0;
+        int infoBitDepth = 0;
         int highestBPP = 0;
         while (*currPixFormat != -1) {
             int currPixFormatBPP = GetPixelFormatBPP(*currPixFormat);
             if (currPixFormatBPP > highestBPP) {
                 highestBPP = currPixFormatBPP;
-                outBitDepth = GetPixelFormatBitDepth(*currPixFormat);
+                infoBitDepth = GetPixelFormatBitDepth(*currPixFormat);
             }
             currPixFormat++;
         }
 
-        //figure out nukeBufferPixelFormat from this.
-        outNukeBufferPixelFormat = GetPixelFormatFromBitDepth(outBitDepth, hasAlpha);
+        //figure out rgbBufferPixelFormat from this.
+        outRgbBufferPixelFormat = GetRGBPixelFormatFromBitDepth(infoBitDepth, hasAlpha);
 
         //call best_pix_fmt using the full list.
         const int hasAlphaInt = hasAlpha ? 1 : 0;
@@ -1946,7 +1946,7 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         currPixFormat  = videoCodec->pix_fmts;
         while (*currPixFormat != -1) {
             int currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
-            if (currPixFormatBitDepth  >= outBitDepth) {
+            if (currPixFormatBitDepth  >= infoBitDepth) {
                 bestFormats.push_back(*currPixFormat);
             }
             currPixFormat++;
@@ -1958,10 +1958,10 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         // (the loss of first format is used a a mask for the second, etc) so that if the first pixel format
         // loses resolution, resolution loss is not considered for other formats.
         // If we pass NULL, the considered loss is ~0 for all formats
-        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outNukeBufferPixelFormat, hasAlphaInt, NULL);
+        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outRgbBufferPixelFormat, hasAlphaInt, NULL);
 
 #ifdef DEBUG
-        int loss = av_get_pix_fmt_loss(outTargetPixelFormat, outNukeBufferPixelFormat, hasAlphaInt);
+        int loss = av_get_pix_fmt_loss(outTargetPixelFormat, outRgbBufferPixelFormat, hasAlphaInt);
         // loss is a combination of
         // FF_LOSS_RESOLUTION
         // FF_LOSS_DEPTH
@@ -1969,7 +1969,7 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         // FF_LOSS_ALPHA
         // FF_LOSS_COLORQUANT
         // FF_LOSS_CHROMA
-        std::printf( "WriteFFmpeg: pixel format selected: %s->%s\n", av_get_pix_fmt_name(outNukeBufferPixelFormat),
+        std::printf( "WriteFFmpeg: pixel format selected: %s->%s\n", av_get_pix_fmt_name(outRgbBufferPixelFormat),
                      av_get_pix_fmt_name(outTargetPixelFormat) );
         if (loss & FF_LOSS_RESOLUTION) {
             std::printf("WriteFFmpeg: pixel format loses RESOLUTION\n");
@@ -2024,13 +2024,13 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         }
 
         //Unlike the other cases, we're now done figuring out all aspects, so return.
-        //return; // don't return, avcodec_find_best_pix_fmt_of_list may have returned a lower bitdepth than outBitDepth
+        //return; // don't return, avcodec_find_best_pix_fmt_of_list may have returned a lower bitdepth than infoBitDepth
     } else {
         //Lowest common denominator defaults.
         outTargetPixelFormat     = AV_PIX_FMT_YUV420P;
     }
 
-    outNukeBufferPixelFormat = GetPixelFormatFromBitDepth(GetPixelFormatBitDepth(outTargetPixelFormat), hasAlpha);
+    outRgbBufferPixelFormat = GetRGBPixelFormatFromBitDepth(GetPixelFormatBitDepth(outTargetPixelFormat), hasAlpha);
 } // WriteFFmpegPlugin::getPixelFormats
 
 // av_get_bits_per_sample knows about surprisingly few codecs.
@@ -3057,7 +3057,7 @@ WriteFFmpegPlugin::GetPixelFormatBPP(const AVPixelFormat pixelFormat)
 
 /*static*/
 AVPixelFormat
-WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth,
+WriteFFmpegPlugin::GetRGBPixelFormatFromBitDepth(const int bitDepth,
                                               const bool hasAlpha)
 {
     if (bitDepth == 0) {
@@ -3065,7 +3065,7 @@ WriteFFmpegPlugin::GetPixelFormatFromBitDepth(const int bitDepth,
     }
     AVPixelFormat pixelFormat;
     if (hasAlpha) {
-        pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGB32;
+        pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGBA;
     } else {
         pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGB48 : AV_PIX_FMT_RGB24;
     }
@@ -4851,8 +4851,8 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
     clearPersistentMessage();
 
     AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV420P;
-    AVPixelFormat nukeBufferPixelFormat = AV_PIX_FMT_RGB24;
-    getPixelFormats(videoCodec, nukeBufferPixelFormat, targetPixelFormat);
+    AVPixelFormat rgbBufferPixelFormat = AV_PIX_FMT_RGB24;
+    getPixelFormats(videoCodec, rgbBufferPixelFormat, targetPixelFormat);
     assert(!_streamVideo);
     if (!_streamVideo) {
         _streamVideo = addStream(_formatContext, codecId, &videoCodec);
@@ -4942,7 +4942,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
 
 
 # if OFX_FFMPEG_PRINT_CODECS
-        std::cout << "Format: " << _formatContext->oformat->name << " Codec: " << videoCodec->name << " nukeBufferPixelFormat: " << av_get_pix_fmt_name(nukeBufferPixelFormat) << " targetPixelFormat: " << av_get_pix_fmt_name(targetPixelFormat) << " outBitDepth: " << outBitDepth << " Profile: " << _streamVideo->codec->profile << std::endl;
+        std::cout << "Format: " << _formatContext->oformat->name << " Codec: " << videoCodec->name << " rgbBufferPixelFormat: " << av_get_pix_fmt_name(rgbBufferPixelFormat) << " targetPixelFormat: " << av_get_pix_fmt_name(targetPixelFormat) << " infoBitDepth: " << infoBitDepth << " Profile: " << _streamVideo->codec->profile << std::endl;
 # endif //  FFMPEG_PRINT_CODECS
         if (openCodec(_formatContext, videoCodec, _streamVideo) < 0) {
             freeFormat();
@@ -5352,9 +5352,9 @@ WriteFFmpegPlugin::updatePixelFormat()
 
     AVOutputFormat* avOutputFormat = initFormat(/* reportErrors = */ true);
     if (!avOutputFormat) {
-        _outPixelFormat->setValue("none");
-        _outBitDepth->setValue(0);
-        _outBPP->setValue(0);
+        _infoPixelFormat->setValue("none");
+        _infoBitDepth->setValue(0);
+        _infoBPP->setValue(0);
         //setPersistentMessage(Message::eMessageError, "", "Invalid file extension");
         //throwSuiteStatusException(kOfxStatFailed);
 
@@ -5382,9 +5382,9 @@ WriteFFmpegPlugin::updatePixelFormat()
     // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
     //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
     if (!isCodecSupportedInContainer) {
-        _outPixelFormat->setValue("none");
-        _outBitDepth->setValue(0);
-        _outBPP->setValue(0);
+        _infoPixelFormat->setValue("none");
+        _infoBitDepth->setValue(0);
+        _infoBPP->setValue(0);
         setPersistentMessage(Message::eMessageError, "", string("The codec ") + videoCodec->name + " is not supported in container " + avOutputFormat->name);
         freeFormat();
         throwSuiteStatusException(kOfxStatFailed);
@@ -5395,13 +5395,13 @@ WriteFFmpegPlugin::updatePixelFormat()
     clearPersistentMessage();
 
     AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV420P;
-    AVPixelFormat nukeBufferPixelFormat = AV_PIX_FMT_RGB24;
-    getPixelFormats(videoCodec, nukeBufferPixelFormat, targetPixelFormat);
+    AVPixelFormat rgbBufferPixelFormat = AV_PIX_FMT_RGB24;
+    getPixelFormats(videoCodec, rgbBufferPixelFormat, targetPixelFormat);
 
     const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(targetPixelFormat);
-    _outPixelFormat->setValue(desc ? desc->name : "unknown");
-    _outBitDepth->setValue(GetPixelFormatBitDepth(targetPixelFormat));
-    _outBPP->setValue(GetPixelFormatBPP(targetPixelFormat));
+    _infoPixelFormat->setValue(desc ? desc->name : "unknown");
+    _infoBitDepth->setValue(GetPixelFormatBitDepth(targetPixelFormat));
+    _infoBPP->setValue(GetPixelFormatBPP(targetPixelFormat));
 }
 
 // Check that the secret codecShortName corresponds to the selected codec.
@@ -6123,8 +6123,8 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
 #endif
 
     {
-        StringParamDescriptor* param = desc.defineStringParam(kParamOutPixelFormat);
-        param->setLabelAndHint(kParamOutPixelFormatLabel);
+        StringParamDescriptor* param = desc.defineStringParam(kParamInfoPixelFormat);
+        param->setLabelAndHint(kParamInfoPixelFormatLabel);
         param->setAnimates(false);
         param->setEnabled(false);
         param->setEvaluateOnChange(false);
@@ -6135,8 +6135,8 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
     {
-        IntParamDescriptor* param = desc.defineIntParam(kParamOutBitDepth);
-        param->setLabelAndHint(kParamOutBitDepthLabel);
+        IntParamDescriptor* param = desc.defineIntParam(kParamInfoBitDepth);
+        param->setLabelAndHint(kParamInfoBitDepthLabel);
         param->setAnimates(false);
         param->setEnabled(false);
         param->setEvaluateOnChange(false);
@@ -6147,8 +6147,8 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
     {
-        IntParamDescriptor* param = desc.defineIntParam(kParamOutBPP);
-        param->setLabelAndHint(kParamOutBPPLabel);
+        IntParamDescriptor* param = desc.defineIntParam(kParamInfoBPP);
+        param->setLabelAndHint(kParamInfoBPPLabel);
         param->setAnimates(false);
         param->setEnabled(false);
         param->setEvaluateOnChange(false);
