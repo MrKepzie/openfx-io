@@ -40,6 +40,7 @@
 GCC_DIAG_OFF(unused-parameter)
 #include <OpenImageIO/imagecache.h>
 GCC_DIAG_ON(unused-parameter)
+#include <libraw/libraw_version.h>
 
 #include <ofxNatron.h>
 
@@ -148,6 +149,9 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamRawOutputColorWide "Wide", "Wide-gamut RGB color space (or Adobe Wide Gamut RGB)"
 #define kParamRawOutputColorProPhoto "ProPhoto", "Kodak ProPhoto RGB (or ROMM RGB)"
 #define kParamRawOutputColorXYZ "XYZ", "CIE XYZ"
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
+#define kParamRawOutputColorACES "ACES", "AMPAS ACES"
+#endif
 enum RawOutputColorEnum
 {
     eRawOutputColorRaw = 0,
@@ -156,6 +160,9 @@ enum RawOutputColorEnum
     eRawOutputColorWide,
     eRawOutputColorProPhoto,
     eRawOutputColorXYZ,
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
+    eRawOutputColorACES,
+#endif
 };
 
 // int use_camera_matrix;
@@ -192,9 +199,11 @@ enum RawUseCameraMatrixEnum
 #define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation."
 #define kParamRawDemosaicLMMSE "LMMSE", "LMMSE interpolation."
 #define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation."
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,16,0) && OIIO_VERSION >= 10712
 // not available in OIIO 1.7.11:
 #define kParamRawDemosaicDHT "DHT", "DHT interpolation."
 #define kParamRawDemosaicAAHD "AAHD", "Modified AHD interpolation by Anton Petrusevich."
+#endif
 enum RawDemosaicEnum
 {
     eRawDemosaicNone = 0,
@@ -209,10 +218,14 @@ enum RawDemosaicEnum
     eRawDemosaicMixed,
     eRawDemosaicLMMSE,
     eRawDemosaicAMaZE,
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,16,0) && OIIO_VERSION >= 10712
     eRawDemosaicDHT,
     eRawDemosaicAAHD,
+#endif
+    eRawDemosaicCount
 };
 
+RawDemosaicEnum libraw_demosaic[eRawDemosaicCount];
 
 // number of channels for hosts that don't support modifying choice menus (e.g. Nuke)
 #define kDefaultChannelCount 16
@@ -1647,7 +1660,7 @@ ReadOIIOPlugin::getConfig(ImageSpec* config) const
             cs = "raw";
             break;
         case eRawOutputColorSRGB:
-            //default:
+        default:
             cs = "sRGB";
             break;
         case eRawOutputColorAdobe:
@@ -1662,6 +1675,11 @@ ReadOIIOPlugin::getConfig(ImageSpec* config) const
         case eRawOutputColorXYZ:
             cs = "XYZ";
             break;
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
+        case eRawOutputColorACES:
+            cs = "ACES";
+            break;
+#endif
     }
     if (cs != NULL) {
         config->attribute("raw:Colorspace", cs);
@@ -1686,9 +1704,9 @@ ReadOIIOPlugin::getConfig(ImageSpec* config) const
         config->attribute("raw:Exposure", (float)rawExposure);
     }
 
-    RawDemosaicEnum rawDemosaic = (RawDemosaicEnum)_rawDemosaic->getValue();
+    int rawDemosaic = _rawDemosaic->getValue();
     const char* d = NULL;
-    switch (rawDemosaic) {
+    switch (libraw_demosaic[rawDemosaic]) {
         case eRawDemosaicNone:
             d = "none";
             break;
@@ -1702,7 +1720,7 @@ ReadOIIOPlugin::getConfig(ImageSpec* config) const
             d = "PPG";
             break;
         case eRawDemosaicAHD:
-            //default:
+        default:
             d = "AHD";
             break;
         case eRawDemosaicDCB:
@@ -1726,12 +1744,14 @@ ReadOIIOPlugin::getConfig(ImageSpec* config) const
         case eRawDemosaicAMaZE:
             d = "AMaZE";
             break;
+#     if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,16,0) && OIIO_VERSION >= 10712
         case eRawDemosaicDHT:
             d = "DHT"; // available since oiio 1.7.13
             break;
         case eRawDemosaicAAHD:
             d = "AAHD"; // available since oiio 1.7.13
             break;
+#     endif
     }
     if (d != NULL) {
         config->attribute("raw:Demosaic", d);
@@ -2695,6 +2715,39 @@ public:
 void
 ReadOIIOPluginFactory::load()
 {
+    {
+        int i = 0;
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
+        unsigned caps = libraw_capabilities();
+        bool libraw_gpl2 = caps & LIBRAW_CAPS_DEMOSAICSGPL2;
+        bool libraw_gpl3 = caps & LIBRAW_CAPS_DEMOSAICSGPL3;
+#else
+        bool libraw_gpl2 = true;
+        bool libraw_gpl3 = true;
+#endif
+        // AHD-Mod, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3
+        libraw_demosaic[i++] = eRawDemosaicNone;
+        libraw_demosaic[i++] = eRawDemosaicLinear;
+        libraw_demosaic[i++] = eRawDemosaicVNG;
+        libraw_demosaic[i++] = eRawDemosaicPPG;
+        libraw_demosaic[i++] = eRawDemosaicAHD;
+        libraw_demosaic[i++] = eRawDemosaicDCB;
+        if (libraw_gpl2) {
+            libraw_demosaic[i++] = eRawDemosaicAHDMod;
+            libraw_demosaic[i++] = eRawDemosaicAFD;
+            libraw_demosaic[i++] = eRawDemosaicVCD;
+            libraw_demosaic[i++] = eRawDemosaicMixed;
+            libraw_demosaic[i++] = eRawDemosaicLMMSE;
+        }
+        if (libraw_gpl3) {
+            libraw_demosaic[i++] = eRawDemosaicAMaZE;
+        }
+#if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,16,0) && OIIO_VERSION >= 10712
+        libraw_demosaic[i++] = eRawDemosaicDHT;
+        libraw_demosaic[i++] = eRawDemosaicAAHD;
+#endif
+    }
+
     _extensions.clear();
 #if 0
     // hard-coded extensions list
@@ -2766,6 +2819,18 @@ oiio_versions()
     oss << "OIIO versions:" << std::endl;
     oss << "compiled with " << OIIO_VERSION_STRING << std::endl;
     oss << "running with " << ver / 10000 << '.' << (ver % 10000) / 100 << '.' << (ver % 100) << std::endl;
+# if OIIO_VERSION >= 10705
+    string libs = OIIO::get_string_attribute("library_list");
+    if (libs.size()) {
+        oss << std::endl << "Dependent libraries:" << std::endl;
+        std::istringstream f(libs);
+        string s;
+        while (getline(f, s, ';')) {
+            size_t pos = s.find(':');
+            oss << s.substr(pos+1) << std::endl;
+        }
+    }
+# endif
 
     return oss.str();
 }
@@ -2933,6 +2998,10 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 param->appendOption(kParamRawOutputColorProPhoto);
                 assert(param->getNOptions() == eRawOutputColorXYZ);
                 param->appendOption(kParamRawOutputColorXYZ);
+#             if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
+                assert(param->getNOptions() == eRawOutputColorACES);
+                param->appendOption(kParamRawOutputColorACES);
+#             endif
                 param->setDefault(eRawOutputColorSRGB);
                 param->setAnimates(false);
                 if (group) {
@@ -2977,34 +3046,49 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             {
                 ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamRawDemosaic);
                 param->setLabelAndHint(kParamRawDemosaicLabel);
-                assert(param->getNOptions() == eRawDemosaicNone);
+#             if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
+                unsigned caps = libraw_capabilities();
+                bool libraw_gpl2 = caps & LIBRAW_CAPS_DEMOSAICSGPL2;
+                bool libraw_gpl3 = caps & LIBRAW_CAPS_DEMOSAICSGPL3;
+#             else
+                bool libraw_gpl2 = true;
+                bool libraw_gpl3 = true;
+#             endif
+                // AHD-Mod, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicNone);
                 param->appendOption(kParamRawDemosaicNone);
-                assert(param->getNOptions() == eRawDemosaicLinear);
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicLinear);
                 param->appendOption(kParamRawDemosaicLinear);
-                assert(param->getNOptions() == eRawDemosaicVNG);
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicVNG);
                 param->appendOption(kParamRawDemosaicVNG);
-                assert(param->getNOptions() == eRawDemosaicPPG);
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicPPG);
                 param->appendOption(kParamRawDemosaicPPG);
-                assert(param->getNOptions() == eRawDemosaicAHD);
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicAHD);
                 param->appendOption(kParamRawDemosaicAHD);
-                assert(param->getNOptions() == eRawDemosaicDCB);
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicDCB);
                 param->appendOption(kParamRawDemosaicDCB);
-                assert(param->getNOptions() == eRawDemosaicAHDMod);
-                param->appendOption(kParamRawDemosaicAHDMod);
-                assert(param->getNOptions() == eRawDemosaicAFD);
-                param->appendOption(kParamRawDemosaicAFD);
-                assert(param->getNOptions() == eRawDemosaicVCD);
-                param->appendOption(kParamRawDemosaicVCD);
-                assert(param->getNOptions() == eRawDemosaicMixed);
-                param->appendOption(kParamRawDemosaicMixed);
-                assert(param->getNOptions() == eRawDemosaicLMMSE);
-                param->appendOption(kParamRawDemosaicLMMSE);
-                assert(param->getNOptions() == eRawDemosaicAMaZE);
-                param->appendOption(kParamRawDemosaicAMaZE);
-                assert(param->getNOptions() == eRawDemosaicDHT);
+                if (libraw_gpl2) {
+                    assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicAHDMod);
+                    param->appendOption(kParamRawDemosaicAHDMod);
+                    assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicAFD);
+                    param->appendOption(kParamRawDemosaicAFD);
+                    assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicVCD);
+                    param->appendOption(kParamRawDemosaicVCD);
+                    assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicMixed);
+                    param->appendOption(kParamRawDemosaicMixed);
+                    assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicLMMSE);
+                    param->appendOption(kParamRawDemosaicLMMSE);
+                }
+                if (libraw_gpl3) {
+                    assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicAMaZE);
+                    param->appendOption(kParamRawDemosaicAMaZE);
+                }
+#             if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,16,0) && OIIO_VERSION >= 10712
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicDHT);
                 param->appendOption(kParamRawDemosaicDHT);
-                assert(param->getNOptions() == eRawDemosaicAAHD);
+                assert(libraw_demosaic[param->getNOptions()] == eRawDemosaicAAHD);
                 param->appendOption(kParamRawDemosaicAAHD);
+#             endif
                 param->setDefault(eRawDemosaicAHD);
                 param->setAnimates(false);
                 if (group) {
