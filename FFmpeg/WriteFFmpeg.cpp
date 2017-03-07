@@ -3065,7 +3065,7 @@ WriteFFmpegPlugin::GetRGBPixelFormatFromBitDepth(const int bitDepth,
     }
     AVPixelFormat pixelFormat;
     if (hasAlpha) {
-        pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGB32;
+        pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGBA;
     } else {
         pixelFormat = (bitDepth > 8) ? AV_PIX_FMT_RGB48 : AV_PIX_FMT_RGB24;
     }
