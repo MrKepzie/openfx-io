@@ -84,6 +84,7 @@ extern "C" {
 #endif
 #include "GenericWriter.h"
 #include "FFmpegFile.h"
+#include "PixelFormat.h"
 
 #define OFX_FFMPEG_PRINT_CODECS 0 // print list of supported/ignored codecs and formats
 #define OFX_FFMPEG_TIMECODE 0     // timecode support
@@ -179,6 +180,25 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamFPSLabel "FPS"
 #define kParamFPSHint "File frame rate"
 
+#define kParamPrefPixelCoding "prefPixelCoding"
+#define kParamPrefPixelCodingLabel "Pref. Pixel Coding", "Preferred pixel coding."
+#define kParamPrefPixelCodingOptionYUV420 "YUV420", "1 Cr & Cb sample per 2x2 Y samples."
+#define kParamPrefPixelCodingOptionYUV422 "YUV422", "1 Cr & Cb sample per 2x1 Y samples."
+#define kParamPrefPixelCodingOptionYUV444 "YUV444", "1 Cr & Cb sample per Y sample."
+#define kParamPrefPixelCodingOptionRGB "RGB", "Separate r, g, b."
+enum PrefPixelCodingEnum {
+    ePrefPixelCodingYUV420 = 0, // 1 Cr & Cb sample per 2x2 Y samples
+    ePrefPixelCodingYUV422, // 1 Cr & Cb sample per 2x1 Y samples
+    ePrefPixelCodingYUV444, // 1 Cr & Cb sample per 1x1 Y samples
+    ePrefPixelCodingRGB,    // RGB
+};
+
+#define kParamPrefBitDepth "prefBitDepth"
+#define kParamPrefBitDepthLabel "Pref. Bit Depth", "Preferred bit depth."
+
+#define kParamPrefAlpha "enableAlpha" // enableAlpha rather than prefAlpha for backward compat
+#define kParamPrefAlphaLabel "Pref. Alph", "If checked, and the input contains alpha, formats with an alpha channel are preferred."
+
 #define kParamInfoPixelFormat "infoPixelFormat"
 #define kParamInfoPixelFormatLabel "Select. Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
 
@@ -208,11 +228,6 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kParamAdvanced "advanced"
 #define kParamAdvancedLabel "Advanced"
-
-#define kParamEnableAlpha "enableAlpha"
-#define kParamEnableAlphaLabel "Enable Alpha"
-#define kParamEnableAlphaHint \
-    "Write alpha channel to the video file (if supported by the codec)."
 
 #define kParamCRF "crf"
 #define kParamCRFLabel "Output Quality"
@@ -1184,6 +1199,7 @@ public:
 private:
 
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
+    virtual void changedClip(const InstanceChangedArgs &args, const string &clipName) OVERRIDE FINAL;
     virtual void onOutputFileChanged(const string &filename, bool setColorSpace) OVERRIDE FINAL;
 
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
@@ -1213,16 +1229,16 @@ private:
     bool                          initCodec(AVOutputFormat* fmt, AVCodecID& outCodecId, AVCodec*& outCodec) const;
 
     void getPixelFormats(AVCodec*          videoCodec,
+                         FFmpeg::PixelCodingEnum pixelCoding,
+                         int bitdepth,
+                         bool alpha,
                          AVPixelFormat&    outRgbBufferPixelFormat,
                          AVPixelFormat&    outTargetPixelFormat) const;
 
     void updateBitrateToleranceRange();
     bool isRec709Format(const int height) const;
-    static bool IsYUV(AVPixelFormat pixelFormat);
     static bool IsYUVFromShortName(const char* shortName, int codecProfile);
     static bool IsRGBFromShortName(const char* shortName, int codecProfile);
-    static int            GetPixelFormatBitDepth(const AVPixelFormat pixelFormat);
-    static int            GetPixelFormatBPP(const AVPixelFormat pixelFormat);
     static AVPixelFormat  GetRGBPixelFormatFromBitDepth(const int bitDepth, const bool hasAlpha);
     static void           GetCodecSupportedParams(const AVCodec* codec, CodecParams* p);
 
@@ -1265,6 +1281,9 @@ private:
     int _frameStep;
     ChoiceParam* _format;
     DoubleParam* _fps;
+    ChoiceParam* _prefPixelCoding;
+    IntParam* _prefBitDepth;
+    BooleanParam* _prefAlpha;
     StringParam* _infoPixelFormat;
     IntParam* _infoBitDepth;
     IntParam* _infoBPP;
@@ -1278,7 +1297,6 @@ private:
 
     ChoiceParam* _codec;
     StringParam* _codecShortName;
-    BooleanParam* _enableAlpha;
     ChoiceParam* _crf;
     ChoiceParam* _x26xSpeed;
     DoubleParam* _qscale;
@@ -1539,6 +1557,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     , _frameStep(1)
     , _format(0)
     , _fps(0)
+    , _prefPixelCoding(NULL)
+    , _prefBitDepth(NULL)
+    , _prefAlpha(NULL)
     , _infoPixelFormat(0)
     , _infoBitDepth(0)
     , _infoBPP(0)
@@ -1551,7 +1572,6 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
 #endif
     , _codec(0)
     , _codecShortName(0)
-    , _enableAlpha(0)
     , _crf(0)
     , _x26xSpeed(0)
     , _qscale(0)
@@ -1571,6 +1591,9 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     _rodPixel.x2 = _rodPixel.y2 = -1;
     _format = fetchChoiceParam(kParamFormat);
     _fps = fetchDoubleParam(kParamFPS);
+    _prefPixelCoding = fetchChoiceParam(kParamPrefPixelCoding);
+    _prefBitDepth = fetchIntParam(kParamPrefBitDepth);
+    _prefAlpha = fetchBooleanParam(kParamPrefAlpha);
     _infoPixelFormat = fetchStringParam(kParamInfoPixelFormat);
     _infoBitDepth = fetchIntParam(kParamInfoBitDepth);
     _infoBPP = fetchIntParam(kParamInfoBPP);
@@ -1583,7 +1606,6 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
 #endif
     _codec = fetchChoiceParam(kParamCodec);
     _codecShortName = fetchStringParam(kParamCodecShortName);
-    _enableAlpha = fetchBooleanParam(kParamEnableAlpha);
     _crf = fetchChoiceParam(kParamCRF);
     _x26xSpeed = fetchChoiceParam(kParamX26xSpeed);
     _qscale = fetchDoubleParam(kParamQScale);
@@ -1641,17 +1663,6 @@ WriteFFmpegPlugin::isRec709Format(const int height) const
     return (height >= 720);
 }
 
-// Figure out if an FFmpeg codec is definitely YUV based from its underlying storage
-// pixel format type.
-/*static*/
-bool
-WriteFFmpegPlugin::IsYUV(AVPixelFormat pix_fmt)
-{
-    // from swscale_internal.h
-    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
-
-    return desc && !(desc->flags & AV_PIX_FMT_FLAG_RGB) && desc->nb_components >= 2;
-}
 
 // Figure out if a codec is definitely YUV based from its shortname.
 /*static*/
@@ -1869,6 +1880,9 @@ WriteFFmpegPlugin::initCodec(AVOutputFormat* fmt,
 
 void
 WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
+                                   FFmpeg::PixelCodingEnum prefPixelCoding,
+                                   int prefBitDepth,
+                                   bool prefAlpha,
                                    AVPixelFormat& outRgbBufferPixelFormat,
                                    AVPixelFormat& outTargetPixelFormat) const
 {
@@ -1879,7 +1893,6 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
 
         return;
     }
-    const bool hasAlpha = alphaEnabled();
 #if OFX_FFMPEG_PRORES
     if (AV_CODEC_ID_PRORES == videoCodec->id) {
         int index = _codec->getValue();
@@ -1888,7 +1901,7 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         int profile = getProfileFromShortName(codecsShortNames[index]);
         if (profile == kProresProfile4444 /*|| profile == kProresProfile4444XQ*/) {
             // Prores 4444
-            if (hasAlpha) {
+            if (prefAlpha) {
                 outTargetPixelFormat = AV_PIX_FMT_YUVA444P10;
             } else {
                 outTargetPixelFormat = AV_PIX_FMT_YUV444P10;
@@ -1923,42 +1936,107 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         //find highest bit depth pix fmt.
         const AVPixelFormat* currPixFormat  = videoCodec->pix_fmts;
 
-        // get the pixel depth for the format that has the highest BPP, which means that if we have gray16 (16bpp) and RGB8 (24bpp), RGB8 wins
-        int infoBitDepth = 0;
+        int prefBPP = FFmpeg::pixelFormatBPPFromSpec(prefPixelCoding, prefBitDepth, prefAlpha);
+
+        // First, try to find the format with the smallest BPP that fits into the preferences
+        bool prefFound = false;
+        int prefFoundBPP = 1024; // large number
+        int prefFoundBitDepth = 1024; // large number
+        AVPixelFormat prefFoundFormat = AV_PIX_FMT_NONE;
+
+        // Second, If no format is found that fits the prefs, get the format that has a BPP equal or a bit higher.
+        bool higherFound = false;
+        int higherFoundBPP = 1024; // large number
+        int higherFoundBitDepth = 1024; // large number
+        AVPixelFormat higherFoundFormat = AV_PIX_FMT_NONE;
+
+        // Third, if no such format is found, get the format that has the highest BPP
         int highestBPP = 0;
+        int highestBPPBitDepth = 0;
+        AVPixelFormat highestBPPFormat = AV_PIX_FMT_NONE;
+
         while (*currPixFormat != -1) {
-            int currPixFormatBPP = GetPixelFormatBPP(*currPixFormat);
-            if (currPixFormatBPP > highestBPP) {
-                highestBPP = currPixFormatBPP;
-                infoBitDepth = GetPixelFormatBitDepth(*currPixFormat);
+            FFmpeg::PixelCodingEnum currCoding = FFmpeg::pixelFormatCoding(*currPixFormat);
+            int currBitDepth = FFmpeg::pixelFormatBitDepth(*currPixFormat);
+            int currBPP = FFmpeg::pixelFormatBPP(*currPixFormat);
+            bool currAlpha = FFmpeg::pixelFormatAlpha(*currPixFormat);
+
+            // First, try to find the format with the smallest BPP that fits into the preferences
+            if ((int)currCoding >= (int)prefPixelCoding &&
+                currBitDepth >= prefBitDepth &&
+                currAlpha == prefAlpha &&
+                currBPP < prefFoundBPP) {
+                prefFound = true;
+                prefFoundBPP = currBPP;
+                prefFoundBitDepth = currBitDepth;
+                prefFoundFormat = *currPixFormat;
+            }
+
+            // Second, If no format is found that fits the prefs, get the format that has a BPP equal or a bit higher.
+            if (currBPP >= prefBPP &&
+                currBPP < higherFoundBPP) {
+                higherFound = true;
+                higherFoundBPP = currBPP;
+                higherFoundBitDepth = currBitDepth;
+                higherFoundFormat = *currPixFormat;
+            }
+
+            // Third, if no such format is found, get the format that has the highest BPP
+            if (currBPP > highestBPP) {
+                highestBPP = currBPP;
+                highestBPPBitDepth = currBitDepth;
+                highestBPPFormat = *currPixFormat;
             }
             currPixFormat++;
+        }
+
+        // get the pixel depth for the selected format
+        int selectedBitDepth;
+        int selectedBPP;
+        AVPixelFormat selectedFormat;
+
+        if (prefFound) {
+            selectedBitDepth = prefFoundBitDepth;
+            selectedBPP = prefFoundBPP;
+            selectedFormat = prefFoundFormat;
+        } else if (higherFound) {
+            selectedBitDepth = higherFoundBitDepth;
+            selectedBPP = higherFoundBPP;
+            selectedFormat = higherFoundFormat;
+        } else {
+            selectedBitDepth = highestBPPBitDepth;
+            selectedBPP = highestBPP;
+            selectedFormat = highestBPPFormat;
         }
 
         //figure out rgbBufferPixelFormat from this.
-        outRgbBufferPixelFormat = GetRGBPixelFormatFromBitDepth(infoBitDepth, hasAlpha);
+        outRgbBufferPixelFormat = GetRGBPixelFormatFromBitDepth(selectedBitDepth, prefAlpha);
 
         //call best_pix_fmt using the full list.
-        const int hasAlphaInt = hasAlpha ? 1 : 0;
+        const int hasAlphaInt = prefAlpha ? 1 : 0;
 
-        // gather the formats that have the target bit depth (avcodec_find_best_pix_fmt_of_list doesn't do the best job: it prefers yuv422p over yuv422p10)
-        vector<AVPixelFormat> bestFormats;
-        currPixFormat  = videoCodec->pix_fmts;
-        while (*currPixFormat != -1) {
-            int currPixFormatBitDepth             = GetPixelFormatBitDepth(*currPixFormat);
-            if (currPixFormatBitDepth  >= infoBitDepth) {
-                bestFormats.push_back(*currPixFormat);
+        if (prefFound) {
+            outTargetPixelFormat = selectedFormat;
+        } else {
+            // gather the formats that have the target BPP (avcodec_find_best_pix_fmt_of_list doesn't do the best job: it prefers yuv422p over yuv422p10)
+            vector<AVPixelFormat> bestFormats;
+            currPixFormat  = videoCodec->pix_fmts;
+            while (*currPixFormat != -1) {
+                int currBPP = FFmpeg::pixelFormatBPP(*currPixFormat);
+                if (currBPP == selectedBPP) {
+                    bestFormats.push_back(*currPixFormat);
+                }
+                currPixFormat++;
             }
-            currPixFormat++;
-        }
-        bestFormats.push_back(AV_PIX_FMT_NONE);
+            bestFormats.push_back(AV_PIX_FMT_NONE);
 
-        // FFmpeg bug https://trac.ffmpeg.org/ticket/5223 : do not pass &loss as the last parameter:
-        // there is a bug in avcodec_find_best_pix_fmt_of_list: the loss mask is not the same for all pixel formats
-        // (the loss of first format is used a a mask for the second, etc) so that if the first pixel format
-        // loses resolution, resolution loss is not considered for other formats.
-        // If we pass NULL, the considered loss is ~0 for all formats
-        outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outRgbBufferPixelFormat, hasAlphaInt, NULL);
+            // FFmpeg bug https://trac.ffmpeg.org/ticket/5223 : do not pass &loss as the last parameter:
+            // there is a bug in avcodec_find_best_pix_fmt_of_list: the loss mask is not the same for all pixel formats
+            // (the loss of first format is used a a mask for the second, etc) so that if the first pixel format
+            // loses resolution, resolution loss is not considered for other formats.
+            // If we pass NULL, the considered loss is ~0 for all formats
+            outTargetPixelFormat = avcodec_find_best_pix_fmt_of_list(/*videoCodec->pix_fmts*/ &bestFormats[0], outRgbBufferPixelFormat, hasAlphaInt, NULL);
+        }
 
 #ifdef DEBUG
         int loss = av_get_pix_fmt_loss(outTargetPixelFormat, outRgbBufferPixelFormat, hasAlphaInt);
@@ -2030,1030 +2108,11 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
         outTargetPixelFormat     = AV_PIX_FMT_YUV420P;
     }
 
-    outRgbBufferPixelFormat = GetRGBPixelFormatFromBitDepth(GetPixelFormatBitDepth(outTargetPixelFormat), hasAlpha);
+    // update outRGBPixelFormat from the selected format (do not need alpha if format does not have it)
+    outRgbBufferPixelFormat = GetRGBPixelFormatFromBitDepth( FFmpeg::pixelFormatBitDepth(outTargetPixelFormat),
+                                                            FFmpeg::pixelFormatAlpha(outTargetPixelFormat) );
 } // WriteFFmpegPlugin::getPixelFormats
 
-// av_get_bits_per_sample knows about surprisingly few codecs.
-// We have to do this manually.
-/*static*/
-int
-WriteFFmpegPlugin::GetPixelFormatBitDepth(const AVPixelFormat pixelFormat)
-{
-    switch (pixelFormat) {
-        case AV_PIX_FMT_NONE:
-
-            return 0;
-            break;
-
-        case AV_PIX_FMT_YUV420P:   ///< planar YUV 4:2:0, 12bpp, (1 Cr & Cb sample per 2x2 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUYV422:   ///< packed YUV 4:2:2, 16bpp, Y0 Cb Y1 Cr
-            return 8;
-            break;
-        case AV_PIX_FMT_RGB24:     ///< packed RGB 8:8:8, 24bpp, RGBRGB...
-            return 8;
-            break;
-        case AV_PIX_FMT_BGR24:     ///< packed RGB 8:8:8, 24bpp, BGRBGR...
-            return 8;
-            break;
-        case AV_PIX_FMT_YUV422P:   ///< planar YUV 4:2:2, 16bpp, (1 Cr & Cb sample per 2x1 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUV444P:   ///< planar YUV 4:4:4, 24bpp, (1 Cr & Cb sample per 1x1 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUV410P:   ///< planar YUV 4:1:0,  9bpp, (1 Cr & Cb sample per 4x4 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUV411P:   ///< planar YUV 4:1:1, 12bpp, (1 Cr & Cb sample per 4x1 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_GRAY8:     ///<        Y        ,  8bpp
-            return 8;
-            break;
-        case AV_PIX_FMT_MONOWHITE: ///<        Y        ,  1bpp, 0 is white, 1 is black, in each byte pixels are ordered from the msb to the lsb
-            return 1;
-            break;
-        case AV_PIX_FMT_MONOBLACK: ///<        Y        ,  1bpp, 0 is black, 1 is white, in each byte pixels are ordered from the msb to the lsb
-            return 1;
-            break;
-        case AV_PIX_FMT_PAL8:      ///< 8 bits with AV_PIX_FMT_RGB32 palette
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVJ420P:  ///< planar YUV 4:2:0, 12bpp, full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV420P and setting color_range
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVJ422P:  ///< planar YUV 4:2:2, 16bpp, full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV422P and setting color_range
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVJ444P:  ///< planar YUV 4:4:4, 24bpp, full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV444P and setting color_range
-            return 8;
-            break;
-        case AV_PIX_FMT_UYVY422:   ///< packed YUV 4:2:2, 16bpp, Cb Y0 Cr Y1
-            return 8;
-            break;
-        case AV_PIX_FMT_UYYVYY411: ///< packed YUV 4:1:1, 12bpp, Cb Y0 Y1 Cr Y2 Y3
-            return 8;
-            break;
-        case AV_PIX_FMT_BGR8:      ///< packed RGB 3:3:2,  8bpp, (msb)2B 3G 3R(lsb)
-            return 2;
-            break;
-        case AV_PIX_FMT_BGR4:      ///< packed RGB 1:2:1 bitstream,  4bpp, (msb)1B 2G 1R(lsb), a byte contains two pixels, the first pixel in the byte is the one composed by the 4 msb bits
-            return 1;
-            break;
-        case AV_PIX_FMT_BGR4_BYTE: ///< packed RGB 1:2:1,  8bpp, (msb)1B 2G 1R(lsb)
-            return 1;
-            break;
-        case AV_PIX_FMT_RGB8:      ///< packed RGB 3:3:2,  8bpp, (msb)2R 3G 3B(lsb)
-            return 2;
-            break;
-        case AV_PIX_FMT_RGB4:      ///< packed RGB 1:2:1 bitstream,  4bpp, (msb)1R 2G 1B(lsb), a byte contains two pixels, the first pixel in the byte is the one composed by the 4 msb bits
-            return 1;
-            break;
-        case AV_PIX_FMT_RGB4_BYTE: ///< packed RGB 1:2:1,  8bpp, (msb)1R 2G 1B(lsb)
-            return 1;
-            break;
-        case AV_PIX_FMT_NV12:      ///< planar YUV 4:2:0, 12bpp, 1 plane for Y and 1 plane for the UV components, which are interleaved (first byte U and the following byte V)
-            return 8;
-            break;
-        case AV_PIX_FMT_NV21:      ///< as above, but U and V bytes are swapped
-            return 8;
-            break;
-
-        case AV_PIX_FMT_ARGB:      ///< packed ARGB 8:8:8:8, 32bpp, ARGBARGB...
-            return 8;
-            break;
-        case AV_PIX_FMT_RGBA:      ///< packed RGBA 8:8:8:8, 32bpp, RGBARGBA...
-            return 8;
-            break;
-        case AV_PIX_FMT_ABGR:      ///< packed ABGR 8:8:8:8, 32bpp, ABGRABGR...
-            return 8;
-            break;
-        case AV_PIX_FMT_BGRA:      ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
-            return 8;
-            break;
-
-        case AV_PIX_FMT_GRAY16BE:  ///<        Y        , 16bpp, big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_GRAY16LE:  ///<        Y        , 16bpp, little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV440P:   ///< planar YUV 4:4:0 (1 Cr & Cb sample per 1x2 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVJ440P:  ///< planar YUV 4:4:0 full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV440P and setting color_range
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVA420P:  ///< planar YUV 4:2:0, 20bpp, (1 Cr & Cb sample per 2x2 Y & A samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_RGB48BE:   ///< packed RGB 16:16:16, 48bpp, 16R, 16G, 16B, the 2-byte value for each R/G/B component is stored as big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_RGB48LE:   ///< packed RGB 16:16:16, 48bpp, 16R, 16G, 16B, the 2-byte value for each R/G/B component is stored as little-endian
-            return 16;
-            break;
-
-        case AV_PIX_FMT_RGB565BE:  ///< packed RGB 5:6:5, 16bpp, (msb)   5R 6G 5B(lsb), big-endian
-            return 5;
-            break;
-        case AV_PIX_FMT_RGB565LE:  ///< packed RGB 5:6:5, 16bpp, (msb)   5R 6G 5B(lsb), little-endian
-            return 5;
-            break;
-        case AV_PIX_FMT_RGB555BE:  ///< packed RGB 5:5:5, 16bpp, (msb)1X 5R 5G 5B(lsb), big-endian   , X=unused/undefined
-            return 5;
-            break;
-        case AV_PIX_FMT_RGB555LE:  ///< packed RGB 5:5:5, 16bpp, (msb)1X 5R 5G 5B(lsb), little-endian, X=unused/undefined
-            return 5;
-            break;
-
-        case AV_PIX_FMT_BGR565BE:  ///< packed BGR 5:6:5, 16bpp, (msb)   5B 6G 5R(lsb), big-endian
-            return 5;
-            break;
-        case AV_PIX_FMT_BGR565LE:  ///< packed BGR 5:6:5, 16bpp, (msb)   5B 6G 5R(lsb), little-endian
-            return 5;
-            break;
-        case AV_PIX_FMT_BGR555BE:  ///< packed BGR 5:5:5, 16bpp, (msb)1X 5B 5G 5R(lsb), big-endian   , X=unused/undefined
-            return 5;
-            break;
-        case AV_PIX_FMT_BGR555LE:  ///< packed BGR 5:5:5, 16bpp, (msb)1X 5B 5G 5R(lsb), little-endian, X=unused/undefined
-            return 5;
-            break;
-
-        case AV_PIX_FMT_YUV420P16LE:  ///< planar YUV 4:2:0, 24bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV420P16BE:  ///< planar YUV 4:2:0, 24bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV422P16LE:  ///< planar YUV 4:2:2, 32bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV422P16BE:  ///< planar YUV 4:2:2, 32bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV444P16LE:  ///< planar YUV 4:4:4, 48bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV444P16BE:  ///< planar YUV 4:4:4, 48bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 16;
-            break;
-            
-        case AV_PIX_FMT_RGB444LE:  ///< packed RGB 4:4:4, 16bpp, (msb)4X 4R 4G 4B(lsb), little-endian, X=unused/undefined
-            return 4;
-            break;
-        case AV_PIX_FMT_RGB444BE:  ///< packed RGB 4:4:4, 16bpp, (msb)4X 4R 4G 4B(lsb), big-endian,    X=unused/undefined
-            return 4;
-            break;
-        case AV_PIX_FMT_BGR444LE:  ///< packed BGR 4:4:4, 16bpp, (msb)4X 4B 4G 4R(lsb), little-endian, X=unused/undefined
-            return 4;
-            break;
-        case AV_PIX_FMT_BGR444BE:  ///< packed BGR 4:4:4, 16bpp, (msb)4X 4B 4G 4R(lsb), big-endian,    X=unused/undefined
-            return 4;
-            break;
-        case AV_PIX_FMT_YA8:       ///< 8 bits gray, 8 bits alpha
-            return 8;
-            break;
-
-        case AV_PIX_FMT_BGR48BE:   ///< packed RGB 16:16:16, 48bpp, 16B, 16G, 16R, the 2-byte value for each R/G/B component is stored as big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_BGR48LE:   ///< packed RGB 16:16:16, 48bpp, 16B, 16G, 16R, the 2-byte value for each R/G/B component is stored as little-endian
-            return 16;
-            break;
-
-            /**
-             * The following 12 formats have the disadvantage of needing 1 format for each bit depth.
-             * Notice that each 9/10 bits sample is stored in 16 bits with extra padding.
-             * If you want to support multiple bit depths, then using AV_PIX_FMT_YUV420P16* with the bpp stored separately is better.
-             */
-        case AV_PIX_FMT_YUV420P9BE: ///< planar YUV 4:2:0, 13.5bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUV420P9LE: ///< planar YUV 4:2:0, 13.5bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUV420P10BE:///< planar YUV 4:2:0, 15bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV420P10LE:///< planar YUV 4:2:0, 15bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV422P10BE:///< planar YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV422P10LE:///< planar YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV444P9BE: ///< planar YUV 4:4:4, 27bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUV444P9LE: ///< planar YUV 4:4:4, 27bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUV444P10BE:///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV444P10LE:///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV422P9BE: ///< planar YUV 4:2:2, 18bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUV422P9LE: ///< planar YUV 4:2:2, 18bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_GBRP:      ///< planar GBR 4:4:4 24bpp
-            return 8;
-            break;
-        case AV_PIX_FMT_GBRP9BE:   ///< planar GBR 4:4:4 27bpp, big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_GBRP9LE:   ///< planar GBR 4:4:4 27bpp, little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_GBRP10BE:  ///< planar GBR 4:4:4 30bpp, big-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_GBRP10LE:  ///< planar GBR 4:4:4 30bpp, little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_GBRP16BE:  ///< planar GBR 4:4:4 48bpp, big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_GBRP16LE:  ///< planar GBR 4:4:4 48bpp, little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA422P:  ///< planar YUV 4:2:2 24bpp, (1 Cr & Cb sample per 2x1 Y & A samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVA444P:  ///< planar YUV 4:4:4 32bpp, (1 Cr & Cb sample per 1x1 Y & A samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVA420P9BE:  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUVA420P9LE:  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUVA422P9BE:  ///< planar YUV 4:2:2 27bpp, (1 Cr & Cb sample per 2x1 Y & A samples), big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUVA422P9LE:  ///< planar YUV 4:2:2 27bpp, (1 Cr & Cb sample per 2x1 Y & A samples), little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUVA444P9BE:  ///< planar YUV 4:4:4 36bpp, (1 Cr & Cb sample per 1x1 Y & A samples), big-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUVA444P9LE:  ///< planar YUV 4:4:4 36bpp, (1 Cr & Cb sample per 1x1 Y & A samples), little-endian
-            return 9;
-            break;
-        case AV_PIX_FMT_YUVA420P10BE: ///< planar YUV 4:2:0 25bpp, (1 Cr & Cb sample per 2x2 Y & A samples, big-endian)
-            return 10;
-            break;
-        case AV_PIX_FMT_YUVA420P10LE: ///< planar YUV 4:2:0 25bpp, (1 Cr & Cb sample per 2x2 Y & A samples, little-endian)
-            return 10;
-            break;
-        case AV_PIX_FMT_YUVA422P10BE: ///< planar YUV 4:2:2 30bpp, (1 Cr & Cb sample per 2x1 Y & A samples, big-endian)
-            return 10;
-            break;
-        case AV_PIX_FMT_YUVA422P10LE: ///< planar YUV 4:2:2 30bpp, (1 Cr & Cb sample per 2x1 Y & A samples, little-endian)
-            return 10;
-            break;
-        case AV_PIX_FMT_YUVA444P10BE: ///< planar YUV 4:4:4 40bpp, (1 Cr & Cb sample per 1x1 Y & A samples, big-endian)
-            return 10;
-            break;
-        case AV_PIX_FMT_YUVA444P10LE: ///< planar YUV 4:4:4 40bpp, (1 Cr & Cb sample per 1x1 Y & A samples, little-endian)
-            return 10;
-            break;
-        case AV_PIX_FMT_YUVA420P16BE: ///< planar YUV 4:2:0 40bpp, (1 Cr & Cb sample per 2x2 Y & A samples, big-endian)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA420P16LE: ///< planar YUV 4:2:0 40bpp, (1 Cr & Cb sample per 2x2 Y & A samples, little-endian)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA422P16BE: ///< planar YUV 4:2:2 48bpp, (1 Cr & Cb sample per 2x1 Y & A samples, big-endian)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA422P16LE: ///< planar YUV 4:2:2 48bpp, (1 Cr & Cb sample per 2x1 Y & A samples, little-endian)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA444P16BE: ///< planar YUV 4:4:4 64bpp, (1 Cr & Cb sample per 1x1 Y & A samples, big-endian)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA444P16LE: ///< planar YUV 4:4:4 64bpp, (1 Cr & Cb sample per 1x1 Y & A samples, little-endian)
-            return 16;
-            break;
-
-        case AV_PIX_FMT_XYZ12LE:      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as little-endian, the 4 lower bits are set to 0
-            return 12;
-            break;
-        case AV_PIX_FMT_XYZ12BE:      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as big-endian, the 4 lower bits are set to 0
-            return 12;
-            break;
-        case AV_PIX_FMT_NV16:         ///< interleaved chroma YUV 4:2:2, 16bpp, (1 Cr & Cb sample per 2x1 Y samples)
-            return 8;
-            break;
-        case AV_PIX_FMT_NV20LE:       ///< interleaved chroma YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_NV20BE:       ///< interleaved chroma YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 10;
-            break;
-
-        case AV_PIX_FMT_RGBA64BE:     ///< packed RGBA 16:16:16:16, 64bpp, 16R, 16G, 16B, 16A, the 2-byte value for each R/G/B/A component is stored as big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_RGBA64LE:     ///< packed RGBA 16:16:16:16, 64bpp, 16R, 16G, 16B, 16A, the 2-byte value for each R/G/B/A component is stored as little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_BGRA64BE:     ///< packed RGBA 16:16:16:16, 64bpp, 16B, 16G, 16R, 16A, the 2-byte value for each R/G/B/A component is stored as big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_BGRA64LE:     ///< packed RGBA 16:16:16:16, 64bpp, 16B, 16G, 16R, 16A, the 2-byte value for each R/G/B/A component is stored as little-endian
-            return 16;
-            break;
-
-        case AV_PIX_FMT_YVYU422:   ///< packed YUV 4:2:2, 16bpp, Y0 Cr Y1 Cb
-            return 8;
-            break;
-
-        case AV_PIX_FMT_YA16BE:       ///< 16 bits gray, 16 bits alpha (big-endian)
-            return 16;
-            break;
-        case AV_PIX_FMT_YA16LE:       ///< 16 bits gray, 16 bits alpha (little-endian)
-            return 16;
-            break;
-
-        case AV_PIX_FMT_GBRAP:        ///< planar GBRA 4:4:4:4 32bpp
-            return 8;
-            break;
-        case AV_PIX_FMT_GBRAP16BE:    ///< planar GBRA 4:4:4:4 64bpp, big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_GBRAP16LE:    ///< planar GBRA 4:4:4:4 64bpp, little-endian
-            return 16;
-            break;
-
-        case AV_PIX_FMT_0RGB:///< packed RGB 8:8:8, 32bpp, XRGBXRGB...   X=unused/undefined
-            return 8;
-            break;
-        case AV_PIX_FMT_RGB0:        ///< packed RGB 8:8:8, 32bpp, RGBXRGBX...   X=unused/undefined
-            return 8;
-            break;
-        case AV_PIX_FMT_0BGR:        ///< packed BGR 8:8:8, 32bpp, XBGRXBGR...   X=unused/undefined
-            return 8;
-            break;
-        case AV_PIX_FMT_BGR0:        ///< packed BGR 8:8:8, 32bpp, BGRXBGRX...   X=unused/undefined
-            break;
-
-        case AV_PIX_FMT_YUV420P12BE: ///< planar YUV 4:2:0,18bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV420P12LE: ///< planar YUV 4:2:0,18bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV420P14BE: ///< planar YUV 4:2:0,21bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_YUV420P14LE: ///< planar YUV 4:2:0,21bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_YUV422P12BE: ///< planar YUV 4:2:2,24bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV422P12LE: ///< planar YUV 4:2:2,24bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV422P14BE: ///< planar YUV 4:2:2,28bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_YUV422P14LE: ///< planar YUV 4:2:2,28bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_YUV444P12BE: ///< planar YUV 4:4:4,36bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV444P12LE: ///< planar YUV 4:4:4,36bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV444P14BE: ///< planar YUV 4:4:4,42bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_YUV444P14LE: ///< planar YUV 4:4:4,42bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_GBRP12BE:    ///< planar GBR 4:4:4 36bpp, big-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_GBRP12LE:    ///< planar GBR 4:4:4 36bpp, little-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_GBRP14BE:    ///< planar GBR 4:4:4 42bpp, big-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_GBRP14LE:    ///< planar GBR 4:4:4 42bpp, little-endian
-            return 14;
-            break;
-        case AV_PIX_FMT_YUVJ411P:    ///< planar YUV 4:1:1, 12bpp, (1 Cr & Cb sample per 4x1 Y samples) full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV411P and setting color_range
-            return 8;
-            break;
-
-        case AV_PIX_FMT_BAYER_BGGR8:    ///< bayer, BGBG..(odd line), GRGR..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_RGGB8:    ///< bayer, RGRG..(odd line), GBGB..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_GBRG8:    ///< bayer, GBGB..(odd line), RGRG..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_GRBG8:    ///< bayer, GRGR..(odd line), BGBG..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_BGGR16LE: ///< bayer, BGBG..(odd line), GRGR..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_BGGR16BE: ///< bayer, BGBG..(odd line), GRGR..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_RGGB16LE: ///< bayer, RGRG..(odd line), GBGB..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_RGGB16BE: ///< bayer, RGRG..(odd line), GBGB..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GBRG16LE: ///< bayer, GBGB..(odd line), RGRG..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GBRG16BE: ///< bayer, GBGB..(odd line), RGRG..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GRBG16LE: ///< bayer, GRGR..(odd line), BGBG..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GRBG16BE: ///< bayer, GRGR..(odd line), BGBG..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV440P10LE: ///< planar YUV 4:4:0,20bpp, (1 Cr & Cb sample per 1x2 Y samples), little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV440P10BE: ///< planar YUV 4:4:0,20bpp, (1 Cr & Cb sample per 1x2 Y samples), big-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_YUV440P12LE: ///< planar YUV 4:4:0,24bpp, (1 Cr & Cb sample per 1x2 Y samples), little-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_YUV440P12BE: ///< planar YUV 4:4:0,24bpp, (1 Cr & Cb sample per 1x2 Y samples), big-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_AYUV64LE:    ///< packed AYUV 4:4:4,64bpp (1 Cr & Cb sample per 1x1 Y & A samples), little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_AYUV64BE:    ///< packed AYUV 4:4:4,64bpp (1 Cr & Cb sample per 1x1 Y & A samples), big-endian
-            return 16;
-            break;
-            
-        case AV_PIX_FMT_P010LE: ///< like NV12, with 10bpp per component, data in the high bits, zeros in the low bits, little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_P010BE: ///< like NV12, with 10bpp per component, data in the high bits, zeros in the low bits, big-endian
-            return 10;
-            break;
-            
-        case AV_PIX_FMT_GBRAP12BE:  ///< planar GBR 4:4:4:4 48bpp, big-endian
-            return 12;
-            break;
-        case AV_PIX_FMT_GBRAP12LE:  ///< planar GBR 4:4:4:4 48bpp, little-endian
-            return 12;
-            break;
-            
-        case AV_PIX_FMT_GBRAP10BE:  ///< planar GBR 4:4:4:4 40bpp, big-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_GBRAP10LE:  ///< planar GBR 4:4:4:4 40bpp, little-endian
-            return 10;
-            break;
-
-        default:
-#if OFX_FFMPEG_PRINT_CODECS
-            std::cout << "** Format " << av_get_pix_fmt_name(pixelFormat) << "not handled" << std::endl;
-#endif
-
-            return 0;
-    } // switch
-    
-} // WriteFFmpegPlugin::GetPixelFormatBitDepth
-
-int
-WriteFFmpegPlugin::GetPixelFormatBPP(const AVPixelFormat pixelFormat)
-{
-    switch (pixelFormat) {
-        case AV_PIX_FMT_NONE:
-
-            return 0;
-            break;
-
-        case AV_PIX_FMT_YUV420P:   ///< planar YUV 4:2:0, 12bpp, (1 Cr & Cb sample per 2x2 Y samples)
-            return 12;
-            break;
-        case AV_PIX_FMT_YUYV422:   ///< packed YUV 4:2:2, 16bpp, Y0 Cb Y1 Cr
-            return 16;
-            break;
-        case AV_PIX_FMT_RGB24:     ///< packed RGB 8:8:8, 24bpp, RGBRGB...
-            return 24;
-            break;
-        case AV_PIX_FMT_BGR24:     ///< packed RGB 8:8:8, 24bpp, BGRBGR...
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV422P:   ///< planar YUV 4:2:2, 16bpp, (1 Cr & Cb sample per 2x1 Y samples)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV444P:   ///< planar YUV 4:4:4, 24bpp, (1 Cr & Cb sample per 1x1 Y samples)
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV410P:   ///< planar YUV 4:1:0,  9bpp, (1 Cr & Cb sample per 4x4 Y samples)
-            return 9;
-            break;
-        case AV_PIX_FMT_YUV411P:   ///< planar YUV 4:1:1, 12bpp, (1 Cr & Cb sample per 4x1 Y samples)
-            return 12;
-            break;
-        case AV_PIX_FMT_GRAY8:     ///<        Y        ,  8bpp
-            return 8;
-            break;
-        case AV_PIX_FMT_MONOWHITE: ///<        Y        ,  1bpp, 0 is white, 1 is black, in each byte pixels are ordered from the msb to the lsb
-            return 1;
-            break;
-        case AV_PIX_FMT_MONOBLACK: ///<        Y        ,  1bpp, 0 is black, 1 is white, in each byte pixels are ordered from the msb to the lsb
-            return 1;
-            break;
-        case AV_PIX_FMT_PAL8:      ///< 8 bits with AV_PIX_FMT_RGB32 palette
-            return 8;
-            break;
-        case AV_PIX_FMT_YUVJ420P:  ///< planar YUV 4:2:0, 12bpp, full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV420P and setting color_range
-            return 12;
-            break;
-        case AV_PIX_FMT_YUVJ422P:  ///< planar YUV 4:2:2, 16bpp, full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV422P and setting color_range
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVJ444P:  ///< planar YUV 4:4:4, 24bpp, full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV444P and setting color_range
-            return 24;
-            break;
-        case AV_PIX_FMT_UYVY422:   ///< packed YUV 4:2:2, 16bpp, Cb Y0 Cr Y1
-            return 16;
-            break;
-        case AV_PIX_FMT_UYYVYY411: ///< packed YUV 4:1:1, 12bpp, Cb Y0 Y1 Cr Y2 Y3
-            return 12;
-            break;
-        case AV_PIX_FMT_BGR8:      ///< packed RGB 3:3:2,  8bpp, (msb)2B 3G 3R(lsb)
-            return 8;
-            break;
-        case AV_PIX_FMT_BGR4:      ///< packed RGB 1:2:1 bitstream,  4bpp, (msb)1B 2G 1R(lsb), a byte contains two pixels, the first pixel in the byte is the one composed by the 4 msb bits
-            return 4;
-            break;
-        case AV_PIX_FMT_BGR4_BYTE: ///< packed RGB 1:2:1,  8bpp, (msb)1B 2G 1R(lsb)
-            return 8;
-            break;
-        case AV_PIX_FMT_RGB8:      ///< packed RGB 3:3:2,  8bpp, (msb)2R 3G 3B(lsb)
-            return 8;
-            break;
-        case AV_PIX_FMT_RGB4:      ///< packed RGB 1:2:1 bitstream,  4bpp, (msb)1R 2G 1B(lsb), a byte contains two pixels, the first pixel in the byte is the one composed by the 4 msb bits
-            return 4;
-            break;
-        case AV_PIX_FMT_RGB4_BYTE: ///< packed RGB 1:2:1,  8bpp, (msb)1R 2G 1B(lsb)
-            return 8;
-            break;
-        case AV_PIX_FMT_NV12:      ///< planar YUV 4:2:0, 12bpp, 1 plane for Y and 1 plane for the UV components, which are interleaved (first byte U and the following byte V)
-            return 12;
-            break;
-        case AV_PIX_FMT_NV21:      ///< as above, but U and V bytes are swapped
-            return 12;
-            break;
-
-        case AV_PIX_FMT_ARGB:      ///< packed ARGB 8:8:8:8, 32bpp, ARGBARGB...
-            return 32;
-            break;
-        case AV_PIX_FMT_RGBA:      ///< packed RGBA 8:8:8:8, 32bpp, RGBARGBA...
-            return 32;
-            break;
-        case AV_PIX_FMT_ABGR:      ///< packed ABGR 8:8:8:8, 32bpp, ABGRABGR...
-            return 32;
-            break;
-        case AV_PIX_FMT_BGRA:      ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
-            return 32;
-            break;
-
-        case AV_PIX_FMT_GRAY16BE:  ///<        Y        , 16bpp, big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_GRAY16LE:  ///<        Y        , 16bpp, little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV440P:   ///< planar YUV 4:4:0 (1 Cr & Cb sample per 1x2 Y samples)
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVJ440P:  ///< planar YUV 4:4:0 full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV440P and setting color_range
-            return 16;
-            break;
-        case AV_PIX_FMT_YUVA420P:  ///< planar YUV 4:2:0, 20bpp, (1 Cr & Cb sample per 2x2 Y & A samples)
-            return 20;
-            break;
-        case AV_PIX_FMT_RGB48BE:   ///< packed RGB 16:16:16, 48bpp, 16R, 16G, 16B, the 2-byte value for each R/G/B component is stored as big-endian
-            return 48;
-            break;
-        case AV_PIX_FMT_RGB48LE:   ///< packed RGB 16:16:16, 48bpp, 16R, 16G, 16B, the 2-byte value for each R/G/B component is stored as little-endian
-            return 48;
-            break;
-
-        case AV_PIX_FMT_RGB565BE:  ///< packed RGB 5:6:5, 16bpp, (msb)   5R 6G 5B(lsb), big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_RGB565LE:  ///< packed RGB 5:6:5, 16bpp, (msb)   5R 6G 5B(lsb), little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_RGB555BE:  ///< packed RGB 5:5:5, 16bpp, (msb)1X 5R 5G 5B(lsb), big-endian   , X=unused/undefined
-            return 16;
-            break;
-        case AV_PIX_FMT_RGB555LE:  ///< packed RGB 5:5:5, 16bpp, (msb)1X 5R 5G 5B(lsb), little-endian, X=unused/undefined
-            return 16;
-            break;
-
-        case AV_PIX_FMT_BGR565BE:  ///< packed BGR 5:6:5, 16bpp, (msb)   5B 6G 5R(lsb), big-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_BGR565LE:  ///< packed BGR 5:6:5, 16bpp, (msb)   5B 6G 5R(lsb), little-endian
-            return 16;
-            break;
-        case AV_PIX_FMT_BGR555BE:  ///< packed BGR 5:5:5, 16bpp, (msb)1X 5B 5G 5R(lsb), big-endian   , X=unused/undefined
-            return 16;
-            break;
-        case AV_PIX_FMT_BGR555LE:  ///< packed BGR 5:5:5, 16bpp, (msb)1X 5B 5G 5R(lsb), little-endian, X=unused/undefined
-            return 16;
-            break;
-
-        case AV_PIX_FMT_YUV420P16LE:  ///< planar YUV 4:2:0, 24bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV420P16BE:  ///< planar YUV 4:2:0, 24bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV422P16LE:  ///< planar YUV 4:2:2, 32bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 32;
-            break;
-        case AV_PIX_FMT_YUV422P16BE:  ///< planar YUV 4:2:2, 32bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 32;
-            break;
-        case AV_PIX_FMT_YUV444P16LE:  ///< planar YUV 4:4:4, 48bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 48;
-            break;
-        case AV_PIX_FMT_YUV444P16BE:  ///< planar YUV 4:4:4, 48bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 48;
-            break;
-            
-        case AV_PIX_FMT_RGB444LE:  ///< packed RGB 4:4:4, 16bpp, (msb)4X 4R 4G 4B(lsb), little-endian, X=unused/undefined
-            return 16;
-            break;
-        case AV_PIX_FMT_RGB444BE:  ///< packed RGB 4:4:4, 16bpp, (msb)4X 4R 4G 4B(lsb), big-endian,    X=unused/undefined
-            return 16;
-            break;
-        case AV_PIX_FMT_BGR444LE:  ///< packed BGR 4:4:4, 16bpp, (msb)4X 4B 4G 4R(lsb), little-endian, X=unused/undefined
-            return 16;
-            break;
-        case AV_PIX_FMT_BGR444BE:  ///< packed BGR 4:4:4, 16bpp, (msb)4X 4B 4G 4R(lsb), big-endian,    X=unused/undefined
-            return 16;
-            break;
-        case AV_PIX_FMT_YA8:       ///< 8 bits gray, 8 bits alpha
-            return 16;
-            break;
-
-        case AV_PIX_FMT_BGR48BE:   ///< packed RGB 16:16:16, 48bpp, 16B, 16G, 16R, the 2-byte value for each R/G/B component is stored as big-endian
-            return 48;
-            break;
-        case AV_PIX_FMT_BGR48LE:   ///< packed RGB 16:16:16, 48bpp, 16B, 16G, 16R, the 2-byte value for each R/G/B component is stored as little-endian
-            return 48;
-            break;
-
-            /**
-             * The following 12 formats have the disadvantage of needing 1 format for each bit depth.
-             * Notice that each 9/10 bits sample is stored in 16 bits with extra padding.
-             * If you want to support multiple bit depths, then using AV_PIX_FMT_YUV420P16* with the bpp stored separately is better.
-             */
-        case AV_PIX_FMT_YUV420P9BE: ///< planar YUV 4:2:0, 13.5bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return (int)13.5;
-            break;
-        case AV_PIX_FMT_YUV420P9LE: ///< planar YUV 4:2:0, 13.5bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return (int)13.5;
-            break;
-        case AV_PIX_FMT_YUV420P10BE:///< planar YUV 4:2:0, 15bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 15;
-            break;
-        case AV_PIX_FMT_YUV420P10LE:///< planar YUV 4:2:0, 15bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 15;
-            break;
-        case AV_PIX_FMT_YUV422P10BE:///< planar YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 20;
-            break;
-        case AV_PIX_FMT_YUV422P10LE:///< planar YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 20;
-            break;
-        case AV_PIX_FMT_YUV444P9BE: ///< planar YUV 4:4:4, 27bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 27;
-            break;
-        case AV_PIX_FMT_YUV444P9LE: ///< planar YUV 4:4:4, 27bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 27;
-            break;
-        case AV_PIX_FMT_YUV444P10BE:///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 30;
-            break;
-        case AV_PIX_FMT_YUV444P10LE:///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 30;
-            break;
-        case AV_PIX_FMT_YUV422P9BE: ///< planar YUV 4:2:2, 18bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 18;
-            break;
-        case AV_PIX_FMT_YUV422P9LE: ///< planar YUV 4:2:2, 18bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 18;
-            break;
-        case AV_PIX_FMT_GBRP:      ///< planar GBR 4:4:4 24bpp
-            return 24;
-            break;
-        case AV_PIX_FMT_GBRP9BE:   ///< planar GBR 4:4:4 27bpp, big-endian
-            return 27;
-            break;
-        case AV_PIX_FMT_GBRP9LE:   ///< planar GBR 4:4:4 27bpp, little-endian
-            return 27;
-            break;
-        case AV_PIX_FMT_GBRP10BE:  ///< planar GBR 4:4:4 30bpp, big-endian
-            return 30;
-            break;
-        case AV_PIX_FMT_GBRP10LE:  ///< planar GBR 4:4:4 30bpp, little-endian
-            return 30;
-            break;
-        case AV_PIX_FMT_GBRP16BE:  ///< planar GBR 4:4:4 48bpp, big-endian
-            return 48;
-            break;
-        case AV_PIX_FMT_GBRP16LE:  ///< planar GBR 4:4:4 48bpp, little-endian
-            return 48;
-            break;
-        case AV_PIX_FMT_YUVA422P:  ///< planar YUV 4:2:2 24bpp, (1 Cr & Cb sample per 2x1 Y & A samples)
-            return 24;
-            break;
-        case AV_PIX_FMT_YUVA444P:  ///< planar YUV 4:4:4 32bpp, (1 Cr & Cb sample per 1x1 Y & A samples)
-            return 32;
-            break;
-        case AV_PIX_FMT_YUVA420P9BE:  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), big-endian
-            return (int)22.5;
-            break;
-        case AV_PIX_FMT_YUVA420P9LE:  ///< planar YUV 4:2:0 22.5bpp, (1 Cr & Cb sample per 2x2 Y & A samples), little-endian
-            return (int)22.5;
-            break;
-        case AV_PIX_FMT_YUVA422P9BE:  ///< planar YUV 4:2:2 27bpp, (1 Cr & Cb sample per 2x1 Y & A samples), big-endian
-            return 27;
-            break;
-        case AV_PIX_FMT_YUVA422P9LE:  ///< planar YUV 4:2:2 27bpp, (1 Cr & Cb sample per 2x1 Y & A samples), little-endian
-            return 27;
-            break;
-        case AV_PIX_FMT_YUVA444P9BE:  ///< planar YUV 4:4:4 36bpp, (1 Cr & Cb sample per 1x1 Y & A samples), big-endian
-            return 36;
-            break;
-        case AV_PIX_FMT_YUVA444P9LE:  ///< planar YUV 4:4:4 36bpp, (1 Cr & Cb sample per 1x1 Y & A samples), little-endian
-            return 36;
-            break;
-        case AV_PIX_FMT_YUVA420P10BE: ///< planar YUV 4:2:0 25bpp, (1 Cr & Cb sample per 2x2 Y & A samples, big-endian)
-            return 25;
-            break;
-        case AV_PIX_FMT_YUVA420P10LE: ///< planar YUV 4:2:0 25bpp, (1 Cr & Cb sample per 2x2 Y & A samples, little-endian)
-            return 25;
-            break;
-        case AV_PIX_FMT_YUVA422P10BE: ///< planar YUV 4:2:2 30bpp, (1 Cr & Cb sample per 2x1 Y & A samples, big-endian)
-            return 30;
-            break;
-        case AV_PIX_FMT_YUVA422P10LE: ///< planar YUV 4:2:2 30bpp, (1 Cr & Cb sample per 2x1 Y & A samples, little-endian)
-            return 30;
-            break;
-        case AV_PIX_FMT_YUVA444P10BE: ///< planar YUV 4:4:4 40bpp, (1 Cr & Cb sample per 1x1 Y & A samples, big-endian)
-            return 40;
-            break;
-        case AV_PIX_FMT_YUVA444P10LE: ///< planar YUV 4:4:4 40bpp, (1 Cr & Cb sample per 1x1 Y & A samples, little-endian)
-            return 40;
-            break;
-        case AV_PIX_FMT_YUVA420P16BE: ///< planar YUV 4:2:0 40bpp, (1 Cr & Cb sample per 2x2 Y & A samples, big-endian)
-            return 40;
-            break;
-        case AV_PIX_FMT_YUVA420P16LE: ///< planar YUV 4:2:0 40bpp, (1 Cr & Cb sample per 2x2 Y & A samples, little-endian)
-            return 40;
-            break;
-        case AV_PIX_FMT_YUVA422P16BE: ///< planar YUV 4:2:2 48bpp, (1 Cr & Cb sample per 2x1 Y & A samples, big-endian)
-            return 48;
-            break;
-        case AV_PIX_FMT_YUVA422P16LE: ///< planar YUV 4:2:2 48bpp, (1 Cr & Cb sample per 2x1 Y & A samples, little-endian)
-            return 48;
-            break;
-        case AV_PIX_FMT_YUVA444P16BE: ///< planar YUV 4:4:4 64bpp, (1 Cr & Cb sample per 1x1 Y & A samples, big-endian)
-            return 64;
-            break;
-        case AV_PIX_FMT_YUVA444P16LE: ///< planar YUV 4:4:4 64bpp, (1 Cr & Cb sample per 1x1 Y & A samples, little-endian)
-            return 64;
-            break;
-
-        case AV_PIX_FMT_XYZ12LE:      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as little-endian, the 4 lower bits are set to 0
-            return 36;
-            break;
-        case AV_PIX_FMT_XYZ12BE:      ///< packed XYZ 4:4:4, 36 bpp, (msb) 12X, 12Y, 12Z (lsb), the 2-byte value for each X/Y/Z is stored as big-endian, the 4 lower bits are set to 0
-            return 36;
-            break;
-        case AV_PIX_FMT_NV16:         ///< interleaved chroma YUV 4:2:2, 16bpp, (1 Cr & Cb sample per 2x1 Y samples)
-            return 16;
-            break;
-        case AV_PIX_FMT_NV20LE:       ///< interleaved chroma YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 20;
-            break;
-        case AV_PIX_FMT_NV20BE:       ///< interleaved chroma YUV 4:2:2, 20bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 20;
-            break;
-
-        case AV_PIX_FMT_RGBA64BE:     ///< packed RGBA 16:16:16:16, 64bpp, 16R, 16G, 16B, 16A, the 2-byte value for each R/G/B/A component is stored as big-endian
-            return 64;
-            break;
-        case AV_PIX_FMT_RGBA64LE:     ///< packed RGBA 16:16:16:16, 64bpp, 16R, 16G, 16B, 16A, the 2-byte value for each R/G/B/A component is stored as little-endian
-            return 64;
-            break;
-        case AV_PIX_FMT_BGRA64BE:     ///< packed RGBA 16:16:16:16, 64bpp, 16B, 16G, 16R, 16A, the 2-byte value for each R/G/B/A component is stored as big-endian
-            return 64;
-            break;
-        case AV_PIX_FMT_BGRA64LE:     ///< packed RGBA 16:16:16:16, 64bpp, 16B, 16G, 16R, 16A, the 2-byte value for each R/G/B/A component is stored as little-endian
-            return 64;
-            break;
-
-        case AV_PIX_FMT_YVYU422:   ///< packed YUV 4:2:2, 16bpp, Y0 Cr Y1 Cb
-            return 16;
-            break;
-
-        case AV_PIX_FMT_YA16BE:       ///< 16 bits gray, 16 bits alpha (big-endian)
-            return 32;
-            break;
-        case AV_PIX_FMT_YA16LE:       ///< 16 bits gray, 16 bits alpha (little-endian)
-            return 32;
-            break;
-
-        case AV_PIX_FMT_GBRAP:        ///< planar GBRA 4:4:4:4 32bpp
-            return 32;
-            break;
-        case AV_PIX_FMT_GBRAP16BE:    ///< planar GBRA 4:4:4:4 64bpp, big-endian
-            return 64;
-            break;
-        case AV_PIX_FMT_GBRAP16LE:    ///< planar GBRA 4:4:4:4 64bpp, little-endian
-            return 64;
-            break;
-
-        case AV_PIX_FMT_0RGB:///< packed RGB 8:8:8, 32bpp, XRGBXRGB...   X=unused/undefined
-            return 32;
-            break;
-        case AV_PIX_FMT_RGB0:        ///< packed RGB 8:8:8, 32bpp, RGBXRGBX...   X=unused/undefined
-            return 32;
-            break;
-        case AV_PIX_FMT_0BGR:        ///< packed BGR 8:8:8, 32bpp, XBGRXBGR...   X=unused/undefined
-            return 32;
-            break;
-        case AV_PIX_FMT_BGR0:        ///< packed BGR 8:8:8, 32bpp, BGRXBGRX...   X=unused/undefined
-            return 32;
-            break;
-
-        case AV_PIX_FMT_YUV420P12BE: ///< planar YUV 4:2:0,18bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 18;
-            break;
-        case AV_PIX_FMT_YUV420P12LE: ///< planar YUV 4:2:0,18bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 18;
-            break;
-        case AV_PIX_FMT_YUV420P14BE: ///< planar YUV 4:2:0,21bpp, (1 Cr & Cb sample per 2x2 Y samples), big-endian
-            return 21;
-            break;
-        case AV_PIX_FMT_YUV420P14LE: ///< planar YUV 4:2:0,21bpp, (1 Cr & Cb sample per 2x2 Y samples), little-endian
-            return 21;
-            break;
-        case AV_PIX_FMT_YUV422P12BE: ///< planar YUV 4:2:2,24bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV422P12LE: ///< planar YUV 4:2:2,24bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV422P14BE: ///< planar YUV 4:2:2,28bpp, (1 Cr & Cb sample per 2x1 Y samples), big-endian
-            return 28;
-            break;
-        case AV_PIX_FMT_YUV422P14LE: ///< planar YUV 4:2:2,28bpp, (1 Cr & Cb sample per 2x1 Y samples), little-endian
-            return 28;
-            break;
-        case AV_PIX_FMT_YUV444P12BE: ///< planar YUV 4:4:4,36bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 36;
-            break;
-        case AV_PIX_FMT_YUV444P12LE: ///< planar YUV 4:4:4,36bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 36;
-            break;
-        case AV_PIX_FMT_YUV444P14BE: ///< planar YUV 4:4:4,42bpp, (1 Cr & Cb sample per 1x1 Y samples), big-endian
-            return 42;
-            break;
-        case AV_PIX_FMT_YUV444P14LE: ///< planar YUV 4:4:4,42bpp, (1 Cr & Cb sample per 1x1 Y samples), little-endian
-            return 42;
-            break;
-        case AV_PIX_FMT_GBRP12BE:    ///< planar GBR 4:4:4 36bpp, big-endian
-            return 36;
-            break;
-        case AV_PIX_FMT_GBRP12LE:    ///< planar GBR 4:4:4 36bpp, little-endian
-            return 36;
-            break;
-        case AV_PIX_FMT_GBRP14BE:    ///< planar GBR 4:4:4 42bpp, big-endian
-            return 42;
-            break;
-        case AV_PIX_FMT_GBRP14LE:    ///< planar GBR 4:4:4 42bpp, little-endian
-            return 42;
-            break;
-        case AV_PIX_FMT_YUVJ411P:    ///< planar YUV 4:1:1, 12bpp, (1 Cr & Cb sample per 4x1 Y samples) full scale (JPEG), deprecated in favor of AV_PIX_FMT_YUV411P and setting color_range
-            return 12;
-            break;
-
-        case AV_PIX_FMT_BAYER_BGGR8:    ///< bayer, BGBG..(odd line), GRGR..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_RGGB8:    ///< bayer, RGRG..(odd line), GBGB..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_GBRG8:    ///< bayer, GBGB..(odd line), RGRG..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_GRBG8:    ///< bayer, GRGR..(odd line), BGBG..(even line), 8-bit samples */
-            return 8;
-            break;
-        case AV_PIX_FMT_BAYER_BGGR16LE: ///< bayer, BGBG..(odd line), GRGR..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_BGGR16BE: ///< bayer, BGBG..(odd line), GRGR..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_RGGB16LE: ///< bayer, RGRG..(odd line), GBGB..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_RGGB16BE: ///< bayer, RGRG..(odd line), GBGB..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GBRG16LE: ///< bayer, GBGB..(odd line), RGRG..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GBRG16BE: ///< bayer, GBGB..(odd line), RGRG..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GRBG16LE: ///< bayer, GRGR..(odd line), BGBG..(even line), 16-bit samples, little-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_BAYER_GRBG16BE: ///< bayer, GRGR..(odd line), BGBG..(even line), 16-bit samples, big-endian */
-            return 16;
-            break;
-        case AV_PIX_FMT_YUV440P10LE: ///< planar YUV 4:4:0,20bpp, (1 Cr & Cb sample per 1x2 Y samples), little-endian
-            return 20;
-            break;
-        case AV_PIX_FMT_YUV440P10BE: ///< planar YUV 4:4:0,20bpp, (1 Cr & Cb sample per 1x2 Y samples), big-endian
-            return 20;
-            break;
-        case AV_PIX_FMT_YUV440P12LE: ///< planar YUV 4:4:0,24bpp, (1 Cr & Cb sample per 1x2 Y samples), little-endian
-            return 24;
-            break;
-        case AV_PIX_FMT_YUV440P12BE: ///< planar YUV 4:4:0,24bpp, (1 Cr & Cb sample per 1x2 Y samples), big-endian
-            return 24;
-            break;
-        case AV_PIX_FMT_AYUV64LE:    ///< packed AYUV 4:4:4,64bpp (1 Cr & Cb sample per 1x1 Y & A samples), little-endian
-            return 64;
-            break;
-        case AV_PIX_FMT_AYUV64BE:    ///< packed AYUV 4:4:4,64bpp (1 Cr & Cb sample per 1x1 Y & A samples), big-endian
-            return 64;
-            break;
-            
-        case AV_PIX_FMT_P010LE: ///< like NV12, with 10bpp per component, data in the high bits, zeros in the low bits, little-endian
-            return 10;
-            break;
-        case AV_PIX_FMT_P010BE: ///< like NV12, with 10bpp per component, data in the high bits, zeros in the low bits, big-endian
-            return 10;
-            break;
-            
-        case AV_PIX_FMT_GBRAP12BE:  ///< planar GBR 4:4:4:4 48bpp, big-endian
-            return 48;
-            break;
-        case AV_PIX_FMT_GBRAP12LE:  ///< planar GBR 4:4:4:4 48bpp, little-endian
-            return 48;
-            break;
-            
-        case AV_PIX_FMT_GBRAP10BE:  ///< planar GBR 4:4:4:4 40bpp, big-endian
-            return 40;
-            break;
-        case AV_PIX_FMT_GBRAP10LE:  ///< planar GBR 4:4:4:4 40bpp, little-endian
-            return 40;
-            break;
-
-        default:
-            return 0;
-            break;
-    } // switch
-} // WriteFFmpegPlugin::GetPixelFormatBitDepth
 
 /*static*/
 AVPixelFormat
@@ -4311,7 +3370,7 @@ WriteFFmpegPlugin::colourSpaceConvert(MyAVPicture* avPicture,
     int ret = 0;
     int width = (_rodPixel.x2 - _rodPixel.x1);
     int height = (_rodPixel.y2 - _rodPixel.y1);
-    int dstRange = IsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
+    int dstRange = FFmpeg::pixelFormatIsYUV(dstPixelFormat) ? 0 : 1; // 0 = 16..235, 1 = 0..255
     dstRange |= handle_jpeg(&dstPixelFormat); // may modify dstPixelFormat
     if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
         int encodeVideoRange = _encodeVideoRange->getValue();
@@ -4331,7 +3390,7 @@ WriteFFmpegPlugin::colourSpaceConvert(MyAVPicture* avPicture,
     const int colorspace = isRec709Format(avCodecContext->height) ? SWS_CS_ITU709 : SWS_CS_ITU601;
 
     // Only apply colorspace conversions for YUV.
-    if ( IsYUV(dstPixelFormat) ) {
+    if ( FFmpeg::pixelFormatIsYUV(dstPixelFormat) ) {
         ret = sws_setColorspaceDetails(convertCtx,
                                        sws_getCoefficients(SWS_CS_DEFAULT), // inv_table
                                        1, // srcRange - 0 = 16..235, 1 = 0..255
@@ -4357,7 +3416,7 @@ bool
 WriteFFmpegPlugin::alphaEnabled() const
 {
     // is the writer configured to write alpha channel to file ?
-    bool enableAlpha = _enableAlpha->getValue();
+    bool enableAlpha = _prefAlpha->getValue();
 
     return enableAlpha && _inputClip->getPixelComponents() == ePixelComponentRGBA;
 }
@@ -4850,9 +3909,27 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
 
     clearPersistentMessage();
 
-    AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV420P;
+    FFmpeg::PixelCodingEnum pixelCoding;
+    switch ( (PrefPixelCodingEnum)_prefPixelCoding->getValue() ) {
+        case ePrefPixelCodingYUV420:
+            pixelCoding = FFmpeg::ePixelCodingYUV420;
+            break;
+        case ePrefPixelCodingYUV422:
+            pixelCoding = FFmpeg::ePixelCodingYUV422;
+            break;
+        case ePrefPixelCodingYUV444:
+            pixelCoding = FFmpeg::ePixelCodingYUV444;
+            break;
+        case ePrefPixelCodingRGB:
+            pixelCoding = FFmpeg::ePixelCodingRGB;
+            break;
+    }
+    int bitdepth = _prefBitDepth->getValue();
+    bool alpha = alphaEnabled();
+
+    AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV422P;
     AVPixelFormat rgbBufferPixelFormat = AV_PIX_FMT_RGB24;
-    getPixelFormats(videoCodec, rgbBufferPixelFormat, targetPixelFormat);
+    getPixelFormats(videoCodec, pixelCoding, bitdepth, alpha, rgbBufferPixelFormat, targetPixelFormat);
     assert(!_streamVideo);
     if (!_streamVideo) {
         _streamVideo = addStream(_formatContext, codecId, &videoCodec);
@@ -4877,7 +3954,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
             _scratchBufferSize = picSize;
         }
 
-        avCodecContext->bits_per_raw_sample = GetPixelFormatBitDepth(targetPixelFormat);
+        avCodecContext->bits_per_raw_sample = FFmpeg::pixelFormatBitDepth(targetPixelFormat);
         avCodecContext->sample_aspect_ratio = av_d2q(pixelAspectRatio, 255);
 
         // Now that the stream has been created, and the pixel format
@@ -5394,14 +4471,32 @@ WriteFFmpegPlugin::updatePixelFormat()
 
     clearPersistentMessage();
 
-    AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV420P;
+    FFmpeg::PixelCodingEnum pixelCoding;
+    switch ( (PrefPixelCodingEnum)_prefPixelCoding->getValue() ) {
+        case ePrefPixelCodingYUV420:
+            pixelCoding = FFmpeg::ePixelCodingYUV420;
+            break;
+        case ePrefPixelCodingYUV422:
+            pixelCoding = FFmpeg::ePixelCodingYUV422;
+            break;
+        case ePrefPixelCodingYUV444:
+            pixelCoding = FFmpeg::ePixelCodingYUV444;
+            break;
+        case ePrefPixelCodingRGB:
+            pixelCoding = FFmpeg::ePixelCodingRGB;
+            break;
+    }
+    int bitdepth = _prefBitDepth->getValue();
+    bool alpha = alphaEnabled();
+
+    AVPixelFormat targetPixelFormat = AV_PIX_FMT_YUV422P;
     AVPixelFormat rgbBufferPixelFormat = AV_PIX_FMT_RGB24;
-    getPixelFormats(videoCodec, rgbBufferPixelFormat, targetPixelFormat);
+    getPixelFormats(videoCodec, pixelCoding, bitdepth, alpha, rgbBufferPixelFormat, targetPixelFormat);
 
     const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(targetPixelFormat);
     _infoPixelFormat->setValue(desc ? desc->name : "unknown");
-    _infoBitDepth->setValue(GetPixelFormatBitDepth(targetPixelFormat));
-    _infoBPP->setValue(GetPixelFormatBPP(targetPixelFormat));
+    _infoBitDepth->setValue(FFmpeg::pixelFormatBitDepth(targetPixelFormat));
+    _infoBPP->setValue(FFmpeg::pixelFormatBPP(targetPixelFormat));
 }
 
 // Check that the secret codecShortName corresponds to the selected codec.
@@ -5558,7 +4653,10 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
             // reorder
             _quality->setValue(qMax, qMin);
         }
-    } else if (paramName == kParamDNxHDCodecProfile) {
+    } else if (paramName == kParamDNxHDCodecProfile ||
+               paramName == kParamPrefPixelCoding ||
+               paramName == kParamPrefBitDepth ||
+               paramName == kParamPrefAlpha) {
         updatePixelFormat();
     } else {
         GenericWriterPlugin::changedParam(args, paramName);
@@ -5570,6 +4668,15 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
     }
     // also check that the codec setting is OK
     checkCodec();
+}
+
+void
+WriteFFmpegPlugin::changedClip(const InstanceChangedArgs &args,
+                               const string &clipName)
+{
+    if (clipName == kOfxImageEffectSimpleSourceClipName) {
+        updatePixelFormat(); // alphaEnabled() checks the source clip
+    }
 }
 
 void
@@ -6084,6 +5191,49 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
 
+    {
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPrefPixelCoding);
+        param->setLabelAndHint(kParamPrefPixelCodingLabel);
+        assert(param->getNOptions() == (int)ePrefPixelCodingYUV420);
+        param->appendOption(kParamPrefPixelCodingOptionYUV420);
+        assert(param->getNOptions() == (int)ePrefPixelCodingYUV422);
+        param->appendOption(kParamPrefPixelCodingOptionYUV422);
+        assert(param->getNOptions() == (int)ePrefPixelCodingYUV444);
+        param->appendOption(kParamPrefPixelCodingOptionYUV444);
+        assert(param->getNOptions() == (int)ePrefPixelCodingRGB);
+        param->appendOption(kParamPrefPixelCodingOptionRGB);
+
+        param->setAnimates(false);
+        param->setDefault((int)ePrefPixelCodingYUV422);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    {
+        IntParamDescriptor* param = desc.defineIntParam(kParamPrefBitDepth);
+        param->setLabelAndHint(kParamPrefBitDepthLabel);
+        param->setRange(8,32);
+        param->setDisplayRange(8,16);
+        param->setAnimates(false);
+        param->setDefault(8);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    {
+        BooleanParamDescriptor* param = desc.defineBooleanParam(kParamPrefAlpha);
+        param->setLabelAndHint(kParamPrefAlphaLabel);
+        param->setAnimates(false);
+        param->setDefault(false);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
 #if OFX_FFMPEG_DNXHD
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamDNxHDCodecProfile);
@@ -6180,19 +5330,6 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         group->setOpen(false);
         if (page) {
             page->addChild(*group);
-        }
-
-        ///////////Enable Alpha
-        {
-            BooleanParamDescriptor* param = desc.defineBooleanParam(kParamEnableAlpha);
-            param->setLabel(kParamEnableAlphaLabel);
-            param->setHint(kParamEnableAlphaHint);
-            param->setDefault(true);
-            param->setAnimates(false);
-            param->setParent(*group);
-            if (page) {
-                page->addChild(*param);
-            }
         }
 
 #if OFX_FFMPEG_DNXHD

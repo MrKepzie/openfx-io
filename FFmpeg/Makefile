@@ -1,5 +1,5 @@
 PLUGINOBJECTS = \
-	ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
+	ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o PixelFormat.o \
 	GenericReader.o GenericWriter.o GenericOCIO.o SequenceParsing.o ofxsMultiPlane.o
 PLUGINNAME = FFmpeg
 
