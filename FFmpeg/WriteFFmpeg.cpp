@@ -131,6 +131,13 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "\n" \
     "This plugin can be used to produce entheir digital intermediates, i.e. videos with very high resolution and quality which can be read frame by frame for further processing, or highly compressed videos to distribute on the web. Note that this plug-in does not support audio, but audi can easily be added to the video using the ffmpeg command-line tool (see note below).  In a VFX context, it is often preferable to save processed images as a sequence of individual frames (using WriteOIIO), if disk space and real-time playing are not an issue.\n" \
     "\n" \
+    "The preferred pixel coding (Pref. Pixel Coding) and bit depth (Pref. Bit Depth) can be selected. This is especially useful for codecs that propose multiple pixel formats (e.g. ffv1, ffvhuff, huffyuv, jpeg2000, mjpeg, mpeg2video, vc2, libopenjpeg, png, qtrle, targa, tiff, libschroedinger, libtheora, libvpx, libvpx-vp9, libx264, libx265).\n" \
+    "The pixel format is selected from the available choices for the chosen codec using the following rules:\n" \
+    "- First, try to find the format with the smallest BPP (bits per pixel) that fits into the preferences.\n" \
+    "- Second, If no format fits, get the format that has a BPP equal or a bit higher that the one computed from the preferences.\n" \
+    "- Last, if no such format is found, get the format that has the highest BPP.\n" \
+    "The selected pixel format, bit depth, and BPP are displayed in the Select. Pixel Format, Select. Bit Depth, and Select. BPP parameters.\n" \
+    "\n" \
     "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
     "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
     "- QuickTime with VC3/DNxHD/DNxHR: the codec is intra-frame. DNxHR profiles are resolution-independent, but are still only available with 8-bit depth. The alpha channel cannot be encoded.\n" \
@@ -194,7 +201,7 @@ enum PrefPixelCodingEnum {
 };
 
 #define kParamPrefBitDepth "prefBitDepth"
-#define kParamPrefBitDepthLabel "Pref. Bit Depth", "Preferred bit depth."
+#define kParamPrefBitDepthLabel "Pref. Bit Depth", "Preferred bit depth (number of bits per component)."
 
 #define kParamPrefAlpha "enableAlpha" // enableAlpha rather than prefAlpha for backward compat
 #define kParamPrefAlphaLabel "Pref. Alph", "If checked, and the input contains alpha, formats with an alpha channel are preferred."
