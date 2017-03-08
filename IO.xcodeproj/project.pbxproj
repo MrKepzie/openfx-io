@@ -90,6 +90,8 @@
 		1E378A8B194DE31700800F5F /* SequenceParsing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D7F8CEF118F2B9EE00172EEC /* SequenceParsing.cpp */; };
 		1E5EBBC31D4E0D5E0005A5A8 /* GenericOCIOOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */; };
 		1E5EBBC41D4E0D620005A5A8 /* GenericOCIOOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */; };
+		1E626D981E703DAC00405114 /* PixelFormat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E626D961E703DA300405114 /* PixelFormat.cpp */; };
+		1E626D991E703DAC00405114 /* PixelFormat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E626D961E703DA300405114 /* PixelFormat.cpp */; };
 		1E74D8311891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E74D8321891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
 		1E74D8331891074000E9034B /* ofxsCore.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1E74D8281891074000E9034B /* ofxsCore.cpp */; };
@@ -574,6 +576,8 @@
 		1E5EBA411D4C8DEB0005A5A8 /* ofxsMipmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsMipmap.cpp; sourceTree = "<group>"; };
 		1E5EBBC21D4E0D1A0005A5A8 /* GenericOCIOOpenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GenericOCIOOpenGL.cpp; sourceTree = "<group>"; };
 		1E5F9FF91B03980A000FBC40 /* OCIODisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIODisplay.cpp; sourceTree = "<group>"; };
+		1E626D961E703DA300405114 /* PixelFormat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PixelFormat.cpp; sourceTree = "<group>"; };
+		1E626D971E703DA300405114 /* PixelFormat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PixelFormat.h; sourceTree = "<group>"; };
 		1E74D8171891070300E9034B /* linuxSymbols */ = {isa = PBXFileReference; lastKnownFileType = text; path = linuxSymbols; sourceTree = "<group>"; };
 		1E74D8181891070300E9034B /* ofxsCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsCore.h; sourceTree = "<group>"; };
 		1E74D8191891070300E9034B /* ofxsHWNDInteract.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ofxsHWNDInteract.h; sourceTree = "<group>"; };
@@ -861,6 +865,8 @@
 		1E00B3C0188EE8A1003BC7F3 /* FFmpeg */ = {
 			isa = PBXGroup;
 			children = (
+				1E626D961E703DA300405114 /* PixelFormat.cpp */,
+				1E626D971E703DA300405114 /* PixelFormat.h */,
 				1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */,
 				1E00B3D8188EE923003BC7F3 /* WriteFFmpeg.cpp */,
 				1E00B3D0188EE923003BC7F3 /* FFmpegCompat.h */,
@@ -1487,6 +1493,7 @@
 				1E9DF4711B0B5F29008C7055 /* OCIODisplay.cpp in Sources */,
 				1E2F4DA5189295F600F4CE25 /* GenericReader.cpp in Sources */,
 				1E2F4D9A189295F600F4CE25 /* GenericWriter.cpp in Sources */,
+				1E626D991E703DAC00405114 /* PixelFormat.cpp in Sources */,
 				1E2F4DA0189295F600F4CE25 /* GenericOCIO.cpp in Sources */,
 				D7F8CEF218F2B9EE00172EEC /* SequenceParsing.cpp in Sources */,
 				AC0719B61D479A3500107F5E /* glad.cpp in Sources */,
@@ -1696,6 +1703,7 @@
 				1E74D8311891074000E9034B /* ofxsCore.cpp in Sources */,
 				1E74D8401891074000E9034B /* ofxsParams.cpp in Sources */,
 				1E74D8341891074000E9034B /* ofxsImageEffect.cpp in Sources */,
+				1E626D981E703DAC00405114 /* PixelFormat.cpp in Sources */,
 				1E74D8461891074000E9034B /* ofxsPropertyValidation.cpp in Sources */,
 				1E74D83A1891074000E9034B /* ofxsLog.cpp in Sources */,
 				1E74D8371891074000E9034B /* ofxsInteract.cpp in Sources */,

@@ -16,7 +16,7 @@ SeGrain.o \
 SeNoise.o \
 GenericOCIO.o $(OCIO_OPENGL_OBJS) \
 ReadEXR.o WriteEXR.o \
-ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o \
+ReadFFmpeg.o FFmpegFile.o WriteFFmpeg.o PixelFormat.o \
 ReadOIIO.o WriteOIIO.o \
 OIIOText.o \
 OIIOResize.o \
