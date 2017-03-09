@@ -40,7 +40,7 @@ enum PixelCodingEnum
     ePixelCodingYUV440 = ePixelCodingYUV422, // 1 Cr & Cb sample per 1x2 Y samples
     ePixelCodingYUV444, // 1 Cr & Cb sample per 1x1 Y samples
     ePixelCodingRGB,    // RGB
-    ePixelCodingXYZ = ePixelCodingRGB, // XYZ
+    ePixelCodingXYZ, // XYZ
 };
 
 bool pixelFormatIsYUV(AVPixelFormat pixelFormat);

@@ -193,11 +193,13 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamPrefPixelCodingOptionYUV422 "YUV422", "1 Cr & Cb sample per 2x1 Y samples."
 #define kParamPrefPixelCodingOptionYUV444 "YUV444", "1 Cr & Cb sample per Y sample."
 #define kParamPrefPixelCodingOptionRGB "RGB", "Separate r, g, b."
+#define kParamPrefPixelCodingOptionXYZ "XYZ", "CIE XYZ compressed with gamma=2.6, used for Digital Cinema."
 enum PrefPixelCodingEnum {
     ePrefPixelCodingYUV420 = 0, // 1 Cr & Cb sample per 2x2 Y samples
     ePrefPixelCodingYUV422, // 1 Cr & Cb sample per 2x1 Y samples
     ePrefPixelCodingYUV444, // 1 Cr & Cb sample per 1x1 Y samples
     ePrefPixelCodingRGB,    // RGB
+    ePrefPixelCodingXYZ,    // XYZ
 };
 
 #define kParamPrefBitDepth "prefBitDepth"
@@ -3930,6 +3932,9 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
         case ePrefPixelCodingRGB:
             pixelCoding = FFmpeg::ePixelCodingRGB;
             break;
+        case ePrefPixelCodingXYZ:
+            pixelCoding = FFmpeg::ePixelCodingXYZ;
+            break;
     }
     int bitdepth = _prefBitDepth->getValue();
     bool alpha = alphaEnabled();
@@ -4491,6 +4496,9 @@ WriteFFmpegPlugin::updatePixelFormat()
             break;
         case ePrefPixelCodingRGB:
             pixelCoding = FFmpeg::ePixelCodingRGB;
+            break;
+        case ePrefPixelCodingXYZ:
+            pixelCoding = FFmpeg::ePixelCodingXYZ;
             break;
     }
     int bitdepth = _prefBitDepth->getValue();
@@ -5209,6 +5217,8 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->appendOption(kParamPrefPixelCodingOptionYUV444);
         assert(param->getNOptions() == (int)ePrefPixelCodingRGB);
         param->appendOption(kParamPrefPixelCodingOptionRGB);
+        assert(param->getNOptions() == (int)ePrefPixelCodingXYZ);
+        param->appendOption(kParamPrefPixelCodingOptionXYZ);
 
         param->setAnimates(false);
         param->setDefault((int)ePrefPixelCodingYUV422);

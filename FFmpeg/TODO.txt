@@ -6,6 +6,8 @@ rewrite from ffplay.c, see http://github.com/devernay/ffplay
 
 ## libopenjpeg DCI-compatible output
 
+ See http://www.dcimovies.com/archives/spec_v1_2_No_Errata_Incorporated/
+
 see http://www.michaelcinquin.com/ressources/ffmpeg
 and ffmpeg -h encoder=libopenjpeg
 
