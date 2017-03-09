@@ -6,6 +6,26 @@ rewrite from ffplay.c, see http://github.com/devernay/ffplay
 
 ## libopenjpeg DCI-compatible output
 
+ See http://www.dcimovies.com/archives/spec_v1_2_No_Errata_Incorporated/
+
 see http://www.michaelcinquin.com/ressources/ffmpeg
 and ffmpeg -h encoder=libopenjpeg
 
+possible cinama_mode values:
+
+"disable"
+
+{ "2k_24",         NULL,                0,                     AV_OPT_TYPE_CONST, { .i64 = OPJ(CINEMA2K_24) }, 0,         0,           VE, "cinema_mode" },
+{ "2k_48",         NULL,                0,                     AV_OPT_TYPE_CONST, { .i64 = OPJ(CINEMA2K_48) }, 0,         0,           VE, "cinema_mode" },
+{ "4k_24",         NULL,                0,                     AV_OPT_TYPE_CONST, { .i64 = OPJ(CINEMA4K_24) }, 0,         0,           VE, "cinema_mode" },
+
+-cinema2K <24|48>
+
+Cinema2K profile.This option generates a codestream compliant to the Digital cinema specifications for a 2K resolution content. The value given is the frame rate which can be 24 or 48 fps. The main specifications of the JPEG Profile-3 (2K Digital Cinema Profile) are * Image size = 2048 x 1080 (at least one of the dimensions should match 2048 x 1080) * Single tile * Wavelet transform levels = Maximum of 5 * Wavelet filter = 9-7 filter * Codeblock size = 32 x 32 * Precinct size = 128 x 128 (Lowest frequency subband), 256 x 256 (other subbands) * Maximum Bit rate for entire frame = 1302083 bytes for 24 fps, 651041 bytes for 48fps * Maximum Bit rate for each color component= 1041666 bytes for 24 fps, 520833 bytes for 48fps * Tile parts = 3; Each tile part contains data necessary to decompress one 2K color component * 12 bits per component.
+
+-cinema4K
+
+Cinema4K profile. This option generates a codestream compliant to the Digital cinema specifications for a 4K resolution content. The value for frame rate should not be specified. Value is initialized to 24fps. The main specifications of the JPEG Profile-4 (4K Digital Cinema Profile) are * Image size = 4096 x 2160 (at least one of the dimensions must match 4096 x 2160) * Single tile * Wavelet transform levels = Maximum of 6 and mininum of 1 * Wavelet filter = 9-7 filter * Codeblock size = 32 x 32 * Precinct size = 128 x 128 (Lowest frequency subband), 256 x 256 (other subbands) * Maximum Bit rate for entire frame = 1302083 bytes for 24 fps * Maximum Bit rate for each color component= 1041666 bytes for 24 fps * Tile parts = 6; Each of first 3 tile parts contains data necessary to decompress one 2K color component, and each of last 3 tile parts contains data necessary to decompress one 4K color component. * 12 bits per component
+
+
+the pixel format is always AV_PIX_FMT_XYZ12 in cinema mode

@@ -1612,7 +1612,7 @@ pixelFormatBPPFromSpec(PixelCodingEnum coding, int bitdepth, bool alpha)
             break;
         case ePixelCodingYUV444: // 1 Cr & Cb sample per 1x1 Y samples
         case ePixelCodingRGB:    // RGB
-        //case ePixelCodingXYZ = ePixelCodingRGB, // XYZ
+        case ePixelCodingXYZ:    // XYZ
             bits = bitdepth * 3;
     }
     return alpha ? (bits + bitdepth) : bits;

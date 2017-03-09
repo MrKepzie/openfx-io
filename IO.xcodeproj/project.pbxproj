@@ -662,6 +662,7 @@
 		1ED499CE18A00BD6008A2D91 /* OCIOColorSpace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OCIOColorSpace.cpp; sourceTree = "<group>"; };
 		1ED499D218A00BE1008A2D91 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1ED499D318A00BE1008A2D91 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		1ED5816C1E7060FE00080947 /* TODO.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TODO.txt; sourceTree = "<group>"; };
 		1ED94FC01BC26522008680C0 /* ofxsTransformInteract.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxsTransformInteract.cpp; sourceTree = "<group>"; };
 		1EDECBAB18B9F7F10093B6FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1EDECBAC18B9F7F10093B6FC /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -865,6 +866,7 @@
 		1E00B3C0188EE8A1003BC7F3 /* FFmpeg */ = {
 			isa = PBXGroup;
 			children = (
+				1ED5816C1E7060FE00080947 /* TODO.txt */,
 				1E626D961E703DA300405114 /* PixelFormat.cpp */,
 				1E626D971E703DA300405114 /* PixelFormat.h */,
 				1E00B3D6188EE923003BC7F3 /* ReadFFmpeg.cpp */,
