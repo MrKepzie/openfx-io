@@ -420,7 +420,12 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const string& plane,
         if (failIfNoSrcImg) {
             stringstream ss;
             ss << "Input layer ";
-            MultiPlane::ImagePlaneDesc planeToFetch = MultiPlane::ImagePlaneDesc::mapOFXPlaneStringToPlane(plane);
+            MultiPlane::ImagePlaneDesc planeToFetch;
+            if (plane == kFnOfxImagePlaneColour) {
+                planeToFetch = MultiPlane::ImagePlaneDesc::mapNCompsToColorPlane(_inputClip->getPixelComponentCount());
+            } else {
+                planeToFetch = MultiPlane::ImagePlaneDesc::mapOFXPlaneStringToPlane(plane);
+            }
             ss << planeToFetch.getPlaneLabel();
             ss << " could not be fetched";
 
