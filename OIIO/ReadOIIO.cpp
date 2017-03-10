@@ -625,7 +625,6 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
     //Should only be called if multi-planar
     assert( isMultiPlanar() );
 
-    clipComponents.addClipComponents( *_outputClip, getOutputComponents() );
     clipComponents.setPassThroughClip(NULL, args.time, args.view);
 
     {
@@ -636,7 +635,7 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
                 continue;
             } else {
                 MultiPlane::ImagePlaneDesc plane(it->first, "", "", it->second.layer.channelNames);
-                clipComponents.addClipComponents(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
+                clipComponents.addClipPlane(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
             }
         }
     }

@@ -2499,12 +2499,10 @@ SeExprPlugin::getClipComponents(const ClipComponentsArguments& args,
         if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
             return;
         }
-        clipComponents.addClipComponents(*_dstClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane)); 
+        clipComponents.addClipPlane(*_dstClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
 
     }
 
-    PixelComponentEnum outputComps = _dstClip->getPixelComponents();
-    clipComponents.addClipComponents(*_dstClip, outputComps);
     clipComponents.setPassThroughClip(_srcClip[0], time, args.view);
 }
 

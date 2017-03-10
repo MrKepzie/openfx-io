@@ -521,35 +521,29 @@ void
 WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
                                    ClipComponentsSetter& clipComponents)
 {
-    if ( gIsMultiplanarV2) {
-        MultiPlane::ImagePlaneDesc dstPlane;
+    MultiPlane::ImagePlaneDesc dstPlane;
 
-        OFX::Clip* clip = 0;
-        int channelIndex = -1;
-        MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(_outputLayers->getName(), &clip, &dstPlane, &channelIndex);
-        if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
-            return;
-        }
+    OFX::Clip* clip = 0;
+    int channelIndex = -1;
+    MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(_outputLayers->getName(), &clip, &dstPlane, &channelIndex);
+    if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
+        return;
+    }
 
-        if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedAllPlanes) {
-            vector<string> components;
-            _inputClip->getComponentsPresent(&components);
-            for (vector<string>::const_iterator it = components.begin(); it != components.end(); ++it) {
-                clipComponents.addClipComponents(*_inputClip, *it);
-                clipComponents.addClipComponents(*_outputClip, *it);
-            }
-        } else {
-            assert(stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedPlane);
-            std::string ofxComponentsStr = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(dstPlane);
-            clipComponents.addClipComponents(*_inputClip, ofxComponentsStr);
-            clipComponents.addClipComponents(*_outputClip, ofxComponentsStr);
+    if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedAllPlanes) {
+        vector<string> components;
+        _inputClip->getComponentsPresent(&components);
+        for (vector<string>::const_iterator it = components.begin(); it != components.end(); ++it) {
+            clipComponents.addClipPlane(*_inputClip, *it);
+            clipComponents.addClipPlane(*_outputClip, *it);
         }
     } else {
-        PixelComponentEnum inputComponents = _inputClip->getPixelComponents();
-        clipComponents.addClipComponents(*_inputClip, inputComponents);
-        PixelComponentEnum outputComponents = _outputClip->getPixelComponents();
-        clipComponents.addClipComponents(*_outputClip, outputComponents);
+        assert(stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedPlane);
+        std::string ofxComponentsStr = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(dstPlane);
+        clipComponents.addClipPlane(*_inputClip, ofxComponentsStr);
+        clipComponents.addClipPlane(*_outputClip, ofxComponentsStr);
     }
+
 }
 
 int
