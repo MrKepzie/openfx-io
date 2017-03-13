@@ -136,7 +136,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "- First, try to find the format with the smallest BPP (bits per pixel) that fits into the preferences.\n" \
     "- Second, If no format fits, get the format that has a BPP equal or a bit higher that the one computed from the preferences.\n" \
     "- Last, if no such format is found, get the format that has the highest BPP.\n" \
-    "The selected pixel format, bit depth, and BPP are displayed in the Select. Pixel Format, Select. Bit Depth, and Select. BPP parameters.\n" \
+    "The selected pixel format, bit depth, and BPP are displayed in the Selected Pixel Format, Bit Depth, and BPP parameters.\n" \
     "\n" \
     "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
     "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
@@ -203,19 +203,28 @@ enum PrefPixelCodingEnum {
 };
 
 #define kParamPrefBitDepth "prefBitDepth"
-#define kParamPrefBitDepthLabel "Pref. Bit Depth", "Preferred bit depth (number of bits per component)."
+#define kParamPrefBitDepthLabel "Bit Depth", "Preferred bit depth (number of bits per component)."
+enum PrefBitDepthEnum {
+    ePrefBitDepth8 = 0,
+    ePrefBitDepth10,
+    ePrefBitDepth12,
+    ePrefBitDepth16,
+};
 
 #define kParamPrefAlpha "enableAlpha" // enableAlpha rather than prefAlpha for backward compat
-#define kParamPrefAlphaLabel "Pref. Alph", "If checked, and the input contains alpha, formats with an alpha channel are preferred."
+#define kParamPrefAlphaLabel "Alpha", "If checked, and the input contains alpha, formats with an alpha channel are preferred."
+
+#define kParamPrefShow "prefShow"
+#define kParamPrefShowLabel "Show Avail.", "Show available pixel formats for this codec."
 
 #define kParamInfoPixelFormat "infoPixelFormat"
-#define kParamInfoPixelFormatLabel "Select. Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
+#define kParamInfoPixelFormatLabel "Selected Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
 
 #define kParamInfoBitDepth "infoBitDepth"
-#define kParamInfoBitDepthLabel "Select. Bit Depth", "Bit depth (number of bits per component) of the pixel format."
+#define kParamInfoBitDepthLabel "Bit Depth", "Bit depth (number of bits per component) of the pixel format."
 
 #define kParamInfoBPP "infoBpp"
-#define kParamInfoBPPLabel "Select. BPP", "Bits per pixel of the pixel format."
+#define kParamInfoBPPLabel "BPP", "Bits per pixel of the pixel format."
 
 #define kParamResetFPS "resetFps"
 #define kParamResetFPSLabel "Reset FPS"
@@ -1272,6 +1281,7 @@ private:
     bool codecIsDisallowed( const string& codecShortName, string& reason ) const;
 
     void  updatePixelFormat(); // update info for output pixel format
+    void availPixelFormats();
 
     ///These members are not protected and only read/written by/to by the same thread.
     string _filename;
@@ -1291,7 +1301,7 @@ private:
     ChoiceParam* _format;
     DoubleParam* _fps;
     ChoiceParam* _prefPixelCoding;
-    IntParam* _prefBitDepth;
+    ChoiceParam* _prefBitDepth;
     BooleanParam* _prefAlpha;
     StringParam* _infoPixelFormat;
     IntParam* _infoBitDepth;
@@ -1601,7 +1611,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     _format = fetchChoiceParam(kParamFormat);
     _fps = fetchDoubleParam(kParamFPS);
     _prefPixelCoding = fetchChoiceParam(kParamPrefPixelCoding);
-    _prefBitDepth = fetchIntParam(kParamPrefBitDepth);
+    _prefBitDepth = fetchChoiceParam(kParamPrefBitDepth);
     _prefAlpha = fetchBooleanParam(kParamPrefAlpha);
     _infoPixelFormat = fetchStringParam(kParamInfoPixelFormat);
     _infoBitDepth = fetchIntParam(kParamInfoBitDepth);
@@ -1843,7 +1853,7 @@ WriteFFmpegPlugin::initFormat(bool reportErrors) const
             return NULL;
         }
     }
-    printf("avOutputFormat(%d): %s\n", format, fmt->name);
+    //printf("avOutputFormat(%d): %s\n", format, fmt->name);
 
     return fmt;
 }
@@ -3936,7 +3946,22 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
             pixelCoding = FFmpeg::ePixelCodingXYZ;
             break;
     }
-    int bitdepth = _prefBitDepth->getValue();
+    int bitdepth;
+    switch ((PrefBitDepthEnum)_prefBitDepth->getValue()) {
+        case ePrefBitDepth8:
+        default:
+            bitdepth = 8;
+            break;
+        case ePrefBitDepth10:
+            bitdepth = 10;
+            break;
+        case ePrefBitDepth12:
+            bitdepth = 12;
+            break;
+        case ePrefBitDepth16:
+            bitdepth = 16;
+            break;
+    }
     bool alpha = alphaEnabled();
 
     AVPixelFormat targetPixelFormat     = AV_PIX_FMT_YUV422P;
@@ -4501,17 +4526,105 @@ WriteFFmpegPlugin::updatePixelFormat()
             pixelCoding = FFmpeg::ePixelCodingXYZ;
             break;
     }
-    int bitdepth = _prefBitDepth->getValue();
+    int bitdepth;
+    switch ((PrefBitDepthEnum)_prefBitDepth->getValue()) {
+        case ePrefBitDepth8:
+        default:
+            bitdepth = 8;
+            break;
+        case ePrefBitDepth10:
+            bitdepth = 10;
+            break;
+        case ePrefBitDepth12:
+            bitdepth = 12;
+            break;
+        case ePrefBitDepth16:
+            bitdepth = 16;
+            break;
+    }
     bool alpha = alphaEnabled();
 
     AVPixelFormat targetPixelFormat = AV_PIX_FMT_YUV422P;
     AVPixelFormat rgbBufferPixelFormat = AV_PIX_FMT_RGB24;
     getPixelFormats(videoCodec, pixelCoding, bitdepth, alpha, rgbBufferPixelFormat, targetPixelFormat);
+    freeFormat();
 
     const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(targetPixelFormat);
     _infoPixelFormat->setValue(desc ? desc->name : "unknown");
     _infoBitDepth->setValue(FFmpeg::pixelFormatBitDepth(targetPixelFormat));
     _infoBPP->setValue(FFmpeg::pixelFormatBPP(targetPixelFormat));
+}
+
+void
+WriteFFmpegPlugin::availPixelFormats()
+{
+    // first, check that the codec setting is OK
+    checkCodec();
+
+    ////////////////////                        ////////////////////
+    //////////////////// INTIALIZE FORMAT       ////////////////////
+
+    AVOutputFormat* avOutputFormat = initFormat(/* reportErrors = */ true);
+    if (!avOutputFormat) {
+        sendMessage(Message::eMessageError, "", "Supported pixel formats:\nnone (cannot initialize container/format)", false);
+
+        return;
+    }
+
+    /////////////////////                            ////////////////////
+    ////////////////////    INITIALISE STREAM     ////////////////////
+
+
+    // Create a video stream.
+    AVCodecID codecId = AV_CODEC_ID_NONE;
+    AVCodec* videoCodec = NULL;
+    if ( !initCodec(avOutputFormat, codecId, videoCodec) ) {
+        freeFormat();
+        sendMessage(Message::eMessageError, "", "Supported pixel formats:\nnone (cannot initialize codec)", false);
+
+        return;
+    }
+
+    // Test if the container recognises the codec type.
+    bool isCodecSupportedInContainer = codecCompatible(avOutputFormat, codecId);
+    // mov seems to be able to cope with anything, which the above function doesn't seem to think is the case (even with FF_COMPLIANCE_EXPERIMENTAL)
+    // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
+    //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
+    if (!isCodecSupportedInContainer) {
+        string ret = string("Supported pixel formats:\nnone (codec ") + videoCodec->name + " is not supported in container " + avOutputFormat->name + ")";
+        freeFormat();
+        sendMessage(Message::eMessageError, "", ret);
+        
+        return;
+    }
+
+    string ret("Supported pixel formats for codec ");
+    ret += videoCodec->name;
+    ret += " in format/container ";
+    ret += avOutputFormat->name;
+    ret+= ":\n";
+
+    if (videoCodec->pix_fmts == NULL || *videoCodec->pix_fmts == -1) {
+        ret += "none";
+    } else {
+        const AVPixelFormat* currPixFormat  = videoCodec->pix_fmts;
+        bool comma = false;
+        while (*currPixFormat != -1) {
+            if (comma) {
+                ret += ", ";
+            } else {
+                comma = true;
+            }
+
+            const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(*currPixFormat);
+            ret += (desc ? desc->name : "unknown");
+            currPixFormat++;
+        }
+        ret += '.';
+    }
+    freeFormat();
+
+    sendMessage(Message::eMessageMessage, "",  ret, false);
 }
 
 // Check that the secret codecShortName corresponds to the selected codec.
@@ -4673,6 +4786,8 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
                paramName == kParamPrefBitDepth ||
                paramName == kParamPrefAlpha) {
         updatePixelFormat();
+    } else if (paramName == kParamPrefShow) {
+        availPixelFormats();
     } else {
         GenericWriterPlugin::changedParam(args, paramName);
     }
@@ -5229,12 +5344,18 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
     }
 
     {
-        IntParamDescriptor* param = desc.defineIntParam(kParamPrefBitDepth);
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPrefBitDepth);
         param->setLabelAndHint(kParamPrefBitDepthLabel);
-        param->setRange(8,32);
-        param->setDisplayRange(8,16);
+        assert(param->getNOptions() == (int)ePrefBitDepth8);
+        param->appendOption("8");
+        assert(param->getNOptions() == (int)ePrefBitDepth10);
+        param->appendOption("10");
+        assert(param->getNOptions() == (int)ePrefBitDepth12);
+        param->appendOption("12");
+        assert(param->getNOptions() == (int)ePrefBitDepth16);
+        param->appendOption("16");
         param->setAnimates(false);
-        param->setDefault(8);
+        param->setDefault((int)ePrefBitDepth8);
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
         if (page) {
             page->addChild(*param);
@@ -5246,6 +5367,14 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabelAndHint(kParamPrefAlphaLabel);
         param->setAnimates(false);
         param->setDefault(false);
+        param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamPrefShow);
+        param->setLabelAndHint(kParamPrefShowLabel);
         if (page) {
             page->addChild(*param);
         }
