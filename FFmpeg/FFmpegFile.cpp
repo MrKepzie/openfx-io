@@ -216,7 +216,7 @@ const FilterEntry kCodecWhitelist[] =
     { "qtrle",          true,  true },     // QuickTime Animation (RLE) video
     { "r10k",           true,  UNSAFEQT && UNSAFEVLC },     // AJA Kono 10-bit RGB - write not supported as not official qt readable without colourshifts.
     { "r210",           true,  UNSAFEQT && UNSAFEVLC },     // Uncompressed RGB 10-bit - write not supported as not official qt readable with relevant 3rd party codec without colourshifts.
-    { "rawvideo",       true,  UNSAFEQT0 && UNSAFEVLC },     // Uncompressed 4:2:2 8-bit - write not supported as not official qt readable.
+    { "rawvideo",       true,  UNSAFEQT && UNSAFEVLC },     // raw video - write not supported as not official qt readable.
     { "svq1",           true,  true },     // Sorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1
     { "targa",          true,  true },     // Truevision Targa image.
     { "theora",         true,  false },     // Theora (decoder).
