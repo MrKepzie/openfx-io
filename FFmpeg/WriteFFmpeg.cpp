@@ -136,7 +136,7 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "- First, try to find the format with the smallest BPP (bits per pixel) that fits into the preferences.\n" \
     "- Second, If no format fits, get the format that has a BPP equal or a bit higher that the one computed from the preferences.\n" \
     "- Last, if no such format is found, get the format that has the highest BPP.\n" \
-    "The selected pixel format, bit depth, and BPP are displayed in the Selected Pixel Format, Bit Depth, and BPP parameters.\n" \
+    "The selected pixel coding, bit depth, and BPP are displayed in the Selected Pixel Coding, Bit Depth, and BPP parameters.\n" \
     "\n" \
     "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
     "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
@@ -215,10 +215,10 @@ enum PrefBitDepthEnum {
 #define kParamPrefAlphaLabel "Alpha", "If checked, and the input contains alpha, formats with an alpha channel are preferred."
 
 #define kParamPrefShow "prefShow"
-#define kParamPrefShowLabel "Show Avail.", "Show available pixel formats for this codec."
+#define kParamPrefShowLabel "Show Avail.", "Show available pixel codings for this codec."
 
 #define kParamInfoPixelFormat "infoPixelFormat"
-#define kParamInfoPixelFormatLabel "Selected Pixel Format", "Pixel format of images passed to the encoder. If several pixel formats are available, the format which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
+#define kParamInfoPixelFormatLabel "Selected Pixel Coding", "Pixel coding of images passed to the encoder. If several pixel codings are available, the coding which causes less data loss is selected. Other pixel formats may be available by transcoding with ffmpeg on the command-line, as can be seen by executing 'ffmpeg --help encoder=codec_name' on the command-line."
 
 #define kParamInfoBitDepth "infoBitDepth"
 #define kParamInfoBitDepthLabel "Bit Depth", "Bit depth (number of bits per component) of the pixel format."
@@ -4455,6 +4455,37 @@ WriteFFmpegPlugin::checkCodec()
     }
 }
 
+// chop "le"/"be" at the end, because we don't care about endianness,
+// and remove the "p" because we do't care about the format being planar or not
+static
+string
+pix_fmt_name_canonical(const char *name)
+{
+    if (name == NULL ) {
+        return "unknown";
+    }
+    string ret = name;
+    std::size_t len = ret.size();
+    if ( len > 2 && ret[len-1] == 'e' && (ret[len-2] == 'b' || ret[len-2] == 'l') ) {
+        ret.resize(len-2);
+    }
+    std::size_t found = ret.find('p');
+    if (found != string::npos) {
+        if (found == ret.size() - 1) {
+            ret.erase(found, 1);
+        } else {
+            ret[found] = '/';
+        }
+    }
+    for (string::iterator it = ret.begin(); it != ret.end(); ++it) {
+        // avoid using toupper and the whole locale stuff
+        if (*it >= 'a' && *it <= 'z') {
+            *it = (*it - 'a') + 'A';
+        }
+    }
+    return ret;
+}
+
 void
 WriteFFmpegPlugin::updatePixelFormat()
 {
@@ -4550,7 +4581,7 @@ WriteFFmpegPlugin::updatePixelFormat()
     freeFormat();
 
     const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(targetPixelFormat);
-    _infoPixelFormat->setValue(desc ? desc->name : "unknown");
+    _infoPixelFormat->setValue(desc ? pix_fmt_name_canonical(desc->name) : "unknown");
     _infoBitDepth->setValue(FFmpeg::pixelFormatBitDepth(targetPixelFormat));
     _infoBPP->setValue(FFmpeg::pixelFormatBPP(targetPixelFormat));
 }
@@ -4566,7 +4597,7 @@ WriteFFmpegPlugin::availPixelFormats()
 
     AVOutputFormat* avOutputFormat = initFormat(/* reportErrors = */ true);
     if (!avOutputFormat) {
-        sendMessage(Message::eMessageError, "", "Supported pixel formats:\nnone (cannot initialize container/format)", false);
+        sendMessage(Message::eMessageError, "", "Supported pixel codings:\nnone (cannot initialize container/format)", false);
 
         return;
     }
@@ -4580,7 +4611,7 @@ WriteFFmpegPlugin::availPixelFormats()
     AVCodec* videoCodec = NULL;
     if ( !initCodec(avOutputFormat, codecId, videoCodec) ) {
         freeFormat();
-        sendMessage(Message::eMessageError, "", "Supported pixel formats:\nnone (cannot initialize codec)", false);
+        sendMessage(Message::eMessageError, "", "Supported pixel codings:\nnone (cannot initialize codec)", false);
 
         return;
     }
@@ -4591,16 +4622,16 @@ WriteFFmpegPlugin::availPixelFormats()
     // and it doesn't return -1 for in this case, so we'll special-case this situation to allow this
     //isCodecSupportedInContainer |= (strcmp(_formatContext->oformat->name, "mov") == 0); // commented out [FD]: recent ffmpeg gives correct answer
     if (!isCodecSupportedInContainer) {
-        string ret = string("Supported pixel formats:\nnone (codec ") + videoCodec->name + " is not supported in container " + avOutputFormat->name + ")";
+        string ret = string("Supported pixel codings:\nnone (codec ") + videoCodec->name + " is not supported in container " + avOutputFormat->name + ")";
         freeFormat();
         sendMessage(Message::eMessageError, "", ret);
         
         return;
     }
 
-    string ret("Supported pixel formats for codec ");
+    string ret("Supported pixel codings for codec ");
     ret += videoCodec->name;
-    ret += " in format/container ";
+    ret += " in container ";
     ret += avOutputFormat->name;
     ret+= ":\n";
 
@@ -4617,7 +4648,7 @@ WriteFFmpegPlugin::availPixelFormats()
             }
 
             const AVPixFmtDescriptor* desc = av_pix_fmt_desc_get(*currPixFormat);
-            ret += (desc ? desc->name : "unknown");
+            ret += (desc ? pix_fmt_name_canonical(desc->name) : "unknown");
             currPixFormat++;
         }
         ret += '.';
