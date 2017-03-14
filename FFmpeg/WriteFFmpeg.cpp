@@ -610,7 +610,7 @@ CreateCodecKnobLabelsMap()
     m["qtrle"]         = "rle \tQuickTime Animation (RLE) video";
     m["r10k"]          = "R10k\tAJA Kona 10-bit RGB Codec"; // disabled in whitelist
     m["r210"]          = "r210\tUncompressed RGB 10-bit"; // disabled in whitelist
-    m["rawvideo"]      = "RGBx\tUncompressed 4:2:2 8-bit"; // actual fourcc is RGB^x
+    m["rawvideo"]      = "raw \traw video";
     m["svq1"]          = "SVQ1\tSorenson Vector Quantizer 1 / Sorenson Video 1 / SVQ1";
     m["targa"]         = "tga \tTruevision Targa image";
     m["tiff"]          = "tiff\tTIFF image"; // disabled in whitelist
@@ -4473,7 +4473,7 @@ pix_fmt_name_canonical(const char *name)
     if (found != string::npos) {
         if (found == ret.size() - 1) {
             ret.erase(found, 1);
-        } else {
+        } else if ('0' <= ret[found+1] && ret[found+1] <= '9') { // p10 p12 ...
             ret[found] = '/';
         }
     }
