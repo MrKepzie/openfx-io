@@ -427,6 +427,7 @@ getPNGInfo(png_structp sp,
 
         *colorspace_p = ePNGColorSpaceLinear;
 
+#ifdef PNG_iCCP_SUPPORTED
         // Always check the ICC profile, because it may indicate sRGB
         if ( png_get_valid(sp, ip, PNG_INFO_iCCP) ) {
             png_charp profile_name = NULL;
@@ -461,7 +462,9 @@ getPNGInfo(png_structp sp,
                 *gamma_p = 2.2;
             }
         }
+#endif
 
+#ifdef PNG_GAMMA_SUPPORTED
         // is there a srgb intent ?
         if (*colorspace_p == ePNGColorSpaceLinear) {
             int srgb_intent;
@@ -476,7 +479,8 @@ getPNGInfo(png_structp sp,
             // 2: SaturationIntent
             // 3: AbsoluteIntent
         }
-        
+#endif
+
         // if not is there a gamma ?
         assert(gamma_p);
         if (*colorspace_p == ePNGColorSpaceLinear) {
@@ -494,6 +498,7 @@ getPNGInfo(png_structp sp,
             double white_x, white_y, red_x, red_y, green_x, green_y, blue_x,
             blue_y;
 
+#ifdef PNG_cHRM_SUPPORTED
             if (png_get_cHRM(sp, ip, &white_x, &white_y, &red_x,
                              &red_y, &green_x, &green_y, &blue_x, &blue_y) == PNG_INFO_cHRM) {
                 ping_found_cHRM = true;
@@ -516,6 +521,7 @@ getPNGInfo(png_structp sp,
                     white_y<0.3291f)
                     ping_found_sRGB_cHRM = true;
             }
+#endif
 
             if (!ping_found_sRGB &&
                 (!ping_found_gAMA ||
@@ -537,6 +543,7 @@ getPNGInfo(png_structp sp,
     }
 
 
+#ifdef PNG_tIME_SUPPORTED
     png_timep mod_time;
     if ( date_p && png_get_tIME (sp, ip, &mod_time) ) {
         stringstream ss;
@@ -544,7 +551,9 @@ getPNGInfo(png_structp sp,
         ss << mod_time->hour << ':' << mod_time->minute << ':' << mod_time->second;
         *date_p = ss.str();
     }
+#endif
 
+#ifdef PNG_TEXT_SUPPORTED
     if (additionalComments_p) {
         png_textp text_ptr;
         int num_comments = png_get_text (sp, ip, &text_ptr, NULL);
@@ -555,7 +564,9 @@ getPNGInfo(png_structp sp,
             }
         }
     }
+#endif
 
+#ifdef PNG_pHYs_SUPPORTED
     if (xResolution_p && yResolution_p) {
         int unit;
         png_uint_32 resx, resy;
@@ -572,6 +583,7 @@ getPNGInfo(png_structp sp,
             *yResolution_p = (double)resy * scale;
         }
     }
+#endif
 
     if (bg_p) {
         get_background (sp, ip, *bit_depth_p, *real_bit_depth_p, *nChannels_p, &bg_p->r, &bg_p->g, &bg_p->b);

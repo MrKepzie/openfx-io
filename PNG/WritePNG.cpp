@@ -493,7 +493,7 @@ WritePNGPlugin::write_info (png_structp& sp,
         png_set_oFFs (sp, ip, x1, y1, PNG_OFFSET_PIXEL);
     }
 
-
+#if defined(PNG_GAMMA_SUPPORTED)
     if ( (ocioColorspace == "sRGB") ||
          (ocioColorspace == "sRGB D65") ||
          (ocioColorspace == "sRGB (D60 sim.)") ||
@@ -502,8 +502,11 @@ WritePNGPlugin::write_info (png_structp& sp,
          (ocioColorspace == "srgb8") ) {
         png_set_sRGB_gAMA_and_cHRM (sp, ip, PNG_sRGB_INTENT_ABSOLUTE);
     } else if (ocioColorspace == "Gamma1.8") {
-        //png_set_gAMA (sp, ip, 1.0f / 1.8);
+#ifdef PNG_GAMMA_MAC_18 // appeared in libpng 1.5.4
         png_set_gAMA_fixed(sp, ip, PNG_GAMMA_MAC_18);
+#else
+        png_set_gAMA(sp, ip, 1.0f / 1.8);
+#endif
     } else if ( (ocioColorspace == "Gamma2.2") ||
                 (ocioColorspace == "vd8") ||
                 (ocioColorspace == "vd10") ||
@@ -517,11 +520,16 @@ WritePNGPlugin::write_info (png_structp& sp,
                 (ocioColorspace == "aces") ||
                 (ocioColorspace == "lnf") ||
                 (ocioColorspace == "ln16") ) {
-        //png_set_gAMA (sp, ip, 1.0);
+#ifdef PNG_GAMMA_LINEAR // appeared in libpng 1.5.4
         png_set_gAMA_fixed(sp, ip, PNG_GAMMA_LINEAR);
+#else
+        png_set_gAMA_fixed(sp, ip, PNG_FP_1);
+        //png_set_gAMA(sp, ip, 1.0);
+#endif
     }
+#endif
 
-
+#ifdef PNG_iCCP_SUPPORTED
     // Write ICC profile, if we have anything
     /*const ImageIOParameter* icc_profile_parameter = spec.find_attribute(ICC_PROFILE_ATTR);
        if (icc_profile_parameter != NULL) {
@@ -536,6 +544,7 @@ WritePNGPlugin::write_info (png_structp& sp,
        png_set_iCCP (sp, ip, (png_charp)"Embedded Profile", 0, icc_profile, length);
      #endif
        }*/
+#endif
 
     /*if (false && ! spec.find_attribute("DateTime")) {
        time_t now;
@@ -548,6 +557,7 @@ WritePNGPlugin::write_info (png_structp& sp,
        spec.attribute ("DateTime", date);
        }*/
 
+#ifdef PNG_pHYs_SUPPORTED
     // pHYs chunk does not need to be written (unless we has real metadata or there is a PARE)
     /*string_view unitname = spec.get_string_attribute ("ResolutionUnit");
        float xres = spec.get_float_attribute ("XResolution");
@@ -563,6 +573,7 @@ WritePNGPlugin::write_info (png_structp& sp,
         // in order to get integer values in most cases.
         png_set_pHYs (sp, ip, (png_uint_32)(5346), (png_uint_32)(5346 * par + 0.5), PNG_RESOLUTION_UNKNOWN);
     }
+#endif
 
     // Deal with all other params
     /*for (size_t p = 0;  p < spec.extra_attribs.size();  ++p)
