@@ -738,7 +738,9 @@ WritePNGPlugin::encode(const string& filename,
 
     PNGBitDepthEnum pngDepth = (PNGBitDepthEnum)_bitdepth->getValueAtTime(time);
     string ocioColorspace;
+#ifdef OFX_IO_USING_OCIO
     _ocio->getOutputColorspace(ocioColorspace);
+#endif
     write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, ocioColorspace, pngDepth);
 
     int bitDepthSize = ( (pngDepth == ePNGBitDepthUShort) ? sizeof(unsigned short) : sizeof(unsigned char) );
