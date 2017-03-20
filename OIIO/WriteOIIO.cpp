@@ -998,13 +998,13 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         // REDlogFilm in aces 1.0.0
         // lg10 in spi-vfx and blender
         colorSpaceStr = "KodakLog";
-    } else if ( (ocioColorspace == "Linear") || (ocioColorspace == "linear") || (ocioColorspace == "ACES2065-1") || (ocioColorspace == "aces") || (ocioColorspace == "lnf") || (ocioColorspace == "ln16") ) {
+    } else if ( (ocioColorspace == OCIO::ROLE_SCENE_LINEAR) || (ocioColorspace == "Linear") || (ocioColorspace == "linear") || (ocioColorspace == "ACES2065-1") || (ocioColorspace == "aces") || (ocioColorspace == "lnf") || (ocioColorspace == "ln16") ) {
         // linear in nuke-default
         // ACES2065-1 in aces 1.0.0
         // aces in aces
         // lnf, ln16 in spi-anim and spi-vfx
         colorSpaceStr = "Linear";
-    } else if ( (ocioColorspace == "raw") || (ocioColorspace == "Raw") || (ocioColorspace == "ncf") ) {
+    } else if ( (ocioColorspace == OCIO::ROLE_DATA) || (ocioColorspace == "raw") || (ocioColorspace == "Raw") || (ocioColorspace == "ncf") ) {
         // raw in nuke-default
         // raw in aces
         // Raw in blender
