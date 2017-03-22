@@ -387,6 +387,7 @@ private:
 
 protected:
 #ifdef OFX_IO_USING_OCIO
+    OFX::BooleanParam* _inputSpaceSet;
     std::auto_ptr<GenericOCIO> _ocio;
 #endif
 
