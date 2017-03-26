@@ -2258,6 +2258,25 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i += incr) {
         incr = 1;
+        // if the channel was already read, just duplicate it (calling multiple times read_scanlines() on the same channel seems buggy in OIIO 1.7.12)
+        bool duplicate = false;
+        for (std::size_t j = 0; !duplicate && j < i; ++j) {
+            if (channels[i] == channels[j]) {
+                char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ) );
+                for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
+                    float* xptr = (float*)yptr;
+                    for (int x = renderWindow.x1; x < renderWindow.x2; ++x, xptr += numChannels) {
+                        xptr[i] = xptr[j];
+                    }
+                }
+                duplicate = true;
+            }
+        }
+        if (duplicate) {
+            // this channels was a duplicate
+            continue;
+        }
+
         if (channels[i] < kXChannelFirst) {
             // fill channel with constant value
             char* lineStart = (char*)pixelData + bottomScanLineDataStartOffset;
