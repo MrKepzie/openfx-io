@@ -1870,7 +1870,7 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const string& filename,
                 channels[0] = layerChannels[0] + kXChannelFirst;
                 channels[1] = layerChannels[0] + kXChannelFirst;
                 channels[2] = layerChannels[0] + kXChannelFirst;
-                channels[3] = layerChannels[0] + kXChannelFirst;
+                channels[3] = 1;
             } else if (layerChannels.size() == 2) {
                 channels[0] = layerChannels[0] + kXChannelFirst;
                 channels[1] = layerChannels[1] + kXChannelFirst;
