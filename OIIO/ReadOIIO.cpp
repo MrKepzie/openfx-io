@@ -2235,6 +2235,26 @@ ReadOIIOPlugin::decodePlane(const string& filename,
         }
     }
 
+    if (renderWindowPadded) {
+        // Clear any padding we added outside of renderWindowUnPadded to black
+        // Clear scanlines out of data window to black
+        size_t dataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+        char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ));
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
+            if ( (y < renderWindowUnPadded.y1) || (y >= renderWindowUnPadded.y2) ) {
+                memset ( yptr, 0, pixelBytes * (renderWindow.x2 - renderWindow.x1) );
+                continue;
+            }
+
+            if (renderWindow.x1 < renderWindowUnPadded.x1) {
+                memset (yptr, 0, pixelBytes * (renderWindowUnPadded.x1 - renderWindow.x1));
+            }
+            if (renderWindow.x2 > renderWindowUnPadded.x2) {
+                memset (yptr + renderWindowUnPadded.x2 * pixelBytes, 0, pixelBytes * (renderWindow.x2 - renderWindowUnPadded.x2));
+            }
+        }
+    }
+
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i += incr) {
         incr = 1;
@@ -2257,26 +2277,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
             const int outputChannelBegin = i;
             const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
-
-            if (renderWindowPadded) {
-                // Clear any padding we added outside of renderWindowUnPadded to black
-                // Clear scanlines out of data window to black
-                size_t dataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
-                char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ) + outputChannelBegin );
-                for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
-                    if ( (y < renderWindowUnPadded.y1) || (y >= renderWindowUnPadded.y2) ) {
-                        memset ( yptr, 0, pixelBytes * (renderWindow.x2 - renderWindow.x1) );
-                        continue;
-                    }
-
-                    if (renderWindow.x1 < renderWindowUnPadded.x1) {
-                        memset (yptr, 0, pixelBytes * (renderWindowUnPadded.x1 - renderWindow.x1));
-                    }
-                    if (renderWindow.x2 > renderWindowUnPadded.x2) {
-                        memset (yptr + renderWindowUnPadded.x2 * pixelBytes, 0, pixelBytes * (renderWindow.x2 - renderWindowUnPadded.x2));
-                    }
-                }
-            }
 
             // Start on the last line to invert Y with a negative stride
             // Pass to OIIO the pointer to the first pixel of the last scan-line of the render window.
