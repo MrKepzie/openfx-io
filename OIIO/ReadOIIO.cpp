@@ -944,6 +944,15 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     bool hasZ = hasChannelName(originalView, originalLayer, "Z", subimages[i].channelnames);
                     if (hasX && hasZ) {
                         layer = kReadOIIOXYZLayer;
+                    } else {
+                        bool hasR = hasChannelName(originalView, originalLayer, "R", subimages[i].channelnames);
+                        bool hasG = hasChannelName(originalView, originalLayer, "G", subimages[i].channelnames);
+                        bool hasB = hasChannelName(originalView, originalLayer, "B", subimages[i].channelnames);
+                        bool hasI = hasChannelName(originalView, originalLayer, "I", subimages[i].channelnames);
+                        if (!hasR && !hasG && !hasB && !hasI) {
+                            // Y is for luminance in this case
+                            layer = kReadOIIOColorLayer;
+                        }
                     }
                 } else if (channel == "Z") {
                     //try to put XYZ together, unless Z is alone
@@ -1596,10 +1605,11 @@ ReadOIIOPlugin::guessParamsFromFilename(const string &filename,
             bool hasI = false;
             bool hasA = false;
             for (std::size_t i = 0; i < channels.size(); ++i) {
-                if ( ( channels[i] == "I") || ( channels[i] == "i") ) {
+                // luminance may be I or Y
+                if ( (channels[i] == "I") || (channels[i] == "i") || (channels[i] == "Y") || (channels[i] == "y") ) {
                     hasI = true;
                 }
-                if ( ( channels[i] == "A") || ( channels[i] == "a") ) {
+                if ( (channels[i] == "A") || (channels[i] == "a") ) {
                     hasA = true;
                 }
             }
@@ -1841,7 +1851,10 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const string& filename,
     subImageIndex = foundView->second[foundLayer].second.subImageIdx;
 
     // Some pngs are 2-channel intensity + alpha
-    bool isIA = layerChannels.size() == 2 && foundView->second[foundLayer].second.channelNames[0] == "I" && foundView->second[foundLayer].second.channelNames[1] == "A";
+    bool isIA = (layerChannels.size() == 2 &&
+                 (foundView->second[foundLayer].second.channelNames[0] == "I" ||
+                  foundView->second[foundLayer].second.channelNames[0] == "Y") &&
+                 foundView->second[foundLayer].second.channelNames[1] == "A");
 
     switch (pixelComponents) {
     case ePixelComponentRGBA:
