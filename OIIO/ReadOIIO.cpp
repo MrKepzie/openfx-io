@@ -2131,13 +2131,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
         }
     }
 
-    EdgePixelsEnum edgePixelsMode;
-    {
-        int edgeMode_i;
-        _edgePixels->getValue(edgeMode_i);
-        edgePixelsMode = (EdgePixelsEnum)edgeMode_i;
-    }
-
+    EdgePixelsEnum edgePixelsMode = (EdgePixelsEnum)_edgePixels->getValue();
 
     // Where to write the data in the buffer, everything outside of that is black
     // It depends on the extra padding we added in getFrameBounds
@@ -2256,12 +2250,11 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         continue;
                     }
 
-                    char *xptr = yptr;
-                    for (int x = renderWindow.x1; x < renderWindow.x2; ++x, xptr += xStride) {
-                        if ( (x < renderWindowUnPadded.x1) || (x >= renderWindowUnPadded.x2) ) {
-                            memset (xptr, 0, pixelBytes);
-                            continue;
-                        }
+                    if (renderWindow.x1 < renderWindowUnPadded.x1) {
+                        memset (yptr, 0, pixelBytes * (renderWindowUnPadded.x1 - renderWindow.x1));
+                    }
+                    if (renderWindow.x2 > renderWindowUnPadded.x2) {
+                        memset (yptr + renderWindowUnPadded.x2 * pixelBytes, 0, pixelBytes * (renderWindow.x2 - renderWindowUnPadded.x2));
                     }
                 }
             }
@@ -2312,13 +2305,11 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                             memset ( yptr, 0, pixelBytes * (xend - xbegin) );
                             continue;
                         }
-                        char *xptr = yptr;
-                        for (int x = xbegin; x < xend; ++x, xptr += xStride) {
-                            if ( (x < spec.x) || ( x >= (spec.x + spec.width) ) ) {
-                                // nonexistant columns
-                                memset (xptr, 0, pixelBytes);
-                                continue;
-                            }
+                        if (xbegin < spec.x) {
+                            memset (yptr, 0, pixelBytes * (spec.x - xbegin));
+                        }
+                        if (xend > spec.x + spec.width) {
+                            memset (yptr + spec.width * pixelBytes, 0, pixelBytes * (xend - (spec.x + spec.width)));
                         }
                     }
                 }
