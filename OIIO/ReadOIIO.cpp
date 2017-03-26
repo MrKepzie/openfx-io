@@ -2216,6 +2216,25 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     // Pixel offset to the start of the last line of the render window
     size_t topScanLineDataStartOffset = (size_t)(renderWindowUnPadded.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindowUnPadded.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
 
+    // Clear scanlines out of data window to black
+    // Usually the ImageCache does it for us, but here we may use the API directly
+    if ( !(_cache && useCache) ) {
+        float* topScanLineDataStartPtr =  (float*)( (char*)pixelData + topScanLineDataStartOffset );
+        char* yptr = (char*)topScanLineDataStartPtr;
+        for (int y = ybegin; y < yend; ++y, yptr += -rowBytes) {
+            if ( (y < spec.y) || ( y >= (spec.y + spec.height) ) ) {
+                memset ( yptr, 0, pixelBytes * (xend - xbegin) );
+                continue;
+            }
+            if (xbegin < spec.x) {
+                memset (yptr, 0, pixelBytes * (spec.x - xbegin));
+            }
+            if (xend > spec.x + spec.width) {
+                memset (yptr + spec.width * pixelBytes, 0, pixelBytes * (xend - (spec.x + spec.width)));
+            }
+        }
+    }
+
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i += incr) {
         incr = 1;
@@ -2261,7 +2280,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
 
             // Start on the last line to invert Y with a negative stride
             // Pass to OIIO the pointer to the first pixel of the last scan-line of the render window.
-            float* lastScanLineStarPtr =  (float*)( (char*)pixelData + topScanLineDataStartOffset ) + outputChannelBegin;
+            float* topScanLineDataStartPtr =  (float*)( (char*)pixelData + topScanLineDataStartOffset ) + outputChannelBegin;
             bool gotPixels = false;
             if (_cache && useCache) {
                 gotPixels = _cache->get_pixels(ustring(filename),
@@ -2276,7 +2295,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                                                chbegin, //chan begin
                                                chend, // chan end
                                                TypeDesc::FLOAT, // data type
-                                               lastScanLineStarPtr,// output buffer
+                                               topScanLineDataStartPtr,// output buffer
                                                xStride, //x stride
                                                yStride, //y stride < make it invert Y
                                                AutoStride //z stride
@@ -2296,24 +2315,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
             if (!gotPixels) { // !useCache
                 assert( kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height) );
 
-                // Clear scanlines out of data window to black
-                // Usually the ImageCache does it for us, but here we use the API directly
-                {
-                    char* yptr = (char*)lastScanLineStarPtr;
-                    for (int y = ybegin; y < yend; ++y, yptr += -rowBytes) {
-                        if ( (y < spec.y) || ( y >= (spec.y + spec.height) ) ) {
-                            memset ( yptr, 0, pixelBytes * (xend - xbegin) );
-                            continue;
-                        }
-                        if (xbegin < spec.x) {
-                            memset (yptr, 0, pixelBytes * (spec.x - xbegin));
-                        }
-                        if (xend > spec.x + spec.width) {
-                            memset (yptr + spec.width * pixelBytes, 0, pixelBytes * (xend - (spec.x + spec.width)));
-                        }
-                    }
-                }
-
                 // We clamp to the valid scanlines portion.
                 int ybeginClamped = std::min(std::max(spec.y, ybegin), spec.y + spec.height);
                 int yendClamped = std::min(std::max(spec.y, yend), spec.y + spec.height);
@@ -2331,7 +2332,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                                               chbegin, // chan begin
                                               chend, // chan end
                                               TypeDesc::FLOAT, // data type
-                                              lastScanLineStarPtr,
+                                              topScanLineDataStartPtr,
                                               xStride, //x stride
                                               yStride) ) { //y stride < make it invert Y;
                         setPersistentMessage( Message::eMessageError, "", img->geterror() );
@@ -2342,7 +2343,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                 } else {
                     // If the region to read is not a multiple of tile size we must provide a buffer
                     // with the appropriate size.
-                    float* tiledBuffer = lastScanLineStarPtr;
+                    float* tiledBuffer = topScanLineDataStartPtr;
                     float* tiledBufferToFree = 0;
                     int tiledXBegin = xbeginClamped;
                     int tiledYBegin = ybeginClamped;
@@ -2415,7 +2416,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         // If we allocated a temporary tile-adjusted buffer, we must copy it back into the pixelData buffer.
 
                         // This points to the start of the first pixel of the last scan-line of the render window
-                        char* dst_pix = (char*)lastScanLineStarPtr;
+                        char* dst_pix = (char*)topScanLineDataStartPtr;
 
                         // This is the number of bytes in the final buffer that we want per scan-line
                         std::size_t outputBufferSizeToCopy = (xendClamped - xbeginClamped) * pixelBytes;
