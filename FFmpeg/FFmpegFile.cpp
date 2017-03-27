@@ -188,6 +188,7 @@ const FilterEntry kCodecWhitelist[] =
     { "ffvhuff",        true,  UNSAFEQT0 && UNSAFEVLC },     // Huffyuv FFmpeg variant - write not supported as not official qt readable.
     { "flv",            true,  UNSAFEQT0 },     // FLV / Sorenson Spark / Sorenson H.263 (Flash Video) - write not supported as not official qt readable.
     { "gif",            true,  false },     // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
+    { "h263p",          true,  true },     // H.263+ / H.263-1998 / H.263 version 2
     { "h264",           true,  false },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
     { "hevc",           true,  false },     // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
     { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC },     // HuffYUV - write not supported as not official qt readable.

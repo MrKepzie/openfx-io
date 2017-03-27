@@ -150,6 +150,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "\n" \
     "If the output video should be encoded with specific FFmpeg options, such as a given pixel format or encoding option, it is better to write the output as individual frames in an image format that has a sufficient bit depth, and to encode the set of individual frames to a video using the command-line ffmpeg tool.\n" \
     "\n" \
+    "The settings for the \"Global Quality\" and \"Quality\" parameters may have different meanings for different codecs. See http://slhck.info/video/2017/02/24/vbr-settings.html for a summary of recommended values. Using these settings should be preferred over constant bitrate-based encoding, as it usually gives a much better result.\n" \
+    "\n" \
     "Adding audio\n" \
     "If synchronized audio is available as a separate file, encoded with the right codec, it can be easily added to the video using a command like: ffmpeg -i input.mp4 -i input.mp3 -c copy -map 0:0 -map 1:0 output.mp4 (in this example, input.mp4 contains the video, input.mp3 contains the audio, and output.mp4 co,ntains both tracks).\n" \
     "This command does not re-encode the video or audio, but simply copies the data from each source file and places it in separate streams in the output."
@@ -295,7 +297,7 @@ enum X26xSpeedEnum {
 
 #define kParamQScale "qscale"
 #define kParamQScaleLabel "Global Quality"
-#define kParamQScaleHint "For lossy encoding, this controls image quality, from 0 to 100. For lossless encoding, this controls the effort and time spent at compressing more. -1 or negative value means to use the codec default or CBR (constant bit rate). Used for example by FLV1, mjp2, theo, jpeg, m2v1, mp4v MP42, 3IVD, codecs.\n" \
+#define kParamQScaleHint "For lossy encoding, this controls image quality, from 0 to 100 (the lower, the better, 0 being near-lossless). For lossless encoding, this controls the effort and time spent at compressing more. -1 or negative value means to use the codec default or CBR (constant bit rate). Used for example by FLV1, mjp2, theo, jpeg, m2v1, mp4v MP42, 3IVD, codecs.\n" \
     "Option -qscale in ffmpeg."
 
 #define kParamBitrate "bitrateMbps"
@@ -325,7 +327,7 @@ enum X26xSpeedEnum {
 #define kParamQualityLabel "Quality"
 #define kParamQualityHint \
     "The quality range the codec is allowed to vary the image data quantiser " \
-    "between to attempt to hit the desired bitrate. Higher values mean increased " \
+    "between to attempt to hit the desired bitrate. The lower, the better: higher values mean increased " \
     "image degradation is possible, but with the upside of lower bit rates. " \
     "Only supported by certain codecs (e.g. VP80, VP90, avc1, but not hev1 or mp4v).\n" \
     "-1 means to use the codec default.\n" \
@@ -584,6 +586,7 @@ CreateCodecKnobLabelsMap()
     m["ffvhuff"]       = "FFVH\tHuffyuv FFmpeg variant";
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
     m["gif"]           = "gif \tGIF (Graphics Interchange Format)";
+    m["h263p"]         = "H263\tH.263+ / H.263-1998 / H.263 version 2";
     m["huffyuv"]       = "HFYU\tHuffYUV";
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
@@ -2219,12 +2222,14 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
         if (codecShortName == "mpeg4") {
             // mpeg4videoenc.c
             // supports qscale and bit_rate according to https://trac.ffmpeg.org/wiki/Encode/MPEG-4
+            // but bitrate is used for two-pass encoding, and seems to produce non-reproductible low-quality results:
+            // disable it and always use qscale instead.
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
+            p->bitrate = false;
             p->bitrateTol = false;
             p->qscale = true;
-            p->qrange = false;
+            p->qrange = true;
             //p->interGOP = false;
             //p->interB = false;
         } else if (codecShortName == "libxvid") {
@@ -2288,8 +2293,8 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             // https://www.mankier.com/1/ffmpeg-codecs#Video_Encoders-mpeg2
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false;//true; // disable this in favor of qscale, as for mpeg4
+            p->bitrateTol = false;//true;
             p->qscale = true;
             p->qrange = true;
             p->interGOP = true;
@@ -2308,8 +2313,8 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             // mpeg12enc.c and mpegvideo_enc.c
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false;//true; // disable this in favor of qscale, as for mpeg4
+            p->bitrateTol = false;//true;
             p->qscale = true;
             p->qrange = true;
             p->interGOP = true;
@@ -2319,8 +2324,8 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             // flvenc.c
             p->crf = false;
             p->x26xSpeed = false;
-            p->bitrate = true;
-            p->bitrateTol = true;
+            p->bitrate = false;//true; // disable this in favor of qscale, as for mpeg4
+            p->bitrateTol = false;//true;
             p->qscale = true;
             p->qrange = true;
             //p->interGOP = false;
@@ -2336,7 +2341,8 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             p->interGOP = true;
             p->interB = false;
         } else if (codecShortName == "msmpeg4" ||
-                   codecShortName == "msmpeg4v2") {
+                   codecShortName == "msmpeg4v2" ||
+                   codecShortName == "h263p") {
             // msmpeg4 is h263-based
             p->crf = false;
             p->x26xSpeed = false;
