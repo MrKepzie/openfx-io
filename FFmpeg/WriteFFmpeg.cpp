@@ -2636,6 +2636,9 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
 
                 avCodecContext->bit_rate_tolerance = (int)(bitrateTolerance * 1000000);
             }
+        } else {
+            // avoid warning from mpegvideo_enc.c
+            avCodecContext->bit_rate_tolerance = avCodecContext->bit_rate * av_q2d(avCodecContext->time_base);
         }
     }
     if (p.qrange) {
