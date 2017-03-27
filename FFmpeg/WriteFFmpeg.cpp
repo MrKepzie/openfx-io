@@ -4447,6 +4447,7 @@ WriteFFmpegPlugin::checkCodec()
             // found it! update the choice param
             codec = it - codecsShortNames.begin();
             _codec->setValue(codec);
+            updateVisibility();
             // hide the codec name
             _codecShortName->setIsSecret(true);
         } else {
@@ -4754,6 +4755,7 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
                     for (size_t c = 0; !codecSet && c < codecs.size(); ++c) {
                         if (codecs[c] == default_video_codec) {
                             _codec->setValue(c);
+                            updateVisibility();
                             // exit loop
                             codecSet = true;
                         } else if ( (compatible_codec == -1) && codecCompatible(fmt, codecs[c]) ) {
@@ -4763,6 +4765,7 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
                     // if the default codec was not available, use the first compatible codec
                     if ( !codecSet && (compatible_codec != -1) ) {
                         _codec->setValue(compatible_codec);
+                        updateVisibility();
                     }
                 }
                 // exit loop
