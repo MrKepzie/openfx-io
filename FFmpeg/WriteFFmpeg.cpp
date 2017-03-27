@@ -4340,12 +4340,13 @@ WriteFFmpegPlugin::updateVisibility()
         _codecShortName->setIsSecret(false); // something may be wrong. Make it visible, at least
     } else {
         _codecShortName->setIsSecret(true);
-        if ( (int)codecsShortNames.size() <= index ) {
+        if ( 0 <= index && index < (int)codecsShortNames.size() ) {
             codecShortName = codecsShortNames[index];
         }
     }
 
-    AVCodec* codec = avcodec_find_encoder_by_name( codecShortName.c_str() );
+
+    AVCodec* codec = avcodec_find_encoder_by_name( getCodecFromShortName(codecShortName) );
     CodecParams p;
     if (codec) {
         GetCodecSupportedParams(codec, &p);
@@ -4755,7 +4756,6 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
                     for (size_t c = 0; !codecSet && c < codecs.size(); ++c) {
                         if (codecs[c] == default_video_codec) {
                             _codec->setValue(c);
-                            updateVisibility();
                             // exit loop
                             codecSet = true;
                         } else if ( (compatible_codec == -1) && codecCompatible(fmt, codecs[c]) ) {
@@ -4765,7 +4765,6 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
                     // if the default codec was not available, use the first compatible codec
                     if ( !codecSet && (compatible_codec != -1) ) {
                         _codec->setValue(compatible_codec);
-                        updateVisibility();
                     }
                 }
                 // exit loop
@@ -4775,6 +4774,7 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
     }
     // also check that the codec setting is OK
     checkCodec();
+    updateVisibility();
 } // WriteFFmpegPlugin::onOutputFileChanged
 
 void
@@ -4820,7 +4820,7 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
     } else if ( (paramName == kParamQuality) && (args.reason == eChangeUserEdit) ) {
         int qMin, qMax;
         _quality->getValue(qMin, qMax);
-        if (qMax < qMin) {
+        if (qMax >= 0 && qMin >= 0 && qMax < qMin) {
             // reorder
             _quality->setValue(qMax, qMin);
         }
@@ -4835,7 +4835,19 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
         GenericWriterPlugin::changedParam(args, paramName);
     }
 
-    if (args.reason == eChangeUserEdit) {
+    if (args.reason == eChangeUserEdit &&
+        (paramName == kParamCodec ||
+         paramName == kParamCodecShortName ||
+         paramName == kParamCRF ||
+         paramName == kParamX26xSpeed ||
+         paramName == kParamQScale ||
+         paramName == kParamBitrate ||
+         paramName == kParamBitrateTolerance ||
+         paramName == kParamQuality ||
+         paramName == kParamGopSize ||
+         paramName == kParamBFrames ||
+         paramName == kParamWriteNCLC ||
+         paramName == kParamDNxHDCodecProfile)) {
         // for example, bitrate must be enabled when CRF goes to None or QScale goes to -1
         updateVisibility();
     }
