@@ -471,7 +471,7 @@ public:
     virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     // override isIdentity
-    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime, int& view, std::string& plane) OVERRIDE FINAL;
 
     /* override changedParam */
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
@@ -2341,7 +2341,8 @@ SeExprPlugin::changedParam(const InstanceChangedArgs &args,
 bool
 SeExprPlugin::isIdentity(const IsIdentityArguments &args,
                          Clip * &identityClip,
-                         double & /*identityTime*/)
+                         double & /*identityTime*/
+                         , int& /*view*/, std::string& /*plane*/)
 {
     const double time = args.time;
 

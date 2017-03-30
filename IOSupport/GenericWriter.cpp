@@ -314,7 +314,8 @@ GenericWriterPlugin::checkExtension(const string& ext)
 bool
 GenericWriterPlugin::isIdentity(const IsIdentityArguments &args,
                                 Clip * & /*identityClip*/,
-                                double & /*identityTime*/)
+                                double & /*identityTime*/
+                                , int& /*view*/, std::string& /*plane*/)
 {
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
         throwSuiteStatusException(kOfxStatFailed);

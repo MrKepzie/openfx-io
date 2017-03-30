@@ -164,7 +164,7 @@ public:
     /* override is identity */
     virtual bool isIdentity(const IsIdentityArguments & /*args*/,
                             Clip * & /*identityClip*/,
-                            double & /*identityTime*/) OVERRIDE FINAL
+                            double & /*identityTime*/, int& /*view*/, std::string& /*plane*/) OVERRIDE FINAL
     {
         return false;
     }

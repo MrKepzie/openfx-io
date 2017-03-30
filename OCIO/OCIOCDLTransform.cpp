@@ -149,7 +149,7 @@ public:
     virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime, int& view, std::string& plane) OVERRIDE FINAL;
 
     /** @brief the effect is about to be actively edited by a user, called when the first user interface is opened on an instance */
     virtual void beginEdit(void) OVERRIDE FINAL;
@@ -975,7 +975,8 @@ OCIOCDLTransformPlugin::render(const RenderArguments &args)
 bool
 OCIOCDLTransformPlugin::isIdentity(const IsIdentityArguments &args,
                                    Clip * &identityClip,
-                                   double & /*identityTime*/)
+                                   double & /*identityTime*/
+                                   , int& /*view*/, std::string& /*plane*/)
 {
     const double time = args.time;
     float sop[9];

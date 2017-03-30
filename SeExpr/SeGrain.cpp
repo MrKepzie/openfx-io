@@ -433,7 +433,7 @@ private:
 
     bool getInverseTransformCanonical(double time, Matrix3x3* invtransform) const;
 
-    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime, int& view, std::string& plane) OVERRIDE FINAL;
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
 
     /* Override the clip preferences, we need to say we are setting the frame varying flag */
@@ -628,7 +628,8 @@ SeGrainPlugin::renderForBitDepth(const RenderArguments &args)
 bool
 SeGrainPlugin::isIdentity(const IsIdentityArguments &args,
                           Clip * &identityClip,
-                          double & /*identityTime*/)
+                          double & /*identityTime*/
+                          , int& /*view*/, std::string& /*plane*/)
 {
     //std::cout << "isIdentity!\n";
     const double time = args.time;

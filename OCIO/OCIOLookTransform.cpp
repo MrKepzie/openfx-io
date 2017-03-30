@@ -141,7 +141,7 @@ private:
     virtual void render(const RenderArguments &args) OVERRIDE FINAL;
 
     /* override is identity */
-    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime) OVERRIDE FINAL;
+    virtual bool isIdentity(const IsIdentityArguments &args, Clip * &identityClip, double &identityTime, int& view, std::string& plane) OVERRIDE FINAL;
 
     /* override changedParam */
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
@@ -931,7 +931,8 @@ OCIOLookTransformPlugin::render(const RenderArguments &args)
 bool
 OCIOLookTransformPlugin::isIdentity(const IsIdentityArguments &args,
                                     Clip * &identityClip,
-                                    double & /*identityTime*/)
+                                    double & /*identityTime*/
+                                    , int& /*view*/, std::string& /*plane*/)
 {
     if ( _ocio->isIdentity(args.time) ) {
         bool singleLook;

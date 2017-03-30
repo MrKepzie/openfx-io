@@ -2447,7 +2447,7 @@ ReadOIIOPlugin::getFrameBounds(const string& filename,
                                OfxRectI *bounds,
                                OfxRectI *format,
                                double *par,
-                               string *error,
+                               string */*error*/,
                                int* tile_width,
                                int* tile_height)
 {
