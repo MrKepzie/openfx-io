@@ -2040,7 +2040,7 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
 
         bool setColorSpace = true;
 #ifdef OFX_IO_USING_OCIO
-        // if inputSpaceSet == true (output space was manually set by user) then setColorSpace = false
+        // if inputSpaceSet == true (input space was manually set by user) then setColorSpace = false
         if ( _inputSpaceSet->getValue() ) {
             setColorSpace = false;
         }
@@ -2086,8 +2086,11 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
             if (colorSpaceStr) {
                 assert( _ocio->hasColorspace(colorSpaceStr) ); // parseColorSpaceFromString always returns an existing colorspace
                 // we're lucky
-                _ocio->setInputColorspace( colorspace.c_str() );
+                _ocio->setInputColorspace(colorSpaceStr);
                 setColorSpace = false;
+            }
+            if (setColorSpace) {
+                _ocio->setInputColorspace( colorspace.c_str() );
             }
         }
 
