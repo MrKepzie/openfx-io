@@ -931,6 +931,15 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     bool hasZ = hasChannelName(originalView, originalLayer, "Z", subimages[i].channelnames);
                     if (hasX && hasZ) {
                         layer = kReadOIIOXYZLayer;
+                    } else {
+                        bool hasR = hasChannelName(originalView, originalLayer, "R", subimages[i].channelnames);
+                        bool hasG = hasChannelName(originalView, originalLayer, "G", subimages[i].channelnames);
+                        bool hasB = hasChannelName(originalView, originalLayer, "B", subimages[i].channelnames);
+                        bool hasI = hasChannelName(originalView, originalLayer, "I", subimages[i].channelnames);
+                        if (!hasR && !hasG && !hasB && !hasI) {
+                            // Y is for luminance in this case
+                            layer = kReadOIIOColorLayer;
+                        }
                     }
                 } else if (channel == "Z") {
                     //try to put XYZ together, unless Z is alone
@@ -1583,10 +1592,11 @@ ReadOIIOPlugin::guessParamsFromFilename(const string &filename,
             bool hasI = false;
             bool hasA = false;
             for (std::size_t i = 0; i < channels.size(); ++i) {
-                if ( ( channels[i] == "I") || ( channels[i] == "i") ) {
+                // luminance may be I or Y
+                if ( (channels[i] == "I") || (channels[i] == "i") || (channels[i] == "Y") || (channels[i] == "y") ) {
                     hasI = true;
                 }
-                if ( ( channels[i] == "A") || ( channels[i] == "a") ) {
+                if ( (channels[i] == "A") || (channels[i] == "a") ) {
                     hasA = true;
                 }
             }
@@ -1828,7 +1838,10 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const string& filename,
     subImageIndex = foundView->second[foundLayer].second.subImageIdx;
 
     // Some pngs are 2-channel intensity + alpha
-    bool isIA = layerChannels.size() == 2 && foundView->second[foundLayer].second.channelNames[0] == "I" && foundView->second[foundLayer].second.channelNames[1] == "A";
+    bool isIA = (layerChannels.size() == 2 &&
+                 (foundView->second[foundLayer].second.channelNames[0] == "I" ||
+                  foundView->second[foundLayer].second.channelNames[0] == "Y") &&
+                 foundView->second[foundLayer].second.channelNames[1] == "A");
 
     switch (pixelComponents) {
     case ePixelComponentRGBA:
@@ -1844,7 +1857,7 @@ ReadOIIOPlugin::getOIIOChannelIndexesFromLayerName(const string& filename,
                 channels[0] = layerChannels[0] + kXChannelFirst;
                 channels[1] = layerChannels[0] + kXChannelFirst;
                 channels[2] = layerChannels[0] + kXChannelFirst;
-                channels[3] = layerChannels[0] + kXChannelFirst;
+                channels[3] = 1;
             } else if (layerChannels.size() == 2) {
                 channels[0] = layerChannels[0] + kXChannelFirst;
                 channels[1] = layerChannels[1] + kXChannelFirst;
@@ -2106,13 +2119,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
         }
     }
 
-    EdgePixelsEnum edgePixelsMode;
-    {
-        int edgeMode_i;
-        _edgePixels->getValue(edgeMode_i);
-        edgePixelsMode = (EdgePixelsEnum)edgeMode_i;
-    }
-
+    EdgePixelsEnum edgePixelsMode = (EdgePixelsEnum)_edgePixels->getValue();
 
     // Where to write the data in the buffer, everything outside of that is black
     // It depends on the extra padding we added in getFrameBounds
@@ -2197,9 +2204,67 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     // Pixel offset to the start of the last line of the render window
     size_t topScanLineDataStartOffset = (size_t)(renderWindowUnPadded.y2 - 1 - bounds.y1) * rowBytes + (size_t)(renderWindowUnPadded.x1 - bounds.x1) * pixelBytes; // offset for line y2-1
 
+    // Clear scanlines out of data window to black
+    // Usually the ImageCache does it for us, but here we may use the API directly
+    if ( !(_cache && useCache) ) {
+        float* topScanLineDataStartPtr =  (float*)( (char*)pixelData + topScanLineDataStartOffset );
+        char* yptr = (char*)topScanLineDataStartPtr;
+        for (int y = ybegin; y < yend; ++y, yptr += -rowBytes) {
+            if ( (y < spec.y) || ( y >= (spec.y + spec.height) ) ) {
+                memset ( yptr, 0, pixelBytes * (xend - xbegin) );
+                continue;
+            }
+            if (xbegin < spec.x) {
+                memset (yptr, 0, pixelBytes * (spec.x - xbegin));
+            }
+            if (xend > spec.x + spec.width) {
+                memset (yptr + spec.width * pixelBytes, 0, pixelBytes * (xend - (spec.x + spec.width)));
+            }
+        }
+    }
+
+    if (renderWindowPadded) {
+        // Clear any padding we added outside of renderWindowUnPadded to black
+        // Clear scanlines out of data window to black
+        size_t dataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
+        char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ));
+        for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
+            if ( (y < renderWindowUnPadded.y1) || (y >= renderWindowUnPadded.y2) ) {
+                memset ( yptr, 0, pixelBytes * (renderWindow.x2 - renderWindow.x1) );
+                continue;
+            }
+
+            if (renderWindow.x1 < renderWindowUnPadded.x1) {
+                memset (yptr, 0, pixelBytes * (renderWindowUnPadded.x1 - renderWindow.x1));
+            }
+            if (renderWindow.x2 > renderWindowUnPadded.x2) {
+                memset (yptr + renderWindowUnPadded.x2 * pixelBytes, 0, pixelBytes * (renderWindow.x2 - renderWindowUnPadded.x2));
+            }
+        }
+    }
+
     std::size_t incr; // number of channels processed
     for (std::size_t i = 0; i < channels.size(); i += incr) {
         incr = 1;
+        // if the channel was already read, just duplicate it (calling multiple times read_scanlines() on the same channel seems buggy in OIIO 1.7.12)
+        bool duplicate = false;
+        for (std::size_t j = 0; !duplicate && j < i; ++j) {
+            if (channels[i] == channels[j]) {
+                char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ) );
+                for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
+                    float* xptr = (float*)yptr;
+                    for (int x = renderWindow.x1; x < renderWindow.x2; ++x, xptr += numChannels) {
+                        xptr[i] = xptr[j];
+                    }
+                }
+                duplicate = true;
+            }
+        }
+        if (duplicate) {
+            // this channels was a duplicate
+            continue;
+        }
+
         if (channels[i] < kXChannelFirst) {
             // fill channel with constant value
             char* lineStart = (char*)pixelData + bottomScanLineDataStartOffset;
@@ -2220,30 +2285,9 @@ ReadOIIOPlugin::decodePlane(const string& filename,
             const int chbegin = channels[i] - kXChannelFirst; // start channel for reading
             const int chend = chbegin + incr; // last channel + 1
 
-            if (renderWindowPadded) {
-                // Clear any padding we added outside of renderWindowUnPadded to black
-                // Clear scanlines out of data window to black
-                size_t dataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
-                char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ) + outputChannelBegin );
-                for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
-                    if ( (y < renderWindowUnPadded.y1) || (y >= renderWindowUnPadded.y2) ) {
-                        memset ( yptr, 0, pixelBytes * (renderWindow.x2 - renderWindow.x1) );
-                        continue;
-                    }
-
-                    char *xptr = yptr;
-                    for (int x = renderWindow.x1; x < renderWindow.x2; ++x, xptr += xStride) {
-                        if ( (x < renderWindowUnPadded.x1) || (x >= renderWindowUnPadded.x2) ) {
-                            memset (xptr, 0, pixelBytes);
-                            continue;
-                        }
-                    }
-                }
-            }
-
             // Start on the last line to invert Y with a negative stride
             // Pass to OIIO the pointer to the first pixel of the last scan-line of the render window.
-            float* lastScanLineStarPtr =  (float*)( (char*)pixelData + topScanLineDataStartOffset ) + outputChannelBegin;
+            float* topScanLineDataStartPtr =  (float*)( (char*)pixelData + topScanLineDataStartOffset ) + outputChannelBegin;
             bool gotPixels = false;
             if (_cache && useCache) {
                 gotPixels = _cache->get_pixels(ustring(filename),
@@ -2258,7 +2302,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                                                chbegin, //chan begin
                                                chend, // chan end
                                                TypeDesc::FLOAT, // data type
-                                               lastScanLineStarPtr,// output buffer
+                                               topScanLineDataStartPtr,// output buffer
                                                xStride, //x stride
                                                yStride, //y stride < make it invert Y
                                                AutoStride //z stride
@@ -2278,26 +2322,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
             if (!gotPixels) { // !useCache
                 assert( kSupportsTiles || (!kSupportsTiles && (renderWindow.x2 - renderWindow.x1) == spec.width && (renderWindow.y2 - renderWindow.y1) == spec.height) );
 
-                // Clear scanlines out of data window to black
-                // Usually the ImageCache does it for us, but here we use the API directly
-                {
-                    char* yptr = (char*)lastScanLineStarPtr;
-                    for (int y = ybegin; y < yend; ++y, yptr += -rowBytes) {
-                        if ( (y < spec.y) || ( y >= (spec.y + spec.height) ) ) {
-                            memset ( yptr, 0, pixelBytes * (xend - xbegin) );
-                            continue;
-                        }
-                        char *xptr = yptr;
-                        for (int x = xbegin; x < xend; ++x, xptr += xStride) {
-                            if ( (x < spec.x) || ( x >= (spec.x + spec.width) ) ) {
-                                // nonexistant columns
-                                memset (xptr, 0, pixelBytes);
-                                continue;
-                            }
-                        }
-                    }
-                }
-
                 // We clamp to the valid scanlines portion.
                 int ybeginClamped = std::min(std::max(spec.y, ybegin), spec.y + spec.height);
                 int yendClamped = std::min(std::max(spec.y, yend), spec.y + spec.height);
@@ -2315,7 +2339,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                                               chbegin, // chan begin
                                               chend, // chan end
                                               TypeDesc::FLOAT, // data type
-                                              lastScanLineStarPtr,
+                                              topScanLineDataStartPtr,
                                               xStride, //x stride
                                               yStride) ) { //y stride < make it invert Y;
                         setPersistentMessage( Message::eMessageError, "", img->geterror() );
@@ -2326,7 +2350,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                 } else {
                     // If the region to read is not a multiple of tile size we must provide a buffer
                     // with the appropriate size.
-                    float* tiledBuffer = lastScanLineStarPtr;
+                    float* tiledBuffer = topScanLineDataStartPtr;
                     float* tiledBufferToFree = 0;
                     int tiledXBegin = xbeginClamped;
                     int tiledYBegin = ybeginClamped;
@@ -2399,7 +2423,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         // If we allocated a temporary tile-adjusted buffer, we must copy it back into the pixelData buffer.
 
                         // This points to the start of the first pixel of the last scan-line of the render window
-                        char* dst_pix = (char*)lastScanLineStarPtr;
+                        char* dst_pix = (char*)topScanLineDataStartPtr;
 
                         // This is the number of bytes in the final buffer that we want per scan-line
                         std::size_t outputBufferSizeToCopy = (xendClamped - xbeginClamped) * pixelBytes;

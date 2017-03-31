@@ -39,6 +39,9 @@
 
 using namespace OFX;
 using namespace OFX::IO;
+#ifdef OFX_IO_USING_OCIO
+namespace OCIO = OCIO_NAMESPACE;
+#endif
 
 using std::string;
 using std::vector;
@@ -100,6 +103,11 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kWritePNGParamBitDepthUByte "8-bit"
 #define kWritePNGParamBitDepthUShort "16-bit"
+
+enum PNGBitDepthEnum {
+    ePNGBitDepthUByte = 0,
+    ePNGBitDepthUShort,
+};
 
 #define kWritePNGParamDither "enableDithering"
 #define kWritePNGParamDitherLabel "Dithering"
@@ -386,7 +394,7 @@ private:
                      int height,
                      double par,
                      const string& outputColorspace,
-                     BitDepthEnum bitdepth);
+                     PNGBitDepthEnum bitdepth);
 
     template <int srcNComps, int dstNComps>
     void add_dither_for_components(OfxTime time,
@@ -476,25 +484,52 @@ WritePNGPlugin::write_info (png_structp& sp,
                             int height,
                             double par,
                             const string& ocioColorspace,
-                            BitDepthEnum bitdepth)
+                            PNGBitDepthEnum bitdepth)
 {
-    int pixelBytes = bitdepth == eBitDepthUByte ? sizeof(unsigned char) : sizeof(unsigned short);
+    int pixelBytes = bitdepth == ePNGBitDepthUByte ? sizeof(unsigned char) : sizeof(unsigned short);
 
     png_set_IHDR (sp, ip, width, height, pixelBytes * 8, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-    png_set_oFFs (sp, ip, x1, y1, PNG_OFFSET_PIXEL);
-
-
-    if ( (ocioColorspace == "sRGB") || (ocioColorspace == "sRGB D65") || (ocioColorspace == "sRGB (D60 sim.)") || (ocioColorspace == "out_srgbd60sim") || (ocioColorspace == "rrt_srgb") || (ocioColorspace == "srgb8") ) {
-        png_set_sRGB_gAMA_and_cHRM (sp, ip, PNG_sRGB_INTENT_ABSOLUTE);
-    } else if (ocioColorspace == "Gamma1.8") {
-        png_set_gAMA (sp, ip, 1.0f / 1.8);
-    } else if ( (ocioColorspace == "Gamma2.2") || (ocioColorspace == "vd8") || (ocioColorspace == "vd10") || (ocioColorspace == "vd16") || (ocioColorspace == "VD16") ) {
-        png_set_gAMA (sp, ip, 1.0f / 2.2);
-    } else if ( (ocioColorspace == "Linear") || (ocioColorspace == "linear") || (ocioColorspace == "ACES2065-1") || (ocioColorspace == "aces") || (ocioColorspace == "lnf") || (ocioColorspace == "ln16") ) {
-        png_set_gAMA (sp, ip, 1.0);
+    if (x1 != 0 || y1 != 0) {
+        png_set_oFFs (sp, ip, x1, y1, PNG_OFFSET_PIXEL);
     }
 
+#if defined(PNG_GAMMA_SUPPORTED)
+    if ( (ocioColorspace == "sRGB") ||
+         (ocioColorspace == "sRGB D65") ||
+         (ocioColorspace == "sRGB (D60 sim.)") ||
+         (ocioColorspace == "out_srgbd60sim") ||
+         (ocioColorspace == "rrt_srgb") ||
+         (ocioColorspace == "srgb8") ) {
+        png_set_sRGB_gAMA_and_cHRM (sp, ip, PNG_sRGB_INTENT_ABSOLUTE);
+    } else if (ocioColorspace == "Gamma1.8") {
+#ifdef PNG_GAMMA_MAC_18 // appeared in libpng 1.5.4
+        png_set_gAMA_fixed(sp, ip, PNG_GAMMA_MAC_18);
+#else
+        png_set_gAMA(sp, ip, 1.0f / 1.8);
+#endif
+    } else if ( (ocioColorspace == "Gamma2.2") ||
+                (ocioColorspace == "vd8") ||
+                (ocioColorspace == "vd10") ||
+                (ocioColorspace == "vd16") ||
+                (ocioColorspace == "VD16") ) {
+        png_set_gAMA (sp, ip, 1.0f / 2.2);
+    } else if ( (ocioColorspace == OCIO::ROLE_SCENE_LINEAR) ||
+                (ocioColorspace == "Linear") ||
+                (ocioColorspace == "linear") ||
+                (ocioColorspace == "ACES2065-1") ||
+                (ocioColorspace == "aces") ||
+                (ocioColorspace == "lnf") ||
+                (ocioColorspace == "ln16") ) {
+#ifdef PNG_GAMMA_LINEAR // appeared in libpng 1.5.4
+        png_set_gAMA_fixed(sp, ip, PNG_GAMMA_LINEAR);
+#else
+        png_set_gAMA_fixed(sp, ip, PNG_FP_1);
+        //png_set_gAMA(sp, ip, 1.0);
+#endif
+    }
+#endif
 
+#ifdef PNG_iCCP_SUPPORTED
     // Write ICC profile, if we have anything
     /*const ImageIOParameter* icc_profile_parameter = spec.find_attribute(ICC_PROFILE_ATTR);
        if (icc_profile_parameter != NULL) {
@@ -509,6 +544,7 @@ WritePNGPlugin::write_info (png_structp& sp,
        png_set_iCCP (sp, ip, (png_charp)"Embedded Profile", 0, icc_profile, length);
      #endif
        }*/
+#endif
 
     /*if (false && ! spec.find_attribute("DateTime")) {
        time_t now;
@@ -521,16 +557,23 @@ WritePNGPlugin::write_info (png_structp& sp,
        spec.attribute ("DateTime", date);
        }*/
 
+#ifdef PNG_pHYs_SUPPORTED
+    // pHYs chunk does not need to be written (unless we has real metadata or there is a PARE)
     /*string_view unitname = spec.get_string_attribute ("ResolutionUnit");
        float xres = spec.get_float_attribute ("XResolution");
        float yres = spec.get_float_attribute ("YResolution");*/
-    int unittype = PNG_RESOLUTION_METER;
-    float scale = 100.0 / 2.54;
-    float xres = 100.0f;
-    float yres = xres * (par ? par : 1.0f);
-    png_set_pHYs (sp, ip, (png_uint_32)(xres * scale),
-                  (png_uint_32)(yres * scale), unittype);
-
+    if (par != 1.) {
+        // PAR values:
+        // PAL 4:3 is 59:54 or 12:11
+        // PAL 16:9 is 118:81 or 16:11
+        // NTSC 4:3 is 10:11
+        // NTSC 16:9 is 40:33
+        // HDV is 4:3
+        // We scale by the least common multiple of all the denominators, eg 9*6*9*11 = 5346
+        // in order to get integer values in most cases.
+        png_set_pHYs (sp, ip, (png_uint_32)(5346), (png_uint_32)(5346 * par + 0.5), PNG_RESOLUTION_UNKNOWN);
+    }
+#endif
 
     // Deal with all other params
     /*for (size_t p = 0;  p < spec.extra_attribs.size();  ++p)
@@ -693,13 +736,14 @@ WritePNGPlugin::encode(const string& filename,
         break;
     }
 
-    int bitdepth_i;
-    _bitdepth->getValue(bitdepth_i);
+    PNGBitDepthEnum pngDepth = (PNGBitDepthEnum)_bitdepth->getValueAtTime(time);
+    string ocioColorspace;
+#ifdef OFX_IO_USING_OCIO
+    _ocio->getOutputColorspace(ocioColorspace);
+#endif
+    write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, ocioColorspace, pngDepth);
 
-    BitDepthEnum pngDetph = bitdepth_i == 0 ? eBitDepthUByte : eBitDepthUShort;
-    write_info(png, info, color_type, bounds.x1, bounds.y1, bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, pixelAspectRatio, string() /*colorSpace*/, pngDetph);
-
-    int bitDepthSize = ( (pngDetph == eBitDepthUShort) ? sizeof(unsigned short) : sizeof(unsigned char) );
+    int bitDepthSize = ( (pngDepth == ePNGBitDepthUShort) ? sizeof(unsigned short) : sizeof(unsigned char) );
 
     // Convert the float buffer to the buffer used by PNG
     int dstRowElements = (bounds.x2 - bounds.x1) * dstNComps;
@@ -716,7 +760,7 @@ WritePNGPlugin::encode(const string& filename,
 
     const float* src_pixels = pixelData;
 
-    if (pngDetph == eBitDepthUByte) {
+    if (pngDepth == ePNGBitDepthUByte) {
         bool ditherEnabled = _ditherEnabled->getValue();
 
         unsigned char* dstPixelData = scratchBuffer.getData();
@@ -740,7 +784,7 @@ WritePNGPlugin::encode(const string& filename,
             add_dither(time, ditherSeed, src_pixels, bounds, dst_pixels, srcRowElements, dstRowElements, dstNCompsStartIndex, pixelDataNComps, dstNComps);
         }
     } else {
-        assert(pngDetph == eBitDepthUShort);
+        assert(pngDepth == ePNGBitDepthUShort);
 
         unsigned short* dstPixelData = reinterpret_cast<unsigned short*>( scratchBuffer.getData() );
         unsigned short* dst_pixels = dstPixelData;
@@ -788,51 +832,40 @@ WritePNGPlugin::onOutputFileChanged(const string & /*filename*/,
                                     bool setColorSpace)
 {
     if (setColorSpace) {
-        int bitdepth_i;
-        _bitdepth->getValue(bitdepth_i);
+        PNGBitDepthEnum bitdepth = (PNGBitDepthEnum)_bitdepth->getValue();
 #     ifdef OFX_IO_USING_OCIO
-        // Unless otherwise specified, pfm files are assumed to be linear.
-        if (bitdepth_i == 0) {
-            // byte, use sRGB
+        switch (bitdepth) {
+        case ePNGBitDepthUByte: {
+            // use sRGB for PNG
             if ( _ocio->hasColorspace("sRGB") ) {
-                // nuke-default
+                // nuke-default, blender, natron
                 _ocio->setOutputColorspace("sRGB");
             } else if ( _ocio->hasColorspace("sRGB D65") ) {
                 // blender-cycles
                 _ocio->setOutputColorspace("sRGB D65");
+            } else if ( _ocio->hasColorspace("sRGB (D60 sim.)") ) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                _ocio->setOutputColorspace("sRGB (D60 sim.)");
+            } else if ( _ocio->hasColorspace("out_srgbd60sim") ) {
+                // out_srgbd60sim or "sRGB (D60 sim.)" in aces 1.0.0
+                _ocio->setOutputColorspace("out_srgbd60sim");
+            } else if ( _ocio->hasColorspace("rrt_Gamma2.2") ) {
+                // rrt_Gamma2.2 in aces 0.7.1
+                _ocio->setOutputColorspace("rrt_Gamma2.2");
             } else if ( _ocio->hasColorspace("rrt_srgb") ) {
-                // rrt_srgb in aces
+                // rrt_srgb in aces 0.1.1
                 _ocio->setOutputColorspace("rrt_srgb");
             } else if ( _ocio->hasColorspace("srgb8") ) {
                 // srgb8 in spi-vfx
                 _ocio->setOutputColorspace("srgb8");
             }
-        } else {
-            // short, use Rec709
-            if ( _ocio->hasColorspace("Rec709") ) {
-                // nuke-default
-                _ocio->setOutputColorspace("Rec709");
-            } else if ( _ocio->hasColorspace("nuke_rec709") ) {
-                // blender
-                _ocio->setOutputColorspace("nuke_rec709");
-            } else if ( _ocio->hasColorspace("Rec.709 - Full") ) {
-                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                _ocio->setOutputColorspace("Rec.709 - Full");
-            } else if ( _ocio->hasColorspace("out_rec709full") ) {
-                // out_rec709full or "Rec.709 - Full" in aces 1.0.0
-                _ocio->setOutputColorspace("out_rec709full");
-            } else if ( _ocio->hasColorspace("rrt_rec709_full_100nits") ) {
-                // rrt_rec709_full_100nits in aces 0.7.1
-                _ocio->setOutputColorspace("rrt_rec709_full_100nits");
-            } else if ( _ocio->hasColorspace("rrt_rec709") ) {
-                // rrt_rec709 in aces 0.1.1
-                _ocio->setOutputColorspace("rrt_rec709");
-            } else if ( _ocio->hasColorspace("hd10") ) {
-                // hd10 in spi-anim and spi-vfx
-                _ocio->setOutputColorspace("hd10");
-            }
+            break;
         }
-
+        case ePNGBitDepthUShort: {
+            _ocio->setOutputColorspace(OCIO::ROLE_SCENE_LINEAR);
+            break;
+        }
+        }
 #     endif
     }
 } // WritePNGPlugin::onOutputFileChanged
@@ -930,7 +963,9 @@ WritePNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamBitDepth);
         param->setLabel(kWritePNGParamBitDepthLabel);
         param->setHint(kWritePNGParamBitDepthHint);
+        assert(param->getNOptions() == ePNGBitDepthUByte);
         param->appendOption(kWritePNGParamBitDepthUByte);
+        assert(param->getNOptions() == ePNGBitDepthUShort);
         param->appendOption(kWritePNGParamBitDepthUShort);
         param->setDefault(0);
         param->setLayoutHint(eLayoutHintNoNewLine);

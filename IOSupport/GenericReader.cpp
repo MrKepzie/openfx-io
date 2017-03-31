@@ -273,6 +273,7 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     : ImageEffect(handle)
     , _missingFrameParam(0)
 #ifdef OFX_IO_USING_OCIO
+    , _inputSpaceSet(NULL)
     , _ocio( new GenericOCIO(this) )
 #endif
     , _outputClip(0)
@@ -333,6 +334,9 @@ GenericReaderPlugin::GenericReaderPlugin(OfxImageEffectHandle handle,
     }
     _guessedParams = fetchBooleanParam(kParamGuessedParams);
 
+#ifdef OFX_IO_USING_OCIO
+    _inputSpaceSet = fetchBooleanParam(kParamInputSpaceSet);
+#endif
 
     // must be in sync with GenericReaderDescribeInContextBegin
     int i = 0;
@@ -2039,7 +2043,12 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
             return;
         }
 
+        bool setColorSpace = true;
 #ifdef OFX_IO_USING_OCIO
+        // if inputSpaceSet == true (input space was manually set by user) then setColorSpace = false
+        if ( _inputSpaceSet->getValue() ) {
+            setColorSpace = false;
+        }
         // Colorspace parsed from filename overrides the file colorspace,
         // following recommendations from http://opencolorio.org/configurations/spi_pipeline.html
         // However, as discussed in https://groups.google.com/forum/#!topic/ocio-dev/dfOxq8Nanl8
@@ -2048,7 +2057,7 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
         // https://github.com/imageworks/OpenColorIO/pull/381 or
         // https://github.com/imageworks/OpenColorIO/pull/413 may be merged.
         OCIO::ConstConfigRcPtr ocioConfig = _ocio->getConfig();
-        if (ocioConfig) {
+        if (setColorSpace && ocioConfig) {
             string name = filename;
             (void)SequenceParsing::removePath(name); // only use the file NAME
             const char* colorSpaceStr = ocioConfig->parseColorSpaceFromString( name.c_str() );
@@ -2082,10 +2091,13 @@ GenericReaderPlugin::changedFilename(const InstanceChangedArgs &args)
             if (colorSpaceStr) {
                 assert( _ocio->hasColorspace(colorSpaceStr) ); // parseColorSpaceFromString always returns an existing colorspace
                 // we're lucky
-                colorspace = colorSpaceStr;
+                _ocio->setInputColorspace(colorSpaceStr);
+                setColorSpace = false;
+            }
+            if (setColorSpace) {
+                _ocio->setInputColorspace( colorspace.c_str() );
             }
         }
-        _ocio->setInputColorspace( colorspace.c_str() );
 
         // Refreshing the choice menus of ocio is required since the instanceChanged action
         // may not be called recursively during the createInstance action
@@ -2299,6 +2311,12 @@ GenericReaderPlugin::changedParam(const InstanceChangedArgs &args,
                 }
             }
         }
+#ifdef OFX_IO_USING_OCIO
+    } else if ( ( (paramName == kOCIOParamInputSpace) || (paramName == kOCIOParamInputSpaceChoice) ) &&
+               ( args.reason == eChangeUserEdit) ) {
+        // set the inputSpaceSet param to true https://github.com/MrKepzie/Natron/issues/1492
+        _inputSpaceSet->setValue(true);
+#endif
     }
 
 #ifdef OFX_IO_USING_OCIO
