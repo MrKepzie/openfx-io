@@ -1862,6 +1862,7 @@
 					"-lpng16",
 					"-lz",
 					"$(inherited)",
+					"-lraw_r",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -1911,6 +1912,7 @@
 					"-lpng16",
 					"-lz",
 					"$(inherited)",
+					"-lraw_r",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
