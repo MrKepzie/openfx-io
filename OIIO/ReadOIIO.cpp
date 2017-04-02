@@ -740,10 +740,10 @@ extractLayerName(const string& encodedLayerName,
 
         return;
     }
-    size_t firstDot = layerDotPrefix.find_first_of(".");
+    size_t firstDot = layerDotPrefix.find_last_of(".", lastdot - 1);
     if (firstDot != string::npos) {
-        *viewName = layerDotPrefix.substr(0, firstDot);
-        *layerName = layerDotPrefix.substr(firstDot + 1);
+        *viewName = layerDotPrefix.substr(firstDot + 1, lastdot - (firstDot + 1));
+        *layerName = layerDotPrefix.substr(0, firstDot);
     } else {
         *layerName = layerDotPrefix;
     }
