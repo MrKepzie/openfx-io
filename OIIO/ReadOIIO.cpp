@@ -909,24 +909,8 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
             }
 
             //Extract the view layer and channel to our format so we can compare strings
-            string originalView, originalLayer, channel;
-            extractLayerName(layerChanName, views, &originalView, &originalLayer, &channel);
-            string view = originalView;
-            string layer = originalLayer;
-
-            if ( view.empty() && !partsViewAttribute.empty() && ( i < partsViewAttribute.size() ) && !partsViewAttribute[i].empty() ) {
-                view = partsViewAttribute[i];
-            }
-            if ( view.empty() && !layer.empty() ) {
-                ///Check if the layer we parsed is in fact not a view name
-                for (std::size_t v = 0; v < views.size(); ++v) {
-                    if ( caseInsensitiveCompare(views[v], layer) ) {
-                        view = layer;
-                        layer.clear();
-                        break;
-                    }
-                }
-            }
+            string view, layer, channel;
+            extractLayerName(layerChanName, views, &view, &layer, &channel);
 
             ViewsLayersMap::iterator foundView = layersMap->end();
             if ( view.empty() ) {
@@ -940,13 +924,6 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     }
                 }
             }
-            if ( foundView == layersMap->end() ) {
-                //The view does not exist in the metadata, this is probably a channel named aaa.bbb.c, just concatenate aaa.bbb as a single layer name
-                //and put it in the "Main" view
-                layer = view + "." + layer;
-                view.clear();
-                foundView = layersMap->begin();
-            }
 
             assert( foundView != layersMap->end() );
 
@@ -957,22 +934,22 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     layer = kReadOIIOColorLayer;
                 } else if (channel == "X") {
                     //try to put XYZ together, unless Z is alone
-                    bool hasY = hasChannelName(views, originalView, originalLayer, "Y", subimages[i].channelnames);
-                    bool hasZ = hasChannelName(views, originalView, originalLayer, "Z", subimages[i].channelnames);
+                    bool hasY = hasChannelName(views, view, layer, "Y", subimages[i].channelnames);
+                    bool hasZ = hasChannelName(views, view, layer, "Z", subimages[i].channelnames);
                     if (hasY && hasZ) {
                         layer = kReadOIIOXYZLayer;
                     }
                 } else if (channel == "Y") {
                     //try to put XYZ together, unless Z is alone
-                    bool hasX = hasChannelName(views, originalView, originalLayer, "X", subimages[i].channelnames);
-                    bool hasZ = hasChannelName(views, originalView, originalLayer, "Z", subimages[i].channelnames);
+                    bool hasX = hasChannelName(views, view, layer, "X", subimages[i].channelnames);
+                    bool hasZ = hasChannelName(views, view, layer, "Z", subimages[i].channelnames);
                     if (hasX && hasZ) {
                         layer = kReadOIIOXYZLayer;
                     } else {
-                        bool hasR = hasChannelName(views, originalView, originalLayer, "R", subimages[i].channelnames);
-                        bool hasG = hasChannelName(views, originalView, originalLayer, "G", subimages[i].channelnames);
-                        bool hasB = hasChannelName(views, originalView, originalLayer, "B", subimages[i].channelnames);
-                        bool hasI = hasChannelName(views, originalView, originalLayer, "I", subimages[i].channelnames);
+                        bool hasR = hasChannelName(views, view, layer, "R", subimages[i].channelnames);
+                        bool hasG = hasChannelName(views, view, layer, "G", subimages[i].channelnames);
+                        bool hasB = hasChannelName(views, view, layer, "B", subimages[i].channelnames);
+                        bool hasI = hasChannelName(views, view, layer, "I", subimages[i].channelnames);
                         if (!hasR && !hasG && !hasB && !hasI) {
                             // Y is for luminance in this case
                             layer = kReadOIIOColorLayer;
@@ -980,8 +957,8 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     }
                 } else if (channel == "Z") {
                     //try to put XYZ together, unless Z is alone
-                    bool hasX = hasChannelName(views, originalView, originalLayer, "X", subimages[i].channelnames);
-                    bool hasY = hasChannelName(views, originalView, originalLayer, "Y", subimages[i].channelnames);
+                    bool hasX = hasChannelName(views, view, layer, "X", subimages[i].channelnames);
+                    bool hasY = hasChannelName(views, view, layer, "Y", subimages[i].channelnames);
                     if (hasX && hasY) {
                         layer = kReadOIIOXYZLayer;
                     } else {
