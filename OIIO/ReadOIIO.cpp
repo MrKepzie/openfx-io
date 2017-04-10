@@ -706,9 +706,33 @@ hasDuplicate(const LayersMap& layers,
     return false;
 }
 
+static string
+toLowerString(const string& str)
+{
+    string ret;
+
+    std::locale loc;
+    for (std::size_t i = 0; i < str.size(); ++i) {
+        ret.push_back( std::tolower(str[i], loc) );
+    }
+
+    return ret;
+}
+
+static bool
+caseInsensitiveCompare(const string& lhs,
+                           const string& rhs)
+{
+    string lowerLhs = toLowerString(lhs);
+    string lowerRhs = toLowerString(rhs);
+
+    return lowerLhs == lowerRhs;
+}
+
 ///encodedLayerName is in the format view.layer.channel
 static void
 extractLayerName(const string& encodedLayerName,
+                 const vector<string>& viewsList,
                  string* viewName,
                  string* layerName,
                  string* channelName)
@@ -727,25 +751,57 @@ extractLayerName(const string& encodedLayerName,
 
         return;
     }
-    size_t firstDot = layerDotPrefix.find_last_of(".", lastdot - 1);
-    if (firstDot != string::npos) {
-        *viewName = layerDotPrefix.substr(firstDot + 1, lastdot - (firstDot + 1));
-        *layerName = layerDotPrefix.substr(0, firstDot);
-    } else {
+
+    if (viewsList.empty()) {
+        // The view meta-data is not set, assume that everything prefixing the last '.' is a layer name
         *layerName = layerDotPrefix;
+    } else {
+        /*According to OpenEXR spec :
+
+        http://www.openexr.com/MultiViewOpenEXR.pdf
+
+        The view name must be the ultimate layer name, that is, the penultimate
+        period-delimited component in each channel name. In other words, the
+        view name is followed by a period and a final channel name in the
+        format layer.view.channel or view.channel.*/
+
+        size_t firstDot = layerDotPrefix.find_last_of(".", lastdot - 1);
+        if (firstDot != string::npos) {
+
+            *viewName = layerDotPrefix.substr(firstDot + 1, lastdot - (firstDot + 1));
+
+            // Check if the view name matches an existing view
+            bool foundView = false;
+            for (std::size_t i = 0; i < viewsList.size(); ++i) {
+                if (caseInsensitiveCompare(viewsList[i], *viewName)) {
+                    foundView = true;
+                    break;
+                }
+            }
+            if (foundView) {
+                *layerName = layerDotPrefix.substr(0, firstDot);
+            } else {
+                // No matching view, assume that this is the layer name and add the layer to the "default" view
+                viewName->clear();
+                *layerName = layerDotPrefix;
+            }
+        } else {
+            *layerName = layerDotPrefix;
+        }
     }
 }
 
 //e.g: find "X" in view.layer.z
 static bool
-hasChannelName(const string& viewName,
+hasChannelName(const vector<string>& viewsList,
+               const string& viewName,
                const string& layerName,
                const string& mappedChannelName,
                const vector<string>& originalUnMappedNames)
 {
     for (std::size_t i = 0; i < originalUnMappedNames.size(); ++i) {
         string view, layer, channel;
-        extractLayerName(originalUnMappedNames[i], &view, &layer, &channel);
+        extractLayerName(originalUnMappedNames[i], viewsList, &view, &layer, &channel);
         if ( (viewName != view) || (layerName != layer) ) {
             continue;
         }
@@ -757,28 +813,7 @@ hasChannelName(const string& viewName,
     return false;
 }
 
-static string
-toLowerString(const string& str)
-{
-    string ret;
 
-    std::locale loc;
-    for (std::size_t i = 0; i < str.size(); ++i) {
-        ret.push_back( std::tolower(str[i], loc) );
-    }
-
-    return ret;
-}
-
-static bool
-caseInsensitiveCompare(const string& lhs,
-                       const string& rhs)
-{
-    string lowerLhs = toLowerString(lhs);
-    string lowerRhs = toLowerString(rhs);
-
-    return lowerLhs == lowerRhs;
-}
 } // anon namespace
 
 /// layersUnion:
@@ -850,6 +885,8 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
         layersMap->push_back( make_pair( views[i], LayersMap() ) );
     }
 
+    const bool isMultiView = views.size() > 1;
+
 
     if ( views.empty() ) {
         layersMap->push_back( make_pair( "Main", LayersMap() ) );
@@ -873,7 +910,7 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
 
             //Extract the view layer and channel to our format so we can compare strings
             string originalView, originalLayer, channel;
-            extractLayerName(layerChanName, &originalView, &originalLayer, &channel);
+            extractLayerName(layerChanName, views, &originalView, &originalLayer, &channel);
             string view = originalView;
             string layer = originalLayer;
 
@@ -920,22 +957,22 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     layer = kReadOIIOColorLayer;
                 } else if (channel == "X") {
                     //try to put XYZ together, unless Z is alone
-                    bool hasY = hasChannelName(originalView, originalLayer, "Y", subimages[i].channelnames);
-                    bool hasZ = hasChannelName(originalView, originalLayer, "Z", subimages[i].channelnames);
+                    bool hasY = hasChannelName(views, originalView, originalLayer, "Y", subimages[i].channelnames);
+                    bool hasZ = hasChannelName(views, originalView, originalLayer, "Z", subimages[i].channelnames);
                     if (hasY && hasZ) {
                         layer = kReadOIIOXYZLayer;
                     }
                 } else if (channel == "Y") {
                     //try to put XYZ together, unless Z is alone
-                    bool hasX = hasChannelName(originalView, originalLayer, "X", subimages[i].channelnames);
-                    bool hasZ = hasChannelName(originalView, originalLayer, "Z", subimages[i].channelnames);
+                    bool hasX = hasChannelName(views, originalView, originalLayer, "X", subimages[i].channelnames);
+                    bool hasZ = hasChannelName(views, originalView, originalLayer, "Z", subimages[i].channelnames);
                     if (hasX && hasZ) {
                         layer = kReadOIIOXYZLayer;
                     } else {
-                        bool hasR = hasChannelName(originalView, originalLayer, "R", subimages[i].channelnames);
-                        bool hasG = hasChannelName(originalView, originalLayer, "G", subimages[i].channelnames);
-                        bool hasB = hasChannelName(originalView, originalLayer, "B", subimages[i].channelnames);
-                        bool hasI = hasChannelName(originalView, originalLayer, "I", subimages[i].channelnames);
+                        bool hasR = hasChannelName(views, originalView, originalLayer, "R", subimages[i].channelnames);
+                        bool hasG = hasChannelName(views, originalView, originalLayer, "G", subimages[i].channelnames);
+                        bool hasB = hasChannelName(views, originalView, originalLayer, "B", subimages[i].channelnames);
+                        bool hasI = hasChannelName(views, originalView, originalLayer, "I", subimages[i].channelnames);
                         if (!hasR && !hasG && !hasB && !hasI) {
                             // Y is for luminance in this case
                             layer = kReadOIIOColorLayer;
@@ -943,8 +980,8 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     }
                 } else if (channel == "Z") {
                     //try to put XYZ together, unless Z is alone
-                    bool hasX = hasChannelName(originalView, originalLayer, "X", subimages[i].channelnames);
-                    bool hasY = hasChannelName(originalView, originalLayer, "Y", subimages[i].channelnames);
+                    bool hasX = hasChannelName(views, originalView, originalLayer, "X", subimages[i].channelnames);
+                    bool hasY = hasChannelName(views, originalView, originalLayer, "Y", subimages[i].channelnames);
                     if (hasX && hasY) {
                         layer = kReadOIIOXYZLayer;
                     } else {
