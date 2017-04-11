@@ -2613,10 +2613,14 @@ ReadOIIOPlugin::getFrameBounds(const string& filename,
     format->x2 = formatIntersection.x2;
     format->y1 = formatIntersection.y1;
     format->y2 = formatIntersection.y2;
-    *tile_width = specs[0].tile_width;
-    *tile_height = specs[0].tile_height;
-
-    *par = specs[0].get_float_attribute("PixelAspectRatio", 1);
+    if (specs.size() > 0) {
+        *tile_width = specs[0].tile_width;
+        *tile_height = specs[0].tile_height;
+        *par = specs[0].get_float_attribute("PixelAspectRatio", 1);
+    } else {
+        *tile_width = *tile_height = 0;
+        *par = 1.;
+    }
 
     return true;
 } // ReadOIIOPlugin::getFrameBounds
