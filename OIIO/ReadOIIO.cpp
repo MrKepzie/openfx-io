@@ -2252,8 +2252,10 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     if (renderWindowPadded) {
         // Clear any padding we added outside of renderWindowUnPadded to black
         // Clear scanlines out of data window to black
+        assert(bounds.y1 <= renderWindow.y1 && bounds.x1 <= renderWindow.x1);
+        assert(bounds.y2 >= renderWindow.y2 && bounds.x2 >= renderWindow.x2);
         size_t dataOffset = (size_t)(renderWindow.y1 - bounds.y1) * rowBytes + (size_t)(renderWindow.x1 - bounds.x1) * pixelBytes;
-        char* yptr = (char*)( (float*)( (char*)pixelData + dataOffset ));
+        char* yptr = (char*)pixelData + dataOffset;
         for (int y = renderWindow.y1; y < renderWindow.y2; ++y, yptr += rowBytes) {
             if ( (y < renderWindowUnPadded.y1) || (y >= renderWindowUnPadded.y2) ) {
                 memset ( yptr, 0, pixelBytes * (renderWindow.x2 - renderWindow.x1) );
@@ -2264,7 +2266,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                 memset (yptr, 0, pixelBytes * (renderWindowUnPadded.x1 - renderWindow.x1));
             }
             if (renderWindow.x2 > renderWindowUnPadded.x2) {
-                memset (yptr + renderWindowUnPadded.x2 * pixelBytes, 0, pixelBytes * (renderWindow.x2 - renderWindowUnPadded.x2));
+                memset (yptr + (renderWindowUnPadded.x2 - renderWindow.x1) * pixelBytes, 0, pixelBytes * (renderWindow.x2 - renderWindowUnPadded.x2));
             }
         }
     }
