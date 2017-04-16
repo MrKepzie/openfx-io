@@ -24,7 +24,7 @@
 #include "GenericWriter.h"
 
 #include <cfloat> // DBL_MAX
-#include <cstring>
+#include <cstring> // memset
 #include <locale>
 #include <sstream>
 #include <algorithm>
@@ -1019,7 +1019,7 @@ GenericWriterPlugin::render(const RenderArguments &args)
             }
 
             ///Set to 0 everywhere since the render window might be bigger than the src img bounds
-            memset(tmpMemPtr, 0, memSize);
+            std::memset(tmpMemPtr, 0, memSize);
 
             int interleaveIndex = 0;
             for (std::list<ImageData>::iterator it = planesData.begin(); it != planesData.end(); ++it) {
@@ -1114,7 +1114,7 @@ GenericWriterPlugin::render(const RenderArguments &args)
                 }
 
                 ///Set to 0 everywhere since the render window might be bigger than the src img bounds
-                memset(tmpMemPtr, 0, memSize);
+                std::memset(tmpMemPtr, 0, memSize);
 
                 int interleaveIndex = 0;
                 for (std::list<ImageData>::iterator it = planesData.begin(); it != planesData.end(); ++it) {
