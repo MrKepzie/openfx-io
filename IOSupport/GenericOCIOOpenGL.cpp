@@ -157,7 +157,7 @@ allocateLut3D(GLuint* lut3dTexID,
 
     int num3Dentries = 3 * LUT3D_EDGE_SIZE * LUT3D_EDGE_SIZE * LUT3D_EDGE_SIZE;
     lut3D->resize(num3Dentries);
-    memset(&(*lut3D)[0], 0, sizeof(float) * num3Dentries);
+    std::memset(&(*lut3D)[0], 0, sizeof(float) * num3Dentries);
 
     glEnable(GL_TEXTURE_3D);
     glActiveTexture(GL_TEXTURE1);
