@@ -1880,7 +1880,13 @@ SeExprPlugin::SeExprPlugin(OfxImageEffectHandle handle,
     for (int i = 0; i < kParamsCount; ++i) {
         const string istr = unsignedToString(i + 1);
         if (gHostIsMultiPlanar) {
-            fetchDynamicMultiplaneChoiceParameter(kParamLayerInput + istr, false /*splitPlanesInChannels*/, true /*addNoneOption*/, false/*isOutput*/, true /*hideIfDisconnected*/ , _srcClip[i]);
+            {
+                FetchChoiceParamOptions args = FetchChoiceParamOptions::createFetchChoiceParamOptionsForInputChannel();
+                args.addNoneOption = true;
+                args.hideIfClipDisconnected = true;
+                args.dependsClips.push_back(_srcClip[i]);
+                fetchDynamicMultiplaneChoiceParameter(kParamLayerInput + istr, args);
+            }
             _clipLayerToFetch[i] = fetchChoiceParam(kParamLayerInput + istr);
         }
         onAllParametersFetched();
