@@ -939,6 +939,15 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                 }
             }
 
+            if (layer.empty()) {
+                // The layer name is empty, for OpenEXR 2 files, check for the "name" attribute (converted to oiio:subimagename by OIIO) which may contain the layer name.
+                const ParamValue* nameValue = subimages[i].find_attribute("oiio:subimagename", TypeDesc::STRING);
+                if (nameValue) {
+                    const char* dataPtr = *(const char**)nameValue->data();
+                    layer = string(dataPtr);
+                }
+            }
+            
             assert( foundView != layersMap->end() );
 
             //If the layer name is empty, try to map it to something known
