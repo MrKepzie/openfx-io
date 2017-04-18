@@ -2444,6 +2444,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                              ++y,
                              src_pix -= tiledBufferRowSize,
                              dst_pix -= rowBytes) {
+                            assert((char*)tiledBuffer <= src_pix && (src_pix + outputBufferSizeToCopy) < ((char*)tiledBuffer + (tiledBufferRowSize * (tiledYEnd - tiledYBegin))));
                             memcpy(dst_pix, src_pix, outputBufferSizeToCopy);
                             {
                                 const char* tmp = src_pix;
