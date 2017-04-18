@@ -416,7 +416,12 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle,
     _tileSize = fetchChoiceParam(kParamTileSize);
     if (gIsMultiplanarV2) {
         _outputLayers = fetchChoiceParam(kParamOutputChannels);
-        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, false /*splitPlanesIntoChannels*/, false /*addNoneOpt*/, true/*isOutput*/, false /*hideIfDisconnected*/, _inputClip);
+
+        {
+            FetchChoiceParamOptions args = FetchChoiceParamOptions::createFetchChoiceParamOptionsForOutputPlane();
+            args.dependsClips.push_back(_inputClip);
+            fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, args);
+        }
         onAllParametersFetched();
         _parts = fetchChoiceParam(kParamPartsSplitting);
         _views = fetchChoiceParam(kParamViewsSelector);
