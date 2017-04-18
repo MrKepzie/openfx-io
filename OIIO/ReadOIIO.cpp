@@ -912,9 +912,6 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
         layersMap->push_back( make_pair( views[i], LayersMap() ) );
     }
 
-    const bool isMultiView = views.size() > 1;
-
-
     if ( views.empty() ) {
         layersMap->push_back( make_pair( "Main", LayersMap() ) );
     }
