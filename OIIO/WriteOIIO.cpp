@@ -419,7 +419,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle,
 
         {
             FetchChoiceParamOptions args = FetchChoiceParamOptions::createFetchChoiceParamOptionsForOutputPlane();
-            args.dependsClips.push_back(_inputClip);
+            args.dependsClips.push_back(_outputClip);
             fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, args);
         }
         onAllParametersFetched();
