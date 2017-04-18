@@ -640,6 +640,32 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
             }
         }
     }
+
+    // Also add the color plane
+    PixelComponentEnum outputPixelComponents = getOutputComponents();
+    int nOutputComps = 0;
+    switch (outputPixelComponents) {
+        case ePixelComponentAlpha:
+            nOutputComps = 1;
+            break;
+        case ePixelComponentRGB:
+            nOutputComps = 3;
+            break;
+        case ePixelComponentRGBA:
+            nOutputComps = 4;
+            break;
+#ifdef OFX_EXTENSIONS_NATRON
+        case ePixelComponentXY:
+            nOutputComps = 2;
+            break;
+#endif
+        default:
+            nOutputComps = 0;
+            break;
+    }
+
+    MultiPlane::ImagePlaneDesc colorPlane = MultiPlane::ImagePlaneDesc::mapNCompsToColorPlane(nOutputComps);
+    clipComponents.addClipPlane(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(colorPlane));
 }
 
 namespace  {
@@ -923,6 +949,15 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                         foundView = it;
                         break;
                     }
+                }
+            }
+
+            if (layer.empty()) {
+                // The layer name is empty, for OpenEXR 2 files, check for the "name" attribute (converted to oiio:subimagename by OIIO) which may contain the layer name.
+                const ParamValue* nameValue = subimages[i].find_attribute("oiio:subimagename", TypeDesc::STRING);
+                if (nameValue) {
+                    const char* dataPtr = *(const char**)nameValue->data();
+                    layer = string(dataPtr);
                 }
             }
 
@@ -2142,8 +2177,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     specBounds.y1 = spec.full_y + spec.full_height - (spec.y + spec.height);
     specBounds.x2 = spec.x + spec.width + dataOffset;
     specBounds.y2 = spec.full_y + spec.full_height - spec.y;
-
-    EdgePixelsEnum edgePixelsMode = (EdgePixelsEnum)_edgePixels->getValue();
 
     // Where to write the data in the buffer, everything outside of that is black
     // It depends on the extra padding we added in getFrameBounds
