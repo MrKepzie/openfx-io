@@ -3470,6 +3470,7 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         gOutputComponentsMap[i] = ePixelComponentNone;
 
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3521,6 +3522,7 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamGeneratorFormatHint);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

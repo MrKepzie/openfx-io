@@ -1377,6 +1377,7 @@ SeNoisePluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setRange(-DBL_MAX, DBL_MAX);
         param->setDisplayRange(0., 1.);
         param->setDefault(kParamNoiseZSlopeDefault);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

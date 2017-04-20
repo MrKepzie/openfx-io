@@ -2972,6 +2972,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setHint(kParamFilenameHint);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3146,6 +3147,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setHint(kParamProxyHint);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamProxy);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3212,6 +3214,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
             param->appendOption(premultString(eImageUnPreMultiplied), kParamFilePremultOptionUnPreMultipliedHint);
             param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         }
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3232,6 +3235,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
             param->appendOption(premultString(eImageUnPreMultiplied), kParamFilePremultOptionUnPreMultipliedHint);
             param->setDefault(eImagePreMultiplied); // images should be premultiplied in a compositing context
         }
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3260,6 +3264,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         }
 
         param->setDefault(0); // default to the first one available, i.e. the most chromatic
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3277,6 +3282,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setDefault(24.);
         param->setRange(0., DBL_MAX);
         param->setDisplayRange(0., 300.);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -3289,6 +3295,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setLabel(kParamCustomFpsLabel);
         param->setHint(kParamCustomFpsHint);
         param->setEvaluateOnChange(false);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (addSeparatorAfterLastParameter) {
             //param->setLayoutHint(eLayoutHintDivider);
