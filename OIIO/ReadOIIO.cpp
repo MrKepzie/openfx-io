@@ -2373,21 +2373,26 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                     // This is the numner of extra pixels we decoded on the bottom
                     int yBeginPadToTileSize = 0;
                     std::size_t tiledBufferRowSize = rowBytes;
+                    std::size_t tiledBufferPixelSize = xStride;
                     if (!validRange) {
                         // If the tile range is invalid, expand to the closest enclosing valid tile range.
 
-                        // xBegin must be at a valid multiple of tile_width from spec.x
+                        // tiledXBegin must be at a valid multiple of tile_width from spec.x
                         tiledXBegin = spec.x +  (int)std::floor((double)(xbeginClamped - spec.x) / spec.tile_width ) * spec.tile_width;
 
-                        // yBegin must be at a valid multiple of tile_height from spec.y
+                        // tiledYBegin must be at a valid multiple of tile_height from spec.y
                         tiledYBegin = spec.y + (int)std::floor((double)(ybeginClamped - spec.y) / spec.tile_height ) * spec.tile_height;
 
-                        // xEnd must be at a valid multiple of tile_width from xBegin
-                        tiledXEnd = tiledXBegin + (int)std::ceil((double)(xendClamped - xbeginClamped)  / spec.tile_width ) * spec.tile_width;
+                        // tiledXEnd must be at a valid multiple of tile_width from spec.x
+                        tiledXEnd = spec.x + (int)std::ceil((double)(xendClamped - spec.x)  / spec.tile_width ) * spec.tile_width;
 
-                        // yEnd must be at a valid multiple of tile_height from yBegin
-                        tiledYEnd = tiledYBegin + (int)std::ceil((double)(yendClamped - ybeginClamped) / spec.tile_height ) * spec.tile_height;
+                        // tiledYEnd must be at a valid multiple of tile_height from spec.y
+                        tiledYEnd = spec.y + (int)std::ceil((double)(yendClamped - spec.y) / spec.tile_height ) * spec.tile_height;
 
+                        tiledXBegin = std::max(spec.x, tiledXBegin);
+                        tiledYBegin = std::max(spec.y, tiledYBegin);
+                        tiledXEnd = std::min(spec.x + spec.width, tiledXEnd);
+                        tiledYEnd = std::min(spec.y + spec.height, tiledYEnd);
 
                         // Check that we made up a correct tile range
                         assert( spec.valid_tile_range(tiledXBegin, tiledXEnd, tiledYBegin, tiledYEnd, zbegin, zend) );
@@ -2395,7 +2400,8 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         xBeginPadToTileSize = xbeginClamped - tiledXBegin;
                         yBeginPadToTileSize = ybeginClamped - tiledYBegin;
 
-                        tiledBufferRowSize = (tiledXEnd - tiledXBegin) * pixelBytes;
+                        tiledBufferPixelSize = getComponentBytes(eBitDepthFloat) * (chend - chbegin);
+                        tiledBufferRowSize = (tiledXEnd - tiledXBegin) * tiledBufferPixelSize;
                         std::size_t nBytes = tiledBufferRowSize * (tiledYEnd - tiledYBegin);
                         tiledBufferToFree = (float*)malloc(nBytes);
                         if (!tiledBufferToFree) {
@@ -2405,7 +2411,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         }
 
                         // Make tile buffer point to the first pixel of the last scan-line of our temporary tile-adjusted buffer.
-                        tiledBuffer = (float*)( (char*)tiledBufferToFree + (tiledYEnd - tiledYBegin - 1) * tiledBufferRowSize ) + outputChannelBegin;
+                        tiledBuffer = (float*)( (char*)tiledBufferToFree + (tiledYEnd - tiledYBegin - 1) * tiledBufferRowSize );
                     }
 
                     // Pass the valid tile range and buffer to OIIO and decode with a negative Y stride from
@@ -2420,7 +2426,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                                           chend, // chan end
                                           TypeDesc::FLOAT, // data type
                                           tiledBuffer,
-                                          xStride, //x stride
+                                          tiledBufferPixelSize, //x stride
                                           -tiledBufferRowSize, //y stride < make it invert Y
                                           AutoStride) ) { //z stride
                         setPersistentMessage( Message::eMessageError, "", img->geterror() );
@@ -2435,9 +2441,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                         // This points to the start of the first pixel of the last scan-line of the render window
                         char* dst_pix = (char*)topScanLineDataStartPtr;
 
-                        // This is the number of bytes in the final buffer that we want per scan-line
-                        std::size_t outputBufferSizeToCopy = (xendClamped - xbeginClamped) * pixelBytes;
-
                         // Copy each scan-line from our temporary buffer to the final buffer. Since each buffer is pointing to the last
                         // scan-line at the begining, we pass negative pixel offsets in the iteration loop.
 
@@ -2447,20 +2450,23 @@ ReadOIIOPlugin::decodePlane(const string& filename,
 
                         assert( (tiledYBegin + yBeginPadToTileSize) == ybeginClamped );
                         assert( (tiledXBegin + xBeginPadToTileSize) == xbeginClamped );
-                        const char* src_pix = (const char*)( (char*)tiledBuffer - yBeginPadToTileSize * tiledBufferRowSize + xBeginPadToTileSize * pixelBytes );
+                        const char* src_pix = (const char*)( (char*)tiledBuffer - yBeginPadToTileSize * tiledBufferRowSize + xBeginPadToTileSize * tiledBufferPixelSize );
 
                         for (int y = ybeginClamped; y < yendClamped;
                              ++y,
                              src_pix -= tiledBufferRowSize,
                              dst_pix -= rowBytes) {
-                            assert((char*)tiledBuffer <= src_pix && (src_pix + outputBufferSizeToCopy) < ((char*)tiledBuffer + (tiledBufferRowSize * (tiledYEnd - tiledYBegin))));
-                            memcpy(dst_pix, src_pix, outputBufferSizeToCopy);
-                            {
-                                const char* tmp = src_pix;
-                                const char* endTmp = tmp + outputBufferSizeToCopy;
-                                while (tmp < endTmp) {
-                                    assert(*tmp == *tmp);
-                                    ++tmp;
+
+
+                            const float* srcPtr = (const float*)src_pix;
+                            float* dstPtr = (float*)dst_pix;
+                            for (int x = xbeginClamped; x < xendClamped;
+                                 ++x,
+                                 srcPtr += (chend - chbegin),
+                                 dstPtr += numChannels) {
+                                for (int c = 0; c < (chend - chbegin); ++c) {
+                                    assert(srcPtr[c] == srcPtr[c]); // Check for NaNs
+                                    dstPtr[c] = srcPtr[c];
                                 }
                             }
                         }
@@ -3145,6 +3151,7 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             StringParamDescriptor* param = desc.defineStringParam(kParamChannelOutputLayerChoice);
             param->setLabel(kParamChannelOutputLayerChoice);
             param->setIsSecretAndDisabled(true);
+            param->setAnimates(false);
             desc.addClipPreferencesSlaveParam(*param);
             if (page) {
                 page->addChild(*param);

@@ -841,6 +841,7 @@ OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
         assert(param->getNOptions() == eResizeTypeScale);
         param->appendOption(kParamTypeOptionScale);
         param->setDefault(0);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
@@ -891,6 +892,7 @@ OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->appendOption(kParamFormatSquare2kLabel);
         param->setDefault(0);
         param->setHint(kParamFormatHint);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

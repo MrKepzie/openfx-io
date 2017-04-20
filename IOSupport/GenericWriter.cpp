@@ -2462,6 +2462,7 @@ GenericWriterDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setHint(kParamFilenameHint);
         // in the Writer context, the script name should be kOfxImageEffectFileParamName, for consistency with the reader nodes @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);

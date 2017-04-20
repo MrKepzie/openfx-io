@@ -1065,6 +1065,7 @@ OCIOLogConvertPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         } else {
             param->setDefault(file);
         }
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
