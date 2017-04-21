@@ -2457,7 +2457,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                              src_pix -= tiledBufferRowSize,
                              dst_pix -= rowBytes) {
 
-
                             const float* srcPtr = (const float*)src_pix;
                             float* dstPtr = (float*)dst_pix;
                             for (int x = xbeginClamped; x < xendClamped;
