@@ -798,6 +798,7 @@ SeGrainPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamStaticSeedLabel);
         param->setHint(kParamStaticSeedHint);
         param->setDefault(false);
+        param->setAnimates(false);
         desc.addClipPreferencesSlaveParam(*param);
         if (page) {
             page->addChild(*param);
