@@ -484,7 +484,7 @@ public:
     virtual void getRegionsOfInterest(const RegionsOfInterestArguments &args, RegionOfInterestSetter &rois) OVERRIDE FINAL;
     virtual void getFramesNeeded(const FramesNeededArguments &args, FramesNeededSetter &frames) OVERRIDE FINAL;
     virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
+    virtual OfxStatus getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
     Clip* getClip(int index) const
     {
         assert(index >= 0 && index < kSourceClipCount);
@@ -2486,7 +2486,7 @@ SeExprPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     clipPreferences.setClipComponents(*_dstClip, outputComponents);
 } // SeExprPlugin::getClipPreferences
 
-void
+OfxStatus
 SeExprPlugin::getClipComponents(const ClipComponentsArguments& args,
                                 ClipComponentsSetter& clipComponents)
 {
@@ -2504,13 +2504,14 @@ SeExprPlugin::getClipComponents(const ClipComponentsArguments& args,
         int channelIndex = -1;
         MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(kParamLayerInput + clipIdxStr, &clip, &plane, &channelIndex);
         if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
-            return;
+            return kOfxStatFailed;
         }
         clipComponents.addClipPlane(*_dstClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
 
     }
 
     clipComponents.setPassThroughClip(_srcClip[0], time, args.view);
+    return kOfxStatOK;
 }
 
 void

@@ -298,7 +298,7 @@ public:
 
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
     virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
+    virtual OfxStatus getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
 
 private:
 
@@ -419,7 +419,7 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle,
 
         {
             FetchChoiceParamOptions args = FetchChoiceParamOptions::createFetchChoiceParamOptionsForOutputPlane();
-            args.dependsClips.push_back(_outputClip);
+            args.dependsClips.push_back(_inputClip);
             fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, args);
         }
         onAllParametersFetched();
@@ -522,7 +522,7 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     }
 }
 
-void
+OfxStatus
 WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
                                    ClipComponentsSetter& clipComponents)
 {
@@ -532,12 +532,12 @@ WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
     int channelIndex = -1;
     MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(_outputLayers->getName(), &clip, &dstPlane, &channelIndex);
     if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
-        return;
+        return kOfxStatFailed;
     }
 
     if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedAllPlanes) {
         vector<string> components;
-        _inputClip->getComponentsPresent(&components);
+        _inputClip->getPlanesPresent(&components);
         for (vector<string>::const_iterator it = components.begin(); it != components.end(); ++it) {
             clipComponents.addClipPlane(*_inputClip, *it);
             clipComponents.addClipPlane(*_outputClip, *it);
@@ -548,7 +548,7 @@ WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
         clipComponents.addClipPlane(*_inputClip, ofxComponentsStr);
         clipComponents.addClipPlane(*_outputClip, ofxComponentsStr);
     }
-
+    return kOfxStatOK;
 }
 
 int
