@@ -3528,7 +3528,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
         ret = avPicture.alloc(width, height, pixelFormatNuke);
         if (!ret) {
             // Convert floating point values to unsigned values.
-            assert(rowBytes);
+            assert(rowBytes && rowBytes >= (int)sizeof(float) * width * pixelDataNComps);
             const int numDestChannels = hasAlpha ? 4 : 3;
 
             for (int y = 0; y < height; ++y) {
@@ -3539,6 +3539,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
                     assert(pixelFormatNuke == AV_PIX_FMT_RGBA64 || pixelFormatNuke == AV_PIX_FMT_RGB48LE);
 
                     // avPicture.linesize is in bytes, but stride is U16 (2 bytes), so divide linesize by 2
+                    assert(avPicture.linesize[0] / 2 >= width * numDestChannels);
                     unsigned short* dst_pixels = reinterpret_cast<unsigned short*>(avPicture.data[0]) + y * (avPicture.linesize[0] / 2);
 
                     for (int x = 0; x < width; ++x) {
@@ -3554,6 +3555,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
                 } else {
                     assert(pixelFormatNuke == AV_PIX_FMT_RGBA || pixelFormatNuke == AV_PIX_FMT_RGB24);
 
+                    assert(avPicture.linesize[0] >= width * numDestChannels);
                     unsigned char* dst_pixels = avPicture.data[0] + y * avPicture.linesize[0];
 
                     for (int x = 0; x < width; ++x) {
