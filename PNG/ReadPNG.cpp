@@ -418,6 +418,8 @@ getPNGInfo(png_structp sp,
         *par_p = aspect;
     }
 
+    double file_gamma = 1.;
+
     if (colorspace_p) {
         bool ping_found_sRGB = false;
         bool ping_found_gAMA = false;
@@ -459,7 +461,7 @@ getPNGInfo(png_structp sp,
              */
             if (png_compare_ICC_profile_with_sRGB(sp, (png_bytep)profile_data, 0) != 0) {
                 *colorspace_p = ePNGColorSpacesRGB;
-                *gamma_p = 2.2;
+                file_gamma = 2.2;
             }
         }
 #endif
@@ -470,7 +472,7 @@ getPNGInfo(png_structp sp,
             int srgb_intent;
             if (png_get_sRGB (sp, ip, &srgb_intent) == PNG_INFO_sRGB) {
                 *colorspace_p = ePNGColorSpacesRGB;
-                *gamma_p = 2.2;
+                file_gamma = 2.2;
                 ping_found_sRGB = true;
             }
             // srgb_intent possible values:
@@ -482,15 +484,12 @@ getPNGInfo(png_structp sp,
 #endif
 
         // if not is there a gamma ?
-        assert(gamma_p);
         if (*colorspace_p == ePNGColorSpaceLinear) {
-            if ( !png_get_gAMA (sp, ip, gamma_p) ) {
-                *gamma_p = 1.0;
-            } else {
+            if ( png_get_gAMA (sp, ip, &file_gamma) ) {
                 // guard against division by zero
-                *gamma_p = *gamma_p ? (1. / *gamma_p) : 1.;
+                file_gamma = file_gamma != 0. ? (1. / file_gamma) : 1.;
                 ping_found_gAMA = true;
-                if (*gamma_p > 1.) {
+                if (file_gamma > 1.) {
                     *colorspace_p = ePNGColorSpaceGammaCorrected;
                 }
             }
@@ -525,11 +524,11 @@ getPNGInfo(png_structp sp,
 
             if (!ping_found_sRGB &&
                 (!ping_found_gAMA ||
-                 (*gamma_p > 1/.46 && *gamma_p < 1/.45)) &&
+                 (file_gamma > 1/.46 && file_gamma < 1/.45)) &&
                 (!ping_found_cHRM ||
                  ping_found_sRGB_cHRM) &&
                 !ping_found_iCCP) {
-                *gamma_p = 2.2;
+                file_gamma = 2.2;
                 *colorspace_p = ePNGColorSpacesRGB;
                 ping_found_sRGB = true;
             }
@@ -540,6 +539,9 @@ getPNGInfo(png_structp sp,
         if ( !ping_found_gAMA && (*colorspace_p == ePNGColorSpaceLinear) ) {
             *colorspace_p = *bit_depth_p == eBitDepthUByte ? ePNGColorSpacesRGB : ePNGColorSpaceRec709;
         }
+    }
+    if (gamma_p) {
+        *gamma_p = file_gamma;
     }
 
 
