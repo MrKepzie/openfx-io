@@ -3528,7 +3528,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
         ret = avPicture.alloc(width, height, pixelFormatNuke);
         if (!ret) {
             // Convert floating point values to unsigned values.
-            assert(rowBytes);
+            assert(rowBytes && rowBytes >= (int)sizeof(float) * width * pixelDataNComps);
             const int numDestChannels = hasAlpha ? 4 : 3;
 
             for (int y = 0; y < height; ++y) {
@@ -3539,6 +3539,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
                     assert(pixelFormatNuke == AV_PIX_FMT_RGBA64 || pixelFormatNuke == AV_PIX_FMT_RGB48LE);
 
                     // avPicture.linesize is in bytes, but stride is U16 (2 bytes), so divide linesize by 2
+                    assert(avPicture.linesize[0] / 2 >= width * numDestChannels);
                     unsigned short* dst_pixels = reinterpret_cast<unsigned short*>(avPicture.data[0]) + y * (avPicture.linesize[0] / 2);
 
                     for (int x = 0; x < width; ++x) {
@@ -3554,6 +3555,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
                 } else {
                     assert(pixelFormatNuke == AV_PIX_FMT_RGBA || pixelFormatNuke == AV_PIX_FMT_RGB24);
 
+                    assert(avPicture.linesize[0] >= width * numDestChannels);
                     unsigned char* dst_pixels = avPicture.data[0] + y * avPicture.linesize[0];
 
                     for (int x = 0; x < width; ++x) {
@@ -4466,13 +4468,27 @@ WriteFFmpegPlugin::checkCodec()
     }
 }
 
+// http://stackoverflow.com/questions/3418231/replace-part-of-a-string-with-another-string
+static void
+replaceAll(string& str, const string& from, const string& to)
+{
+    if ( from.empty() ) {
+        return;
+    }
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    }
+}
+
 // chop "le"/"be" at the end, because we don't care about endianness,
 // and remove the "p" because we do't care about the format being planar or not
 static
 string
 pix_fmt_name_canonical(const char *name)
 {
-    if (name == NULL ) {
+    if (name == NULL) {
         return "unknown";
     }
     string ret = name;
@@ -4494,6 +4510,13 @@ pix_fmt_name_canonical(const char *name)
             *it = (*it - 'a') + 'A';
         }
     }
+    // replace BGR by RGB
+    replaceAll(ret, "BGR", "RGB");
+    // replace ARGB by RGBA
+    replaceAll(ret, "ARGB", "RGBA");
+    // replace AYUV by YUVA
+    replaceAll(ret, "AYUV", "YUVA");
+
     return ret;
 }
 
