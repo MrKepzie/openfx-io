@@ -338,7 +338,7 @@ public:
     virtual ~ReadOIIOPlugin();
 
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
+    virtual OfxStatus getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
     virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
     virtual void clearAnyCache() OVERRIDE FINAL;
 
@@ -619,7 +619,7 @@ ReadOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     GenericReaderPlugin::getClipPreferences(clipPreferences);
 }
 
-void
+OfxStatus
 ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
                                   ClipComponentsSetter& clipComponents)
 {
@@ -666,6 +666,7 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
 
     MultiPlane::ImagePlaneDesc colorPlane = MultiPlane::ImagePlaneDesc::mapNCompsToColorPlane(nOutputComps);
     clipComponents.addClipPlane(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(colorPlane));
+    return kOfxStatOK;
 }
 
 namespace  {
