@@ -1706,8 +1706,8 @@ GenericWriterPlugin::getSelectedOutputFormat(OfxRectI* format,
         OfxRectI inputFormat;
         _inputClip->getFormat(inputFormat);
         double inputPar = _inputClip->getPixelAspectRatio();
-        format->x1 = inputFormat.x1 * inputPar;
-        format->x2 = inputFormat.x2 * inputPar;
+        format->x1 = inputFormat.x1;
+        format->x2 = inputFormat.x2;
         format->y1 = inputFormat.y1;
         format->y2 = inputFormat.y2;
         *par = inputPar;
@@ -1718,9 +1718,9 @@ GenericWriterPlugin::getSelectedOutputFormat(OfxRectI* format,
         OfxPointD offset = getProjectOffset();
         double projectPar = getProjectPixelAspectRatio();
         *par = projectPar;
-        format->x1 = offset.x * projectPar;
+        format->x1 = std::floor(offset.x * projectPar + 0.5);
         format->y1 = offset.y;
-        format->x2 = (offset.x + size.x) * projectPar;
+        format->x2 = std::floor((offset.x + size.x) * projectPar + 0.5);
         format->y2 = offset.y + size.y;
         break;
     }
