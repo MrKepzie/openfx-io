@@ -4512,6 +4512,8 @@ pix_fmt_name_canonical(const char *name)
     }
     // replace BGR by RGB
     replaceAll(ret, "BGR", "RGB");
+    // replace GBR by RGB
+    replaceAll(ret, "GBR", "RGB");
     // replace ARGB by RGBA
     replaceAll(ret, "ARGB", "RGBA");
     // replace AYUV by YUVA
