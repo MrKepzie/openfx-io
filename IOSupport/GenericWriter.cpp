@@ -414,7 +414,10 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const string& plane,
     PixelComponentEnum pixelComponents;
     BitDepthEnum bitDepth;
     int srcRowBytes;
-    const Image* srcImg = _inputClip->fetchImagePlane( time, view, plane.c_str() );
+    OfxRectD inputBounds;
+    double inputPar = _inputClip->getPixelAspectRatio();
+    Coords::toCanonical(renderWindow, renderScale, inputPar, &inputBounds);
+    const Image* srcImg = _inputClip->fetchImagePlane(time, view, plane.c_str(), inputBounds);
     *inputImage = srcImg;
     if (!srcImg) {
         if (failIfNoSrcImg) {
@@ -938,7 +941,8 @@ GenericWriterPlugin::render(const RenderArguments &args)
         const Image* srcImg; // owned by dataHolder, no need to delete
         ImageMemory *tmpMem; // owned by dataHolder, no need to delete
         ImageData data;
-        fetchPlaneConvertAndCopy(args.planes.front(), true, viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+        // NOTE: failIfNoSrcImg=true causes the writer to fail if the src RoD is empty, see https://github.com/MrKepzie/Natron/issues/1617
+        fetchPlaneConvertAndCopy(args.planes.front(), /*failIfNoSrcImg=*/ false, viewIndex, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
 
         int dstNComps = doAnyPacking ? packingMapping.size() : data.pixelComponentsCount;
         int dstNCompsStartIndex = doAnyPacking ? packingMapping[0] : 0;
@@ -985,7 +989,7 @@ GenericWriterPlugin::render(const RenderArguments &args)
                     ImageMemory *tmpMem;     // owned by dataHolder, no need to delete
                     const Image* srcImg;     // owned by dataHolder, no need to delete
                     ImageData data;
-                    fetchPlaneConvertAndCopy(*plane, false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                    fetchPlaneConvertAndCopy(*plane, /*failIfNoSrcImg=*/ false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
                     if (!data.srcPixelData) {
                         continue;
                     }
@@ -1080,7 +1084,7 @@ GenericWriterPlugin::render(const RenderArguments &args)
                     ImageMemory *tmpMem;     // owned by dataHolder, no need to delete
                     const Image* srcImg;     // owned by dataHolder, no need to delete
                     ImageData data;
-                    fetchPlaneConvertAndCopy(*plane, false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                    fetchPlaneConvertAndCopy(*plane, /*failIfNoSrcImg=*/ false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
                     if (!data.srcPixelData) {
                         continue;
                     }
@@ -1179,7 +1183,7 @@ GenericWriterPlugin::render(const RenderArguments &args)
                     ImageMemory *tmpMem;     // owned by dataHolder, no need to delete
                     const Image* srcImg;     // owned by dataHolder, no need to delete
                     ImageData data;
-                    fetchPlaneConvertAndCopy(*plane, false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
+                    fetchPlaneConvertAndCopy(*plane, /*failIfNoSrcImg=*/ false, view->first, args.renderView, time, args.renderWindow, args.renderScale, args.fieldToRender, pluginExpectedPremult, userPremult, isOCIOIdentity, doAnyPacking, packingContiguous, packingMapping, &dataHolder, &data.bounds, &tmpMem, &srcImg, &data.srcPixelData, &data.rowBytes, &data.pixelComponents, &data.pixelComponentsCount);
                     if (!data.srcPixelData) {
                         continue;
                     }
