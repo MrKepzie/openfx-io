@@ -1838,6 +1838,7 @@
 					"$(FFMPEG_PATH)/include",
 					"$(OIIO_PATH)/include",
 					"$(SEEXPR_PATH)/include",
+					"$(LIBRAW_PATH)/include/libraw",
 				);
 				INFOPLIST_FILE = IO/Info.plist;
 				OTHER_LDFLAGS = (
@@ -1888,6 +1889,7 @@
 					"$(FFMPEG_PATH)/include",
 					"$(OIIO_PATH)/include",
 					"$(SEEXPR_PATH)/include",
+					"$(LIBRAW_PATH)/include/libraw",
 				);
 				INFOPLIST_FILE = IO/Info.plist;
 				OTHER_LDFLAGS = (
