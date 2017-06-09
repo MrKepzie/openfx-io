@@ -41,8 +41,8 @@
 GCC_DIAG_OFF(unused-parameter)
 #include <OpenImageIO/imagecache.h>
 GCC_DIAG_ON(unused-parameter)
-#include <libraw/libraw.h>
-#include <libraw/libraw_version.h>
+#include <libraw.h>
+#include <libraw_version.h>
 
 #include <ofxNatron.h>
 
