@@ -96,8 +96,8 @@ using std::string;
 #define kParamDirection "direction"
 #define kParamDirectionLabel "Direction"
 #define kParamDirectionHint "Transform direction."
-#define kParamDirectionOptionForward "Forward"
-#define kParamDirectionOptionInverse "Inverse"
+#define kParamDirectionOptionForward "Forward", "", "forward"
+#define kParamDirectionOptionInverse "Inverse", "", "inverse"
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 #define kParamEnableGPU "enableGPU"

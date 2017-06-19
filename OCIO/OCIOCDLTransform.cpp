@@ -94,8 +94,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamDirection "direction"
 #define kParamDirectionLabel "Direction"
 #define kParamDirectionHint "Transform direction."
-#define kParamDirectionOptionForward "Forward"
-#define kParamDirectionOptionInverse "Inverse"
+#define kParamDirectionOptionForward "Forward", "", "forward"
+#define kParamDirectionOptionInverse "Inverse", "", "inverse"
 
 #define kParamReadFromFile "readFromFile"
 #define kParamReadFromFileLabel "Read from file"

@@ -163,22 +163,14 @@ enum MissingEnum
     eMissingBlack,
 };
 
-#define kReaderOptionHold "Hold"
-#define kReaderOptionHoldHint "While before the sequence, load the first frame."
-#define kReaderOptionLoop "Loop"
-#define kReaderOptionLoopHint "Repeat the sequence before the first frame"
-#define kReaderOptionBounce "Bounce"
-#define kReaderOptionBounceHint "Repeat the sequence in reverse before the first frame"
-#define kReaderOptionBlack "Black"
-#define kReaderOptionBlackHint "Render a black image"
-#define kReaderOptionError "Error"
-#define kReaderOptionErrorHint "Report an error"
-#define kReaderOptionPrevious "Hold previous"
-#define kReaderOptionPreviousHint "Try to load the previous frame in the sequence/stream, if any."
-#define kReaderOptionNext "Load next"
-#define kReaderOptionNextHint "Try to load the next frame in the sequence/stream, if any."
-#define kReaderOptionNearest "Load nearest"
-#define kReaderOptionNearestHint "Try to load the nearest frame in the sequence/stream, if any."
+#define kReaderOptionHold "Hold", "While before the sequence, load the first frame.", "hold"
+#define kReaderOptionLoop "Loop", "Repeat the sequence before the first frame", "loop"
+#define kReaderOptionBounce "Bounce", "Repeat the sequence in reverse before the first frame", "bounce"
+#define kReaderOptionBlack "Black", "Render a black image", "black"
+#define kReaderOptionError "Error", "Report an error", "error"
+#define kReaderOptionPrevious "Hold previous", "Try to load the previous frame in the sequence/stream, if any.", "previous"
+#define kReaderOptionNext "Load next", "Try to load the next frame in the sequence/stream, if any.", "next"
+#define kReaderOptionNearest "Load nearest", "Try to load the nearest frame in the sequence/stream, if any.", "nearest"
 
 #define kParamFilePremult "filePremult"
 #define kParamFilePremultLabel "File Premult"
@@ -194,11 +186,11 @@ enum MissingEnum
     "This is set automatically from the image file and the plugin, but can be adjusted if this information is wrong in the file metadata.\n" \
     "RGB images can only be Opaque, and Alpha images can only be Premultiplied (the value of this parameter doesn't matter)."
 #define kParamFilePremultOptionOpaqueHint \
-    "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
+    "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point.", "opaque"
 #define kParamFilePremultOptionPreMultipliedHint \
-    "The image is premultiplied by its alpha (also called \"associated alpha\")."
+    "The image is premultiplied by its alpha (also called \"associated alpha\").", "premult"
 #define kParamFilePremultOptionUnPreMultipliedHint \
-    "The image is unpremultiplied (also called \"unassociated alpha\")."
+    "The image is unpremultiplied (also called \"unassociated alpha\").", "unpremult"
 
 #define kParamOutputPremult "outputPremult"
 #define kParamOutputPremultLabel "Output Premult"
@@ -2966,10 +2958,9 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
     //////////Input file
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamFilename);
-        param->setLabel(kParamFilenameLabel);
+        param->setLabelAndHint(kParamFilenameLabel, kParamFilenameHint);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
-        param->setHint(kParamFilenameHint);
         // in the Reader context, the script name must be kOfxImageEffectFileParamName, @see kOfxImageEffectContextReader
         param->setScriptName(kParamFilename);
         param->setAnimates(false);
@@ -2982,8 +2973,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
     //////////First-frame
     {
         IntParamDescriptor* param = desc.defineIntParam(kParamFirstFrame);
-        param->setLabel(kParamFirstFrameLabel);
-        param->setHint(kParamFirstFrameHint);
+        param->setLabelAndHint(kParamFirstFrameLabel, kParamFirstFrameHint);
         param->setDefault(0);
         param->setAnimates(false);
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
@@ -2995,18 +2985,17 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
     ///////////Before first
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamBefore);
-        param->setLabel(kParamBeforeLabel);
-        param->setHint(kParamBeforeHint);
+        param->setLabelAndHint(kParamBeforeLabel, kParamBeforeHint);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterHold);
-        param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+        param->appendOption(kReaderOptionHold);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterLoop);
-        param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+        param->appendOption(kReaderOptionLoop);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBounce);
-        param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+        param->appendOption(kReaderOptionBounce);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBlack);
-        param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+        param->appendOption(kReaderOptionBlack);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterError);
-        param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+        param->appendOption(kReaderOptionError);
         param->setAnimates(true);
         param->setDefault(GenericReaderPlugin::eBeforeAfterHold);
         if (page) {
@@ -3017,8 +3006,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
     //////////Last-frame
     {
         IntParamDescriptor* param = desc.defineIntParam(kParamLastFrame);
-        param->setLabel(kParamLastFrameLabel);
-        param->setHint(kParamLastFrameHint);
+        param->setLabelAndHint(kParamLastFrameLabel, kParamLastFrameHint);
         param->setDefault(0);
         param->setAnimates(false);
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
@@ -3033,15 +3021,15 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setLabel(kParamAfterLabel);
         param->setHint(kParamAfterHint);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterHold);
-        param->appendOption(kReaderOptionHold,   kReaderOptionHoldHint);
+        param->appendOption(kReaderOptionHold);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterLoop);
-        param->appendOption(kReaderOptionLoop,   kReaderOptionLoopHint);
+        param->appendOption(kReaderOptionLoop);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBounce);
-        param->appendOption(kReaderOptionBounce, kReaderOptionBounceHint);
+        param->appendOption(kReaderOptionBounce);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterBlack);
-        param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+        param->appendOption(kReaderOptionBlack);
         assert(param->getNOptions() == GenericReaderPlugin::eBeforeAfterError);
-        param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+        param->appendOption(kReaderOptionError);
         param->setAnimates(true);
         param->setDefault(GenericReaderPlugin::eBeforeAfterHold);
         if (page) {
@@ -3055,15 +3043,15 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setLabel(kParamOnMissingFrameLabel);
         param->setHint(kParamOnMissingFrameHint);
         assert(param->getNOptions() == eMissingPrevious);
-        param->appendOption(kReaderOptionPrevious,  kReaderOptionPreviousHint);
+        param->appendOption(kReaderOptionPrevious);
         assert(param->getNOptions() == eMissingNext);
-        param->appendOption(kReaderOptionNext,  kReaderOptionNextHint);
+        param->appendOption(kReaderOptionNext);
         assert(param->getNOptions() == eMissingNearest);
-        param->appendOption(kReaderOptionNearest,  kReaderOptionNearestHint);
+        param->appendOption(kReaderOptionNearest);
         assert(param->getNOptions() == eMissingError);
-        param->appendOption(kReaderOptionError,  kReaderOptionErrorHint);
+        param->appendOption(kReaderOptionError);
         assert(param->getNOptions() == eMissingBlack);
-        param->appendOption(kReaderOptionBlack,  kReaderOptionBlackHint);
+        param->appendOption(kReaderOptionBlack);
         param->setAnimates(true);
         param->setDefault(eMissingError);
         if (page) {

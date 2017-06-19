@@ -1319,8 +1319,7 @@ GenericOCIO::describeInContextInput(ImageEffectDescriptor &desc,
     ////////// OCIO config file
     {
         StringParamDescriptor* param = desc.defineStringParam(kOCIOParamConfigFile);
-        param->setLabel(kOCIOParamConfigFileLabel);
-        param->setHint(kOCIOParamConfigFileHint);
+        param->setLabelAndHint(kOCIOParamConfigFileLabel);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
         param->setAnimates(false);
@@ -1347,8 +1346,7 @@ GenericOCIO::describeInContextInput(ImageEffectDescriptor &desc,
     ///////////Input Color-space
     {
         StringParamDescriptor* param = desc.defineStringParam(kOCIOParamInputSpace);
-        param->setLabel(inputSpaceLabel);
-        param->setHint(kOCIOParamInputSpaceHint);
+        param->setLabelAndHint(inputSpaceLabel, kOCIOParamInputSpaceHint);
         param->setAnimates(true);
         if (config) {
             param->setDefault(inputSpaceName);
@@ -1363,8 +1361,7 @@ GenericOCIO::describeInContextInput(ImageEffectDescriptor &desc,
 #ifdef OFX_OCIO_CHOICE
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamInputSpaceChoice);
-        param->setLabel(inputSpaceLabel);
-        param->setHint(kOCIOParamInputSpaceHint);
+        param->setLabelAndHint(inputSpaceLabel, kOCIOParamInputSpaceHint);
         param->setCascading(getImageEffectHostDescription()->supportsCascadingChoices);
         if (config) {
             buildChoiceMenu(config, param, getImageEffectHostDescription()->supportsCascadingChoices, inputSpaceName);
@@ -1411,8 +1408,7 @@ GenericOCIO::describeInContextOutput(ImageEffectDescriptor &desc,
     ///////////Output Color-space
     {
         StringParamDescriptor* param = desc.defineStringParam(kOCIOParamOutputSpace);
-        param->setLabel(outputSpaceLabel);
-        param->setHint(kOCIOParamOutputSpaceHint);
+        param->setLabelAndHint(outputSpaceLabel, kOCIOParamOutputSpaceHint);
         param->setAnimates(true);
         if (config) {
             param->setDefault(outputSpaceName);
@@ -1427,8 +1423,7 @@ GenericOCIO::describeInContextOutput(ImageEffectDescriptor &desc,
 #ifdef OFX_OCIO_CHOICE
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kOCIOParamOutputSpaceChoice);
-        param->setLabel(outputSpaceLabel);
-        param->setHint(kOCIOParamOutputSpaceHint);
+        param->setLabelAndHint(outputSpaceLabel, kOCIOParamOutputSpaceHint);
         param->setCascading(getImageEffectHostDescription()->supportsCascadingChoices);
         if (config) {
             buildChoiceMenu(config, param, getImageEffectHostDescription()->supportsCascadingChoices, outputSpaceName);
@@ -1454,8 +1449,7 @@ GenericOCIO::describeInContextContext(ImageEffectDescriptor &desc,
 {
 #ifdef OFX_IO_USING_OCIO
     GroupParamDescriptor* group = desc.defineGroupParam(kOCIOParamContext);
-    group->setLabel(kOCIOParamContextLabel);
-    group->setHint(kOCIOParamContextHint);
+    group->setLabelAndHint(kOCIOParamContextLabel, kOCIOParamContextHint);
     group->setOpen(false);
 
     {

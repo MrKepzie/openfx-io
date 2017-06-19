@@ -92,16 +92,16 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamDirection "direction"
 #define kParamDirectionLabel "Direction"
 #define kParamDirectionHint "Transform direction."
-#define kParamDirectionOptionForward "Forward"
-#define kParamDirectionOptionInverse "Inverse"
+#define kParamDirectionOptionForward "Forward", "", "forward"
+#define kParamDirectionOptionInverse "Inverse", "", "inverse"
 
 #define kParamInterpolation "interpolation"
 #define kParamInterpolationLabel "Interpolation"
 #define kParamInterpolationHint "Interpolation method. For files that are not LUTs (mtx, etc) this is ignored."
-#define kParamInterpolationOptionNearest "Nearest"
-#define kParamInterpolationOptionLinear "Linear"
-#define kParamInterpolationOptionTetrahedral "Tetrahedral"
-#define kParamInterpolationOptionBest "Best"
+#define kParamInterpolationOptionNearest "Nearest", "", "nearest"
+#define kParamInterpolationOptionLinear "Linear", "", "linear"
+#define kParamInterpolationOptionTetrahedral "Tetrahedral", "", "tetrahedral"
+#define kParamInterpolationOptionBest "Best", "", "best"
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 #define kParamEnableGPU "enableGPU"

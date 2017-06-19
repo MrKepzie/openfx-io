@@ -77,20 +77,13 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamChannelSelector "channelSelector"
 #define kParamChannelSelectorLabel "Channel View"
 #define kParamChannelSelectorHint "Specify which channels to view (prior to the display transform)."
-#define kParamChannelSelectorOptionRGB "RGB"
-#define kParamChannelSelectorOptionRGBHint "Color."
-#define kParamChannelSelectorOptionR "R"
-#define kParamChannelSelectorOptionRHint "Red."
-#define kParamChannelSelectorOptionG "G"
-#define kParamChannelSelectorOptionGHint "Green."
-#define kParamChannelSelectorOptionB "B"
-#define kParamChannelSelectorOptionBHint "Blue."
-#define kParamChannelSelectorOptionA "A"
-#define kParamChannelSelectorOptionAHint "Alpha."
-#define kParamChannelSelectorOptionLuminance "Luminance"
-#define kParamChannelSelectorOptionLuminanceHint "Luma"
-#define kParamChannelSelectorOptionMatteOverlay "Matte overlay"
-#define kParamChannelSelectorOptionMatteOverlayHint "Channel overlay mode. Do RGB, and then swizzle later."
+#define kParamChannelSelectorOptionRGB "RGB", "Color.", "rgb"
+#define kParamChannelSelectorOptionR "R", "Red.", "r"
+#define kParamChannelSelectorOptionG "G", "Green.", "g"
+#define kParamChannelSelectorOptionB "B", "Blue.", "b"
+#define kParamChannelSelectorOptionA "A", "Alpha.", "a"
+#define kParamChannelSelectorOptionLuminance "Luminance", "Luma", "l"
+#define kParamChannelSelectorOptionMatteOverlay "Matte overlay", "Channel overlay mode. Do RGB, and then swizzle later.", "m"
 enum ChannelSelectorEnum
 {
     eChannelSelectorRGB,
@@ -1286,19 +1279,19 @@ OCIODisplayPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamChannelSelectorLabel);
         param->setHint(kParamChannelSelectorHint);
         assert(param->getNOptions() == eChannelSelectorRGB);
-        param->appendOption(kParamChannelSelectorOptionRGB, kParamChannelSelectorOptionRGBHint);
+        param->appendOption(kParamChannelSelectorOptionRGB);
         assert(param->getNOptions() == eChannelSelectorR);
-        param->appendOption(kParamChannelSelectorOptionR, kParamChannelSelectorOptionRHint);
+        param->appendOption(kParamChannelSelectorOptionR);
         assert(param->getNOptions() == eChannelSelectorG);
-        param->appendOption(kParamChannelSelectorOptionG, kParamChannelSelectorOptionGHint);
+        param->appendOption(kParamChannelSelectorOptionG);
         assert(param->getNOptions() == eChannelSelectorB);
-        param->appendOption(kParamChannelSelectorOptionB, kParamChannelSelectorOptionBHint);
+        param->appendOption(kParamChannelSelectorOptionB);
         assert(param->getNOptions() == eChannelSelectorA);
-        param->appendOption(kParamChannelSelectorOptionA, kParamChannelSelectorOptionAHint);
+        param->appendOption(kParamChannelSelectorOptionA);
         assert(param->getNOptions() == eChannelSelectorLuminance);
-        param->appendOption(kParamChannelSelectorOptionLuminance, kParamChannelSelectorOptionLuminanceHint);
+        param->appendOption(kParamChannelSelectorOptionLuminance);
         //assert(param->getNOptions() == eChannelSelectorMatteOverlay);
-        //param->appendOption(kParamChannelSelectorOptionMatteOverlay, kParamChannelSelectorOptionMatteOverlayHint);
+        //param->appendOption(kParamChannelSelectorOptionMatteOverlay);
         param->setAnimates(false);
         if (page) {
             page->addChild(*param);

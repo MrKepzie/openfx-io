@@ -61,8 +61,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamOperation "operation"
 #define kParamOperationLabel "Operation"
 #define kParamOperationHint "Operation to perform. Lin is the SCENE_LINEAR profile and Log is the COMPOSITING_LOG profile of the OCIO configuration."
-#define kParamOperationOptionLogToLin "Log to Lin"
-#define kParamOperationOptionLinToLog "Lin to Log"
+#define kParamOperationOptionLogToLin "Log to Lin", "", "log2lin"
+#define kParamOperationOptionLinToLog "Lin to Log", "", "lin2log"
 
 #if defined(OFX_SUPPORTS_OPENGLRENDER)
 #define kParamEnableGPU "enableGPU"
@@ -1045,8 +1045,7 @@ OCIOLogConvertPluginFactory::describeInContext(ImageEffectDescriptor &desc,
     ////////// OCIO config file
     {
         StringParamDescriptor* param = desc.defineStringParam(kOCIOParamConfigFile);
-        param->setLabel(kOCIOParamConfigFileLabel);
-        param->setHint(kOCIOParamConfigFileHint);
+        param->setLabelAndHint(kOCIOParamConfigFileLabel);
         param->setStringType(eStringTypeFilePath);
         param->setFilePathExists(true);
         // the OCIO config can only be set in a portable fashion using the environment variable.

@@ -51,8 +51,7 @@ NAMESPACE_OFX_ENTER
 
 #ifdef OFX_IO_USING_OCIO
 #define kOCIOParamConfigFile "ocioConfigFile"
-#define kOCIOParamConfigFileLabel "OCIO Config File"
-#define kOCIOParamConfigFileHint "OpenColorIO configuration file"
+#define kOCIOParamConfigFileLabel "OCIO Config File", "OpenColorIO configuration file"
 #define kOCIOParamInputSpace "ocioInputSpace"
 #define kOCIOParamInputSpaceLabel "Input Colorspace"
 #define kOCIOParamInputSpaceHint "Input data is taken to be in this colorspace."

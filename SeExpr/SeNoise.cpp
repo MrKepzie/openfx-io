@@ -123,21 +123,15 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamNoiseType "noiseType"
 #define kParamNoiseTypeLabel "Noise Type"
 #define kParamNoiseTypeHint "Kind of noise."
-#define kParamNoiseTypeCellNoise "Cell Noise"
-#define kParamNoiseTypeCellNoiseHint "Cell noise generates a field of constant colored cubes based on the integer location.  This is the same as the prman cellnoise function. You may want to set xRotate and yRotate to 0 in the Transform tab to get square cells."
-#define kParamNoiseTypeNoise "Noise"
-#define kParamNoiseTypeNoiseHint "Noise is a random function that smoothly blends between samples at integer locations.  This is Ken Perlin's original noise function."
+#define kParamNoiseTypeCellNoise "Cell Noise", "Cell noise generates a field of constant colored cubes based on the integer location.  This is the same as the prman cellnoise function. You may want to set xRotate and yRotate to 0 in the Transform tab to get square cells.", "cell"
+#define kParamNoiseTypeNoise "Noise", "Noise is a random function that smoothly blends between samples at integer locations.  This is Ken Perlin's original noise function.", "noise"
 #ifdef SENOISE_PERLIN
-#define kParamNoiseTypePerlin "Perlin"
-#define kParamNoiseTypePerlinHint "\"Improved Perlin Noise\", based on Ken Perlin's 2002 Java reference code."
+#define kParamNoiseTypePerlin "Perlin", "\"Improved Perlin Noise\", based on Ken Perlin's 2002 Java reference code.", "perlin"
 #endif
-#define kParamNoiseTypeFBM "FBM"
-#define kParamNoiseTypeFBMHint "FBM (Fractal Brownian Motion) is a multi-frequency noise function.  The base frequency is the same as the \"Noise\" function.  The total number of frequencies is controlled by octaves.  The lacunarity is the spacing between the frequencies - a value of 2 means each octave is twice the previous frequency.  The gain controls how much each frequency is scaled relative to the previous frequency."
-#define kParamNoiseTypeTurbulence "Turbulence"
-#define kParamNoiseTypeTurbulenceHint "turbulence is a variant of fbm where the absolute value of each noise term is taken.  This gives a more billowy appearance."
+#define kParamNoiseTypeFBM "FBM", "FBM (Fractal Brownian Motion) is a multi-frequency noise function.  The base frequency is the same as the \"Noise\" function.  The total number of frequencies is controlled by octaves.  The lacunarity is the spacing between the frequencies - a value of 2 means each octave is twice the previous frequency.  The gain controls how much each frequency is scaled relative to the previous frequency.", "fbm"
+#define kParamNoiseTypeTurbulence "Turbulence", "turbulence is a variant of fbm where the absolute value of each noise term is taken.  This gives a more billowy appearance.", "turbulence"
 #ifdef SENOISE_VORONOI
-#define kParamNoiseTypeVoronoi "Voronoi"
-#define kParamNoiseTypeVoronoiHint "Voronoi is a cellular noise pattern. It is a jittered variant of cellnoise. The type parameter describes different variants of the noise function.  The jitter param controls how irregular the pattern is (jitter = 0 is like ordinary cellnoise).  The fbm* params can be used to distort the noise field.  When fbmScale is zero (the default), there is no distortion.  The remaining params are the same as for the fbm function. NOTE: This does not necessarily return [0,1] value, because it can return arbitrary distance."
+#define kParamNoiseTypeVoronoi "Voronoi", "Voronoi is a cellular noise pattern. It is a jittered variant of cellnoise. The type parameter describes different variants of the noise function.  The jitter param controls how irregular the pattern is (jitter = 0 is like ordinary cellnoise).  The fbm* params can be used to distort the noise field.  When fbmScale is zero (the default), there is no distortion.  The remaining params are the same as for the fbm function. NOTE: This does not necessarily return [0,1] value, because it can return arbitrary distance.", "voronoi"
 #endif
 enum NoiseTypeEnum
 {
@@ -174,11 +168,11 @@ enum NoiseTypeEnum
 #define kParamVoronoiType "voronoiType"
 #define kParamVoronoiTypeLabel "Voronoi Type"
 #define kParamVoronoiTypeHint "Different variants of the Voronoi noise function."
-#define kParamVoronoiTypeCell "Cell"
-#define kParamVoronoiType2 "Type 2"
-#define kParamVoronoiType3 "Type 3"
-#define kParamVoronoiType4 "Type 4"
-#define kParamVoronoiType5 "Type 5"
+#define kParamVoronoiTypeCell "Cell", "", "cell"
+#define kParamVoronoiType2 "Type 2", "", "type2"
+#define kParamVoronoiType3 "Type 3", "", "type3"
+#define kParamVoronoiType4 "Type 4", "", "type4"
+#define kParamVoronoiType5 "Type 5", "", "type5"
 enum VoronoiTypeEnum
 {
     eVoronoiTypeCell,
@@ -1388,20 +1382,20 @@ SeNoisePluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamNoiseTypeLabel);
         param->setHint(kParamNoiseTypeHint);
         assert(param->getNOptions() == eNoiseTypeCellNoise);
-        param->appendOption(kParamNoiseTypeCellNoise, kParamNoiseTypeCellNoiseHint);
+        param->appendOption(kParamNoiseTypeCellNoise);
         assert(param->getNOptions() == eNoiseTypeNoise);
-        param->appendOption(kParamNoiseTypeNoise, kParamNoiseTypeNoiseHint);
+        param->appendOption(kParamNoiseTypeNoise);
 #ifdef SENOISE_PERLIN
         assert(param->getNOptions() == eNoiseTypePerlin);
-        param->appendOption(kParamNoiseTypePerlin, kParamNoiseTypePerlinHint);
+        param->appendOption(kParamNoiseTypePerlin);
 #endif
         assert(param->getNOptions() == eNoiseTypeFBM);
-        param->appendOption(kParamNoiseTypeFBM, kParamNoiseTypeFBMHint);
+        param->appendOption(kParamNoiseTypeFBM);
         assert(param->getNOptions() == eNoiseTypeTurbulence);
-        param->appendOption(kParamNoiseTypeTurbulence, kParamNoiseTypeTurbulenceHint);
+        param->appendOption(kParamNoiseTypeTurbulence);
 #ifdef SENOISE_VORONOI
         assert(param->getNOptions() == eNoiseTypeVoronoi);
-        param->appendOption(kParamNoiseTypeVoronoi, kParamNoiseTypeVoronoiHint);
+        param->appendOption(kParamNoiseTypeVoronoi);
 #endif
         param->setDefault(kParamNoiseTypeDefault);
         if (page) {
