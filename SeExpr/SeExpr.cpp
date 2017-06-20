@@ -294,18 +294,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamRegionOfDefinitionLabel "Region of Definition"
 #define kParamRegionOfDefinitionHint "Region of definition (extent) of the output."
 
-#define kParamRegionOfDefinitionOptionUnion "Union"
-#define kParamRegionOfDefinitionOptionUnionHelp "The output region is the union of the regions of definition of all connected inputs."
-#define kParamRegionOfDefinitionOptionIntersection "Intersection"
-#define kParamRegionOfDefinitionOptionIntersectionHelp "The output region is the intersection the regions of definition of all connected inputs."
-#define kParamRegionOfDefinitionOptionSize "Size"
-#define kParamRegionOfDefinitionOptionSizeHelp "The output region is the size of the rectangle overlay."
-#define kParamRegionOfDefinitionOptionFormat "Format"
-#define kParamRegionOfDefinitionOptionFormatHelp "The output region is the specified format."
-#define kParamRegionOfDefinitionOptionProject "Project"
-#define kParamRegionOfDefinitionOptionProjectHelp "The output region is the size of the project."
+#define kParamRegionOfDefinitionOptionUnion "Union", "The output region is the union of the regions of definition of all connected inputs.", "union"
+#define kParamRegionOfDefinitionOptionIntersection "Intersection", "The output region is the intersection the regions of definition of all connected inputs.", "intersection"
+#define kParamRegionOfDefinitionOptionSize "Size", "The output region is the size of the rectangle overlay.", "size"
+#define kParamRegionOfDefinitionOptionFormat "Format", "The output region is the specified format.", "format"
+#define kParamRegionOfDefinitionOptionProject "Project", "The output region is the size of the project.", "project"
 #define kParamRegionOfDefinitionOptionCustomInput "Input"
 #define kParamRegionOfDefinitionOptionCustomInputHelp "The output region is the region of definition of input "
+#define kParamRegionOfDefinitionOptionCustomInputEnum "input"
 enum RegionOfDefinitionEnum
 {
     eRegionOfDefinitionOptionUnion,
@@ -3135,20 +3131,20 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
 
         assert(param->getNOptions() == eRegionOfDefinitionOptionUnion);
-        param->appendOption(kParamRegionOfDefinitionOptionUnion, kParamRegionOfDefinitionOptionUnionHelp);
+        param->appendOption(kParamRegionOfDefinitionOptionUnion);
         assert(param->getNOptions() == eRegionOfDefinitionOptionIntersection);
-        param->appendOption(kParamRegionOfDefinitionOptionIntersection, kParamRegionOfDefinitionOptionIntersectionHelp);
+        param->appendOption(kParamRegionOfDefinitionOptionIntersection);
         assert(param->getNOptions() == eRegionOfDefinitionOptionSize);
-        param->appendOption(kParamRegionOfDefinitionOptionSize, kParamRegionOfDefinitionOptionSizeHelp);
+        param->appendOption(kParamRegionOfDefinitionOptionSize);
         assert(param->getNOptions() == eRegionOfDefinitionOptionFormat);
-        param->appendOption(kParamRegionOfDefinitionOptionFormat, kParamRegionOfDefinitionOptionFormatHelp);
+        param->appendOption(kParamRegionOfDefinitionOptionFormat);
         assert(param->getNOptions() == eRegionOfDefinitionOptionProject);
-        param->appendOption(kParamRegionOfDefinitionOptionProject, kParamRegionOfDefinitionOptionProjectHelp);
+        param->appendOption(kParamRegionOfDefinitionOptionProject);
 
         assert(param->getNOptions() == eRegionOfDefinitionOptionCustom);
         for (int i = 0; i < kSourceClipCount; ++i) {
             const string istr = unsignedToString(i + 1);
-            param->appendOption(kParamRegionOfDefinitionOptionCustomInput + istr, kParamRegionOfDefinitionOptionCustomInputHelp + istr);
+            param->appendOption(kParamRegionOfDefinitionOptionCustomInput + istr, kParamRegionOfDefinitionOptionCustomInputHelp + istr, kParamRegionOfDefinitionOptionCustomInputEnum + istr);
         }
         param->setAnimates(false);
         if (page) {
@@ -3197,45 +3193,46 @@ SeExprPluginFactory<simple>::describeInContext(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamGeneratorFormat);
         param->setLabel(kParamGeneratorFormatLabel);
         assert(param->getNOptions() == eParamFormatPCVideo);
-        param->appendOption(kParamFormatPCVideoLabel);
+        assert(param->getNOptions() == eParamFormatPCVideo);
+        param->appendOption(kParamFormatPCVideoLabel, "", kParamFormatPCVideo);
         assert(param->getNOptions() == eParamFormatNTSC);
-        param->appendOption(kParamFormatNTSCLabel);
+        param->appendOption(kParamFormatNTSCLabel, "", kParamFormatNTSC);
         assert(param->getNOptions() == eParamFormatPAL);
-        param->appendOption(kParamFormatPALLabel);
+        param->appendOption(kParamFormatPALLabel, "", kParamFormatPAL);
         assert(param->getNOptions() == eParamFormatNTSC169);
-        param->appendOption(kParamFormatNTSC169Label);
+        param->appendOption(kParamFormatNTSC169Label, "", kParamFormatNTSC169);
         assert(param->getNOptions() == eParamFormatPAL169);
-        param->appendOption(kParamFormatPAL169Label);
+        param->appendOption(kParamFormatPAL169Label, "", kParamFormatPAL169);
         assert(param->getNOptions() == eParamFormatHD720);
-        param->appendOption(kParamFormatHD720Label);
+        param->appendOption(kParamFormatHD720Label, "", kParamFormatHD720);
         assert(param->getNOptions() == eParamFormatHD);
-        param->appendOption(kParamFormatHDLabel);
+        param->appendOption(kParamFormatHDLabel, "", kParamFormatHD);
         assert(param->getNOptions() == eParamFormatUHD4K);
-        param->appendOption(kParamFormatUHD4KLabel);
+        param->appendOption(kParamFormatUHD4KLabel, "", kParamFormatUHD4K);
         assert(param->getNOptions() == eParamFormat1kSuper35);
-        param->appendOption(kParamFormat1kSuper35Label);
+        param->appendOption(kParamFormat1kSuper35Label, "", kParamFormat1kSuper35);
         assert(param->getNOptions() == eParamFormat1kCinemascope);
-        param->appendOption(kParamFormat1kCinemascopeLabel);
+        param->appendOption(kParamFormat1kCinemascopeLabel, "", kParamFormat1kCinemascope);
         assert(param->getNOptions() == eParamFormat2kSuper35);
-        param->appendOption(kParamFormat2kSuper35Label);
+        param->appendOption(kParamFormat2kSuper35Label, "", kParamFormat2kSuper35);
         assert(param->getNOptions() == eParamFormat2kCinemascope);
-        param->appendOption(kParamFormat2kCinemascopeLabel);
+        param->appendOption(kParamFormat2kCinemascopeLabel, "", kParamFormat2kCinemascope);
         assert(param->getNOptions() == eParamFormat2kDCP);
-        param->appendOption(kParamFormat2kDCPLabel);
+        param->appendOption(kParamFormat2kDCPLabel, "", kParamFormat2kDCP);
         assert(param->getNOptions() == eParamFormat4kSuper35);
-        param->appendOption(kParamFormat4kSuper35Label);
+        param->appendOption(kParamFormat4kSuper35Label, "", kParamFormat4kSuper35);
         assert(param->getNOptions() == eParamFormat4kCinemascope);
-        param->appendOption(kParamFormat4kCinemascopeLabel);
+        param->appendOption(kParamFormat4kCinemascopeLabel, "", kParamFormat4kCinemascope);
         assert(param->getNOptions() == eParamFormat4kDCP);
-        param->appendOption(kParamFormat4kDCPLabel);
+        param->appendOption(kParamFormat4kDCPLabel, "", kParamFormat4kDCP);
         assert(param->getNOptions() == eParamFormatSquare256);
-        param->appendOption(kParamFormatSquare256Label);
+        param->appendOption(kParamFormatSquare256Label, "", kParamFormatSquare256);
         assert(param->getNOptions() == eParamFormatSquare512);
-        param->appendOption(kParamFormatSquare512Label);
+        param->appendOption(kParamFormatSquare512Label, "", kParamFormatSquare512);
         assert(param->getNOptions() == eParamFormatSquare1k);
-        param->appendOption(kParamFormatSquare1kLabel);
+        param->appendOption(kParamFormatSquare1kLabel, "", kParamFormatSquare1k);
         assert(param->getNOptions() == eParamFormatSquare2k);
-        param->appendOption(kParamFormatSquare2kLabel);
+        param->appendOption(kParamFormatSquare2kLabel, "", kParamFormatSquare2k);
         param->setDefault(0);
         param->setHint(kParamGeneratorFormatHint);
         param->setAnimates(false);

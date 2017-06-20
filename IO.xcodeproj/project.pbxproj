@@ -2120,6 +2120,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(OIIO_PATH)/include",
+					"$(LIBRAW_PATH)/include/libraw",
 				);
 				INFOPLIST_FILE = OIIO/Info.plist;
 				LIBRARY_SEARCH_PATHS = "$(OIIO_PATH)/lib";
@@ -2141,6 +2142,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(OIIO_PATH)/include",
+					"$(LIBRAW_PATH)/include/libraw",
 				);
 				INFOPLIST_FILE = OIIO/Info.plist;
 				LIBRARY_SEARCH_PATHS = "$(OIIO_PATH)/lib";

@@ -71,27 +71,17 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamBitDepthHint \
     "Number of bits per sample in the file [TIFF,DPX,TGA,DDS,ICO,IFF,PNM,PIC]."
 
-#define kParamBitDepthOptionAuto     "auto"
-#define kParamBitDepthOptionAutoHint "Guess from the output format"
+#define kParamBitDepthOptionAuto     "auto", "Guess from the output format", "auto"
 //#define kParamBitDepthNone     "none"
-#define kParamBitDepthOption8      "8i"
-#define kParamBitDepthOption8Hint   "8  bits integer"
-#define kParamBitDepthOption10     "10i"
-#define kParamBitDepthOption10Hint  "10 bits integer"
-#define kParamBitDepthOption12     "12i"
-#define kParamBitDepthOption12Hint  "12 bits integer"
-#define kParamBitDepthOption16     "16i"
-#define kParamBitDepthOption16Hint  "16 bits integer"
-#define kParamBitDepthOption16f    "16f"
-#define kParamBitDepthOption16fHint "16 bits floating point"
-#define kParamBitDepthOption32     "32i"
-#define kParamBitDepthOption32Hint  "32 bits integer"
-#define kParamBitDepthOption32f    "32f"
-#define kParamBitDepthOption32fHint "32 bits floating point"
-#define kParamBitDepthOption64     "64i"
-#define kParamBitDepthOption64Hint  "64 bits integer"
-#define kParamBitDepthOption64f    "64f"
-#define kParamBitDepthOption64fHint "64 bits floating point"
+#define kParamBitDepthOption8      "8i", "8  bits integer", "8i"
+#define kParamBitDepthOption10     "10i", "10 bits integer", "10i"
+#define kParamBitDepthOption12     "12i", "12 bits integer", "12i"
+#define kParamBitDepthOption16     "16i", "16 bits integer", "16i"
+#define kParamBitDepthOption16f    "16f", "16 bits floating point", "16f"
+#define kParamBitDepthOption32     "32i", "32 bits integer", "32i"
+#define kParamBitDepthOption32f    "32f", "32 bits floating point", "32f"
+#define kParamBitDepthOption64     "64i", "64 bits integer", "64i"
+#define kParamBitDepthOption64f    "64f", "64 bits floating point", "64f"
 
 
 enum ETuttlePluginBitDepth
@@ -149,22 +139,14 @@ enum ETuttlePluginComponents
    7 = The 0th row represents the visual right-hand side of the image, and the 0th column represents the visual bottom.
    8 = The 0th row represents the visual left-hand side of the image, and the 0th column represents the visual bottom.
  */
-#define kParamOutputOrientationNormal                "normal"
-#define kParamOutputOrientationNormalHint              "normal (top to bottom, left to right)"
-#define kParamOutputOrientationFlop                  "flop"
-#define kParamOutputOrientationFlopHint                "flipped horizontally (top to bottom, right to left)"
-#define kParamOutputOrientationR180                  "180"
-#define kParamOutputOrientationR180Hint                "rotate 180deg (bottom to top, right to left)"
-#define kParamOutputOrientationFlip                  "flip"
-#define kParamOutputOrientationFlipHint                "flipped vertically (bottom to top, left to right)"
-#define kParamOutputOrientationTransposed            "transposed"
-#define kParamOutputOrientationTransposedHint          "transposed (left to right, top to bottom)"
-#define kParamOutputOrientationR90Clockwise          "90clockwise"
-#define kParamOutputOrientationR90ClockwiseHint        "rotated 90deg clockwise (right to left, top to bottom)"
-#define kParamOutputOrientationTransverse            "transverse"
-#define kParamOutputOrientationTransverseHint          "transverse (right to left, bottom to top)"
-#define kParamOutputOrientationR90CounterClockwise   "90counter-clockwise"
-#define kParamOutputOrientationR90CounterClockwiseHint "rotated 90deg counter-clockwise (left to right, bottom to top)"
+#define kParamOutputOrientationNormal                "normal", "normal (top to bottom, left to right)", "normal"
+#define kParamOutputOrientationFlop                  "flop", "flipped horizontally (top to bottom, right to left)", "flop"
+#define kParamOutputOrientationR180                  "180", "rotate 180deg (bottom to top, right to left)", "180"
+#define kParamOutputOrientationFlip                  "flip", "flipped vertically (bottom to top, left to right)", "flip"
+#define kParamOutputOrientationTransposed            "transposed", "transposed (left to right, top to bottom)", "transposed"
+#define kParamOutputOrientationR90Clockwise          "90clockwise", "rotated 90deg clockwise (right to left, top to bottom)", "90clockwise"
+#define kParamOutputOrientationTransverse            "transverse", "transverse (right to left, bottom to top)", "transverse"
+#define kParamOutputOrientationR90CounterClockwise   "90counter-clockwise", "rotated 90deg counter-clockwise (left to right, bottom to top)", "90counter-clockwise"
 enum EOutputOrientation
 {
     eOutputOrientationNormal = 0,
@@ -186,36 +168,21 @@ enum EOutputOrientation
     "and the EXR format supports \"none\", \"rle\", \"zip\" (the default), \"piz\", \"pxr24\", \"b44\", \"b44a\", " \
     "\"dwaa\" or \"dwab\"."
 
-#define kParamOutputCompressionOptionAuto        "default"
-#define kParamOutputCompressionOptionAutoHint     "Guess from the output format"
-#define kParamOutputCompressionOptionNone        "none"
-#define kParamOutputCompressionOptionNoneHint     "No compression [EXR, TIFF, IFF]"
-#define kParamOutputCompressionOptionZip         "zip"
-#define kParamOutputCompressionOptionZipHint      "Zlib/Deflate compression (lossless) [EXR, TIFF, Zfile]"
-#define kParamOutputCompressionOptionZips        "zips"
-#define kParamOutputCompressionOptionZipsHint     "Zlib compression (lossless), one scan line at a time [EXR]"
-#define kParamOutputCompressionOptionRle         "rle"
-#define kParamOutputCompressionOptionRleHint      "Run Length Encoding (lossless) [DPX, IFF, EXR, TGA, RLA]"
-#define kParamOutputCompressionOptionPiz         "piz"
-#define kParamOutputCompressionOptionPizHint      "Piz-based wavelet compression [EXR]"
-#define kParamOutputCompressionOptionPxr24       "pxr24"
-#define kParamOutputCompressionOptionPxr24Hint    "Lossy 24bit float compression [EXR]"
-#define kParamOutputCompressionOptionB44         "b44"
-#define kParamOutputCompressionOptionB44Hint      "Lossy 4-by-4 pixel block compression, fixed compression rate [EXR]"
-#define kParamOutputCompressionOptionB44a        "b44a"
-#define kParamOutputCompressionOptionB44aHint     "Lossy 4-by-4 pixel block compression, flat fields are compressed more [EXR]"
-#define kParamOutputCompressionOptionDWAa        "dwaa"
-#define kParamOutputCompressionOptionDWAaHint     "lossy DCT based compression, in blocks of 32 scanlines. More efficient for partial buffer access. [EXR]"
-#define kParamOutputCompressionOptionDWAb        "dwab"
-#define kParamOutputCompressionOptionDWAbHint     "lossy DCT based compression, in blocks of 256 scanlines. More efficient space wise and faster to decode full frames than DWAA. [EXR]"
-#define kParamOutputCompressionOptionLZW         "lzw"
-#define kParamOutputCompressionOptionLZWHint      "Lempel-Ziv Welsch compression (lossless) [TIFF]"
-#define kParamOutputCompressionOptionCCITTRLE    "ccittrle"
-#define kParamOutputCompressionOptionCCITTRLEHint "CCITT modified Huffman RLE (lossless) [TIFF]"
-#define kParamOutputCompressionOptionJPEG        "jpeg"
-#define kParamOutputCompressionOptionJPEGHint     "JPEG [TIFF]"
-#define kParamOutputCompressionOptionPACKBITS    "packbits"
-#define kParamOutputCompressionOptionPACKBITSHint "Macintosh RLE (lossless) [TIFF]"
+#define kParamOutputCompressionOptionAuto        "default", "Guess from the output format", "default"
+#define kParamOutputCompressionOptionNone        "none", "No compression [EXR, TIFF, IFF]", "none"
+#define kParamOutputCompressionOptionZip         "zip", "Zlib/Deflate compression (lossless) [EXR, TIFF, Zfile]", "zip"
+#define kParamOutputCompressionOptionZips        "zips", "Zlib compression (lossless), one scan line at a time [EXR]", "zips"
+#define kParamOutputCompressionOptionRle         "rle", "Run Length Encoding (lossless) [DPX, IFF, EXR, TGA, RLA]", "rle"
+#define kParamOutputCompressionOptionPiz         "piz", "Piz-based wavelet compression [EXR]", "piz"
+#define kParamOutputCompressionOptionPxr24       "pxr24", "Lossy 24bit float compression [EXR]", "pxr24"
+#define kParamOutputCompressionOptionB44         "b44", "Lossy 4-by-4 pixel block compression, fixed compression rate [EXR]", "b44"
+#define kParamOutputCompressionOptionB44a        "b44a", "Lossy 4-by-4 pixel block compression, flat fields are compressed more [EXR]", "b44a"
+#define kParamOutputCompressionOptionDWAa        "dwaa", "lossy DCT based compression, in blocks of 32 scanlines. More efficient for partial buffer access. [EXR]", "dwaa"
+#define kParamOutputCompressionOptionDWAb        "dwab", "lossy DCT based compression, in blocks of 256 scanlines. More efficient space wise and faster to decode full frames than DWAA. [EXR]", "dwab"
+#define kParamOutputCompressionOptionLZW         "lzw", "Lempel-Ziv Welsch compression (lossless) [TIFF]", "lzw"
+#define kParamOutputCompressionOptionCCITTRLE    "ccittrle", "CCITT modified Huffman RLE (lossless) [TIFF]", "ccittrle"
+#define kParamOutputCompressionOptionJPEG        "jpeg", "JPEG [TIFF]", "jpeg"
+#define kParamOutputCompressionOptionPACKBITS    "packbits", "Macintosh RLE (lossless) [TIFF]", "packbits"
 
 enum EParamCompression
 {
@@ -239,11 +206,11 @@ enum EParamCompression
 #define kParamTileSize "tileSize"
 #define kParamTileSizeLabel "Tile Size"
 #define kParamTileSizeHint "Size of a tile in the output file for formats that support tiles. If scan-line based, the whole image will have a single tile."
-#define kParamTileSizeOptionScanLineBased "Scan-Line Based"
-#define kParamTileSizeOption64 "64"
-#define kParamTileSizeOption128 "128"
-#define kParamTileSizeOption256 "256"
-#define kParamTileSizeOption512 "512"
+#define kParamTileSizeOptionScanLineBased "Scan-Line Based", "", "0"
+#define kParamTileSizeOption64 "64", "", "64"
+#define kParamTileSizeOption128 "128", "", "128"
+#define kParamTileSizeOption256 "256", "", "256"
+#define kParamTileSizeOption512 "512", "", "512"
 
 enum EParamTileSize
 {
@@ -269,16 +236,13 @@ enum EParamTileSize
 #define kParamPartsSplittingHint "Defines whether to separate views/layers in different EXR parts or not. " \
     "Note that multi-part files are only supported by OpenEXR >= 2"
 
-#define kParamPartsSinglePart "Single Part"
-#define kParamPartsSinglePartHint "All views and layers will be in the same part, ensuring compatibility with OpenEXR 1.x"
+#define kParamPartsSinglePart "Single Part", "All views and layers will be in the same part, ensuring compatibility with OpenEXR 1.x", "single"
 
-#define kParamPartsSlitViews "Split Views"
-#define kParamPartsSlitViewsHint "All views will have its own part, and each part will contain all layers. This will produce an EXR optimized in size that " \
-    "can be opened only with applications supporting OpenEXR 2"
+#define kParamPartsSlitViews "Split Views", "All views will have its own part, and each part will contain all layers. This will produce an EXR optimized in size that " \
+    "can be opened only with applications supporting OpenEXR 2", "views"
 
-#define kParamPartsSplitViewsLayers "Split Views,Layers"
-#define kParamPartsSplitViewsLayersHint "Each layer of each view will have its own part. This will produce an EXR optimized for decoding speed that " \
-    "can be opened only with applications supporting OpenEXR 2"
+#define kParamPartsSplitViewsLayers "Split Views,Layers", "Each layer of each view will have its own part. This will produce an EXR optimized for decoding speed that " \
+    "can be opened only with applications supporting OpenEXR 2", "views_layers"
 
 
 #define kParamViewsSelector "viewsSelector"
@@ -1517,25 +1481,25 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamBitDepthLabel);
         param->setHint(kParamBitDepthHint);
         assert(param->getNOptions() == eTuttlePluginBitDepthAuto);
-        param->appendOption(kParamBitDepthOptionAuto, kParamBitDepthOptionAutoHint);
+        param->appendOption(kParamBitDepthOptionAuto);
         assert(param->getNOptions() == eTuttlePluginBitDepth8);
-        param->appendOption(kParamBitDepthOption8, kParamBitDepthOption8Hint);
+        param->appendOption(kParamBitDepthOption8);
         assert(param->getNOptions() == eTuttlePluginBitDepth10);
-        param->appendOption(kParamBitDepthOption10, kParamBitDepthOption10Hint);
+        param->appendOption(kParamBitDepthOption10);
         assert(param->getNOptions() == eTuttlePluginBitDepth12);
-        param->appendOption(kParamBitDepthOption12, kParamBitDepthOption12Hint);
+        param->appendOption(kParamBitDepthOption12);
         assert(param->getNOptions() == eTuttlePluginBitDepth16);
-        param->appendOption(kParamBitDepthOption16, kParamBitDepthOption16Hint);
+        param->appendOption(kParamBitDepthOption16);
         assert(param->getNOptions() == eTuttlePluginBitDepth16f);
-        param->appendOption(kParamBitDepthOption16f, kParamBitDepthOption16fHint);
+        param->appendOption(kParamBitDepthOption16f);
         assert(param->getNOptions() == eTuttlePluginBitDepth32);
-        param->appendOption(kParamBitDepthOption32, kParamBitDepthOption32Hint);
+        param->appendOption(kParamBitDepthOption32);
         assert(param->getNOptions() == eTuttlePluginBitDepth32f);
-        param->appendOption(kParamBitDepthOption32f, kParamBitDepthOption32fHint);
+        param->appendOption(kParamBitDepthOption32f);
         assert(param->getNOptions() == eTuttlePluginBitDepth64);
-        param->appendOption(kParamBitDepthOption64, kParamBitDepthOption64Hint);
+        param->appendOption(kParamBitDepthOption64);
         assert(param->getNOptions() == eTuttlePluginBitDepth64f);
-        param->appendOption(kParamBitDepthOption64f, kParamBitDepthOption64fHint);
+        param->appendOption(kParamBitDepthOption64f);
         param->setDefault(eTuttlePluginBitDepthAuto);
         if (page) {
             page->addChild(*param);
@@ -1568,21 +1532,21 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamOutputOrientationLabel);
         param->setHint(kParamOutputOrientationHint);
         assert(param->getNOptions() == eOutputOrientationNormal);
-        param->appendOption(kParamOutputOrientationNormal, kParamOutputOrientationNormalHint);
+        param->appendOption(kParamOutputOrientationNormal);
         assert(param->getNOptions() == eOutputOrientationFlop);
-        param->appendOption(kParamOutputOrientationFlop, kParamOutputOrientationFlopHint);
+        param->appendOption(kParamOutputOrientationFlop);
         assert(param->getNOptions() == eOutputOrientationR180);
-        param->appendOption(kParamOutputOrientationR180, kParamOutputOrientationR180Hint);
+        param->appendOption(kParamOutputOrientationR180);
         assert(param->getNOptions() == eOutputOrientationFlip);
-        param->appendOption(kParamOutputOrientationFlip, kParamOutputOrientationFlipHint);
+        param->appendOption(kParamOutputOrientationFlip);
         assert(param->getNOptions() == eOutputOrientationTransposed);
-        param->appendOption(kParamOutputOrientationTransposed, kParamOutputOrientationTransposedHint);
+        param->appendOption(kParamOutputOrientationTransposed);
         assert(param->getNOptions() == eOutputOrientationR90Clockwise);
-        param->appendOption(kParamOutputOrientationR90Clockwise, kParamOutputOrientationR90ClockwiseHint);
+        param->appendOption(kParamOutputOrientationR90Clockwise);
         assert(param->getNOptions() == eOutputOrientationTransverse);
-        param->appendOption(kParamOutputOrientationTransverse, kParamOutputOrientationTransverseHint);
+        param->appendOption(kParamOutputOrientationTransverse);
         assert(param->getNOptions() == eOutputOrientationR90CounterClockwise);
-        param->appendOption(kParamOutputOrientationR90CounterClockwise, kParamOutputOrientationR90CounterClockwiseHint);
+        param->appendOption(kParamOutputOrientationR90CounterClockwise);
         param->setDefault(0);
         if (page) {
             page->addChild(*param);
@@ -1593,35 +1557,35 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamOutputCompressionLabel);
         param->setHint(kParamOutputCompressionHint);
         assert(param->getNOptions() == eParamCompressionAuto);
-        param->appendOption(kParamOutputCompressionOptionAuto, kParamOutputCompressionOptionAutoHint);
+        param->appendOption(kParamOutputCompressionOptionAuto);
         assert(param->getNOptions() == eParamCompressionNone);
-        param->appendOption(kParamOutputCompressionOptionNone, kParamOutputCompressionOptionNoneHint);
+        param->appendOption(kParamOutputCompressionOptionNone);
         assert(param->getNOptions() == eParamCompressionZip);
-        param->appendOption(kParamOutputCompressionOptionZip, kParamOutputCompressionOptionZipHint);
+        param->appendOption(kParamOutputCompressionOptionZip);
         assert(param->getNOptions() == eParamCompressionZips);
-        param->appendOption(kParamOutputCompressionOptionZips, kParamOutputCompressionOptionZipsHint);
+        param->appendOption(kParamOutputCompressionOptionZips);
         assert(param->getNOptions() == eParamCompressionRle);
-        param->appendOption(kParamOutputCompressionOptionRle, kParamOutputCompressionOptionRleHint);
+        param->appendOption(kParamOutputCompressionOptionRle);
         assert(param->getNOptions() == eParamCompressionPiz);
-        param->appendOption(kParamOutputCompressionOptionPiz, kParamOutputCompressionOptionPizHint);
+        param->appendOption(kParamOutputCompressionOptionPiz);
         assert(param->getNOptions() == eParamCompressionPxr24);
-        param->appendOption(kParamOutputCompressionOptionPxr24, kParamOutputCompressionOptionPxr24Hint);
+        param->appendOption(kParamOutputCompressionOptionPxr24);
         assert(param->getNOptions() == eParamCompressionB44);
-        param->appendOption(kParamOutputCompressionOptionB44, kParamOutputCompressionOptionB44Hint);
+        param->appendOption(kParamOutputCompressionOptionB44);
         assert(param->getNOptions() == eParamCompressionB44a);
-        param->appendOption(kParamOutputCompressionOptionB44a, kParamOutputCompressionOptionB44aHint);
+        param->appendOption(kParamOutputCompressionOptionB44a);
         assert(param->getNOptions() == eParamCompressionDWAa);
-        param->appendOption(kParamOutputCompressionOptionDWAa, kParamOutputCompressionOptionDWAaHint);
+        param->appendOption(kParamOutputCompressionOptionDWAa);
         assert(param->getNOptions() == eParamCompressionDWAb);
-        param->appendOption(kParamOutputCompressionOptionDWAb, kParamOutputCompressionOptionDWAbHint);
+        param->appendOption(kParamOutputCompressionOptionDWAb);
         assert(param->getNOptions() == eParamCompressionLZW);
-        param->appendOption(kParamOutputCompressionOptionLZW, kParamOutputCompressionOptionLZWHint);
+        param->appendOption(kParamOutputCompressionOptionLZW);
         assert(param->getNOptions() == eParamCompressionCCITTRLE);
-        param->appendOption(kParamOutputCompressionOptionCCITTRLE, kParamOutputCompressionOptionCCITTRLEHint);
+        param->appendOption(kParamOutputCompressionOptionCCITTRLE);
         assert(param->getNOptions() == eParamCompressionJPEG);
-        param->appendOption(kParamOutputCompressionOptionJPEG, kParamOutputCompressionOptionJPEGHint);
+        param->appendOption(kParamOutputCompressionOptionJPEG);
         assert(param->getNOptions() == eParamCompressionPACKBITS);
-        param->appendOption(kParamOutputCompressionOptionPACKBITS, kParamOutputCompressionOptionPACKBITSHint);
+        param->appendOption(kParamOutputCompressionOptionPACKBITS);
         param->setDefault(eParamCompressionAuto);
         if (page) {
             page->addChild(*param);
@@ -1638,9 +1602,9 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPartsSplitting);
             param->setLabel(kParamPartsSplittingLabel);
             param->setHint(kParamPartsSplittingHint);
-            param->appendOption(kParamPartsSinglePart, kParamPartsSinglePartHint);
-            param->appendOption(kParamPartsSlitViews, kParamPartsSlitViewsHint);
-            param->appendOption(kParamPartsSplitViewsLayers, kParamPartsSplitViewsLayersHint);
+            param->appendOption(kParamPartsSinglePart);
+            param->appendOption(kParamPartsSlitViews);
+            param->appendOption(kParamPartsSplitViewsLayers);
             param->setDefault(2);
             param->setAnimates(false);
             if (page) {

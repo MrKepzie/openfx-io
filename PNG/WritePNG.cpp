@@ -74,21 +74,11 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "correctness of the compressed output even if it is not set appropriately. " \
     "Fixed prevents the use of dynamic Huffman codes, allowing for a simpler " \
     "decoder for special applications."
-
-#define kWritePNGParamCompressionDefault "Default"
-#define kWritePNGParamCompressionDefaultHint "Use this for normal data"
-
-#define kWritePNGParamCompressionFiltered "Filtered"
-#define kWritePNGParamCompressionFilteredHint "Use this for data produced by a filter (or predictor)"
-
-#define kWritePNGParamCompressionHuffmanOnly "Huffman Only"
-#define kWritePNGParamCompressionHuffmanOnlyHint "Forces Huffman encoding only (nostring match)"
-
-#define kWritePNGParamCompressionRLE "RLE"
-#define kWritePNGParamCompressionRLEHint "Limit match distances to one (run-length encoding)"
-
-#define kWritePNGParamCompressionFixed "Fixed"
-#define kWritePNGParamCompressionFixedHint "Prevents the use of dynamic Huffman codes, allowing for a simpler decoder for special applications"
+#define kWritePNGParamCompressionDefault "Default", "Use this for normal data", "default"
+#define kWritePNGParamCompressionFiltered "Filtered", "Use this for data produced by a filter (or predictor)", "filtered"
+#define kWritePNGParamCompressionHuffmanOnly "Huffman Only", "Forces Huffman encoding only (nostring match)", "huffman"
+#define kWritePNGParamCompressionRLE "RLE", "Limit match distances to one (run-length encoding)", "rle"
+#define kWritePNGParamCompressionFixed "Fixed", "Prevents the use of dynamic Huffman codes, allowing for a simpler decoder for special applications", "fixed"
 
 #define kWritePNGParamCompressionLevel "compressionLevel"
 #define kWritePNGParamCompressionLevelLabel "Compression Level"
@@ -101,8 +91,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kWritePNGParamBitDepthLabel "Depth"
 #define kWritePNGParamBitDepthHint "The depth of the internal PNG. Only 8bit and 16bit are supported by this writer"
 
-#define kWritePNGParamBitDepthUByte "8-bit"
-#define kWritePNGParamBitDepthUShort "16-bit"
+#define kWritePNGParamBitDepthUByte "8-bit", "", "8u"
+#define kWritePNGParamBitDepthUShort "16-bit", "", "16u"
 
 enum PNGBitDepthEnum {
     ePNGBitDepthUByte = 0,
@@ -936,11 +926,11 @@ WritePNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kWritePNGParamCompression);
         param->setLabel(kWritePNGParamCompressionLabel);
         param->setHint(kWritePNGParamCompressionHint);
-        param->appendOption(kWritePNGParamCompressionDefault, kWritePNGParamCompressionDefaultHint);
-        param->appendOption(kWritePNGParamCompressionFiltered, kWritePNGParamCompressionFilteredHint);
-        param->appendOption(kWritePNGParamCompressionHuffmanOnly, kWritePNGParamCompressionHuffmanOnlyHint);
-        param->appendOption(kWritePNGParamCompressionRLE, kWritePNGParamCompressionRLEHint);
-        param->appendOption(kWritePNGParamCompressionFixed, kWritePNGParamCompressionFixedHint);
+        param->appendOption(kWritePNGParamCompressionDefault);
+        param->appendOption(kWritePNGParamCompressionFiltered);
+        param->appendOption(kWritePNGParamCompressionHuffmanOnly);
+        param->appendOption(kWritePNGParamCompressionRLE);
+        param->appendOption(kWritePNGParamCompressionFixed);
         param->setDefault(0);
         param->setLayoutHint(eLayoutHintNoNewLine);
         if (page) {

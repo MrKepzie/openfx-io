@@ -87,12 +87,9 @@ NAMESPACE_OFX_IO_ENTER
 #define kParamFormatTypeLabel "Format Type"
 #define kParamFormatTypeHint \
     "Determines which rectangle of pixels will be written in output."
-#define kParamFormatTypeOptionInput "Input Format"
-#define kParamFormatTypeOptionInputHint "Renders the pixels included in the input format"
-#define kParamFormatTypeOptionProject "Project Format"
-#define kParamFormatTypeOptionProjectHint "Renders the pixels included in the project format"
-#define kParamFormatTypeOptionFixed "Fixed Format"
-#define kParamFormatTypeOptionFixedHint "Renders the pixels included in the format indicated by the " kParamOutputFormatLabel " parameter."
+#define kParamFormatTypeOptionInput "Input Format", "Renders the pixels included in the input format", "input"
+#define kParamFormatTypeOptionProject "Project Format", "Renders the pixels included in the project format", "project"
+#define kParamFormatTypeOptionFixed "Fixed Format", "Renders the pixels included in the format indicated by the " kParamOutputFormatLabel " parameter.", "fixed"
 enum FormatTypeEnum
 {
     eFormatTypeInput = 0,
@@ -108,12 +105,9 @@ enum FormatTypeEnum
 #define kParamFrameRangeLabel "Frame Range"
 #define kParamFrameRangeHint \
     "What frame range should be rendered."
-#define kParamFrameRangeOptionUnion "Union of input ranges"
-#define kParamFrameRangeOptionUnionHint "The union of all inputs frame ranges will be rendered."
-#define kParamFrameRangeOptionBounds "Project frame range"
-#define kParamFrameRangeOptionBoundsHint "The frame range delimited by the frame range of the project will be rendered."
-#define kParamFrameRangeOptionManual "Manual"
-#define kParamFrameRangeOptionManualHint "The frame range will be the one defined by the first frame and last frame parameters."
+#define kParamFrameRangeOptionUnion "Union of input ranges", "The union of all inputs frame ranges will be rendered.", "union"
+#define kParamFrameRangeOptionBounds "Project frame range", "The frame range delimited by the frame range of the project will be rendered.", "project"
+#define kParamFrameRangeOptionManual "Manual", "The frame range will be the one defined by the first frame and last frame parameters.", "manual"
 
 #define kParamFirstFrame "firstFrame"
 #define kParamFirstFrameLabel "First Frame"
@@ -128,9 +122,9 @@ enum FormatTypeEnum
     "If it is Premultiplied, red, green and blue channels are divided by the alpha channel " \
     "before applying the colorspace conversion.\n" \
     "This is set automatically from the input stream information, but can be adjusted if this information is wrong."
-#define kParamInputPremultOptionOpaqueHint "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point."
-#define kParamInputPremultOptionPreMultipliedHint "The image is premultiplied by its alpha (also called \"associated alpha\")."
-#define kParamInputPremultOptionUnPreMultipliedHint "The image is unpremultiplied (also called \"unassociated alpha\")."
+#define kParamInputPremultOptionOpaqueHint "The image is opaque and so has no premultiplication state, as if the alpha component in all pixels were set to the white point.", "opaque"
+#define kParamInputPremultOptionPreMultipliedHint "The image is premultiplied by its alpha (also called \"associated alpha\").", "premult"
+#define kParamInputPremultOptionUnPreMultipliedHint "The image is unpremultiplied (also called \"unassociated alpha\").", "unpremult"
 
 #define kParamClipInfo "clipInfo"
 #define kParamClipInfoLabel "Clip Info..."
@@ -2478,11 +2472,11 @@ GenericWriterDescribeInContextBegin(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormatType);
         param->setLabel(kParamFormatTypeLabel);
         assert(param->getNOptions() == (int)eFormatTypeInput);
-        param->appendOption(kParamFormatTypeOptionInput, kParamFormatTypeOptionInputHint);
+        param->appendOption(kParamFormatTypeOptionInput);
         assert(param->getNOptions() == (int)eFormatTypeProject);
-        param->appendOption(kParamFormatTypeOptionProject, kParamFormatTypeOptionProjectHint);
+        param->appendOption(kParamFormatTypeOptionProject);
         assert(param->getNOptions() == (int)eFormatTypeFixed);
-        param->appendOption(kParamFormatTypeOptionFixed, kParamFormatTypeOptionFixedHint);
+        param->appendOption(kParamFormatTypeOptionFixed);
         param->setDefault( (int)eFormatTypeProject );
         param->setAnimates(false);
         param->setHint(kParamFormatTypeHint);
@@ -2501,45 +2495,45 @@ GenericWriterDescribeInContextBegin(ImageEffectDescriptor &desc,
         //param->setIsSecret(true); // done in the plugin constructor
         param->setHint(kParamOutputFormatHint);
         assert(param->getNOptions() == eParamFormatPCVideo);
-        param->appendOption(kParamFormatPCVideoLabel);
+        param->appendOption(kParamFormatPCVideoLabel, "", kParamFormatPCVideo);
         assert(param->getNOptions() == eParamFormatNTSC);
-        param->appendOption(kParamFormatNTSCLabel);
+        param->appendOption(kParamFormatNTSCLabel, "", kParamFormatNTSC);
         assert(param->getNOptions() == eParamFormatPAL);
-        param->appendOption(kParamFormatPALLabel);
+        param->appendOption(kParamFormatPALLabel, "", kParamFormatPAL);
         assert(param->getNOptions() == eParamFormatNTSC169);
-        param->appendOption(kParamFormatNTSC169Label);
+        param->appendOption(kParamFormatNTSC169Label, "", kParamFormatNTSC169);
         assert(param->getNOptions() == eParamFormatPAL169);
-        param->appendOption(kParamFormatPAL169Label);
+        param->appendOption(kParamFormatPAL169Label, "", kParamFormatPAL169);
         assert(param->getNOptions() == eParamFormatHD720);
-        param->appendOption(kParamFormatHD720Label);
+        param->appendOption(kParamFormatHD720Label, "", kParamFormatHD720);
         assert(param->getNOptions() == eParamFormatHD);
-        param->appendOption(kParamFormatHDLabel);
+        param->appendOption(kParamFormatHDLabel, "", kParamFormatHD);
         assert(param->getNOptions() == eParamFormatUHD4K);
-        param->appendOption(kParamFormatUHD4KLabel);
+        param->appendOption(kParamFormatUHD4KLabel, "", kParamFormatUHD4K);
         assert(param->getNOptions() == eParamFormat1kSuper35);
-        param->appendOption(kParamFormat1kSuper35Label);
+        param->appendOption(kParamFormat1kSuper35Label, "", kParamFormat1kSuper35);
         assert(param->getNOptions() == eParamFormat1kCinemascope);
-        param->appendOption(kParamFormat1kCinemascopeLabel);
+        param->appendOption(kParamFormat1kCinemascopeLabel, "", kParamFormat1kCinemascope);
         assert(param->getNOptions() == eParamFormat2kSuper35);
-        param->appendOption(kParamFormat2kSuper35Label);
+        param->appendOption(kParamFormat2kSuper35Label, "", kParamFormat2kSuper35);
         assert(param->getNOptions() == eParamFormat2kCinemascope);
-        param->appendOption(kParamFormat2kCinemascopeLabel);
+        param->appendOption(kParamFormat2kCinemascopeLabel, "", kParamFormat2kCinemascope);
         assert(param->getNOptions() == eParamFormat2kDCP);
-        param->appendOption(kParamFormat2kDCPLabel);
+        param->appendOption(kParamFormat2kDCPLabel, "", kParamFormat2kDCP);
         assert(param->getNOptions() == eParamFormat4kSuper35);
-        param->appendOption(kParamFormat4kSuper35Label);
+        param->appendOption(kParamFormat4kSuper35Label, "", kParamFormat4kSuper35);
         assert(param->getNOptions() == eParamFormat4kCinemascope);
-        param->appendOption(kParamFormat4kCinemascopeLabel);
+        param->appendOption(kParamFormat4kCinemascopeLabel, "", kParamFormat4kCinemascope);
         assert(param->getNOptions() == eParamFormat4kDCP);
-        param->appendOption(kParamFormat4kDCPLabel);
+        param->appendOption(kParamFormat4kDCPLabel, "", kParamFormat4kDCP);
         assert(param->getNOptions() == eParamFormatSquare256);
-        param->appendOption(kParamFormatSquare256Label);
+        param->appendOption(kParamFormatSquare256Label, "", kParamFormatSquare256);
         assert(param->getNOptions() == eParamFormatSquare512);
-        param->appendOption(kParamFormatSquare512Label);
+        param->appendOption(kParamFormatSquare512Label, "", kParamFormatSquare512);
         assert(param->getNOptions() == eParamFormatSquare1k);
-        param->appendOption(kParamFormatSquare1kLabel);
+        param->appendOption(kParamFormatSquare1kLabel, "", kParamFormatSquare1k);
         assert(param->getNOptions() == eParamFormatSquare2k);
-        param->appendOption(kParamFormatSquare2kLabel);
+        param->appendOption(kParamFormatSquare2kLabel, "", kParamFormatSquare2k);
         param->setDefault(eParamFormatHD);
         if (page) {
             page->addChild(*param);
@@ -2642,9 +2636,9 @@ GenericWriterDescribeInContextBegin(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFrameRange);
         param->setLabel(kParamFrameRangeLabel);
         param->setHint(kParamFrameRangeHint);
-        param->appendOption(kParamFrameRangeOptionUnion, kParamFrameRangeOptionUnionHint);
-        param->appendOption(kParamFrameRangeOptionBounds, kParamFrameRangeOptionBoundsHint);
-        param->appendOption(kParamFrameRangeOptionManual, kParamFrameRangeOptionManualHint);
+        param->appendOption(kParamFrameRangeOptionUnion);
+        param->appendOption(kParamFrameRangeOptionBounds);
+        param->appendOption(kParamFrameRangeOptionManual);
         param->setAnimates(true);
         param->setDefault(1);
         if (page) {

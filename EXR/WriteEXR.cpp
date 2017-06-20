@@ -80,6 +80,14 @@ static const char* compressionNames[6] = {
     "RLE",
     "B44"
 };
+static const char* compressionEnums[6] = {
+    "no",
+    "zips",
+    "zip",
+    "piz",
+    "rle",
+    "b44"
+};
 static Imf_::Compression
 stringToCompression(const string& str)
 {
@@ -100,6 +108,9 @@ stringToCompression(const string& str)
 
 static const char* depthNames[2] = {
     "16 bit half", "32 bit float"
+};
+static const char* depthEnums[2] = {
+    "16f", "32f"
 };
 static int
 depthNameToInt(const string& name)
@@ -326,7 +337,7 @@ WriteEXRPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRCompression);
         param->setAnimates(true);
         for (int i = 0; i < 6; ++i) {
-            param->appendOption(Exr::compressionNames[i]);
+            param->appendOption(Exr::compressionNames[i], "", Exr::compressionEnums[i]);
         }
         param->setDefault(3);
         if (page) {
@@ -339,7 +350,7 @@ WriteEXRPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamWriteEXRDataType);
         param->setAnimates(true);
         for (int i = 0; i < 2; ++i) {
-            param->appendOption(Exr::depthNames[i]);
+            param->appendOption(Exr::depthNames[i], "", Exr::depthEnums[i]);
         }
         param->setDefault(1);
         if (page) {

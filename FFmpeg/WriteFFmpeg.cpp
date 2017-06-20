@@ -191,11 +191,11 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 
 #define kParamPrefPixelCoding "prefPixelCoding"
 #define kParamPrefPixelCodingLabel "Pref. Pixel Coding", "Preferred pixel coding."
-#define kParamPrefPixelCodingOptionYUV420 "YUV420", "1 Cr & Cb sample per 2x2 Y samples."
-#define kParamPrefPixelCodingOptionYUV422 "YUV422", "1 Cr & Cb sample per 2x1 Y samples."
-#define kParamPrefPixelCodingOptionYUV444 "YUV444", "1 Cr & Cb sample per Y sample."
-#define kParamPrefPixelCodingOptionRGB "RGB", "Separate r, g, b."
-#define kParamPrefPixelCodingOptionXYZ "XYZ", "CIE XYZ compressed with gamma=2.6, used for Digital Cinema."
+#define kParamPrefPixelCodingOptionYUV420 "YUV420", "1 Cr & Cb sample per 2x2 Y samples.", "yuv420"
+#define kParamPrefPixelCodingOptionYUV422 "YUV422", "1 Cr & Cb sample per 2x1 Y samples.", "yuv422"
+#define kParamPrefPixelCodingOptionYUV444 "YUV444", "1 Cr & Cb sample per Y sample.", "yuv444"
+#define kParamPrefPixelCodingOptionRGB "RGB", "Separate r, g, b.", "rgb"
+#define kParamPrefPixelCodingOptionXYZ "XYZ", "CIE XYZ compressed with gamma=2.6, used for Digital Cinema.", "xyz"
 enum PrefPixelCodingEnum {
     ePrefPixelCodingYUV420 = 0, // 1 Cr & Cb sample per 2x2 Y samples
     ePrefPixelCodingYUV422, // 1 Cr & Cb sample per 2x1 Y samples
@@ -253,14 +253,14 @@ enum PrefBitDepthEnum {
 #define kParamCRFLabel "Output Quality"
 #define kParamCRFHint "Constant Rate Factor (CRF); tradeoff between video quality and file size. Used by avc1, hev1, VP80, VP9, and CAVS codecs.\n" \
     "Option -crf in ffmpeg."
-#define kParamCRFOptionNone "None", "Use constant bit-rate rather than constant output quality"
-#define kParamCRFOptionLossless "Lossless", "Corresponds to CRF = 0."
-#define kParamCRFOptionPercLossless "Perceptually Lossless", "Corresponds to CRF = 17."
-#define kParamCRFOptionHigh "High Quality", "Corresponds to CRF = 20."
-#define kParamCRFOptionMedium "Medium Quality", "Corresponds to CRF = 23."
-#define kParamCRFOptionLow "Low Quality", "Corresponds to CRF = 26."
-#define kParamCRFOptionVeryLow "Very Low Quality", "Corresponds to CRF = 29."
-#define kParamCRFOptionLowest "Lowest Quality", "Corresponds to CRF = 32."
+#define kParamCRFOptionNone "None", "Use constant bit-rate rather than constant output quality", "none"
+#define kParamCRFOptionLossless "Lossless", "Corresponds to CRF = 0.", "crf0"
+#define kParamCRFOptionPercLossless "Perceptually Lossless", "Corresponds to CRF = 17.", "crf17"
+#define kParamCRFOptionHigh "High Quality", "Corresponds to CRF = 20.", "crf20"
+#define kParamCRFOptionMedium "Medium Quality", "Corresponds to CRF = 23.", "crf23"
+#define kParamCRFOptionLow "Low Quality", "Corresponds to CRF = 26.", "crf26"
+#define kParamCRFOptionVeryLow "Very Low Quality", "Corresponds to CRF = 29.", "crf29"
+#define kParamCRFOptionLowest "Lowest Quality", "Corresponds to CRF = 32.", "crf32"
 enum CRFEnum {
     eCRFNone = 0,
     eCRFLossless,
@@ -276,14 +276,14 @@ enum CRFEnum {
 #define kParamX26xSpeedLabel "Encoding Speed"
 #define kParamX26xSpeedHint "Trade off performance for compression efficiency. Available for avc1 and hev1.\n" \
     "Option -preset in ffmpeg."
-#define kParamX26xSpeedOptionUltrafast "Ultra Fast", "Fast encoding, but larger file size."
-#define kParamX26xSpeedOptionVeryfast "Very Fast"
-#define kParamX26xSpeedOptionFaster "Faster"
-#define kParamX26xSpeedOptionFast "Fast"
-#define kParamX26xSpeedOptionMedium "Medium"
-#define kParamX26xSpeedOptionSlow "Slow"
-#define kParamX26xSpeedOptionSlower "Slower"
-#define kParamX26xSpeedOptionVerySlow "Very Slow", "Slow encoding, but smaller file size."
+#define kParamX26xSpeedOptionUltrafast "Ultra Fast", "Fast encoding, but larger file size.", "ultrafast"
+#define kParamX26xSpeedOptionVeryfast "Very Fast", "", "veryfast"
+#define kParamX26xSpeedOptionFaster "Faster", "", "faster"
+#define kParamX26xSpeedOptionFast "Fast", "", "fast"
+#define kParamX26xSpeedOptionMedium "Medium", "", "medium"
+#define kParamX26xSpeedOptionSlow "Slow", "", "slow"
+#define kParamX26xSpeedOptionSlower "Slower", "", "slower"
+#define kParamX26xSpeedOptionVerySlow "Very Slow", "Slow encoding, but smaller file size.", "veryslow"
 enum X26xSpeedEnum {
     eX26xSpeedUltrafast = 0,
     eX26xSpeedVeryfast,
@@ -463,27 +463,17 @@ enum X26xSpeedEnum {
 #define kParamDNxHDCodecProfileLabel "DNxHD Codec Profile"
 #define kParamDNxHDCodecProfileHint "Only for the Avid DNxHD codec, select the target bit rate for the encoded movie. The stream may be resized to 1920x1080 if resolution is not supported. Writing in thin-raster HDV format (1440x1080) is not supported by this plug-in, although FFmpeg supports it."
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-#define kParamDNxHDCodecProfileOptionHR444   "DNxHR 444"
-#define kParamDNxHDCodecProfileOptionHR444Hint   "DNxHR 4:4:4 (12 bit, RGB / 4:4:4, 4.5:1 compression)"
-#define kParamDNxHDCodecProfileOptionHRHQX   "DNxHR HQX"
-#define kParamDNxHDCodecProfileOptionHRHQXHint   "DNxHR High Quality (12 bit, 4:2:2 chroma sub-sampling, 5.5:1 compression)"
+#define kParamDNxHDCodecProfileOptionHR444   "DNxHR 444", "DNxHR 4:4:4 (12 bit, RGB / 4:4:4, 4.5:1 compression)", "dnxhr444"
+#define kParamDNxHDCodecProfileOptionHRHQX   "DNxHR HQX", "DNxHR High Quality (12 bit, 4:2:2 chroma sub-sampling, 5.5:1 compression)", "dnxhrhqx"
 #endif
-#define kParamDNxHDCodecProfileOptionHRHQ   "DNxHR HQ"
-#define kParamDNxHDCodecProfileOptionHRHQHint   "DNxHR High Quality (8 bit, 4:2:2 chroma sub-sampling, 4.5:1 compression)"
-#define kParamDNxHDCodecProfileOptionHRSQ   "DNxHR SQ"
-#define kParamDNxHDCodecProfileOptionHRSQHint   "DNxHR Standard Quality (8 bit, 4:2:2 chroma sub-sampling, 7:1 compression)"
-#define kParamDNxHDCodecProfileOptionHRLB   "DNxHR LB"
-#define kParamDNxHDCodecProfileOptionHRLBHint   "DNxHR Low Bandwidth (8 bit, 4:2:2 chroma sub-sampling, 22:1 compression)"
-#define kParamDNxHDCodecProfileOption440x AVID_DNXHD_422_440X_NAME
-#define kParamDNxHDCodecProfileOption440xHint "880x in 1080p/60 or 1080p/59.94, 730x in 1080p/50, 440x in 1080p/30, 390x in 1080p/25, 350x in 1080p/24"
-#define kParamDNxHDCodecProfileOption220x AVID_DNXHD_422_220X_NAME
-#define kParamDNxHDCodecProfileOption220xHint "440x in 1080p/60 or 1080p/59.94, 365x in 1080p/50, 220x in 1080i/60 or 1080i/59.94, 185x in 1080i/50 or 1080p/25, 175x in 1080p/24 or 1080p/23.976, 220x in 1080p/29.97, 220x in 720p/59.94, 175x in 720p/50"
-#define kParamDNxHDCodecProfileOption220  AVID_DNXHD_422_220_NAME
-#define kParamDNxHDCodecProfileOption220Hint  "440 in 1080p/60 or 1080p/59.94, 365 in 1080p/50, 220 in 1080i/60 or 1080i/59.94, 185 in 1080i/50 or 1080p/25, 175 in 1080p/24 or 1080p/23.976, 220 in 1080p/29.97, 220 in 720p/59.94, 175 in 720p/50"
-#define kParamDNxHDCodecProfileOption145  AVID_DNXHD_422_145_NAME
-#define kParamDNxHDCodecProfileOption145Hint  "290 in 1080p/60 or 1080p/59.94, 240 in 1080p/50, 145 in 1080i/60 or 1080i/59.94, 120 in 1080i/50 or 1080p/25, 115 in 1080p/24 or 1080p/23.976, 145 in 1080p/29.97, 145 in 720p/59.94, 115 in 720p/50"
-#define kParamDNxHDCodecProfileOption36   AVID_DNXHD_422_36_NAME
-#define kParamDNxHDCodecProfileOption36Hint   "90 in 1080p/60 or 1080p/59.94, 75 in 1080p/50, 45 in 1080i/60 or 1080i/59.94, 36 in 1080i/50 or 1080p/25, 36 in 1080p/24 or 1080p/23.976, 45 in 1080p/29.97, 100 in 720p/59.94, 85 in 720p/50"
+#define kParamDNxHDCodecProfileOptionHRHQ   "DNxHR HQ", "DNxHR High Quality (8 bit, 4:2:2 chroma sub-sampling, 4.5:1 compression)", "dnxhrhq"
+#define kParamDNxHDCodecProfileOptionHRSQ   "DNxHR SQ", "DNxHR Standard Quality (8 bit, 4:2:2 chroma sub-sampling, 7:1 compression)", "dnxhrsq"
+#define kParamDNxHDCodecProfileOptionHRLB   "DNxHR LB", "DNxHR Low Bandwidth (8 bit, 4:2:2 chroma sub-sampling, 22:1 compression)", "dnxhrlb"
+#define kParamDNxHDCodecProfileOption440x AVID_DNXHD_422_440X_NAME, "880x in 1080p/60 or 1080p/59.94, 730x in 1080p/50, 440x in 1080p/30, 390x in 1080p/25, 350x in 1080p/24", "dnxhd422_440x"
+#define kParamDNxHDCodecProfileOption220x AVID_DNXHD_422_220X_NAME, "440x in 1080p/60 or 1080p/59.94, 365x in 1080p/50, 220x in 1080i/60 or 1080i/59.94, 185x in 1080i/50 or 1080p/25, 175x in 1080p/24 or 1080p/23.976, 220x in 1080p/29.97, 220x in 720p/59.94, 175x in 720p/50", "dnxhd422_220x"
+#define kParamDNxHDCodecProfileOption220  AVID_DNXHD_422_220_NAME, "440 in 1080p/60 or 1080p/59.94, 365 in 1080p/50, 220 in 1080i/60 or 1080i/59.94, 185 in 1080i/50 or 1080p/25, 175 in 1080p/24 or 1080p/23.976, 220 in 1080p/29.97, 220 in 720p/59.94, 175 in 720p/50", "dnxhd422_220"
+#define kParamDNxHDCodecProfileOption145  AVID_DNXHD_422_145_NAME, "290 in 1080p/60 or 1080p/59.94, 240 in 1080p/50, 145 in 1080i/60 or 1080i/59.94, 120 in 1080i/50 or 1080p/25, 115 in 1080p/24 or 1080p/23.976, 145 in 1080p/29.97, 145 in 720p/59.94, 115 in 720p/50", "dnxhd422_145"
+#define kParamDNxHDCodecProfileOption36   AVID_DNXHD_422_36_NAME, "90 in 1080p/60 or 1080p/59.94, 75 in 1080p/50, 45 in 1080i/60 or 1080i/59.94, 36 in 1080i/50 or 1080p/25, 36 in 1080p/24 or 1080p/23.976, 45 in 1080p/29.97, 100 in 720p/59.94, 85 in 720p/50", "dnxhd422_36"
 
 enum DNxHDCodecProfileEnum
 {
@@ -508,8 +498,8 @@ enum DNxHDCodecProfileEnum
     "When encoding using DNxHD this is used to select between full scale data range " \
     "and 'video/legal' data range.\nFull scale data range is 0-255 for 8-bit and 0-1023 for 10-bit. " \
     "'Video/legal' data range is a reduced range, 16-240 for 8-bit and 64-960 for 10-bit."
-#define kParamDNxHDEncodeVideoRangeOptionFull "Full Range"
-#define kParamDNxHDEncodeVideoRangeOptionVideo "Video Range"
+#define kParamDNxHDEncodeVideoRangeOptionFull "Full Range", "", "full"
+#define kParamDNxHDEncodeVideoRangeOptionVideo "Video Range", "", "video"
 
 #endif // if OFX_FFMPEG_DNXHD
 
@@ -5310,13 +5300,14 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamFormat);
         const vector<string>& formatsV = FFmpegSingleton::Instance().getFormatsLongNames();
+        const vector<string>& formatsVs = FFmpegSingleton::Instance().getFormatsShortNames();
         const vector<vector<size_t> >& formatsCodecs = FFmpegSingleton::Instance().getFormatsCodecs();
         const vector<string>& codecsV = FFmpegSingleton::Instance().getCodecsShortNames();
         param->setLabel(kParamFormatLabel);
         param->setHint(kParamFormatHint);
         for (unsigned int i = 0; i < formatsV.size(); ++i) {
             if ( formatsCodecs[i].empty() ) {
-                param->appendOption(formatsV[i]);
+                param->appendOption(formatsV[i], "", formatsVs[i]);
             } else {
                 string hint = "Compatible with ";
                 for (unsigned int j = 0; j < formatsCodecs[i].size(); ++j) {
@@ -5326,7 +5317,7 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                     hint.append(codecsV[formatsCodecs[i][j]]);
                 }
                 hint.append(".");
-                param->appendOption(formatsV[i], hint);
+                param->appendOption(formatsV[i], hint, formatsVs[i]);
             }
         }
         param->setAnimates(false);
@@ -5342,11 +5333,12 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamCodecName);
         param->setHint(kParamCodecHint);
         const vector<string>& codecsV = FFmpegSingleton::Instance().getCodecsKnobLabels();// getCodecsLongNames();
+        const vector<string>& codecsVs = FFmpegSingleton::Instance().getCodecsShortNames();
         const vector<vector<size_t> >& codecsFormats = FFmpegSingleton::Instance().getCodecsFormats();
         const vector<string>& formatsV = FFmpegSingleton::Instance().getFormatsShortNames();
         for (unsigned int i = 0; i < codecsV.size(); ++i) {
             if ( codecsFormats[i].empty() ) {
-                param->appendOption(codecsV[i]);
+                param->appendOption(codecsV[i], "", codecsVs[i]);
             } else {
                 string hint = "Compatible with ";
                 for (unsigned int j = 0; j < codecsFormats[i].size(); ++j) {
@@ -5356,7 +5348,7 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                     hint.append(formatsV[codecsFormats[i][j]]);
                 }
                 hint.append(".");
-                param->appendOption(codecsV[i], hint);
+                param->appendOption(codecsV[i], hint, codecsVs[i]);
             }
         }
         param->setAnimates(false);
@@ -5427,13 +5419,13 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPrefBitDepth);
         param->setLabelAndHint(kParamPrefBitDepthLabel);
         assert(param->getNOptions() == (int)ePrefBitDepth8);
-        param->appendOption("8");
+        param->appendOption("8", "", "8");
         assert(param->getNOptions() == (int)ePrefBitDepth10);
-        param->appendOption("10");
+        param->appendOption("10", "", "10");
         assert(param->getNOptions() == (int)ePrefBitDepth12);
-        param->appendOption("12");
+        param->appendOption("12", "", "12");
         assert(param->getNOptions() == (int)ePrefBitDepth16);
-        param->appendOption("16");
+        param->appendOption("16", "", "16");
         param->setAnimates(false);
         param->setDefault((int)ePrefBitDepth8);
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
@@ -5468,27 +5460,27 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         // DNxHR
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
         assert(param->getNOptions() == (int)eDNxHDCodecProfileHR444);
-        param->appendOption(kParamDNxHDCodecProfileOptionHR444, kParamDNxHDCodecProfileOptionHR444Hint);
+        param->appendOption(kParamDNxHDCodecProfileOptionHR444);
         assert(param->getNOptions() == (int)eDNxHDCodecProfileHRHQX);
-        param->appendOption(kParamDNxHDCodecProfileOptionHRHQX, kParamDNxHDCodecProfileOptionHRHQXHint);
+        param->appendOption(kParamDNxHDCodecProfileOptionHRHQX);
 #endif
         assert(param->getNOptions() == (int)eDNxHDCodecProfileHRHQ);
-        param->appendOption(kParamDNxHDCodecProfileOptionHRHQ, kParamDNxHDCodecProfileOptionHRHQHint);
+        param->appendOption(kParamDNxHDCodecProfileOptionHRHQ);
         assert(param->getNOptions() == (int)eDNxHDCodecProfileHRSQ);
-        param->appendOption(kParamDNxHDCodecProfileOptionHRSQ, kParamDNxHDCodecProfileOptionHRSQHint);
+        param->appendOption(kParamDNxHDCodecProfileOptionHRSQ);
         assert(param->getNOptions() == (int)eDNxHDCodecProfileHRLB);
-        param->appendOption(kParamDNxHDCodecProfileOptionHRLB, kParamDNxHDCodecProfileOptionHRLBHint);
+        param->appendOption(kParamDNxHDCodecProfileOptionHRLB);
         // DNxHD
         assert(param->getNOptions() == (int)eDNxHDCodecProfile440x);
-        param->appendOption(kParamDNxHDCodecProfileOption440x, kParamDNxHDCodecProfileOption440xHint);
+        param->appendOption(kParamDNxHDCodecProfileOption440x);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile220x);
-        param->appendOption(kParamDNxHDCodecProfileOption220x, kParamDNxHDCodecProfileOption220xHint);
+        param->appendOption(kParamDNxHDCodecProfileOption220x);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile220);
-        param->appendOption(kParamDNxHDCodecProfileOption220, kParamDNxHDCodecProfileOption220Hint);
+        param->appendOption(kParamDNxHDCodecProfileOption220);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile145);
-        param->appendOption(kParamDNxHDCodecProfileOption145, kParamDNxHDCodecProfileOption145Hint);
+        param->appendOption(kParamDNxHDCodecProfileOption145);
         assert(param->getNOptions() == (int)eDNxHDCodecProfile36);
-        param->appendOption(kParamDNxHDCodecProfileOption36, kParamDNxHDCodecProfileOption36Hint);
+        param->appendOption(kParamDNxHDCodecProfileOption36);
 
         param->setAnimates(false);
         param->setDefault(0);
@@ -5734,11 +5726,11 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamMBDecision);
             param->setLabel("Macro block decision mode");
             assert(param->getNOptions() == FF_MB_DECISION_SIMPLE);
-            param->appendOption("FF_MB_DECISION_SIMPLE");
+            param->appendOption("FF_MB_DECISION_SIMPLE", "", "simple");
             assert(param->getNOptions() == FF_MB_DECISION_BITS);
-            param->appendOption("FF_MB_DECISION_BITS");
+            param->appendOption("FF_MB_DECISION_BITS", "", "bits");
             assert(param->getNOptions() == FF_MB_DECISION_RD);
-            param->appendOption("FF_MB_DECISION_RD");
+            param->appendOption("FF_MB_DECISION_RD", "", "rd");
             param->setDefault(0);
             param->setAnimates(false);
             param->setParent(*group);

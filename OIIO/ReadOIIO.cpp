@@ -145,14 +145,14 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 // int output_color;
 #define kParamRawOutputColor "rawOutputColor"
 #define kParamRawOutputColorLabel "Output Colorspace", "Output colorspace." // default: sRGB
-#define kParamRawOutputColorRaw "Raw", "Raw data"
-#define kParamRawOutputColorSRGB "sRGB", "sRGB"
-#define kParamRawOutputColorAdobe "Adobe", "Adobe RGB (1998)"
-#define kParamRawOutputColorWide "Wide", "Wide-gamut RGB color space (or Adobe Wide Gamut RGB)"
-#define kParamRawOutputColorProPhoto "ProPhoto", "Kodak ProPhoto RGB (or ROMM RGB)"
-#define kParamRawOutputColorXYZ "XYZ", "CIE XYZ"
+#define kParamRawOutputColorRaw "Raw", "Raw data", "raw"
+#define kParamRawOutputColorSRGB "sRGB", "sRGB", "srgb"
+#define kParamRawOutputColorAdobe "Adobe", "Adobe RGB (1998)", "adobergb"
+#define kParamRawOutputColorWide "Wide", "Wide-gamut RGB color space (or Adobe Wide Gamut RGB)", "wide"
+#define kParamRawOutputColorProPhoto "ProPhoto", "Kodak ProPhoto RGB (or ROMM RGB)", "prophoto"
+#define kParamRawOutputColorXYZ "XYZ", "CIE XYZ", "xyz"
 #if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,18,0)
-#define kParamRawOutputColorACES "ACES", "AMPAS ACES"
+#define kParamRawOutputColorACES "ACES", "AMPAS ACES", "aces"
 #endif
 enum RawOutputColorEnum
 {
@@ -173,9 +173,9 @@ enum RawOutputColorEnum
 //3: use embedded color data (if present) regardless of white balance setting.
 #define kParamRawUseCameraMatrix "rawUseCameraMatrix"
 #define kParamRawUseCameraMatrixLabel "Camera Matrix", "Use/don't use an embedded color matrix."
-#define kParamRawUseCameraMatrixNone "None", "Do not use the embedded color matrix."
-#define kParamRawUseCameraMatrixDefault "Default", "Use embedded color profile (if present) for DNG files (always); for other files only if rawUseCameraWb is set."
-#define kParamRawUseCameraMatrixForce "Force", "Use embedded color data (if present) regardless of white balance setting."
+#define kParamRawUseCameraMatrixNone "None", "Do not use the embedded color matrix.", "none"
+#define kParamRawUseCameraMatrixDefault "Default", "Use embedded color profile (if present) for DNG files (always); for other files only if rawUseCameraWb is set.", "default"
+#define kParamRawUseCameraMatrixForce "Force", "Use embedded color data (if present) regardless of white balance setting.", "force"
 enum RawUseCameraMatrixEnum
 {
     eRawUseCameraMatrixNone = 0,
@@ -189,22 +189,22 @@ enum RawUseCameraMatrixEnum
 
 #define kParamRawDemosaic "rawDemosaic"
 #define kParamRawDemosaicLabel "Demosaic", "Force a demosaicing algorithm. Will fall back on AHD if the demosaicing algorithm is not available due to licence restrictions (AHD-Mod, AFD, VCD, Mixed, LMMSE are GPL2, AMaZE is GPL3)."
-#define kParamRawDemosaicNone "None", "No demosaicing."
-#define kParamRawDemosaicLinear "Linear", "Linear interpolation."
-#define kParamRawDemosaicVNG "VNG", "VNG interpolation."
-#define kParamRawDemosaicPPG "PPG", "PPG interpolation."
-#define kParamRawDemosaicAHD "AHD", "AHD interpolation."
-#define kParamRawDemosaicDCB "DCB", "DCB interpolation."
-#define kParamRawDemosaicAHDMod "AHD-Mod", "Modified AHD interpolation by Paul Lee."
-#define kParamRawDemosaicAFD "AFD", "AFD interpolation (5-pass)."
-#define kParamRawDemosaicVCD "VCD", "VCD interpolation."
-#define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation."
-#define kParamRawDemosaicLMMSE "LMMSE", "LMMSE interpolation."
-#define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation."
+#define kParamRawDemosaicNone "None", "No demosaicing.", "none"
+#define kParamRawDemosaicLinear "Linear", "Linear interpolation.", "linear"
+#define kParamRawDemosaicVNG "VNG", "VNG interpolation.", "vng"
+#define kParamRawDemosaicPPG "PPG", "PPG interpolation.", "ppg"
+#define kParamRawDemosaicAHD "AHD", "AHD interpolation.", "ahd"
+#define kParamRawDemosaicDCB "DCB", "DCB interpolation.", "dcb"
+#define kParamRawDemosaicAHDMod "AHD-Mod", "Modified AHD interpolation by Paul Lee.", "ahdmod"
+#define kParamRawDemosaicAFD "AFD", "AFD interpolation (5-pass).", "afd"
+#define kParamRawDemosaicVCD "VCD", "VCD interpolation.", "vcd"
+#define kParamRawDemosaicMixed "Mixed", "Mixed VCD/Modified AHD interpolation.", "mixed"
+#define kParamRawDemosaicLMMSE "LMMSE", "LMMSE interpolation.", "lmmse"
+#define kParamRawDemosaicAMaZE "AMaZE", "AMaZE interpolation.", "amaze"
 #if LIBRAW_VERSION >= LIBRAW_MAKE_VERSION(0,16,0) && OIIO_VERSION >= 10712
 // not available in OIIO 1.7.11:
-#define kParamRawDemosaicDHT "DHT", "DHT interpolation."
-#define kParamRawDemosaicAAHD "AAHD", "Modified AHD interpolation by Anton Petrusevich."
+#define kParamRawDemosaicDHT "DHT", "DHT interpolation.", "dht"
+#define kParamRawDemosaicAAHD "AAHD", "Modified AHD interpolation by Anton Petrusevich.", "aahd"
 #endif
 enum RawDemosaicEnum
 {
@@ -262,20 +262,11 @@ RawDemosaicEnum libraw_demosaic[eRawDemosaicCount];
     "display window so it goes to 0, or you can treat the negative portion as overscan and resize the format."
 
 #define kParamEdgePixels "edgePixels"
-#define kParamEdgePixelsLabel "Edge Pixels"
-#define kParamEdgePixelsHint "Specifies how pixels in the border of the region of definition are handled"
-
-#define kParamEdgePixelsAuto "Auto"
-#define kParamEdgePixelsAutoHint "If the region of definition and format match exactly then repeat the border pixel otherwise use black"
-
-#define kParamEdgePixelsEdgeDetect "Edge Detect"
-#define kParamEdgePixelsEdgeDetectHint "For each edge, if the region of definition and format match exactly then repeat border pixel, otherwise use black"
-
-#define kParamEdgePixelsRepeat "Repeat"
-#define kParamEdgePixelsRepeatHint "Repeat pixels outside the region of definition"
-
-#define kParamEdgePixelsBlack "Black"
-#define kParamEdgePixelsBlackHint "Add black pixels outside the region of definition"
+#define kParamEdgePixelsLabel "Edge Pixels", "Specifies how pixels in the border of the region of definition are handled"
+#define kParamEdgePixelsAuto "Auto", "If the region of definition and format match exactly then repeat the border pixel otherwise use black", "auto"
+#define kParamEdgePixelsEdgeDetect "Edge Detect", "For each edge, if the region of definition and format match exactly then repeat border pixel, otherwise use black", "edge"
+#define kParamEdgePixelsRepeat "Repeat", "Repeat pixels outside the region of definition", "repeat"
+#define kParamEdgePixelsBlack "Black", "Add black pixels outside the region of definition", "black"
 
 enum EdgePixelsEnum
 {
@@ -3173,17 +3164,16 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
 
     {
         ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamEdgePixels);
-        param->setLabel(kParamEdgePixelsLabel);
-        param->setHint(kParamEdgePixelsHint);
+        param->setLabelAndHint(kParamEdgePixelsLabel);
         param->setAnimates(false);
         assert(param->getNOptions() == eEdgePixelsAuto);
-        param->appendOption(kParamEdgePixelsAuto, kParamEdgePixelsAutoHint);
+        param->appendOption(kParamEdgePixelsAuto);
         assert(param->getNOptions() == eEdgePixelsEdgeDetect);
-        param->appendOption(kParamEdgePixelsEdgeDetect, kParamEdgePixelsEdgeDetectHint);
+        param->appendOption(kParamEdgePixelsEdgeDetect);
         assert(param->getNOptions() == eEdgePixelsRepeat);
-        param->appendOption(kParamEdgePixelsRepeat, kParamEdgePixelsRepeatHint);
+        param->appendOption(kParamEdgePixelsRepeat);
         assert(param->getNOptions() == eEdgePixelsBlack);
-        param->appendOption(kParamEdgePixelsBlack, kParamEdgePixelsBlackHint);
+        param->appendOption(kParamEdgePixelsBlack);
         param->setDefault( (int)eEdgePixelsAuto );
         param->setLayoutHint(eLayoutHintNoNewLine);
         if (page) {
