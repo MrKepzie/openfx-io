@@ -354,6 +354,10 @@ enum X26xSpeedEnum {
 #define kParamWriteNCLCHint \
     "Write nclc data in the colr atom of the video header. QuickTime only."
 
+#define kParamLibraryInfo "libraryInfo"
+#define kParamLibraryInfoLabel "FFmpeg Info...", "Display information about the underlying library."
+
+
 //Removed from panel - should never have been exposed as very low level control.
 #if OFX_FFMPEG_MBDECISION
 #define kParamMBDecision "mbDecision"
@@ -4792,11 +4796,44 @@ WriteFFmpegPlugin::onOutputFileChanged(const string &filename,
     updateVisibility();
 } // WriteFFmpegPlugin::onOutputFileChanged
 
+
+static string
+ffmpeg_versions()
+{
+    std::ostringstream oss;
+#ifdef FFMS_USE_FFMPEG_COMPAT
+    oss << "FFmpeg ";
+#else
+    oss << "libav";
+#endif
+    oss << " versions (compiled with / running with):" << std::endl;
+    oss << "libavformat ";
+    oss << LIBAVFORMAT_VERSION_MAJOR << '.' << LIBAVFORMAT_VERSION_MINOR << '.' << LIBAVFORMAT_VERSION_MICRO << " / ";
+    oss << (avformat_version() >> 16) << '.' << (avformat_version() >> 8 & 0xff) << '.' << (avformat_version() & 0xff) << std::endl;
+    //oss << "libavdevice ";
+    //oss << LIBAVDEVICE_VERSION_MAJOR << '.' << LIBAVDEVICE_VERSION_MINOR << '.' << LIBAVDEVICE_VERSION_MICRO << " / ";
+    //oss << avdevice_version() >> 16 << '.' << avdevice_version() >> 8 & 0xff << '.' << avdevice_version() & 0xff << std::endl;
+    oss << "libavcodec ";
+    oss << LIBAVCODEC_VERSION_MAJOR << '.' << LIBAVCODEC_VERSION_MINOR << '.' << LIBAVCODEC_VERSION_MICRO << " / ";
+    oss << (avcodec_version() >> 16) << '.' << (avcodec_version() >> 8 & 0xff) << '.' << (avcodec_version() & 0xff) << std::endl;
+    oss << "libavutil ";
+    oss << LIBAVUTIL_VERSION_MAJOR << '.' << LIBAVUTIL_VERSION_MINOR << '.' << LIBAVUTIL_VERSION_MICRO << " / ";
+    oss << (avutil_version() >> 16) << '.' << (avutil_version() >> 8 & 0xff) << '.' << (avutil_version() & 0xff) << std::endl;
+    oss << "libswscale ";
+    oss << LIBSWSCALE_VERSION_MAJOR << '.' << LIBSWSCALE_VERSION_MINOR << '.' << LIBSWSCALE_VERSION_MICRO << " / ";
+    oss << (swscale_version() >> 16) << '.' << (swscale_version() >> 8 & 0xff) << '.' << (swscale_version() & 0xff) << std::endl;
+
+    return oss.str();
+}
+
+
 void
 WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
                                 const string &paramName)
 {
-    if (paramName == kParamCodec) {
+    if (paramName == kParamLibraryInfo) {
+        sendMessage(Message::eMessageMessage, "", ffmpeg_versions());
+    } else if (paramName == kParamCodec) {
         // update the secret parameter
         int codec = _codec->getValue();
         const vector<string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
@@ -4927,35 +4964,6 @@ split(const string &s,
     return elems;
 }
 
-static
-string
-ffmpeg_versions()
-{
-    std::ostringstream oss;
-#ifdef FFMS_USE_FFMPEG_COMPAT
-    oss << "FFmpeg ";
-#else
-    oss << "libav";
-#endif
-    oss << " versions (compiled with / running with):" << std::endl;
-    oss << "libavformat ";
-    oss << LIBAVFORMAT_VERSION_MAJOR << '.' << LIBAVFORMAT_VERSION_MINOR << '.' << LIBAVFORMAT_VERSION_MICRO << " / ";
-    oss << (avformat_version() >> 16) << '.' << (avformat_version() >> 8 & 0xff) << '.' << (avformat_version() & 0xff) << std::endl;
-    //oss << "libavdevice ";
-    //oss << LIBAVDEVICE_VERSION_MAJOR << '.' << LIBAVDEVICE_VERSION_MINOR << '.' << LIBAVDEVICE_VERSION_MICRO << " / ";
-    //oss << avdevice_version() >> 16 << '.' << avdevice_version() >> 8 & 0xff << '.' << avdevice_version() & 0xff << std::endl;
-    oss << "libavcodec ";
-    oss << LIBAVCODEC_VERSION_MAJOR << '.' << LIBAVCODEC_VERSION_MINOR << '.' << LIBAVCODEC_VERSION_MICRO << " / ";
-    oss << (avcodec_version() >> 16) << '.' << (avcodec_version() >> 8 & 0xff) << '.' << (avcodec_version() & 0xff) << std::endl;
-    oss << "libavutil ";
-    oss << LIBAVUTIL_VERSION_MAJOR << '.' << LIBAVUTIL_VERSION_MINOR << '.' << LIBAVUTIL_VERSION_MICRO << " / ";
-    oss << (avutil_version() >> 16) << '.' << (avutil_version() >> 8 & 0xff) << '.' << (avutil_version() & 0xff) << std::endl;
-    oss << "libswscale ";
-    oss << LIBSWSCALE_VERSION_MAJOR << '.' << LIBSWSCALE_VERSION_MINOR << '.' << LIBSWSCALE_VERSION_MICRO << " / ";
-    oss << (swscale_version() >> 16) << '.' << (swscale_version() >> 8 & 0xff) << '.' << (swscale_version() & 0xff) << std::endl;
-
-    return oss.str();
-}
 
 void
 WriteFFmpegPluginFactory::load()
@@ -5271,7 +5279,7 @@ WriteFFmpegPluginFactory::describe(ImageEffectDescriptor &desc)
     GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, false, false);
     // basic labels
     desc.setLabel(kPluginName);
-    desc.setPluginDescription( kPluginDescription "\n\n" + ffmpeg_versions() );
+    desc.setPluginDescription( kPluginDescription );
 
 
     ///This plug-in only supports sequential render
@@ -5740,6 +5748,14 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
 #endif
     }
+    {
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLibraryInfo);
+        param->setLabelAndHint(kParamLibraryInfoLabel);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
     GenericWriterDescribeInContextEnd(desc, context, page);
 } // WriteFFmpegPluginFactory::describeInContext
 

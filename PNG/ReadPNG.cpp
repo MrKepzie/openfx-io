@@ -61,6 +61,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 #define kParamShowMetadataLabel "Image Info..."
 #define kParamShowMetadataHint "Shows information and metadata from the image at current time."
 
+#define kParamLibraryInfo "libraryInfo"
+#define kParamLibraryInfoLabel "libpng Info...", "Display information about the underlying library."
 
 // All PNG images represent RGBA.
 // Single-channel images are Y
@@ -1043,7 +1045,13 @@ void
 ReadPNGPlugin::changedParam(const InstanceChangedArgs &args,
                             const string &paramName)
 {
-    if (paramName == kParamShowMetadata) {
+    if (paramName == kParamLibraryInfo) {
+        string msg = (string() +
+                      "libpng version (compiled with / running with): " + PNG_LIBPNG_VER_STRING + '/' + png_libpng_ver + '\n' +
+                      "zlib version (compiled with / running with): " + ZLIB_VERSION + '/' + zlib_version + '\n' +
+                      png_get_copyright(NULL));
+        sendMessage(Message::eMessageMessage, "", msg);
+    } else if (paramName == kParamShowMetadata) {
         string filename;
         OfxStatus st = getFilenameAtTime(args.time, &filename);
         stringstream ss;
@@ -1461,6 +1469,7 @@ ReadPNGPlugin::guessParamsFromFilename(const string& filename,
     return true;
 } // ReadPNGPlugin::guessParamsFromFilename
 
+
 mDeclareReaderPluginFactory(ReadPNGPluginFactory, {}, false);
 void
 ReadPNGPluginFactory::load()
@@ -1493,6 +1502,13 @@ ReadPNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamShowMetadata);
         param->setLabel(kParamShowMetadataLabel);
         param->setHint(kParamShowMetadataHint);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+    {
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLibraryInfo);
+        param->setLabelAndHint(kParamLibraryInfoLabel);
         if (page) {
             page->addChild(*param);
         }

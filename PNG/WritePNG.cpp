@@ -103,6 +103,9 @@ enum PNGBitDepthEnum {
 #define kWritePNGParamDitherLabel "Dithering"
 #define kWritePNGParamDitherHint "When checked, conversion from float input buffers to 8-bit PNG will use a dithering algorithm to reduce quantization artifacts. This has no effect when writing to 16bit PNG"
 
+#define kParamLibraryInfo "libraryInfo"
+#define kParamLibraryInfoLabel "libpng Info...", "Display information about the underlying library."
+
 #ifdef OFX_USE_MULTITHREAD_MUTEX
 typedef MultiThread::Mutex Mutex;
 typedef MultiThread::AutoMutex AutoMutex;
@@ -369,6 +372,8 @@ private:
 
     virtual void onOutputFileChanged(const string& newFile, bool setColorSpace) OVERRIDE FINAL;
 
+    virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
+
     void openFile(const string& filename,
                   int nChannels,
                   png_structp* png,
@@ -433,6 +438,22 @@ WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle,
 
 WritePNGPlugin::~WritePNGPlugin()
 {
+}
+
+
+void
+WritePNGPlugin::changedParam(const InstanceChangedArgs &args,
+                             const string &paramName)
+{
+    if (paramName == kParamLibraryInfo) {
+        string msg = (string() +
+                      "libpng version (compiled with / running with): " + PNG_LIBPNG_VER_STRING + '/' + png_libpng_ver + '\n' +
+                      "zlib version (compiled with / running with): " + ZLIB_VERSION + '/' + zlib_version + '\n' +
+                      png_get_copyright(NULL));
+        sendMessage(Message::eMessageMessage, "", msg);
+    } else {
+        GenericWriterPlugin::changedParam(args, paramName);
+    }
 }
 
 void
@@ -969,6 +990,14 @@ WritePNGPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kWritePNGParamDitherLabel);
         param->setHint(kWritePNGParamDitherHint);
         param->setDefault(true);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
+
+    {
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLibraryInfo);
+        param->setLabelAndHint(kParamLibraryInfoLabel);
         if (page) {
             page->addChild(*param);
         }
