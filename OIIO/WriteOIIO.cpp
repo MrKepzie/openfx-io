@@ -250,6 +250,9 @@ enum EParamTileSize
 #define kParamViewsSelectorHint "Select the views to render. When choosing All, make sure the output filename does not have a %v or %V view " \
     "pattern in which case each view would be written to a separate file."
 
+#define kParamLibraryInfo "libraryInfo"
+#define kParamLibraryInfoLabel "OpenImageIO Info...", "Display information about the underlying library."
+
 static bool gIsMultiplanarV2=false;
 
 class WriteOIIOPlugin
@@ -421,11 +424,64 @@ hasListChanged(const std::list<string>& oldList,
 }
 }
 
+
+static string
+oiio_versions()
+{
+    std::ostringstream oss;
+    int ver = openimageio_version();
+    oss << "OpenImageIO version (compiled with / running with): " << OIIO_VERSION_STRING << '/';
+    oss << ver / 10000 << '.' << (ver % 10000) / 100 << '.' << (ver % 100) << std::endl;
+# if OIIO_VERSION >= 10705
+    string libs = OIIO::get_string_attribute("library_list");
+    if (libs.size()) {
+        oss << std::endl << "Dependent libraries:" << std::endl;
+        std::istringstream f(libs);
+        string s;
+        while (getline(f, s, ';')) {
+            size_t pos = s.find(':');
+            oss << s.substr(pos+1) << std::endl;
+        }
+    }
+# endif
+
+    return oss.str();
+}
+
+
 void
 WriteOIIOPlugin::changedParam(const InstanceChangedArgs &args,
                               const string &paramName)
 {
-    if ( (paramName == kParamOutputCompression) && (args.reason == eChangeUserEdit) ) {
+    if (paramName == kParamLibraryInfo) {
+        string extensions_list;
+        getattribute("extension_list", extensions_list);
+
+        string extensions_pretty;
+        {
+            stringstream formatss(extensions_list);
+            string format;
+            vector<string> extensions;
+            while ( std::getline(formatss, format, ';') ) {
+                stringstream extensionss(format);
+                string extension;
+                std::getline(extensionss, extension, ':'); // extract the format
+                extensions_pretty += extension;
+                extensions_pretty += ": ";
+                bool first = true;
+                while ( std::getline(extensionss, extension, ',') ) {
+                    if (!first) {
+                        extensions_pretty += ", ";
+                    }
+                    first = false;
+                    extensions_pretty += extension;
+                }
+                extensions_pretty += "; ";
+            }
+        }
+        string msg = oiio_versions() + "\nAll supported formats and extensions: " + extensions_pretty;
+        sendMessage(Message::eMessageMessage, "", msg);
+    } else if ( (paramName == kParamOutputCompression) && (args.reason == eChangeUserEdit) ) {
         string filename;
         _fileParam->getValue(filename);
         refreshParamsVisibility(filename);
@@ -1302,18 +1358,6 @@ WriteOIIOPlugin::isImageFile(const string& /*fileExtension*/) const
     return true;
 }
 
-static string
-oiio_versions()
-{
-    std::ostringstream oss;
-    int ver = openimageio_version();
-    oss << "OIIO versions:" << std::endl;
-    oss << "compiled with " << OIIO_VERSION_STRING << std::endl;
-    oss << "running with " << ver / 10000 << '.' << (ver % 10000) / 100 << '.' << (ver % 100) << std::endl;
-
-    return oss.str();
-}
-
 mDeclareWriterPluginFactory(WriteOIIOPluginFactory,; , false);
 void
 WriteOIIOPluginFactory::unload()
@@ -1377,34 +1421,6 @@ WriteOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
 {
     GenericWriterDescribe(desc, eRenderFullySafe, _extensions, kPluginEvaluation, true, true);
 
-
-    string extensions_list;
-    getattribute("extension_list", extensions_list);
-
-    string extensions_pretty;
-    {
-        stringstream formatss(extensions_list);
-        string format;
-        vector<string> extensions;
-        while ( std::getline(formatss, format, ';') ) {
-            stringstream extensionss(format);
-            string extension;
-            std::getline(extensionss, extension, ':'); // extract the format
-            extensions_pretty += extension;
-            extensions_pretty += ": ";
-            bool first = true;
-            while ( std::getline(extensionss, extension, ',') ) {
-                if (!first) {
-                    extensions_pretty += ", ";
-                }
-                first = false;
-                extensions_pretty += extension;
-            }
-            extensions_pretty += "; ";
-        }
-    }
-
-
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginDescription( "Write images using OpenImageIO.\n\n"
@@ -1430,19 +1446,15 @@ WriteOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
                                "Softimage PIC (*.pic)\n"
                                "Targa (*.tga *.tpic)\n"
                                "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
-                               "Zfile (*.zfile)\n\n"
-                               "All supported formats and extensions: " + extensions_pretty + "\n\n"
-                               + oiio_versions() );
+                               "Zfile (*.zfile)" );
 
-# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
+# if defined(OFX_EXTENSIONS_NATRON) && defined(OFX_EXTENSIONS_NUKE)
     gIsMultiplanarV2 = ( getImageEffectHostDescription()->supportsDynamicChoices &&
                                           getImageEffectHostDescription()->isMultiPlanar &&
                                           fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
 # else
     gIsMultiplanarV2 = false;
 # endif
-
-
 } // WriteOIIOPluginFactory::describe
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -1621,6 +1633,13 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             if (page) {
                 page->addChild(*param);
             }
+        }
+    }
+    {
+        PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLibraryInfo);
+        param->setLabelAndHint(kParamLibraryInfoLabel);
+        if (page) {
+            page->addChild(*param);
         }
     }
     GenericWriterDescribeInContextEnd(desc, context, page);
