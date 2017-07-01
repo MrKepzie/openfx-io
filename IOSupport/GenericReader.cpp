@@ -3158,6 +3158,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setIsSecretAndDisabled(true); // always secret
         param->setHint(kParamOriginalProxyScaleHint);
         // param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        param->setDoubleType(eDoubleTypeScale);
         param->setAnimates(true);
         if (page) {
             page->addChild(*param);
@@ -3172,8 +3173,9 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
         param->setRange(0.01, 0.01, 1., 1.);
         param->setDisplayRange(0.01, 0.01, 1., 1.);
         //param->setIsSecretAndDisabled(true); // done in the plugin constructor
-        param->setHint(kParamOriginalProxyScaleHint);
+        param->setHint(kParamProxyThresholdHint);
         param->setLayoutHint(eLayoutHintNoNewLine, 1);
+        param->setDoubleType(eDoubleTypeScale);
         param->setAnimates(true);
         if (page) {
             page->addChild(*param);

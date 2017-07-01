@@ -931,6 +931,7 @@ OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setLabel(kParamScaleLabel);
         param->setAnimates(true);
         //param->setIsSecretAndDisabled(true); // done in the plugin constructor
+        param->setDoubleType(eDoubleTypeScale);
         param->setDefault(1., 1.);
         param->setRange(0., 0., DBL_MAX, DBL_MAX);
         param->setIncrement(0.05);

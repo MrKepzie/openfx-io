@@ -1349,6 +1349,7 @@ SeNoisePluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setHint(kParamNoiseSizeHint);
         param->setRange(0., 0., DBL_MAX, DBL_MAX);
         param->setDisplayRange(1., 1., 1000., 1000.);
+        param->setDoubleType(eDoubleTypeXY);
         param->setDefault(kParamNoiseSizeDefault);
         if (page) {
             page->addChild(*param);
