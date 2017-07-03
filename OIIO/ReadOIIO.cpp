@@ -333,7 +333,7 @@ public:
     virtual ~ReadOIIOPlugin();
 
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
+    virtual OfxStatus getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
     virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
     virtual void clearAnyCache() OVERRIDE FINAL;
 
@@ -667,14 +667,13 @@ ReadOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     GenericReaderPlugin::getClipPreferences(clipPreferences);
 }
 
-void
+OfxStatus
 ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
                                   ClipComponentsSetter& clipComponents)
 {
     //Should only be called if multi-planar
     assert( isMultiPlanar() );
 
-    clipComponents.addClipComponents( *_outputClip, getOutputComponents() );
     clipComponents.setPassThroughClip(NULL, args.time, args.view);
 
     {
@@ -683,24 +682,39 @@ ReadOIIOPlugin::getClipComponents(const ClipComponentsArguments& args,
             string component;
             if (it->first == kReadOIIOColorLayer) {
                 continue;
-                /*switch (it->second.layer.channelNames.size()) {
-                   case 1:
-                   component = kOfxImageComponentAlpha;
-                   break;
-                   case 3:
-                   component = kOfxImageComponentRGB;
-                   break;
-                   case 4:
-                   default:
-                   component = kOfxImageComponentRGBA;
-                   break;
-                   };*/
             } else {
-                component = MultiPlane::Utils::makeNatronCustomChannel(it->first, it->second.layer.channelNames);
+                MultiPlane::ImagePlaneDesc plane(it->first, "", "", it->second.layer.channelNames);
+                clipComponents.addClipPlane(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(plane));
             }
-            clipComponents.addClipComponents(*_outputClip, component);
         }
     }
+
+    // Also add the color plane
+    PixelComponentEnum outputPixelComponents = getOutputComponents();
+    int nOutputComps = 0;
+    switch (outputPixelComponents) {
+        case ePixelComponentAlpha:
+            nOutputComps = 1;
+            break;
+        case ePixelComponentRGB:
+            nOutputComps = 3;
+            break;
+        case ePixelComponentRGBA:
+            nOutputComps = 4;
+            break;
+#ifdef OFX_EXTENSIONS_NATRON
+        case ePixelComponentXY:
+            nOutputComps = 2;
+            break;
+#endif
+        default:
+            nOutputComps = 0;
+            break;
+    }
+
+    MultiPlane::ImagePlaneDesc colorPlane = MultiPlane::ImagePlaneDesc::mapNCompsToColorPlane(nOutputComps);
+    clipComponents.addClipPlane(*_outputClip, MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(colorPlane));
+    return kOfxStatOK;
 }
 
 namespace  {
@@ -947,9 +961,6 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
         layersMap->push_back( make_pair( views[i], LayersMap() ) );
     }
 
-    const bool isMultiView = views.size() > 1;
-
-
     if ( views.empty() ) {
         layersMap->push_back( make_pair( "Main", LayersMap() ) );
     }
@@ -995,7 +1006,7 @@ ReadOIIOPlugin::getLayers(const vector<ImageSpec>& subimages,
                     layer = string(dataPtr);
                 }
             }
-            
+
             assert( foundView != layersMap->end() );
 
             //If the layer name is empty, try to map it to something known
@@ -2138,19 +2149,20 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     } // if (pixelComponents != ePixelComponentCustom) {
 #ifdef OFX_EXTENSIONS_NATRON
     else {
-        vector<string> layerChannels = mapPixelComponentCustomToLayerChannels(rawComponents);
-        if ( !layerChannels.empty() ) {
-            numChannels = (int)layerChannels.size() - 1;
+        MultiPlane::ImagePlaneDesc plane, pairedPlane;
+        MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(rawComponents, &plane, &pairedPlane);
+        numChannels = (int)plane.getNumComponents();
+        if ( plane.getNumComponents() > 0) {
             channels.resize(numChannels);
-            string layer = layerChannels[0];
+            string layer = plane.getPlaneID();
 
             if (_outputLayer) {
                 getOIIOChannelIndexesFromLayerName(filename, view, layer, pixelComponents, subimages, channels, numChannels, subImageIndex);
             } else {
-                if ( (numChannels == 1) && (layerChannels[1] == layer) ) {
+                const std::vector<std::string>& layerChannels = plane.getChannels();
+                if ( (numChannels == 1) && (layerChannels[0] == layer) ) {
                     layer.clear();
                 }
-
 
                 for (int i = 0; i < numChannels; ++i) {
                     bool found = false;
@@ -2160,7 +2172,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                             realChan.append(layer);
                             realChan.push_back('.');
                         }
-                        realChan.append(layerChannels[i + 1]);
+                        realChan.append(layerChannels[i]);
                         if (subimages[0].channelnames[j] == realChan) {
                             channels[i] = j + kXChannelFirst;
                             found = true;
@@ -2211,8 +2223,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
     specBounds.y1 = spec.full_y + spec.full_height - (spec.y + spec.height);
     specBounds.x2 = spec.x + spec.width + dataOffset;
     specBounds.y2 = spec.full_y + spec.full_height - spec.y;
-
-    EdgePixelsEnum edgePixelsMode = (EdgePixelsEnum)_edgePixels->getValue();
 
     // Where to write the data in the buffer, everything outside of that is black
     // It depends on the extra padding we added in getFrameBounds
@@ -2496,7 +2506,6 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                              src_pix -= tiledBufferRowSize,
                              dst_pix -= rowBytes) {
 
-
                             const float* srcPtr = (const float*)src_pix;
                             float* dstPtr = (float*)dst_pix;
                             for (int x = xbeginClamped; x < xendClamped;
@@ -2527,7 +2536,7 @@ ReadOIIOPlugin::getFrameBounds(const string& filename,
                                OfxRectI *bounds,
                                OfxRectI *format,
                                double *par,
-                               string *error,
+                               string */*error*/,
                                int* tile_width,
                                int* tile_height)
 {

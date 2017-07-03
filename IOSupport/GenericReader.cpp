@@ -49,6 +49,7 @@
 #include <tuttle/ofxReadWrite.h>
 #endif
 #include <ofxNatron.h>
+#include <ofxsMultiPlane.h>
 
 #include "SequenceParsing/SequenceParsing.h"
 #ifdef OFX_IO_USING_OCIO
@@ -1696,11 +1697,16 @@ GenericReaderPlugin::render(const RenderArguments &args)
         // if components are custom, remap it to a OFX components with the same number of channels
         PixelComponentEnum remappedComponents;
 
-        bool isColor;
+        bool isColor = true;
         bool isCustom;
         if (it->comps == ePixelComponentCustom) {
-            std::vector<string> channelNames = mapPixelComponentCustomToLayerChannels(it->rawComps);
-            isColor = channelNames.size() >= 4 && channelNames[1] == "R" && channelNames[2] == "G" && channelNames[3] == "B";
+
+            MultiPlane::ImagePlaneDesc plane, pairedPlane;
+            MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(it->rawComps, &plane, &pairedPlane);
+            const std::vector<std::string>& channels = plane.getChannels();
+            if (channels.size() < 3 || (channels[0] != "R" && channels[1] != "G" && channels[2] != "B")) {
+                isColor = false;
+            }
             isCustom = true;
             if (isColor) {
 #ifdef OFX_IO_USING_OCIO
@@ -1722,7 +1728,6 @@ GenericReaderPlugin::render(const RenderArguments &args)
                 remappedComponents = ePixelComponentAlpha;
             }
         } else {
-            isColor = true;
             isCustom = false;
 #ifdef OFX_IO_USING_OCIO
             isOCIOIdentity = _ocio->isIdentity(args.time);
@@ -2439,7 +2444,8 @@ GenericReaderPlugin::purgeCaches()
 bool
 GenericReaderPlugin::isIdentity(const IsIdentityArguments &args,
                                 Clip * &identityClip,
-                                double &identityTime)
+                                double &identityTime
+                                , int& /*view*/, std::string& /*plane*/)
 {
     if ( !kSupportsRenderScale && ( (args.renderScale.x != 1.) || (args.renderScale.y != 1.) ) ) {
         throwSuiteStatusException(kOfxStatFailed);

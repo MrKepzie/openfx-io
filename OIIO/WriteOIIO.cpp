@@ -221,6 +221,10 @@ enum EParamTileSize
     eParamTileSize512
 };
 
+#define kParamProcessAllLayers "processAllLayers"
+#define kParamProcessAllLayersLabel "All Layers"
+#define kParamProcessAllLayersHint "When checked, all layers will be written to the file"
+
 #define kParamOutputChannels kNatronOfxParamOutputChannels
 #define kParamOutputChannelsChoice kParamOutputChannels "Choice"
 #define kParamOutputChannelsLabel "Layer(s)"
@@ -249,6 +253,8 @@ enum EParamTileSize
 #define kParamLibraryInfo "libraryInfo"
 #define kParamLibraryInfoLabel "OpenImageIO Info...", "Display information about the underlying library."
 
+static bool gIsMultiplanarV2=false;
+
 class WriteOIIOPlugin
     : public GenericWriterPlugin
 {
@@ -259,7 +265,7 @@ public:
 
     virtual void changedParam(const InstanceChangedArgs &args, const string &paramName) OVERRIDE FINAL;
     virtual void getClipPreferences(ClipPreferencesSetter &clipPreferences) OVERRIDE FINAL;
-    virtual void getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
+    virtual OfxStatus getClipComponents(const ClipComponentsArguments& args, ClipComponentsSetter& clipComponents) OVERRIDE FINAL;
 
 private:
 
@@ -368,22 +374,22 @@ WriteOIIOPlugin::WriteOIIOPlugin(OfxImageEffectHandle handle,
     , _currentInputComponents()
     , _availableViews()
 {
-# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
-    const bool enableMultiPlaneFeature = ( getImageEffectHostDescription()->supportsDynamicChoices &&
-                                           getImageEffectHostDescription()->isMultiPlanar &&
-                                           fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
-# else
-    const bool enableMultiPlaneFeature = false;
-# endif
+
     _bitDepth = fetchChoiceParam(kParamBitDepth);
     _quality     = fetchIntParam(kParamOutputQuality);
     _dwaCompressionLevel = fetchDoubleParam(kParamOutputDWACompressionLevel);
     _orientation = fetchChoiceParam(kParamOutputOrientation);
     _compression = fetchChoiceParam(kParamOutputCompression);
     _tileSize = fetchChoiceParam(kParamTileSize);
-    if (enableMultiPlaneFeature) {
+    if (gIsMultiplanarV2) {
         _outputLayers = fetchChoiceParam(kParamOutputChannels);
-        fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, _outputClip);
+
+        {
+            FetchChoiceParamOptions args = FetchChoiceParamOptions::createFetchChoiceParamOptionsForOutputPlane();
+            args.dependsClips.push_back(_inputClip);
+            fetchDynamicMultiplaneChoiceParameter(kParamOutputChannels, args);
+        }
+        onAllParametersFetched();
         _parts = fetchChoiceParam(kParamPartsSplitting);
         _views = fetchChoiceParam(kParamViewsSelector);
     }
@@ -481,16 +487,16 @@ WriteOIIOPlugin::changedParam(const InstanceChangedArgs &args,
         refreshParamsVisibility(filename);
     } else if (paramName == kParamOutputChannels) {
     }
-    if ( handleChangedParamForAllDynamicChoices(paramName, args.reason) ) {
-        return;
-    }
+
     GenericWriterPlugin::changedParam(args, paramName);
 }
 
 void
 WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
 {
-    if ( _outputLayers && !_outputLayers->getIsSecret() ) {
+    GenericWriterPlugin::getClipPreferences(clipPreferences);
+
+    if ( gIsMultiplanarV2 ) {
         string filename;
         _fileParam->getValue(filename);
         std::auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
@@ -499,13 +505,13 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
             supportsNChannels = output->supports("nchannels");
         }
 
-        buildChannelMenus(string(), true /*mergeMenus*/, supportsNChannels);
 
-        string ofxPlane, ofxComponents;
-        getPlaneNeededInOutput(&ofxPlane, &ofxComponents);
+        MultiPlane::ImagePlaneDesc plane;
+        OFX::Clip* clip = 0;
+        int channelIndex = -1;
+        MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(_outputLayers->getName(), &clip, &plane, &channelIndex);
 
-
-        if (ofxComponents == kPlaneLabelAll) {
+        if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
             _outputComponents->setIsSecretAndDisabled(true);
             for (int i = 0; i < 4; ++i) {
                 _processChannels[i]->setIsSecretAndDisabled(true);
@@ -534,33 +540,35 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
             }
         }
     }
-    GenericWriterPlugin::getClipPreferences(clipPreferences);
 }
 
-void
+OfxStatus
 WriteOIIOPlugin::getClipComponents(const ClipComponentsArguments& /*args*/,
                                    ClipComponentsSetter& clipComponents)
 {
-    if ( _outputLayers && !_outputLayers->getIsSecret() ) {
-        string ofxPlane, ofxComp;
-        getPlaneNeededInOutput(&ofxPlane, &ofxComp);
+    MultiPlane::ImagePlaneDesc dstPlane;
 
-        if (ofxPlane == kPlaneLabelAll) {
-            const vector<string>& components = getCachedComponentsPresent(_outputClip);
-            for (vector<string>::const_iterator it = components.begin(); it != components.end(); ++it) {
-                clipComponents.addClipComponents(*_inputClip, *it);
-                clipComponents.addClipComponents(*_outputClip, *it);
-            }
-        } else {
-            clipComponents.addClipComponents(*_inputClip, ofxComp);
-            clipComponents.addClipComponents(*_outputClip, ofxComp);
+    OFX::Clip* clip = 0;
+    int channelIndex = -1;
+    MultiPlane::MultiPlaneEffect::GetPlaneNeededRetCodeEnum stat = getPlaneNeeded(_outputLayers->getName(), &clip, &dstPlane, &channelIndex);
+    if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeFailed) {
+        return kOfxStatFailed;
+    }
+
+    if (stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedAllPlanes) {
+        vector<string> components;
+        _inputClip->getPlanesPresent(&components);
+        for (vector<string>::const_iterator it = components.begin(); it != components.end(); ++it) {
+            clipComponents.addClipPlane(*_inputClip, *it);
+            clipComponents.addClipPlane(*_outputClip, *it);
         }
     } else {
-        PixelComponentEnum inputComponents = _inputClip->getPixelComponents();
-        clipComponents.addClipComponents(*_inputClip, inputComponents);
-        PixelComponentEnum outputComponents = _outputClip->getPixelComponents();
-        clipComponents.addClipComponents(*_outputClip, outputComponents);
+        assert(stat == MultiPlane::MultiPlaneEffect::eGetPlaneNeededRetCodeReturnedPlane);
+        std::string ofxComponentsStr = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(dstPlane);
+        clipComponents.addClipPlane(*_inputClip, ofxComponentsStr);
+        clipComponents.addClipPlane(*_outputClip, ofxComponentsStr);
     }
+    return kOfxStatOK;
 }
 
 int
@@ -1127,8 +1135,6 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
 
         for (map<int, string>::const_iterator view = viewsToRender.begin(); view != viewsToRender.end(); ++view) {
             for (std::list<string>::const_iterator it = planes.begin(); it != planes.end(); ++it) {
-                string layer, pairedLayer;
-                vector<string> planeChannels;
 
                 string rawComponents;
                 if (*it == kFnOfxImagePlaneColour) {
@@ -1136,11 +1142,15 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                 } else {
                     rawComponents = *it;
                 }
-                MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
 
-                if ( !layer.empty() ) {
-                    for (std::size_t i = 0; i < planeChannels.size(); ++i) {
-                        planeChannels[i] = layer + "." + planeChannels[i];
+                MultiPlane::ImagePlaneDesc plane, pairedPlane;
+                MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(rawComponents, &plane, &pairedPlane);
+
+                std::vector<std::string> planeChannels = plane.getChannels();
+                if ( plane.getNumComponents() > 0 ) {
+
+                    for (std::size_t i = 0; i < channels.size(); ++i) {
+                        planeChannels[i] = plane.getPlaneLabel() + "." + planeChannels[i];
                     }
                 }
                 if ( ( viewsToRender.size() > 1) && ( view != viewsToRender.begin() ) ) {
@@ -1187,8 +1197,6 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
             vector<string>  channels;
 
             for (std::list<string>::const_iterator it = planes.begin(); it != planes.end(); ++it) {
-                string layer, pairedLayer;
-                vector<string> planeChannels;
 
                 string rawComponents;
                 if (*it == kFnOfxImagePlaneColour) {
@@ -1196,11 +1204,14 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                 } else {
                     rawComponents = *it;
                 }
-                MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
+                MultiPlane::ImagePlaneDesc plane, pairedPlane;
+                MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(rawComponents, &plane, &pairedPlane);
 
-                if ( !layer.empty() ) {
+                std::vector<std::string> planeChannels = plane.getChannels();
+
+                if ( plane.getNumComponents() > 0 ) {
                     for (std::size_t i = 0; i < planeChannels.size(); ++i) {
-                        planeChannels[i] = layer + "." + planeChannels[i];
+                        planeChannels[i] = plane.getPlaneLabel() + "." + planeChannels[i];
                     }
                 }
 
@@ -1239,8 +1250,6 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
         int specIndex = 0;
         for (map<int, string>::const_iterator view = viewsToRender.begin(); view != viewsToRender.end(); ++view) {
             for (std::list<string>::const_iterator it = planes.begin(); it != planes.end(); ++it) {
-                string layer, pairedLayer;
-                vector<string> planeChannels;
 
                 string rawComponents;
                 if (*it == kFnOfxImagePlaneColour) {
@@ -1248,14 +1257,18 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                 } else {
                     rawComponents = *it;
                 }
-                MultiPlane::Utils::extractChannelsFromComponentString(rawComponents, &layer, &pairedLayer, &planeChannels);
-                ImageSpec partSpec = spec;
 
-                if ( !layer.empty() ) {
-                    for (std::size_t i = 0; i < planeChannels.size(); ++i) {
-                        planeChannels[i] = layer + "." + planeChannels[i];
-                    }
+                MultiPlane::ImagePlaneDesc plane, pairedPlane;
+                MultiPlane::ImagePlaneDesc::mapOFXComponentsTypeStringToPlanes(rawComponents, &plane, &pairedPlane);
+
+                std::vector<std::string> planeChannels = plane.getChannels();
+
+
+                ImageSpec partSpec = spec;
+                for (std::size_t i = 0; i < planeChannels.size(); ++i) {
+                    planeChannels[i] = plane.getPlaneLabel() + "." + planeChannels[i];
                 }
+
 
                 vector<string> channels;
                 if (!packingRequired) {
@@ -1270,7 +1283,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
                 if (channels.size() == 4) {
                     partSpec.alpha_channel = 3;
                 } else {
-                    if ( layer.empty() && ( channels.size() == 1) ) {
+                    if ( plane.getNumComponents() > 0 && ( channels.size() == 1) ) {
                         ///Alpha component only
                         partSpec.alpha_channel = 0;
                     } else {
@@ -1434,6 +1447,14 @@ WriteOIIOPluginFactory::describe(ImageEffectDescriptor &desc)
                                "Targa (*.tga *.tpic)\n"
                                "TIFF (*.tif *.tiff *.tx *.env *.sm *.vsm)\n"
                                "Zfile (*.zfile)" );
+
+# if defined(OFX_EXTENSIONS_NATRON) && defined(OFX_EXTENSIONS_NUKE)
+    gIsMultiplanarV2 = ( getImageEffectHostDescription()->supportsDynamicChoices &&
+                                          getImageEffectHostDescription()->isMultiPlanar &&
+                                          fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
+# else
+    gIsMultiplanarV2 = false;
+# endif
 } // WriteOIIOPluginFactory::describe
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
@@ -1583,20 +1604,12 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
 
-# if OFX_EXTENSIONS_NATRON && OFX_EXTENSIONS_NUKE
-    const bool enableMultiPlaneFeature = ( getImageEffectHostDescription()->supportsDynamicChoices &&
-                                           getImageEffectHostDescription()->isMultiPlanar &&
-                                           fetchSuite(kFnOfxImageEffectPlaneSuite, 2, true) );
-# else
-    const bool enableMultiPlaneFeature = false;
-# endif
 
-    if (enableMultiPlaneFeature) {
-        {
-            ChoiceParamDescriptor* param = MultiPlane::Factory::describeInContextAddOutputLayerChoice(true, desc, page);
-            param->setLabel(kParamOutputChannelsLabel);
-            param->setHint(kParamOutputChannelsHint);
-        }
+    if (gIsMultiplanarV2) {
+
+
+        MultiPlane::Factory::describeInContextAddPlaneChoice(desc, page, kParamOutputChannels, kParamOutputChannelsLabel, kParamOutputChannelsHint);
+        MultiPlane::Factory::describeInContextAddAllPlanesOutputCheckbox(desc, page);
         {
             ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamPartsSplitting);
             param->setLabel(kParamPartsSplittingLabel);
