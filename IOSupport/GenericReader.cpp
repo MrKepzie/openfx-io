@@ -1840,7 +1840,7 @@ GenericReaderPlugin::render(const RenderArguments &args)
                     assert(remappedComponents == ePixelComponentRGBA);
                     DBG( std::printf("unpremult (tmp in-place)\n") );
                     //tmpPixelData[0] = tmpPixelData[1] = tmpPixelData[2] = tmpPixelData[3] = 0.5;
-                    unPremultPixelData(renderWindowNotRounded, tmpPixelData, renderWindowFullRes, it->comps, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes);
+                    unPremultPixelData(renderWindowNotRounded, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes, tmpPixelData, renderWindowFullRes, remappedComponents, it->numChans, firstDepth, tmpRowBytes);
 
                     if ( abort() ) {
                         return;
