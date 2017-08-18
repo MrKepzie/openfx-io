@@ -416,6 +416,14 @@ public:
         assert(_seed && _staticSeed && _presets && _sizeAll && _size[0] && _size[1] && _size[2] && _irregularity[0] && _irregularity[1] && _irregularity[2] && _intensity[0] && _intensity[1] && _intensity[2] && _colorCorr && _intensityBlack && _intensityMinimum);
         _sublabel = fetchStringParam(kNatronOfxParamStringSublabelName);
         assert(_sublabel);
+
+        int preset;
+        _presets->getValue(preset);
+        if (preset >= NUMPRESETS) {
+            _sublabel->setValue("");
+        } else {
+            _sublabel->setValue(gPresets[preset].label);
+        }
     }
 
 private:
@@ -1046,7 +1054,7 @@ SeGrainPluginFactory::describeInContext(ImageEffectDescriptor &desc,
     {
         StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
         param->setIsSecretAndDisabled(true); // always secret
-        param->setIsPersistent(true);
+        param->setIsPersistent(false);
         param->setEvaluateOnChange(false);
         param->setDefault(gPresets[0].label);
         if (page) {

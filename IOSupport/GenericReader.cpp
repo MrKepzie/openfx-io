@@ -3305,7 +3305,7 @@ GenericReaderDescribeInContextBegin(ImageEffectDescriptor &desc,
     if (gHostIsNatron) {
         StringParamDescriptor* param = desc.defineStringParam(kNatronOfxParamStringSublabelName);
         param->setIsSecretAndDisabled(true); // always secret
-        param->setIsPersistent(true);
+        param->setIsPersistent(false);
         param->setEvaluateOnChange(false);
         //param->setDefault();
         if (page) {
