@@ -385,12 +385,17 @@ enum X26xSpeedEnum {
 
 #if OFX_FFMPEG_DNXHD
 
-// dnxhr_444 and dnxhr_hqx is still not supported as of ffmpeg 3.2.2
+// dnxhr_444 and dnxhr_hqx is supported from ffmpeg 3.3.
+// libav doesn't seem to support these
 // try with:
-// ffmpeg -f lavfi  -i testsrc=size=2048x1152 -vframes 2 -vcodec dnxhd -profile:v dnxhr_444 out.mov
-// ffmpeg -f lavfi  -i testsrc=size=2048x1152 -vframes 2 -vcodec dnxhd -profile:v dnxhr_hqx out.mov
-// [dnxhd @ 0x7fb72f802e00] dnxhr_444 or dnxhr_hqx profile is not implemented. Update your FFmpeg version to the newest one from Git. If the problem still occurs, it means that your file has a feature which has not been implemented.
+// ffmpeg -f lavfi  -i testsrc=size=2048x1152 -vframes 2 -vf format=gbrp12 -vcodec dnxhd -profile:v dnxhr_444 out.mov
+// ffmpeg -f lavfi  -i testsrc=size=2048x1152 -vframes 2 -vf format=yuv422p12 -vcodec dnxhd -profile:v dnxhr_hqx out.mov
+// As of FFmpeg 3.3.3, ffmpeg seems to encode only 10 bits, see libavcodec/dnxhdenc.c:392 in FFmpeg 3.3.3
+#if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 1000, 1000, 1000, 57, 89, 100)
 #define OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444 0
+#else
+#define OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444 1
+#endif
 
 // Valid DNxHD profiles (as of FFmpeg 3.2.2):
 // Frame size: 1920x1080p; bitrate: 175Mbps; pixel format: yuv422p10; framerate: 24000/1001
@@ -482,7 +487,6 @@ enum X26xSpeedEnum {
 enum DNxHDCodecProfileEnum
 {
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
-    // in ffmpeg 3.2.2: dnxhr_444 or dnxhr_hqx profile is not implemented. Update your FFmpeg version to the newest one from Git. If the problem still occurs, it means that your file has a feature which has not been implemented.
     eDNxHDCodecProfileHR444,
     eDNxHDCodecProfileHRHQX,
 #endif
@@ -1690,7 +1694,7 @@ WriteFFmpegPlugin::IsYUVFromShortName(const char* shortName,
 #else
     unused(codecProfile);
 #endif
-    
+
     return ( !strcmp(shortName, kProresCodec kProresProfileHQFourCC) ||
              !strcmp(shortName, kProresCodec kProresProfileSQFourCC) ||
              !strcmp(shortName, kProresCodec kProresProfileLTFourCC) ||
@@ -1932,13 +1936,17 @@ WriteFFmpegPlugin::getPixelFormats(AVCodec* videoCodec,
     if (AV_CODEC_ID_DNXHD == videoCodec->id) {
         DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)_dnxhdCodecProfile->getValue();
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
+        // As of FFmpeg 3.3.3, ffmpeg seems to encode only 10 bits
         if (dnxhdCodecProfile == eDNxHDCodecProfileHR444) {
-            outTargetPixelFormat = AV_PIX_FMT_RGB48;
+            // see libavcodec/dnxhdenc.c:392 in FFmpeg 3.3.3
+            outTargetPixelFormat = AV_PIX_FMT_GBRP10;
         } else if (dnxhdCodecProfile == eDNxHDCodecProfileHRHQX) {
-            outTargetPixelFormat = AV_PIX_FMT_YUV422P12;
+            // see libavcodec/dnxhdenc.c:401 in FFmpeg 3.3.3
+            outTargetPixelFormat = AV_PIX_FMT_YUV422P10;
         } else
 #endif
         if ( (dnxhdCodecProfile == eDNxHDCodecProfileHRHQ) || (dnxhdCodecProfile == eDNxHDCodecProfileHRSQ) || (dnxhdCodecProfile == eDNxHDCodecProfileHRLB) ) {
+            // see libavcodec/dnxhdenc.c:407 in FFmpeg 3.3.3
             outTargetPixelFormat = AV_PIX_FMT_YUV422P;
         } else if ( (dnxhdCodecProfile == eDNxHDCodecProfile220x) || (dnxhdCodecProfile == eDNxHDCodecProfile440x) ) {
             outTargetPixelFormat = AV_PIX_FMT_YUV422P10;
@@ -3516,7 +3524,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
         if (hasAlpha) {
             pixelFormatNuke = (avCodecContext->bits_per_raw_sample > 8) ? AV_PIX_FMT_RGBA64 : AV_PIX_FMT_RGBA;
         } else {
-            pixelFormatNuke = (avCodecContext->bits_per_raw_sample > 8) ? AV_PIX_FMT_RGB48LE : AV_PIX_FMT_RGB24;
+            pixelFormatNuke = (avCodecContext->bits_per_raw_sample > 8) ? AV_PIX_FMT_RGB48 : AV_PIX_FMT_RGB24;
         }
 
         ret = avPicture.alloc(width, height, pixelFormatNuke);
@@ -3530,7 +3538,7 @@ WriteFFmpegPlugin::writeVideo(AVFormatContext* avFormatContext,
                 const float* src_pixels = (float*)( (char*)pixelData + srcY * rowBytes );
 
                 if (avCodecContext->bits_per_raw_sample > 8) {
-                    assert(pixelFormatNuke == AV_PIX_FMT_RGBA64 || pixelFormatNuke == AV_PIX_FMT_RGB48LE);
+                    assert(pixelFormatNuke == AV_PIX_FMT_RGBA64 || pixelFormatNuke == AV_PIX_FMT_RGB48);
 
                     // avPicture.linesize is in bytes, but stride is U16 (2 bytes), so divide linesize by 2
                     assert(avPicture.linesize[0] / 2 >= width * numDestChannels);
@@ -4015,14 +4023,12 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
         // the AVCodecContext::extradata will contain Elementary Stream
         // Descriptor which is required for QuickTime to decode the
         // stream.)
-        if ( !strcmp(_formatContext->oformat->name, "mp4") ||
+        // Some formats want stream headers to be separate.
+        // see ffmpeg_opt.c:1408 in ffmpeg 3.3.3
+        if ( (_formatContext->oformat->flags & AVFMT_GLOBALHEADER) ||
+             !strcmp(_formatContext->oformat->name, "mp4") ||
              !strcmp(_formatContext->oformat->name, "mov") ||
              !strcmp(_formatContext->oformat->name, "3gp") ) {
-            avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
-        }
-        // Some formats want stream headers to be separate.
-        if (_formatContext->oformat->flags & AVFMT_GLOBALHEADER) {
-            // see ffmpeg_opt.c:1403 in ffmpeg 3.2.2
             avCodecContext->flags |= CODEC_FLAG_GLOBAL_HEADER;
         }
 #if OFX_FFMPEG_PRORES
@@ -4061,7 +4067,7 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
 
 
 # if OFX_FFMPEG_PRINT_CODECS
-        std::cout << "Format: " << _formatContext->oformat->name << " Codec: " << videoCodec->name << " rgbBufferPixelFormat: " << av_get_pix_fmt_name(rgbBufferPixelFormat) << " targetPixelFormat: " << av_get_pix_fmt_name(targetPixelFormat) << " infoBitDepth: " << infoBitDepth << " Profile: " << _streamVideo->codec->profile << std::endl;
+        std::cout << "Format: " << _formatContext->oformat->name << " Codec: " << videoCodec->name << " rgbBufferPixelFormat: " << av_get_pix_fmt_name(rgbBufferPixelFormat) << " targetPixelFormat: " << av_get_pix_fmt_name(targetPixelFormat) << " infoBitDepth: " << _infoBitDepth->getValue() << " Profile: " << _streamVideo->codec->profile << std::endl;
 # endif //  FFMPEG_PRINT_CODECS
         if (openCodec(_formatContext, videoCodec, _streamVideo) < 0) {
             freeFormat();
