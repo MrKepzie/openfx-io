@@ -641,7 +641,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const string& plane,
                 // In this case, only copy the first components (thus the std::min)
 
                 assert( ( /*dstPixelComponentStartIndex=*/ 0 + /*desiredSrcNComps=*/ std::min(srcMappedComponentsCount, dstMappedComponentsCount) ) <= /*dstPixelComponentCount=*/ dstMappedComponentsCount );
-                interleavePixelBuffers(renderWindow,
+                interleavePixelBuffers(renderWindowClipped,
                                        srcPixelData,
                                        *bounds,
                                        pixelComponents,
