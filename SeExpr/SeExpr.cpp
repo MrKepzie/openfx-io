@@ -1725,17 +1725,31 @@ private:
             for (int x = procWindow.x1; x < procWindow.x2; ++x) {
                 for (int i = kSourceClipCount - 1; i  >= 0; --i) {
                     const PIX* src_pixels  = _srcCurTime[i] ? (const PIX*) _srcCurTime[i]->getPixelAddress(x, y) : 0;
-                    for (int k = 0; k < 4; ++k) {
-                        if (k < _nSrcComponents[i]) {
+                    if (_nSrcComponents[i] == 4) {
+                        for (int k = 0; k < 4; ++k) {
                             srcPixels[i][k] = src_pixels ? src_pixels[k] : 0;
-                        } else {
+                        }
+                    } else if (_nSrcComponents[i] == 3) {
+                        for (int k = 0; k < 3; ++k) {
+                            srcPixels[i][k] = src_pixels ? src_pixels[k] : 0;
+                        }
+                        srcPixels[i][3] = src_pixels ? 1 : 0;
+                    } else if (_nSrcComponents[i] == 2) {
+                        for (int k = 0; k < 2; ++k) {
+                            srcPixels[i][k] = src_pixels ? src_pixels[k] : 0;
+                        }
+                        srcPixels[i][2] = 0;
+                        srcPixels[i][3] = src_pixels ? 1 : 0;
+                    } else {
+                        for (int k = 0; k < 3; ++k) {
                             srcPixels[i][k] = 0;
                         }
+                        srcPixels[i][3] = src_pixels ? src_pixels[0] : 0;
                     }
                     float r = srcPixels[i][0] / (float)maxValue;
                     float g = srcPixels[i][1] / (float)maxValue;
                     float b = srcPixels[i][2] / (float)maxValue;
-                    float a = srcPixels[i][_nSrcComponents[i] == 4 ? 3 : 0] / (float)maxValue;
+                    float a = srcPixels[i][3] / (float)maxValue;
                     if (_rExpr) {
                         _rExpr->setRGBA(i, r, g, b, a);
                     }
