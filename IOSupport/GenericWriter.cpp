@@ -152,6 +152,7 @@ enum FormatTypeEnum
 #endif
 
 static bool gHostIsNatron   = false;
+static bool gHostIsNatronVersion3OrGreater = false;
 static bool gHostIsMultiPlanar = false;
 static bool gHostIsMultiView = false;
 
@@ -2158,8 +2159,54 @@ GenericWriterPlugin::changedClip(const InstanceChangedArgs &args,
 
         double fps = _inputClip->getFrameRate();
         setOutputFrameRate(fps);
+    } else if (clipName == kOfxImageEffectOutputClipName) {
+        // Natron 3 calls changedClip on the output clip when metadata are changed. This is because
+        // the getClipPreferences action is used to pull values its results are cached.
+        refreshRGBAParamsFromOutputComponents();
     }
 }
+
+void
+GenericWriterPlugin::refreshRGBAParamsFromOutputComponents()
+{
+    int index;
+    _outputComponents->getValue(index);
+    assert( index >= 0 && index < (int)_outputComponentsTable.size() );
+    PixelComponentEnum comps = _outputComponentsTable[index];
+
+
+    vector<string> checkboxesLabels;
+    if (comps == ePixelComponentAlpha) {
+        checkboxesLabels.push_back("A");
+    } else if (comps == ePixelComponentRGB) {
+        checkboxesLabels.push_back("R");
+        checkboxesLabels.push_back("G");
+        checkboxesLabels.push_back("B");
+    } else if (comps == ePixelComponentRGBA) {
+        checkboxesLabels.push_back("R");
+        checkboxesLabels.push_back("G");
+        checkboxesLabels.push_back("B");
+        checkboxesLabels.push_back("A");
+    }
+
+    if (checkboxesLabels.size() == 1) {
+        for (int i = 0; i < 3; ++i) {
+            _processChannels[i]->setIsSecretAndDisabled(true);
+        }
+        _processChannels[3]->setIsSecretAndDisabled(false);
+        _processChannels[3]->setLabel(checkboxesLabels[0]);
+    } else {
+        for (int i = 0; i < 4; ++i) {
+            if ( i < (int)checkboxesLabels.size() ) {
+                _processChannels[i]->setIsSecretAndDisabled(false);
+                _processChannels[i]->setLabel(checkboxesLabels[i]);
+            } else {
+                _processChannels[i]->setIsSecretAndDisabled(true);
+            }
+        }
+    }
+
+} // refreshRGBAParamsFromOutputComponents
 
 void
 GenericWriterPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
@@ -2171,40 +2218,11 @@ GenericWriterPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
         assert( index >= 0 && index < (int)_outputComponentsTable.size() );
         PixelComponentEnum comps = _outputComponentsTable[index];
 
-
-        vector<string> checkboxesLabels;
-        if (comps == ePixelComponentAlpha) {
-            checkboxesLabels.push_back("A");
-        } else if (comps == ePixelComponentRGB) {
-            checkboxesLabels.push_back("R");
-            checkboxesLabels.push_back("G");
-            checkboxesLabels.push_back("B");
-        } else if (comps == ePixelComponentRGBA) {
-            checkboxesLabels.push_back("R");
-            checkboxesLabels.push_back("G");
-            checkboxesLabels.push_back("B");
-            checkboxesLabels.push_back("A");
+        if (!gHostIsNatronVersion3OrGreater) {
+            refreshRGBAParamsFromOutputComponents();
         }
 
-        if (checkboxesLabels.size() == 1) {
-            for (int i = 0; i < 3; ++i) {
-                _processChannels[i]->setIsSecretAndDisabled(true);
-            }
-            _processChannels[3]->setIsSecretAndDisabled(false);
-            _processChannels[3]->setLabel(checkboxesLabels[0]);
-        } else {
-            for (int i = 0; i < 4; ++i) {
-                if ( i < (int)checkboxesLabels.size() ) {
-                    _processChannels[i]->setIsSecretAndDisabled(false);
-                    _processChannels[i]->setLabel(checkboxesLabels[i]);
-                } else {
-                    _processChannels[i]->setIsSecretAndDisabled(true);
-                }
-            }
-        }
         //Set output pixel components to match what will be output if the choice is not All
-
-
         clipPreferences.setClipComponents(*_inputClip, comps);
         clipPreferences.setClipComponents(*_outputClip, comps);
         PreMultiplicationEnum premult = _inputClip->getPreMultiplication();
@@ -2347,7 +2365,9 @@ GenericWriterDescribeInContextBegin(ImageEffectDescriptor &desc,
                                     bool supportsDisplayWindow)
 {
     gHostIsNatron = (getImageEffectHostDescription()->isNatron);
-
+    if (gHostIsNatron) {
+        gHostIsNatronVersion3OrGreater = getImageEffectHostDescription()->versionMajor >= 3;
+    }
 
     // create the mandated source clip
     ClipDescriptor *srcClip = desc.defineClip(kOfxImageEffectSimpleSourceClipName);

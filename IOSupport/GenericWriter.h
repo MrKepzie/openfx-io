@@ -361,6 +361,8 @@ protected:
 
     void getSelectedOutputFormat(OfxRectI* format, double* par);
 
+    void refreshRGBAParamsFromOutputComponents();
+
 private:
 
     void copyPixelData(const OfxRectI &renderWindow,
