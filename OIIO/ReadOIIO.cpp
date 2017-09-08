@@ -348,6 +348,8 @@ public:
 
 private:
 
+    virtual bool isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime, int& view, std::string& plane) OVERRIDE FINAL;
+
 
     /**
      * @brief Called when the input image/video file changed.
@@ -2775,6 +2777,40 @@ ReadOIIOPlugin::metadata(const string& filename)
 
     return ss.str();
 } // ReadOIIOPlugin::metadata
+
+inline bool
+startsWith(const std::string& str,
+           const std::string& prefix)
+{
+    return str.substr( 0, prefix.size() ) == prefix;
+    // case insensitive version:
+    //return ci_string(str.substr(0,prefix.size()).c_str()) == prefix.c_str();
+}
+
+bool
+ReadOIIOPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &identityClip, double &identityTime, int& view, std::string& plane)
+{
+    if (GenericReaderPlugin::isIdentity(args, identityClip, identityTime, view, plane)) {
+        return true;
+    }
+    // If the plane in argument is the color-plane and the user selected another plane in the output plane selector, be identity on that plane.
+    // is the one selected in output of the plug-in as color plane
+    if (args.plane == kOfxMultiplaneColorPlaneID) {
+        int layer_i;
+        _outputLayer->getValue(layer_i);
+        const string& layerName = _outputLayerMenu[layer_i].first;
+        if (startsWith(layerName, kReadOIIOColorLayer)) {
+            return false;
+        }
+        identityClip = _outputClip;
+        identityTime = args.time;
+        view = args.view;
+        MultiPlane::ImagePlaneDesc planeDesc(layerName, "", "", _outputLayerMenu[layer_i].second.layer.channelNames);
+        plane = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(planeDesc);
+        return true;
+    }
+    return false;
+} // isIdentity
 
 class ReadOIIOPluginFactory
     : public PluginFactoryHelper<ReadOIIOPluginFactory>
