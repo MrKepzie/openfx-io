@@ -2798,22 +2798,24 @@ ReadOIIOPlugin::isIdentity(const OFX::IsIdentityArguments &args, OFX::Clip * &id
     if (args.plane == kOfxMultiplaneColorPlaneID) {
         int layer_i;
         _outputLayer->getValue(layer_i);
-        const string& layerName = _outputLayerMenu[layer_i].first;
-        if (startsWith(layerName, kReadOIIOColorLayer)) {
-            return false;
+        if (layer_i >= 0 && layer_i < (int)_outputLayerMenu.size()) {
+            const string& layerName = _outputLayerMenu[layer_i].first;
+            if (startsWith(layerName, kReadOIIOColorLayer)) {
+                return false;
+            }
+            identityClip = _outputClip;
+            identityTime = args.time;
+            view = args.view;
+            MultiPlane::ImagePlaneDesc planeDesc(layerName, "", "", _outputLayerMenu[layer_i].second.layer.channelNames);
+            plane = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(planeDesc);
+            return true;
         }
-        identityClip = _outputClip;
-        identityTime = args.time;
-        view = args.view;
-        MultiPlane::ImagePlaneDesc planeDesc(layerName, "", "", _outputLayerMenu[layer_i].second.layer.channelNames);
-        plane = MultiPlane::ImagePlaneDesc::mapPlaneToOFXPlaneString(planeDesc);
-        return true;
     }
     return false;
 } // isIdentity
 
 class ReadOIIOPluginFactory
-    : public PluginFactoryHelper<ReadOIIOPluginFactory>
+: public PluginFactoryHelper<ReadOIIOPluginFactory>
 {
 public:
     ReadOIIOPluginFactory(const string& id,
