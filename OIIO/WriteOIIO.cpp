@@ -236,13 +236,22 @@ enum EParamTileSize
 #define kParamPartsSplittingHint "Defines whether to separate views/layers in different EXR parts or not. " \
     "Note that multi-part files are only supported by OpenEXR >= 2"
 
-#define kParamPartsSinglePart "Single Part", "All views and layers will be in the same part, ensuring compatibility with OpenEXR 1.x", "single"
+#define kParamPartsSinglePart kParamPartsSinglePartOption, kParamPartsSinglePartOptionHint, kParamPartsSinglePartOptionEnum
+#define kParamPartsSinglePartOption "Single Part"
+#define kParamPartsSinglePartOptionHint "All views and layers will be in the same part, ensuring compatibility with OpenEXR 1.x"
+#define kParamPartsSinglePartOptionEnum "single"
 
-#define kParamPartsSlitViews "Split Views", "All views will have its own part, and each part will contain all layers. This will produce an EXR optimized in size that " \
-    "can be opened only with applications supporting OpenEXR 2", "views"
+#define kParamPartsSplitViews kParamPartsSplitViewsOption, kParamPartsSplitViewsOptionHint, kParamPartsSplitViewsOptionEnum
+#define kParamPartsSplitViewsOption "Split Views"
+#define kParamPartsSplitViewsOptionHint "All views will have its own part, and each part will contain all layers. This will produce an EXR optimized in size that " \
+    "can be opened only with applications supporting OpenEXR 2"
+#define kParamPartsSplitViewsOptionEnum "views"
 
-#define kParamPartsSplitViewsLayers "Split Views,Layers", "Each layer of each view will have its own part. This will produce an EXR optimized for decoding speed that " \
-    "can be opened only with applications supporting OpenEXR 2", "views_layers"
+#define kParamPartsSplitViewsLayers kParamPartsSplitViewsLayersOption, kParamPartsSplitViewsLayersOptionHint, kParamPartsSplitViewsLayersOptionEnum
+#define kParamPartsSplitViewsLayersOption "Split Views,Layers"
+#define kParamPartsSplitViewsLayersOptionHint "Each layer of each view will have its own part. This will produce an EXR optimized for decoding speed that " \
+    "can be opened only with applications supporting OpenEXR 2"
+#define kParamPartsSplitViewsLayersOptionEnum "views_layers"
 
 
 #define kParamViewsSelector "viewsSelector"
@@ -590,15 +599,27 @@ WriteOIIOPlugin::getPartsSplittingPreference() const
     if ( !_parts || _parts->getIsSecret() ) {
         return eLayerViewsSinglePart;
     }
-    int index;
-    _parts->getValue(index);
-    string option;
-    _parts->getOption(index, option);
-    if (option == kParamPartsSinglePart) {
+    int index = _parts->getValue();
+    string optionEnum;
+    _parts->getEnum(index, optionEnum);
+    if ( optionEnum.empty() ) {
+        // for backward compatibility
+        string option;
+        _parts->getOption(index, option);
+        if (option == kParamPartsSinglePartOption) {
+            return eLayerViewsSinglePart;
+        } else if (option == kParamPartsSplitViewsOption) {
+            return eLayerViewsSplitViews;
+        } else if (option == kParamPartsSplitViewsLayersOption) {
+            return eLayerViewsSplitViewsLayers;
+        }
+
         return eLayerViewsSinglePart;
-    } else if (option == kParamPartsSlitViews) {
+    } else if (optionEnum == kParamPartsSinglePartOptionEnum) {
+        return eLayerViewsSinglePart;
+    } else if (optionEnum == kParamPartsSplitViewsOptionEnum) {
         return eLayerViewsSplitViews;
-    } else if (option == kParamPartsSplitViewsLayers) {
+    } else if (optionEnum == kParamPartsSplitViewsLayersOptionEnum) {
         return eLayerViewsSplitViewsLayers;
     }
 
@@ -1615,7 +1636,7 @@ WriteOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
             param->setLabel(kParamPartsSplittingLabel);
             param->setHint(kParamPartsSplittingHint);
             param->appendOption(kParamPartsSinglePart);
-            param->appendOption(kParamPartsSlitViews);
+            param->appendOption(kParamPartsSplitViews);
             param->appendOption(kParamPartsSplitViewsLayers);
             param->setDefault(2);
             param->setAnimates(false);
