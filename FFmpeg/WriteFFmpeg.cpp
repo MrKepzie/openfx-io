@@ -394,6 +394,9 @@ enum X26xSpeedEnum {
 // As of FFmpeg 3.3.3, ffmpeg seems to encode only 10 bits, see libavcodec/dnxhdenc.c:392 in FFmpeg 3.3.3
 #if VERSION_CHECK(LIBAVCODEC_VERSION_INT, <, 1000, 1000, 1000, 57, 89, 100)
 #define OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444 0
+// FFmpeg 3.3.4 still contains the DNxHR 444 bug https://trac.ffmpeg.org/ticket/6649
+// FFmpeg patch was submited http://ffmpeg.org/pipermail/ffmpeg-devel/2017-September/216274.html
+#pragma message WARN("This version of FFmpeg does not support DNxHR 444, please upgrade to FFmpeg 3.3 or later with patch http://ffmpeg.org/pipermail/ffmpeg-devel/2017-September/216274.html")
 #else
 #define OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444 1
 #endif
