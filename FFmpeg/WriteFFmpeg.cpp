@@ -121,6 +121,7 @@ using std::string;
 using std::stringstream;
 using std::vector;
 using std::map;
+using std::max;
 
 OFXS_NAMESPACE_ANONYMOUS_ENTER
 
@@ -2858,23 +2859,43 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
 #if OFX_FFMPEG_DNXHD
     // the following was moved here from openCodec()
     if (AV_CODEC_ID_DNXHD == avCodecContext->codec_id) {
-        // This writer will rescale for any source format
-        // that is not natively supported by DNxHD. Check
-        // that the source format matches a native DNxHD
-        // format. If it's not supported, then force to
-        // 1920x1080 (the most flexible format for DNxHD).
-        // This will also mean that avcodec_open2 will not
-        // fail as the format matches a native DNxHD format.
-        // Any other frame dimensions result in error.
+        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
         int srcWidth = avCodecContext->width;
         int srcHeight = avCodecContext->height;
-        if ( ( ( (1920 == srcWidth) /*|| (1440 == srcWidth)*/ ) && (1080 == srcHeight) ) ||
-             ( ( (1280 == srcWidth) /*|| (960 == srcWidth)*/ ) && (720 == srcHeight) ) ) {
+        switch (dnxhdCodecProfile) {
+#if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
+        case eDNxHDCodecProfileHR444:
+        case eDNxHDCodecProfileHRHQX:
+#endif
+        case eDNxHDCodecProfileHRHQ:
+        case eDNxHDCodecProfileHRSQ:
+        case eDNxHDCodecProfileHRLB:
+            // DNxHR is resolution-independent
             // No conversion necessary.
-        } else {
-            avCodecContext->width = 1920;
-            avCodecContext->height = 1080;
-        }
+            break;
+        case eDNxHDCodecProfile440x:
+        case eDNxHDCodecProfile220x:
+        case eDNxHDCodecProfile220:
+        case eDNxHDCodecProfile145:
+        case eDNxHDCodecProfile36:
+            // This writer will rescale for any source format
+            // that is not natively supported by DNxHD. Check
+            // that the source format matches a native DNxHD
+            // format. If it's not supported, then force to
+            // 1920x1080 (the most flexible format for DNxHD).
+            // This will also mean that avcodec_open2 will not
+            // fail as the format matches a native DNxHD format.
+            // Any other frame dimensions result in error.
+            if ( ( ( (1920 == srcWidth) /*|| (1440 == srcWidth)*/ ) && (1080 == srcHeight) ) ||
+                ( ( (1280 == srcWidth) /*|| (960 == srcWidth)*/ ) && (720 == srcHeight) ) ) {
+                // No conversion necessary.
+            } else {
+                avCodecContext->width = 1920;
+                avCodecContext->height = 1080;
+            }
+            break;
+        } // switch
+
         // If alpha is to be encoded, then the following must
         // be set to 32. This will ensure the correct bit depth
         // information will be embedded in the QuickTime movie.
@@ -2882,7 +2903,6 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
         const bool hasAlpha = alphaEnabled();
         avCodecContext->bits_per_coded_sample = (hasAlpha) ? 32 : 24;
         int mbs = 0;
-        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)dnxhdCodecProfile_i;
         switch (dnxhdCodecProfile) {
 #if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
         case eDNxHDCodecProfileHR444:
