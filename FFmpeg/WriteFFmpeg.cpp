@@ -3994,9 +3994,13 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
         avCodecContext->pix_fmt = targetPixelFormat;
 
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(51, 63, 100) // https://ffmpeg.org/pipermail/ffmpeg-cvslog/2015-October/094884.html
-        std::size_t picSize = av_image_get_buffer_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1, 1);
+        std::size_t picSize = av_image_get_buffer_size(targetPixelFormat,
+                                                       max(avCodecContext->width, rodPixel.x2 - rodPixel.x1),
+                                                       max(avCodecContext->height, rodPixel.y2 - rodPixel.y1), 1);
 #else
-        std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat, rodPixel.x2 - rodPixel.x1, rodPixel.y2 - rodPixel.y1);
+        std::size_t picSize = (std::size_t)avpicture_get_size(targetPixelFormat,
+                                                              max(avCodecContext->width, rodPixel.x2 - rodPixel.x1),
+                                                              max(avCodecContext->height, rodPixel.y2 - rodPixel.y1));
 #endif
         if (_scratchBufferSize < picSize) {
             delete [] _scratchBuffer;
