@@ -4066,13 +4066,17 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
             //avCodecContext->profile = getProfileFromShortName(codecsShortNames[index]);
             av_opt_set(avCodecContext->priv_data, "profile", getProfileStringFromShortName(codecsShortNames[index]), 0);
             av_opt_set(avCodecContext->priv_data, "bits_per_mb", "8000", 0);
-            av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
+            // ProRes vendor should be apl0
+            // ref: https://ffmpeg.org/ffmpeg-all.html#toc-Private-Options-for-prores_002dks
+            av_opt_set(avCodecContext->priv_data, "vendor", "apl0", 0);
         }
 #endif
-        if (codecId == AV_CODEC_ID_MJPEG) {
-            // vendor should be ap10 (Apple) according to https://trac.ffmpeg.org/wiki/Encode/VFX#PhotoJPEG
-            av_opt_set(avCodecContext->priv_data, "vendor", "ap10", 0);
-        }
+        // The default vendor ID is "FFMP" (FFmpeg), and it is hardcoded (see mov_write_video_tag in libavformat/movenc.c)
+        // Some tools may check that QuickTime movies were made by Apple ("appl", as seen in exiftool source).
+        // Maybe one day a future version of movenc.c will use it rather than the hardcoded FFMP.
+        //if ( !strcmp(_formatContext->oformat->name, "mov") ) {
+        //    av_opt_set(_formatContext->metadata, "vendor", "appl", 0);
+        //}
 
         // Activate multithreaded decoding. This must be done before opening the codec; see
         // http://lists.gnu.org/archive/html/bino-list/2011-08/msg00019.html
@@ -4117,7 +4121,41 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
             }
         }
 
-        int error = avformat_write_header(_formatContext, NULL);
+        // avformat_init_output may set the "encoder" metadata (see libavformat/muc.c:init_muxer)
+        int error = avformat_init_output(_formatContext, NULL);
+        if (error < 0) {
+            // Report the error.
+            char szError[1024] = { 0 };
+            av_strerror( error, szError, sizeof(szError) );
+            setPersistentMessage(Message::eMessageError, "", string("Unable to initialize output: ") + szError);
+            freeFormat();
+            throwSuiteStatusException(kOfxStatFailed);
+
+            return;
+        }
+
+        // Special behaviour.
+        // Valid on Aug 2014 for ffmpeg v2.1.4
+        //
+        // R.e. libavformat/movenc.c::mov_write_udta_tag
+        // R.e. libavformat/movenc.c::mov_write_string_metadata
+        //
+        // Remove all ffmpeg references from the QuickTime movie.
+        // The 'encoder' key in the AVFormatContext metadata will
+        // result in the writer adding @swr with libavformat
+        // version information in the 'udta' atom.
+        //
+        // Prevent the @swr libavformat reference from appearing
+        // in the 'udta' atom by setting the 'encoder' key in the
+        // metadata to null. From movenc.c a zero length value
+        // will not be written to the 'udta' atom.
+        //
+        AVDictionaryEntry* tag = av_dict_get(_formatContext->metadata, "encoder", NULL, AV_DICT_IGNORE_SUFFIX);
+        if (tag) {
+            av_dict_set(&_formatContext->metadata, "encoder", "", 0); // Set the 'encoder' key to null.
+        }
+
+        error = avformat_write_header(_formatContext, NULL);
         if (error < 0) {
             // Report the error.
             char szError[1024] = { 0 };
@@ -4130,26 +4168,126 @@ WriteFFmpegPlugin::beginEncode(const string& filename,
         }
     }
 
-    // Special behaviour.
-    // Valid on Aug 2014 for ffmpeg v2.1.4
-    //
-    // R.e. libavformat/movenc.c::mov_write_udta_tag
-    // R.e. libavformat/movenc.c::mov_write_string_metadata
-    //
-    // Remove all ffmpeg references from the QuickTime movie.
-    // The 'encoder' key in the AVFormatContext metadata will
-    // result in the writer adding @swr with libavformat
-    // version information in the 'udta' atom.
-    //
-    // Prevent the @swr libavformat reference from appearing
-    // in the 'udta' atom by setting the 'encoder' key in the
-    // metadata to null. From movenc.c a zero length value
-    // will not be written to the 'udta' atom.
-    //
-    AVDictionaryEntry* tag = av_dict_get(_formatContext->metadata, "encoder", NULL, AV_DICT_IGNORE_SUFFIX);
-    if (tag) {
-        av_dict_set(&_formatContext->metadata, "encoder", "", 0); // Set the 'encoder' key to null.
+
+    // Set the stream encoder to proper values for ProRes, DNxHD/DNxHR, and others (used in MOV)
+    // see:
+    // - https://trac.ffmpeg.org/ticket/6465
+    // - https://lists.ffmpeg.org/pipermail/ffmpeg-user/2015-May/026742.html
+    // - https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=51457#p355458
+    const char* encoder = NULL;
+#if OFX_FFMPEG_PRORES
+    if (codecId == AV_CODEC_ID_PRORES) {
+        int index = _codec->getValue();
+        const vector<string>& codecsShortNames = FFmpegSingleton::Instance().getCodecsShortNames();
+        assert( index < (int)codecsShortNames.size() );
+        switch ( getProfileFromShortName(codecsShortNames[index]) ) {
+        case kProresProfile4444XQ:
+            encoder = "Apple ProRes 4444 (XQ)";
+            break;
+        case kProresProfile4444:
+            encoder = "Apple ProRes 4444";
+            break;
+        case kProresProfileHQ:
+            encoder = "Apple ProRes 422 (HQ)";
+            break;
+        case kProresProfileSQ:
+            encoder = "Apple ProRes 422";
+            break;
+        case kProresProfileLT:
+            encoder = "Apple ProRes 422 (LT)";
+            break;
+        case kProresProfileProxy:
+            encoder = "Apple ProRes 422 (Proxy)";
+            break;
+        }
     }
+#endif
+#if OFX_FFMPEG_DNXHD
+    if (AV_CODEC_ID_DNXHD == videoCodec->id) {
+        DNxHDCodecProfileEnum dnxhdCodecProfile = (DNxHDCodecProfileEnum)_dnxhdCodecProfile->getValue();
+        switch (dnxhdCodecProfile) {
+#if OFX_FFMPEG_DNXHD_SUPPORTS_DNXHR_444
+        case eDNxHDCodecProfileHR444:
+            // http://users.mur.at/ms/attachments/dnxhr-444.mov
+            encoder = "DNxHR 444";
+            break;
+        case eDNxHDCodecProfileHRHQX:
+            // http://users.mur.at/ms/attachments/dnxhr-hqx.mov
+            encoder = "DNxHR HQX";
+            break;
+#endif
+        case eDNxHDCodecProfileHRHQ:
+            encoder = "DNxHR HQ";
+            break;
+        case eDNxHDCodecProfileHRSQ:
+            encoder = "DNxHR SQ";
+            break;
+        case eDNxHDCodecProfileHRLB:
+            encoder = "DNxHR LB";
+            break;
+        case eDNxHDCodecProfile440x:
+        case eDNxHDCodecProfile220x:
+        case eDNxHDCodecProfile220:
+        case eDNxHDCodecProfile145:
+        case eDNxHDCodecProfile36:
+            encoder = "DNxHD";
+            break;
+        }
+    }
+#endif // OFX_FFMPEG_DNXHD
+    if (AV_CODEC_ID_CINEPAK == videoCodec->id) {
+        encoder = "Cinepak";
+    }
+    if (AV_CODEC_ID_SVQ1 == videoCodec->id) {
+        encoder = "Sorenson Video";
+    }
+    if (AV_CODEC_ID_SVQ3 == videoCodec->id) {
+        encoder = "Sorenson Video 3";
+    }
+    if (AV_CODEC_ID_MJPEG == videoCodec->id) {
+        encoder = "Photo - JPEG";
+    }
+    if (AV_CODEC_ID_JPEG2000 == videoCodec->id) {
+        encoder = "JPEG 2000";
+    }
+    if (AV_CODEC_ID_H263 == videoCodec->id) {
+        encoder = "H.263";
+    }
+    if (AV_CODEC_ID_H264 == videoCodec->id) {
+        encoder = "H.264";
+    }
+    if (AV_CODEC_ID_GIF == videoCodec->id) {
+        encoder = "GIF";
+    }
+    if (AV_CODEC_ID_PNG == videoCodec->id) {
+        encoder = "PNG";
+    }
+    if (AV_CODEC_ID_TARGA == videoCodec->id) {
+        encoder = "TGA";
+    }
+    if (AV_CODEC_ID_TIFF == videoCodec->id) {
+        encoder = "TIFF";
+    }
+    if (AV_CODEC_ID_QTRLE == videoCodec->id) {
+        encoder = "Animation";
+    }
+    if (AV_CODEC_ID_8BPS == videoCodec->id) {
+        encoder = "Planar RGB";
+    }
+    if (AV_CODEC_ID_SMC == videoCodec->id) {
+        encoder = "Graphics";
+    }
+    if (AV_CODEC_ID_MSRLE == videoCodec->id) {
+        encoder = "BMP";
+    }
+    if (AV_CODEC_ID_RPZA == videoCodec->id) {
+        encoder = "Video";
+    }
+    // FFmpeg sets the encoder for XDCAM (see libavformat/movenc.c:find_compressor)
+    if (encoder != NULL) {
+        av_dict_set(&_streamVideo->metadata, "encoder", encoder, 0);
+    }
+
     // Flag that we didn't encode any frame yet
     {
         AutoMutex lock(_nextFrameToEncodeMutex);
