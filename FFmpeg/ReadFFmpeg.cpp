@@ -978,7 +978,9 @@ ReadFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         param->setRange(0, 100);
         param->setDisplayRange(0, 20);
         param->setLayoutHint(eLayoutHintDivider);
-        page->addChild(*param);
+        if (page) {
+            page->addChild(*param);
+        }
     }
     {
         PushButtonParamDescriptor* param = desc.definePushButtonParam(kParamLibraryInfo);

@@ -3005,13 +3005,15 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         GroupParamDescriptor* topgroup = group;
         {
             GroupParamDescriptor* group = desc.defineGroupParam(kGroupRaw);
-            group->setLabelAndHint(kGroupRawLabel);
-            group->setOpen(false);
-            if (topgroup) {
-                group->setParent(*topgroup);
-            }
-            if (page) {
-                page->addChild(*group);
+            if (group) {
+                group->setLabelAndHint(kGroupRawLabel);
+                group->setOpen(false);
+                if (topgroup) {
+                    group->setParent(*topgroup);
+                }
+                if (page) {
+                    page->addChild(*group);
+                }
             }
 
             {
