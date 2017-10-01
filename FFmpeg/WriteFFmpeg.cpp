@@ -1437,27 +1437,27 @@ FFmpegSingleton::FFmpegSingleton()
 #if OFX_FFMPEG_PRORES4444
     _codecsShortNames.push_back(kProresCodec kProresProfile4444FourCC);
     _codecsLongNames.push_back              (kProresProfile4444Name);
-    _codecsKnobLabels.push_back             (kProresProfile4444FourCC "\t"kProresProfile4444Name);
+    _codecsKnobLabels.push_back             (kProresProfile4444FourCC "\t" kProresProfile4444Name);
     _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 #endif
     _codecsShortNames.push_back(kProresCodec kProresProfileHQFourCC);
     _codecsLongNames.push_back              (kProresProfileHQName);
-    _codecsKnobLabels.push_back             (kProresProfileHQFourCC "\t"kProresProfileHQName);
+    _codecsKnobLabels.push_back             (kProresProfileHQFourCC "\t" kProresProfileHQName);
     _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileSQFourCC);
     _codecsLongNames.push_back              (kProresProfileSQName);
-    _codecsKnobLabels.push_back             (kProresProfileSQFourCC "\t"kProresProfileSQName);
+    _codecsKnobLabels.push_back             (kProresProfileSQFourCC "\t" kProresProfileSQName);
     _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileLTFourCC);
     _codecsLongNames.push_back              (kProresProfileLTName);
-    _codecsKnobLabels.push_back             (kProresProfileLTFourCC "\t"kProresProfileLTName);
+    _codecsKnobLabels.push_back             (kProresProfileLTFourCC "\t" kProresProfileLTName);
     _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 
     _codecsShortNames.push_back(kProresCodec kProresProfileProxyFourCC);
     _codecsLongNames.push_back              (kProresProfileProxyName);
-    _codecsKnobLabels.push_back             (kProresProfileProxyFourCC "\t"kProresProfileProxyName);
+    _codecsKnobLabels.push_back             (kProresProfileProxyFourCC "\t" kProresProfileProxyName);
     _codecsIds.push_back                    (AV_CODEC_ID_PRORES);
 #endif
 
@@ -2672,7 +2672,7 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
 
     av_dict_set(&_formatContext->metadata, kMetaKeyApplication, kPluginIdentifier, 0);
 
-    av_dict_set(&_formatContext->metadata, kMetaKeyApplicationVersion, STR(kPluginVersionMajor) "."STR (kPluginVersionMinor), 0);
+    av_dict_set(&_formatContext->metadata, kMetaKeyApplicationVersion, STR(kPluginVersionMajor) "." STR (kPluginVersionMinor), 0);
 
     //const char* lutName = GetLutName(lut());
     //if (lutName)
