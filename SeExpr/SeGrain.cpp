@@ -251,7 +251,7 @@ public:
         , _maskInvert(false)
         , _renderScale(args.renderScale)
         , _time(args.time)
-        , _seed(0)
+        , _seed(0.)
         , _colorCorr(0.)
     {
     }

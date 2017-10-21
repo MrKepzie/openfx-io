@@ -588,11 +588,14 @@ public:
         _octaves = fetchIntParam(kParamOctaves);
         _lacunarity = fetchDoubleParam(kParamLacunarity);
         _gain = fetchDoubleParam(kParamGain);
-        assert(_noiseType && _noiseSize && _noiseZ && _noiseZSlope &&
 #ifdef SENOISE_VORONOI
+        assert(_noiseType && _noiseSize && _noiseZ && _noiseZSlope &&
                _voronoiType && _jitter && _fbmScale &&
-#endif
                _octaves && _lacunarity && _gain);
+#else
+        assert(_noiseType && _noiseSize && _noiseZ && _noiseZSlope &&
+               _octaves && _lacunarity && _gain);
+#endif
 
         if ( paramExists(kPageTransform) ) {
             _pageTransform = fetchPageParam(kPageTransform);

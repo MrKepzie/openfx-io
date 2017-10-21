@@ -1506,11 +1506,14 @@ GenericReaderPlugin::render(const RenderArguments &args)
 #ifdef OFX_EXTENSIONS_NUKE
         if (plane.comps != ePixelComponentCustom) {
 #endif
-        assert(plane.rawComps == kOfxImageComponentAlpha ||
 #ifdef OFX_EXTENSIONS_NATRON
+        assert(plane.rawComps == kOfxImageComponentAlpha ||
                plane.rawComps == kNatronOfxImageComponentXY ||
-#endif
                plane.rawComps == kOfxImageComponentRGB || plane.rawComps == kOfxImageComponentRGBA);
+#else
+        assert(plane.rawComps == kOfxImageComponentAlpha ||
+               plane.rawComps == kOfxImageComponentRGB || plane.rawComps == kOfxImageComponentRGBA);
+#endif
         PixelComponentEnum outputComponents = getOutputComponents();
         if (plane.comps != outputComponents) {
             setPersistentMessage(Message::eMessageError, "", "OFX Host dit not take into account output components");

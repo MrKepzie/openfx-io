@@ -2804,7 +2804,8 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     avCodecContext->time_base = av_inv_q(frame_rate);;
     // [mov @ 0x1042d7600] Using AVStream.codec.time_base as a timebase hint to the muxer is deprecated. Set AVStream.time_base instead.
     // copy timebase while removing common factors
-    avStream->time_base = av_add_q(avCodecContext->time_base, (AVRational) {0, 1});
+    const AVRational zero = {0, 1};
+    avStream->time_base = av_add_q(avCodecContext->time_base, zero);
     avStream->avg_frame_rate = frame_rate; // see ffmpeg.c:2894 from ffmpeg 3.2.2 - may be set before avformat_write_header
 
     int gopSize = -1;
@@ -5079,7 +5080,7 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
 }
 
 void
-WriteFFmpegPlugin::changedClip(const InstanceChangedArgs &args,
+WriteFFmpegPlugin::changedClip(const InstanceChangedArgs &/*args*/,
                                const string &clipName)
 {
     if (clipName == kOfxImageEffectSimpleSourceClipName) {

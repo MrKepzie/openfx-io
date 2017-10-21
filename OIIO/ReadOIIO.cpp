@@ -2093,12 +2093,14 @@ ReadOIIOPlugin::decodePlane(const string& filename,
 
     int subImageIndex = 0;
     if (pixelComponents != ePixelComponentCustom) {
-        assert(rawComponents == kOfxImageComponentAlpha ||
 #ifdef OFX_EXTENSIONS_NATRON
+        assert(rawComponents == kOfxImageComponentAlpha ||
                rawComponents == kNatronOfxImageComponentXY ||
-#endif
                rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
-
+#else
+        assert(rawComponents == kOfxImageComponentAlpha ||
+               rawComponents == kOfxImageComponentRGB || rawComponents == kOfxImageComponentRGBA);
+#endif
 
         if (!_outputLayer) { // host is not multilayer nor anything, just use basic indexes
             switch (pixelComponents) {
