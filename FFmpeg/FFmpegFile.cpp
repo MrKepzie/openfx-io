@@ -1630,7 +1630,7 @@ FFmpegFile::getBufferBytesCount() const
 
 FFmpegFileManager::FFmpegFileManager()
     : _files()
-    , _lock(0)
+    , _lock(NULL)
 {
 }
 

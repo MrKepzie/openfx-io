@@ -158,8 +158,8 @@ private:
 WriteEXRPlugin::WriteEXRPlugin(OfxImageEffectHandle handle,
                                const vector<string>& extensions)
     : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
-    , _compression(0)
-    , _bitDepth(0)
+    , _compression(NULL)
+    , _bitDepth(NULL)
 {
     _compression = fetchChoiceParam(kParamWriteEXRCompression);
     _bitDepth = fetchChoiceParam(kParamWriteEXRDataType);

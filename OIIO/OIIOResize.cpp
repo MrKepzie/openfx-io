@@ -171,15 +171,15 @@ private:
 
 OIIOResizePlugin::OIIOResizePlugin(OfxImageEffectHandle handle)
     : ImageEffect(handle)
-    , _dstClip(0)
-    , _srcClip(0)
-    , _type(0)
-    , _format(0)
-    , _filter(0)
-    , _size(0)
-    , _scale(0)
-    , _preservePAR(0)
-    , _srcClipChanged(0)
+    , _dstClip(NULL)
+    , _srcClip(NULL)
+    , _type(NULL)
+    , _format(NULL)
+    , _filter(NULL)
+    , _size(NULL)
+    , _scale(NULL)
+    , _preservePAR(NULL)
+    , _srcClipChanged(NULL)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert( _dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == ePixelComponentRGBA ||

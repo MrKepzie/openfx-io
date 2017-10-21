@@ -153,8 +153,8 @@ private:
 
 OIIOTextPlugin::OIIOTextPlugin(OfxImageEffectHandle handle)
     : ImageEffect(handle)
-    , _dstClip(0)
-    , _srcClip(0)
+    , _dstClip(NULL)
+    , _srcClip(NULL)
 {
     _dstClip = fetchClip(kOfxImageEffectOutputClipName);
     assert( _dstClip && (!_dstClip->isConnected() || _dstClip->getPixelComponents() == ePixelComponentRGBA ||

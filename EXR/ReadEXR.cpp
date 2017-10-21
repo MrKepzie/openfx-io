@@ -355,7 +355,7 @@ struct File
 };
 
 File::File(const string& filename)
-    : inputfile(0)
+    : inputfile(NULL)
     , channel_map()
     , dataOffset(0)
     , views()
@@ -363,8 +363,8 @@ File::File(const string& filename)
     , dataWindow()
     , pixelAspectRatio(1.)
 #if defined(_WIN32) && !defined(__MINGW32__)
-    , inputStr(0)
-    , inputStdStream(0)
+    , inputStr(NULL)
+    , inputStdStream(NULL)
 #endif
 #ifdef OFX_IO_MT_EXR
     , lock()
@@ -499,7 +499,7 @@ FileManager::FileManager()
     : _files()
     , _isLoaded(false)
 #ifdef OFX_IO_MT_EXR
-    , _lock(0)
+    , _lock(NULL)
 #endif
 {
 }

@@ -471,12 +471,12 @@ ReadOIIOPlugin::ReadOIIOPlugin(OfxImageEffectHandle handle,
                           false
 #endif
                           )
-    , _cache(0)
-    , _outputLayer(0)
-    , _outputLayerString(0)
-    , _availableViews(0)
-    , _offsetNegativeDispWindow(0)
-    , _edgePixels(0)
+    , _cache(NULL)
+    , _outputLayer(NULL)
+    , _outputLayerString(NULL)
+    , _availableViews(NULL)
+    , _offsetNegativeDispWindow(NULL)
+    , _edgePixels(NULL)
     , _lastFileReadNoPlaybackMutex()
     , _lastFileReadNoPlayback()
     , _outputLayerMenuMutex()

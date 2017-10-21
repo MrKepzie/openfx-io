@@ -504,7 +504,7 @@ public:
 
     EncodePlanesLocalData_RAII(GenericWriterPlugin* w)
         : _w(w)
-        , data(0)
+        , data(NULL)
     {
         data = w->allocateEncodePlanesUserData();
     }

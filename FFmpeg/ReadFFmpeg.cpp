@@ -141,7 +141,7 @@ ReadFFmpegPlugin::ReadFFmpegPlugin(FFmpegFileManager& manager,
                                    const vector<string>& extensions)
     : GenericReaderPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha, kSupportsTiles, false)
     , _manager(manager)
-    , _maxRetries(0)
+    , _maxRetries(NULL)
 {
     _maxRetries = fetchIntParam(kParamMaxRetries);
     assert(_maxRetries);

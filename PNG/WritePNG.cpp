@@ -423,10 +423,10 @@ private:
 WritePNGPlugin::WritePNGPlugin(OfxImageEffectHandle handle,
                                const vector<string>& extensions)
     : GenericWriterPlugin(handle, extensions, kSupportsRGBA, kSupportsRGB, kSupportsXY, kSupportsAlpha)
-    , _compression(0)
-    , _compressionLevel(0)
-    , _bitdepth(0)
-    , _ditherEnabled(0)
+    , _compression(NULL)
+    , _compressionLevel(NULL)
+    , _bitdepth(NULL)
+    , _ditherEnabled(NULL)
     , _ditherLut( gLutManager->linearLut() )
 {
     _compression = fetchChoiceParam(kWritePNGParamCompression);
