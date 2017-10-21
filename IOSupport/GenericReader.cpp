@@ -992,8 +992,6 @@ buildMipMapLevelGeneric(ImageEffect* instance,
 {
     assert(level > 0);
 
-    auto_ptr<ImageMemory> mem;
-    size_t memSize = 0;
     auto_ptr<ImageMemory> tmpMem;
     size_t tmpMemSize = 0;
     PIX* nextImg = NULL;
@@ -1020,10 +1018,7 @@ buildMipMapLevelGeneric(ImageEffect* instance,
         ///Allocate a temporary image if necessary, or reuse the previously allocated buffer
         int nextRowBytes =  (nextRenderWindow.x2 - nextRenderWindow.x1)  * nComponents * sizeof(PIX);
         size_t newMemSize =  (size_t)(nextRenderWindow.y2 - nextRenderWindow.y1) * (size_t)nextRowBytes;
-        if ( tmpMem.get() ) {
-            // there should be enough memory: no need to reallocate
-            assert(tmpMemSize >= memSize);
-        } else {
+        if ( !tmpMem.get() ) {
             tmpMem.reset( new ImageMemory(newMemSize, instance) );
             tmpMemSize = newMemSize;
         }
@@ -1035,8 +1030,6 @@ buildMipMapLevelGeneric(ImageEffect* instance,
         previousBounds = nextRenderWindow;
         previousRowBytes = nextRowBytes;
         previousImg = nextImg;
-        mem = tmpMem;
-        memSize = tmpMemSize;
     }
     // here:
     // - previousImg, previousBounds, previousRowBytes describe the data ate the level before 'level'
