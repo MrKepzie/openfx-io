@@ -1019,6 +1019,9 @@ buildMipMapLevelGeneric(ImageEffect* instance,
         int nextRowBytes =  (nextRenderWindow.x2 - nextRenderWindow.x1)  * nComponents * sizeof(PIX);
         size_t newMemSize =  (size_t)(nextRenderWindow.y2 - nextRenderWindow.y1) * (size_t)nextRowBytes;
         if ( !tmpMem.get() ) {
+            // there should be enough memory: no need to reallocate
+            assert(tmpMemSize >= newMemSize);
+        } else {
             tmpMem.reset( new ImageMemory(newMemSize, instance) );
             tmpMemSize = newMemSize;
         }
