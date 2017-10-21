@@ -264,7 +264,7 @@ OIIOTextPlugin::render(const RenderArguments &args)
         return;
     }
 
-    std::auto_ptr<const Image> srcImg(_srcClip ? _srcClip->fetchImage(args.time) : 0);
+    auto_ptr<const Image> srcImg(_srcClip ? _srcClip->fetchImage(args.time) : 0);
     if ( srcImg.get() ) {
         if ( (srcImg->getRenderScale().x != args.renderScale.x) ||
              ( srcImg->getRenderScale().y != args.renderScale.y) ||
@@ -282,7 +282,7 @@ OIIOTextPlugin::render(const RenderArguments &args)
         return;
     }
     assert(_dstClip);
-    std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
+    auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
     if ( !dstImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -328,7 +328,7 @@ OIIOTextPlugin::render(const RenderArguments &args)
     int pixelComponentCount = 0;
     BitDepthEnum bitDepth = eBitDepthNone;
     OIIO::ImageSpec srcSpec;
-    std::auto_ptr<const OIIO::ImageBuf> srcBuf;
+    auto_ptr<const OIIO::ImageBuf> srcBuf;
     OfxRectI dstRod = dstImg->getRegionOfDefinition();
     if ( !srcImg.get() ) {
         setPersistentMessage(Message::eMessageError, "", "Source needs to be connected");

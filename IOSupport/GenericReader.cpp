@@ -992,9 +992,9 @@ buildMipMapLevelGeneric(ImageEffect* instance,
 {
     assert(level > 0);
 
-    std::auto_ptr<ImageMemory> mem;
+    auto_ptr<ImageMemory> mem;
     size_t memSize = 0;
-    std::auto_ptr<ImageMemory> tmpMem;
+    auto_ptr<ImageMemory> tmpMem;
     size_t tmpMemSize = 0;
     PIX* nextImg = NULL;
     const PIX* previousImg = srcPixels;

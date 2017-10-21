@@ -271,7 +271,7 @@ protected:
 
 #ifdef OFX_IO_USING_OCIO
     OFX::BooleanParam* _outputSpaceSet;
-    std::auto_ptr<GenericOCIO> _ocio;
+    auto_ptr<GenericOCIO> _ocio;
 #endif
 
     const std::vector<std::string>& _extensions;

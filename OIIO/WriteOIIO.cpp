@@ -508,7 +508,7 @@ WriteOIIOPlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     if ( gIsMultiplanarV2 ) {
         string filename;
         _fileParam->getValue(filename);
-        std::auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
+        auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
         bool supportsNChannels = false;
         if ( output.get() ) {
             supportsNChannels = output->supports("nchannels");
@@ -659,7 +659,7 @@ getDefaultBitDepth(const string& filepath,
 bool
 WriteOIIOPlugin::displayWindowSupportedByFormat(const string& filename) const
 {
-    std::auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
+    auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
     if ( output.get() ) {
         return output->supports("displaywindow");
     } else {
@@ -778,7 +778,7 @@ WriteOIIOPlugin::onOutputFileChanged(const string &filename,
 void
 WriteOIIOPlugin::refreshParamsVisibility(const string& filename)
 {
-    std::auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
+    auto_ptr<ImageOutput> output( ImageOutput::create(filename) );
     if ( output.get() ) {
         _tileSize->setIsSecretAndDisabled( !output->supports("tiles") );
         //_outputLayers->setIsSecretAndDisabled(!output->supports("nchannels"));
@@ -821,7 +821,7 @@ WriteOIIOPlugin::refreshParamsVisibility(const string& filename)
 
 struct WriteOIIOEncodePlanesData
 {
-    std::auto_ptr<ImageOutput> output;
+    auto_ptr<ImageOutput> output;
     vector<ImageSpec> specs;
 };
 

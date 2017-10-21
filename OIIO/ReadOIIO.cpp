@@ -1292,7 +1292,7 @@ ReadOIIOPlugin::getSpecs(const string &filename,
         ImageSpec config;
         getConfig(&config);
         
-        std::auto_ptr<ImageInput> img( ImageInput::open(filename, &config) );
+        auto_ptr<ImageInput> img( ImageInput::open(filename, &config) );
         if ( !img.get() ) {
             if (error) {
                 *error = "Could node open file " + filename;
@@ -2075,7 +2075,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
 
     vector<int> channels;
     int numChannels = 0;
-    std::auto_ptr<ImageInput> img;
+    auto_ptr<ImageInput> img;
     vector<ImageSpec> subimages;
 
     ImageInput* rawImg = 0;
@@ -2671,7 +2671,7 @@ ReadOIIOPlugin::metadata(const string& filename)
 {
     stringstream ss;
 
-    std::auto_ptr<ImageInput> img;
+    auto_ptr<ImageInput> img;
 
     if (!_cache) {
         // use the right config

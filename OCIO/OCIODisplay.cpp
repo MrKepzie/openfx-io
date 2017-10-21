@@ -347,7 +347,7 @@ private:
     DoubleParam* _gamma;
     ChoiceParam* _channel;
 
-    std::auto_ptr<GenericOCIO> _ocio;
+    auto_ptr<GenericOCIO> _ocio;
 
     GenericOCIO::Mutex _procMutex;
     OCIO::ConstProcessorRcPtr _proc;
@@ -843,7 +843,7 @@ OCIODisplayPlugin::contextDetached(void* contextData)
 void
 OCIODisplayPlugin::renderGPU(const RenderArguments &args)
 {
-    std::auto_ptr<Texture> srcImg( _srcClip->loadTexture(args.time) );
+    auto_ptr<Texture> srcImg( _srcClip->loadTexture(args.time) );
     if ( !srcImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -859,7 +859,7 @@ OCIODisplayPlugin::renderGPU(const RenderArguments &args)
         return;
     }
 
-    std::auto_ptr<Texture> dstImg( _dstClip->loadTexture(args.time) );
+    auto_ptr<Texture> dstImg( _dstClip->loadTexture(args.time) );
     if ( !dstImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -959,7 +959,7 @@ OCIODisplayPlugin::render(const RenderArguments &args)
     }
 #endif
 
-    std::auto_ptr<const Image> srcImg( _srcClip->fetchImage(args.time) );
+    auto_ptr<const Image> srcImg( _srcClip->fetchImage(args.time) );
     if ( !srcImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -977,7 +977,7 @@ OCIODisplayPlugin::render(const RenderArguments &args)
     BitDepthEnum srcBitDepth = srcImg->getPixelDepth();
     PixelComponentEnum srcComponents = srcImg->getPixelComponents();
 
-    std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
+    auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
     if ( !dstImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 

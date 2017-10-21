@@ -253,7 +253,7 @@ RunScriptPlugin::render(const RenderArguments &args)
     // since it may trigger render actions upstream
     for (int i = 0; i < kRunScriptPluginSourceClipCount; ++i) {
         if ( _srcClip[i]->isConnected() ) {
-            std::auto_ptr<const Image> srcImg( _srcClip[i]->fetchImage(args.time) );
+            auto_ptr<const Image> srcImg( _srcClip[i]->fetchImage(args.time) );
             if ( !srcImg.get() ) {
                 throwSuiteStatusException(kOfxStatFailed);
 
@@ -279,7 +279,7 @@ RunScriptPlugin::render(const RenderArguments &args)
         return;
     }
     assert(_dstClip);
-    std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
+    auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
     if ( !dstImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -395,7 +395,7 @@ RunScriptPlugin::render(const RenderArguments &args)
     // now copy the first input to output
 
     if ( _dstClip->isConnected() ) {
-        std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
+        auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
         if ( !dstImg.get() ) {
             throwSuiteStatusException(kOfxStatFailed);
 
@@ -410,7 +410,7 @@ RunScriptPlugin::render(const RenderArguments &args)
             return;
         }
 
-        std::auto_ptr<const Image> srcImg( _srcClip[0]->fetchImage(args.time) );
+        auto_ptr<const Image> srcImg( _srcClip[0]->fetchImage(args.time) );
 
         if ( !srcImg.get() ) {
             // fill output with black

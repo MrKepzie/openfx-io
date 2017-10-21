@@ -482,7 +482,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const string& plane,
 
         // copy to dstImg if necessary
         if ( (renderRequestedView == view) && _outputClip && _outputClip->isConnected() ) {
-            std::auto_ptr<Image> dstImg( _outputClip->fetchImagePlane( time, renderRequestedView, plane.c_str() ) );
+            auto_ptr<Image> dstImg( _outputClip->fetchImagePlane( time, renderRequestedView, plane.c_str() ) );
             if ( !dstImg.get() ) {
                 setPersistentMessage(Message::eMessageError, "", "Output image could not be fetched");
                 throwSuiteStatusException(kOfxStatFailed);
@@ -608,7 +608,7 @@ GenericWriterPlugin::fetchPlaneConvertAndCopy(const string& plane,
 
         // copy to dstImg if necessary
         if ( (renderRequestedView == view) && _outputClip && _outputClip->isConnected() ) {
-            std::auto_ptr<Image> dstImg( _outputClip->fetchImagePlane( time, renderRequestedView, plane.c_str() ) );
+            auto_ptr<Image> dstImg( _outputClip->fetchImagePlane( time, renderRequestedView, plane.c_str() ) );
             if ( !dstImg.get() ) {
                 setPersistentMessage(Message::eMessageError, "", "Output image could not be fetched");
                 throwSuiteStatusException(kOfxStatFailed);
@@ -1309,7 +1309,7 @@ packPixelBufferForDepth(ImageEffect* instance,
                         void* dstPixelData)
 {
     assert(channelsMapping.size() <= 4);
-    std::auto_ptr<PackPixelsProcessorBase> p;
+    auto_ptr<PackPixelsProcessorBase> p;
     int srcNComps = 0;
     switch (srcPixelComponents) {
     case ePixelComponentAlpha:
@@ -1473,7 +1473,7 @@ interleavePixelBuffersForDepth(ImageEffect* instance,
                                PIX* dstPixelData)
 {
     assert( (dstPixelComponentStartIndex + desiredSrcNComps) <= dstPixelComponentCount );
-    std::auto_ptr<InterleaveProcessorBase> p;
+    auto_ptr<InterleaveProcessorBase> p;
     switch (srcPixelComponentCount) {
     case 1:
         p.reset( new InterleaveProcessor<PIX, maxValue, 1>(*instance) );

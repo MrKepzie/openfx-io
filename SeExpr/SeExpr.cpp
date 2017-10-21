@@ -1945,7 +1945,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor,
 {
     const double time = args.time;
 
-    std::auto_ptr<Image> dst( _dstClip->fetchImage(time) );
+    auto_ptr<Image> dst( _dstClip->fetchImage(time) );
     if ( !dst.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -2002,7 +2002,7 @@ SeExprPlugin::setupAndProcess(SeExprProcessorBase & processor,
 
     // auto ptr for the mask.
     bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(time) ) && _maskClip && _maskClip->isConnected() );
-    std::auto_ptr<const Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    auto_ptr<const Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     // do we do masking
     if (doMasking) {
         bool maskInvert;

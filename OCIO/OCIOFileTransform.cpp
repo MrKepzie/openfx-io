@@ -403,11 +403,11 @@ OCIOFileTransformPlugin::setupAndCopy(PixelProcessorFilterBase & processor,
         return;
     }
 
-    std::auto_ptr<const Image> orig( ( _srcClip && _srcClip->isConnected() ) ?
+    auto_ptr<const Image> orig( ( _srcClip && _srcClip->isConnected() ) ?
                                      _srcClip->fetchImage(time) : 0 );
 
     bool doMasking = ( ( !_maskApply || _maskApply->getValueAtTime(time) ) && _maskClip && _maskClip->isConnected() );
-    std::auto_ptr<const Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
+    auto_ptr<const Image> mask(doMasking ? _maskClip->fetchImage(time) : 0);
     if (doMasking) {
         bool maskInvert;
         _maskInvert->getValueAtTime(time, maskInvert);
@@ -681,7 +681,7 @@ OCIOFileTransformPlugin::contextDetached(void* contextData)
 void
 OCIOFileTransformPlugin::renderGPU(const RenderArguments &args)
 {
-    std::auto_ptr<Texture> srcImg( _srcClip->loadTexture(args.time) );
+    auto_ptr<Texture> srcImg( _srcClip->loadTexture(args.time) );
     if ( !srcImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -697,7 +697,7 @@ OCIOFileTransformPlugin::renderGPU(const RenderArguments &args)
         return;
     }
 
-    std::auto_ptr<Texture> dstImg( _dstClip->loadTexture(args.time) );
+    auto_ptr<Texture> dstImg( _dstClip->loadTexture(args.time) );
     if ( !dstImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -797,7 +797,7 @@ OCIOFileTransformPlugin::render(const RenderArguments &args)
     }
 #endif
 
-    std::auto_ptr<const Image> srcImg( _srcClip->fetchImage(args.time) );
+    auto_ptr<const Image> srcImg( _srcClip->fetchImage(args.time) );
     if ( !srcImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -821,7 +821,7 @@ OCIOFileTransformPlugin::render(const RenderArguments &args)
         return;
     }
     assert(_dstClip);
-    std::auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
+    auto_ptr<Image> dstImg( _dstClip->fetchImage(args.time) );
     if ( !dstImg.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 

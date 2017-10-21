@@ -501,7 +501,7 @@ ReadFFmpegPlugin::getFrameBounds(const string& filename,
 class ReadFFmpegPluginFactory
     : public PluginFactoryHelper<ReadFFmpegPluginFactory>
 {
-    std::auto_ptr<FFmpegFileManager> _manager;
+    auto_ptr<FFmpegFileManager> _manager;
 
 public:
     ReadFFmpegPluginFactory(const string& id,

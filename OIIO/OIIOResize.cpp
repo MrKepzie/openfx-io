@@ -241,7 +241,7 @@ OIIOResizePlugin::~OIIOResizePlugin()
 void
 OIIOResizePlugin::render(const RenderArguments &args)
 {
-    std::auto_ptr<Image> dst( _dstClip->fetchImage(args.time) );
+    auto_ptr<Image> dst( _dstClip->fetchImage(args.time) );
     if ( !dst.get() ) {
         throwSuiteStatusException(kOfxStatFailed);
 
@@ -256,7 +256,7 @@ OIIOResizePlugin::render(const RenderArguments &args)
         return;
     }
 
-    std::auto_ptr<const Image> src( _srcClip->fetchImage(args.time) );
+    auto_ptr<const Image> src( _srcClip->fetchImage(args.time) );
     if ( src.get() ) {
         BitDepthEnum dstBitDepth       = dst->getPixelDepth();
         PixelComponentEnum dstComponents  = dst->getPixelComponents();
@@ -471,7 +471,7 @@ OIIOResizePlugin::renderInternal(const RenderArguments & /*args*/,
         float hratio = float(dstSpec.full_height) / float(srcSpec.full_height);
         float w = fd.width * std::max(1.0f, wratio);
         float h = fd.width * std::max(1.0f, hratio);
-        std::auto_ptr<Filter2D> filter( Filter2D::create(fd.name, w, h) );
+        auto_ptr<Filter2D> filter( Filter2D::create(fd.name, w, h) );
 
         if ( !ImageBufAlgo::resize( dstBuf, srcBuf, filter.get(), ROI::All(), MultiThread::getNumCPUs() ) ) {
             setPersistentMessage( Message::eMessageError, "", dstBuf.geterror() );
