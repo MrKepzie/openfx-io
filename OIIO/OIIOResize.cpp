@@ -112,7 +112,7 @@ enum ResizeTypeEnum
 
 #define kSrcClipChanged "srcClipChanged"
 
-using namespace OpenImageIO;
+OIIO_NAMESPACE_USING
 
 class OIIOResizePlugin
     : public ImageEffect
