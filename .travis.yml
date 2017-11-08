@@ -70,7 +70,7 @@ install:
 # OpenEXR
   - sudo apt-get install libopenexr-dev libilmbase-dev
 # OpenImageIO (for some reason, freetype is not recognized)
-  - sudo apt-get install libopenjpeg-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem1.60-dev libboost-regex1.60-dev libboost-thread1.60-dev libboost-system1.60-dev libwebp-dev libfreetype6-dev libssl-dev libraw-dev
+  - sudo apt-get install libopenjpeg2-dev libtiff-dev libjpeg-dev libpng-dev libboost-filesystem1.60-dev libboost-regex1.60-dev libboost-thread1.60-dev libboost-system1.60-dev libwebp-dev libfreetype6-dev libssl-dev libraw-dev libjasper-dev
   - wget https://github.com/OpenImageIO/oiio/archive/Release-1.7.17.tar.gz -O /tmp/OpenImageIO-1.7.17.tar.gz
   - tar zxf /tmp/OpenImageIO-1.7.17.tar.gz > /dev/null 2>&1
   - cd oiio-Release-1.7.17
