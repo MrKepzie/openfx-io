@@ -829,7 +829,7 @@ WriteOIIOPlugin::beginEncodeParts(void* user_data,
     }
     
     
-    OpenImageIO::TypeDesc oiioBitDepth;
+    OIIO_NAMESPACE::TypeDesc oiioBitDepth;
     //size_t sizeOfChannel = 0;
     int    bitsPerSample  = 0;
     

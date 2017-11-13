@@ -4,6 +4,7 @@
 *moc*.cpp
 *moc
 build*
+cmake_build*
 *html*
 *latex*
 DerivedData/*

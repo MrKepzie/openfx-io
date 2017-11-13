@@ -876,10 +876,10 @@ private:
                     pixelForDepth<float, alpha>(img, interp, x, y, result);
                     break;
                 case OFX::eBitDepthUByte:
-                    pixelForDepth<unsigned char, 255>(img, interp, x, y, result);
+                    pixelForDepth<unsigned char, alpha>(img, interp, x, y, result);
                     break;
                 case OFX::eBitDepthUShort:
-                    pixelForDepth<unsigned short, 65535>(img, interp, x, y, result);
+                    pixelForDepth<unsigned short, alpha>(img, interp, x, y, result);
                     break;
                 default:
                     result.setValue(0., 0., 0.);

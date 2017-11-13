@@ -465,6 +465,7 @@ GenericReaderPlugin::getSequenceTimeDomainInternal(OfxRangeI& range, bool canSet
         } else {
             range.min = range.max = 1;
         }
+        return false;
     }
     
 
