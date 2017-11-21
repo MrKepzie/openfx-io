@@ -217,6 +217,18 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "    next = cpixel(1,frame + 1,x,y);\n" \
     "    (prev + cur + next) / 3;\n" \
     "\n" \
+    "#### \"Wave\" - displace columns of pixels vertically according to a sine wave function\n" \
+    "\n" \
+    "*SeExpr:*\n" \
+    "\n" \
+    "    cpixel(1,frame,x,y+x2*sy*sin(2*3.1416*(x/sx - x3)/x1),2)\n" \
+    "\n" \
+    "Set the No. of scalar params to 3.\n" \
+    "\n" \
+    "- x1 is the horizontal wavelength in pixels.\n" \
+    "- x2 is the vertical amplitude in pixels.\n" \
+    "- x3 is the horizontal shift in pixels.\n" \
+    "\n" \
     "### Custom parameters\n" \
     "\n" \
     "To use custom variables that are pre-defined in the plug-in (scalars, positions and colors) you must reference them " \
