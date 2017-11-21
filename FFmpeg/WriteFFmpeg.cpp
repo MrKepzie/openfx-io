@@ -516,6 +516,18 @@ enum DNxHDCodecProfileEnum
 
 #endif // if OFX_FFMPEG_DNXHD
 
+#define kParamHapFormat "HapFormat"
+#define kParamHapFormatLabel "Hap Format", "Only for the Hap codec, select the target format."
+#define kParamHapFormatOptionHap   "Hap 1", "DXT1 textures (FourCC Hap1)", "hap"
+#define kParamHapFormatOptionHapAlpha   "Hap Alpha", "DXT5 textures (FourCC Hap5)", "hap_alpha"
+#define kParamHapFormatOptionHapQ   "Hap Q", "DXT5-YCoCg textures (FourCC HapY)", "hap_q"
+enum HapFormatEnum
+{
+    eHapFormatHap = 0,
+    eHapFormatHapAlpha,
+    eHapFormatHapQ,
+};
+
 #define STR_HELPER(x) # x
 #define STR(x) STR_HELPER(x)
 
@@ -590,6 +602,7 @@ CreateCodecKnobLabelsMap()
     m["flv"]           = "FLV1\tFLV / Sorenson Spark / Sorenson H.263 (Flash Video)";
     m["gif"]           = "gif \tGIF (Graphics Interchange Format)";
     m["h263p"]         = "H263\tH.263+ / H.263-1998 / H.263 version 2";
+    m["hap"]           = "Hap1\tVidvox Hap";
     m["huffyuv"]       = "HFYU\tHuffYUV";
     m["jpeg2000"]      = "mjp2\tJPEG 2000"; // disabled in whitelist (bad quality)
     m["jpegls"]        = "MJLS\tJPEG-LS"; // disabled in whitelist
@@ -1316,6 +1329,7 @@ private:
     ChoiceParam* _dnxhdCodecProfile;
     ChoiceParam* _encodeVideoRange;
 #endif
+    ChoiceParam* _hapFormat;
 #if OFX_FFMPEG_TIMECODE
     BooleanParam* _writeTimeCode;
 #endif
@@ -1592,6 +1606,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     , _dnxhdCodecProfile(NULL)
     , _encodeVideoRange(NULL)
 #endif
+    , _hapFormat(NULL)
 #if OFX_FFMPEG_TIMECODE
     , _writeTimeCode(NULL)
 #endif
@@ -1626,6 +1641,7 @@ WriteFFmpegPlugin::WriteFFmpegPlugin(OfxImageEffectHandle handle,
     _dnxhdCodecProfile = fetchChoiceParam(kParamDNxHDCodecProfile);
     _encodeVideoRange = fetchChoiceParam(kParamDNxHDEncodeVideoRange);
 #endif
+    _hapFormat = fetchChoiceParam(kParamHapFormat);
 #if OFX_FFMPEG_TIMECODE
     _writeTimeCode = fetchBooleanParam(kParamWriteTimeCode);
 #endif
@@ -2337,6 +2353,20 @@ WriteFFmpegPlugin::GetCodecSupportedParams(const AVCodec* codec,
             p->qrange = true;
             //p->interGOP = false;
             //p->interB = false;
+        } else if (codecShortName == "hap") {
+            // VidVox Hap
+            // options are:
+            // format: hap, hap_alpha, hap_q
+            // chunks: (int) max chunk count
+            // compressor: none, snappy
+            p->crf = false;
+            p->x26xSpeed = false;
+            p->bitrate = false;
+            p->bitrateTol = false;
+            p->qscale = false;
+            p->qrange = false;
+            p->interGOP = false;
+            p->interB = false;
         } else if (codecShortName == "svq1") {
             // svq1enc.c
             p->crf = false;
@@ -3068,6 +3098,20 @@ WriteFFmpegPlugin::configureVideoStream(AVCodec* avCodec,
     }
 #endif // DNxHD
 
+    if (AV_CODEC_ID_HAP == avCodecContext->codec_id) {
+        HapFormatEnum hapFormat = (HapFormatEnum)_hapFormat->getValue();
+        switch (hapFormat) {
+            case eHapFormatHap:
+                av_opt_set(avCodecContext->priv_data, "format", "hap", 0);
+                break;
+            case eHapFormatHapAlpha:
+                av_opt_set(avCodecContext->priv_data, "format", "hap_alpha", 0);
+                break;
+            case eHapFormatHapQ:
+                av_opt_set(avCodecContext->priv_data, "format", "hap_q", 0);
+                break;
+        }
+    }
 #if 0
     // the following was inspired by blender/source/blender/blenkernel/intern/writeffmpeg.c
     // but it is disabled by default (we suppose ffmpeg correctly sets the x264 defaults)
@@ -4565,6 +4609,8 @@ WriteFFmpegPlugin::updateVisibility()
     _encodeVideoRange->setIsSecretAndDisabled(!isdnxhd);
 #endif
 
+    bool ishap = ( !strcmp(codecShortName.c_str(), "hap") );
+    _hapFormat->setIsSecretAndDisabled(!ishap);
 
     ///Do not allow custom channel shuffling for the user, it's either RGB or RGBA
     for (int i = 0; i < 4; ++i) {
@@ -5052,7 +5098,8 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
     } else if (paramName == kParamDNxHDCodecProfile ||
                paramName == kParamPrefPixelCoding ||
                paramName == kParamPrefBitDepth ||
-               paramName == kParamPrefAlpha) {
+               paramName == kParamPrefAlpha ||
+               paramName == kParamHapFormat) {
         updatePixelFormat();
     } else if (paramName == kParamPrefShow) {
         availPixelFormats();
@@ -5072,7 +5119,8 @@ WriteFFmpegPlugin::changedParam(const InstanceChangedArgs &args,
          paramName == kParamGopSize ||
          paramName == kParamBFrames ||
          paramName == kParamWriteNCLC ||
-         paramName == kParamDNxHDCodecProfile)) {
+         paramName == kParamDNxHDCodecProfile ||
+         paramName == kParamHapFormat)) {
         // for example, bitrate must be enabled when CRF goes to None or QScale goes to -1
         updateVisibility();
     }
@@ -5670,6 +5718,24 @@ WriteFFmpegPluginFactory::describeInContext(ImageEffectDescriptor &desc,
         }
     }
 #endif
+
+    {
+        ChoiceParamDescriptor* param = desc.defineChoiceParam(kParamHapFormat);
+        param->setLabelAndHint(kParamHapFormatLabel);
+        // Hap
+        assert(param->getNOptions() == (int)eHapFormatHap);
+        param->appendOption(kParamHapFormatOptionHap);
+        assert(param->getNOptions() == (int)eHapFormatHapAlpha);
+        param->appendOption(kParamHapFormatOptionHapAlpha);
+        assert(param->getNOptions() == (int)eHapFormatHapQ);
+        param->appendOption(kParamHapFormatOptionHapQ);
+
+        param->setAnimates(false);
+        param->setDefault(0);
+        if (page) {
+            page->addChild(*param);
+        }
+    }
 
     {
         StringParamDescriptor* param = desc.defineStringParam(kParamInfoPixelFormat);

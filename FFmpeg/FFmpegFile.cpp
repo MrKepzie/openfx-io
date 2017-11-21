@@ -190,6 +190,7 @@ const FilterEntry kCodecWhitelist[] =
     { "gif",            true,  false },     // GIF (Graphics Interchange Format) - write not supported as 8-bit only.
     { "h263p",          true,  true },     // H.263+ / H.263-1998 / H.263 version 2
     { "h264",           true,  false },     // H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (the encoder is libx264)
+    { "hap",            true,  true },     // Vidvox Hap
     { "hevc",           true,  false },     // H.265 / HEVC (High Efficiency Video Coding) (the encoder is libx265)
     { "huffyuv",        true,  UNSAFEQT0 && UNSAFEVLC },     // HuffYUV - write not supported as not official qt readable.
     { "jpeg2000",       true,  UNSAFEQT0 },     // JPEG 2000 - write not supported as not official qt readable.
