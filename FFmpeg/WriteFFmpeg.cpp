@@ -139,15 +139,16 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "- Last, if no such format is found, get the format that has the highest BPP.\n" \
     "The selected pixel coding, bit depth, and BPP are displayed in the Selected Pixel Coding, Bit Depth, and BPP parameters.\n" \
     "\n" \
-    "The recommended Container/Codec configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
-    "- QuickTime with ProRes: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
-    "- QuickTime with VC3/DNxHD/DNxHR: the codec is intra-frame. DNxHR profiles are resolution-independent, but are still only available with 8-bit depth. The alpha channel cannot be encoded.\n" \
-    "- MP4 (or QuickTime) with Photo JPEG and Global Quality set to 1: intra-frame and 8-bit. qscale=1 ensure almost lossless encoding.\n" \
-    "- MP4 (or QuickTime) with avc1 (libx264 or libx264rgb) and Output Quality set to Lossless or Perceptually Lossless: 10-bit(*), and can be made intra-frame by setting Keyframe Interval to 1 and Max B-Frames to 0. Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n" \
+    "The recommended Codec/Container configurations for encoding digital intermediates are (see also https://trac.ffmpeg.org/wiki/Encode/VFX):\n" \
+    "- ProRes inside QuickTime: all ProRes profiles are 10-bit and are intra-frame (each frame is encoded separately). Prores 4444 can also encode the alpha channel.\n" \
+    "- Avid DNxHR inside QuickTime: the codec is intra-frame. DNxHR profiles are resolution-independent and are available with 8-bit or 10-bit depth. The alpha channel cannot be encoded.\n" \
+    "- HEVC (hev1/libx265) inside Matroska, MP4, QuickTime or MPEG-TS and Output Quality set to Lossless or Perceptually Lossless. libx265 supports 8-bit, 10-bit and 12-bit depth (if libx265 was compiled with high bit depth support). Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n" \
+    /*"- Photo JPEG inside MP4 (or QuickTime) and Global Quality set to 1: intra-frame and 8-bit. qscale=1 ensure almost lossless encoding.\n"*/ \
+    /*"- H.264 (avc1/libx264/libx264rgb) inside MP4 or QuickTime and Output Quality set to Lossless or Perceptually Lossless: 10-bit(*), and can be made intra-frame by setting Keyframe Interval to 1 and Max B-Frames to 0. Lossless may not be playable in real-time for high resolutions. Set the Encoding Speed to Ultra Fast for faster encoding but worse compression, or Very Slow for best compression.\n"*/ \
+    /*"\n"*/                                                            \
+    /*"(*) The H.264 output may be 8-bit if libx264 was not compiled with 10-bit support. Check the information displayed by clicking on the Show Avail. button.\n"*/ \
     "\n" \
-    "(*) The H.264 output may be 8-bit if libx264 was not compiled with 10-bit support. Check the information displayed in the Bit Depth field.\n" \
-    "\n" \
-    "To write videos intended for distribution (as media files or for streaming), the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
+    "To write videos intended for distribution (as media files or for streaming), the most popular codecs are mp4v (mpeg4 or libxvid), avc1 (libx264), H264 (libopenh264), hev1 (libx265), VP80 (libvpx) and VP90 (libvpx-vp9). The quality of mp4v may be set using the Global Quality parameter (between 1 and 31, 1 being the highest quality), and the quality of avc1, hev1, VP80 and VP90 may be set using the Output Quality parameter. More information can be found at https://trac.ffmpeg.org/wiki#Encoding\n" \
     "\n" \
     "If the output video should be encoded with specific FFmpeg options, such as a given pixel format or encoding option, it is better to write the output as individual frames in an image format that has a sufficient bit depth, and to encode the set of individual frames to a video using the command-line ffmpeg tool.\n" \
     "\n" \
