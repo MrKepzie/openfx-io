@@ -32,8 +32,8 @@ FFMPEG_CXXFLAGS += -DOFX_IO_MT_FFMPEG
 
 # OpenImageIO
 OIIO_HOME ?= /usr
-OIIO_CXXFLAGS = -I$(OIIO_HOME)/include `pkg-config --cflags libraw_r jasper OpenEXR OpenColorIO libwebp libtiff-4 libopenjp2 libpng`
-OIIO_LINKFLAGS = -L$(OIIO_HOME)/lib -lOpenImageIO `pkg-config --libs libraw_r jasper OpenEXR OpenColorIO libwebp libtiff-4 libopenjp2 libpng`
+OIIO_CXXFLAGS = -I$(OIIO_HOME)/include `pkg-config --cflags libraw_r OpenEXR OpenColorIO libwebp libtiff-4 libopenjp2 libpng`
+OIIO_LINKFLAGS = -L$(OIIO_HOME)/lib -lOpenImageIO `pkg-config --libs libraw_r OpenEXR OpenColorIO libwebp libtiff-4 libopenjp2 libpng`
 ifeq ($(OS),Linux)
 OIIO_LINKFLAGS += -Wl,-rpath,$(OIIO_HOME)/lib -Wl,-rpath,`pkg-config --variable=libdir libraw_r`
 endif
