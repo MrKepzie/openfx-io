@@ -10,7 +10,7 @@ env:
    # usual processing: false.
    - coverity_scan_script_test_mode=false
    # Travis CI has 1.5 cores per VM, take advantage of it
-   - MAKEFLAGS="-j 2"
+   - MAKEFLAGSPARALLEL="-j 2"
 
 language: cpp
 
@@ -98,6 +98,8 @@ script:
       echo "Don't build on coverty_scan branch.";
       exit 0;
     fi
+  - pkg-config --cflags libraw_r
+  - dpkg-query -L libraw-dev
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
   - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
   - make clean
