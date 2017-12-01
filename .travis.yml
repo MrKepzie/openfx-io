@@ -98,14 +98,16 @@ script:
       echo "Don't build on coverty_scan branch.";
       exit 0;
     fi
-  - pkg-config --cflags libraw_r
-  - dpkg-query -L libraw-dev
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
+  #- pkg-config --cflags libraw_r
+  #- dpkg-query -L libraw-dev
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J V=1 CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J V=1 CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio nomulti
   - make clean
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_OPENGL_CXXFLAGS= OCIO_OPENGL_LINKFLAGS=
+  # without OCIO OpenGL support
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J V=1 CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_OPENGL_CXXFLAGS= OCIO_OPENGL_LINKFLAGS=
   - make clean
-  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
+  # without OCIO
+  - env PKG_CONFIG_PATH=/opt/ocio/lib/pkgconfig make $J V=1 CONFIG=debug SEEXPR_HOME=/opt/seexpr OIIO_HOME=/opt/oiio OCIO_CXXFLAGS= OCIO_LINKFLAGS=
 
 addons:
   apt:
