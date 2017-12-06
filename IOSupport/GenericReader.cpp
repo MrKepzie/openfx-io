@@ -2531,32 +2531,7 @@ GenericReaderPlugin::detectProxyScale(const string& originalFileName,
     return ret;
 }
 
-static const float charDivider = 1.f / 255.f;
-static const float shortDivider = 1.f / 65535.f;
-
-
-template <typename SRCPIX>
-inline float toFloat(SRCPIX value);
-
-template <>
-float toFloat(unsigned char value)
-{
-    return (float)value * charDivider;
-}
-
-template <>
-float toFloat(unsigned short value)
-{
-    return (float)value * shortDivider;
-}
-
-template <>
-float toFloat(float value)
-{
-    return value;
-}
-
-template<typename SRCPIX, int nSrcComp, int nDstComp>
+template<typename SRCPIX, int srcMaxValue, int nSrcComp, int nDstComp>
 class PixelConverterProcessor
     : public PixelProcessor
 {
@@ -2573,6 +2548,7 @@ public:
         , _dstBufferRowBytes(0)
         , _srcBufferRowBytes(0)
     {
+        assert(srcMaxValue);
         _srcBufferBounds.x1 = _srcBufferBounds.y1 = _srcBufferBounds.x2 = _srcBufferBounds.y2 = 0;
     }
 
@@ -2591,8 +2567,6 @@ public:
         _dstBounds = dstBufferBounds;
         _dstPixelData = dstPixelData;
     }
-
-
 
     // and do some processing
     void multiThreadProcessImages(OfxRectI procWindow)
@@ -2623,7 +2597,7 @@ public:
                     // alpha
                     switch (nDstComp) {
                     case 1:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
                         break;
                     case 2:
                         dst_pixels[dstCol + 0] = 0.;
@@ -2640,7 +2614,7 @@ public:
                         dst_pixels[dstCol + 0] = 0.;
                         dst_pixels[dstCol + 1] = 0.;
                         dst_pixels[dstCol + 2] = 0.;
-                        dst_pixels[dstCol + 3] = toFloat(src_pixels[srcCol + 0]);
+                        dst_pixels[dstCol + 3] = src_pixels[srcCol + 0] / (float)srcMaxValue;
                         break;
                     default:
                         assert(false);
@@ -2655,19 +2629,19 @@ public:
                         dst_pixels[dstCol + 0] = 0.;
                         break;
                     case 2:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
                         break;
 
                     case 3:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
                         dst_pixels[dstCol + 2] = 0;
                         break;
 
                     case 4:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
                         dst_pixels[dstCol + 2] = 0.;
                         dst_pixels[dstCol + 3] = 1.f;
                         break;
@@ -2686,20 +2660,20 @@ public:
                         break;
                     }
                     case 2:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
                         break;
 
                     case 3:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
-                        dst_pixels[dstCol + 2] = toFloat(src_pixels[srcCol + 2]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
                         break;
 
                     case 4:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
-                        dst_pixels[dstCol + 2] = toFloat(src_pixels[srcCol + 2]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
                         dst_pixels[dstCol + 3] = 1.f;
                         break;
                     default:
@@ -2713,24 +2687,24 @@ public:
                 case 4:
                     switch (nDstComp) {
                     case 1:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 3]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 3] / (float)srcMaxValue;
                         break;
                     case 2:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
                         break;
 
                     case 3:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
-                        dst_pixels[dstCol + 2] = toFloat(src_pixels[srcCol + 2]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
                         break;
 
                     case 4:
-                        dst_pixels[dstCol + 0] = toFloat(src_pixels[srcCol + 0]);
-                        dst_pixels[dstCol + 1] = toFloat(src_pixels[srcCol + 1]);
-                        dst_pixels[dstCol + 2] = toFloat(src_pixels[srcCol + 2]);
-                        dst_pixels[dstCol + 3] = toFloat(src_pixels[srcCol + 3]);
+                        dst_pixels[dstCol + 0] = src_pixels[srcCol + 0] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 1] = src_pixels[srcCol + 1] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 2] = src_pixels[srcCol + 2] / (float)srcMaxValue;
+                        dst_pixels[dstCol + 3] = src_pixels[srcCol + 3] / (float)srcMaxValue;
                         break;
                     default:
                         assert(false);
@@ -2749,7 +2723,7 @@ public:
     } // multiThreadProcessImages
 };
 
-template<typename SRCPIX, int nSrcComp, int nDstComp>
+template<typename SRCPIX, int srcMaxValue, int nSrcComp, int nDstComp>
 void
 convertForDstNComps(ImageEffect* effect,
                     const SRCPIX* srcPixelData,
@@ -2760,13 +2734,13 @@ convertForDstNComps(ImageEffect* effect,
                     const OfxRectI& dstBounds,
                     int dstRowBytes)
 {
-    PixelConverterProcessor<SRCPIX, nSrcComp, nDstComp> p(*effect);
+    PixelConverterProcessor<SRCPIX, srcMaxValue, nSrcComp, nDstComp> p(*effect);
     p.setValues(srcPixelData, srcBounds, srcRowBytes, dstPixelData,  dstRowBytes,  dstBounds);
     p.setRenderWindow(renderWindow);
     p.process();
 }
 
-template<typename SRCPIX, int nSrcComp>
+template<typename SRCPIX, int srcMaxValue, int nSrcComp>
 void
 convertForSrcNComps(ImageEffect* effect,
                     const SRCPIX* srcPixelData,
@@ -2780,19 +2754,19 @@ convertForSrcNComps(ImageEffect* effect,
 {
     switch (dstPixelComponents) {
     case ePixelComponentAlpha: {
-        convertForDstNComps<SRCPIX, nSrcComp, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
         break;
     }
     case ePixelComponentXY: {
-        convertForDstNComps<SRCPIX, nSrcComp, 2>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 2>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
         break;
     }
     case ePixelComponentRGB: {
-        convertForDstNComps<SRCPIX, nSrcComp, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
         break;
     }
     case ePixelComponentRGBA: {
-        convertForDstNComps<SRCPIX, nSrcComp, 4>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
+        convertForDstNComps<SRCPIX, srcMaxValue, nSrcComp, 4>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstRowBytes);
         break;
     }
     default:
@@ -2801,7 +2775,7 @@ convertForSrcNComps(ImageEffect* effect,
     }
 }
 
-template<typename SRCPIX>
+template<typename SRCPIX, int srcMaxValue>
 void
 convertForDepth(ImageEffect* effect,
                 const SRCPIX* srcPixelData,
@@ -2816,16 +2790,16 @@ convertForDepth(ImageEffect* effect,
 {
     switch (srcPixelComponents) {
     case ePixelComponentAlpha:
-        convertForSrcNComps<SRCPIX, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForSrcNComps<SRCPIX, srcMaxValue, 1>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     case ePixelComponentXY:
-        convertForSrcNComps<SRCPIX, 2>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForSrcNComps<SRCPIX, srcMaxValue, 2>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     case ePixelComponentRGB:
-        convertForSrcNComps<SRCPIX, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForSrcNComps<SRCPIX, srcMaxValue, 3>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     case ePixelComponentRGBA:
-        convertForSrcNComps<SRCPIX, 4>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForSrcNComps<SRCPIX, srcMaxValue, 4>(effect, srcPixelData, renderWindow, srcBounds, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     default:
         assert(false);
@@ -2847,13 +2821,13 @@ GenericReaderPlugin::convertDepthAndComponents(const void* srcPixelData,
 {
     switch (srcBitDepth) {
     case eBitDepthFloat:
-        convertForDepth<float>(this, (const float*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForDepth<float, 1>(this, (const float*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     case eBitDepthUShort:
-        convertForDepth<unsigned short>(this, (const unsigned short*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForDepth<unsigned short, 65535>(this, (const unsigned short*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     case eBitDepthUByte:
-        convertForDepth<unsigned char>(this, (const unsigned char*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
+        convertForDepth<unsigned char, 255>(this, (const unsigned char*)srcPixelData, renderWindow, srcBounds, srcPixelComponents, srcRowBytes, dstPixelData, dstBounds, dstPixelComponents, dstRowBytes);
         break;
     default:
         assert(false);
