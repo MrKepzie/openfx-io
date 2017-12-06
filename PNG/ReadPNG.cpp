@@ -323,21 +323,21 @@ get_background (png_structp sp,
     png_color_16p bg;
     png_get_bKGD (sp, ip, &bg);
     if (bitdepth == eBitDepthUShort) {
-        *red   = bg->red   / 65535.0;
-        *green = bg->green / 65535.0;
-        *blue  = bg->blue  / 65535.0;
+        *red   = bg->red   * (1.f / 65535);
+        *green = bg->green * (1.f / 65535);
+        *blue  = bg->blue  * (1.f / 65535);
     } else if ( (nChannels < 3) && (real_bit_depth < 8) ) {
         if (real_bit_depth == 1) {
             *red = *green = *blue = (bg->gray ? 1 : 0);
         } else if (real_bit_depth == 2) {
-            *red = *green = *blue = bg->gray / 3.0;
+            *red = *green = *blue = bg->gray * (1.f / 3);
         } else { // 4 bits
-            *red = *green = *blue = bg->gray / 15.0;
+            *red = *green = *blue = bg->gray * (1.f / 15);
         }
     } else {
-        *red   = bg->red   / 255.0;
-        *green = bg->green / 255.0;
-        *blue  = bg->blue  / 255.0;
+        *red   = bg->red   * (1.f / 255);
+        *green = bg->green * (1.f / 255);
+        *blue  = bg->blue  * (1.f / 255);
     }
 
     return true;
