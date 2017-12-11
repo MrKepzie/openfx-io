@@ -139,8 +139,8 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
 // float adjust_maximum_thr
 #define kParamRawAdjustMaximumThr "rawAdjustMaximumThr"
 #define kParamRawAdjustMaximumThrLabel "Adjust Maximum Thr.", " This parameters controls auto-adjusting of maximum value based on channel_maximum[] data, calculated from real frame data. If calculated maximum is greater than adjust_maximum_thr*maximum, than maximum is set to calculated_maximum.\n" \
-"Default: 0.75. If you set this value above 0.99999, than default value will be used. If you set this value below 0.00001, than no maximum adjustment will be performed.\n" \
-"Adjusting maximum should not damage any picture (esp. if you use default value) and is very useful for correcting channel overflow problems (magenta clouds on landscape shots, green-blue highlights for indoor shots)." // default: 0.75
+"Default: 0. If you set this value above 0.99999, then default value will be used. If you set this value below 0.00001, then no maximum adjustment will be performed. A value of 0.75 is reasonable for still shots, but sequences should always use 0.\n" \
+"Adjusting maximum should not damage any picture (esp. if you use default value) and is very useful for correcting channel overflow problems (magenta clouds on landscape shots, green-blue highlights for indoor shots)." // default: 0.
 
 // int output_color;
 #define kParamRawOutputColor "rawOutputColor"
@@ -3047,7 +3047,7 @@ ReadOIIOPluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 param->setLabelAndHint(kParamRawAdjustMaximumThrLabel);
                 param->setRange(0., 1.);
                 param->setDisplayRange(0., 1.);
-                param->setDefault(0.75);
+                param->setDefault(0.);
                 param->setAnimates(false);
                 if (group) {
                     param->setParent(*group);
