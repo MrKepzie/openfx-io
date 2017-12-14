@@ -65,7 +65,10 @@ OFXS_NAMESPACE_ANONYMOUS_ENTER
     "This plugin does not concatenate transforms (as opposed to Reformat)."
 
 #define kPluginIdentifier "fr.inria.openfx.OIIOResize"
-#define kPluginVersionMajor 1 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
+// History:
+// version 1.0: initial version
+// version 2.0: add the "default" filter, which is blackman-harris when increasing resolution, lanczos3 when decreasing resolution
+#define kPluginVersionMajor 2 // Incrementing this number means that you have broken backwards compatibility of the plug-in.
 #define kPluginVersionMinor 0 // Increment this when you have fixed a bug or made it faster.
 
 #define kSupportsTiles 0
@@ -108,7 +111,8 @@ enum ResizeTypeEnum
 #define kParamFilter "filter"
 #define kParamFilterLabel "Filter"
 #define kParamFilterHint "The filter used to resize. Lanczos3 is great for downscaling and blackman-harris is great for upscaling."
-#define kParamFilterOptionImpulse "Impulse (no interpolation)"
+#define kParamFilterOptionImpulse "Impulse", "No interpolation.", "impulse"
+#define kParamFilterOptionDefault "Default", "blackman-harris when increasing resolution, lanczos3 when decreasing resolution.", "default"
 
 #define kSrcClipChanged "srcClipChanged"
 
@@ -462,13 +466,33 @@ OIIOResizePlugin::renderInternal(const RenderArguments & /*args*/,
             setPersistentMessage( Message::eMessageError, "", dstBuf.geterror() );
         }
     } else {
-        ///interpolate using the selected filter
-        FilterDesc fd;
-        Filter2D::get_filterdesc(filter - 1, &fd);
-        // older versions of OIIO 1.2 don't have ImageBufAlgo::resize(dstBuf, srcBuf, fd.name, fd.width)
         assert(srcSpec.full_width && srcSpec.full_height);
         float wratio = float(dstSpec.full_width) / float(srcSpec.full_width);
         float hratio = float(dstSpec.full_height) / float(srcSpec.full_height);
+        const int num_filters = Filter2D::num_filters();
+        ///interpolate using the selected filter
+        FilterDesc fd;
+        filter -= 1;
+        if (filter < num_filters) {
+            Filter2D::get_filterdesc(filter, &fd);
+        } else {
+            string filtername;
+            // "default" filter
+            // No filter name supplied -- pick a good default
+            // see imgbufalgo_xform.cpp:477
+            if (wratio > 1.0f || hratio > 1.0f) {
+                filtername = "blackman-harris";
+            } else {
+                filtername = "lanczos3";
+            }
+            filter = 0;
+            Filter2D::get_filterdesc(filter, &fd);
+            while (fd.name != filtername) {
+                ++filter;
+                Filter2D::get_filterdesc(filter, &fd);
+            }
+        }
+        // older versions of OIIO 1.2 don't have ImageBufAlgo::resize(dstBuf, srcBuf, fd.name, fd.width)
         float w = fd.width * std::max(1.0f, wratio);
         float h = fd.width * std::max(1.0f, hratio);
         auto_ptr<Filter2D> filter( Filter2D::create(fd.name, w, h) );
@@ -761,13 +785,17 @@ OIIOResizePlugin::getClipPreferences(ClipPreferencesSetter &clipPreferences)
     }
 }
 
-mDeclarePluginFactory(OIIOResizePluginFactory, {ofxsThreadSuiteCheck();}, {});
+mDeclarePluginFactoryVersioned(OIIOResizePluginFactory, {ofxsThreadSuiteCheck();}, {});
 
 
 /** @brief The basic describe function, passed a plugin descriptor */
+template<unsigned int majorVersion>
 void
-OIIOResizePluginFactory::describe(ImageEffectDescriptor &desc)
+OIIOResizePluginFactory<majorVersion>::describe(ImageEffectDescriptor &desc)
 {
+    if (majorVersion < kPluginVersionMajor) {
+        desc.setIsDeprecated(true);
+    }
     // basic labels
     desc.setLabel(kPluginName);
     desc.setPluginGrouping(kPluginGrouping);
@@ -805,8 +833,9 @@ OIIOResizePluginFactory::describe(ImageEffectDescriptor &desc)
 }
 
 /** @brief The describe in context function, passed a plugin descriptor and a context */
+template<unsigned int majorVersion>
 void
-OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
+OIIOResizePluginFactory<majorVersion>::describeInContext(ImageEffectDescriptor &desc,
                                            ContextEnum /*context*/)
 {
     // Source clip only in the filter context
@@ -955,6 +984,10 @@ OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
                 defIndex = i + 1; // +1 because we added the "impulse" option
             }
         }
+        if (majorVersion > 1) {
+            param->appendOption(kParamFilterOptionDefault);
+            defIndex = nFilters + 1;
+        }
         param->setDefault(defIndex);
         if (page) {
             page->addChild(*param);
@@ -975,14 +1008,20 @@ OIIOResizePluginFactory::describeInContext(ImageEffectDescriptor &desc,
 } // OIIOResizePluginFactory::describeInContext
 
 /** @brief The create instance function, the plugin must return an object derived from the \ref ImageEffect class */
+template<unsigned int majorVersion>
 ImageEffect*
-OIIOResizePluginFactory::createInstance(OfxImageEffectHandle handle,
+OIIOResizePluginFactory<majorVersion>::createInstance(OfxImageEffectHandle handle,
                                         ContextEnum /*context*/)
 {
     return new OIIOResizePlugin(handle);
 }
 
-static OIIOResizePluginFactory p(kPluginIdentifier, kPluginVersionMajor, kPluginVersionMinor);
-mRegisterPluginFactoryInstance(p)
+// Declare old versions for backward compatibility.
+// They don't have the "default" filter option
+static OIIOResizePluginFactory<1> p1(kPluginIdentifier, 0);
+mRegisterPluginFactoryInstance(p1)
+
+static OIIOResizePluginFactory<kPluginVersionMajor> p2(kPluginIdentifier, kPluginVersionMinor);
+mRegisterPluginFactoryInstance(p2)
 
 OFXS_NAMESPACE_ANONYMOUS_EXIT
