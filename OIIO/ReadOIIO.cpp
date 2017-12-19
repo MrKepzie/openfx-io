@@ -2517,7 +2517,7 @@ ReadOIIOPlugin::decodePlane(const string& filename,
                                  srcPtr += (chend - chbegin),
                                  dstPtr += numChannels) {
                                 for (int c = 0; c < (chend - chbegin); ++c) {
-                                    assert(srcPtr[c] == srcPtr[c]); // Check for NaNs
+                                    assert( !OFX::IsNaN(srcPtr[c]) ); // Check for NaNs
                                     dstPtr[c] = srcPtr[c];
                                 }
                             }
